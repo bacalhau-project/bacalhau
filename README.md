@@ -84,7 +84,20 @@ Ideally we will also allow much more fine grained control, specifying location, 
   - No real need to trust miners, computation should be cheap enough, replicas abundant enough, that you can redundantly run the same computations across different miners with the same data and double check the results against each other
     - This is a key insight IMO: You can run every computation 3x, and it should be cheaper than doing this sort of work any other way *even* with that overhead.
 
-- **SCENARIO 2** Want to burst to cloud but cannot move entire dataset in short time
+- **SCENARIO 2** Process data before retrieval
+  - Lochana is a data scientist building models based on satellite images.
+  - The satellite data is often very large, much larger than she needs for her processing. On the order of 1GB per image and millions of pixels.
+  - She needs data no bigger than 1 MB per image, gray scale, downscaled.
+  - She already uses a python library which downscales per her needs.
+  - She has a file `process.py` which includes the python code necessary to execute in a function called 'downscale()' which takes a file handle to local, processes it, and returns a bytestream.
+  - She executes the following command:
+```
+ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR
+```
+  - This runs the command in a local executor, first installing all the python packages necessary, and then executing them, on the subset of data available on that node.
+  - Once complete, the system returns the CID of the updated dataset that she can download.
+
+- **SCENARIO 3** Want to burst to cloud but cannot move entire dataset in short time
   - DHASH CAN YOU HELP FLESH OUT
   - **PUSH COMPUTE INTO GENE SEQUENCER**
   - **PIPE TO S3**
