@@ -111,7 +111,9 @@ ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrz
 - Need a dataset aggregator - where a single large dataset can describe many CIDs that may span sectors
 
 ## What's with the Name?
+Bacalhau means cod (the fish) in Portugeuse (where several folks were brainstorming this topic). 
 
+Compute-Over-Data == Cod == Bacalhau
 
 ## Raw Notes / Questions
 
