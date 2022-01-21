@@ -47,9 +47,10 @@ var serveCmd = &cobra.Command{
 			panic(err)
 		}
 
-		nick := fmt.Sprintf("%s", h.ID())
+		nick := h.ID().String()
 		room := "apples"
 
+		// starts readLoop in the background
 		cr, err := JoinChatRoom(ctx, ps, h.ID(), nick, room)
 		if err != nil {
 			panic(err)
@@ -70,6 +71,11 @@ var serveCmd = &cobra.Command{
 			h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 			h.Connect(ctx, *info)
 		}
+
+		// run the jsonrpc server, passing it a reference to the pubsub topic so
+		// that the CLI can also send messages to the chat room
+
+		go runBacalhauRpcServer(jsonrpcPort)
 
 		// draw the UI
 		ui := NewChatUI(cr)
