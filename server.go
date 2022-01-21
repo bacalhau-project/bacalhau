@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 // Represents Arith service for RPC
@@ -21,7 +23,9 @@ type Args struct {
 	A, B int
 }
 
-func runBacalhauRpcServer(port int) {
+func runBacalhauRpcServer(port int, topic *pubsub.Topic) {
+
+	// TODO: write to pubsub.Topic
 
 	arith := new(Arith)
 	err := rpc.Register(arith)

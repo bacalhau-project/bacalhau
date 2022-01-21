@@ -75,7 +75,7 @@ var serveCmd = &cobra.Command{
 		// run the jsonrpc server, passing it a reference to the pubsub topic so
 		// that the CLI can also send messages to the chat room
 
-		go runBacalhauRpcServer(jsonrpcPort)
+		go runBacalhauRpcServer(jsonrpcPort, cr.topic)
 
 		// draw the UI
 		ui := NewChatUI(cr)
