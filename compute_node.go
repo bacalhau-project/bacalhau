@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -72,12 +73,12 @@ func NewComputeNode(
 	server := &ComputeNode{
 		Ctx:          ctx,
 		Jobs:         []Job{},
-		NewJobs:      make(chan *Job),
 		Host:         host,
 		PubSub:       pubsub,
 		Topic:        topic,
 		Subscription: subscription,
 	}
+	go server.ReadLoop()
 	return server, nil
 }
 
@@ -105,8 +106,45 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 
 // this should be ctrl+c to exit
 func (server *ComputeNode) Render() {
-	for true {
+	for {
 		fmt.Printf("we have %d jobs\n", len(server.Jobs))
+		fmt.Printf("%+v\n", server.Jobs)
 		time.Sleep(time.Second * 1)
 	}
+}
+
+func (server *ComputeNode) AddJob(job *Job) {
+	// TODO: filter the job
+
+	// send valid messages onto the Messages channel
+	server.Jobs = append(server.Jobs, *job)
+}
+
+func (server *ComputeNode) ReadLoop() {
+	for {
+		msg, err := server.Subscription.Next(server.Ctx)
+		if err != nil {
+			close(server.NewJobs)
+			return
+		}
+		// only forward messages delivered by others
+		if msg.ReceivedFrom == server.Host.ID() {
+			continue
+		}
+		job := new(Job)
+		err = json.Unmarshal(msg.Data, job)
+		if err != nil {
+			continue
+		}
+		server.AddJob(job)
+	}
+}
+
+func (server *ComputeNode) Publish(job *Job) error {
+	msgBytes, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+	server.AddJob(job)
+	return server.Topic.Publish(server.Ctx, msgBytes)
 }

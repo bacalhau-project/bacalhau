@@ -27,15 +27,20 @@ var serveCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		server, err := NewComputeNode(ctx, hostPort)
+		computeNode, err := NewComputeNode(ctx, hostPort)
 		if err != nil {
 			return err
 		}
-		err = server.Connect(peerConnect)
+		err = computeNode.Connect(peerConnect)
 		if err != nil {
 			return err
 		}
-		server.Render()
+
+		// run the jsonrpc server, passing it a reference to the pubsub topic so
+		// that the CLI can also send messages to the chat room
+		go runBacalhauRpcServer(jsonrpcPort, computeNode)
+
+		computeNode.Render()
 
 		return nil
 
