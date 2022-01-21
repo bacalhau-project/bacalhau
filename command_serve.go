@@ -2,17 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
-	"log"
 
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 )
 
@@ -37,67 +27,17 @@ var serveCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		h, err := makeHost(hostPort)
+		server, err := NewComputeNode(ctx, hostPort)
 		if err != nil {
-			panic(err)
+			return err
 		}
-
-		ps, err := pubsub.NewGossipSub(ctx, h)
+		err = server.Connect(peerConnect)
 		if err != nil {
-			panic(err)
+			return err
 		}
-
-		nick := fmt.Sprintf("%s", h.ID())
-		room := "apples"
-
-		cr, err := JoinChatRoom(ctx, ps, h.ID(), nick, room)
-		if err != nil {
-			panic(err)
-		}
-
-		if peerConnect != "" {
-			maddr, err := multiaddr.NewMultiaddr(peerConnect)
-			if err != nil {
-				panic(err)
-			}
-
-			// Extract the peer ID from the multiaddr.
-			info, err := peer.AddrInfoFromP2pAddr(maddr)
-			if err != nil {
-				panic(err)
-			}
-
-			h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-			h.Connect(ctx, *info)
-		}
-
-		// draw the UI
-		ui := NewChatUI(cr)
-		if err = ui.Run(); err != nil {
-			printErr("error running text UI: %s", err)
-		}
+		server.Render()
 
 		return nil
 
 	},
-}
-
-func makeHost(port int) (host.Host, error) {
-	// Creates a new RSA key pair for this host.
-	// TODO: allow the user to provide an existing keypair
-	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	// 0.0.0.0 will listen on any interface device.
-	sourceMultiAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
-
-	// libp2p.New constructs a new libp2p Host.
-	// Other options can be added here.
-	return libp2p.New(
-		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(prvKey),
-	)
 }
