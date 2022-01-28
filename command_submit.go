@@ -30,7 +30,7 @@ var submitCmd = &cobra.Command{
 		job := &Job{
 			Id:     jobId,
 			Cpu:    1,
-			Memory: 1,
+			Memory: 2,
 			Disk:   10,
 			BuildCommands: []string{
 				// "apt update && apt-get install -y unzip",
@@ -41,7 +41,7 @@ var submitCmd = &cobra.Command{
 				// "unzip 5m-Sales-Records.zip",
 				// "for X in {1..10}; do bash -c \"sed 's/Office Supplies/Booze/' '5m Sales Records.csv' -i\"; sleep 2; done",
 				"echo HELLO THIS IS THE EXECUTION STEP",
-				"for X in {1..10}; do echo $X; sleep 2; done",
+				"for X in {1..10}; do echo iteration $X; for Y in {0..100000}; do false; done; sleep 2; done",
 				"echo DONE",
 			},
 		}

@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"syscall"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -207,6 +206,17 @@ func (server *ComputeNode) RunJob(job *Job) error {
 		"outputs",
 	})
 
+	// TODO: this is rubbish because it will run concurrently
+	// run a single server the first time
+	fmt.Printf("INSTALL DEPENDENCIES: \n")
+
+	err = server.RunCommand("sudo", []string{
+		"pip3",
+		"install",
+		"psrecord",
+		"matplotlib",
+	})
+
 	if err != nil {
 		return err
 	}
@@ -218,6 +228,9 @@ func (server *ComputeNode) RunJob(job *Job) error {
 		"--plot",
 		localTraceImagePath,
 	}...)
+
+	traceCmd.Stderr = os.Stderr
+	traceCmd.Stdout = os.Stdout
 
 	err = traceCmd.Start()
 
@@ -244,8 +257,8 @@ func (server *ComputeNode) RunJob(job *Job) error {
 		}
 	}
 
-	fmt.Printf("STOP TRACE PID: %d\n", tracePid)
-	traceCmd.Process.Signal(syscall.SIGINT)
+	// fmt.Printf("STOP TRACE PID: %d\n", tracePid)
+	// traceCmd.Process.Signal(syscall.SIGTERM)
 
 	return nil
 }
@@ -275,6 +288,6 @@ func (server *ComputeNode) Publish(job *Job) error {
 	if err != nil {
 		return err
 	}
-	server.AddJob(job)
+	go server.AddJob(job)
 	return server.Topic.Publish(server.Ctx, msgBytes)
 }
