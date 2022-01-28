@@ -8,9 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//Result of RPC call is of this type
-type Result int
-
 var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
@@ -22,15 +19,15 @@ var submitCmd = &cobra.Command{
 			log.Fatalf("Error in dialing. %s", err)
 		}
 		job := &Job{
-			Id: cmdArgs[0],
+			Id:     cmdArgs[0],
+			Cpu:    1,
+			Memory: 1,
+			Disk:   10,
 		}
-		//make arguments object
 		args := &SubmitArgs{
 			Job: job,
 		}
-		//this will store returned result
-		var result Result
-		//call remote procedure with args
+		result := Job{}
 		err = client.Call("JobServer.Submit", args, &result)
 		if err != nil {
 			log.Fatalf("error in JobServer", err)

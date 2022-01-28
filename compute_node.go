@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
+	"os"
+	"os/exec"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -106,18 +107,76 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 
 // this should be ctrl+c to exit
 func (server *ComputeNode) Render() {
-	for {
-		fmt.Printf("we have %d jobs\n", len(server.Jobs))
-		fmt.Printf("%+v\n", server.Jobs)
-		time.Sleep(time.Second * 1)
-	}
+	fmt.Printf("we have %d jobs\n", len(server.Jobs))
+	fmt.Printf("%+v\n", server.Jobs)
 }
 
 func (server *ComputeNode) AddJob(job *Job) {
-	// TODO: filter the job
+	// TODO: filter the job - is this done async?
 
 	// send valid messages onto the Messages channel
 	server.Jobs = append(server.Jobs, *job)
+	server.Render()
+
+	// TODO: split this into an async thing that is working through the mempool
+	server.RunJob(job)
+}
+
+func (server *ComputeNode) RunCommand(command string, args []string) error {
+	cmd := exec.Command(command, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
+}
+
+func (server *ComputeNode) RunCommandGetResults(command string, args []string) (string, error) {
+	cmd := exec.Command(command, args...)
+	result, err := cmd.CombinedOutput()
+	return string(result), err
+}
+
+func (server *ComputeNode) RunJob(job *Job) error {
+
+	localJobId := fmt.Sprintf("%s%d", job.Id, os.Getpid())
+	// start a firecracker VM
+	// loop over each command - ignite exec <id> <command>
+	err := server.RunCommand("sudo", []string{
+		"ignite",
+		"run",
+		"weaveworks/ignite-ubuntu",
+		"--name",
+		localJobId,
+		"--cpus",
+		fmt.Sprintf("%d", job.Cpu),
+		"--memory",
+		fmt.Sprintf("%dGB", job.Memory),
+		"--size",
+		fmt.Sprintf("%dGB", job.Disk),
+		"--ssh",
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: XXX SECURITY HOLE XXX (untrusted input feed to command execution string)
+	pid, err := server.RunCommandGetResults("sudo", []string{
+		"bash",
+		"-c",
+		fmt.Sprintf("sudo ps auxwwww |grep $(sudo ignite inspect vm %s | jq -r .metadata.uid) |grep 'firecracker --api-sock' |awk '{print $2}'", localJobId),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("-----------------\nPID=%s\n", pid)
+
+	// for _, command := range job.Commands {
+
+	// }
+
+	return nil
 }
 
 func (server *ComputeNode) ReadLoop() {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -36,11 +37,16 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
+		fmt.Printf(`
+Command to connect other peers:
+
+go run . serve --peer /ip4/127.0.0.1/tcp/%d/p2p/%s
+		
+`, hostPort, computeNode.Host.ID())
+
 		// run the jsonrpc server, passing it a reference to the pubsub topic so
 		// that the CLI can also send messages to the chat room
-		go runBacalhauRpcServer(jsonrpcPort, computeNode)
-
-		computeNode.Render()
+		runBacalhauRpcServer(jsonrpcPort, computeNode)
 
 		return nil
 

@@ -1,5 +1,9 @@
 package main
 
 type Job struct {
-	Id string
+	Id       string
+	Commands []string
+	Cpu      int
+	Memory   int
+	Disk     int
 }
