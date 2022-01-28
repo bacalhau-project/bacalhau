@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -138,9 +139,20 @@ func (server *ComputeNode) RunCommandGetResults(command string, args []string) (
 func (server *ComputeNode) RunJob(job *Job) error {
 
 	localJobId := fmt.Sprintf("%s%d", job.Id, os.Getpid())
+
+	wd, err := os.Getwd()
+
+	if err != nil {
+		return err
+	}
+
+	localTraceImagePath := fmt.Sprintf("%s/outputs/%s.png", wd, localJobId)
+
+	fmt.Printf("GOT JOB!\n%+v\n", job)
+
 	// start a firecracker VM
 	// loop over each command - ignite exec <id> <command>
-	err := server.RunCommand("sudo", []string{
+	err = server.RunCommand("sudo", []string{
 		"ignite",
 		"run",
 		"weaveworks/ignite-ubuntu",
@@ -170,11 +182,70 @@ func (server *ComputeNode) RunJob(job *Job) error {
 		return err
 	}
 
-	fmt.Printf("-----------------\nPID=%s\n", pid)
+	fmt.Printf("IGNITE PID: %s\n", pid)
 
-	// for _, command := range job.Commands {
+	for _, command := range job.BuildCommands {
 
-	// }
+		fmt.Printf("RUNNING BUILD COMMAND: %s\n", command)
+
+		err = server.RunCommand("sudo", []string{
+			"ignite",
+			"exec",
+			localJobId,
+			command,
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("CREATING OUTPUT FOLDER: \n")
+
+	err = server.RunCommand("mkdir", []string{
+		"-p",
+		"outputs",
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// start a monitoring process for the job
+	traceCmd := exec.Command("sudo", []string{
+		"psrecord",
+		pid,
+		"--plot",
+		localTraceImagePath,
+	}...)
+
+	err = traceCmd.Start()
+
+	if err != nil {
+		return err
+	}
+
+	tracePid := traceCmd.Process.Pid
+	fmt.Printf("TRACE PID: %d -> %s\n", tracePid, localTraceImagePath)
+
+	for _, command := range job.Commands {
+
+		fmt.Printf("RUNNING COMMAND: %s\n", command)
+
+		err = server.RunCommand("sudo", []string{
+			"ignite",
+			"exec",
+			localJobId,
+			command,
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("STOP TRACE PID: %d\n", tracePid)
+	traceCmd.Process.Signal(syscall.SIGINT)
 
 	return nil
 }
@@ -195,7 +266,7 @@ func (server *ComputeNode) ReadLoop() {
 		if err != nil {
 			continue
 		}
-		server.AddJob(job)
+		go server.AddJob(job)
 	}
 }
 

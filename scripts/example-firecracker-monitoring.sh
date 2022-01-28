@@ -21,3 +21,15 @@ for X in {1..10}; do
 done
 sleep 10
 sudo kill $TRACE_PID
+
+
+# PRE COMMANDS
+# apt update && apt-get install -y unzip
+# wget https://eforexcel.com/wp/wp-content/uploads/2020/09/5m-Sales-Records.zip
+
+# COMMANDS
+# unzip 5m-Sales-Records.zip
+# for X in {1..10}; do bash -c "sed 's/Office Supplies/Booze/' '5m Sales Records.csv' -i"; sleep 2; done
+
+# useful commands
+# sudo ignite rm -f $(sudo ignite ps -a | tail -n +2 | awk '{print $1}')
