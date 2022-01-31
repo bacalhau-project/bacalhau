@@ -27,7 +27,7 @@ IPFS is already optimized for storing large datasets; it hosts petabytes of publ
 The flow of a submission will look like:
 
 - Using a standard interface (e.g. CLI, SDK, API) to submit an arbitrary job (e.g. code that executes inside a Docker container) to IPFS that can be sharded and run, in parallel, on many nodes.
-- Miners who self-identify as having a component or all of the data execute the job.
+- Storage providers who self-identify as having a component or all of the data execute the job.
 - Return the results of the jobs back to IPFS or any arbitrary endpoint.
 
 ```bash
@@ -50,7 +50,7 @@ One could imagine a veneer over the top of this that allows for submitting "linu
 ipfs job submit -e "sed /38.7[2-4]....,-9.1[3-5]...." -c bafy2bzacedcdedrghloawlwkntdhqnknqzxgh26ddwix7ld2a5ygagco3ngee
 ```
 
-This will take advantage of the computing power and data locality the miners have already, running only on the data stored there, but in the context of the larger dataset.
+This will take advantage of the computing power and data locality the Storage Providers have already, running only on the data stored there, but in the context of the larger dataset.
 
 Ideally, we will also allow much more fine-grained control, specifying location, machine type, etc. Examples:
 
@@ -77,11 +77,11 @@ Ideally, we will also allow much more fine-grained control, specifying location,
   - The total data changes about 10 GB per day across the system - they have about 100 TB of total data.
   - Michelle would like to query the data to get a subset of the information - to retrieve the past ten years of rainfall data within 10 km of Lisbon.
   - She writes a simple program to query for the information across the whole system, execute the filtering, and push the results into a single CID:
-    - Behind the scenes, the "orchestration" miner farms out requests to "worker" miners that have shards of the top-level data set.
-    - Each miner pulls the data from their local file into memory runs the program (which filters for just the information necessary) and writes the resulting data structure back to the CID.
-    - It then passes the intermediate CID back to the "orchestration" miner, which merges the results into a single unified CID, and lets Michelle know the job is done.
+    - Behind the scenes, the "orchestration" provider farms out requests to "worker" nodes that have shards of the top-level data set.
+    - Each worker node pulls the data from their local file into memory runs the program (which filters for just the information necessary) and writes the resulting data structure back to the CID.
+    - It then passes the intermediate CID back to the "orchestration" provider, which merges the results into a single unified CID, and lets Michelle know the job is done.
   - Michelle can now pull the resulting data down to her local machine for further analysis.
-- How miners benefit:
+- How Storage Provider benefit:
   - Their nodes no longer just store data, they can process it - for which they should be compensated
   - Even if low compute (relatively), they have SOME compute and it's MOSTLY going unused
   - Payment channels are neat
@@ -92,7 +92,7 @@ Ideally, we will also allow much more fine-grained control, specifying location,
   - Stake in the ground:
     - Use Firecracker to create a virtual environment in which a single container runs.
     - No local disk access is available (all writes must go back to IPFS)
-  - No real need to trust miners, computation should be cheap enough, replicas abundant enough, that you can redundantly run the same computations across different miners with the same data and double-check the results against each other
+  - No real need to trust storage providers, computation should be cheap enough, replicas abundant enough, that you can redundantly run the same computations across different storage providers with the same data and double-check the results against each other
     - This is a key insight IMO: You can run every computation 3x, and it should be cheaper than doing this sort of work any other way *even* with that overhead.
 
 - **SCENARIO 2** Process data before retrieval
@@ -116,8 +116,8 @@ ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrz
 ## Components to Build
 
 - Build an application that listens for jobs over libp2p, receives payment somehow, runs the job in {kuberenetes, docker, idk}, and returns the result to the use (ideally the 'result' is in the form of an ipfs object and we can just return the hash).
-- The inputs to the job should be a 'program' and a CID. The miner should pull the CID requested into a car file (it should already be in this format for sectors that they have sealed) and pass that to the docker image (probably mounted somewhere to the image).
-- This should run as a sidecar to miners, and should be fairly isolate so as not to mess with the miners primary operation.
+- The inputs to the job should be a 'program' and a CID. The node should pull the CID requested into a car file (it should already be in this format for sectors that they have sealed) and pass that to the docker image (probably mounted somewhere to the image).
+- This should run as a sidecar to lotus nodes, and should be fairly isolate so as not to mess with the node's primary operation.
 - Need a payment system, payment estimator
 - Need a dataset aggregator - where a single large dataset can describe many CIDs that may span sectors
 
