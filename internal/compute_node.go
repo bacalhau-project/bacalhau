@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
 
+	"github.com/filecoin-project/bacalhau/internal/ignite"
+	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -18,12 +19,14 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
+
 type ComputeNode struct {
 	Ctx context.Context
 	// the jobs we have already filtered and might want to process
-	Jobs []Job
+	Jobs []types.Job
 	// new jobs arriving via libp2p pubsub
-	NewJobs      chan *Job
+	NewJobs      chan *types.Job
 	Host         host.Host
 	PubSub       *pubsub.PubSub
 	Topic        *pubsub.Topic
@@ -73,7 +76,7 @@ func NewComputeNode(
 	}
 	server := &ComputeNode{
 		Ctx:          ctx,
-		Jobs:         []Job{},
+		Jobs:         []types.Job{},
 		Host:         host,
 		PubSub:       pubsub,
 		Topic:        topic,
@@ -111,7 +114,7 @@ func (server *ComputeNode) Render() {
 	fmt.Printf("%+v\n", server.Jobs)
 }
 
-func (server *ComputeNode) AddJob(job *Job) {
+func (server *ComputeNode) AddJob(job *types.Job) {
 	// TODO: filter the job - is this done async?
 
 	// send valid messages onto the Messages channel
@@ -122,143 +125,38 @@ func (server *ComputeNode) AddJob(job *Job) {
 	server.RunJob(job)
 }
 
-func (server *ComputeNode) RunCommand(command string, args []string) error {
-	cmd := exec.Command(command, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
-}
+func (server *ComputeNode) RunJob(job *types.Job) error {
 
-func (server *ComputeNode) RunCommandGetResults(command string, args []string) (string, error) {
-	cmd := exec.Command(command, args...)
-	result, err := cmd.CombinedOutput()
-	return string(result), err
-}
-
-func (server *ComputeNode) RunJob(job *Job) error {
-
-	localJobId := fmt.Sprintf("%s%d", job.Id, os.Getpid())
-
-	wd, err := os.Getwd()
+	vm, err := ignite.NewVm(job)
 
 	if err != nil {
 		return err
 	}
 
-	localTraceImagePath := fmt.Sprintf("%s/outputs/%s.png", wd, localJobId)
+	resultsFolder := fmt.Sprintf("outputs/%s/%s", job.Id, vm.Id)
 
-	fmt.Printf("GOT JOB!\n%+v\n", job)
-
-	// start a firecracker VM
-	// loop over each command - ignite exec <id> <command>
-	err = server.RunCommand("sudo", []string{
-		"ignite",
-		"run",
-		"weaveworks/ignite-ubuntu",
-		"--name",
-		localJobId,
-		"--cpus",
-		fmt.Sprintf("%d", job.Cpu),
-		"--memory",
-		fmt.Sprintf("%dGB", job.Memory),
-		"--size",
-		fmt.Sprintf("%dGB", job.Disk),
-		"--ssh",
-	})
-
-	if err != nil {
-		return err
-	}
-
-	// TODO: XXX SECURITY HOLE XXX (untrusted input feed to command execution string)
-	pid, err := server.RunCommandGetResults("sudo", []string{
-		"bash",
-		"-c",
-		fmt.Sprintf("sudo ps auxwwww |grep $(sudo ignite inspect vm %s | jq -r .metadata.uid) |grep 'firecracker --api-sock' |awk '{print $2}'", localJobId),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("IGNITE PID: %s\n", pid)
-
-	for _, command := range job.BuildCommands {
-
-		fmt.Printf("RUNNING BUILD COMMAND: %s\n", command)
-
-		err = server.RunCommand("sudo", []string{
-			"ignite",
-			"exec",
-			localJobId,
-			command,
-		})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Printf("CREATING OUTPUT FOLDER: \n")
-
-	err = server.RunCommand("mkdir", []string{
+	err = system.RunCommand("mkdir", []string{
 		"-p",
-		"outputs",
-	})
-
-	// TODO: this is rubbish because it will run concurrently
-	// run a single server the first time
-	fmt.Printf("INSTALL DEPENDENCIES: \n")
-
-	err = server.RunCommand("sudo", []string{
-		"pip3",
-		"install",
-		"psrecord",
-		"matplotlib",
+		resultsFolder,
 	})
 
 	if err != nil {
 		return err
 	}
 
-	// start a monitoring process for the job
-	traceCmd := exec.Command("sudo", []string{
-		"psrecord",
-		pid,
-		"--plot",
-		localTraceImagePath,
-	}...)
-
-	traceCmd.Stderr = os.Stderr
-	traceCmd.Stdout = os.Stdout
-
-	err = traceCmd.Start()
+	err = vm.Start()
 
 	if err != nil {
 		return err
 	}
 
-	tracePid := traceCmd.Process.Pid
-	fmt.Printf("TRACE PID: %d -> %s\n", tracePid, localTraceImagePath)
+	defer vm.Stop()
 
-	for _, command := range job.Commands {
+	err = vm.RunJob(resultsFolder)
 
-		fmt.Printf("RUNNING COMMAND: %s\n", command)
-
-		err = server.RunCommand("sudo", []string{
-			"ignite",
-			"exec",
-			localJobId,
-			command,
-		})
-
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
-
-	// fmt.Printf("STOP TRACE PID: %d\n", tracePid)
-	// traceCmd.Process.Signal(syscall.SIGTERM)
 
 	return nil
 }
@@ -274,7 +172,7 @@ func (server *ComputeNode) ReadLoop() {
 		if msg.ReceivedFrom == server.Host.ID() {
 			continue
 		}
-		job := new(Job)
+		job := new(types.Job)
 		err = json.Unmarshal(msg.Data, job)
 		if err != nil {
 			continue
@@ -283,7 +181,7 @@ func (server *ComputeNode) ReadLoop() {
 	}
 }
 
-func (server *ComputeNode) Publish(job *Job) error {
+func (server *ComputeNode) Publish(job *types.Job) error {
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
 		return err

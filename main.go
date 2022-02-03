@@ -1,13 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	bacalhau.Execute()
 }

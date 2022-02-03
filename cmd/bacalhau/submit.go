@@ -1,10 +1,13 @@
-package main
+package bacalhau
 
 import (
 	"fmt"
 	"log"
 	"net/rpc"
 
+	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -27,16 +30,20 @@ var submitCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error in dialing. %s", err)
 		}
-		job := &Job{
+
+		if jobId == "" {
+			jobUuid, err := uuid.NewRandom()
+			if err != nil {
+				log.Fatalf("Error in creating job id. %s", err)
+			}
+			jobId = jobUuid.String()
+		}
+
+		job := &types.Job{
 			Id:     jobId,
 			Cpu:    1,
 			Memory: 2,
 			Disk:   10,
-			BuildCommands: []string{
-				// "apt update && apt-get install -y unzip",
-				// "wget https://eforexcel.com/wp/wp-content/uploads/2020/09/5m-Sales-Records.zip",
-				"echo HELLO THIS IS THE BUILD STEP",
-			},
 			Commands: []string{
 				// "unzip 5m-Sales-Records.zip",
 				// "for X in {1..10}; do bash -c \"sed 's/Office Supplies/Booze/' '5m Sales Records.csv' -i\"; sleep 2; done",
@@ -45,16 +52,17 @@ var submitCmd = &cobra.Command{
 				"echo DONE",
 			},
 		}
-		args := &SubmitArgs{
+		args := &internal.SubmitArgs{
 			Job: job,
 		}
-		result := Job{}
+		result := types.Job{}
 		err = client.Call("JobServer.Submit", args, &result)
 		if err != nil {
-			log.Fatalf("error in JobServer", err)
+			log.Fatalf("error in JobServer: %s", err)
 		}
 		//we got our result in result
 		log.Printf("submit job: %+v\nreply job: %+v\n", args.Job, result)
+		log.Printf("to see the results once they have been created\n\n---------------------\n\nls -la outputs/%s\n\n---------------------\n", job.Id)
 		return nil
 	},
 }
