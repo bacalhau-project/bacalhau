@@ -1,5 +1,9 @@
 # Bacalhau - The Filecoin Distributed Computation Framework
 
+## demo!
+
+https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4
+
 ## running locally
 
 ### requirements
