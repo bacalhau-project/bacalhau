@@ -1,15 +1,20 @@
 # Bacalhau - The Filecoin Distributed Computation Framework
 
+## demo!
+
+https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4
+
 ## running locally
 
 ### requirements
 
+ * linux
  * go >= 1.16
  * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
 
 ### start compute nodes
 
-Have a few ternminal windows.
+Have a few terminal windows.
 
 This starts the first compute node listening on port 8080 so we can connect to a known port.
 
