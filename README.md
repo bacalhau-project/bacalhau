@@ -19,7 +19,7 @@ Have a few terminal windows.
 This starts the first compute node listening on port 8080 so we can connect to a known port.
 
 ```bash
-go run . serve --port 8080 --dev
+go run . serve --port 8080 --dev --start-ipfs-dev-only
 ```
 
 It will also print out the command to run in other terminal windows to connect to this first node (start at least one more so now we have a cluster)
@@ -27,13 +27,8 @@ It will also print out the command to run in other terminal windows to connect t
 For example:
 
 ```bash
-go run . serve --peer /ip4/127.0.0.1/tcp/8080/p2p/<peerid> --jsonrpc-port <randomport>
+go run . serve --peer /ip4/127.0.0.1/tcp/8080/p2p/<peerid> --jsonrpc-port <randomport> --start-ipfs-dev-only
 ```
-
-### ipfs repositories
-
-In dev mode, each server will print out an ipfs command to run an ipfs server in a certain path locally (that is specific to the bacalhau node).
-We will run an IPFS server per bacalhau server for demo purposes.
 
 ### submit a job with the CLI
 

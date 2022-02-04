@@ -3,9 +3,11 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
+	"text/template"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -13,6 +15,7 @@ import (
 var peerConnect string
 var hostAddress string
 var hostPort int
+var startIpfsDevOnly bool
 
 func init() {
 	serveCmd.PersistentFlags().StringVar(
@@ -26,6 +29,13 @@ func init() {
 	serveCmd.PersistentFlags().IntVar(
 		&hostPort, "port", 0,
 		`The port to listen on.`,
+	)
+	serveCmd.PersistentFlags().BoolVar(
+		&startIpfsDevOnly, "start-ipfs-dev-only", false,
+		`Start an ipfs node in a bacalhau-node specific data directory,`+
+			` FOR DEV PURPOSES ONLY (in production, run a single bacalhau server`+
+			` on servers where you already have ipfs servers running and it will`+
+			` use their default data directories).`,
 	)
 }
 
@@ -44,25 +54,76 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
 		jsonRpcString := ""
 		devString := ""
+		ipfsGatewayPort, err := freeport.GetFreePort()
+		if err != nil {
+			return err
+		}
+		ipfsApiPort, err := freeport.GetFreePort()
+		if err != nil {
+			return err
+		}
 
 		if developmentMode {
 			jsonRpcPort, err := freeport.GetFreePort()
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			jsonRpcString = fmt.Sprintf(" --jsonrpc-port %d", jsonRpcPort)
+
 			devString = " --dev"
 		}
+		if startIpfsDevOnly {
+			ipfs.InitializeRepo(computeNode.IpfsRepo)
+			devString += " --start-ipfs-dev-only"
+		}
+		type TemplateContents struct {
+			HostAddress     string
+			HostPort        int
+			ComputeNodeId   string
+			JsonRpcString   string
+			DevString       string
+			IpfsPath        string
+			IpfsGatewayPort int
+			IpfsApiPort     int
+		}
+		td := TemplateContents{
+			HostAddress:     hostAddress,
+			HostPort:        hostPort,
+			ComputeNodeId:   computeNode.Id,
+			JsonRpcString:   jsonRpcString,
+			DevString:       devString,
+			IpfsPath:        computeNode.IpfsRepo,
+			IpfsGatewayPort: ipfsGatewayPort,
+			IpfsApiPort:     ipfsApiPort,
+		}
 
-		fmt.Printf(`
-Command to connect other peers:
+		t, err := template.New("msg").Parse(
+			`Command to connect other peers:
 
-go run . serve --peer /ip4/%s/tcp/%d/p2p/%s%s%s
-		
-`, hostAddress, hostPort, computeNode.Host.ID(), jsonRpcString, devString)
+go run . serve --peer /ip4/{{.HostAddress}}/tcp/{{.HostPort}}/p2p/{{.ComputeNodeId}}{{.JsonRpcString}}{{.DevString}}
+
+To set up an IPFS repo for this bacalhau server and pin some files locally from it:
+
+IPFS_PATH={{.IpfsPath}} ipfs init
+IPFS_PATH={{.IpfsPath}} ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/{{.IpfsGatewayPort}}
+IPFS_PATH={{.IpfsPath}} ipfs config Addresses.API /ip4/127.0.0.1/tcp/{{.IpfsApiPort}}
+IPFS_PATH={{.IpfsPath}} ipfs daemon
+cid=$(IPFS_PATH={{.IpfsPath}} ipfs add -q /etc/passwd)
+
+To submit a job that uses that data (and so should be preferentially scheduled on this node):
+
+go run . submit --cids=$cid --commands="grep admin /bacalhau/input"
+`,
+		)
+		if err != nil {
+			return err
+		}
+		err = t.Execute(os.Stdout, td)
+		if err != nil {
+			return err
+		}
 
 		// run the jsonrpc server, passing it a reference to the pubsub topic so
 		// that the CLI can also send messages to the chat room
