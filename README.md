@@ -13,7 +13,7 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
 
 ### start compute nodes
 
-Have a few ternminal windows.
+Have a few terminal windows.
 
 This starts the first compute node listening on port 8080 so we can connect to a known port.
 
