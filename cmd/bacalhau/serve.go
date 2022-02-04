@@ -46,6 +46,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		jsonRpcString := ""
+		devString := ""
 
 		if developmentMode {
 			jsonRpcPort, err := freeport.GetFreePort()
@@ -53,14 +54,15 @@ var serveCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			jsonRpcString = fmt.Sprintf(" --jsonrpc-port %d", jsonRpcPort)
+			devString = " --dev"
 		}
 
 		fmt.Printf(`
 Command to connect other peers:
 
-go run . serve --peer /ip4/%s/tcp/%d/p2p/%s%s
+go run . serve --peer /ip4/%s/tcp/%d/p2p/%s%s%s
 		
-`, hostAddress, hostPort, computeNode.Host.ID(), jsonRpcString)
+`, hostAddress, hostPort, computeNode.Host.ID(), jsonRpcString, devString)
 
 		// run the jsonrpc server, passing it a reference to the pubsub topic so
 		// that the CLI can also send messages to the chat room

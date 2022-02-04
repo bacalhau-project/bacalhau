@@ -61,8 +61,13 @@ var submitCmd = &cobra.Command{
 			log.Fatalf("error in JobServer: %s", err)
 		}
 		//we got our result in result
-		log.Printf("submit job: %+v\nreply job: %+v\n", args.Job, result)
-		log.Printf("to see the results once they have been created\n\n---------------------\n\nls -la outputs/%s\n\n---------------------\n", job.Id)
+		fmt.Printf("submit job: %+v\nreply job: %+v\n\n", args.Job, result)
+		fmt.Printf("to view all files by all nodes\n")
+		fmt.Printf("------------------------------\n\n")
+		fmt.Printf("tree ./outputs/%s\n\n", job.Id)
+		fmt.Printf("to open all metrics pngs\n")
+		fmt.Printf("------------------------\n\n")
+		fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
 		return nil
 	},
 }
