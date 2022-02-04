@@ -1,41 +1,50 @@
 package bacalhau
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/rpc"
+	"os"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
 var listOutputFormat string
+var tableOutputWide bool
 
 func init() {
-	submitCmd.PersistentFlags().StringVar(
+	listCmd.PersistentFlags().StringVar(
 		&listOutputFormat, "output", "text",
 		`The output format for the list of jobs (json or text)`,
 	)
+	listCmd.PersistentFlags().BoolVar(
+		&tableOutputWide, "wide", false,
+		`Print full values in the table results`,
+	)
+}
+
+func getString(st string) string {
+	if tableOutputWide {
+		return st
+	}
+
+	if len(st) < 20 {
+		return st
+	}
+
+	return st[:20] + "..."
 }
 
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		/*
-				:= table.NewWriter()
-				SetOutputMirror(os.Stdout)
-				AppendHeader(table.Row{"#", "First Name", "Last Name", "Salary"})
-				AppendRows([]table.Row{
-					Arya", "Stark", 3000},
-					"Jon", "Snow", 2000, "You know nothing, Jon Snow!"},
 
-				AppendSeparator()
-				AppendRow([]interface{}{300, "Tyrion", "Lannister", 5000})
-				AppendFooter(table.Row{"", "", "Total", 10000})
-				Render()
-		**/
-		//make connection to rpc server
+		// make connection to rpc server
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf(":%d", jsonrpcPort))
 		if err != nil {
 			log.Fatalf("Error in dialing. %s", err)
@@ -46,7 +55,43 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("error in JobServer: %s", err)
 		}
-		fmt.Printf("---> results \n%+v\n", result)
+
+		if listOutputFormat == "json" {
+			msgBytes, err := json.Marshal(result)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%s\n", msgBytes)
+			return nil
+		}
+
+		t := table.NewWriter()
+		t.SetOutputMirror(os.Stdout)
+		t.AppendHeader(table.Row{"JOB", "COMMAND", "DATA", "NODE", "STATE", "STATUS", "OUTPUT"})
+		t.SetColumnConfigs([]table.ColumnConfig{
+			{Number: 1, AutoMerge: true},
+			{Number: 2, AutoMerge: true},
+			{Number: 3, AutoMerge: true},
+		})
+
+		for _, job := range result.Jobs {
+			for node := range result.JobState[job.Id] {
+				t.AppendRows([]table.Row{
+					{
+						getString(job.Id),
+						getString(strings.Join(job.Commands, "\n")),
+						getString(strings.Join(job.Cids, "\n")),
+						getString(node),
+						result.JobState[job.Id][node],
+						result.JobStatus[job.Id][node],
+						getString(result.JobResults[job.Id][node]),
+					},
+				})
+			}
+		}
+		t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
+		t.Render()
+
 		return nil
 	},
 }
