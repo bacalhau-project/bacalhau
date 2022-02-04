@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/filecoin-project/bacalhau/internal/ignite"
+	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/libp2p/go-libp2p"
@@ -22,7 +23,9 @@ import (
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
 
 type ComputeNode struct {
-	Ctx context.Context
+	Id       string
+	IpfsRepo string
+	Ctx      context.Context
 	// the jobs we have already filtered and might want to process
 	Jobs []types.Job
 	// new jobs arriving via libp2p pubsub
@@ -57,7 +60,6 @@ func NewComputeNode(
 	ctx context.Context,
 	port int,
 ) (*ComputeNode, error) {
-
 	host, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,13 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
+	ipfsRepo, err := ipfs.EnsureIpfsRepo(host.ID().String())
+	if err != nil {
+		return nil, err
+	}
 	server := &ComputeNode{
+		Id:           host.ID().String(),
+		IpfsRepo:     ipfsRepo,
 		Ctx:          ctx,
 		Jobs:         []types.Job{},
 		Host:         host,
@@ -114,8 +122,36 @@ func (server *ComputeNode) Render() {
 	fmt.Printf("%+v\n", server.Jobs)
 }
 
+func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
+	// Accept jobs where there are no cids specified or we have any one of the specified cids
+	if len(job.Cids) == 0 {
+		return true, nil
+	}
+	for _, cid := range job.Cids {
+		hasCid, err := ipfs.HasCid(server.IpfsRepo, cid)
+		if err != nil {
+			return false, err
+		}
+		if hasCid {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func (server *ComputeNode) AddJob(job *types.Job) {
-	// TODO: filter the job - is this done async?
+	shouldRunJob, err := server.FilterJob(job)
+
+	if err != nil {
+		fmt.Printf("there was an error self selecting: %s\n%+v\n", err, job)
+		return
+	}
+
+	if !shouldRunJob {
+		fmt.Printf("we ignored a job self selecting: \n%+v\n", job)
+		return
+	}
 
 	// send valid messages onto the Messages channel
 	server.Jobs = append(server.Jobs, *job)

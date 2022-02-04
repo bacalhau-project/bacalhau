@@ -29,3 +29,10 @@ func RunCommandGetResults(command string, args []string) (string, error) {
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
+
+func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
+	cmd := exec.Command(command, args...)
+	cmd.Env = env
+	result, err := cmd.CombinedOutput()
+	return string(result), err
+}
