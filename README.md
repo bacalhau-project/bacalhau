@@ -46,3 +46,47 @@ It will also print back the path to the results folder where each compute node h
 The output folder path has this pattern `outputs/<job_id>/<node_id>`
 
 So if 2 nodes both complete job `123` - you will see 3 folders in `outputs/123` one for each node that completed it.
+
+## firecracker os image
+
+We use Docker to build the image that firecracker VMs are started with.
+
+The `Dockerfile` lives in `docker/ignite-image/Dockerfile`
+
+To rebuild this image:
+
+```bash
+bash scripts/publish-ignite-image.sh
+```
+
+NOTE: once you have pushed a new version of the image you must:
+
+```bash
+sudo ignite image ls
+sudo ignite image rm <id_of_old_image>
+```
+
+
+## cli design
+
+```
+cid=$(ipfs add -q data.csv)
+bac job submit --cids=$cid --commands="sed 's/Office Supplies/Booze/' -i /ipfs/$cid"
+```
+
+```
+bac job list
+```
+
+```
+JOB ID      COMMAND              DATA         STATUS
+a1b2c3      sed s/Office...      c1d2d3       Submitted
+```
+```
+bac job list
+
+
+
+```
+
+* jsonrpc endpoint to list job mempool

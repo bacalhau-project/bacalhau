@@ -75,7 +75,7 @@ var serveCmd = &cobra.Command{
 			devString = " --dev"
 		}
 		if startIpfsDevOnly {
-			ipfs.InitializeRepo(computeNode.IpfsRepo)
+			ipfs.StartDaemon(computeNode.IpfsRepo, ipfsGatewayPort, ipfsApiPort)
 			devString += " --start-ipfs-dev-only"
 		}
 		type TemplateContents struct {
@@ -104,17 +104,14 @@ var serveCmd = &cobra.Command{
 
 go run . serve --peer /ip4/{{.HostAddress}}/tcp/{{.HostPort}}/p2p/{{.ComputeNodeId}}{{.JsonRpcString}}{{.DevString}}
 
-To set up an IPFS repo for this bacalhau server and pin some files locally from it:
+To pin some files locally in the ipfs daemon you started (if you used --start-ipfs-dev-only):
 
-IPFS_PATH={{.IpfsPath}} ipfs init
-IPFS_PATH={{.IpfsPath}} ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/{{.IpfsGatewayPort}}
-IPFS_PATH={{.IpfsPath}} ipfs config Addresses.API /ip4/127.0.0.1/tcp/{{.IpfsApiPort}}
-IPFS_PATH={{.IpfsPath}} ipfs daemon
 cid=$(IPFS_PATH={{.IpfsPath}} ipfs add -q /etc/passwd)
 
 To submit a job that uses that data (and so should be preferentially scheduled on this node):
 
-go run . submit --cids=$cid --commands="grep admin /bacalhau/input"
+go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
+
 `,
 		)
 		if err != nil {
@@ -125,8 +122,6 @@ go run . submit --cids=$cid --commands="grep admin /bacalhau/input"
 			return err
 		}
 
-		// run the jsonrpc server, passing it a reference to the pubsub topic so
-		// that the CLI can also send messages to the chat room
 		internal.RunBacalhauRpcServer(hostAddress, jsonrpcPort, computeNode)
 
 		return nil
