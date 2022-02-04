@@ -8,6 +8,7 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
 
 ### requirements
 
+ * linux
  * go >= 1.16
  * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
 
