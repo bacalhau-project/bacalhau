@@ -33,19 +33,25 @@ go run . serve --peer /ip4/127.0.0.1/tcp/8080/p2p/<peerid> --jsonrpc-port <rando
 
 ### submit a job with the CLI
 
+First we add a data file to run the job against - the `serve` command will have printed out the command to do this - it's just an `ipfs add` command that targets a specific bacalhau node so we can show self selection of jobs working:
+
+```bash
+cid=$(IPFS_PATH=data/ipfs/<bacalhau_node_id> ipfs add -q /etc/passwd)
+```
+
 Now we submit a job to the network:
 
 ```bash
-go run . submit
+go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 ```
 
-This should start an ignite VM in each of the compute nodes we have running.
+To view the current job status:
 
-It will also print back the path to the results folder where each compute node has written its output.
-
-The output folder path has this pattern `outputs/<job_id>/<node_id>`
-
-So if 2 nodes both complete job `123` - you will see 3 folders in `outputs/123` one for each node that completed it.
+```bash
+go run . list
+go run . list --output json
+go run . list --wide
+```
 
 ## firecracker os image
 
