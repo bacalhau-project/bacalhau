@@ -84,7 +84,7 @@ var listCmd = &cobra.Command{
 						getString(node),
 						result.JobState[job.Id][node],
 						result.JobStatus[job.Id][node],
-						getString(result.JobResults[job.Id][node]),
+						result.JobResults[job.Id][node],
 					},
 				})
 			}
