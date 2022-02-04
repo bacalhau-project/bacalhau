@@ -116,12 +116,6 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 	return nil
 }
 
-// this should be ctrl+c to exit
-func (server *ComputeNode) Render() {
-	fmt.Printf("we have %d jobs\n", len(server.Jobs))
-	fmt.Printf("%+v\n", server.Jobs)
-}
-
 func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Cids) == 0 {
@@ -141,6 +135,13 @@ func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
 }
 
 func (server *ComputeNode) AddJob(job *types.Job) {
+
+	// add the job to the mempool of all nodes because then we can ask a question "list the jobs"
+	// TODO: this is not efficient but it's state that we can use in the CLI
+	server.Jobs = append(server.Jobs, *job)
+	fmt.Printf("we have %d jobs\n", len(server.Jobs))
+	fmt.Printf("%+v\n", server.Jobs)
+
 	shouldRunJob, err := server.FilterJob(job)
 
 	if err != nil {
@@ -153,11 +154,8 @@ func (server *ComputeNode) AddJob(job *types.Job) {
 		return
 	}
 
-	// send valid messages onto the Messages channel
-	server.Jobs = append(server.Jobs, *job)
-	server.Render()
-
 	// TODO: split this into an async thing that is working through the mempool
+	fmt.Printf("we are running a job!: \n%+v\n", job)
 	server.RunJob(job)
 }
 

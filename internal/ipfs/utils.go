@@ -2,6 +2,8 @@ package ipfs
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -28,11 +30,39 @@ func IpfsCommand(repoPath string, args []string) (string, error) {
 	})
 }
 
-func InitializeRepo(repoPath string) error {
+func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
 	_, err := IpfsCommand(repoPath, []string{
 		"init",
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	_, err = IpfsCommand(repoPath, []string{
+		"config",
+		"Addresses.Gateway",
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", ipfsGatewayPort),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = IpfsCommand(repoPath, []string{
+		"config",
+		"Addresses.API",
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", ipfsApiPort),
+	})
+	if err != nil {
+		return err
+	}
+	go func() {
+		cmd := exec.Command("ipfs", "daemon")
+		cmd.Env = []string{
+			"IPFS_PATH=" + repoPath,
+		}
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}()
+	return nil
 }
 
 func HasCid(repoPath, cid string) (bool, error) {
