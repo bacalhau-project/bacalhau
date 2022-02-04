@@ -252,10 +252,7 @@ func (server *ComputeNode) UpdateJob(update *types.Update) {
 
 	server.JobState[update.JobId][update.NodeId] = update.State
 	server.JobStatus[update.JobId][update.NodeId] = update.Status
-
-	if update.Output != "" {
-		server.JobResults[update.JobId][update.NodeId] = update.Output
-	}
+	server.JobResults[update.JobId][update.NodeId] = update.Output
 }
 
 // return a CID of the job results when finished
