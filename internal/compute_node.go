@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ignite"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
@@ -28,12 +29,23 @@ type ComputeNode struct {
 	Ctx      context.Context
 	// the jobs we have already filtered and might want to process
 	Jobs []types.Job
-	// new jobs arriving via libp2p pubsub
-	NewJobs      chan *types.Job
-	Host         host.Host
-	PubSub       *pubsub.PubSub
-	Topic        *pubsub.Topic
-	Subscription *pubsub.Subscription
+
+	// see types.Update for the message that updates these fields
+
+	// a map of job id into bacalhau nodes that are in progress of doing some work with their claimed state and human readable statuses
+	JobState  map[string]map[string]string
+	JobStatus map[string]map[string]string
+	// a map of job id onto bacalhau compute nodes that claim to have done the work onto cids of the job results published by them
+	JobResults map[string]map[string]string
+
+	// are we using a temporary IPFS repo for local testing?
+	TempIpfsRepo          bool
+	Host                  host.Host
+	PubSub                *pubsub.PubSub
+	JobCreateTopic        *pubsub.Topic
+	JobCreateSubscription *pubsub.Subscription
+	JobUpdateTopic        *pubsub.Topic
+	JobUpdateSubscription *pubsub.Subscription
 }
 
 func makeLibp2pHost(port int) (host.Host, error) {
@@ -68,11 +80,19 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	topic, err := pubsub.Join("bacalhau-jobs")
+	jobCreateTopic, err := pubsub.Join("bacalhau-jobs-create")
 	if err != nil {
 		return nil, err
 	}
-	subscription, err := topic.Subscribe()
+	jobCreateSubscription, err := jobCreateTopic.Subscribe()
+	if err != nil {
+		return nil, err
+	}
+	jobUpdateTopic, err := pubsub.Join("bacalhau-jobs-update")
+	if err != nil {
+		return nil, err
+	}
+	jobUpdateSubscription, err := jobUpdateTopic.Subscribe()
 	if err != nil {
 		return nil, err
 	}
@@ -80,17 +100,29 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	server := &ComputeNode{
-		Id:           host.ID().String(),
-		IpfsRepo:     ipfsRepo,
-		Ctx:          ctx,
-		Jobs:         []types.Job{},
-		Host:         host,
-		PubSub:       pubsub,
-		Topic:        topic,
-		Subscription: subscription,
+	tempIpfsRepo := true
+	if os.Getenv("IPFS_DIR") != "" {
+		ipfsRepo = os.Getenv("IPFS_DIR")
+		tempIpfsRepo = false
 	}
-	go server.ReadLoop()
+	server := &ComputeNode{
+		Id:                    host.ID().String(),
+		IpfsRepo:              ipfsRepo,
+		Ctx:                   ctx,
+		Jobs:                  []types.Job{},
+		TempIpfsRepo:          tempIpfsRepo,
+		Host:                  host,
+		PubSub:                pubsub,
+		JobState:              make(map[string]map[string]string),
+		JobStatus:             make(map[string]map[string]string),
+		JobResults:            make(map[string]map[string]string),
+		JobCreateTopic:        jobCreateTopic,
+		JobCreateSubscription: jobCreateSubscription,
+		JobUpdateTopic:        jobUpdateTopic,
+		JobUpdateSubscription: jobUpdateSubscription,
+	}
+	go server.ReadLoopJobCreate()
+	go server.ReadLoopJobUpdate()
 	return server, nil
 }
 
@@ -156,15 +188,84 @@ func (server *ComputeNode) AddJob(job *types.Job) {
 
 	// TODO: split this into an async thing that is working through the mempool
 	fmt.Printf("we are running a job!: \n%+v\n", job)
-	server.RunJob(job)
+
+	// update the network with the fact that we have selected the job
+	err = server.ChangeJobState(
+		job,
+		"selected",
+		fmt.Sprintf("Job was selected because jobs CID are local:\n %+v\n", job.Cids),
+		"",
+	)
+
+	if err != nil {
+		fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+		return
+	}
+
+	cid, err := server.RunJob(job)
+
+	if err != nil {
+		fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
+
+		err = server.ChangeJobState(
+			job,
+			"error",
+			fmt.Sprintf("Error running the job: %s\n", err),
+			"",
+		)
+
+		if err != nil {
+			fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+		}
+
+		return
+	}
+
+	fmt.Printf("-------------\n\nCID: %s\n\n", cid)
+
+	err = server.ChangeJobState(
+		job,
+		"complete",
+		fmt.Sprintf("Job is now complete\n"),
+		cid,
+	)
+
+	if err != nil {
+		fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+	}
 }
 
-func (server *ComputeNode) RunJob(job *types.Job) error {
+func (server *ComputeNode) UpdateJob(update *types.Update) {
+	fmt.Printf("we are updating a job!: \n%+v\n", update)
+
+	if server.JobState[update.JobId] == nil {
+		server.JobState[update.JobId] = make(map[string]string)
+	}
+
+	if server.JobStatus[update.JobId] == nil {
+		server.JobStatus[update.JobId] = make(map[string]string)
+	}
+
+	if server.JobResults[update.JobId] == nil {
+		server.JobResults[update.JobId] = make(map[string]string)
+	}
+
+	server.JobState[update.JobId][update.NodeId] = update.State
+	server.JobStatus[update.JobId][update.NodeId] = update.Status
+
+	if update.Output != "" {
+		server.JobResults[update.JobId][update.NodeId] = update.Output
+	}
+}
+
+// return a CID of the job results when finished
+// this is obtained by running "ipfs add -r <results folder>"
+func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 
 	vm, err := ignite.NewVm(job)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	resultsFolder := fmt.Sprintf("outputs/%s/%s", job.Id, vm.Id)
@@ -175,13 +276,13 @@ func (server *ComputeNode) RunJob(job *types.Job) error {
 	})
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = vm.Start()
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer vm.Stop()
@@ -189,17 +290,22 @@ func (server *ComputeNode) RunJob(job *types.Job) error {
 	err = vm.RunJob(resultsFolder)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	resultCid, err := ipfs.AddFolder(server.IpfsRepo, resultsFolder)
+
+	if err != nil {
+		return "", err
+	}
+
+	return resultCid, nil
 }
 
-func (server *ComputeNode) ReadLoop() {
+func (server *ComputeNode) ReadLoopJobCreate() {
 	for {
-		msg, err := server.Subscription.Next(server.Ctx)
+		msg, err := server.JobCreateSubscription.Next(server.Ctx)
 		if err != nil {
-			close(server.NewJobs)
 			return
 		}
 		// only forward messages delivered by others
@@ -215,11 +321,46 @@ func (server *ComputeNode) ReadLoop() {
 	}
 }
 
+func (server *ComputeNode) ReadLoopJobUpdate() {
+	for {
+		msg, err := server.JobUpdateSubscription.Next(server.Ctx)
+		if err != nil {
+			return
+		}
+		// only forward messages delivered by others
+		if msg.ReceivedFrom == server.Host.ID() {
+			continue
+		}
+		jobUpdate := new(types.Update)
+		err = json.Unmarshal(msg.Data, jobUpdate)
+		if err != nil {
+			continue
+		}
+		go server.UpdateJob(jobUpdate)
+	}
+}
+
 func (server *ComputeNode) Publish(job *types.Job) error {
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 	go server.AddJob(job)
-	return server.Topic.Publish(server.Ctx, msgBytes)
+	return server.JobCreateTopic.Publish(server.Ctx, msgBytes)
+}
+
+func (server *ComputeNode) ChangeJobState(job *types.Job, state, status, output string) error {
+	update := &types.Update{
+		JobId:  job.Id,
+		NodeId: server.Id,
+		State:  state,
+		Status: status,
+		Output: output,
+	}
+	msgBytes, err := json.Marshal(update)
+	if err != nil {
+		return err
+	}
+	go server.UpdateJob(update)
+	return server.JobUpdateTopic.Publish(server.Ctx, msgBytes)
 }
