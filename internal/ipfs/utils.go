@@ -30,14 +30,15 @@ func IpfsCommand(repoPath string, args []string) (string, error) {
 	})
 }
 
-func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
+func Init(repoPath string) error {
 	_, err := IpfsCommand(repoPath, []string{
 		"init",
 	})
-	if err != nil {
-		return err
-	}
-	_, err = IpfsCommand(repoPath, []string{
+	return err
+}
+
+func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
+	_, err := IpfsCommand(repoPath, []string{
 		"config",
 		"Addresses.Gateway",
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", ipfsGatewayPort),
@@ -74,6 +75,20 @@ func HasCid(repoPath, cid string) (bool, error) {
 		return false, err
 	}
 	return contains(strings.Split(allLocalRefString, "\n"), cid), nil
+}
+
+func AddFolder(repoPath, folder string) (string, error) {
+	allCidsString, err := IpfsCommand(repoPath, []string{
+		"add",
+		"-rq",
+		folder,
+	})
+	if err != nil {
+		return "", err
+	}
+	allCids := strings.Split(allCidsString, "\n")
+	// -2 is because it's the second last one before the newline
+	return allCids[len(allCids)-2], nil
 }
 
 func contains(s []string, e string) bool {
