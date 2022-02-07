@@ -64,15 +64,15 @@ const config = {
             items: [
               {
                 label: "Getting Started",
-                to: "/getting-started",
+                to: "/getting-started/installation",
               },
               {
                 label: "Specs",
-                to: "/specs",
+                to: "/specs/overview",
               },
               {
                 label: "About Bacalhau",
-                to: "/about-bacalhau",
+                to: "/about-bacalhau/introduction",
               },
             ],
           },
@@ -98,7 +98,7 @@ const config = {
             items: [
               {
                 label: "Blog",
-                to: "/blog",
+                to: "https://docs.bacalhau.org/blog",
               },
               {
                 label: "GitHub",
