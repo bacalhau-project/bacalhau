@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/pkg/networker"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -15,21 +16,21 @@ var hostAddress string
 var hostPort int
 
 func init() {
-	serveCmd.PersistentFlags().StringVar(
+	ServeCmd.PersistentFlags().StringVar(
 		&peerConnect, "peer", "",
 		`The libp2p multiaddress to connect to.`,
 	)
-	serveCmd.PersistentFlags().StringVar(
+	ServeCmd.PersistentFlags().StringVar(
 		&hostAddress, "host", "127.0.0.1",
 		`The port to listen on.`,
 	)
-	serveCmd.PersistentFlags().IntVar(
+	ServeCmd.PersistentFlags().IntVar(
 		&hostPort, "port", 0,
 		`The port to listen on.`,
 	)
 }
 
-var serveCmd = &cobra.Command{
+var ServeCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the bacalhau compute node",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,10 +64,15 @@ Command to connect other peers:
 go run . serve --peer /ip4/%s/tcp/%d/p2p/%s%s%s
 		
 `, hostAddress, hostPort, computeNode.Host.ID(), jsonRpcString, devString)
+		i := networker.GetNetworker(cmd, args)
 
 		// run the jsonrpc server, passing it a reference to the pubsub topic so
 		// that the CLI can also send messages to the chat room
-		internal.RunBacalhauRpcServer(hostAddress, jsonrpcPort, computeNode)
+		err = i.RunBacalhauRpcServer(hostAddress, jsonrpcPort, computeNode)
+
+		if err != nil {
+			return err
+		}
 
 		return nil
 

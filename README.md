@@ -1,18 +1,20 @@
 # Bacalhau - The Filecoin Distributed Computation Framework
 
-## demo!
+## demo
 
-https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4
+<https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4>
 
 ## running locally
 
 ### requirements
 
- * linux
- * go >= 1.16
- * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
+* linux
+* go >= 1.16 (<https://go.dev/doc/install>)
+* [ignite](https://ignite.readthedocs.io/en/stable/installation/)
 
 ### start compute nodes
+
+The first
 
 Have a few terminal windows.
 

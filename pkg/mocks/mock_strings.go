@@ -1,0 +1,6 @@
+package mocks
+
+var (
+	CALL_RUN_BACALHAU_RPC_SERVER_SUCCESSFUL_PROBE  string = "call-run-bacalhau-rpc-server-successful"
+	CALL_RUN_BACALHAU_RPC_SERVER_SUCCESSFUL_RESULT string = "CALL RUN BACALHAU RPC SERVER SUCCESSFUL"
+)
