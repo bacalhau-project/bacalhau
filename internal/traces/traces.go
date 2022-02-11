@@ -36,7 +36,11 @@ type TraceCollection struct {
 func (t *TraceCollection) parseFiles() error {
 	t.data = make(map[string][]map[string]float64)
 	for _, trace := range t.Traces {
-		bs, err := os.ReadFile(trace.Filename)
+		pwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		bs, err := os.ReadFile(fmt.Sprintf("%s/%s", pwd, trace.Filename))
 		if err != nil {
 			return err
 		}
@@ -113,7 +117,9 @@ func (t *TraceCollection) calculateValuesPerWaypoint() error {
 }
 
 func (t *TraceCollection) calculateValuesPerWaypointForResultIdAndColumn(resultId, column string) {
-	fmt.Printf("Doing %s\n", resultId)
+	if os.Getenv("DEBUG") != "" {
+		fmt.Printf("Doing %s\n", resultId)
+	}
 	jobData := t.data[resultId]
 	currentWaypointIdx := 0
 	maxWaypointIdx := NUM_WAYPOINTS - 1
@@ -183,19 +189,25 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("WAYPOINTS --> %+v\n", t.waypoints)
+	if os.Getenv("DEBUG") != "" {
+		fmt.Printf("WAYPOINTS --> %+v\n", t.waypoints)
+	}
 
 	err = t.calculateValuesPerWaypoint()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("VALUES PER WAYPOINT --> %+v\n", t.valuesPerWaypoint)
+	if os.Getenv("DEBUG") != "" {
+		fmt.Printf("VALUES PER WAYPOINT --> %+v\n", t.valuesPerWaypoint)
+	}
 
 	t.averages = make(map[string]map[float64]float64)
 	for _, col := range t.columns {
 		t.calcAvgs(col)
 	}
-	fmt.Printf("AVERAGE VALUES PER WAYPOINT --> %+v\n", t.averages)
+	if os.Getenv("DEBUG") != "" {
+		fmt.Printf("AVERAGE VALUES PER WAYPOINT --> %+v\n", t.averages)
+	}
 
 	for resultId := range t.data {
 		for _, col := range t.columns {
@@ -211,20 +223,3 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 	// TODO Maybe return a single value? Or just use memory for now
 
 }
-
-// test func so you can just run `go run internal/traces.go` for interactive testing
-// func main() {
-// 	fmt.Println("Hello")
-
-// 	clustered := TraceCollection{Traces: []Trace{
-// 		{ResultId: "job-1", Filename: "fixtures/metrics-1.log"},
-// 		{ResultId: "job-2", Filename: "fixtures/metrics-2.log"},
-// 		{ResultId: "job-3", Filename: "fixtures/metrics-3.log"},
-// 	}}
-// 	scores, err := clustered.Scores()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Printf("Scores: %+v\n", scores)
-
-// }
