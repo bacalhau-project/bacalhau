@@ -13,6 +13,7 @@ var developmentMode bool
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(submitCmd)
+	rootCmd.AddCommand(listCmd)
 	rootCmd.PersistentFlags().IntVar(
 		&jsonrpcPort, "jsonrpc-port", 1234,
 		`The port for the client and server to communicate on over localhost (via jsonrpc).`,

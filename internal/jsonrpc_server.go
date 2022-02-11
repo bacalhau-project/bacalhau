@@ -14,8 +14,28 @@ type JobServer struct {
 	ComputeNode *ComputeNode
 }
 
+type ListArgs struct {
+}
+
+type ListResponse struct {
+	Jobs       []types.Job
+	JobState   map[string]map[string]string
+	JobStatus  map[string]map[string]string
+	JobResults map[string]map[string]string
+}
+
 type SubmitArgs struct {
 	Job *types.Job
+}
+
+func (server *JobServer) List(args *ListArgs, reply *ListResponse) error {
+	*reply = ListResponse{
+		Jobs:       server.ComputeNode.Jobs,
+		JobState:   server.ComputeNode.JobState,
+		JobStatus:  server.ComputeNode.JobStatus,
+		JobResults: server.ComputeNode.JobResults,
+	}
+	return nil
 }
 
 func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
