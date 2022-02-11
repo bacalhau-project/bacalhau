@@ -13,6 +13,10 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
  * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
  * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
 
+**NOTE**: for results to be published, each bacalhau node must have a public IP address
+
+You can still run the demo locally, but the results won't be served over the public ipfs network.
+
 ### start compute nodes
 
 Have a few terminal windows.
