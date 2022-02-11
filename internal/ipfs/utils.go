@@ -9,21 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/system"
 )
 
-const IPFS_REPO_LOCATION string = "data/ipfs"
-
-func GetIpfsRepo(hostId string) string {
-	return fmt.Sprintf("%s/%s", IPFS_REPO_LOCATION, hostId)
-}
-
-func EnsureIpfsRepo(hostId string) (string, error) {
-	folder := GetIpfsRepo(hostId)
-	err := system.RunCommand("mkdir", []string{
-		"-p",
-		folder,
-	})
-	return folder, err
-}
-
 func IpfsCommand(repoPath string, args []string) (string, error) {
 	return system.RunCommandGetResultsEnv("ipfs", args, []string{
 		"IPFS_PATH=" + repoPath,

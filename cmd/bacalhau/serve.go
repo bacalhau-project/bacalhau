@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,7 @@ func init() {
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", 8080,
+		&hostPort, "port", 0,
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().BoolVar(
@@ -71,35 +72,45 @@ var serveCmd = &cobra.Command{
 				return err
 			}
 			jsonRpcString = fmt.Sprintf(" --jsonrpc-port %d", jsonRpcPort)
-
 			devString = " --dev"
 		}
+
+		ipfsPathDevString := " "
 		if startIpfsDevOnly {
-			if computeNode.TempIpfsRepo {
-				ipfs.Init(computeNode.IpfsRepo)
+			ipfsRepo, err := system.EnsureSystemDirectory(fmt.Sprintf("dev/ipfs/%s", computeNode.Id))
+			if err != nil {
+				return err
 			}
-			ipfs.StartDaemon(computeNode.IpfsRepo, ipfsGatewayPort, ipfsApiPort)
+			ipfs.Init(ipfsRepo)
+			ipfs.StartDaemon(ipfsRepo, ipfsGatewayPort, ipfsApiPort)
+			computeNode.IpfsRepo = ipfsRepo
+			ipfsPathDevString = fmt.Sprintf("IPFS_PATH=%s ", ipfsRepo)
 			devString += " --start-ipfs-dev-only"
 		}
 		type TemplateContents struct {
-			HostAddress     string
-			HostPort        int
-			ComputeNodeId   string
-			JsonRpcString   string
-			DevString       string
-			IpfsPath        string
-			IpfsGatewayPort int
-			IpfsApiPort     int
+			HostAddress       string
+			HostPort          int
+			ComputeNodeId     string
+			JsonRpcString     string
+			DevString         string
+			IpfsPathDevString string
+			IpfsGatewayPort   int
+			IpfsApiPort       int
 		}
 		td := TemplateContents{
-			HostAddress:     hostAddress,
-			HostPort:        hostPort,
-			ComputeNodeId:   computeNode.Id,
-			JsonRpcString:   jsonRpcString,
-			DevString:       devString,
-			IpfsPath:        computeNode.IpfsRepo,
-			IpfsGatewayPort: ipfsGatewayPort,
-			IpfsApiPort:     ipfsApiPort,
+			HostAddress:       hostAddress,
+			HostPort:          hostPort,
+			ComputeNodeId:     computeNode.Id,
+			JsonRpcString:     jsonRpcString,
+			DevString:         devString,
+			IpfsPathDevString: ipfsPathDevString,
+			IpfsGatewayPort:   ipfsGatewayPort,
+			IpfsApiPort:       ipfsApiPort,
+		}
+
+		if developmentMode {
+			td.HostPort = 8080
+			td.HostAddress = "127.0.0.1"
 		}
 
 		t, err := template.New("msg").Parse(
@@ -109,7 +120,7 @@ go run . serve --peer /ip4/{{.HostAddress}}/tcp/{{.HostPort}}/p2p/{{.ComputeNode
 
 To pin some files locally in the ipfs daemon you started (if you used --start-ipfs-dev-only):
 
-cid=$(IPFS_PATH={{.IpfsPath}} ipfs add -q /etc/passwd)
+cid=$({{.IpfsPathDevString}}ipfs add -q /etc/passwd)
 
 To submit a job that uses that data (and so should be preferentially scheduled on this node):
 

@@ -3,8 +3,6 @@ package bacalhau
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/rpc"
 	"os"
 	"strings"
 
@@ -44,16 +42,11 @@ var listCmd = &cobra.Command{
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
-		// make connection to rpc server
-		client, err := rpc.DialHTTP("tcp", fmt.Sprintf(":%d", jsonrpcPort))
-		if err != nil {
-			log.Fatalf("Error in dialing. %s", err)
-		}
 		args := &internal.ListArgs{}
 		result := &internal.ListResponse{}
-		err = client.Call("JobServer.List", args, result)
+		err := JsonRpcMethod("List", args, result)
 		if err != nil {
-			log.Fatalf("error in JobServer: %s", err)
+			return err
 		}
 
 		if listOutputFormat == "json" {

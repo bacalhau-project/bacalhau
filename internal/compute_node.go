@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ignite"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
@@ -96,21 +95,11 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	ipfsRepo, err := ipfs.EnsureIpfsRepo(host.ID().String())
-	if err != nil {
-		return nil, err
-	}
-	tempIpfsRepo := true
-	if os.Getenv("IPFS_DIR") != "" {
-		ipfsRepo = os.Getenv("IPFS_DIR")
-		tempIpfsRepo = false
-	}
 	server := &ComputeNode{
 		Id:                    host.ID().String(),
-		IpfsRepo:              ipfsRepo,
+		IpfsRepo:              "",
 		Ctx:                   ctx,
 		Jobs:                  []types.Job{},
-		TempIpfsRepo:          tempIpfsRepo,
 		Host:                  host,
 		PubSub:                pubsub,
 		JobState:              make(map[string]map[string]string),
@@ -265,13 +254,7 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	resultsFolder := fmt.Sprintf("outputs/%s/%s", job.Id, vm.Id)
-
-	err = system.RunCommand("mkdir", []string{
-		"-p",
-		resultsFolder,
-	})
-
+	resultsFolder, err := system.EnsureSystemDirectory(fmt.Sprintf("outputs/%s/%s", job.Id, vm.Id))
 	if err != nil {
 		return "", err
 	}
