@@ -13,4 +13,5 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rivo/tview v0.0.0-20210125085121-dbc1f32bb1d0
 	github.com/spf13/cobra v0.0.5
+	gonum.org/v1/gonum v0.9.3 // indirect
 )
