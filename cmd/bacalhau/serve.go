@@ -23,7 +23,7 @@ func init() {
 		`The libp2p multiaddress to connect to.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&hostAddress, "host", "127.0.0.1",
+		&hostAddress, "host", "0.0.0.0",
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
