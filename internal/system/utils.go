@@ -9,7 +9,15 @@ import (
 	"strings"
 )
 
+func CommandLogger(command string, args []string) {
+	if os.Getenv("DEBUG") == "" {
+		return
+	}
+	fmt.Printf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
+}
+
 func RunCommand(command string, args []string) error {
+	CommandLogger(command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -18,8 +26,10 @@ func RunCommand(command string, args []string) error {
 
 // same as run command but also returns buffers for stdout and stdin
 func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
+
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
+	CommandLogger(command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
@@ -27,12 +37,14 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
+	CommandLogger(command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
+	CommandLogger(command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()

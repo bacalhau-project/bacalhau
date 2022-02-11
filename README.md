@@ -24,7 +24,7 @@ Have a few terminal windows.
 This starts the first compute node listening on port 8080 so we can connect to a known port.
 
 ```bash
-go run . serve --port 8080 --dev --start-ipfs-dev-only
+go run . serve --port 8081 --dev --start-ipfs-dev-only
 ```
 
 It will also print out the command to run in other terminal windows to connect to this first node (start at least one more so now we have a cluster)
