@@ -71,28 +71,3 @@ NOTE: once you have pushed a new version of the image you must:
 sudo ignite image ls
 sudo ignite image rm <id_of_old_image>
 ```
-
-
-## cli design
-
-```
-cid=$(ipfs add -q data.csv)
-bac job submit --cids=$cid --commands="sed 's/Office Supplies/Booze/' -i /ipfs/$cid"
-```
-
-```
-bac job list
-```
-
-```
-JOB ID      COMMAND              DATA         STATUS
-a1b2c3      sed s/Office...      c1d2d3       Submitted
-```
-```
-bac job list
-
-
-
-```
-
-* jsonrpc endpoint to list job mempool
