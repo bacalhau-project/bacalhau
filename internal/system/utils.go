@@ -26,7 +26,6 @@ func RunCommand(command string, args []string) error {
 
 // same as run command but also returns buffers for stdout and stdin
 func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
-
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 	CommandLogger(command, args)
