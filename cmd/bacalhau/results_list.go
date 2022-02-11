@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -39,8 +40,31 @@ var resultsListCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS"})
+		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
+
+		clustered := traces.TraceCollection{
+			Traces: []traces.Trace{},
+		}
+
+		for _, row := range *data {
+			resultsFolder, err := system.GetSystemDirectory(row.Folder)
+			if err != nil {
+				return err
+			}
+			if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
+				continue
+			}
+			clustered.Traces = append(clustered.Traces, traces.Trace{
+				ResultId: row.Cid,
+				Filename: resultsFolder + "/metrics.log",
+			})
+		}
+
+		scores, err := clustered.Scores()
+		if err != nil {
+			return err
+		}
 
 		for _, row := range *data {
 			resultsFolder, err := system.GetSystemDirectory(row.Folder)
@@ -56,6 +80,7 @@ var resultsListCmd = &cobra.Command{
 					row.Node,
 					fmt.Sprintf("https://ipfs.io/ipfs/%s", row.Cid),
 					folderString,
+					scores[row.Cid]["real"],
 				},
 			})
 		}
