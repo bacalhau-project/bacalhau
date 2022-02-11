@@ -57,6 +57,16 @@ go run . list --output json
 go run . list --wide
 ```
 
+### running the demo on seperate servers
+
+When running a real demo (i.e. on different machines with public ips) - here are the things to consider:
+
+ * add the same file to each node using `ipfs add` - so the CID of the job has a file on each node
+   * don't use `/etc/passwd` as shown above - it needs to be exactly the same on each node
+ * when starting the servers, make sure to use public IP and not `127.0.0.1` in the multi-address used to point at the first node
+ * start the ipfs daemon on each node before starting bacalhau
+ * don't start the bacalhau daemon with `--dev` or `--start-ipfs-dev-only`
+
 ## firecracker os image
 
 We use Docker to build the image that firecracker VMs are started with.
