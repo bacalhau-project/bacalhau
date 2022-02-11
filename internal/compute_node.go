@@ -254,7 +254,7 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	resultsFolder, err := system.EnsureSystemDirectory(fmt.Sprintf("results/%s/%s", job.Id, server.Id))
+	resultsFolder, err := system.EnsureSystemDirectory(system.GetResultsDirectory(job.Id, server.Id))
 	if err != nil {
 		return "", err
 	}
