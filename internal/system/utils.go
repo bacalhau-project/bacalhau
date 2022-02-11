@@ -2,6 +2,7 @@ package system
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -35,4 +36,24 @@ func RunCommandGetResultsEnv(command string, args []string, env []string) (strin
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
 	return string(result), err
+}
+
+func GetSystemDirectory(path string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/.bacalhau/%s", homeDir, path), nil
+}
+
+func EnsureSystemDirectory(path string) (string, error) {
+	path, err := GetSystemDirectory(path)
+	if err != nil {
+		return "", err
+	}
+	err = RunCommand("mkdir", []string{
+		"-p",
+		path,
+	})
+	return path, err
 }
