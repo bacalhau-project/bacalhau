@@ -15,6 +15,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(submitCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(resultsCmd)
 	rootCmd.PersistentFlags().IntVar(
 		&jsonrpcPort, "jsonrpc-port", 1234,
 		`The port for the client and server to communicate on (via jsonrpc).`,

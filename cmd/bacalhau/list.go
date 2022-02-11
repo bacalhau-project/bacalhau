@@ -7,12 +7,10 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
-
-var listOutputFormat string
-var tableOutputWide bool
 
 func init() {
 	listCmd.PersistentFlags().StringVar(
@@ -25,25 +23,13 @@ func init() {
 	)
 }
 
-func getString(st string) string {
-	if tableOutputWide {
-		return st
-	}
-
-	if len(st) < 20 {
-		return st
-	}
-
-	return st[:20] + "..."
-}
-
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
 		args := &internal.ListArgs{}
-		result := &internal.ListResponse{}
+		result := &types.ListResponse{}
 		err := JsonRpcMethod("List", args, result)
 		if err != nil {
 			return err
@@ -71,7 +57,7 @@ var listCmd = &cobra.Command{
 			for node := range result.JobState[job.Id] {
 				t.AppendRows([]table.Row{
 					{
-						getString(job.Id),
+						shortId(job.Id),
 						getString(strings.Join(job.Commands, "\n")),
 						getString(strings.Join(job.Cids, "\n")),
 						getString(node),
