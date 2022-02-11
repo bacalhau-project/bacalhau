@@ -3,8 +3,10 @@ package ignite
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -12,7 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/types"
 )
 
-const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image"
+const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 
 type Vm struct {
 	Id   string
@@ -74,7 +76,9 @@ func (vm *Vm) PrepareJob() error {
 	}
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
-	_, err = tmpFile.WriteString(strings.Join(vm.Job.Commands[:], "\n"))
+	// put sleep here because otherwise psrecord does not have enough time to capture metrics
+	script := fmt.Sprintf("sleep 2\n%s\nsleep 2\n", strings.Join(vm.Job.Commands[:], "\n"))
+	_, err = tmpFile.WriteString(script)
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,36 @@ func (vm *Vm) PrepareJob() error {
 		tmpFile.Name(),
 		fmt.Sprintf("%s:/job.sh", vm.Name),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	err = system.RunCommand("sudo", []string{
+		"ignite",
+		"exec",
+		vm.Name,
+		"ipfs init",
+	})
+	if err != nil {
+		return err
+	}
+	go func() {
+		err := system.RunCommand("sudo", []string{
+			"ignite",
+			"exec",
+			vm.Name,
+			"ipfs daemon --mount",
+		})
+		if err != nil {
+			log.Printf("Starting ipfs daemon --mount inside the vm failed with: %s", err)
+		}
+
+		// TODO: handle closing this when the job has finished
+	}()
+
+	// sleep here to give the "ipfs daemon --mount" command time to start
+	time.Sleep(5 * time.Second)
+
+	return nil
 }
 
 // TODO: mount input data files

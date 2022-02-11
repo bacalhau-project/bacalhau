@@ -1,1 +1,15 @@
 outputs
+data
+.cache
+node_modules
+yarn-error.log
+build
+public
+lib
+.DS_Store
+dist
+.cache
+env.*
+.env
+*.swp
+*.swo

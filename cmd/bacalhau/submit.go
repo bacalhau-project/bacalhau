@@ -11,12 +11,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var jobId string
+var jobCids []string
+var jobCommands []string
 
 func init() {
-	submitCmd.PersistentFlags().StringVar(
-		&jobId, "id", "",
-		`The id of the job to submit`,
+	submitCmd.PersistentFlags().StringSliceVar(
+		&jobCids, "cids", []string{},
+		`The cids of the data used by the job (comma separated, or specify multiple times)`,
+	)
+	submitCmd.PersistentFlags().StringSliceVar(
+		&jobCommands, "commands", []string{},
+		`The commands for the job (comma separated, or specify multiple times)`,
 	)
 }
 
@@ -31,26 +36,22 @@ var submitCmd = &cobra.Command{
 			log.Fatalf("Error in dialing. %s", err)
 		}
 
-		if jobId == "" {
-			jobUuid, err := uuid.NewRandom()
-			if err != nil {
-				log.Fatalf("Error in creating job id. %s", err)
-			}
-			jobId = jobUuid.String()
+		jobUuid, err := uuid.NewRandom()
+		if err != nil {
+			log.Fatalf("Error in creating job id. %s", err)
+		}
+
+		if len(jobCommands) <= 0 {
+			log.Fatalf("Empty command list")
 		}
 
 		job := &types.Job{
-			Id:     jobId,
-			Cpu:    1,
-			Memory: 2,
-			Disk:   10,
-			Commands: []string{
-				// "unzip 5m-Sales-Records.zip",
-				// "for X in {1..10}; do bash -c \"sed 's/Office Supplies/Booze/' '5m Sales Records.csv' -i\"; sleep 2; done",
-				"echo HELLO THIS IS THE EXECUTION STEP",
-				"for X in {1..10}; do echo iteration $X; for Y in {0..100000}; do false; done; sleep 2; done",
-				"echo DONE",
-			},
+			Id:       jobUuid.String(),
+			Cpu:      1,
+			Memory:   2,
+			Disk:     10,
+			Cids:     jobCids,
+			Commands: jobCommands,
 		}
 		args := &internal.SubmitArgs{
 			Job: job,
