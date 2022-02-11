@@ -1,4 +1,4 @@
-package main // traces
+package traces
 
 import (
 	"fmt"
@@ -213,18 +213,18 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 }
 
 // test func so you can just run `go run internal/traces.go` for interactive testing
-func main() {
-	fmt.Println("Hello")
+// func main() {
+// 	fmt.Println("Hello")
 
-	clustered := TraceCollection{Traces: []Trace{
-		{ResultId: "job-1", Filename: "fixtures/metrics-1.log"},
-		{ResultId: "job-2", Filename: "fixtures/metrics-2.log"},
-		{ResultId: "job-3", Filename: "fixtures/metrics-3.log"},
-	}}
-	scores, err := clustered.Scores()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Scores: %+v\n", scores)
+// 	clustered := TraceCollection{Traces: []Trace{
+// 		{ResultId: "job-1", Filename: "fixtures/metrics-1.log"},
+// 		{ResultId: "job-2", Filename: "fixtures/metrics-2.log"},
+// 		{ResultId: "job-3", Filename: "fixtures/metrics-3.log"},
+// 	}}
+// 	scores, err := clustered.Scores()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Printf("Scores: %+v\n", scores)
 
-}
+// }
