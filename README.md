@@ -67,6 +67,10 @@ When running a real demo (i.e. on different machines with public ips) - here are
  * start the ipfs daemon on each node before starting bacalhau
  * don't start the bacalhau daemon with `--dev` or `--start-ipfs-dev-only`
 
+### running the client standalone
+
+If you are running the bacalhau client on a machine that is not running the server - then you must start the ipfs daemon yourself, manually (so we can do `ipfs get` for the results)
+
 ## firecracker os image
 
 We use Docker to build the image that firecracker VMs are started with.
