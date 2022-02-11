@@ -10,9 +10,13 @@ import (
 )
 
 func IpfsCommand(repoPath string, args []string) (string, error) {
-	return system.RunCommandGetResultsEnv("ipfs", args, []string{
-		"IPFS_PATH=" + repoPath,
-	})
+	if repoPath == "" {
+		return system.RunCommandGetResults("ipfs", args)
+	} else {
+		return system.RunCommandGetResultsEnv("ipfs", args, []string{
+			"IPFS_PATH=" + repoPath,
+		})
+	}
 }
 
 func Init(repoPath string) error {
