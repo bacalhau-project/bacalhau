@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func RunCommand(command string, args []string) error {
@@ -56,4 +57,13 @@ func EnsureSystemDirectory(path string) (string, error) {
 		path,
 	})
 	return path, err
+}
+
+func GetResultsDirectory(jobId, hostId string) string {
+	return fmt.Sprintf("results/%s/%s", ShortId(jobId), hostId)
+}
+
+func ShortId(id string) string {
+	parts := strings.Split(id, "-")
+	return parts[0]
 }

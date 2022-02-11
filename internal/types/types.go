@@ -26,3 +26,11 @@ type ListResponse struct {
 	JobStatus  map[string]map[string]string
 	JobResults map[string]map[string]string
 }
+
+// the view of a single job
+type JobData struct {
+	Job     Job
+	State   map[string]string
+	Status  map[string]string
+	Results map[string]string
+}

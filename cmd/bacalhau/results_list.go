@@ -4,18 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
-
-type ResultsList struct {
-	Node string
-	Cid  string
-}
 
 func init() {
 	resultsListCmd.PersistentFlags().StringVar(
@@ -30,33 +23,9 @@ var resultsListCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
-		jobId := cmdArgs[0]
-
-		args := &internal.ListArgs{}
-		result := &types.ListResponse{}
-		err := JsonRpcMethod("List", args, result)
+		data, err := getJobResults(cmdArgs[0])
 		if err != nil {
 			return err
-		}
-
-		var foundJob *types.Job
-
-		for _, job := range result.Jobs {
-			if strings.HasPrefix(job.Id, jobId) {
-				foundJob = &job
-			}
-		}
-
-		if foundJob == nil {
-			return fmt.Errorf("Could not find job: %s", jobId)
-		}
-
-		data := []ResultsList{}
-		for node := range result.JobState[foundJob.Id] {
-			data = append(data, ResultsList{
-				Node: node,
-				Cid:  fmt.Sprintf("https://ipfs.io/ipfs/%s", result.JobResults[foundJob.Id][node]),
-			})
 		}
 
 		if listOutputFormat == "json" {
@@ -70,14 +39,23 @@ var resultsListCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"NODE", "DATA"})
+		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
 
-		for _, row := range data {
+		for _, row := range *data {
+			resultsFolder, err := system.GetSystemDirectory(row.Folder)
+			if err != nil {
+				return err
+			}
+			folderString := ""
+			if _, err := os.Stat(resultsFolder); !os.IsNotExist(err) {
+				folderString = fmt.Sprintf("~/.bacalhau/%s", row.Folder)
+			}
 			t.AppendRows([]table.Row{
 				{
 					row.Node,
-					row.Cid,
+					fmt.Sprintf("https://ipfs.io/ipfs/%s", row.Cid),
+					folderString,
 				},
 			})
 		}
