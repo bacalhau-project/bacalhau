@@ -27,7 +27,7 @@ func init() {
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", 0,
+		&hostPort, "port", 8080,
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().BoolVar(
