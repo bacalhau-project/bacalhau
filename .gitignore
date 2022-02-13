@@ -14,3 +14,4 @@ env.*
 *.swp
 *.swo
 bin/bacalhau
+bin/aarch64/*
