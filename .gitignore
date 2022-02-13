@@ -13,3 +13,4 @@ env.*
 .env
 *.swp
 *.swo
+bin/bacalhau
