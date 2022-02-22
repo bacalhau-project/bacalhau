@@ -13,5 +13,6 @@ env.*
 .env
 *.swp
 *.swo
-bin/bacalhau
-bin/aarch64/*
+bin/*/*
+.vscode
+bacalhau
