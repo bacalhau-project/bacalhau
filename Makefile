@@ -133,6 +133,5 @@ security:
 	gosec -exclude=G204,G304 -exclude-dir=test ./... 
 	echo "[OK] Go security check was completed!"
 
-release:
-	echo "Executing 'make release'"
-	# NOOP
+release: build-bacalhau
+	cp bin/bacalhau .
