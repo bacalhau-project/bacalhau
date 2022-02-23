@@ -1,13 +1,14 @@
 name: Release Bacalhau binaries
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - "v*"
 
 jobs:
-  releases-matrix:
-    name: Release Go Binary
-    runs-on: ubuntu-latest
+  tagged-release:
+    name: "Tagged Release"
+    runs-on: "ubuntu-latest"
     strategy:
       matrix:
         # build and publish in parallel: linux/amd64
@@ -19,11 +20,10 @@ jobs:
         run: make build
       - name: Run tests
         run: make test
-      - uses: wangyoucao577/go-release-action@v1.16
+      - uses: wangyoucao577/go-release-action@v1.25
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          project_path: "."
           binary_name: "bacalhau"
-          extra_files: LICENSE README.md
+          extra_files: LICENSE
+          build_command: make release
