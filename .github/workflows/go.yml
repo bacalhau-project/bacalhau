@@ -43,6 +43,15 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - run: go version
 
+      - uses: evantorrie/mott-the-tidier@v1-beta
+        with:
+          gomods: |
+            **/go.mod
+            -tools/go.mod
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Auto-fix go.sum discrepancies
+
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: golangci/golangci-lint-action@v2.2.1
