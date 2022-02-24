@@ -1,4 +1,4 @@
-package stream
+package upgrader
 
 import (
 	"fmt"
@@ -13,8 +13,11 @@ type transportConn struct {
 	network.ConnMultiaddrs
 	network.ConnSecurity
 	transport transport.Transport
+	scope     network.ConnManagementScope
 	stat      network.ConnStats
 }
+
+var _ transport.CapableConn = &transportConn{}
 
 func (t *transportConn) Transport() transport.Transport {
 	return t.transport
@@ -37,4 +40,13 @@ func (t *transportConn) String() string {
 
 func (t *transportConn) Stat() network.ConnStats {
 	return t.stat
+}
+
+func (t *transportConn) Scope() network.ConnScope {
+	return t.scope
+}
+
+func (t *transportConn) Close() error {
+	defer t.scope.Done()
+	return t.MuxedConn.Close()
 }
