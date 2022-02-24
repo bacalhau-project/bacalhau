@@ -179,6 +179,11 @@ func (ph *peerHandler) openStream(ctx context.Context, protos []string) (network
 		return nil, errProtocolNotSupported
 	}
 
+	ph.ids.pushSemaphore <- struct{}{}
+	defer func() {
+		<-ph.ids.pushSemaphore
+	}()
+
 	// negotiate a stream without opening a new connection as we "should" already have a connection.
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

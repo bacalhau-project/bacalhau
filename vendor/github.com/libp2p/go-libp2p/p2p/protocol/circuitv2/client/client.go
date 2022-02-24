@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/transport"
 
 	logging "github.com/ipfs/go-log/v2"
-	tptu "github.com/libp2p/go-libp2p-transport-upgrader"
 )
 
 var log = logging.Logger("p2p-circuit")
@@ -29,7 +28,7 @@ type Client struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	host      host.Host
-	upgrader  *tptu.Upgrader
+	upgrader  transport.Upgrader
 
 	incoming chan accept
 
@@ -54,7 +53,7 @@ type completion struct {
 
 // New constructs a new p2p-circuit/v2 client, attached to the given host and using the given
 // upgrader to perform connection upgrades.
-func New(h host.Host, upgrader *tptu.Upgrader) (*Client, error) {
+func New(h host.Host, upgrader transport.Upgrader) (*Client, error) {
 	cl := &Client{
 		host:        h,
 		upgrader:    upgrader,

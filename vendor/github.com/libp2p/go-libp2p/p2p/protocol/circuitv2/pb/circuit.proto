@@ -38,7 +38,7 @@ message Peer {
 }
 
 message Reservation {
-  optional uint64 expire = 1; // Unix expiration time (UTC)
+  required uint64 expire = 1; // Unix expiration time (UTC)
   repeated bytes addrs = 2;   // relay addrs for reserving peer
   optional bytes voucher = 3; // reservation voucher
 }
