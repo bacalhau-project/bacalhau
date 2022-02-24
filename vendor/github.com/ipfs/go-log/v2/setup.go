@@ -13,8 +13,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var config Config
-
 func init() {
 	SetupLogging(configFromEnv())
 }
@@ -94,12 +92,6 @@ var primaryCore zapcore.Core
 // loggerCore is the base for all loggers created by this package
 var loggerCore = &lockedMultiCore{}
 
-// GetConfig returns a copy of the saved config. It can be inspected, modified,
-// and re-applied using a subsequent call to SetupLogging().
-func GetConfig() Config {
-	return config
-}
-
 // SetupLogging will initialize the logger backend and set the flags.
 // TODO calling this in `init` pushes all configuration to env variables
 // - move it out of `init`? then we need to change all the code (js-ipfs, go-ipfs) to call this explicitly
@@ -107,8 +99,6 @@ func GetConfig() Config {
 func SetupLogging(cfg Config) {
 	loggerMutex.Lock()
 	defer loggerMutex.Unlock()
-
-	config = cfg
 
 	primaryFormat = cfg.Format
 	defaultLevel = cfg.Level

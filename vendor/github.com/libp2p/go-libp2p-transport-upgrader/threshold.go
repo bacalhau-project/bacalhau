@@ -1,4 +1,4 @@
-package upgrader
+package stream
 
 import (
 	"sync"

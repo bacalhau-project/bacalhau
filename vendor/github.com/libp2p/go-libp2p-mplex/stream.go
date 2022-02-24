@@ -3,20 +3,17 @@ package peerstream_multiplex
 import (
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
-
+	"github.com/libp2p/go-libp2p-core/mux"
 	mp "github.com/libp2p/go-mplex"
 )
 
-// stream implements network.MuxedStream over mplex.Stream.
+// stream implements mux.MuxedStream over mplex.Stream.
 type stream mp.Stream
-
-var _ network.MuxedStream = &stream{}
 
 func (s *stream) Read(b []byte) (n int, err error) {
 	n, err = s.mplex().Read(b)
 	if err == mp.ErrStreamReset {
-		err = network.ErrReset
+		err = mux.ErrReset
 	}
 
 	return n, err
@@ -25,7 +22,7 @@ func (s *stream) Read(b []byte) (n int, err error) {
 func (s *stream) Write(b []byte) (n int, err error) {
 	n, err = s.mplex().Write(b)
 	if err == mp.ErrStreamReset {
-		err = network.ErrReset
+		err = mux.ErrReset
 	}
 
 	return n, err
@@ -62,3 +59,5 @@ func (s *stream) SetWriteDeadline(t time.Time) error {
 func (s *stream) mplex() *mp.Stream {
 	return (*mp.Stream)(s)
 }
+
+var _ mux.MuxedStream = &stream{}

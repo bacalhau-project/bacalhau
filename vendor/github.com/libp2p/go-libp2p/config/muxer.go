@@ -3,15 +3,14 @@ package config
 import (
 	"fmt"
 
-	msmux "github.com/libp2p/go-stream-muxer-multistream"
-
-	"github.com/libp2p/go-libp2p-core/network"
-
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/mux"
+
+	msmux "github.com/libp2p/go-stream-muxer-multistream"
 )
 
 // MuxC is a stream multiplex transport constructor.
-type MuxC func(h host.Host) (network.Multiplexer, error)
+type MuxC func(h host.Host) (mux.Multiplexer, error)
 
 // MsMuxC is a tuple containing a multiplex transport constructor and a protocol
 // ID.
@@ -26,8 +25,8 @@ var muxArgTypes = newArgTypeSet(hostType, networkType, peerIDType, pstoreType)
 // using reflection.
 func MuxerConstructor(m interface{}) (MuxC, error) {
 	// Already constructed?
-	if t, ok := m.(network.Multiplexer); ok {
-		return func(_ host.Host) (network.Multiplexer, error) {
+	if t, ok := m.(mux.Multiplexer); ok {
+		return func(_ host.Host) (mux.Multiplexer, error) {
 			return t, nil
 		}, nil
 	}
@@ -36,16 +35,16 @@ func MuxerConstructor(m interface{}) (MuxC, error) {
 	if err != nil {
 		return nil, err
 	}
-	return func(h host.Host) (network.Multiplexer, error) {
-		t, err := ctor(h, nil, nil, nil, nil)
+	return func(h host.Host) (mux.Multiplexer, error) {
+		t, err := ctor(h, nil, nil)
 		if err != nil {
 			return nil, err
 		}
-		return t.(network.Multiplexer), nil
+		return t.(mux.Multiplexer), nil
 	}, nil
 }
 
-func makeMuxer(h host.Host, tpts []MsMuxC) (network.Multiplexer, error) {
+func makeMuxer(h host.Host, tpts []MsMuxC) (mux.Multiplexer, error) {
 	muxMuxer := msmux.NewBlankTransport()
 	transportSet := make(map[string]struct{}, len(tpts))
 	for _, tptC := range tpts {

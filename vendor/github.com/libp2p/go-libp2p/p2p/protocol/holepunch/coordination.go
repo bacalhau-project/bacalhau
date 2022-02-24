@@ -28,8 +28,6 @@ var StreamTimeout = 1 * time.Minute
 
 // TODO Should we have options for these ?
 const (
-	ServiceName = "libp2p.holepunch"
-
 	maxMsgSize  = 4 * 1024 // 4K
 	dialTimeout = 5 * time.Second
 	maxRetries  = 3
@@ -148,30 +146,15 @@ func (hs *Service) Close() error {
 func (hs *Service) initiateHolePunch(rp peer.ID) ([]ma.Multiaddr, time.Duration, error) {
 	hpCtx := network.WithUseTransient(hs.ctx, "hole-punch")
 	sCtx := network.WithNoDial(hpCtx, "hole-punch")
-
 	str, err := hs.host.NewStream(sCtx, rp, Protocol)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to open hole-punching stream: %w", err)
 	}
 	defer str.Close()
-
-	if err := str.Scope().SetService(ServiceName); err != nil {
-		log.Debugf("error attaching stream to holepunch service: %s", err)
-		str.Reset()
-		return nil, 0, err
-	}
-
-	if err := str.Scope().ReserveMemory(maxMsgSize, network.ReservationPriorityAlways); err != nil {
-		log.Debugf("error reserving memory for stream: %s, err")
-		str.Reset()
-		return nil, 0, err
-	}
-	defer str.Scope().ReleaseMemory(maxMsgSize)
+	str.SetDeadline(time.Now().Add(StreamTimeout))
 
 	w := protoio.NewDelimitedWriter(str)
-	rd := protoio.NewDelimitedReader(str, maxMsgSize)
 
-	str.SetDeadline(time.Now().Add(StreamTimeout))
 	// send a CONNECT and start RTT measurement.
 	msg := &pb.HolePunch{
 		Type:     pb.HolePunch_CONNECT.Enum(),
@@ -185,6 +168,7 @@ func (hs *Service) initiateHolePunch(rp peer.ID) ([]ma.Multiaddr, time.Duration,
 	}
 
 	// wait for a CONNECT message from the remote peer
+	rd := protoio.NewDelimitedReader(str, maxMsgSize)
 	msg.Reset()
 	if err := rd.ReadMsg(msg); err != nil {
 		str.Reset()
@@ -334,20 +318,12 @@ func (hs *Service) incomingHolePunch(s network.Stream) (rtt time.Duration, addrs
 		return 0, nil, errors.New("rejecting hole punch request, as we don't have any public addresses")
 	}
 
-	if err := s.Scope().ReserveMemory(maxMsgSize, network.ReservationPriorityAlways); err != nil {
-		log.Debugf("error reserving memory for stream: %s, err")
-		return 0, nil, err
-	}
-	defer s.Scope().ReleaseMemory(maxMsgSize)
-
+	s.SetDeadline(time.Now().Add(StreamTimeout))
 	wr := protoio.NewDelimitedWriter(s)
 	rd := protoio.NewDelimitedReader(s, maxMsgSize)
 
 	// Read Connect message
 	msg := new(pb.HolePunch)
-
-	s.SetDeadline(time.Now().Add(StreamTimeout))
-
 	if err := rd.ReadMsg(msg); err != nil {
 		return 0, nil, fmt.Errorf("failed to read message from initator: %w", err)
 	}
@@ -390,13 +366,6 @@ func (hs *Service) handleNewStream(s network.Stream) {
 		s.Reset()
 		return
 	}
-
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Debugf("error attaching stream to holepunch service: %s", err)
-		s.Reset()
-		return
-	}
-
 	rp := s.Conn().RemotePeer()
 	rtt, addrs, err := hs.incomingHolePunch(s)
 	if err != nil {

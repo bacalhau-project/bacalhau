@@ -2,12 +2,10 @@ package sm_yamux
 
 import (
 	"io/ioutil"
-	"math"
 	"net"
 
-	"github.com/libp2p/go-libp2p-core/network"
-
-	"github.com/libp2p/go-yamux/v3"
+	"github.com/libp2p/go-libp2p-core/mux"
+	"github.com/libp2p/go-yamux/v2"
 )
 
 var DefaultTransport *Transport
@@ -25,9 +23,7 @@ func init() {
 	// We always run over a security transport that buffers internally
 	// (i.e., uses a block cipher).
 	config.ReadBufSize = 0
-	// Effectively disable the incoming streams limit.
-	// This is now dynamically limited by the resource manager.
-	config.MaxIncomingStreams = math.MaxUint32
+	config.MaxIncomingStreams = 256
 	DefaultTransport = (*Transport)(config)
 }
 
@@ -35,15 +31,13 @@ func init() {
 // yamux-backed muxed connections.
 type Transport yamux.Config
 
-var _ network.Multiplexer = &Transport{}
-
-func (t *Transport) NewConn(nc net.Conn, isServer bool, scope network.PeerScope) (network.MuxedConn, error) {
+func (t *Transport) NewConn(nc net.Conn, isServer bool) (mux.MuxedConn, error) {
 	var s *yamux.Session
 	var err error
 	if isServer {
-		s, err = yamux.Server(nc, t.Config(), scope)
+		s, err = yamux.Server(nc, t.Config())
 	} else {
-		s, err = yamux.Client(nc, t.Config(), scope)
+		s, err = yamux.Client(nc, t.Config())
 	}
 	return (*conn)(s), err
 }
@@ -51,3 +45,5 @@ func (t *Transport) NewConn(nc net.Conn, isServer bool, scope network.PeerScope)
 func (t *Transport) Config() *yamux.Config {
 	return (*yamux.Config)(t)
 }
+
+var _ mux.Multiplexer = &Transport{}

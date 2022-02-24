@@ -146,8 +146,7 @@ type Network interface {
 	// use the known local interfaces.
 	InterfaceListenAddresses() ([]ma.Multiaddr, error)
 
-	// ResourceManager returns the ResourceManager associated with this network
-	ResourceManager() ResourceManager
+	io.Closer
 }
 
 // Dialer represents a service that can dial out to peers
