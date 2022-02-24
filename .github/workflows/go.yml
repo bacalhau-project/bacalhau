@@ -41,6 +41,10 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - run: go version
 
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+
       - uses: evantorrie/mott-the-tidier@v1-beta
         with:
           gomods: |
