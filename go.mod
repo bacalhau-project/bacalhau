@@ -5,6 +5,8 @@ go 1.16
 require (
 	github.com/gdamore/tcell/v2 v2.1.0
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.2.5
 	github.com/libp2p/go-libp2p v0.17.0
 	github.com/libp2p/go-libp2p-core v0.13.0
