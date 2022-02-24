@@ -16,12 +16,6 @@ jobs:
         goarch: [amd64]
     steps:
       - uses: actions/checkout@v2
-      - name: Read version from release.json
-        uses: notiz-dev/github-action-json-property@release
-        id: gorkscrew_version
-        with:
-          path: "release.json"
-          prop_path: "version"
       - name: Read go_version from release.json
         uses: notiz-dev/github-action-json-property@release
         id: go_version
@@ -37,5 +31,6 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           binary_name: "bacalhau"
+          goversion: "https://dl.google.com/go/go${{ steps.go_version.outputs.prop }}.linux-amd64.tar.gz"
           extra_files: LICENSE
           build_command: make release
