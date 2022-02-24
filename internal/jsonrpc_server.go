@@ -39,6 +39,7 @@ func (server *JobServer) List(args *ListArgs, reply *ListResponse) error {
 }
 
 func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
+	//nolint
 	server.ComputeNode.Publish(args.Job)
 	*reply = *args.Job
 	return nil
