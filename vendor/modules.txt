@@ -56,7 +56,7 @@ github.com/ipfs/go-log
 github.com/ipfs/go-log/tracer
 github.com/ipfs/go-log/tracer/wire
 github.com/ipfs/go-log/writer
-# github.com/ipfs/go-log/v2 v2.4.0
+# github.com/ipfs/go-log/v2 v2.5.0
 github.com/ipfs/go-log/v2
 # github.com/jackpal/go-nat-pmp v1.0.2
 github.com/jackpal/go-nat-pmp
@@ -117,7 +117,7 @@ github.com/libp2p/go-libp2p-autonat
 github.com/libp2p/go-libp2p-autonat/pb
 # github.com/libp2p/go-libp2p-blankhost v0.3.0
 github.com/libp2p/go-libp2p-blankhost
-# github.com/libp2p/go-libp2p-core v0.13.0
+# github.com/libp2p/go-libp2p-core v0.14.0
 ## explicit
 github.com/libp2p/go-libp2p-core/connmgr
 github.com/libp2p/go-libp2p-core/control
@@ -145,7 +145,7 @@ github.com/libp2p/go-libp2p-core/sec/insecure/pb
 github.com/libp2p/go-libp2p-core/transport
 # github.com/libp2p/go-libp2p-discovery v0.6.0
 github.com/libp2p/go-libp2p-discovery
-# github.com/libp2p/go-libp2p-mplex v0.4.1
+# github.com/libp2p/go-libp2p-mplex v0.5.0
 github.com/libp2p/go-libp2p-mplex
 # github.com/libp2p/go-libp2p-nat v0.1.0
 github.com/libp2p/go-libp2p-nat
@@ -168,13 +168,14 @@ github.com/libp2p/go-libp2p-quic-transport
 github.com/libp2p/go-libp2p-swarm
 # github.com/libp2p/go-libp2p-tls v0.3.1
 github.com/libp2p/go-libp2p-tls
-# github.com/libp2p/go-libp2p-transport-upgrader v0.6.0
+# github.com/libp2p/go-libp2p-transport-upgrader v0.7.1
+## explicit
 github.com/libp2p/go-libp2p-transport-upgrader
 # github.com/libp2p/go-libp2p-yamux v0.7.0
 github.com/libp2p/go-libp2p-yamux
 # github.com/libp2p/go-maddr-filter v0.1.0
 github.com/libp2p/go-maddr-filter
-# github.com/libp2p/go-mplex v0.3.0
+# github.com/libp2p/go-mplex v0.4.0
 github.com/libp2p/go-mplex
 # github.com/libp2p/go-msgio v0.1.0
 github.com/libp2p/go-msgio
@@ -244,7 +245,7 @@ github.com/mr-tron/base58/base58
 github.com/multiformats/go-base32
 # github.com/multiformats/go-base36 v0.1.0
 github.com/multiformats/go-base36
-# github.com/multiformats/go-multiaddr v0.4.0
+# github.com/multiformats/go-multiaddr v0.4.1
 ## explicit
 github.com/multiformats/go-multiaddr
 github.com/multiformats/go-multiaddr/net
@@ -332,7 +333,7 @@ github.com/whyrusleeping/timecache
 go.uber.org/atomic
 # go.uber.org/multierr v1.7.0
 go.uber.org/multierr
-# go.uber.org/zap v1.19.0
+# go.uber.org/zap v1.19.1
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
@@ -371,7 +372,7 @@ golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/tools v0.1.1
+# golang.org/x/tools v0.1.5
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/imports
@@ -383,6 +384,7 @@ golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
+golang.org/x/tools/internal/typeparams
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
