@@ -35,8 +35,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-        with:
-          fetch-depth: 1
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
