@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GOVER: ${{ matrix.go-version }}
-      GOLANGCILINT_VER: ${{ env.golang_ci_lint_version }}
+      GOLANGCILINT_VER: v1.44
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -24,20 +24,45 @@ jobs:
       matrix:
         go-version: [1.17]
         os: [ubuntu-latest]
-        target_arch: [x86_64, amd64]
+        target_arch: [amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
 
     steps:
       - uses: actions/checkout@main
-        with:
-          fetch-depth: 1
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - run: go version
+
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+
+      - uses: evantorrie/mott-the-tidier@v1-beta
+        with:
+          gomods: |
+            **/go.mod
+            -tools/go.mod
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Auto-fix go.sum discrepancies
+
+      - name: golangci-lint
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: golangci/golangci-lint-action@v2.2.1
+        with:
+          version: ${{ env.GOLANGCILINT_VER }}
+      - name: Run go mod tidy check diff
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: make modtidy check-diff
+
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+
       - name: Build
         run: |
           make build-bacalhau-tgz
