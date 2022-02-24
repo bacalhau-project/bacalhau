@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -57,15 +56,6 @@ var serveCmd = &cobra.Command{
 		}
 		jsonRpcString := ""
 		devString := ""
-		ipfsGatewayPort, err := freeport.GetFreePort()
-		if err != nil {
-			return err
-		}
-		ipfsApiPort, err := freeport.GetFreePort()
-		if err != nil {
-			return err
-		}
-
 		if developmentMode {
 			jsonRpcPort, err := freeport.GetFreePort()
 			if err != nil {
@@ -77,12 +67,10 @@ var serveCmd = &cobra.Command{
 
 		ipfsPathDevString := " "
 		if startIpfsDevOnly {
-			ipfsRepo, err := system.EnsureSystemDirectory(fmt.Sprintf("dev/ipfs/%s", computeNode.Id))
+			ipfsRepo, _, err := ipfs.StartBacalhauDevelopmentIpfsServer("")
 			if err != nil {
 				return err
 			}
-			ipfs.Init(ipfsRepo)
-			ipfs.StartDaemon(ipfsRepo, ipfsGatewayPort, ipfsApiPort)
 			computeNode.IpfsRepo = ipfsRepo
 			ipfsPathDevString = fmt.Sprintf("IPFS_PATH=%s ", ipfsRepo)
 			devString += " --start-ipfs-dev-only"
@@ -94,8 +82,6 @@ var serveCmd = &cobra.Command{
 			JsonRpcString     string
 			DevString         string
 			IpfsPathDevString string
-			IpfsGatewayPort   int
-			IpfsApiPort       int
 		}
 		td := TemplateContents{
 			HostAddress:       hostAddress,
@@ -104,8 +90,6 @@ var serveCmd = &cobra.Command{
 			JsonRpcString:     jsonRpcString,
 			DevString:         devString,
 			IpfsPathDevString: ipfsPathDevString,
-			IpfsGatewayPort:   ipfsGatewayPort,
-			IpfsApiPort:       ipfsApiPort,
 		}
 
 		if developmentMode {
