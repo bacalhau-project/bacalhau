@@ -70,21 +70,6 @@ fmt:
 vet:
 	@${GO} vet ./cmd/...
 
-################################################################################
-# Target: modtidy                                                              #
-################################################################################
-.PHONY: modtidy
-modtidy:
-	go mod tidy
-	
-################################################################################
-# Target: check-diff                                                           #
-################################################################################
-.PHONY: check-diff
-check-diff:
-	git diff --exit-code ./go.mod # check no changes
-	git diff --exit-code ./go.sum # check no changes
-
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit                                                            #
@@ -146,6 +131,21 @@ test: build-bacalhau
 .PHONY: lint
 lint: build-bacalhau
 	golangci-lint run --timeout 10m
+
+################################################################################
+# Target: modtidy                                                              #
+################################################################################
+.PHONY: modtidy
+modtidy:
+	go mod tidy
+
+################################################################################
+# Target: check-diff                                                           #
+################################################################################
+.PHONY: check-diff
+check-diff:
+	git diff --exit-code ./go.mod # check no changes
+	git diff --exit-code ./go.sum # check no changes
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################
