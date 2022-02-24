@@ -54,7 +54,7 @@ jobs:
       - run: go version
       - name: Build
         run: |
-          build-bacalhau-tgz
+          make build-bacalhau-tgz
       - name: Generate Changelog
         run: echo "# Release Notes" > ${{ github.workflow }}-CHANGELOG.txt
       - name: Release

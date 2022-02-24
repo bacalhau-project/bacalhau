@@ -106,7 +106,7 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=$(shell go env GOOS) GOARCH=$(shell go env GOARCH) ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/bacalhau main.go
+	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/bacalhau main.go
 	cp bin/$(ARCH)/bacalhau bin/bacalhau
 
 # Release tarballs suitable for upload to GitHub release pages
@@ -114,7 +114,7 @@ build-bacalhau: fmt vet
 # Target: build-bacalhau-tgz                                                       #
 ################################################################################
 .PHONY: build-bacalhau-tgz
-build-same-tgz: build-bacalhau
+build-bacalhau-tgz: build-bacalhau
 	@echo "CWD: $(shell pwd)"
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
@@ -125,7 +125,6 @@ build-same-tgz: build-bacalhau
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
 	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
-
 
 ################################################################################
 # Target: clean					                                               #
