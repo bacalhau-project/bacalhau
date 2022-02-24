@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,29 +39,12 @@ func (server *JobServer) Submit(r *http.Request, args *SubmitArgs, reply *types.
 	return nil
 }
 
-// func RunBacalhauRpcServer(host string, port int, computeNode *ComputeNode) {
-// 	job := &JobServer{
-// 		ComputeNode: computeNode,
-// 	}
-// 	server := rpc.NewServer()
-// 	err := server.Register(job)
-// 	if err != nil {
-// 		log.Fatalf("Format of service Job isn't correct. %s", err)
-// 	}
-// 	server.HandleHTTP("/", "/debug")
-// 	//rpc.HandleHTTP()
-// 	l, e := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
-// 	if e != nil {
-// 		log.Fatalf("Couldn't start listening on port %d. Error %s", port, e)
-// 	}
-// 	log.Println("Serving RPC handler")
-// 	err = http.Serve(l, nil)
-// 	if err != nil {
-// 		log.Fatalf("Error serving: %s", err)
-// 	}
-// }
-
-func RunBacalhauJsonRpcServer(host string, port int, computeNode *ComputeNode) {
+func RunBacalhauJsonRpcServer(
+	ctx context.Context,
+	host string,
+	port int,
+	computeNode *ComputeNode,
+) {
 	job := &JobServer{
 		ComputeNode: computeNode,
 	}
@@ -74,8 +58,19 @@ func RunBacalhauJsonRpcServer(host string, port int, computeNode *ComputeNode) {
 	}
 	router := mux.NewRouter()
 	router.Handle("/", server)
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), router)
+	httpServer := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: router}
+
+	go func() {
+		err = httpServer.ListenAndServe()
+		if err != nil {
+			log.Fatalf("http.ListenAndServe failed: %s", err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	err = httpServer.Shutdown(nil)
 	if err != nil {
-		log.Fatalf("http.ListenAndServe failed: %s", err)
+		log.Fatalf("httpServer.Shutdown failed: %s", err)
 	}
 }

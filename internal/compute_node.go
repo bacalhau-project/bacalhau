@@ -112,6 +112,12 @@ func NewComputeNode(
 	}
 	go server.ReadLoopJobCreate()
 	go server.ReadLoopJobUpdate()
+	go func() {
+		<-ctx.Done()
+		// jobCreateSubscription.Cancel()
+		// jobUpdateSubscription.Cancel()
+		host.Close()
+	}()
 	return server, nil
 }
 
