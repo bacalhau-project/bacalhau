@@ -1,5 +1,3 @@
-# github.com/aead/siphash v1.0.1
-## explicit
 # github.com/benbjohnson/clock v1.3.0
 ## explicit; go 1.15
 github.com/benbjohnson/clock
@@ -9,20 +7,6 @@ github.com/beorn7/perks/quantile
 # github.com/btcsuite/btcd v0.22.0-beta
 ## explicit; go 1.14
 github.com/btcsuite/btcd/btcec
-# github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
-## explicit
-# github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-## explicit; go 1.14
-# github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd
-## explicit
-# github.com/btcsuite/goleveldb v1.0.0
-## explicit
-# github.com/btcsuite/snappy-go v1.0.0
-## explicit
-# github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
-## explicit
-# github.com/btcsuite/winsvc v1.0.0
-## explicit
 # github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -39,13 +23,9 @@ github.com/containerd/cgroups/stats/v1
 # github.com/coreos/go-systemd/v22 v22.3.2
 ## explicit; go 1.12
 github.com/coreos/go-systemd/v22/dbus
-# github.com/davecgh/go-spew v1.1.1
-## explicit
 # github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c
 ## explicit; go 1.14
 github.com/davidlazar/go-crypto/salsa20
-# github.com/decred/dcrd/lru v1.0.0
-## explicit; go 1.11
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
@@ -130,12 +110,6 @@ github.com/jbenet/go-temp-err-catcher
 ## explicit; go 1.16
 github.com/jedib0t/go-pretty/v6/table
 github.com/jedib0t/go-pretty/v6/text
-# github.com/jessevdk/go-flags v1.4.0
-## explicit
-# github.com/jrick/logrotate v1.0.0
-## explicit
-# github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23
-## explicit
 # github.com/klauspost/compress v1.14.4
 ## explicit; go 1.15
 github.com/klauspost/compress
