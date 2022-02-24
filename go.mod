@@ -14,5 +14,5 @@ require (
 	github.com/rivo/tview v0.0.0-20210125085121-dbc1f32bb1d0
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.7.0 // indirect
-	gonum.org/v1/gonum v0.9.3 // indirect
+	gonum.org/v1/gonum v0.9.3
 )
