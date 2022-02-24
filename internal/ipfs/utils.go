@@ -15,7 +15,7 @@ import (
 )
 
 func IpfsCommand(repoPath string, args []string) (string, error) {
-	fmt.Printf("ipfs %s\n", strings.Join(args, " "))
+	fmt.Printf("ipfs command:\nipfs %s\n", strings.Join(args, " "))
 	if repoPath == "" {
 		return system.RunCommandGetResults("ipfs", args)
 	} else {
@@ -66,7 +66,6 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("TEMP DIR: %s\n", repoDir)
 	_, err = system.EnsureSystemDirectory(repoDir)
 	if err != nil {
 		return "", "", err
@@ -113,7 +112,6 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 			fmt.Printf("error running command: %s\n", err)
 			return err
 		}
-		fmt.Printf("JSON: %s\n", jsonBlob)
 		result := struct {
 			Addresses []string
 		}{}
@@ -122,7 +120,6 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 			fmt.Printf("error parsing JSON: %s\n", err)
 			return err
 		}
-		fmt.Printf("parsed JSON: %+v\n", result)
 		if len(result.Addresses) > 0 {
 			nodeAddress = result.Addresses[0]
 			return nil

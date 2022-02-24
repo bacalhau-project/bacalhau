@@ -25,8 +25,7 @@ var devstackCmd = &cobra.Command{
 		ipfsMultiAddresses := []string{}
 
 		// create 3 bacalhau compute nodes
-		//for i := range []int{0} {
-		for range []int{0} {
+		for i := range []int{0, 1, 2} {
 			computePort, err := freeport.GetFreePort()
 			if err != nil {
 				return err
@@ -45,28 +44,27 @@ var devstackCmd = &cobra.Command{
 				connectToMultiAddress = ipfsMultiAddresses[0]
 			}
 
-			fmt.Printf("STARTING IPFS: %s\n", connectToMultiAddress)
-			//ipfsRepo, ipfsMultiaddress, err := ipfs.StartBacalhauDevelopmentIpfsServer(connectToMultiAddress)
-			_, ipfsMultiaddress, err := ipfs.StartBacalhauDevelopmentIpfsServer(connectToMultiAddress)
+			ipfsRepo, ipfsMultiaddress, err := ipfs.StartBacalhauDevelopmentIpfsServer(connectToMultiAddress)
+
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("GOT ADDRESS: %s\n", ipfsMultiaddress)
-
+			fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)
 			ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
 
-			// node.IpfsRepo = ipfsRepo
+			node.IpfsRepo = ipfsRepo
 
-			// if i > 0 {
-			// 	// connect to the first node
-			// 	err = node.Connect(nodes[0].Host.Addrs()[0].String())
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// }
+			if i > 0 {
+				// connect to the first node]
 
-			// create a directory
+				connectToAddress := fmt.Sprintf("%s/p2p/%s", nodes[0].Host.Addrs()[0].String(), nodes[0].Host.ID())
+				fmt.Printf("bacalhau multiaddress: %s\n", connectToAddress)
+				err = node.Connect(connectToAddress)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		// wait forever
