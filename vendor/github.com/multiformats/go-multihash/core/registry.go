@@ -71,7 +71,11 @@ func init() {
 	Register(IDENTITY, func() hash.Hash { return &identityMultihash{} })
 	Register(MD5, md5.New)
 	Register(SHA1, sha1.New)
+	Register(SHA2_224, sha256.New224)
 	Register(SHA2_256, sha256.New)
+	Register(SHA2_384, sha512.New384)
 	Register(SHA2_512, sha512.New)
+	Register(SHA2_512_224, sha512.New512_224)
+	Register(SHA2_512_256, sha512.New512_256)
 	Register(DBL_SHA2_256, func() hash.Hash { return &doubleSha256{sha256.New()} })
 }

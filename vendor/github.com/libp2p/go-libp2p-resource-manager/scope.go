@@ -36,22 +36,24 @@ type resourceScope struct {
 	owner *resourceScope   // set in span scopes, which define trees
 	edges []*resourceScope // set in DAG scopes, it's the linearized parent set
 
-	name  string // for debugging purposes
-	trace *trace // debug tracing
+	name    string   // for debugging purposes
+	trace   *trace   // debug tracing
+	metrics *metrics // metrics collection
 }
 
 var _ network.ResourceScope = (*resourceScope)(nil)
 var _ network.ResourceScopeSpan = (*resourceScope)(nil)
 
-func newResourceScope(limit Limit, edges []*resourceScope, name string, trace *trace) *resourceScope {
+func newResourceScope(limit Limit, edges []*resourceScope, name string, trace *trace, metrics *metrics) *resourceScope {
 	for _, e := range edges {
 		e.IncRef()
 	}
 	r := &resourceScope{
-		rc:    resources{limit: limit},
-		edges: edges,
-		name:  name,
-		trace: trace,
+		rc:      resources{limit: limit},
+		edges:   edges,
+		name:    name,
+		trace:   trace,
+		metrics: metrics,
 	}
 	r.trace.CreateScope(name, limit)
 	return r
@@ -59,10 +61,11 @@ func newResourceScope(limit Limit, edges []*resourceScope, name string, trace *t
 
 func newResourceScopeSpan(owner *resourceScope) *resourceScope {
 	r := &resourceScope{
-		rc:    resources{limit: owner.rc.limit},
-		owner: owner,
-		name:  fmt.Sprintf("%s.span", owner.name),
-		trace: owner.trace,
+		rc:      resources{limit: owner.rc.limit},
+		owner:   owner,
+		name:    fmt.Sprintf("%s.span", owner.name),
+		trace:   owner.trace,
+		metrics: owner.metrics,
 	}
 	r.trace.CreateScope(r.name, r.rc.limit)
 	return r
@@ -238,6 +241,7 @@ func (s *resourceScope) ReserveMemory(size int, prio uint8) error {
 	if err := s.rc.reserveMemory(int64(size), prio); err != nil {
 		log.Debugw("blocked memory reservation", "scope", s.name, "size", size, "priority", prio, "error", err)
 		s.trace.BlockReserveMemory(s.name, prio, int64(size), s.rc.memory)
+		s.metrics.BlockMemory(size)
 		return s.wrapError(err)
 	}
 
@@ -245,10 +249,12 @@ func (s *resourceScope) ReserveMemory(size int, prio uint8) error {
 		log.Debugw("blocked memory reservation from constraining edge", "scope", s.name, "size", size, "priority", prio, "error", err)
 
 		s.rc.releaseMemory(int64(size))
+		s.metrics.BlockMemory(size)
 		return s.wrapError(err)
 	}
 
 	s.trace.ReserveMemory(s.name, prio, int64(size), s.rc.memory)
+	s.metrics.AllowMemory(size)
 	return nil
 }
 

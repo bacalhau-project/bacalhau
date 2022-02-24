@@ -1,4 +1,4 @@
-# Go sigar [![Build Status](https://travis-ci.org/elastic/gosigar.svg?branch=master)](https://travis-ci.org/elastic/gosigar) [![Build status](https://ci.appveyor.com/api/projects/status/4yh6sa7u97ek5uib/branch/master?svg=true)](https://ci.appveyor.com/project/elastic-beats/gosigar/branch/master)
+# Go sigar [![Build Status](https://beats-ci.elastic.co/job/Beats/job/gosigar/job/master/badge/icon)](https://beats-ci.elastic.co/job/Beats/job/gosigar/job/master/)
 
 
 ## Overview

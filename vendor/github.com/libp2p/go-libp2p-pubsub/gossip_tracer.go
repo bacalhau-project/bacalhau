@@ -118,17 +118,24 @@ var _ RawTracer = (*gossipTracer)(nil)
 
 func (gt *gossipTracer) fulfillPromise(msg *Message) {
 	mid := gt.msgID(msg.Message)
-	p := msg.ReceivedFrom
 
 	gt.Lock()
 	defer gt.Unlock()
 
+	promises, ok := gt.promises[mid]
+	if !ok {
+		return
+	}
 	delete(gt.promises, mid)
-	peerPromises, ok := gt.peerPromises[p]
-	if ok {
-		delete(peerPromises, mid)
-		if len(peerPromises) == 0 {
-			delete(gt.peerPromises, p)
+
+	// delete the promise for all peers that promised it, as they have no way to fulfill it.
+	for p := range promises {
+		peerPromises, ok := gt.peerPromises[p]
+		if ok {
+			delete(peerPromises, mid)
+			if len(peerPromises) == 0 {
+				delete(gt.peerPromises, p)
+			}
 		}
 	}
 }

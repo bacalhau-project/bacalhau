@@ -24,6 +24,12 @@ const (
 	PROCESS_VM_READ                   uint32 = 0x0010
 )
 
+// error codes for GetVolumeInformation function
+const (
+	ERROR_INVALID_FUNCTION syscall.Errno = 1
+	ERROR_NOT_READY        syscall.Errno = 21
+)
+
 // SizeOfRtlUserProcessParameters gives the size
 // of the RtlUserProcessParameters struct.
 const SizeOfRtlUserProcessParameters = unsafe.Sizeof(RtlUserProcessParameters{})
@@ -340,17 +346,17 @@ func GetDriveType(rootPathName string) (DriveType, error) {
 // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationw
 func GetFilesystemType(rootPathName string) (string, error) {
 	rootPathNamePtr, err := syscall.UTF16PtrFromString(rootPathName)
+	var systemType = "unavailable"
 	if err != nil {
 		return "", errors.Wrapf(err, "UTF16PtrFromString failed for rootPathName=%v", rootPathName)
 	}
-
 	buffer := make([]uint16, MAX_PATH+1)
+	// _GetVolumeInformation will fail for external drives like CD-ROM or other type with error codes as ERROR_NOT_READY. ERROR_INVALID_FUNCTION, ERROR_INVALID_PARAMETER, etc., these types of errors will be ignored
 	success, err := _GetVolumeInformation(rootPathNamePtr, nil, 0, nil, nil, nil, &buffer[0], MAX_PATH)
-	if !success {
-		return "", errors.Wrap(err, "GetVolumeInformationW failed")
+	if success {
+		systemType = strings.ToLower(syscall.UTF16ToString(buffer))
 	}
-
-	return strings.ToLower(syscall.UTF16ToString(buffer)), nil
+	return systemType, nil
 }
 
 // EnumProcesses retrieves the process identifier for each process object in the

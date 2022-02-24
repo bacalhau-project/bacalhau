@@ -18,5 +18,7 @@ package all
 
 import (
 	_ "github.com/multiformats/go-multihash/register/blake2"
+	_ "github.com/multiformats/go-multihash/register/blake3"
+	_ "github.com/multiformats/go-multihash/register/murmur3"
 	_ "github.com/multiformats/go-multihash/register/sha3"
 )

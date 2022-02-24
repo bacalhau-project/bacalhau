@@ -503,6 +503,8 @@ func (t *Table) getColumnSeparatorNonBorderNonAutoIndex(mergeCellsAbove bool, me
 		return t.style.Box.MiddleVertical
 	} else if mergeCurrCol {
 		return t.style.Box.LeftSeparator
+	} else if mergeNextCol {
+		return t.style.Box.RightSeparator
 	}
 	return t.style.Box.MiddleSeparator
 }
@@ -544,6 +546,15 @@ func (t *Table) getFormat(hint renderHint) text.Format {
 		return t.style.Format.Footer
 	}
 	return t.style.Format.Row
+}
+
+func (t *Table) getMaxColumnLengthForMerging(colIdx int) int {
+	maxColumnLength := t.maxColumnLengths[colIdx]
+	maxColumnLength += text.RuneCount(t.style.Box.PaddingRight + t.style.Box.PaddingLeft)
+	if t.style.Options.SeparateColumns {
+		maxColumnLength += text.RuneCount(t.style.Box.EmptySeparator)
+	}
+	return maxColumnLength
 }
 
 func (t *Table) getRow(rowIdx int, hint renderHint) rowStr {
