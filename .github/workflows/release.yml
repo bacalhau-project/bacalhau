@@ -22,6 +22,10 @@ jobs:
         with:
           path: "release.json"
           prop_path: "go_version"
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^${{ steps.go_version.outputs.prop }}"
+      - run: go version
       - name: Build
         run: make build
       - name: Run tests
@@ -31,6 +35,5 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           binary_name: "bacalhau"
-          goversion: "https://dl.google.com/go/go${{ steps.go_version.outputs.prop }}.linux-amd64.tar.gz"
           extra_files: LICENSE
           build_command: make release
