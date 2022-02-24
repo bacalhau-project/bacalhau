@@ -4,17 +4,19 @@ import (
 	"context"
 
 	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/mux"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	tpt "github.com/libp2p/go-libp2p-core/transport"
 
-	quic "github.com/lucas-clemente/quic-go"
+	"github.com/lucas-clemente/quic-go"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 type conn struct {
 	sess      quic.Session
-	transport tpt.Transport
+	pconn     *reuseConn
+	transport *transport
+	scope     network.ConnManagementScope
 
 	localPeer      peer.ID
 	privKey        ic.PrivKey
@@ -27,8 +29,15 @@ type conn struct {
 
 var _ tpt.CapableConn = &conn{}
 
+// Close closes the connection.
+// It must be called even if the peer closed the connection in order for
+// garbage collection to properly work in this package.
 func (c *conn) Close() error {
-	return c.sess.CloseWithError(0, "")
+	c.transport.removeConn(c.sess)
+	err := c.sess.CloseWithError(0, "")
+	c.pconn.DecreaseCount()
+	c.scope.Done()
+	return err
 }
 
 // IsClosed returns whether a connection is fully closed.
@@ -36,14 +45,18 @@ func (c *conn) IsClosed() bool {
 	return c.sess.Context().Err() != nil
 }
 
+func (c *conn) allowWindowIncrease(size uint64) bool {
+	return c.scope.ReserveMemory(int(size), network.ReservationPriorityMedium) == nil
+}
+
 // OpenStream creates a new stream.
-func (c *conn) OpenStream(ctx context.Context) (mux.MuxedStream, error) {
+func (c *conn) OpenStream(ctx context.Context) (network.MuxedStream, error) {
 	qstr, err := c.sess.OpenStreamSync(ctx)
 	return &stream{Stream: qstr}, err
 }
 
 // AcceptStream accepts a stream opened by the other side.
-func (c *conn) AcceptStream() (mux.MuxedStream, error) {
+func (c *conn) AcceptStream() (network.MuxedStream, error) {
 	qstr, err := c.sess.AcceptStream(context.Background())
 	return &stream{Stream: qstr}, err
 }
@@ -80,4 +93,8 @@ func (c *conn) RemoteMultiaddr() ma.Multiaddr {
 
 func (c *conn) Transport() tpt.Transport {
 	return c.transport
+}
+
+func (c *conn) Scope() network.ConnScope {
+	return c.scope
 }

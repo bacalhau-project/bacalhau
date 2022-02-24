@@ -4,9 +4,10 @@ package websocket
 import (
 	"context"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/transport"
-	tptu "github.com/libp2p/go-libp2p-transport-upgrader"
+
 	ma "github.com/multiformats/go-multiaddr"
 	mafmt "github.com/multiformats/go-multiaddr-fmt"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -28,11 +29,18 @@ var _ transport.Transport = (*WebsocketTransport)(nil)
 
 // WebsocketTransport is the actual go-libp2p transport
 type WebsocketTransport struct {
-	Upgrader *tptu.Upgrader
+	upgrader transport.Upgrader
+	rcmgr    network.ResourceManager
 }
 
-func New(u *tptu.Upgrader) *WebsocketTransport {
-	return &WebsocketTransport{u}
+func New(u transport.Upgrader, rcmgr network.ResourceManager) *WebsocketTransport {
+	if rcmgr == nil {
+		rcmgr = network.NullResourceManager
+	}
+	return &WebsocketTransport{
+		upgrader: u,
+		rcmgr:    rcmgr,
+	}
 }
 
 func (t *WebsocketTransport) CanDial(a ma.Multiaddr) bool {
@@ -48,9 +56,14 @@ func (t *WebsocketTransport) Proxy() bool {
 }
 
 func (t *WebsocketTransport) Dial(ctx context.Context, raddr ma.Multiaddr, p peer.ID) (transport.CapableConn, error) {
-	macon, err := t.maDial(ctx, raddr)
+	connScope, err := t.rcmgr.OpenConnection(network.DirOutbound, true)
 	if err != nil {
 		return nil, err
 	}
-	return t.Upgrader.UpgradeOutbound(ctx, t, macon, p)
+	macon, err := t.maDial(ctx, raddr)
+	if err != nil {
+		connScope.Done()
+		return nil, err
+	}
+	return t.upgrader.Upgrade(ctx, t, macon, network.DirOutbound, p, connScope)
 }

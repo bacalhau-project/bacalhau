@@ -14,9 +14,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
+	"github.com/libp2p/go-libp2p-core/sec"
 	"github.com/libp2p/go-libp2p-core/transport"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 
+	drouting "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"github.com/libp2p/go-libp2p/p2p/host/autonat"
 	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	routed "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -24,9 +27,7 @@ import (
 	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/protocol/holepunch"
 
-	autonat "github.com/libp2p/go-libp2p-autonat"
 	blankhost "github.com/libp2p/go-libp2p-blankhost"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	tptu "github.com/libp2p/go-libp2p-transport-upgrader"
 
@@ -74,6 +75,8 @@ type Config struct {
 	Insecure           bool
 	PSK                pnet.PSK
 
+	DialTimeout time.Duration
+
 	RelayCustom bool
 	Relay       bool // should the relay transport be used
 
@@ -84,10 +87,12 @@ type Config struct {
 	AddrsFactory    bhost.AddrsFactory
 	ConnectionGater connmgr.ConnectionGater
 
-	ConnManager connmgr.ConnManager
-	NATManager  NATManagerC
-	Peerstore   peerstore.Peerstore
-	Reporter    metrics.Reporter
+	ConnManager     connmgr.ConnManager
+	ResourceManager network.ResourceManager
+
+	NATManager NATManagerC
+	Peerstore  peerstore.Peerstore
+	Reporter   metrics.Reporter
 
 	MultiaddrResolver *madns.Resolver
 
@@ -135,34 +140,58 @@ func (cfg *Config) makeSwarm() (*swarm.Swarm, error) {
 		return nil, err
 	}
 
+	opts := make([]swarm.Option, 0, 3)
+	if cfg.Reporter != nil {
+		opts = append(opts, swarm.WithMetrics(cfg.Reporter))
+	}
+	if cfg.ConnectionGater != nil {
+		opts = append(opts, swarm.WithConnectionGater(cfg.ConnectionGater))
+	}
+	if cfg.DialTimeout != 0 {
+		opts = append(opts, swarm.WithDialTimeout(cfg.DialTimeout))
+	}
+	if cfg.ResourceManager != nil {
+		opts = append(opts, swarm.WithResourceManager(cfg.ResourceManager))
+	}
 	// TODO: Make the swarm implementation configurable.
-	return swarm.NewSwarm(pid, cfg.Peerstore, swarm.WithMetrics(cfg.Reporter), swarm.WithConnectionGater(cfg.ConnectionGater))
+	return swarm.NewSwarm(pid, cfg.Peerstore, opts...)
 }
 
-func (cfg *Config) addTransports(h host.Host) (err error) {
+func (cfg *Config) addTransports(h host.Host) error {
 	swrm, ok := h.Network().(transport.TransportNetwork)
 	if !ok {
 		// Should probably skip this if no transports.
 		return fmt.Errorf("swarm does not support transports")
 	}
-	upgrader := new(tptu.Upgrader)
-	upgrader.PSK = cfg.PSK
-	upgrader.ConnGater = cfg.ConnectionGater
+	var secure sec.SecureMuxer
 	if cfg.Insecure {
-		upgrader.Secure = makeInsecureTransport(h.ID(), cfg.PeerKey)
+		secure = makeInsecureTransport(h.ID(), cfg.PeerKey)
 	} else {
-		upgrader.Secure, err = makeSecurityMuxer(h, cfg.SecurityTransports)
+		var err error
+		secure, err = makeSecurityMuxer(h, cfg.SecurityTransports)
 		if err != nil {
 			return err
 		}
 	}
-
-	upgrader.Muxer, err = makeMuxer(h, cfg.Muxers)
+	muxer, err := makeMuxer(h, cfg.Muxers)
 	if err != nil {
 		return err
 	}
-
-	tpts, err := makeTransports(h, upgrader, cfg.ConnectionGater, cfg.Transports)
+	var opts []tptu.Option
+	if len(cfg.PSK) > 0 {
+		opts = append(opts, tptu.WithPSK(cfg.PSK))
+	}
+	if cfg.ConnectionGater != nil {
+		opts = append(opts, tptu.WithConnectionGater(cfg.ConnectionGater))
+	}
+	if cfg.ResourceManager != nil {
+		opts = append(opts, tptu.WithResourceManager(cfg.ResourceManager))
+	}
+	upgrader, err := tptu.New(secure, muxer, opts...)
+	if err != nil {
+		return err
+	}
+	tpts, err := makeTransports(h, upgrader, cfg.ConnectionGater, cfg.PSK, cfg.ResourceManager, cfg.Transports)
 	if err != nil {
 		return err
 	}
@@ -264,7 +293,7 @@ func (cfg *Config) NewNode() (host.Host, error) {
 				h.Close()
 				return nil, fmt.Errorf("cannot enable autorelay; no suitable routing for discovery")
 			}
-			opts = append(opts, autorelay.WithDiscoverer(discovery.NewRoutingDiscovery(crouter)))
+			opts = append(opts, autorelay.WithDiscoverer(drouting.NewRoutingDiscovery(crouter)))
 		}
 		ar, err = autorelay.NewAutoRelay(h, router, opts...)
 		if err != nil {
