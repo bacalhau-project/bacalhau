@@ -10,10 +10,8 @@ import (
 	noise "github.com/libp2p/go-libp2p-noise"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	quic "github.com/libp2p/go-libp2p-quic-transport"
-	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
 	tls "github.com/libp2p/go-libp2p-tls"
 	yamux "github.com/libp2p/go-libp2p-yamux"
-	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	"github.com/multiformats/go-multiaddr"
@@ -87,29 +85,6 @@ var DefaultEnableRelay = func(cfg *Config) error {
 	return cfg.Apply(EnableRelay())
 }
 
-var DefaultResourceManager = func(cfg *Config) error {
-	// Default memory limit: 1/8th of total memory, minimum 128MB, maximum 1GB
-	limiter := rcmgr.NewDefaultLimiter()
-	SetDefaultServiceLimits(limiter)
-
-	mgr, err := rcmgr.NewResourceManager(limiter)
-	if err != nil {
-		return err
-	}
-
-	return cfg.Apply(ResourceManager(mgr))
-}
-
-// DefaultConnManager creates a default connection manager
-var DefaultConnectionManager = func(cfg *Config) error {
-	mgr, err := connmgr.NewConnManager(160, 192)
-	if err != nil {
-		return err
-	}
-
-	return cfg.Apply(ConnectionManager(mgr))
-}
-
 // Complete list of default options and when to fallback on them.
 //
 // Please *DON'T* specify default options any other way. Putting this all here
@@ -145,14 +120,6 @@ var defaults = []struct {
 	{
 		fallback: func(cfg *Config) bool { return !cfg.RelayCustom },
 		opt:      DefaultEnableRelay,
-	},
-	{
-		fallback: func(cfg *Config) bool { return cfg.ResourceManager == nil },
-		opt:      DefaultResourceManager,
-	},
-	{
-		fallback: func(cfg *Config) bool { return cfg.ConnManager == nil },
-		opt:      DefaultConnectionManager,
 	},
 }
 

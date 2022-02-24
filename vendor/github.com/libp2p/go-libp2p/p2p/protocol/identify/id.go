@@ -41,10 +41,6 @@ const ID = "/ipfs/id/1.0.0"
 // 0.4.17 which asserted an exact version match.
 const LibP2PVersion = "ipfs/0.1.0"
 
-const ServiceName = "libp2p.identify"
-
-const maxPushConcurrency = 32
-
 // StreamReadTimeout is the read timeout on all incoming Identify family streams.
 var StreamReadTimeout = 60 * time.Second
 
@@ -131,10 +127,6 @@ type idService struct {
 
 	addPeerHandlerCh chan addPeerHandlerReq
 	rmPeerHandlerCh  chan rmPeerHandlerReq
-
-	// pushSemaphore limits the push/delta concurrency to avoid storms
-	// that clog the transient scope.
-	pushSemaphore chan struct{}
 }
 
 // NewIDService constructs a new *idService and activates it by
@@ -160,8 +152,6 @@ func NewIDService(h host.Host, opts ...Option) (*idService, error) {
 
 		addPeerHandlerCh: make(chan addPeerHandlerReq),
 		rmPeerHandlerCh:  make(chan rmPeerHandlerReq),
-
-		pushSemaphore: make(chan struct{}, maxPushConcurrency),
 	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
@@ -331,6 +321,7 @@ func (ids *idService) IdentifyWait(c network.Conn) <-chan struct{} {
 	defer ids.connsMu.Unlock()
 
 	wait, found = ids.conns[c]
+
 	if !found {
 		wait = make(chan struct{})
 		ids.conns[c] = wait
@@ -338,14 +329,7 @@ func (ids *idService) IdentifyWait(c network.Conn) <-chan struct{} {
 		// Spawn an identify. The connection may actually be closed
 		// already, but that doesn't really matter. We'll fail to open a
 		// stream then forget the connection.
-		go func() {
-			defer close(wait)
-			if err := ids.identifyConn(c); err != nil {
-				ids.emitters.evtPeerIdentificationFailed.Emit(event.EvtPeerIdentificationFailed{Peer: c.RemotePeer(), Reason: err})
-				return
-			}
-			ids.emitters.evtPeerIdentificationCompleted.Emit(event.EvtPeerIdentificationCompleted{Peer: c.RemotePeer()})
-		}()
+		go ids.identifyConn(c, wait)
 	}
 
 	return wait
@@ -357,39 +341,51 @@ func (ids *idService) removeConn(c network.Conn) {
 	ids.connsMu.Unlock()
 }
 
-func (ids *idService) identifyConn(c network.Conn) error {
-	s, err := c.NewStream(network.WithUseTransient(context.TODO(), "identify"))
+func (ids *idService) identifyConn(c network.Conn, signal chan struct{}) {
+	var (
+		s   network.Stream
+		err error
+	)
+
+	defer func() {
+		close(signal)
+
+		// emit the appropriate event.
+		if p := c.RemotePeer(); err == nil {
+			ids.emitters.evtPeerIdentificationCompleted.Emit(event.EvtPeerIdentificationCompleted{Peer: p})
+		} else {
+			ids.emitters.evtPeerIdentificationFailed.Emit(event.EvtPeerIdentificationFailed{Peer: p, Reason: err})
+		}
+	}()
+
+	s, err = c.NewStream(network.WithUseTransient(context.TODO(), "identify"))
 	if err != nil {
 		log.Debugw("error opening identify stream", "error", err)
+		// the connection is probably already closed if we hit this.
+		// TODO: Remove this?
+		c.Close()
 
 		// We usually do this on disconnect, but we may have already
 		// processed the disconnect event.
 		ids.removeConn(c)
-		return err
+		return
 	}
-
-	if err := s.SetProtocol(ID); err != nil {
-		log.Warnf("error setting identify protocol for stream: %s", err)
-		s.Reset()
-	}
+	s.SetProtocol(ID)
 
 	// ok give the response to our handler.
-	if err := msmux.SelectProtoOrFail(ID, s); err != nil {
-		log.Infow("failed negotiate identify protocol with peer", "peer", c.RemotePeer(), "error", err)
-		s.Reset()
-		return err
-	}
-
-	return ids.handleIdentifyResponse(s)
-}
-
-func (ids *idService) sendIdentifyResp(s network.Stream) {
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Warnf("error attaching stream to identify service: %s", err)
+	if err = msmux.SelectProtoOrFail(ID, s); err != nil {
+		log.Infow("failed negotiate identify protocol with peer",
+			"peer", c.RemotePeer(),
+			"error", err,
+		)
 		s.Reset()
 		return
 	}
 
+	err = ids.handleIdentifyResponse(s)
+}
+
+func (ids *idService) sendIdentifyResp(s network.Stream) {
 	defer s.Close()
 
 	c := s.Conn()
@@ -422,19 +418,6 @@ func (ids *idService) sendIdentifyResp(s network.Stream) {
 }
 
 func (ids *idService) handleIdentifyResponse(s network.Stream) error {
-	if err := s.Scope().SetService(ServiceName); err != nil {
-		log.Warnf("error attaching stream to identify service: %s", err)
-		s.Reset()
-		return err
-	}
-
-	if err := s.Scope().ReserveMemory(signedIDSize, network.ReservationPriorityAlways); err != nil {
-		log.Warnf("error reserving memory for identify stream: %s", err)
-		s.Reset()
-		return err
-	}
-	defer s.Scope().ReleaseMemory(signedIDSize)
-
 	_ = s.SetReadDeadline(time.Now().Add(StreamReadTimeout))
 
 	c := s.Conn()

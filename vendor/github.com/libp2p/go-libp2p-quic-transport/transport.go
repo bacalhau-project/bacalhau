@@ -10,24 +10,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/minio/sha256-simd"
 	"golang.org/x/crypto/hkdf"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/network"
+	n "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	tpt "github.com/libp2p/go-libp2p-core/transport"
-
 	p2ptls "github.com/libp2p/go-libp2p-tls"
-
+	"github.com/lucas-clemente/quic-go"
 	ma "github.com/multiformats/go-multiaddr"
 	mafmt "github.com/multiformats/go-multiaddr-fmt"
 	manet "github.com/multiformats/go-multiaddr/net"
-
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/minio/sha256-simd"
 )
 
 var log = logging.Logger("quic-transport")
@@ -112,13 +109,9 @@ type transport struct {
 	serverConfig *quic.Config
 	clientConfig *quic.Config
 	gater        connmgr.ConnectionGater
-	rcmgr        network.ResourceManager
 
 	holePunchingMx sync.Mutex
 	holePunching   map[holePunchKey]*activeHolePunch
-
-	connMx sync.Mutex
-	conns  map[quic.Session]*conn
 }
 
 var _ tpt.Transport = &transport{}
@@ -134,7 +127,7 @@ type activeHolePunch struct {
 }
 
 // NewTransport creates a new QUIC transport
-func NewTransport(key ic.PrivKey, psk pnet.PSK, gater connmgr.ConnectionGater, rcmgr network.ResourceManager) (tpt.Transport, error) {
+func NewTransport(key ic.PrivKey, psk pnet.PSK, gater connmgr.ConnectionGater) (tpt.Transport, error) {
 	if len(psk) > 0 {
 		log.Error("QUIC doesn't support private networks yet.")
 		return nil, errors.New("QUIC doesn't support private networks yet")
@@ -151,9 +144,6 @@ func NewTransport(key ic.PrivKey, psk pnet.PSK, gater connmgr.ConnectionGater, r
 	if err != nil {
 		return nil, err
 	}
-	if rcmgr == nil {
-		rcmgr = network.NullResourceManager
-	}
 	config := quicConfig.Clone()
 	keyBytes, err := key.Raw()
 	if err != nil {
@@ -166,29 +156,25 @@ func NewTransport(key ic.PrivKey, psk pnet.PSK, gater connmgr.ConnectionGater, r
 	}
 	config.Tracer = tracer
 
-	tr := &transport{
+	return &transport{
 		privKey:      key,
 		localPeer:    localPeer,
 		identity:     identity,
 		connManager:  connManager,
+		serverConfig: config,
+		clientConfig: config.Clone(),
 		gater:        gater,
-		rcmgr:        rcmgr,
-		conns:        make(map[quic.Session]*conn),
 		holePunching: make(map[holePunchKey]*activeHolePunch),
-	}
-	config.AllowConnectionWindowIncrease = tr.allowWindowIncrease
-	tr.serverConfig = config
-	tr.clientConfig = config.Clone()
-	return tr, nil
+	}, nil
 }
 
 // Dial dials a new QUIC connection
 func (t *transport) Dial(ctx context.Context, raddr ma.Multiaddr, p peer.ID) (tpt.CapableConn, error) {
-	netw, host, err := manet.DialArgs(raddr)
+	network, host, err := manet.DialArgs(raddr)
 	if err != nil {
 		return nil, err
 	}
-	addr, err := net.ResolveUDPAddr(netw, host)
+	addr, err := net.ResolveUDPAddr(network, host)
 	if err != nil {
 		return nil, err
 	}
@@ -197,27 +183,17 @@ func (t *transport) Dial(ctx context.Context, raddr ma.Multiaddr, p peer.ID) (tp
 		return nil, err
 	}
 	tlsConf, keyCh := t.identity.ConfigForPeer(p)
-	if ok, isClient, _ := network.GetSimultaneousConnect(ctx); ok && !isClient {
-		return t.holePunch(ctx, netw, addr, p)
+
+	if ok, isClient, _ := n.GetSimultaneousConnect(ctx); ok && !isClient {
+		return t.holePunch(ctx, network, addr, p)
 	}
 
-	scope, err := t.rcmgr.OpenConnection(network.DirOutbound, false)
-	if err != nil {
-		log.Debugw("resource manager blocked outgoing connection", "peer", p, "addr", raddr, "error", err)
-		return nil, err
-	}
-	if err := scope.SetPeer(p); err != nil {
-		log.Debugw("resource manager blocked outgoing connection for peer", "peer", p, "addr", raddr, "error", err)
-		scope.Done()
-		return nil, err
-	}
-	pconn, err := t.connManager.Dial(netw, addr)
+	pconn, err := t.connManager.Dial(network, addr)
 	if err != nil {
 		return nil, err
 	}
 	sess, err := quicDialContext(ctx, pconn, addr, host, tlsConf, t.clientConfig)
 	if err != nil {
-		scope.Done()
 		pconn.DecreaseCount()
 		return nil, err
 	}
@@ -229,20 +205,21 @@ func (t *transport) Dial(ctx context.Context, raddr ma.Multiaddr, p peer.ID) (tp
 	}
 	if remotePubKey == nil {
 		pconn.DecreaseCount()
-		scope.Done()
 		return nil, errors.New("go-libp2p-quic-transport BUG: expected remote pub key to be set")
 	}
+	go func() {
+		<-sess.Context().Done()
+		pconn.DecreaseCount()
+	}()
 
 	localMultiaddr, err := toQuicMultiaddr(pconn.LocalAddr())
 	if err != nil {
 		sess.CloseWithError(0, "")
 		return nil, err
 	}
-	c := &conn{
+	conn := &conn{
 		sess:            sess,
-		pconn:           pconn,
 		transport:       t,
-		scope:           scope,
 		privKey:         t.privKey,
 		localPeer:       t.localPeer,
 		localMultiaddr:  localMultiaddr,
@@ -250,24 +227,11 @@ func (t *transport) Dial(ctx context.Context, raddr ma.Multiaddr, p peer.ID) (tp
 		remotePeerID:    p,
 		remoteMultiaddr: remoteMultiaddr,
 	}
-	if t.gater != nil && !t.gater.InterceptSecured(network.DirOutbound, p, c) {
+	if t.gater != nil && !t.gater.InterceptSecured(n.DirOutbound, p, conn) {
 		sess.CloseWithError(errorCodeConnectionGating, "connection gated")
 		return nil, fmt.Errorf("secured connection gated")
 	}
-	t.addConn(sess, c)
-	return c, nil
-}
-
-func (t *transport) addConn(sess quic.Session, c *conn) {
-	t.connMx.Lock()
-	t.conns[sess] = c
-	t.connMx.Unlock()
-}
-
-func (t *transport) removeConn(sess quic.Session) {
-	t.connMx.Lock()
-	delete(t.conns, sess)
-	t.connMx.Unlock()
+	return conn, nil
 }
 
 func (t *transport) holePunch(ctx context.Context, network string, addr *net.UDPAddr, p peer.ID) (tpt.CapableConn, error) {
@@ -368,26 +332,12 @@ func (t *transport) Listen(addr ma.Multiaddr) (tpt.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	ln, err := newListener(conn, t, t.localPeer, t.privKey, t.identity, t.rcmgr)
+	ln, err := newListener(conn, t, t.localPeer, t.privKey, t.identity)
 	if err != nil {
 		conn.DecreaseCount()
 		return nil, err
 	}
 	return ln, nil
-}
-
-func (t *transport) allowWindowIncrease(sess quic.Session, size uint64) bool {
-	// If the QUIC session tries to increase the window before we've inserted it
-	// into our connections map (which we do right after dialing / accepting it),
-	// we have no way to account for that memory. This should be very rare.
-	// Block this attempt. The session can request more memory later.
-	t.connMx.Lock()
-	c, ok := t.conns[sess]
-	t.connMx.Unlock()
-	if !ok {
-		return false
-	}
-	return c.allowWindowIncrease(size)
 }
 
 // Proxy returns true if this transport proxies.

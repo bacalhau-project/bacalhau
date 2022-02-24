@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ic "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/mux"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/transport"
@@ -40,8 +41,6 @@ type Conn struct {
 
 	stat network.ConnStats
 }
-
-var _ network.Conn = &Conn{}
 
 func (c *Conn) ID() string {
 	// format: <first 10 chars of peer id>-<global conn ordinal>
@@ -94,7 +93,6 @@ func (c *Conn) removeStream(s *Stream) {
 	c.stat.NumStreams--
 	delete(c.streams.m, s)
 	c.streams.Unlock()
-	s.scope.Done()
 }
 
 // listens for new streams.
@@ -111,14 +109,9 @@ func (c *Conn) start() {
 			if err != nil {
 				return
 			}
-			scope, err := c.swarm.ResourceManager().OpenStream(c.RemotePeer(), network.DirInbound)
-			if err != nil {
-				ts.Reset()
-				continue
-			}
 			c.swarm.refs.Add(1)
 			go func() {
-				s, err := c.addStream(ts, network.DirInbound, scope)
+				s, err := c.addStream(ts, network.DirInbound)
 
 				// Don't defer this. We don't want to block
 				// swarm shutdown on the connection handler.
@@ -193,24 +186,19 @@ func (c *Conn) NewStream(ctx context.Context) (network.Stream, error) {
 		}
 	}
 
-	scope, err := c.swarm.ResourceManager().OpenStream(c.RemotePeer(), network.DirOutbound)
-	if err != nil {
-		return nil, err
-	}
 	ts, err := c.conn.OpenStream(ctx)
+
 	if err != nil {
-		scope.Done()
 		return nil, err
 	}
-	return c.addStream(ts, network.DirOutbound, scope)
+	return c.addStream(ts, network.DirOutbound)
 }
 
-func (c *Conn) addStream(ts network.MuxedStream, dir network.Direction, scope network.StreamManagementScope) (*Stream, error) {
+func (c *Conn) addStream(ts mux.MuxedStream, dir network.Direction) (*Stream, error) {
 	c.streams.Lock()
 	// Are we still online?
 	if c.streams.m == nil {
 		c.streams.Unlock()
-		scope.Done()
 		ts.Reset()
 		return nil, ErrConnClosed
 	}
@@ -219,7 +207,6 @@ func (c *Conn) addStream(ts network.MuxedStream, dir network.Direction, scope ne
 	s := &Stream{
 		stream: ts,
 		conn:   c,
-		scope:  scope,
 		stat: network.Stats{
 			Direction: dir,
 			Opened:    time.Now(),
@@ -256,8 +243,4 @@ func (c *Conn) GetStreams() []network.Stream {
 		streams = append(streams, s)
 	}
 	return streams
-}
-
-func (c *Conn) Scope() network.ConnScope {
-	return c.conn.Scope()
 }

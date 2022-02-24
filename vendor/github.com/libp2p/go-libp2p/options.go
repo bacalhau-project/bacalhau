@@ -233,7 +233,7 @@ func DisableRelay() Option {
 }
 
 // EnableRelayService configures libp2p to run a circuit v2 relay,
-// if we detect that we're publicly reachable.
+// if we dected that we're publicly reachable.
 func EnableRelayService(opts ...relayv2.Option) Option {
 	return func(cfg *Config) error {
 		cfg.EnableRelayService = true
@@ -342,17 +342,6 @@ func ConnectionGater(cg connmgr.ConnectionGater) Option {
 			return errors.New("cannot configure multiple connection gaters, or cannot configure both Filters and ConnectionGater")
 		}
 		cfg.ConnectionGater = cg
-		return nil
-	}
-}
-
-// ResourceManager configures libp2p to use the given ResourceManager.
-func ResourceManager(rcmgr network.ResourceManager) Option {
-	return func(cfg *Config) error {
-		if cfg.ResourceManager != nil {
-			return errors.New("cannot configure multiple resource managers")
-		}
-		cfg.ResourceManager = rcmgr
 		return nil
 	}
 }
@@ -469,16 +458,6 @@ func EnableHolePunching(opts ...holepunch.Option) Option {
 	return func(cfg *Config) error {
 		cfg.EnableHolePunching = true
 		cfg.HolePunchingOptions = opts
-		return nil
-	}
-}
-
-func WithDialTimeout(t time.Duration) Option {
-	return func(cfg *Config) error {
-		if t <= 0 {
-			return errors.New("dial timeout needs to be non-negative")
-		}
-		cfg.DialTimeout = t
 		return nil
 	}
 }

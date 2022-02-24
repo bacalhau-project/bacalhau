@@ -3,7 +3,7 @@ package libp2pquic
 import (
 	"errors"
 
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/mux"
 
 	"github.com/lucas-clemente/quic-go"
 )
@@ -16,12 +16,10 @@ type stream struct {
 	quic.Stream
 }
 
-var _ network.MuxedStream = &stream{}
-
 func (s *stream) Read(b []byte) (n int, err error) {
 	n, err = s.Stream.Read(b)
 	if err != nil && errors.Is(err, &quic.StreamError{}) {
-		err = network.ErrReset
+		err = mux.ErrReset
 	}
 	return n, err
 }
@@ -29,7 +27,7 @@ func (s *stream) Read(b []byte) (n int, err error) {
 func (s *stream) Write(b []byte) (n int, err error) {
 	n, err = s.Stream.Write(b)
 	if err != nil && errors.Is(err, &quic.StreamError{}) {
-		err = network.ErrReset
+		err = mux.ErrReset
 	}
 	return n, err
 }
@@ -53,3 +51,5 @@ func (s *stream) CloseRead() error {
 func (s *stream) CloseWrite() error {
 	return s.Stream.Close()
 }
+
+var _ mux.MuxedStream = &stream{}

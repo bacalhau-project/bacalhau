@@ -41,7 +41,7 @@ type cubicSender struct {
 	// Used for stats collection of slowstartPacketsLost
 	lastCutbackExitedSlowstart bool
 
-	// Congestion window in bytes.
+	// Congestion window in packets.
 	congestionWindow protocol.ByteCount
 
 	// Slow start congestion window in bytes, aka ssthresh.

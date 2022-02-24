@@ -1,4 +1,3 @@
-//go:build windows
 // +build windows
 
 package netroute
@@ -15,6 +14,8 @@ import (
 	"unsafe"
 
 	"github.com/google/gopacket/routing"
+	sockaddrconv "github.com/libp2p/go-sockaddr"
+	sockaddrnet "github.com/libp2p/go-sockaddr/net"
 	"golang.org/x/sys/windows"
 )
 
@@ -52,8 +53,8 @@ type mib_row2 struct {
 }
 
 func callBestRoute(source, dest net.IP) (*mib_row2, net.IP, error) {
-	sourceAddr, _, _ := sockaddrToAny(ipAndZoneToSockaddr(source, ""))
-	destAddr, _, _ := sockaddrToAny(ipAndZoneToSockaddr(dest, ""))
+	sourceAddr, _, _ := sockaddrconv.SockaddrToAny(sockaddrnet.IPAndZoneToSockaddr(source, ""))
+	destAddr, _, _ := sockaddrconv.SockaddrToAny(sockaddrnet.IPAndZoneToSockaddr(dest, ""))
 	bestRoute := make([]byte, 512)
 	bestSource := make([]byte, 116)
 
@@ -79,7 +80,7 @@ func callBestRoute(source, dest net.IP) (*mib_row2, net.IP, error) {
 	copyInto(bestSourceRaw.Addr.Data[:], bestSource[2:16])
 	copyInto(bestSourceRaw.Pad[:], bestSource[16:])
 	addr, _ := bestSourceRaw.Sockaddr()
-	bestSrc, _ := sockaddrToIPAndZone(addr)
+	bestSrc, _ := sockaddrnet.SockaddrToIPAndZone(addr)
 
 	return route, bestSrc, nil
 }
@@ -226,7 +227,7 @@ func (r *winRouter) RouteWithSrc(input net.HardwareAddr, src, dst net.IP) (iface
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	nextHop, _ := sockaddrToIPAndZone(addr)
+	nextHop, _ := sockaddrnet.SockaddrToIPAndZone(addr)
 
 	return iface, nextHop, pref, nil
 }

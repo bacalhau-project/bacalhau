@@ -32,7 +32,6 @@ const (
 	P_NOISE             = 0x01c6
 	P_WS                = 0x01DD
 	P_WSS               = 0x01DE // deprecated alias for /tls/ws
-	P_PLAINTEXTV2       = 0x706c61
 )
 
 var (
@@ -210,11 +209,6 @@ var (
 		Code:  P_NOISE,
 		VCode: CodeToVarint(P_NOISE),
 	}
-	protoPlaintextV2 = Protocol{
-		Name:  "plaintextv2",
-		Code:  P_PLAINTEXTV2,
-		VCode: CodeToVarint(P_PLAINTEXTV2),
-	}
 	protoWS = Protocol{
 		Name:  "ws",
 		Code:  P_WS,
@@ -257,7 +251,6 @@ func init() {
 		protoNOISE,
 		protoWS,
 		protoWSS,
-		protoPlaintextV2,
 	} {
 		if err := AddProtocol(p); err != nil {
 			panic(err)
