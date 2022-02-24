@@ -120,7 +120,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 			return err
 		}
 
-		internal.RunBacalhauRpcServer(hostAddress, jsonrpcPort, computeNode)
+		internal.RunBacalhauJsonRpcServer(hostAddress, jsonrpcPort, computeNode)
 
 		return nil
 
