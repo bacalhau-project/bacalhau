@@ -5,35 +5,65 @@ on:
     tags:
       - "v*"
 
+env:
+  go_version: 1.16.14
+  golang_ci_lint_version: 1.44.2
+
 jobs:
-  tagged-release:
-    name: "Tagged Release"
-    runs-on: "ubuntu-latest"
+  release:
+    name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+    runs-on: ${{ matrix.os }}
+    env:
+      GOVER: ${{ env.go_version }}
+      GOLANGCILINT_VER: ${{ env.golang_ci_lint_version }}
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+      GOPROXY: https://proxy.golang.org
+      ARCHIVE_OUTDIR: dist/archives
     strategy:
+      fail-fast: false
       matrix:
-        # build and publish in parallel: linux/amd64
-        goos: [linux]
-        goarch: [amd64]
+        go-version: ["${{ env.go_version }}"]
+        os: [ubuntu-latest]
+        target_arch: [amd64]
+        include:
+          - os: ubuntu-latest
+            target_os: linux
+
+        # go-version: [1.16.2]
+        # os: [ubuntu-latest, macOS-latest]
+        # target_arch: [arm64, amd64]
+        # include:
+        #   - os: ubuntu-latest
+        #     target_os: linux
+        #   - os: macOS-latest
+        #     target_os: darwin
+        # exclude:
+        #   - os: macOS-latest
+        #     target_arch: arm
+        #   - os: macOS-latest
+        #     target_arch: arm64
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Read go_version from release.json
-        uses: notiz-dev/github-action-json-property@release
-        id: go_version
+      - uses: actions/checkout@main
         with:
-          path: "release.json"
-          prop_path: "go_version"
-      - uses: actions/setup-go@v2
+          fetch-depth: 1
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
         with:
-          go-version: "^${{ steps.go_version.outputs.prop }}"
+          go-version: ${{ env.GOVER }}
       - run: go version
       - name: Build
-        run: make build
-      - name: Run tests
-        run: make test
-      - uses: wangyoucao577/go-release-action@v1.25
+        run: |
+          build-bacalhau-tgz
+      - name: Generate Changelog
+        run: echo "# Release Notes" > ${{ github.workflow }}-CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@master
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          binary_name: "bacalhau"
-          extra_files: LICENSE
-          build_command: make release
+          files: |
+            ${{ env.BINARY_TARBALL }}
+          body_path: ${{ github.workflow }}-CHANGELOG.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
