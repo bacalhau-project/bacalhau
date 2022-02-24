@@ -16,6 +16,18 @@ jobs:
         goarch: [amd64]
     steps:
       - uses: actions/checkout@v2
+      - name: Read version from release.json
+        uses: notiz-dev/github-action-json-property@release
+        id: gorkscrew_version
+        with:
+          path: "release.json"
+          prop_path: "version"
+      - name: Read go_version from release.json
+        uses: notiz-dev/github-action-json-property@release
+        id: go_version
+        with:
+          path: "release.json"
+          prop_path: "go_version"
       - name: Build
         run: make build
       - name: Run tests
