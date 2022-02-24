@@ -17,15 +17,18 @@ import (
 func IpfsCommand(repoPath string, args []string) (string, error) {
 	fmt.Printf("ipfs command:\nipfs %s\n", strings.Join(args, " "))
 	if repoPath == "" {
+		// production mode
 		return system.RunCommandGetResults("ipfs", args)
 	} else {
+		// dev mode (multiple ipfs servers on the same machine using private local ports)
 		return system.RunCommandGetResultsEnv("ipfs", args, []string{
 			"IPFS_PATH=" + repoPath,
+			"LIBP2P_FORCE_PNET=1",
 		})
 	}
 }
 
-func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
+func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort, ipfsSwarmPort int) error {
 	_, err := IpfsCommand(repoPath, []string{
 		"config",
 		"Addresses.Gateway",
@@ -38,6 +41,15 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
 		"config",
 		"Addresses.API",
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", ipfsApiPort),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = IpfsCommand(repoPath, []string{
+		"config",
+		"Addresses.Swarm",
+		"--json",
+		fmt.Sprintf(`["/ip4/0.0.0.0/tcp/%d"]`, ipfsSwarmPort),
 	})
 	if err != nil {
 		return err
@@ -78,6 +90,10 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 	if err != nil {
 		return "", "", err
 	}
+	swarmPort, err := freeport.GetFreePort()
+	if err != nil {
+		return "", "", err
+	}
 	_, err = IpfsCommand(repoDir, []string{
 		"init",
 	})
@@ -95,7 +111,7 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 			"bootstrap", "add", connectToMultiAddress,
 		})
 	}
-	err = StartDaemon(repoDir, gatewayPort, apiPort)
+	err = StartDaemon(repoDir, gatewayPort, apiPort, swarmPort)
 	if err != nil {
 		return "", "", err
 	}
