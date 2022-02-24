@@ -61,6 +61,8 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
 		}
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
+
+		//nolint
 		cmd.Run()
 	}()
 	return nil

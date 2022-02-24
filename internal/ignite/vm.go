@@ -133,6 +133,7 @@ func (vm *Vm) RunJob(resultsFolder string) error {
 		return err
 	}
 
+	//nolint
 	err, stdout, stderr := system.RunTeeCommand("sudo", []string{
 		"ignite",
 		"exec",

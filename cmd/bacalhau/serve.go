@@ -76,8 +76,11 @@ var serveCmd = &cobra.Command{
 		}
 		if startIpfsDevOnly {
 			if computeNode.TempIpfsRepo {
+				//nolint
 				ipfs.Init(computeNode.IpfsRepo)
 			}
+
+			//nolint
 			ipfs.StartDaemon(computeNode.IpfsRepo, ipfsGatewayPort, ipfsApiPort)
 			devString += " --start-ipfs-dev-only"
 		}
