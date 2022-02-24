@@ -13,7 +13,7 @@ jobs:
     name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.os }}
     env:
-      GOVER: ${{ env.go_version }}
+      GOVER: ${{ matrix.go-version }}
       GOLANGCILINT_VER: ${{ env.golang_ci_lint_version }}
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
