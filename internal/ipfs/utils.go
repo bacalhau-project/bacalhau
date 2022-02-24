@@ -1,15 +1,21 @@
 package ipfs
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/phayes/freeport"
 )
 
 func IpfsCommand(repoPath string, args []string) (string, error) {
+	fmt.Printf("ipfs %s\n", strings.Join(args, " "))
 	if repoPath == "" {
 		return system.RunCommandGetResults("ipfs", args)
 	} else {
@@ -17,13 +23,6 @@ func IpfsCommand(repoPath string, args []string) (string, error) {
 			"IPFS_PATH=" + repoPath,
 		})
 	}
-}
-
-func Init(repoPath string) error {
-	_, err := IpfsCommand(repoPath, []string{
-		"init",
-	})
-	return err
 }
 
 func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
@@ -43,6 +42,7 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("IPFS_PATH=%s ipfs daemon\n", repoPath)
 	go func() {
 		cmd := exec.Command("ipfs", "daemon")
 		cmd.Env = []string{
@@ -50,9 +50,92 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort int) error {
 		}
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err = cmd.Run()
+		if err != nil {
+			fmt.Printf("error running ipfs daemon: %s\n", err)
+		}
 	}()
 	return nil
+}
+
+// this is useful for when developing locally and you want an IPFS server that can co-exist with
+// others on the same machine
+// TODO: how we connect to ipfs **should** be over the network (rather than shelling out to the ipfs cli with env vars set)
+func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, string, error) {
+	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("TEMP DIR: %s\n", repoDir)
+	_, err = system.EnsureSystemDirectory(repoDir)
+	if err != nil {
+		return "", "", err
+	}
+	gatewayPort, err := freeport.GetFreePort()
+	if err != nil {
+		return "", "", err
+	}
+	apiPort, err := freeport.GetFreePort()
+	if err != nil {
+		return "", "", err
+	}
+	_, err = IpfsCommand(repoDir, []string{
+		"init",
+	})
+	if err != nil {
+		return "", "", err
+	}
+	_, err = IpfsCommand(repoDir, []string{
+		"bootstrap", "rm", "--all",
+	})
+	if err != nil {
+		return "", "", err
+	}
+	if connectToMultiAddress != "" {
+		_, err = IpfsCommand(repoDir, []string{
+			"bootstrap", "add", connectToMultiAddress,
+		})
+	}
+	err = StartDaemon(repoDir, gatewayPort, apiPort)
+	if err != nil {
+		return "", "", err
+	}
+
+	nodeAddress := ""
+
+	// give the daemon a better chance to win the race over the lockfile (not perfect though)
+	time.Sleep(1 * time.Second)
+	err = system.TryUntilSucceedsN(func() error {
+		jsonBlob, err := IpfsCommand(repoDir, []string{
+			"id",
+		})
+		if err != nil {
+			fmt.Printf("error running command: %s\n", err)
+			return err
+		}
+		fmt.Printf("JSON: %s\n", jsonBlob)
+		result := struct {
+			Addresses []string
+		}{}
+		err = json.Unmarshal([]byte(jsonBlob), &result)
+		if err != nil {
+			fmt.Printf("error parsing JSON: %s\n", err)
+			return err
+		}
+		fmt.Printf("parsed JSON: %+v\n", result)
+		if len(result.Addresses) > 0 {
+			nodeAddress = result.Addresses[0]
+			return nil
+		} else {
+			return fmt.Errorf("no node address")
+		}
+	}, "extracting ipfs node id", 10)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return repoDir, nodeAddress, nil
 }
 
 func HasCid(repoPath, cid string) (bool, error) {

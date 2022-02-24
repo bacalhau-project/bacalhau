@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func CommandLogger(command string, args []string) {
@@ -33,6 +34,24 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
 	return cmd.Run(), stdoutBuf, stderrBuf
+}
+
+func TryUntilSucceedsN(f func() error, desc string, retries int) error {
+	attempt := 0
+	for {
+		err := f()
+		if err != nil {
+			if attempt > retries {
+				return err
+			} else {
+				fmt.Printf("Error %s: %v, pausing and trying again...\n", desc, err)
+				time.Sleep(time.Duration(attempt) * time.Second)
+			}
+		} else {
+			return nil
+		}
+		attempt++
+	}
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
