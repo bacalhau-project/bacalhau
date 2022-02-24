@@ -13,7 +13,7 @@ System Components:
 - The AutoRelay service. This is the service that actually:
 
 AutoNATService: https://github.com/libp2p/go-libp2p-autonat-svc
-AutoNAT: https://github.com/libp2p/go-libp2p-autonat
+AutoNAT: https://github.com/libp2p/go-libp2p/p2p/host/autonat
 
 How it works:
 - `AutoNATService` instances are instantiated in the bootstrappers (or other

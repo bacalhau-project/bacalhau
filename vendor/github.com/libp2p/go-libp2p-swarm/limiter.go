@@ -20,23 +20,15 @@ type dialResult struct {
 }
 
 type dialJob struct {
-	addr ma.Multiaddr
-	peer peer.ID
-	ctx  context.Context
-	resp chan dialResult
+	addr    ma.Multiaddr
+	peer    peer.ID
+	ctx     context.Context
+	resp    chan dialResult
+	timeout time.Duration
 }
 
 func (dj *dialJob) cancelled() bool {
 	return dj.ctx.Err() != nil
-}
-
-func (dj *dialJob) dialTimeout() time.Duration {
-	timeout := transport.DialTimeout
-	if lowTimeoutFilters.AddrBlocked(dj.addr) {
-		timeout = DialTimeoutLocal
-	}
-
-	return timeout
 }
 
 type dialLimiter struct {
@@ -221,14 +213,14 @@ func (dl *dialLimiter) executeDial(j *dialJob) {
 		return
 	}
 
-	dctx, cancel := context.WithTimeout(j.ctx, j.dialTimeout())
+	dctx, cancel := context.WithTimeout(j.ctx, j.timeout)
 	defer cancel()
 
 	con, err := dl.dialFunc(dctx, j.peer, j.addr)
 	select {
 	case j.resp <- dialResult{Conn: con, Addr: j.addr, Err: err}:
 	case <-j.ctx.Done():
-		if err == nil {
+		if con != nil {
 			con.Close()
 		}
 	}
