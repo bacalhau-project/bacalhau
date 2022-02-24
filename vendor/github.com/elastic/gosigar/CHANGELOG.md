@@ -15,6 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
+## [0.14.2]
+
+### Fixed
+
+- Fix again unsupported devices for filesystem. [#164](https://github.com/elastic/gosigar/pull/164)
+
+## [0.14.1]
+
+### Fixed
+
+- Fix unsupported devices for filesystem. [#159](https://github.com/elastic/gosigar/pull/159)
+
+## [0.14.0]
+
+### Addded
+
+- Add darwin ARM support. [#152](https://github.com/elastic/gosigar/pull/152)
+
+## [0.13.0]
+
+### Added
+
+- Add method of overriding the /sys/fs/cgroup hierarchy, for reading cgroup metrics inside Docker [#148](https://github.com/elastic/gosigar/pull/148)
+
 ## [0.12.0]
 
 ### Added
@@ -172,7 +196,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `ProcStatus.PPID` value is wrong on Windows. [#55](https://github.com/elastic/gosigar/pull/55)
 - Fixed `ProcStatus.Username` error on Windows XP [#56](https://github.com/elastic/gosigar/pull/56)
 
-[Unreleased]: https://github.com/elastic/gosigar/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/elastic/gosigar/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/elastic/gosigar/releases/tag/v0.14.1
+[0.14.0]: https://github.com/elastic/gosigar/releases/tag/v0.14.0
+[0.13.0]: https://github.com/elastic/gosigar/releases/tag/v0.13.0
 [0.12.0]: https://github.com/elastic/gosigar/releases/tag/v0.12.0
 [0.11.0]: https://github.com/elastic/gosigar/releases/tag/v0.11.0
 [0.10.5]: https://github.com/elastic/gosigar/releases/tag/v0.10.5

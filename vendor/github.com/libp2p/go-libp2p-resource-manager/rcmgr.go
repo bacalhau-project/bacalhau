@@ -18,7 +18,8 @@ var log = logging.Logger("rcmgr")
 type resourceManager struct {
 	limits Limiter
 
-	trace *trace
+	trace   *trace
+	metrics *metrics
 
 	system    *systemScope
 	transient *transientScope
@@ -259,9 +260,11 @@ func (r *resourceManager) OpenConnection(dir network.Direction, usefd bool) (net
 
 	if err := conn.AddConn(dir, usefd); err != nil {
 		conn.Done()
+		r.metrics.BlockConn(dir, usefd)
 		return nil, err
 	}
 
+	r.metrics.AllowConn(dir, usefd)
 	return conn, nil
 }
 
@@ -273,9 +276,11 @@ func (r *resourceManager) OpenStream(p peer.ID, dir network.Direction) (network.
 	err := stream.AddStream(dir)
 	if err != nil {
 		stream.Done()
+		r.metrics.BlockStream(p, dir)
 		return nil, err
 	}
 
+	r.metrics.AllowStream(p, dir)
 	return stream, nil
 }
 
@@ -360,56 +365,68 @@ func (r *resourceManager) gc() {
 
 func newSystemScope(limit Limit, rcmgr *resourceManager) *systemScope {
 	return &systemScope{
-		resourceScope: newResourceScope(limit, nil, "system", rcmgr.trace),
+		resourceScope: newResourceScope(limit, nil, "system", rcmgr.trace, rcmgr.metrics),
 	}
 }
 
 func newTransientScope(limit Limit, rcmgr *resourceManager) *transientScope {
 	return &transientScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{rcmgr.system.resourceScope}, "transient", rcmgr.trace),
-		system:        rcmgr.system,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{rcmgr.system.resourceScope},
+			"transient", rcmgr.trace, rcmgr.metrics),
+		system: rcmgr.system,
 	}
 }
 
 func newServiceScope(name string, limit Limit, rcmgr *resourceManager) *serviceScope {
 	return &serviceScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{rcmgr.system.resourceScope}, fmt.Sprintf("service:%s", name), rcmgr.trace),
-		name:          name,
-		rcmgr:         rcmgr,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{rcmgr.system.resourceScope},
+			fmt.Sprintf("service:%s", name), rcmgr.trace, rcmgr.metrics),
+		name:  name,
+		rcmgr: rcmgr,
 	}
 }
 
 func newProtocolScope(proto protocol.ID, limit Limit, rcmgr *resourceManager) *protocolScope {
 	return &protocolScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{rcmgr.system.resourceScope}, fmt.Sprintf("protocol:%s", proto), rcmgr.trace),
-		proto:         proto,
-		rcmgr:         rcmgr,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{rcmgr.system.resourceScope},
+			fmt.Sprintf("protocol:%s", proto), rcmgr.trace, rcmgr.metrics),
+		proto: proto,
+		rcmgr: rcmgr,
 	}
 }
 
 func newPeerScope(p peer.ID, limit Limit, rcmgr *resourceManager) *peerScope {
 	return &peerScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{rcmgr.system.resourceScope}, fmt.Sprintf("peer:%s", p), rcmgr.trace),
-		peer:          p,
-		rcmgr:         rcmgr,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{rcmgr.system.resourceScope},
+			fmt.Sprintf("peer:%s", p), rcmgr.trace, rcmgr.metrics),
+		peer:  p,
+		rcmgr: rcmgr,
 	}
 }
 
 func newConnectionScope(dir network.Direction, usefd bool, limit Limit, rcmgr *resourceManager) *connectionScope {
 	return &connectionScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{rcmgr.transient.resourceScope, rcmgr.system.resourceScope}, fmt.Sprintf("conn-%d", rcmgr.nextConnId()), rcmgr.trace),
-		dir:           dir,
-		usefd:         usefd,
-		rcmgr:         rcmgr,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{rcmgr.transient.resourceScope, rcmgr.system.resourceScope},
+			fmt.Sprintf("conn-%d", rcmgr.nextConnId()), rcmgr.trace, rcmgr.metrics),
+		dir:   dir,
+		usefd: usefd,
+		rcmgr: rcmgr,
 	}
 }
 
 func newStreamScope(dir network.Direction, limit Limit, peer *peerScope, rcmgr *resourceManager) *streamScope {
 	return &streamScope{
-		resourceScope: newResourceScope(limit, []*resourceScope{peer.resourceScope, rcmgr.transient.resourceScope, rcmgr.system.resourceScope}, fmt.Sprintf("stream-%d", rcmgr.nextStreamId()), rcmgr.trace),
-		dir:           dir,
-		rcmgr:         peer.rcmgr,
-		peer:          peer,
+		resourceScope: newResourceScope(limit,
+			[]*resourceScope{peer.resourceScope, rcmgr.transient.resourceScope, rcmgr.system.resourceScope},
+			fmt.Sprintf("stream-%d", rcmgr.nextStreamId()), rcmgr.trace, rcmgr.metrics),
+		dir:   dir,
+		rcmgr: peer.rcmgr,
+		peer:  peer,
 	}
 }
 
@@ -433,7 +450,7 @@ func (s *serviceScope) getPeerScope(p peer.ID) *resourceScope {
 		s.peers = make(map[peer.ID]*resourceScope)
 	}
 
-	ps = newResourceScope(l, nil, fmt.Sprintf("%s.peer:%s", s.name, p), s.rcmgr.trace)
+	ps = newResourceScope(l, nil, fmt.Sprintf("%s.peer:%s", s.name, p), s.rcmgr.trace, s.rcmgr.metrics)
 	s.peers[p] = ps
 
 	ps.IncRef()
@@ -460,7 +477,7 @@ func (s *protocolScope) getPeerScope(p peer.ID) *resourceScope {
 		s.peers = make(map[peer.ID]*resourceScope)
 	}
 
-	ps = newResourceScope(l, nil, fmt.Sprintf("%s.peer:%s", s.name, p), s.rcmgr.trace)
+	ps = newResourceScope(l, nil, fmt.Sprintf("%s.peer:%s", s.name, p), s.rcmgr.trace, s.rcmgr.metrics)
 	s.peers[p] = ps
 
 	ps.IncRef()
@@ -497,6 +514,7 @@ func (s *connectionScope) SetPeer(p peer.ID) error {
 	if err := s.peer.ReserveForChild(stat); err != nil {
 		s.peer.DecRef()
 		s.peer = nil
+		s.rcmgr.metrics.BlockPeer(p)
 		return err
 	}
 
@@ -510,6 +528,7 @@ func (s *connectionScope) SetPeer(p peer.ID) error {
 	}
 	s.resourceScope.edges = edges
 
+	s.rcmgr.metrics.AllowPeer(p)
 	return nil
 }
 
@@ -540,6 +559,7 @@ func (s *streamScope) SetProtocol(proto protocol.ID) error {
 	if err := s.proto.ReserveForChild(stat); err != nil {
 		s.proto.DecRef()
 		s.proto = nil
+		s.rcmgr.metrics.BlockProtocol(proto)
 		return err
 	}
 
@@ -550,6 +570,7 @@ func (s *streamScope) SetProtocol(proto protocol.ID) error {
 		s.proto = nil
 		s.peerProtoScope.DecRef()
 		s.peerProtoScope = nil
+		s.rcmgr.metrics.BlockProtocolPeer(proto, s.peer.peer)
 		return err
 	}
 
@@ -565,6 +586,7 @@ func (s *streamScope) SetProtocol(proto protocol.ID) error {
 	}
 	s.resourceScope.edges = edges
 
+	s.rcmgr.metrics.AllowProtocol(proto)
 	return nil
 }
 
@@ -598,6 +620,7 @@ func (s *streamScope) SetService(svc string) error {
 	if err := s.svc.ReserveForChild(stat); err != nil {
 		s.svc.DecRef()
 		s.svc = nil
+		s.rcmgr.metrics.BlockService(svc)
 		return err
 	}
 
@@ -609,6 +632,7 @@ func (s *streamScope) SetService(svc string) error {
 		s.svc = nil
 		s.peerSvcScope.DecRef()
 		s.peerSvcScope = nil
+		s.rcmgr.metrics.BlockServicePeer(svc, s.peer.peer)
 		return err
 	}
 
@@ -623,6 +647,7 @@ func (s *streamScope) SetService(svc string) error {
 	}
 	s.resourceScope.edges = edges
 
+	s.rcmgr.metrics.AllowService(svc)
 	return nil
 }
 

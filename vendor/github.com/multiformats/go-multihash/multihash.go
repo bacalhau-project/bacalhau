@@ -51,6 +51,7 @@ const (
 	KECCAK_256 = 0x1B
 	KECCAK_384 = 0x1C
 	KECCAK_512 = 0x1D
+	BLAKE3     = 0x1E
 
 	SHAKE_128 = 0x18
 	SHAKE_256 = 0x19
@@ -64,9 +65,9 @@ const (
 
 	DBL_SHA2_256 = 0x56
 
-	MURMUR3_128 = 0x22
-	// Deprecated: use MURMUR3_128
-	MURMUR3 = MURMUR3_128
+	MURMUR3X64_64 = 0x22
+	// Deprecated: use MURMUR3X64_64
+	MURMUR3 = MURMUR3X64_64
 
 	SHA2_256_TRUNC254_PADDED  = 0x1012
 	X11                       = 0x1100
@@ -103,11 +104,12 @@ var Names = map[string]uint64{
 	"sha3-384":                  SHA3_384,
 	"sha3-512":                  SHA3_512,
 	"dbl-sha2-256":              DBL_SHA2_256,
-	"murmur3-128":               MURMUR3_128,
+	"murmur3-x64-64":            MURMUR3X64_64,
 	"keccak-224":                KECCAK_224,
 	"keccak-256":                KECCAK_256,
 	"keccak-384":                KECCAK_384,
 	"keccak-512":                KECCAK_512,
+	"blake3":                    BLAKE3,
 	"shake-128":                 SHAKE_128,
 	"shake-256":                 SHAKE_256,
 	"sha2-256-trunc254-padded":  SHA2_256_TRUNC254_PADDED,
@@ -127,11 +129,12 @@ var Codes = map[uint64]string{
 	SHA3_384:                  "sha3-384",
 	SHA3_512:                  "sha3-512",
 	DBL_SHA2_256:              "dbl-sha2-256",
-	MURMUR3_128:               "murmur3-128",
+	MURMUR3X64_64:             "murmur3-x64-64",
 	KECCAK_224:                "keccak-224",
 	KECCAK_256:                "keccak-256",
 	KECCAK_384:                "keccak-384",
 	KECCAK_512:                "keccak-512",
+	BLAKE3:                    "blake3",
 	SHAKE_128:                 "shake-128",
 	SHAKE_256:                 "shake-256",
 	SHA2_256_TRUNC254_PADDED:  "sha2-256-trunc254-padded",
@@ -170,12 +173,12 @@ type DecodedMultihash struct {
 type Multihash []byte
 
 // HexString returns the hex-encoded representation of a multihash.
-func (m *Multihash) HexString() string {
-	return hex.EncodeToString([]byte(*m))
+func (m Multihash) HexString() string {
+	return hex.EncodeToString([]byte(m))
 }
 
 // String is an alias to HexString().
-func (m *Multihash) String() string {
+func (m Multihash) String() string {
 	return m.HexString()
 }
 
