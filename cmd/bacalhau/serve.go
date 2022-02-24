@@ -67,7 +67,7 @@ var serveCmd = &cobra.Command{
 
 		ipfsPathDevString := " "
 		if startIpfsDevOnly {
-			ipfsRepo, _, err := ipfs.StartBacalhauDevelopmentIpfsServer("")
+			ipfsRepo, _, err := ipfs.StartBacalhauDevelopmentIpfsServer(ctx, "")
 			if err != nil {
 				return err
 			}
@@ -120,7 +120,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 			return err
 		}
 
-		internal.RunBacalhauJsonRpcServer(hostAddress, jsonrpcPort, computeNode)
+		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, computeNode)
 
 		return nil
 

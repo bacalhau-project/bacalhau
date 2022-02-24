@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +29,11 @@ func IpfsCommand(repoPath string, args []string) (string, error) {
 	}
 }
 
-func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort, ipfsSwarmPort int) error {
+func StartDaemon(
+	ctx context.Context,
+	repoPath string,
+	ipfsGatewayPort, ipfsApiPort, ipfsSwarmPort int,
+) error {
 	_, err := IpfsCommand(repoPath, []string{
 		"config",
 		"Addresses.Gateway",
@@ -55,17 +60,21 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort, ipfsSwarmPort in
 		return err
 	}
 	fmt.Printf("IPFS_PATH=%s ipfs daemon\n", repoPath)
+	cmd := exec.Command("ipfs", "daemon")
+	cmd.Env = []string{
+		"IPFS_PATH=" + repoPath,
+	}
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 	go func() {
-		cmd := exec.Command("ipfs", "daemon")
-		cmd.Env = []string{
-			"IPFS_PATH=" + repoPath,
-		}
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
 		err = cmd.Run()
 		if err != nil {
 			fmt.Printf("error running ipfs daemon: %s\n", err)
 		}
+	}()
+	go func() {
+		<-ctx.Done()
+		cmd.Process.Kill()
 	}()
 	return nil
 }
@@ -73,7 +82,7 @@ func StartDaemon(repoPath string, ipfsGatewayPort, ipfsApiPort, ipfsSwarmPort in
 // this is useful for when developing locally and you want an IPFS server that can co-exist with
 // others on the same machine
 // TODO: how we connect to ipfs **should** be over the network (rather than shelling out to the ipfs cli with env vars set)
-func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, string, error) {
+func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddress string) (string, string, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
 		log.Fatal(err)
@@ -111,7 +120,7 @@ func StartBacalhauDevelopmentIpfsServer(connectToMultiAddress string) (string, s
 			"bootstrap", "add", connectToMultiAddress,
 		})
 	}
-	err = StartDaemon(repoDir, gatewayPort, apiPort, swarmPort)
+	err = StartDaemon(ctx, repoDir, gatewayPort, apiPort, swarmPort)
 	if err != nil {
 		return "", "", err
 	}
