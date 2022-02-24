@@ -69,13 +69,20 @@ h, err := libp2p.New(
 ```
 
 The example above will replace the default transports with a single TCP
-transport. To add multiple tranports, use `ChainOptions`:
+transport. To add multiple transports:
 
 ``` go
 // TCP and QUIC:
 h, err := libp2p.New(
     libp2p.Transport(tcp.NewTCPTransport),
     libp2p.Transport(quic.NewTransport), // see https://github.com/libp2p/go-libp2p-quic-transport
+)
+```
+
+To use TCP transport options, pass them to the `libp2p.Transport` constructor:
+```go
+h, err := libp2p.New(
+    libp2p.Transport(tcp.NewTCPTransport, tcp.DisableReuseport(), tcp.WithConnectionTimeout(20*time.Second))
 )
 ```
 
