@@ -60,17 +60,17 @@ func RunBacalhauJsonRpcServer(
 	router.Handle("/", server)
 	httpServer := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: router}
 
+	isClosing := false
 	go func() {
 		err = httpServer.ListenAndServe()
-		if err != nil {
+		if err != nil && !isClosing {
 			log.Fatalf("http.ListenAndServe failed: %s", err)
 		}
 	}()
 
 	<-ctx.Done()
 
-	err = httpServer.Shutdown(nil)
-	if err != nil {
-		log.Fatalf("httpServer.Shutdown failed: %s", err)
-	}
+	isClosing = true
+
+	httpServer.Close()
 }

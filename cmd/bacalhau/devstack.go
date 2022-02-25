@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/internal"
@@ -27,13 +28,14 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Second * 10)
 
+		fmt.Printf("CLOSING!\n")
 		cancelFunction()
 
 		// wait forever because everything else is running in a goroutine
-		select {}
+		//select {}
 
-		//return nil
+		return nil
 	},
 }
