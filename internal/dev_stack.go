@@ -77,6 +77,7 @@ func NewDevStack(
 		ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
 		ipfsRepos = append(ipfsRepos, ipfsRepo)
 		node.IpfsRepo = ipfsRepo
+		node.IpfsConnectMultiAddress = ipfsMultiaddress
 
 		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 		fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)

@@ -52,7 +52,10 @@ var resultsListCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+
+			fmt.Printf("RESULTS: %s\n", resultsFolder)
 			if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
+				fmt.Printf("continue not exist\n")
 				continue
 			}
 			clustered.Traces = append(clustered.Traces, traces.Trace{

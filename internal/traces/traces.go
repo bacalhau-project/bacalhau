@@ -36,11 +36,7 @@ type TraceCollection struct {
 func (t *TraceCollection) parseFiles() error {
 	t.data = make(map[string][]map[string]float64)
 	for _, trace := range t.Traces {
-		pwd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		bs, err := os.ReadFile(fmt.Sprintf("%s/%s", pwd, trace.Filename))
+		bs, err := os.ReadFile(trace.Filename)
 		if err != nil {
 			return err
 		}

@@ -69,7 +69,12 @@ func (vm *Vm) Stop() error {
 // to do this - we need the commands inside the vm as a "job.sh" file
 // (so we can "bash job.sh" as the command)
 // let's write our "job.sh" and copy it onto the vm
-func (vm *Vm) PrepareJob() error {
+func (vm *Vm) PrepareJob(
+	// if this is defined then it means we are in development mode
+	// and don't want to connect to the mainline ipfs DHT but
+	// have a local development cluster of ipfs nodes instead
+	connectToIpfsMultiaddress string,
+) error {
 	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
 	if err != nil {
 		return err
@@ -91,6 +96,7 @@ func (vm *Vm) PrepareJob() error {
 	if err != nil {
 		return err
 	}
+
 	err = system.RunCommand("sudo", []string{
 		"ignite",
 		"exec",
@@ -100,6 +106,28 @@ func (vm *Vm) PrepareJob() error {
 	if err != nil {
 		return err
 	}
+
+	if connectToIpfsMultiaddress != "" {
+		err = system.RunCommand("sudo", []string{
+			"ignite",
+			"exec",
+			vm.Name,
+			"ipfs bootstrap rm --all",
+		})
+		if err != nil {
+			return err
+		}
+		err = system.RunCommand("sudo", []string{
+			"ignite",
+			"exec",
+			vm.Name,
+			fmt.Sprintf("ipfs bootstrap add %s", connectToIpfsMultiaddress),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	go func() {
 		err := system.RunCommand("sudo", []string{
 			"ignite",
@@ -126,12 +154,6 @@ func (vm *Vm) PrepareJob() error {
 // copy the psrecord metrics out of the vm
 // TODO: bunlde the results data and metrics
 func (vm *Vm) RunJob(resultsFolder string) error {
-
-	err := vm.PrepareJob()
-
-	if err != nil {
-		return err
-	}
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", []string{
 		"ignite",
