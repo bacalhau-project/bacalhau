@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/rpc"
 
 	"github.com/filecoin-project/bacalhau/internal/types"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/rpc"
-	"github.com/gorilla/rpc/json"
 )
 
 type JobServer struct {
@@ -23,7 +21,7 @@ type SubmitArgs struct {
 	Job *types.Job
 }
 
-func (server *JobServer) List(r *http.Request, args *ListArgs, reply *types.ListResponse) error {
+func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
 	*reply = types.ListResponse{
 		Jobs:       server.ComputeNode.Jobs,
 		JobState:   server.ComputeNode.JobState,
@@ -33,7 +31,7 @@ func (server *JobServer) List(r *http.Request, args *ListArgs, reply *types.List
 	return nil
 }
 
-func (server *JobServer) Submit(r *http.Request, args *SubmitArgs, reply *types.Job) error {
+func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
 	server.ComputeNode.Publish(args.Job)
 	*reply = *args.Job
 	return nil
@@ -49,16 +47,16 @@ func RunBacalhauJsonRpcServer(
 		ComputeNode: computeNode,
 	}
 
-	server := rpc.NewServer()
-	server.RegisterCodec(json.NewCodec(), "application/json")
-	server.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
-	err := server.RegisterService(job, "")
+	rpcServer := rpc.NewServer()
+	err := rpcServer.Register(job)
 	if err != nil {
-		log.Fatalf("server.RegisterService failed: %s", err)
+		log.Fatalf("Format of service Job isn't correct. %s", err)
 	}
-	router := mux.NewRouter()
-	router.Handle("/", server)
-	httpServer := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: router}
+
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", host, port),
+		Handler: rpcServer,
+	}
 
 	isClosing := false
 	go func() {
