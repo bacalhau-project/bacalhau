@@ -23,9 +23,11 @@ import (
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
 
 type ComputeNode struct {
-	Id       string
-	IpfsRepo string
-	Ctx      context.Context
+	Id                      string
+	IpfsRepo                string
+	IpfsConnectMultiAddress string
+
+	Ctx context.Context
 	// the jobs we have already filtered and might want to process
 	Jobs []types.Job
 
@@ -37,8 +39,6 @@ type ComputeNode struct {
 	// a map of job id onto bacalhau compute nodes that claim to have done the work onto cids of the job results published by them
 	JobResults map[string]map[string]string
 
-	// are we using a temporary IPFS repo for local testing?
-	TempIpfsRepo          bool
 	Host                  host.Host
 	PubSub                *pubsub.PubSub
 	JobCreateTopic        *pubsub.Topic
@@ -98,19 +98,20 @@ func NewComputeNode(
 		return nil, err
 	}
 	server := &ComputeNode{
-		Id:                    host.ID().String(),
-		IpfsRepo:              "",
-		Ctx:                   ctx,
-		Jobs:                  []types.Job{},
-		Host:                  host,
-		PubSub:                pubsub,
-		JobState:              make(map[string]map[string]string),
-		JobStatus:             make(map[string]map[string]string),
-		JobResults:            make(map[string]map[string]string),
-		JobCreateTopic:        jobCreateTopic,
-		JobCreateSubscription: jobCreateSubscription,
-		JobUpdateTopic:        jobUpdateTopic,
-		JobUpdateSubscription: jobUpdateSubscription,
+		Id:                      host.ID().String(),
+		IpfsRepo:                "",
+		IpfsConnectMultiAddress: "",
+		Ctx:                     ctx,
+		Jobs:                    []types.Job{},
+		Host:                    host,
+		PubSub:                  pubsub,
+		JobState:                make(map[string]map[string]string),
+		JobStatus:               make(map[string]map[string]string),
+		JobResults:              make(map[string]map[string]string),
+		JobCreateTopic:          jobCreateTopic,
+		JobCreateSubscription:   jobCreateSubscription,
+		JobUpdateTopic:          jobUpdateTopic,
+		JobUpdateSubscription:   jobUpdateSubscription,
 	}
 	go server.ReadLoopJobCreate()
 	go server.ReadLoopJobUpdate()
@@ -272,6 +273,12 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 	}
 
 	defer vm.Stop()
+
+	err = vm.PrepareJob(server.IpfsConnectMultiAddress)
+
+	if err != nil {
+		return "", err
+	}
 
 	err = vm.RunJob(resultsFolder)
 
