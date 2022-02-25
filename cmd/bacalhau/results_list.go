@@ -53,7 +53,6 @@ var resultsListCmd = &cobra.Command{
 				return err
 			}
 
-			fmt.Printf("RESULTS: %s\n", resultsFolder)
 			if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
 				fmt.Printf("continue not exist\n")
 				continue
