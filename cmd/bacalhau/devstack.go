@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/spf13/cobra"
@@ -19,11 +20,17 @@ var devstackCmd = &cobra.Command{
 		ctx := context.Background()
 		ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
-		_, err := internal.NewDevStack(ctxWithCancel, 3)
+		stack, err := internal.NewDevStack(ctxWithCancel, 3)
 
 		if err != nil {
 			cancelFunction()
 			return err
+		}
+
+		for i, node := range stack.Nodes {
+			fmt.Printf("\nnode %d:\n", i)
+			fmt.Printf("IPFS_PATH=%s ipfs\n", node.IpfsRepo)
+			fmt.Printf("go run . --jsonrpc-port=%d list\n", node.JsonRpcPort)
 		}
 
 		// wait forever because everything else is running in a goroutine
