@@ -45,6 +45,8 @@ func NewDevStack(
 
 		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", node.Host.Addrs()[0].String(), node.Host.ID())
 
+		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
+
 		// if we have started any bacalhau servers already, use the first one
 		if len(bacalhauMultiAddresses) > 0 {
 			err = node.Connect(bacalhauMultiAddresses[0])

@@ -47,7 +47,9 @@ type ComputeNode struct {
 	JobUpdateSubscription *pubsub.Subscription
 }
 
-func makeLibp2pHost(port int) (host.Host, error) {
+func makeLibp2pHost(
+	port int,
+) (host.Host, error) {
 	// Creates a new RSA key pair for this host.
 	// TODO: allow the user to provide an existing keypair
 	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
@@ -114,8 +116,6 @@ func NewComputeNode(
 	go server.ReadLoopJobUpdate()
 	go func() {
 		<-ctx.Done()
-		// jobCreateSubscription.Cancel()
-		// jobUpdateSubscription.Cancel()
 		host.Close()
 	}()
 	return server, nil
