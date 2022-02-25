@@ -72,7 +72,9 @@ func (t *TraceCollection) parseFiles() error {
 					"virtual": virtual,
 				})
 			} else {
-				log.Printf("Unexpected line '%s', ignoring", line)
+				if os.Getenv("DEBUG") != "" {
+					log.Printf("Unexpected line '%s', ignoring", line)
+				}
 			}
 		}
 	}
