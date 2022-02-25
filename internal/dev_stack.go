@@ -9,12 +9,9 @@ import (
 )
 
 type DevStackNode struct {
-	Node                   *ComputeNode
-	JsonRpcPort            int
-	IpfsRepo               string
-	StopJsonRpcChan        chan bool
-	StopBacalhauLibp2pChan chan bool
-	StopIpfsDaemonChan     chan bool
+	Node        *ComputeNode
+	JsonRpcPort int
+	IpfsRepo    string
 }
 
 type DevStack struct {
@@ -24,7 +21,7 @@ type DevStack struct {
 func NewDevStack(
 	ctx context.Context,
 	count int,
-) ([]*DevStackNode, error) {
+) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
 
@@ -94,5 +91,9 @@ func NewDevStack(
 		nodes = append(nodes, devStackNode)
 	}
 
-	return nodes, nil
+	stack := &DevStack{
+		Nodes: nodes,
+	}
+
+	return stack, nil
 }
