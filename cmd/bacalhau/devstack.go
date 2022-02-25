@@ -34,7 +34,7 @@ var devstackCmd = &cobra.Command{
 		cancelFunction()
 
 		// wait forever because everything else is running in a goroutine
-		//select {}
+		select {}
 
 		return nil
 	},
