@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -17,9 +18,10 @@ import (
 const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 
 type Vm struct {
-	Id   string
-	Name string
-	Job  *types.Job
+	Id       string
+	Name     string
+	Job      *types.Job
+	stopChan chan bool
 }
 
 func NewVm(job *types.Job) (*Vm, error) {
@@ -29,9 +31,10 @@ func NewVm(job *types.Job) (*Vm, error) {
 	}
 	name := fmt.Sprintf("%s%s", job.Id, id.String())
 	vm := &Vm{
-		Id:   id.String(),
-		Name: name,
-		Job:  job,
+		Id:       id.String(),
+		Name:     name,
+		Job:      job,
+		stopChan: make(chan bool),
 	}
 	return vm, nil
 }
@@ -55,6 +58,7 @@ func (vm *Vm) Start() error {
 }
 
 func (vm *Vm) Stop() error {
+	vm.stopChan <- true
 	return system.RunCommand("sudo", []string{
 		"ignite",
 		"rm",
@@ -128,18 +132,30 @@ func (vm *Vm) PrepareJob(
 		}
 	}
 
+	command := "sudo"
+	args := []string{
+		"ignite",
+		"exec",
+		vm.Name,
+		"ipfs daemon --mount",
+	}
+
+	system.CommandLogger(command, args)
+
+	cmd := exec.Command(command, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
 	go func() {
-		err := system.RunCommand("sudo", []string{
-			"ignite",
-			"exec",
-			vm.Name,
-			"ipfs daemon --mount",
-		})
+		err := cmd.Run()
 		if err != nil {
 			log.Printf("Starting ipfs daemon --mount inside the vm failed with: %s", err)
 		}
+	}()
 
-		// TODO: handle closing this when the job has finished
+	go func() {
+		<-vm.stopChan
+		cmd.Process.Kill()
 	}()
 
 	// sleep here to give the "ipfs daemon --mount" command time to start

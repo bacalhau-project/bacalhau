@@ -57,9 +57,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		go (func() {
-			RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, node)
-		})()
+		go RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, nil)
 
 		connectToMultiAddress := ""
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -24,7 +23,6 @@ func IpfsCommand(repoPath string, args []string) (string, error) {
 		// dev mode (multiple ipfs servers on the same machine using private local ports)
 		return system.RunCommandGetResultsEnv("ipfs", args, []string{
 			"IPFS_PATH=" + repoPath,
-			"LIBP2P_FORCE_PNET=1",
 		})
 	}
 }
@@ -64,21 +62,21 @@ func StartDaemon(
 	cmd.Env = []string{
 		"IPFS_PATH=" + repoPath,
 	}
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	// XXX DANGER WILL ROBINSON: Do not uncomment the following lines or you will get TERRIBLE DEADLOCKS
+	// See: https://github.com/golang/go/issues/24050, https://github.com/golang/go/issues/28039
+	// cmd.Stderr = os.Stderr
+	// cmd.Stdout = os.Stdout
 
-	isClosing := false
-	go func() {
-		err = cmd.Run()
-		if err != nil && !isClosing {
-			fmt.Printf("error running ipfs daemon: %s\n", err)
-		}
-	}()
-	go func() {
+	//isClosing := false
+	err = cmd.Start()
+	go func(ctx context.Context, cmd *exec.Cmd) {
+		fmt.Printf("waiting for ipfs context done\n")
 		<-ctx.Done()
-		isClosing = true
+		fmt.Printf("closing ipfs daemon\n")
+		// isClosing = true
 		cmd.Process.Kill()
-	}()
+		fmt.Printf("got to after closing ipfs daemon\n")
+	}(ctx, cmd)
 	return nil
 }
 

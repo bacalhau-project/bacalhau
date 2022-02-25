@@ -116,8 +116,11 @@ func NewComputeNode(
 	go server.ReadLoopJobCreate()
 	go server.ReadLoopJobUpdate()
 	go func() {
+		fmt.Printf("waiting for bacalhau libp2p context done\n")
 		<-ctx.Done()
+		fmt.Printf("closing bacalhau libp2p daemon\n")
 		host.Close()
+		fmt.Printf("closed bacalhau libp2p daemon\n")
 	}()
 	return server, nil
 }
