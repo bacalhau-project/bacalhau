@@ -66,14 +66,17 @@ func StartDaemon(
 	}
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+
+	isClosing := false
 	go func() {
 		err = cmd.Run()
-		if err != nil {
+		if err != nil && !isClosing {
 			fmt.Printf("error running ipfs daemon: %s\n", err)
 		}
 	}()
 	go func() {
 		<-ctx.Done()
+		isClosing = true
 		cmd.Process.Kill()
 	}()
 	return nil
