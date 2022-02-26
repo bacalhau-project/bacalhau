@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -71,8 +72,13 @@ func TestDevStack(t *testing.T) {
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 	defer cancelFunction()
 
+	os.Setenv("DEBUG", "true")
+
 	stack, err := NewDevStack(ctxWithCancel, 3)
 	assert.NoError(t, err)
+	if err != nil {
+		log.Fatalf("Unable to create devstack: %s", err)
+	}
 
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
 	time.Sleep(time.Second * 10)

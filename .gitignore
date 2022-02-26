@@ -13,3 +13,7 @@ env.*
 .env
 *.swp
 *.swo
+bin/*/*
+.vscode
+bacalhau
+vendor/*
