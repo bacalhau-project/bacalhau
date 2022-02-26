@@ -104,22 +104,25 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 	if err != nil {
 		return "", "", err
 	}
-	_, err = IpfsCommand(repoDir, []string{
+	result, err := IpfsCommand(repoDir, []string{
 		"init",
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 	}
-	_, err = IpfsCommand(repoDir, []string{
+	result, err = IpfsCommand(repoDir, []string{
 		"bootstrap", "rm", "--all",
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 	}
 	if connectToMultiAddress != "" {
-		_, err = IpfsCommand(repoDir, []string{
+		result, err = IpfsCommand(repoDir, []string{
 			"bootstrap", "add", connectToMultiAddress,
 		})
+		if err != nil {
+			return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
+		}
 	}
 	err = StartDaemon(ctx, repoDir, gatewayPort, apiPort, swarmPort)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/phayes/freeport"
 )
 
@@ -27,7 +28,6 @@ func NewDevStack(
 
 	bacalhauMultiAddresses := []string{}
 	ipfsMultiAddresses := []string{}
-	ipfsRepos := []string{}
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
@@ -68,12 +68,13 @@ func NewDevStack(
 
 		ipfsRepo, ipfsMultiaddress, err := ipfs.StartBacalhauDevelopmentIpfsServer(ctx, connectToMultiAddress)
 		if err != nil {
+			log.Error(err)
 			return nil, err
 		}
 
 		bacalhauMultiAddresses = append(bacalhauMultiAddresses, bacalhauMultiAddress)
 		ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
-		ipfsRepos = append(ipfsRepos, ipfsRepo)
+
 		node.IpfsRepo = ipfsRepo
 		node.IpfsConnectMultiAddress = ipfsMultiaddress
 
