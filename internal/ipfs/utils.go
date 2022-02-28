@@ -8,6 +8,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -80,7 +81,9 @@ func StartDaemon(
 	go func(ctx context.Context, cmd *exec.Cmd) {
 		fmt.Printf("waiting for ipfs context done\n")
 		<-ctx.Done()
-		cmd.Process.Kill()
+		fmt.Printf("KILLING ipfs daemon: %d\n", cmd.Process.Pid)
+		cmd.Process.Signal(syscall.SIGTERM)
+		//cmd.Process.Kill()
 		fmt.Printf("got to after closing ipfs daemon\n")
 	}(ctx, cmd)
 	return nil
