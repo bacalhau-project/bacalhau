@@ -19,6 +19,7 @@ const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
 type Runtime struct {
+	Kind     string // "ignite" or "docker"
 	Id       string
 	Name     string
 	Job      *types.Job
@@ -31,7 +32,19 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 		return nil, err
 	}
 	name := fmt.Sprintf("%s%s", job.Id, id.String())
+	// allow CI to use docker in place of ignite
+	kind := os.Getenv("BACALHAU_RUNTIME")
+	if kind == "" {
+		kind = "ignite"
+	}
+	if !(kind == "ignite" || kind == "docker") {
+		panic(fmt.Sprintf(
+			`unsupported runtime requested via BACALHAU_RUNTIME (%s), `+
+				`please specify one of "ignite" or "docker"`, kind,
+		))
+	}
 	runtime := &Runtime{
+		Kind:     kind,
 		Id:       id.String(),
 		Name:     name,
 		Job:      job,
@@ -42,26 +55,44 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 
 // start the runtime so we can exec to prepare and run the job
 func (runtime *Runtime) Start() error {
-	return system.RunCommand("sudo", []string{
-		"ignite",
-		"run",
-		IGNITE_IMAGE,
-		"--name",
-		runtime.Name,
-		"--cpus",
-		fmt.Sprintf("%d", runtime.Job.Cpu),
-		"--memory",
-		fmt.Sprintf("%dGB", runtime.Job.Memory),
-		"--size",
-		fmt.Sprintf("%dGB", runtime.Job.Disk),
-		"--ssh",
-	})
+	if runtime.Kind == "ignite" {
+		return system.RunCommand("sudo", []string{
+			"ignite",
+			"run",
+			IGNITE_IMAGE,
+			"--name",
+			runtime.Name,
+			"--cpus",
+			fmt.Sprintf("%d", runtime.Job.Cpu),
+			"--memory",
+			fmt.Sprintf("%dGB", runtime.Job.Memory),
+			"--size",
+			fmt.Sprintf("%dGB", runtime.Job.Disk),
+			"--ssh",
+		})
+	} else {
+		return system.RunCommand("sudo", []string{
+			"docker",
+			"run",
+			"--privileged",
+			"-d",
+			"--rm",
+			"--name",
+			runtime.Name,
+			"--entrypoint",
+			"bash",
+			IGNITE_IMAGE,
+			"-c",
+			"tail -f /dev/null",
+		})
+	}
+
 }
 
 func (runtime *Runtime) Stop() error {
 	runtime.stopChan <- true
 	return system.RunCommand("sudo", []string{
-		"ignite",
+		runtime.Kind,
 		"rm",
 		"-f",
 		runtime.Name,
@@ -93,7 +124,7 @@ func (runtime *Runtime) PrepareJob(
 		return err
 	}
 	err = system.RunCommand("sudo", []string{
-		"ignite",
+		runtime.Kind,
 		"cp",
 		tmpFile.Name(),
 		fmt.Sprintf("%s:/job.sh", runtime.Name),
@@ -103,10 +134,10 @@ func (runtime *Runtime) PrepareJob(
 	}
 
 	err = system.RunCommand("sudo", []string{
-		"ignite",
+		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs init",
+		"ipfs", "init",
 	})
 	if err != nil {
 		return err
@@ -114,19 +145,19 @@ func (runtime *Runtime) PrepareJob(
 
 	if connectToIpfsMultiaddress != "" {
 		err = system.RunCommand("sudo", []string{
-			"ignite",
+			runtime.Kind,
 			"exec",
 			runtime.Name,
-			"ipfs bootstrap rm --all",
+			"ipfs", "bootstrap", "rm", "--all",
 		})
 		if err != nil {
 			return err
 		}
 		err = system.RunCommand("sudo", []string{
-			"ignite",
+			runtime.Kind,
 			"exec",
 			runtime.Name,
-			fmt.Sprintf("ipfs bootstrap add %s", connectToIpfsMultiaddress),
+			"ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
 		})
 		if err != nil {
 			return err
@@ -135,10 +166,10 @@ func (runtime *Runtime) PrepareJob(
 
 	command := "sudo"
 	args := []string{
-		"ignite",
+		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs daemon --mount",
+		"ipfs", "daemon", "--mount",
 	}
 
 	system.CommandLogger(command, args)
@@ -180,10 +211,10 @@ func (runtime *Runtime) PrepareJob(
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", []string{
-		"ignite",
+		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"psrecord 'bash /job.sh' --log /tmp/metrics.log --plot /tmp/metrics.png --include-children",
+		"psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
 	})
 	if err != nil {
 		return err
@@ -211,7 +242,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	for _, file := range filesToCopy {
 		fmt.Printf("writing %s to %s/%s\n", file, resultsFolder, file)
 		err = system.RunCommand("sudo", []string{
-			"ignite",
+			runtime.Kind,
 			"cp",
 			fmt.Sprintf("%s:/tmp/%s", runtime.Name, file),
 			fmt.Sprintf("%s/%s", resultsFolder, file),
