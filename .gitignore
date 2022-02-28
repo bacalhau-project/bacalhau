@@ -15,5 +15,4 @@ env.*
 *.swo
 bin/*/*
 .vscode
-bacalhau
 vendor/*
