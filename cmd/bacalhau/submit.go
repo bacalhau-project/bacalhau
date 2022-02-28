@@ -27,14 +27,14 @@ func SubmitJob(
 	commands, cids []string,
 	rpcHost string,
 	rpcPort int,
-) error {
+) (*types.Job, error) {
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
-		return fmt.Errorf("Error in creating job id. %s", err)
+		return nil, fmt.Errorf("Error in creating job id. %s", err)
 	}
 
 	if len(commands) <= 0 {
-		return fmt.Errorf("Empty command list")
+		return nil, fmt.Errorf("Empty command list")
 	}
 
 	job := &types.Job{
@@ -53,7 +53,7 @@ func SubmitJob(
 
 	err = JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	//we got our result in result
@@ -66,13 +66,14 @@ func SubmitJob(
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
 	fmt.Printf("job id: %s\n", job.Id)
 
-	return nil
+	return job, nil
 }
 
 var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		return SubmitJob(jobCommands, jobCids, jsonrpcHost, jsonrpcPort)
+		_, err := SubmitJob(jobCommands, jobCids, jsonrpcHost, jsonrpcPort)
+		return err
 	},
 }
