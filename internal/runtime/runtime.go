@@ -137,7 +137,7 @@ func (runtime *Runtime) PrepareJob(
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs", "init",
+		"--", "ipfs", "init",
 	})
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (runtime *Runtime) PrepareJob(
 			runtime.Kind,
 			"exec",
 			runtime.Name,
-			"ipfs", "bootstrap", "rm", "--all",
+			"--", "ipfs", "bootstrap", "rm", "--all",
 		})
 		if err != nil {
 			return err
@@ -157,7 +157,7 @@ func (runtime *Runtime) PrepareJob(
 			runtime.Kind,
 			"exec",
 			runtime.Name,
-			"ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
+			"--", "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
 		})
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func (runtime *Runtime) PrepareJob(
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs", "daemon", "--mount",
+		"--", "ipfs", "daemon", "--mount",
 	}
 
 	system.CommandLogger(command, args)
@@ -214,7 +214,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
+		"--", "psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
 	})
 	if err != nil {
 		return err
