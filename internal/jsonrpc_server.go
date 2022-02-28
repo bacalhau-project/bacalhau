@@ -1,9 +1,9 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/rpc"
 
@@ -17,19 +17,12 @@ type JobServer struct {
 type ListArgs struct {
 }
 
-type ListResponse struct {
-	Jobs       []types.Job
-	JobState   map[string]map[string]string
-	JobStatus  map[string]map[string]string
-	JobResults map[string]map[string]string
-}
-
 type SubmitArgs struct {
 	Job *types.Job
 }
 
-func (server *JobServer) List(args *ListArgs, reply *ListResponse) error {
-	*reply = ListResponse{
+func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
+	*reply = types.ListResponse{
 		Jobs:       server.ComputeNode.Jobs,
 		JobState:   server.ComputeNode.JobState,
 		JobStatus:  server.ComputeNode.JobStatus,
@@ -45,22 +38,44 @@ func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
 	return nil
 }
 
-func RunBacalhauRpcServer(host string, port int, computeNode *ComputeNode) {
+func RunBacalhauJsonRpcServer(
+	ctx context.Context,
+	host string,
+	port int,
+	computeNode *ComputeNode,
+) {
 	job := &JobServer{
 		ComputeNode: computeNode,
 	}
-	err := rpc.Register(job)
+
+	rpcServer := rpc.NewServer()
+	err := rpcServer.Register(job)
 	if err != nil {
 		log.Fatalf("Format of service Job isn't correct. %s", err)
 	}
-	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
-	if e != nil {
-		log.Fatalf("Couldn't start listening on port %d. Error %s", port, e)
+
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", host, port),
+		Handler: rpcServer,
 	}
-	log.Println("Serving RPC handler")
-	err = http.Serve(l, nil)
-	if err != nil {
-		log.Fatalf("Error serving: %s", err)
-	}
+
+	isClosing := false
+	go func() {
+		err = httpServer.ListenAndServe()
+		if err != nil && !isClosing {
+			log.Fatalf("http.ListenAndServe failed: %s", err)
+		}
+	}()
+
+	fmt.Printf("waiting for json rpc context done\n")
+
+	<-ctx.Done()
+
+	fmt.Printf("closing json rpc server\n")
+
+	isClosing = true
+
+	httpServer.Close()
+
+	fmt.Printf("closed json rpc server\n")
 }

@@ -3,18 +3,14 @@ package bacalhau
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/rpc"
 	"os"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
-
-var listOutputFormat string
-var tableOutputWide bool
 
 func init() {
 	listCmd.PersistentFlags().StringVar(
@@ -27,16 +23,17 @@ func init() {
 	)
 }
 
-func getString(st string) string {
-	if tableOutputWide {
-		return st
+func ListJobs(
+	rpcHost string,
+	rpcPort int,
+) (*types.ListResponse, error) {
+	args := &internal.ListArgs{}
+	result := &types.ListResponse{}
+	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "List", args, result)
+	if err != nil {
+		return nil, err
 	}
-
-	if len(st) < 20 {
-		return st
-	}
-
-	return st[:20] + "..."
+	return result, nil
 }
 
 var listCmd = &cobra.Command{
@@ -44,16 +41,10 @@ var listCmd = &cobra.Command{
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
-		// make connection to rpc server
-		client, err := rpc.DialHTTP("tcp", fmt.Sprintf(":%d", jsonrpcPort))
+		result, err := ListJobs(jsonrpcHost, jsonrpcPort)
+
 		if err != nil {
-			log.Fatalf("Error in dialing. %s", err)
-		}
-		args := &internal.ListArgs{}
-		result := &internal.ListResponse{}
-		err = client.Call("JobServer.List", args, result)
-		if err != nil {
-			log.Fatalf("error in JobServer: %s", err)
+			return err
 		}
 
 		if listOutputFormat == "json" {
@@ -78,7 +69,7 @@ var listCmd = &cobra.Command{
 			for node := range result.JobState[job.Id] {
 				t.AppendRows([]table.Row{
 					{
-						getString(job.Id),
+						shortId(job.Id),
 						getString(strings.Join(job.Commands, "\n")),
 						getString(strings.Join(job.Cids, "\n")),
 						getString(node),

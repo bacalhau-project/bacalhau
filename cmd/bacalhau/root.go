@@ -8,15 +8,22 @@ import (
 )
 
 var jsonrpcPort int
+var jsonrpcHost string
 var developmentMode bool
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(submitCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(resultsCmd)
+	rootCmd.AddCommand(devstackCmd)
 	rootCmd.PersistentFlags().IntVar(
 		&jsonrpcPort, "jsonrpc-port", 1234,
-		`The port for the client and server to communicate on over localhost (via jsonrpc).`,
+		`The port for the client and server to communicate on (via jsonrpc).`,
+	)
+	rootCmd.PersistentFlags().StringVar(
+		&jsonrpcHost, "jsonrpc-host", "0.0.0.0",
+		`The port for the client and server to communicate on (via jsonrpc).`,
 	)
 	rootCmd.PersistentFlags().BoolVar(
 		&developmentMode, "dev", false,

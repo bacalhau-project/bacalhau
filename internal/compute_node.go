@@ -6,10 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 
-	"github.com/filecoin-project/bacalhau/internal/ignite"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/libp2p/go-libp2p"
@@ -24,9 +23,11 @@ import (
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
 
 type ComputeNode struct {
-	Id       string
-	IpfsRepo string
-	Ctx      context.Context
+	Id                      string
+	IpfsRepo                string
+	IpfsConnectMultiAddress string
+
+	Ctx context.Context
 	// the jobs we have already filtered and might want to process
 	Jobs []types.Job
 
@@ -38,8 +39,6 @@ type ComputeNode struct {
 	// a map of job id onto bacalhau compute nodes that claim to have done the work onto cids of the job results published by them
 	JobResults map[string]map[string]string
 
-	// are we using a temporary IPFS repo for local testing?
-	TempIpfsRepo          bool
 	Host                  host.Host
 	PubSub                *pubsub.PubSub
 	JobCreateTopic        *pubsub.Topic
@@ -48,7 +47,9 @@ type ComputeNode struct {
 	JobUpdateSubscription *pubsub.Subscription
 }
 
-func makeLibp2pHost(port int) (host.Host, error) {
+func makeLibp2pHost(
+	port int,
+) (host.Host, error) {
 	// Creates a new RSA key pair for this host.
 	// TODO: allow the user to provide an existing keypair
 	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
@@ -96,33 +97,31 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	ipfsRepo, err := ipfs.EnsureIpfsRepo(host.ID().String())
-	if err != nil {
-		return nil, err
-	}
-	tempIpfsRepo := true
-	if os.Getenv("IPFS_DIR") != "" {
-		ipfsRepo = os.Getenv("IPFS_DIR")
-		tempIpfsRepo = false
-	}
 	server := &ComputeNode{
-		Id:                    host.ID().String(),
-		IpfsRepo:              ipfsRepo,
-		Ctx:                   ctx,
-		Jobs:                  []types.Job{},
-		TempIpfsRepo:          tempIpfsRepo,
-		Host:                  host,
-		PubSub:                pubsub,
-		JobState:              make(map[string]map[string]string),
-		JobStatus:             make(map[string]map[string]string),
-		JobResults:            make(map[string]map[string]string),
-		JobCreateTopic:        jobCreateTopic,
-		JobCreateSubscription: jobCreateSubscription,
-		JobUpdateTopic:        jobUpdateTopic,
-		JobUpdateSubscription: jobUpdateSubscription,
+		Id:                      host.ID().String(),
+		IpfsRepo:                "",
+		IpfsConnectMultiAddress: "",
+		Ctx:                     ctx,
+		Jobs:                    []types.Job{},
+		Host:                    host,
+		PubSub:                  pubsub,
+		JobState:                make(map[string]map[string]string),
+		JobStatus:               make(map[string]map[string]string),
+		JobResults:              make(map[string]map[string]string),
+		JobCreateTopic:          jobCreateTopic,
+		JobCreateSubscription:   jobCreateSubscription,
+		JobUpdateTopic:          jobUpdateTopic,
+		JobUpdateSubscription:   jobUpdateSubscription,
 	}
 	go server.ReadLoopJobCreate()
 	go server.ReadLoopJobUpdate()
+	go func() {
+		fmt.Printf("waiting for bacalhau libp2p context done\n")
+		<-ctx.Done()
+		fmt.Printf("closing bacalhau libp2p daemon\n")
+		host.Close()
+		fmt.Printf("closed bacalhau libp2p daemon\n")
+	}()
 	return server, nil
 }
 
@@ -151,6 +150,7 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 }
 
 func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
+	fmt.Printf("--> FilterJob with %s\n", job.Cids)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Cids) == 0 {
 		return true, nil
@@ -262,19 +262,13 @@ func (server *ComputeNode) UpdateJob(update *types.Update) {
 // this is obtained by running "ipfs add -r <results folder>"
 func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 
-	vm, err := ignite.NewVm(job)
+	vm, err := runtime.NewRuntime(job)
 
 	if err != nil {
 		return "", err
 	}
 
-	resultsFolder := fmt.Sprintf("outputs/%s/%s", job.Id, vm.Id)
-
-	err = system.RunCommand("mkdir", []string{
-		"-p",
-		resultsFolder,
-	})
-
+	resultsFolder, err := system.EnsureSystemDirectory(system.GetResultsDirectory(job.Id, server.Id))
 	if err != nil {
 		return "", err
 	}
@@ -287,6 +281,12 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 
 	//nolint
 	defer vm.Stop()
+
+	err = vm.PrepareJob(server.IpfsConnectMultiAddress)
+
+	if err != nil {
+		return "", err
+	}
 
 	err = vm.RunJob(resultsFolder)
 
@@ -342,12 +342,16 @@ func (server *ComputeNode) ReadLoopJobUpdate() {
 }
 
 func (server *ComputeNode) Publish(job *types.Job) error {
+	fmt.Printf("NEW JOB: %+v\n", job)
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 	go server.AddJob(job)
-	return server.JobCreateTopic.Publish(server.Ctx, msgBytes)
+	fmt.Printf("server --> %+v\n", server)
+	ctx := server.Ctx
+	topic := server.JobCreateTopic
+	return topic.Publish(ctx, msgBytes)
 }
 
 func (server *ComputeNode) ChangeJobState(job *types.Job, state, status, output string) error {

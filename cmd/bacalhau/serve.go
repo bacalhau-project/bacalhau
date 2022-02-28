@@ -27,7 +27,7 @@ func init() {
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", 8080,
+		&hostPort, "port", 0,
 		`The port to listen on.`,
 	)
 	serveCmd.PersistentFlags().BoolVar(
@@ -56,53 +56,45 @@ var serveCmd = &cobra.Command{
 		}
 		jsonRpcString := ""
 		devString := ""
-		ipfsGatewayPort, err := freeport.GetFreePort()
-		if err != nil {
-			return err
-		}
-		ipfsApiPort, err := freeport.GetFreePort()
-		if err != nil {
-			return err
-		}
-
 		if developmentMode {
 			jsonRpcPort, err := freeport.GetFreePort()
 			if err != nil {
 				return err
 			}
 			jsonRpcString = fmt.Sprintf(" --jsonrpc-port %d", jsonRpcPort)
-
 			devString = " --dev"
 		}
-		if startIpfsDevOnly {
-			if computeNode.TempIpfsRepo {
-				//nolint
-				ipfs.Init(computeNode.IpfsRepo)
-			}
 
-			//nolint
-			ipfs.StartDaemon(computeNode.IpfsRepo, ipfsGatewayPort, ipfsApiPort)
+		ipfsPathDevString := " "
+		if startIpfsDevOnly {
+			ipfsRepo, _, err := ipfs.StartBacalhauDevelopmentIpfsServer(ctx, "")
+			if err != nil {
+				return err
+			}
+			computeNode.IpfsRepo = ipfsRepo
+			ipfsPathDevString = fmt.Sprintf("IPFS_PATH=%s ", ipfsRepo)
 			devString += " --start-ipfs-dev-only"
 		}
 		type TemplateContents struct {
-			HostAddress     string
-			HostPort        int
-			ComputeNodeId   string
-			JsonRpcString   string
-			DevString       string
-			IpfsPath        string
-			IpfsGatewayPort int
-			IpfsApiPort     int
+			HostAddress       string
+			HostPort          int
+			ComputeNodeId     string
+			JsonRpcString     string
+			DevString         string
+			IpfsPathDevString string
 		}
 		td := TemplateContents{
-			HostAddress:     hostAddress,
-			HostPort:        hostPort,
-			ComputeNodeId:   computeNode.Id,
-			JsonRpcString:   jsonRpcString,
-			DevString:       devString,
-			IpfsPath:        computeNode.IpfsRepo,
-			IpfsGatewayPort: ipfsGatewayPort,
-			IpfsApiPort:     ipfsApiPort,
+			HostAddress:       hostAddress,
+			HostPort:          hostPort,
+			ComputeNodeId:     computeNode.Id,
+			JsonRpcString:     jsonRpcString,
+			DevString:         devString,
+			IpfsPathDevString: ipfsPathDevString,
+		}
+
+		if developmentMode {
+			td.HostPort = 8080
+			td.HostAddress = "127.0.0.1"
 		}
 
 		t, err := template.New("msg").Parse(
@@ -112,7 +104,7 @@ go run . serve --peer /ip4/{{.HostAddress}}/tcp/{{.HostPort}}/p2p/{{.ComputeNode
 
 To pin some files locally in the ipfs daemon you started (if you used --start-ipfs-dev-only):
 
-cid=$(IPFS_PATH={{.IpfsPath}} ipfs add -q /etc/passwd)
+cid=$({{.IpfsPathDevString}}ipfs add -q /etc/passwd)
 
 To submit a job that uses that data (and so should be preferentially scheduled on this node):
 
@@ -128,7 +120,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 			return err
 		}
 
-		internal.RunBacalhauRpcServer(hostAddress, jsonrpcPort, computeNode)
+		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, computeNode)
 
 		return nil
 

@@ -18,6 +18,21 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
  * go >= 1.16
  * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
  * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
+   * NOTE: You must use ipfs v0.11.0 https://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
+
+### pull ignite base image
+
+This prepares the system for running ignite VMs:
+
+```
+sudo ignite run binocarlos/bacalhau-ignite-image:v1 \
+  --name footwarmer \
+  --cpus 1 \
+  --memory 1GB \
+  --size 10GB \
+  --ssh
+sudo ignite rm -f footwarmer
+```
 
 **NOTE**: for results to be published, each bacalhau node must have a public IP address
 
@@ -30,7 +45,7 @@ Have a few terminal windows.
 This starts the first compute node listening on port 8080 so we can connect to a known port.
 
 ```bash
-go run . serve --port 8080 --dev --start-ipfs-dev-only
+go run . serve --port 8081 --dev --start-ipfs-dev-only
 ```
 
 It will also print out the command to run in other terminal windows to connect to this first node (start at least one more so now we have a cluster)
@@ -62,6 +77,20 @@ go run . list
 go run . list --output json
 go run . list --wide
 ```
+
+### running the demo on seperate servers
+
+When running a real demo (i.e. on different machines with public ips) - here are the things to consider:
+
+ * add the same file to each node using `ipfs add` - so the CID of the job has a file on each node
+   * don't use `/etc/passwd` as shown above - it needs to be exactly the same on each node
+ * when starting the servers, make sure to use public IP and not `127.0.0.1` in the multi-address used to point at the first node
+ * start the ipfs daemon on each node before starting bacalhau
+ * don't start the bacalhau daemon with `--dev` or `--start-ipfs-dev-only`
+
+### running the client standalone
+
+If you are running the bacalhau client on a machine that is not running the server - then you must start the ipfs daemon yourself, manually (so we can do `ipfs get` for the results)
 
 ## firecracker os image
 

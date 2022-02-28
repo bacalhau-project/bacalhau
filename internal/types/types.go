@@ -17,3 +17,20 @@ type Update struct {
 	Status string
 	Output string
 }
+
+// the data structure a client can use to render a view of the state of the world
+// e.g. this is used to render the CLI table and results list
+type ListResponse struct {
+	Jobs       []Job
+	JobState   map[string]map[string]string
+	JobStatus  map[string]map[string]string
+	JobResults map[string]map[string]string
+}
+
+// the view of a single job
+type JobData struct {
+	Job     Job
+	State   map[string]string
+	Status  map[string]string
+	Results map[string]string
+}
