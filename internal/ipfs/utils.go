@@ -67,13 +67,10 @@ func StartDaemon(
 	// cmd.Stderr = os.Stderr
 	// cmd.Stdout = os.Stdout
 
-	//isClosing := false
 	err = cmd.Start()
 	go func(ctx context.Context, cmd *exec.Cmd) {
 		fmt.Printf("waiting for ipfs context done\n")
 		<-ctx.Done()
-		fmt.Printf("closing ipfs daemon\n")
-		// isClosing = true
 		cmd.Process.Kill()
 		fmt.Printf("got to after closing ipfs daemon\n")
 	}(ctx, cmd)
