@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/phayes/freeport"
 )
+
+const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
 func IpfsCommand(repoPath string, args []string) (string, error) {
 	fmt.Printf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", repoPath, strings.Join(args, " "))
@@ -62,6 +65,14 @@ func StartDaemon(
 	cmd.Env = []string{
 		"IPFS_PATH=" + repoPath,
 	}
+
+	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = logfile
+	cmd.Stdout = logfile
+
 	// XXX DANGER WILL ROBINSON: Do not uncomment the following lines or you will get TERRIBLE DEADLOCKS
 	// See: https://github.com/golang/go/issues/24050, https://github.com/golang/go/issues/28039
 	// cmd.Stderr = os.Stderr

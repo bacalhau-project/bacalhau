@@ -16,6 +16,7 @@ import (
 )
 
 const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
+const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
 type Vm struct {
 	Id       string
@@ -143,8 +144,15 @@ func (vm *Vm) PrepareJob(
 	system.CommandLogger(command, args)
 
 	cmd := exec.Command(command, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = logfile
+	cmd.Stdout = logfile
+
+	// cmd.Stderr = os.Stderr
+	// cmd.Stdout = os.Stdout
 
 	go func() {
 		err := cmd.Run()
