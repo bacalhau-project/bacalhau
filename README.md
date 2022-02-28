@@ -1,6 +1,12 @@
 # Bacalhau - The Filecoin Distributed Computation Framework
 
-## demo!
+## Background
+
+To read more about this project, please read our [Read Me](https://github.com/filecoin-project/bacalhau/wiki)
+
+## Latest
+
+Our most recent demo (2022-02-11):
 
 https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4
 

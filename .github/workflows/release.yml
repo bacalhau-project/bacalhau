@@ -1,20 +1,16 @@
-name: Go
+name: Release Bacalhau binaries
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      debug_enabled:
-        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
-        required: false
-        default: "false"
+    tags:
+      - "v*"
+
+env:
+  golang_ci_lint_version: 1.44.2
 
 jobs:
-  build:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+  release:
+    name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.os }}
     env:
       GOVER: ${{ matrix.go-version }}
@@ -68,7 +64,16 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Build
-        run: make build
-
-      - name: Test
-        run: make test
+        run: |
+          make build-bacalhau-tgz
+      - name: Generate Changelog
+        run: echo "# Release Notes" > CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@master
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ env.BINARY_TARBALL }}
+          body_path: CHANGELOG.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
