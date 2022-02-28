@@ -148,6 +148,7 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 }
 
 func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
+	fmt.Printf("--> FilterJob with %s\n", job.Cids)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Cids) == 0 {
 		return true, nil
