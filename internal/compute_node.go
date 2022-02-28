@@ -142,6 +142,8 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 	}
 
 	server.Host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+
+	//nolint
 	server.Host.Connect(server.Ctx, *info)
 
 	return nil
@@ -223,6 +225,7 @@ func (server *ComputeNode) AddJob(job *types.Job) {
 
 	fmt.Printf("-------------\n\nCID: %s\n\n", cid)
 
+	//nolint
 	err = server.ChangeJobState(
 		job,
 		"complete",
@@ -276,6 +279,7 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
+	//nolint
 	defer vm.Stop()
 
 	err = vm.PrepareJob(server.IpfsConnectMultiAddress)
