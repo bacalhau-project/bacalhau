@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/filecoin-project/bacalhau/internal/ignite"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/libp2p/go-libp2p"
@@ -259,7 +259,7 @@ func (server *ComputeNode) UpdateJob(update *types.Update) {
 // this is obtained by running "ipfs add -r <results folder>"
 func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 
-	vm, err := ignite.NewVm(job)
+	vm, err := runtime.NewRuntime(job)
 
 	if err != nil {
 		return "", err

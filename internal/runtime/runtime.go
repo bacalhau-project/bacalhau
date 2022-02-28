@@ -1,4 +1,4 @@
-package ignite
+package runtime
 
 import (
 	"fmt"
@@ -18,63 +18,63 @@ import (
 const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
-type Vm struct {
+type Runtime struct {
 	Id       string
 	Name     string
 	Job      *types.Job
 	stopChan chan bool
 }
 
-func NewVm(job *types.Job) (*Vm, error) {
+func NewRuntime(job *types.Job) (*Runtime, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
 	name := fmt.Sprintf("%s%s", job.Id, id.String())
-	vm := &Vm{
+	runtime := &Runtime{
 		Id:       id.String(),
 		Name:     name,
 		Job:      job,
 		stopChan: make(chan bool),
 	}
-	return vm, nil
+	return runtime, nil
 }
 
-// start the vm so we can exec to prepare and run the job
-func (vm *Vm) Start() error {
+// start the runtime so we can exec to prepare and run the job
+func (runtime *Runtime) Start() error {
 	return system.RunCommand("sudo", []string{
 		"ignite",
 		"run",
 		IGNITE_IMAGE,
 		"--name",
-		vm.Name,
+		runtime.Name,
 		"--cpus",
-		fmt.Sprintf("%d", vm.Job.Cpu),
+		fmt.Sprintf("%d", runtime.Job.Cpu),
 		"--memory",
-		fmt.Sprintf("%dGB", vm.Job.Memory),
+		fmt.Sprintf("%dGB", runtime.Job.Memory),
 		"--size",
-		fmt.Sprintf("%dGB", vm.Job.Disk),
+		fmt.Sprintf("%dGB", runtime.Job.Disk),
 		"--ssh",
 	})
 }
 
-func (vm *Vm) Stop() error {
-	vm.stopChan <- true
+func (runtime *Runtime) Stop() error {
+	runtime.stopChan <- true
 	return system.RunCommand("sudo", []string{
 		"ignite",
 		"rm",
 		"-f",
-		vm.Name,
+		runtime.Name,
 	})
 }
 
 // create a script from the job commands
 // these means we can run all commands as a single process
 // that can be invoked by psrecord
-// to do this - we need the commands inside the vm as a "job.sh" file
+// to do this - we need the commands inside the runtime as a "job.sh" file
 // (so we can "bash job.sh" as the command)
-// let's write our "job.sh" and copy it onto the vm
-func (vm *Vm) PrepareJob(
+// let's write our "job.sh" and copy it onto the runtime
+func (runtime *Runtime) PrepareJob(
 	// if this is defined then it means we are in development mode
 	// and don't want to connect to the mainline ipfs DHT but
 	// have a local development cluster of ipfs nodes instead
@@ -87,7 +87,7 @@ func (vm *Vm) PrepareJob(
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
 	// put sleep here because otherwise psrecord does not have enough time to capture metrics
-	script := fmt.Sprintf("sleep 2\n%s\nsleep 2\n", strings.Join(vm.Job.Commands[:], "\n"))
+	script := fmt.Sprintf("sleep 2\n%s\nsleep 2\n", strings.Join(runtime.Job.Commands[:], "\n"))
 	_, err = tmpFile.WriteString(script)
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (vm *Vm) PrepareJob(
 		"ignite",
 		"cp",
 		tmpFile.Name(),
-		fmt.Sprintf("%s:/job.sh", vm.Name),
+		fmt.Sprintf("%s:/job.sh", runtime.Name),
 	})
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (vm *Vm) PrepareJob(
 	err = system.RunCommand("sudo", []string{
 		"ignite",
 		"exec",
-		vm.Name,
+		runtime.Name,
 		"ipfs init",
 	})
 	if err != nil {
@@ -116,7 +116,7 @@ func (vm *Vm) PrepareJob(
 		err = system.RunCommand("sudo", []string{
 			"ignite",
 			"exec",
-			vm.Name,
+			runtime.Name,
 			"ipfs bootstrap rm --all",
 		})
 		if err != nil {
@@ -125,7 +125,7 @@ func (vm *Vm) PrepareJob(
 		err = system.RunCommand("sudo", []string{
 			"ignite",
 			"exec",
-			vm.Name,
+			runtime.Name,
 			fmt.Sprintf("ipfs bootstrap add %s", connectToIpfsMultiaddress),
 		})
 		if err != nil {
@@ -137,7 +137,7 @@ func (vm *Vm) PrepareJob(
 	args := []string{
 		"ignite",
 		"exec",
-		vm.Name,
+		runtime.Name,
 		"ipfs daemon --mount",
 	}
 
@@ -157,12 +157,12 @@ func (vm *Vm) PrepareJob(
 	go func() {
 		err := cmd.Run()
 		if err != nil {
-			log.Printf("Starting ipfs daemon --mount inside the vm failed with: %s", err)
+			log.Printf("Starting ipfs daemon --mount inside the runtime failed with: %s", err)
 		}
 	}()
 
 	go func() {
-		<-vm.stopChan
+		<-runtime.stopChan
 		cmd.Process.Kill()
 	}()
 
@@ -175,16 +175,19 @@ func (vm *Vm) PrepareJob(
 // TODO: mount input data files
 // TODO: mount output data files
 // psrecord invoke the job that we have prepared at /job.sh
-// copy the psrecord metrics out of the vm
+// copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
-func (vm *Vm) RunJob(resultsFolder string) error {
+func (runtime *Runtime) RunJob(resultsFolder string) error {
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", []string{
 		"ignite",
 		"exec",
-		vm.Name,
-		fmt.Sprintf("psrecord 'bash /job.sh' --log /tmp/metrics.log --plot /tmp/metrics.png --include-children"),
+		runtime.Name,
+		"psrecord 'bash /job.sh' --log /tmp/metrics.log --plot /tmp/metrics.png --include-children",
 	})
+	if err != nil {
+		return err
+	}
 
 	// write the command stdout & stderr to the results dir
 	fmt.Printf("writing stdout to %s/stdout.log\n", resultsFolder)
@@ -199,7 +202,7 @@ func (vm *Vm) RunJob(resultsFolder string) error {
 		return err
 	}
 
-	// copy the psrecord metrics out of the vm
+	// copy the psrecord metrics out of the runtime
 	filesToCopy := []string{
 		"metrics.log",
 		"metrics.png",
@@ -210,7 +213,7 @@ func (vm *Vm) RunJob(resultsFolder string) error {
 		err = system.RunCommand("sudo", []string{
 			"ignite",
 			"cp",
-			fmt.Sprintf("%s:/tmp/%s", vm.Name, file),
+			fmt.Sprintf("%s:/tmp/%s", runtime.Name, file),
 			fmt.Sprintf("%s/%s", resultsFolder, file),
 		})
 	}
