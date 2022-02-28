@@ -58,7 +58,6 @@ func (vm *Vm) Start() error {
 }
 
 func (vm *Vm) Stop() error {
-	fmt.Printf("Stopping vm %s\n", vm.Name)
 	vm.stopChan <- true
 	return system.RunCommand("sudo", []string{
 		"ignite",
@@ -135,16 +134,17 @@ func (vm *Vm) PrepareJob(
 
 	command := "sudo"
 	args := []string{
-		"bash", "-c",
-		fmt.Sprintf("ignite exec %s -- ipfs daemon --mount &>> /var/log/bacalhau.log", vm.Name),
+		"ignite",
+		"exec",
+		vm.Name,
+		"ipfs daemon --mount",
 	}
 
 	system.CommandLogger(command, args)
 
 	cmd := exec.Command(command, args...)
-	// XXX DANGER WILL ROBINSON: uncommenting the following lines leads to terrible deadlocks
-	// cmd.Stderr = os.Stderr
-	// cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
 
 	go func() {
 		err := cmd.Run()
