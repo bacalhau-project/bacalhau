@@ -275,7 +275,7 @@ func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	defer vm.Stop()
+	//defer vm.Stop()
 
 	err = vm.PrepareJob(server.IpfsConnectMultiAddress)
 

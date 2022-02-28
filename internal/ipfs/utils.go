@@ -15,7 +15,7 @@ import (
 )
 
 func IpfsCommand(repoPath string, args []string) (string, error) {
-	fmt.Printf("ipfs command:\nipfs %s\n", strings.Join(args, " "))
+	fmt.Printf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", repoPath, strings.Join(args, " "))
 	if repoPath == "" {
 		// production mode
 		return system.RunCommandGetResults("ipfs", args)
@@ -146,6 +146,10 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 			fmt.Printf("error parsing JSON: %s\n", err)
 			return err
 		}
+		// TODO: extract the most public address so that vms in ignite
+		// will be able to connect to this ipfs server
+		// it turns out that using a 127.0.0.1 address still works because of clever
+		// broadcast packets: https://github.com/filecoin-project/bacalhau/issues/30
 		if len(result.Addresses) > 0 {
 			nodeAddress = result.Addresses[0]
 			return nil
