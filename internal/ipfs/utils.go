@@ -187,7 +187,7 @@ func HasCid(repoPath, cid string) (bool, error) {
 		return false, err
 	}
 	got := contains(strings.Split(allLocalRefString, "\n"), cid)
-	fmt.Sprintf("--> HasCid %s looking for %s in %s\n", got, cid, allLocalRefString)
+	fmt.Sprintf("--> HasCid %t looking for %s in %s\n", got, cid, allLocalRefString)
 	return got, nil
 }
 
