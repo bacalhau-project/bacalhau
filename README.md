@@ -12,6 +12,7 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
  * go >= 1.16
  * [ignite](https://ignite.readthedocs.io/en/stable/installation/)
  * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
+   * NOTE: You must use ipfs v0.11.0 https://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
 
 **NOTE**: for results to be published, each bacalhau node must have a public IP address
 
