@@ -12,7 +12,7 @@ GO_OS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr 
 GO_ARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 
 # use docker runtime rather than ignite, meaning we run basically everywhere (no need for hardware virtualization support)
-BACALHAU_RUNTIME = docker
+export BACALHAU_RUNTIME = docker
 
 define GO_MISMATCH_ERROR
 
@@ -125,8 +125,10 @@ clean:
 # Target: test					                               #
 ################################################################################
 .PHONY: test
-test: build-bacalhau
-	go test ./... -v
+test:
+	go test -v -count 1 -timeout 300s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+
+#go test ./... -v
 
 ################################################################################
 # Target: lint					                               #
