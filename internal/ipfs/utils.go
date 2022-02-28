@@ -58,10 +58,19 @@ func StartDaemon(
 		return err
 	}
 	fmt.Printf("IPFS_PATH=%s ipfs daemon\n", repoPath)
-	cmd := exec.Command("ipfs", "daemon")
+
+	args := []string{
+		// pass the IPFS_PATH environment variable via sudo
+		"-E",
+		"bash", "-c",
+		"ipfs daemon &>> /var/log/bacalhau.log",
+	}
+
+	cmd := exec.Command("sudo", args...)
 	cmd.Env = []string{
 		"IPFS_PATH=" + repoPath,
 	}
+
 	// XXX DANGER WILL ROBINSON: Do not uncomment the following lines or you will get TERRIBLE DEADLOCKS
 	// See: https://github.com/golang/go/issues/24050, https://github.com/golang/go/issues/28039
 	// cmd.Stderr = os.Stderr
