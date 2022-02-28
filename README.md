@@ -14,6 +14,20 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
  * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
    * NOTE: You must use ipfs v0.11.0 https://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
 
+### pull ignite base image
+
+This prepares the system for running ignite VMs:
+
+```
+sudo ignite run binocarlos/bacalhau-ignite-image:v1 \
+  --name footwarmer \
+  --cpus 1 \
+  --memory 1GB \
+  --size 10GB \
+  --ssh
+sudo ignite rm -f footwarmer
+```
+
 **NOTE**: for results to be published, each bacalhau node must have a public IP address
 
 You can still run the demo locally, but the results won't be served over the public ipfs network.
