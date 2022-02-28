@@ -337,12 +337,16 @@ func (server *ComputeNode) ReadLoopJobUpdate() {
 }
 
 func (server *ComputeNode) Publish(job *types.Job) error {
+	fmt.Printf("NEW JOB: %+v\n", job)
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 	go server.AddJob(job)
-	return server.JobCreateTopic.Publish(server.Ctx, msgBytes)
+	fmt.Printf("server --> %+v\n", server)
+	ctx := server.Ctx
+	topic := server.JobCreateTopic
+	return topic.Publish(ctx, msgBytes)
 }
 
 func (server *ComputeNode) ChangeJobState(job *types.Job, state, status, output string) error {
