@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -155,7 +156,9 @@ func (vm *Vm) PrepareJob(
 
 	go func() {
 		<-vm.stopChan
-		cmd.Process.Kill()
+		fmt.Printf("KILLING IGNITE PID: %d\n", cmd.Process.Pid)
+		cmd.Process.Signal(syscall.SIGTERM)
+		//cmd.Process.Kill()
 	}()
 
 	// sleep here to give the "ipfs daemon --mount" command time to start
