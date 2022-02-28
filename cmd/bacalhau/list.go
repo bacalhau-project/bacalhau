@@ -23,14 +23,26 @@ func init() {
 	)
 }
 
+func ListJobs(
+	rpcHost string,
+	rpcPort int,
+) (*types.ListResponse, error) {
+	args := &internal.ListArgs{}
+	result := &types.ListResponse{}
+	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "List", args, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
-		args := &internal.ListArgs{}
-		result := &types.ListResponse{}
-		err := JsonRpcMethod("List", args, result)
+		result, err := ListJobs(jsonrpcHost, jsonrpcPort)
+
 		if err != nil {
 			return err
 		}
