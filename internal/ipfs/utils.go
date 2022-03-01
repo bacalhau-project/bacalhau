@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,14 +18,29 @@ import (
 
 const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
+// TODO: We should inject the ipfs binary in the future
 func IpfsCommand(repoPath string, args []string) (string, error) {
 	fmt.Printf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", repoPath, strings.Join(args, " "))
+
+	// TODO: We should have a struct that allows us to set the ipfs binary, rather than relying on system paths, etc
+	ipfs_binary, err := exec.LookPath("ipfs")
+
+	if err != nil {
+		return "", fmt.Errorf("Could not find 'ipfs' binary on your path.")
+	}
+
+	ipfs_binary_full_path, _ := filepath.Abs(ipfs_binary)
+
+	if strings.Contains(ipfs_binary_full_path, "/snap/") {
+		return "", fmt.Errorf("You installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider.")
+	}
+
 	if repoPath == "" {
 		// production mode
-		return system.RunCommandGetResults("ipfs", args)
+		return system.RunCommandGetResults(ipfs_binary_full_path, args)
 	} else {
 		// dev mode (multiple ipfs servers on the same machine using private local ports)
-		return system.RunCommandGetResultsEnv("ipfs", args, []string{
+		return system.RunCommandGetResultsEnv(ipfs_binary_full_path, args, []string{
 			"IPFS_PATH=" + repoPath,
 		})
 	}
