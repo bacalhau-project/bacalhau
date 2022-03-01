@@ -16,4 +16,5 @@ env.*
 bin/*/*
 .vscode
 vendor/*
-bacalhau
+./bacalhau
+bin/*
