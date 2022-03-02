@@ -30,8 +30,6 @@ func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 		log.Fatalf("Unable to create devstack: %s", err)
 	}
 
-	fmt.Printf("JSON RPC: %d\n", stack.Nodes[0].JsonRpcPort)
-
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
 	time.Sleep(time.Second * 2)
 
