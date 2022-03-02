@@ -40,6 +40,8 @@ func NewComputeNode(
 		// a new job has arrived - decide if we want to bid on it
 		case system.JOB_EVENT_CREATED:
 
+			fmt.Printf("NEW JOB SEEN: \n%+v\n", job)
+
 			shouldRun, err := node.SelectJob(job)
 			if err != nil {
 				fmt.Printf("there was an error self selecting: %s\n%+v\n", err, job)
