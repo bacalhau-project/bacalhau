@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/phayes/freeport"
 )
@@ -31,22 +32,28 @@ func NewDevStack(
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
-		computePort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-		node, err := NewComputeNode(ctx, computePort)
+		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", node.Host.Addrs()[0].String(), node.Host.ID())
+		libp2pScheduler, err := libp2p.NewLibp2pScheduler(ctx, libp2pPort)
+		if err != nil {
+			return nil, err
+		}
+
+		node, err := NewComputeNode(ctx, libp2pScheduler)
+		if err != nil {
+			return nil, err
+		}
+
+		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", libp2pScheduler.Host.Addrs()[0].String(), libp2pScheduler.Host.ID())
 
 		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 
 		// if we have started any bacalhau servers already, use the first one
 		if len(bacalhauMultiAddresses) > 0 {
-			err = node.Connect(bacalhauMultiAddresses[0])
+			err = libp2pScheduler.Connect(bacalhauMultiAddresses[0])
 			if err != nil {
 				return nil, err
 			}

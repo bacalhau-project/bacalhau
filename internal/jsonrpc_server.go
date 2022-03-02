@@ -22,15 +22,17 @@ type SubmitArgs struct {
 }
 
 func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
-	*reply = types.ListResponse{
-		Jobs: server.ComputeNode.Jobs,
+	res, err := server.ComputeNode.Scheduler.List()
+	if err != nil {
+		return err
 	}
+	*reply = res
 	return nil
 }
 
 func (server *JobServer) Submit(args *SubmitArgs, reply *types.JobSpec) error {
 	//nolint
-	server.ComputeNode.Publish(args.Job)
+	server.ComputeNode.Scheduler.SubmitJob(args.Job)
 	*reply = *args.Job
 	return nil
 }

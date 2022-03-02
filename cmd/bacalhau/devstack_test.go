@@ -134,7 +134,10 @@ raspberry
 		return nil
 	}, "wait for results to be", 100)
 
-	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, stack.Nodes[0].Node.Id))
+	hostId, err := stack.Nodes[0].Node.Scheduler.HostId()
+	assert.NoError(t, err)
+
+	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
 	assert.NoError(t, err)
 
 	stdoutText, err := ioutil.ReadFile(fmt.Sprintf("%s/stdout.log", resultsDirectory))

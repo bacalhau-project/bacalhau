@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -46,11 +47,16 @@ var serveCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		computeNode, err := internal.NewComputeNode(ctx, hostPort)
+		libp2pScheduler, err := libp2p.NewLibp2pScheduler(ctx, hostPort)
 		if err != nil {
 			return err
 		}
-		err = computeNode.Connect(peerConnect)
+
+		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler)
+		if err != nil {
+			return err
+		}
+		err = libp2pScheduler.Connect(peerConnect)
 		if err != nil {
 			return err
 		}
@@ -83,10 +89,16 @@ var serveCmd = &cobra.Command{
 			DevString         string
 			IpfsPathDevString string
 		}
+
+		hostId, err := computeNode.Scheduler.HostId()
+		if err != nil {
+			return err
+		}
+
 		td := TemplateContents{
 			HostAddress:       hostAddress,
 			HostPort:          hostPort,
-			ComputeNodeId:     computeNode.Id,
+			ComputeNodeId:     hostId,
 			JsonRpcString:     jsonRpcString,
 			DevString:         devString,
 			IpfsPathDevString: ipfsPathDevString,
