@@ -67,26 +67,13 @@ func getJobData(jobId string) (*types.JobData, error) {
 		return nil, err
 	}
 
-	var foundJob *types.Job
-
-	for _, job := range result.Jobs {
-		if strings.HasPrefix(job.Id, jobId) {
-			foundJob = &job
+	for _, jobData := range result.Jobs {
+		if strings.HasPrefix(jobData.Job.Id, jobId) {
+			return jobData, nil
 		}
 	}
 
-	if foundJob == nil {
-		return nil, fmt.Errorf("Could not find job: %s", jobId)
-	}
-
-	data := types.JobData{
-		Job:     *foundJob,
-		State:   result.JobState[foundJob.Id],
-		Status:  result.JobStatus[foundJob.Id],
-		Results: result.JobResults[foundJob.Id],
-	}
-
-	return &data, nil
+	return nil, fmt.Errorf("Could not find job: %s", jobId)
 }
 
 func getJobResults(jobId string) (*[]ResultsList, error) {
@@ -101,7 +88,7 @@ func getJobResults(jobId string) (*[]ResultsList, error) {
 	for node := range data.State {
 		results = append(results, ResultsList{
 			Node:   node,
-			Cid:    data.Results[node],
+			Cid:    data.State[node].ResultCid,
 			Folder: system.GetResultsDirectory(data.Job.Id, node),
 		})
 	}

@@ -23,7 +23,7 @@ type Runtime struct {
 	doubleDash string
 	Id         string
 	Name       string
-	Job        *types.Job
+	Job        *types.JobSpec
 	stopChan   chan bool
 }
 
@@ -37,7 +37,7 @@ func cleanEmpty(values []string) []string {
 	return result
 }
 
-func NewRuntime(job *types.Job) (*Runtime, error) {
+func NewRuntime(job *types.JobSpec) (*Runtime, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err

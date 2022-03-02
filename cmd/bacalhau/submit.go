@@ -27,7 +27,7 @@ func SubmitJob(
 	commands, cids []string,
 	rpcHost string,
 	rpcPort int,
-) (*types.Job, error) {
+) (*types.JobSpec, error) {
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("Error in creating job id. %s", err)
@@ -37,7 +37,7 @@ func SubmitJob(
 		return nil, fmt.Errorf("Empty command list")
 	}
 
-	job := &types.Job{
+	job := &types.JobSpec{
 		Id:       jobUuid.String(),
 		Cpu:      1,
 		Memory:   2,
@@ -49,7 +49,7 @@ func SubmitJob(
 	args := &internal.SubmitArgs{
 		Job: job,
 	}
-	result := &types.Job{}
+	result := &types.JobSpec{}
 
 	err = JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {

@@ -18,20 +18,17 @@ type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Job *types.Job
+	Job *types.JobSpec
 }
 
 func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
 	*reply = types.ListResponse{
-		Jobs:       server.ComputeNode.Jobs,
-		JobState:   server.ComputeNode.JobState,
-		JobStatus:  server.ComputeNode.JobStatus,
-		JobResults: server.ComputeNode.JobResults,
+		Jobs: server.ComputeNode.Jobs,
 	}
 	return nil
 }
 
-func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
+func (server *JobServer) Submit(args *SubmitArgs, reply *types.JobSpec) error {
 	//nolint
 	server.ComputeNode.Publish(args.Job)
 	*reply = *args.Job

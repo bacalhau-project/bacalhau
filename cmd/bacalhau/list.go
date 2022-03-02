@@ -65,17 +65,17 @@ var listCmd = &cobra.Command{
 			{Number: 3, AutoMerge: true},
 		})
 
-		for _, job := range result.Jobs {
-			for node := range result.JobState[job.Id] {
+		for _, jobData := range result.Jobs {
+			for node, jobState := range jobData.State {
 				t.AppendRows([]table.Row{
 					{
-						shortId(job.Id),
-						getString(strings.Join(job.Commands, "\n")),
-						getString(strings.Join(job.Cids, "\n")),
+						shortId(jobData.Job.Id),
+						getString(strings.Join(jobData.Job.Commands, "\n")),
+						getString(strings.Join(jobData.Job.Cids, "\n")),
 						getString(node),
-						result.JobState[job.Id][node],
-						result.JobStatus[job.Id][node],
-						result.JobResults[job.Id][node],
+						jobState.State,
+						jobState.Status,
+						jobState.ResultCid,
 					},
 				})
 			}
