@@ -208,7 +208,9 @@ func (runtime *Runtime) PrepareJob(
 
 	go func() {
 		<-runtime.stopChan
-		cmd.Process.Kill()
+
+		// TODO: Should we check the result here?
+		cmd.Process.Kill() // nolint
 	}()
 
 	// sleep here to give the "ipfs daemon --mount" command time to start

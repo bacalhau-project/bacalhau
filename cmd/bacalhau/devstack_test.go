@@ -106,7 +106,7 @@ raspberry
 
 	assert.NoError(t, err)
 
-	system.TryUntilSucceedsN(func() error {
+	system.TryUntilSucceedsN(func() error { // nolint
 		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
 		if err != nil {
 			return err
