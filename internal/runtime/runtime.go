@@ -37,12 +37,12 @@ func cleanEmpty(values []string) []string {
 	return result
 }
 
-func NewRuntime(job *types.JobSpec) (*Runtime, error) {
+func NewRuntime(job *types.Job) (*Runtime, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("%s%s", job.Id, id.String())
+	name := fmt.Sprintf("bacalhau%s%s", job.Id, id.String())
 	// allow CI to use docker in place of ignite
 	kind := os.Getenv("BACALHAU_RUNTIME")
 	doubleDash := ""
@@ -61,7 +61,7 @@ func NewRuntime(job *types.JobSpec) (*Runtime, error) {
 		doubleDash: doubleDash,
 		Id:         id.String(),
 		Name:       name,
-		Job:        job,
+		Job:        job.Spec,
 		stopChan:   make(chan bool),
 	}
 	return runtime, nil

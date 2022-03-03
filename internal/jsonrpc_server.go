@@ -18,7 +18,8 @@ type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Job *types.JobSpec
+	Spec *types.JobSpec
+	Deal *types.JobDeal
 }
 
 func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
@@ -30,10 +31,13 @@ func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
 	return nil
 }
 
-func (server *JobServer) Submit(args *SubmitArgs, reply *types.JobSpec) error {
+func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
 	//nolint
-	server.ComputeNode.Scheduler.SubmitJob(args.Job)
-	*reply = *args.Job
+	job, err := server.ComputeNode.Scheduler.SubmitJob(args.Spec, args.Deal)
+	if err != nil {
+		return err
+	}
+	*reply = *job
 	return nil
 }
 

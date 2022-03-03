@@ -90,7 +90,7 @@ raspberry
 
 	fileCid = strings.TrimSpace(fileCid)
 
-	var job *types.JobSpec
+	var job *types.Job
 
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob([]string{
@@ -114,7 +114,7 @@ raspberry
 			return fmt.Errorf("expected 1 job, got %d", len(result.Jobs))
 		}
 
-		var jobData *types.JobData
+		var jobData *types.Job
 
 		for _, j := range result.Jobs {
 			jobData = j

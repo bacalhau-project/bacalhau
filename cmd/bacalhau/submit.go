@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/types"
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -27,31 +26,43 @@ func SubmitJob(
 	commands, cids []string,
 	rpcHost string,
 	rpcPort int,
-) (*types.JobSpec, error) {
-	jobUuid, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
-	}
-
+) (*types.Job, error) {
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
 	}
 
-	job := &types.JobSpec{
-		Id:       jobUuid.String(),
-		Cpu:      1,
-		Memory:   2,
-		Disk:     10,
-		Cids:     cids,
+	if len(cids) <= 0 {
+		return nil, fmt.Errorf("Empty input list")
+	}
+
+	jobInputs := []types.JobStorage{}
+
+	for _, cid := range cids {
+		jobInputs = append(jobInputs, types.JobStorage{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Cid:    cid,
+		})
+	}
+
+	spec := &types.JobSpec{
 		Commands: commands,
+		Inputs:   jobInputs,
+	}
+
+	deal := &types.JobDeal{
+		Concurrency: 1,
 	}
 
 	args := &internal.SubmitArgs{
-		Job: job,
+		Spec: spec,
+		Deal: deal,
 	}
-	result := &types.JobSpec{}
 
-	err = JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
+	result := &types.Job{}
+
+	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
 		return nil, err
 	}
@@ -64,9 +75,9 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	fmt.Printf("job id: %s\n", job.Id)
+	fmt.Printf("job id: %s\n", result.Id)
 
-	return job, nil
+	return result, nil
 }
 
 var submitCmd = &cobra.Command{

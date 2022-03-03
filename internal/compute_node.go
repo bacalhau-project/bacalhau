@@ -33,55 +33,58 @@ func NewComputeNode(
 		Scheduler:               scheduler,
 	}
 
-	scheduler.Subscribe(func(eventName string, job *types.JobData) {
+	scheduler.Subscribe(func(jobEvent *types.JobEvent) {
 
-		switch eventName {
+		job, err := scheduler.Get(jobEvent.JobId)
+
+		if err != nil {
+			return
+		}
+
+		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
 		case system.JOB_EVENT_CREATED:
 
-			fmt.Printf("NEW JOB SEEN: \n%+v\n", job)
+			fmt.Printf("new job seen: \n%+v\n", jobEvent.JobSpec)
 
-			shouldRun, err := node.SelectJob(job)
+			shouldRun, err := node.SelectJob(jobEvent.JobSpec)
 			if err != nil {
-				fmt.Printf("there was an error self selecting: %s\n%+v\n", err, job)
+				fmt.Printf("there was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
 				return
 			}
 			if shouldRun {
-				fmt.Printf("we are bidding on a job because the data is local! \n%+v\n", job)
-				scheduler.BidJob(job.Job.Id)
+				fmt.Printf("we are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
+				scheduler.BidJob(jobEvent.JobId)
 			} else {
-				fmt.Printf("we ignored a job because we didn't have the data: \n%+v\n", job)
+				fmt.Printf("we ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
-		case system.JOB_EVENT_BID_ACCEPTED:
+		case system.JOB_EVENT_RUN:
 
-			scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-				State:  system.JOB_STATE_RUNNING,
-				Status: "",
-			})
-
-			cid, err := node.RunJob(job.Job)
+			cid, err := node.RunJob(job)
 
 			if err != nil {
 				fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
-				scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-					State:  system.JOB_STATE_ERROR,
-					Status: fmt.Sprintf("Error running the job: %s", err),
-				})
-
+				scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				fmt.Printf("we completed the job - results cid: %s\n%+v\n", cid, job)
-				scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-					State:     system.JOB_STATE_COMPLETE,
-					Status:    fmt.Sprintf("Got job results cid: %s", cid),
-					ResultCid: cid,
-				})
+
+				results := []types.JobStorage{
+					{
+						Engine: "ipfs",
+						Cid:    cid,
+					},
+				}
+
+				scheduler.SubmitResults(
+					job.Id,
+					fmt.Sprintf("Got job results cid: %s", cid),
+					results,
+				)
 			}
-
 		}
-
 	})
 
 	return node, nil
@@ -90,14 +93,14 @@ func NewComputeNode(
 // how this is implemented could be improved
 // for example - it should be possible to shell out to a user-defined program
 // that will decide if it's worth doing the job or not
-func (node *ComputeNode) SelectJob(job *types.JobData) (bool, error) {
-	fmt.Printf("--> FilterJob with %s\n", job.Job.Cids)
+func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
+	fmt.Printf("--> FilterJob with %s\n", job.Inputs)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
-	if len(job.Job.Cids) == 0 {
+	if len(job.Inputs) == 0 {
 		return true, nil
 	}
-	for _, cid := range job.Job.Cids {
-		hasCid, err := ipfs.HasCid(node.IpfsRepo, cid)
+	for _, input := range job.Inputs {
+		hasCid, err := ipfs.HasCid(node.IpfsRepo, input.Cid)
 		if err != nil {
 			return false, err
 		}
@@ -111,7 +114,7 @@ func (node *ComputeNode) SelectJob(job *types.JobData) (bool, error) {
 
 // return a CID of the job results when finished
 // this is obtained by running "ipfs add -r <results folder>"
-func (node *ComputeNode) RunJob(job *types.JobSpec) (string, error) {
+func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 
 	vm, err := runtime.NewRuntime(job)
 

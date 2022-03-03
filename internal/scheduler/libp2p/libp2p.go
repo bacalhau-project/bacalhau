@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -18,21 +19,20 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+const JOB_EVENT_CHANNEL = "bacalhau-job-event"
+
 type Libp2pScheduler struct {
 	Ctx context.Context
 
-	// the jobs we have already filtered and might want to process
-	Jobs map[string]*types.JobData
+	Jobs map[string]*types.Job
 
 	// the list of functions to call when we get an update about a job
-	SubscribeFuncs []func(eventName string, job *types.JobData)
+	SubscribeFuncs []func(jobEvent *types.JobEvent)
 
-	Host                  host.Host
-	PubSub                *pubsub.PubSub
-	JobCreateTopic        *pubsub.Topic
-	JobCreateSubscription *pubsub.Subscription
-	JobUpdateTopic        *pubsub.Topic
-	JobUpdateSubscription *pubsub.Subscription
+	Host                 host.Host
+	PubSub               *pubsub.PubSub
+	JobEventTopic        *pubsub.Topic
+	JobEventSubscription *pubsub.Subscription
 }
 
 func makeLibp2pHost(
@@ -69,31 +69,21 @@ func NewLibp2pScheduler(
 	if err != nil {
 		return nil, err
 	}
-	jobCreateTopic, err := pubsub.Join("bacalhau-jobs-create")
+	jobEventTopic, err := pubsub.Join(JOB_EVENT_CHANNEL)
 	if err != nil {
 		return nil, err
 	}
-	jobCreateSubscription, err := jobCreateTopic.Subscribe()
-	if err != nil {
-		return nil, err
-	}
-	jobUpdateTopic, err := pubsub.Join("bacalhau-jobs-update")
-	if err != nil {
-		return nil, err
-	}
-	jobUpdateSubscription, err := jobUpdateTopic.Subscribe()
+	jobEventSubscription, err := jobEventTopic.Subscribe()
 	if err != nil {
 		return nil, err
 	}
 	scheduler := &Libp2pScheduler{
-		Ctx:                   ctx,
-		Host:                  host,
-		PubSub:                pubsub,
-		Jobs:                  make(map[string]*types.JobData),
-		JobCreateTopic:        jobCreateTopic,
-		JobCreateSubscription: jobCreateSubscription,
-		JobUpdateTopic:        jobUpdateTopic,
-		JobUpdateSubscription: jobUpdateSubscription,
+		Ctx:                  ctx,
+		Host:                 host,
+		PubSub:               pubsub,
+		Jobs:                 make(map[string]*types.Job),
+		JobEventTopic:        jobEventTopic,
+		JobEventSubscription: jobEventSubscription,
 	}
 	return scheduler, nil
 }
@@ -112,8 +102,7 @@ func (scheduler *Libp2pScheduler) Start() error {
 	if len(scheduler.SubscribeFuncs) <= 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
-	go scheduler.ReadLoopJobCreate()
-	go scheduler.ReadLoopJobUpdate()
+	go scheduler.readLoopJobEvents()
 	go func() {
 		fmt.Printf("waiting for bacalhau libp2p context done\n")
 		<-scheduler.Ctx.Done()
@@ -124,52 +113,71 @@ func (scheduler *Libp2pScheduler) Start() error {
 	return nil
 }
 
+/////////////////////////////////////////////////////////////
+/// READ OPERATIONS
+/////////////////////////////////////////////////////////////
+
 func (scheduler *Libp2pScheduler) List() (types.ListResponse, error) {
 	return types.ListResponse{
 		Jobs: scheduler.Jobs,
 	}, nil
 }
 
-func (scheduler *Libp2pScheduler) Subscribe(f func(eventName string, job *types.JobData)) {
-	scheduler.SubscribeFuncs = append(scheduler.SubscribeFuncs, f)
+func (scheduler *Libp2pScheduler) Get(id string) (*types.Job, error) {
+	return scheduler.Jobs[id], nil
 }
 
-func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec) error {
-	msgBytes, err := json.Marshal(spec)
+func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.JobEvent)) {
+	scheduler.SubscribeFuncs = append(scheduler.SubscribeFuncs, subscribeFunc)
+}
+
+/////////////////////////////////////////////////////////////
+/// WRITE OPERATIONS - "CLIENT" / REQUESTER
+/////////////////////////////////////////////////////////////
+
+func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
+	jobUuid, err := uuid.NewRandom()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("Error in creating job id. %s", err)
 	}
-	return scheduler.JobCreateTopic.Publish(scheduler.Ctx, msgBytes)
+
+	jobId := jobUuid.String()
+
+	err = scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		EventName: system.JOB_EVENT_CREATED,
+		JobSpec:   spec,
+		JobDeal:   deal,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	job := &types.Job{
+		Id:    jobId,
+		Spec:  spec,
+		Deal:  deal,
+		State: make(map[string]*types.JobState),
+	}
+
+	return job, nil
+}
+
+func (scheduler *Libp2pScheduler) UpdateDeal(jobId string, deal *types.JobDeal) error {
+	return nil
 }
 
 func (scheduler *Libp2pScheduler) CancelJob(jobId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) ApproveJobBid(jobId string) error {
+func (scheduler *Libp2pScheduler) ApproveJobBid(jobId, hostId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) RejectJobBid(jobId string) error {
+func (scheduler *Libp2pScheduler) RejectJobBid(jobId, hostId string) error {
 	return nil
-}
-
-func (scheduler *Libp2pScheduler) UpdateJob(jobId, field, value string) error {
-	return nil
-}
-
-func (scheduler *Libp2pScheduler) UpdateJobState(jobId string, update *types.JobState) error {
-	nodeId, err := scheduler.HostId()
-	if err != nil {
-		return err
-	}
-	update.JobId = jobId
-	update.NodeId = nodeId
-	msgBytes, err := json.Marshal(update)
-	if err != nil {
-		return err
-	}
-	return scheduler.JobUpdateTopic.Publish(scheduler.Ctx, msgBytes)
 }
 
 func (scheduler *Libp2pScheduler) ApproveResult(jobId, resultId string) error {
@@ -180,22 +188,25 @@ func (scheduler *Libp2pScheduler) RejectResult(jobId, resultId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) BidJob(jobId string) (string, error) {
-	scheduler.UpdateJobState(jobId, &types.JobState{
-		State: system.JOB_STATE_BIDDING,
-	})
-	return "", nil
-}
+/////////////////////////////////////////////////////////////
+/// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
+/////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pScheduler) SubmitProgress(jobId, resultId, state, status string, resultPointer *string) error {
+func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
 	return nil
 }
 
-/*
+func (scheduler *Libp2pScheduler) SubmitResults(jobId, status string, results []types.JobStorage) error {
+	return nil
+}
 
-  INTERNAL IMPLEMENTATION
+func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
+	return nil
+}
 
-*/
+/////////////////////////////////////////////////////////////
+/// INTERNAL IMPLEMENTATION
+/////////////////////////////////////////////////////////////
 
 func (scheduler *Libp2pScheduler) Connect(peerConnect string) error {
 
@@ -221,49 +232,59 @@ func (scheduler *Libp2pScheduler) Connect(peerConnect string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) TriggerJobEvent(id, eventName string) {
-	for _, subscribeFunc := range scheduler.SubscribeFuncs {
-		subscribeFunc(eventName, scheduler.Jobs[id])
+func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
+	schedulerId, err := scheduler.HostId()
+	if err != nil {
+		return fmt.Errorf("Error in creating job id. %s", err)
 	}
+
+	event.NodeId = schedulerId
+
+	msgBytes, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
 }
 
-func (scheduler *Libp2pScheduler) ReadLoopJobCreate() {
+func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 	for {
-		msg, err := scheduler.JobCreateSubscription.Next(scheduler.Ctx)
+		msg, err := scheduler.JobEventSubscription.Next(scheduler.Ctx)
 		if err != nil {
 			return
 		}
 
-		job := new(types.JobSpec)
-		err = json.Unmarshal(msg.Data, job)
+		jobEvent := new(types.JobEvent)
+		err = json.Unmarshal(msg.Data, jobEvent)
 		if err != nil {
 			continue
 		}
 
-		scheduler.Jobs[job.Id] = &types.JobData{
-			Job:   job,
-			State: make(map[string]*types.JobState),
+		// let's initialise the state for this job because it was just created
+		if jobEvent.EventName == system.JOB_EVENT_CREATED {
+			scheduler.Jobs[jobEvent.JobId] = &types.Job{
+				Id:    jobEvent.JobId,
+				Spec:  nil,
+				Deal:  nil,
+				State: make(map[string]*types.JobState),
+			}
 		}
 
-		scheduler.TriggerJobEvent(job.Id, system.JOB_EVENT_CREATED)
-	}
-}
-
-func (scheduler *Libp2pScheduler) ReadLoopJobUpdate() {
-	for {
-		msg, err := scheduler.JobUpdateSubscription.Next(scheduler.Ctx)
-		if err != nil {
-			return
+		// for "create" and "update" events - this will be filled in
+		if jobEvent.JobSpec != nil {
+			scheduler.Jobs[jobEvent.JobId].Spec = jobEvent.JobSpec
 		}
 
-		jobUpdate := new(types.JobState)
-		err = json.Unmarshal(msg.Data, jobUpdate)
-		if err != nil {
-			continue
+		if jobEvent.JobDeal != nil {
+			scheduler.Jobs[jobEvent.JobId].Deal = jobEvent.JobDeal
 		}
 
-		scheduler.Jobs[jobUpdate.JobId].State[jobUpdate.NodeId] = jobUpdate
+		if jobEvent.JobState != nil {
+			scheduler.Jobs[jobEvent.JobId].State[jobEvent.NodeId] = jobEvent.JobState
+		}
 
-		scheduler.TriggerJobEvent(jobUpdate.JobId, system.JOB_EVENT_UPDATED)
+		for _, subscribeFunc := range scheduler.SubscribeFuncs {
+			subscribeFunc(jobEvent)
+		}
 	}
 }
