@@ -11,7 +11,7 @@ import (
 )
 
 type JobServer struct {
-	ComputeNode *ComputeNode
+	RequesterNode *RequesterNode
 }
 
 type ListArgs struct {
@@ -23,7 +23,7 @@ type SubmitArgs struct {
 }
 
 func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
-	res, err := server.ComputeNode.Scheduler.List()
+	res, err := server.RequesterNode.Scheduler.List()
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
 
 func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
 	//nolint
-	job, err := server.ComputeNode.Scheduler.SubmitJob(args.Spec, args.Deal)
+	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
 	if err != nil {
 		return err
 	}
@@ -45,10 +45,10 @@ func RunBacalhauJsonRpcServer(
 	ctx context.Context,
 	host string,
 	port int,
-	computeNode *ComputeNode,
+	requesterNode *RequesterNode,
 ) {
 	job := &JobServer{
-		ComputeNode: computeNode,
+		RequesterNode: requesterNode,
 	}
 
 	rpcServer := rpc.NewServer()

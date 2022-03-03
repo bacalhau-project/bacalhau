@@ -9,6 +9,7 @@ type JobStorage struct {
 	Cid    string
 }
 
+// what we pass off to the executor to "run" the job
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
 	Engine   string
@@ -29,11 +30,14 @@ type JobState struct {
 	Outputs []JobStorage
 }
 
-// the client settings for parameters around "how"
-// to run the job and what it's worth
+// the client can update this
 type JobDeal struct {
 	// how many nodes do we want to run this job?
 	Concurrency int
+	// the nodes we have assigned (and will pay)
+	// other nodes are welcome to submit results without having been assigned
+	// this is how they can bootstrap their reputation
+	AssignedNodes []string
 }
 
 // the view of a single job

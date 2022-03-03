@@ -11,9 +11,10 @@ import (
 )
 
 type DevStackNode struct {
-	Node        *ComputeNode
-	JsonRpcPort int
-	IpfsRepo    string
+	ComputeNode   *ComputeNode
+	RequesterNode *RequesterNode
+	JsonRpcPort   int
+	IpfsRepo      string
 }
 
 type DevStack struct {
@@ -42,7 +43,12 @@ func NewDevStack(
 			return nil, err
 		}
 
-		node, err := NewComputeNode(ctx, libp2pScheduler)
+		requestorNode, err := NewRequesterNode(ctx, libp2pScheduler)
+		if err != nil {
+			return nil, err
+		}
+
+		computeNode, err := NewComputeNode(ctx, libp2pScheduler)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +70,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		go RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, node)
+		go RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requestorNode)
 
 		connectToMultiAddress := ""
 
@@ -82,17 +88,18 @@ func NewDevStack(
 		bacalhauMultiAddresses = append(bacalhauMultiAddresses, bacalhauMultiAddress)
 		ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
 
-		node.IpfsRepo = ipfsRepo
-		node.IpfsConnectMultiAddress = ipfsMultiaddress
+		computeNode.IpfsRepo = ipfsRepo
+		computeNode.IpfsConnectMultiAddress = ipfsMultiaddress
 
 		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 		fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)
 		fmt.Printf("ipfs repo: %s\n", ipfsRepo)
 
 		devStackNode := &DevStackNode{
-			Node:        node,
-			JsonRpcPort: jsonRpcPort,
-			IpfsRepo:    ipfsRepo,
+			ComputeNode:   computeNode,
+			RequesterNode: requestorNode,
+			JsonRpcPort:   jsonRpcPort,
+			IpfsRepo:      ipfsRepo,
 		}
 
 		nodes = append(nodes, devStackNode)

@@ -27,7 +27,7 @@ type Scheduler interface {
 	// Listen for updates (subscribe with a callback) about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
-	Subscribe(func(jobEvent *types.JobEvent))
+	Subscribe(func(jobEvent *types.JobEvent, job *types.Job))
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "CLIENT" / REQUESTER
@@ -44,14 +44,14 @@ type Scheduler interface {
 	// Executed by the client (Connie) to tell Prue they are good to start.
 	// Enables coordination to avoid excess job starting, also allows client to
 	// be selective about reputation.
-	ApproveJobBid(jobId, hostId string) error
+	AcceptJobBid(jobId, hostId string) error
 	// Executed by the client (Connie) to tell Prue they shouldn't try to run
 	// this job.
 	RejectJobBid(jobId, hostId string) error
 	// Executed by the client when they are satisfied with the outcome of a job
 	// (e.g they have completed some verification of a job). Along with the id
 	// of the server who did the work this is Input to the reputation system.
-	ApproveResult(jobId, hostId string) error
+	AcceptResult(jobId, hostId string) error
 	// Executed by the client when they believe a job has been executed
 	// incorrectly. Also input to reputation system.
 	RejectResult(jobId, hostId string) error
@@ -65,7 +65,7 @@ type Scheduler interface {
 	BidJob(jobId string) error
 
 	// Executed by the compute node when they have completed a job.
-	SubmitResults(jobId, status string, results []types.JobStorage) error
+	SubmitResult(jobId, status string, results []types.JobStorage) error
 
 	// something has gone wrong with running the job
 	ErrorJob(jobId, status string) error

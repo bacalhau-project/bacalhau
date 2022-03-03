@@ -52,6 +52,10 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
+		requesterNode, err := internal.NewRequesterNode(ctx, libp2pScheduler)
+		if err != nil {
+			return err
+		}
 		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler)
 		if err != nil {
 			return err
@@ -132,7 +136,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 			return err
 		}
 
-		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, computeNode)
+		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, requesterNode)
 
 		return nil
 

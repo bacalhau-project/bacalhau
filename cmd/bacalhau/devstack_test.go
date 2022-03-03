@@ -134,7 +134,7 @@ raspberry
 		return nil
 	}, "wait for results to be", 100)
 
-	hostId, err := stack.Nodes[0].Node.Scheduler.HostId()
+	hostId, err := stack.Nodes[0].ComputeNode.Scheduler.HostId()
 	assert.NoError(t, err)
 
 	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))

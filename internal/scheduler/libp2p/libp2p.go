@@ -27,7 +27,7 @@ type Libp2pScheduler struct {
 	Jobs map[string]*types.Job
 
 	// the list of functions to call when we get an update about a job
-	SubscribeFuncs []func(jobEvent *types.JobEvent)
+	SubscribeFuncs []func(jobEvent *types.JobEvent, job *types.Job)
 
 	Host                 host.Host
 	PubSub               *pubsub.PubSub
@@ -127,7 +127,7 @@ func (scheduler *Libp2pScheduler) Get(id string) (*types.Job, error) {
 	return scheduler.Jobs[id], nil
 }
 
-func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.JobEvent)) {
+func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
 	scheduler.SubscribeFuncs = append(scheduler.SubscribeFuncs, subscribeFunc)
 }
 
@@ -165,27 +165,65 @@ func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.Job
 }
 
 func (scheduler *Libp2pScheduler) UpdateDeal(jobId string, deal *types.JobDeal) error {
-	return nil
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		EventName: system.JOB_EVENT_DEAL_UPDATED,
+		JobDeal:   deal,
+	})
 }
 
 func (scheduler *Libp2pScheduler) CancelJob(jobId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) ApproveJobBid(jobId, hostId string) error {
-	return nil
+func (scheduler *Libp2pScheduler) AcceptJobBid(jobId, nodeId string) error {
+	deal := scheduler.Jobs[jobId].Deal
+	deal.AssignedNodes = append(deal.AssignedNodes, nodeId)
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		NodeId:    nodeId,
+		EventName: system.JOB_EVENT_BID_ACCEPTED,
+		JobDeal:   deal,
+		JobState: &types.JobState{
+			State: system.JOB_STATE_RUNNING,
+		},
+	})
 }
 
-func (scheduler *Libp2pScheduler) RejectJobBid(jobId, hostId string) error {
-	return nil
+func (scheduler *Libp2pScheduler) RejectJobBid(jobId, nodeId string) error {
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		NodeId:    nodeId,
+		EventName: system.JOB_EVENT_BID_REJECTED,
+		JobState: &types.JobState{
+			State:  system.JOB_STATE_ERROR,
+			Status: "Job bid rejected by client",
+		},
+	})
 }
 
-func (scheduler *Libp2pScheduler) ApproveResult(jobId, resultId string) error {
-	return nil
+func (scheduler *Libp2pScheduler) AcceptResult(jobId, nodeId string) error {
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		NodeId:    nodeId,
+		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
+		JobState: &types.JobState{
+			State:  system.JOB_STATE_ERROR,
+			Status: "Job bid rejected by client",
+		},
+	})
 }
 
-func (scheduler *Libp2pScheduler) RejectResult(jobId, resultId string) error {
-	return nil
+func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId string) error {
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		NodeId:    nodeId,
+		EventName: system.JOB_EVENT_BID_REJECTED,
+		JobState: &types.JobState{
+			State:  system.JOB_STATE_ERROR,
+			Status: "Job bid rejected by client",
+		},
+	})
 }
 
 /////////////////////////////////////////////////////////////
@@ -193,15 +231,35 @@ func (scheduler *Libp2pScheduler) RejectResult(jobId, resultId string) error {
 /////////////////////////////////////////////////////////////
 
 func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
-	return nil
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		EventName: system.JOB_EVENT_BID,
+		JobState: &types.JobState{
+			State: system.JOB_STATE_BIDDING,
+		},
+	})
 }
 
-func (scheduler *Libp2pScheduler) SubmitResults(jobId, status string, results []types.JobStorage) error {
-	return nil
+func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.JobStorage) error {
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		EventName: system.JOB_EVENT_RESULTS,
+		JobState: &types.JobState{
+			State:   system.JOB_STATE_COMPLETE,
+			Status:  status,
+			Outputs: outputs,
+		},
+	})
 }
 
 func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
-	return nil
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		EventName: system.JOB_EVENT_ERROR,
+		JobState: &types.JobState{
+			State: system.JOB_STATE_ERROR,
+		},
+	})
 }
 
 /////////////////////////////////////////////////////////////
@@ -233,13 +291,13 @@ func (scheduler *Libp2pScheduler) Connect(peerConnect string) error {
 }
 
 func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
-	schedulerId, err := scheduler.HostId()
-	if err != nil {
-		return fmt.Errorf("Error in creating job id. %s", err)
+	if event.NodeId == "" {
+		nodeId, err := scheduler.HostId()
+		if err != nil {
+			return fmt.Errorf("Error in creating job id. %s", err)
+		}
+		event.NodeId = nodeId
 	}
-
-	event.NodeId = schedulerId
-
 	msgBytes, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -264,6 +322,7 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 		if jobEvent.EventName == system.JOB_EVENT_CREATED {
 			scheduler.Jobs[jobEvent.JobId] = &types.Job{
 				Id:    jobEvent.JobId,
+				Owner: string(msg.From),
 				Spec:  nil,
 				Deal:  nil,
 				State: make(map[string]*types.JobState),
@@ -275,16 +334,17 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 			scheduler.Jobs[jobEvent.JobId].Spec = jobEvent.JobSpec
 		}
 
+		// only the owner of the job can update
 		if jobEvent.JobDeal != nil {
 			scheduler.Jobs[jobEvent.JobId].Deal = jobEvent.JobDeal
 		}
 
 		if jobEvent.JobState != nil {
-			scheduler.Jobs[jobEvent.JobId].State[jobEvent.NodeId] = jobEvent.JobState
+			scheduler.Jobs[jobEvent.JobId].State[string(msg.From)] = jobEvent.JobState
 		}
 
 		for _, subscribeFunc := range scheduler.SubscribeFuncs {
-			subscribeFunc(jobEvent)
+			subscribeFunc(jobEvent, scheduler.Jobs[jobEvent.JobId])
 		}
 	}
 }

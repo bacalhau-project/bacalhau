@@ -2,76 +2,90 @@ package internal
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
+	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/internal/types"
 )
 
 type RequesterNode struct {
-	Ctx context.Context
-	// an array of job ids that we are the "requester" for
-	RequestedJobIds []string
-	Scheduler       scheduler.Scheduler
+	Ctx       context.Context
+	Scheduler scheduler.Scheduler
 }
 
 func NewRequesterNode(
 	ctx context.Context,
 	scheduler scheduler.Scheduler,
 ) (*RequesterNode, error) {
+
+	nodeId, err := scheduler.HostId()
+
+	if err != nil {
+		return nil, err
+	}
+
 	node := &RequesterNode{
 		Ctx:       ctx,
 		Scheduler: scheduler,
 	}
 
-	// scheduler.Subscribe(func(jobEvent *types.JobEvent) {
+	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
 
-	// 	switch jobEvent.EventName {
+		// we only care about jobs that we own
+		if job.Owner != nodeId {
+			return
+		}
 
-	// 	// a new job has arrived - decide if we want to bid on it
-	// 	case system.JOB_EVENT_CREATE:
+		switch jobEvent.EventName {
 
-	// 		fmt.Printf("NEW JOB SEEN: \n%+v\n", jobEvent.JobSpec)
+		// a compute node has bid on a job
+		// let's decide if we want to accept it or not
+		// we would call out to the reputation system
+		// we also pay attention to the job deal concurrency setting
+		case system.JOB_EVENT_BID:
 
-	// 		shouldRun, err := node.SelectJob(job)
-	// 		if err != nil {
-	// 			fmt.Printf("there was an error self selecting: %s\n%+v\n", err, job)
-	// 			return
-	// 		}
-	// 		if shouldRun {
-	// 			fmt.Printf("we are bidding on a job because the data is local! \n%+v\n", job)
-	// 			scheduler.BidJob(job.Job.Id)
-	// 		} else {
-	// 			fmt.Printf("we ignored a job because we didn't have the data: \n%+v\n", job)
-	// 		}
+			bidAccepted, err := node.ConsiderBid(job, jobEvent.NodeId)
+			if err != nil {
+				fmt.Printf("there was an error considering bid: %s\n", err)
+				return
+			}
 
-	// 	// we have been given the goahead to run the job
-	// 	case system.JOB_EVENT_BID_ACCEPTED:
+			if bidAccepted {
+				scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
+			} else {
+				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId)
+			}
+		}
 
-	// 		scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-	// 			State:  system.JOB_STATE_RUNNING,
-	// 			Status: "",
-	// 		})
-
-	// 		cid, err := node.RunJob(job.Job)
-
-	// 		if err != nil {
-	// 			fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
-	// 			scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-	// 				State:  system.JOB_STATE_ERROR,
-	// 				Status: fmt.Sprintf("Error running the job: %s", err),
-	// 			})
-
-	// 		} else {
-	// 			fmt.Printf("we completed the job - results cid: %s\n%+v\n", cid, job)
-	// 			scheduler.UpdateJobState(job.Job.Id, &types.JobState{
-	// 				State:     system.JOB_STATE_COMPLETE,
-	// 				Status:    fmt.Sprintf("Got job results cid: %s", cid),
-	// 				ResultCid: cid,
-	// 			})
-	// 		}
-
-	// 	}
-
-	// })
+	})
 
 	return node, nil
+}
+
+// a compute node has bid on the job
+// should we accept the bid or not?
+func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, error) {
+
+	concurrency := job.Deal.Concurrency
+
+	// we are already over-subscribed
+	// we don't want to
+	if len(job.Deal.AssignedNodes) >= concurrency {
+		return false, nil
+	}
+
+	alreadyAssigned := false
+
+	for _, assignedNode := range job.Deal.AssignedNodes {
+		if assignedNode == nodeId {
+			alreadyAssigned = true
+		}
+	}
+
+	if alreadyAssigned {
+		return false, nil
+	}
+
+	return true, nil
 }

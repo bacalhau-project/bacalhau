@@ -26,6 +26,13 @@ func NewComputeNode(
 	ctx context.Context,
 	scheduler scheduler.Scheduler,
 ) (*ComputeNode, error) {
+
+	nodeId, err := scheduler.HostId()
+
+	if err != nil {
+		return nil, err
+	}
+
 	node := &ComputeNode{
 		IpfsRepo:                "",
 		IpfsConnectMultiAddress: "",
@@ -33,13 +40,7 @@ func NewComputeNode(
 		Scheduler:               scheduler,
 	}
 
-	scheduler.Subscribe(func(jobEvent *types.JobEvent) {
-
-		job, err := scheduler.Get(jobEvent.JobId)
-
-		if err != nil {
-			return
-		}
+	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
 
 		switch jobEvent.EventName {
 
@@ -61,7 +62,12 @@ func NewComputeNode(
 			}
 
 		// we have been given the goahead to run the job
-		case system.JOB_EVENT_RUN:
+		case system.JOB_EVENT_BID_ACCEPTED:
+
+			// we only care if the accepted bid is from us
+			if jobEvent.NodeId != nodeId {
+				return
+			}
 
 			cid, err := node.RunJob(job)
 
@@ -78,7 +84,7 @@ func NewComputeNode(
 					},
 				}
 
-				scheduler.SubmitResults(
+				scheduler.SubmitResult(
 					job.Id,
 					fmt.Sprintf("Got job results cid: %s", cid),
 					results,
