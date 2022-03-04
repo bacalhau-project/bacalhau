@@ -43,12 +43,18 @@ func NewDevStack(
 			return nil, err
 		}
 
-		requestorNode, err := NewRequesterNode(ctx, libp2pScheduler)
+		requesterNode, err := NewRequesterNode(ctx, libp2pScheduler)
 		if err != nil {
 			return nil, err
 		}
 
 		computeNode, err := NewComputeNode(ctx, libp2pScheduler)
+		if err != nil {
+			return nil, err
+		}
+
+		// at this point the requester and compute nodes are both subscribing to the scheduler events
+		err = libp2pScheduler.Start()
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +76,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		go RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requestorNode)
+		RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requesterNode)
 
 		connectToMultiAddress := ""
 
@@ -97,7 +103,7 @@ func NewDevStack(
 
 		devStackNode := &DevStackNode{
 			ComputeNode:   computeNode,
-			RequesterNode: requestorNode,
+			RequesterNode: requesterNode,
 			JsonRpcPort:   jsonRpcPort,
 			IpfsRepo:      ipfsRepo,
 		}

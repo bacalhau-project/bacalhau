@@ -70,15 +70,12 @@ func RunBacalhauJsonRpcServer(
 		}
 	}()
 
-	fmt.Printf("waiting for json rpc context done\n")
-
-	<-ctx.Done()
-
-	fmt.Printf("closing json rpc server\n")
-
-	isClosing = true
-
-	httpServer.Close()
-
-	fmt.Printf("closed json rpc server\n")
+	go func() {
+		fmt.Printf("waiting for json rpc context done\n")
+		<-ctx.Done()
+		fmt.Printf("closing json rpc server\n")
+		isClosing = true
+		httpServer.Close()
+		fmt.Printf("closed json rpc server\n")
+	}()
 }

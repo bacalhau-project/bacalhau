@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"reflect"
 	"strings"
 	"testing"
@@ -45,6 +46,15 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 func TestDevStack(t *testing.T) {
 	stack, cancelFunction := setupTest(t)
 	defer teardownTest(stack, cancelFunction)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			teardownTest(stack, cancelFunction)
+			os.Exit(1)
+		}
+	}()
 
 	// create test data
 	// ipfs add file on 2 nodes

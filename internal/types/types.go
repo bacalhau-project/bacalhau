@@ -30,7 +30,8 @@ type JobState struct {
 	Outputs []JobStorage
 }
 
-// the client can update this
+// omly the client can update this as it's the client that will
+// pay out based on the deal
 type JobDeal struct {
 	// how many nodes do we want to run this job?
 	Concurrency int

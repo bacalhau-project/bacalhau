@@ -25,7 +25,7 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	node := &RequesterNode{
+	requesterNode := &RequesterNode{
 		Ctx:       ctx,
 		Scheduler: scheduler,
 	}
@@ -45,7 +45,8 @@ func NewRequesterNode(
 		// we also pay attention to the job deal concurrency setting
 		case system.JOB_EVENT_BID:
 
-			bidAccepted, err := node.ConsiderBid(job, jobEvent.NodeId)
+			bidAccepted, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
+
 			if err != nil {
 				fmt.Printf("there was an error considering bid: %s\n", err)
 				return
@@ -60,7 +61,7 @@ func NewRequesterNode(
 
 	})
 
-	return node, nil
+	return requesterNode, nil
 }
 
 // a compute node has bid on the job
@@ -70,11 +71,11 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, err
 	concurrency := job.Deal.Concurrency
 
 	// we are already over-subscribed
-	// we don't want to
 	if len(job.Deal.AssignedNodes) >= concurrency {
 		return false, nil
 	}
 
+	// sanity check to not allow a node to bid on a job twice
 	alreadyAssigned := false
 
 	for _, assignedNode := range job.Deal.AssignedNodes {

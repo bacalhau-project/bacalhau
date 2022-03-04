@@ -322,7 +322,7 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 		if jobEvent.EventName == system.JOB_EVENT_CREATED {
 			scheduler.Jobs[jobEvent.JobId] = &types.Job{
 				Id:    jobEvent.JobId,
-				Owner: string(msg.From),
+				Owner: jobEvent.NodeId,
 				Spec:  nil,
 				Deal:  nil,
 				State: make(map[string]*types.JobState),

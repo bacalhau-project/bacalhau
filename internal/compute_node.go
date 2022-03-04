@@ -33,7 +33,7 @@ func NewComputeNode(
 		return nil, err
 	}
 
-	node := &ComputeNode{
+	computeNode := &ComputeNode{
 		IpfsRepo:                "",
 		IpfsConnectMultiAddress: "",
 		Ctx:                     ctx,
@@ -49,7 +49,7 @@ func NewComputeNode(
 
 			fmt.Printf("new job seen: \n%+v\n", jobEvent.JobSpec)
 
-			shouldRun, err := node.SelectJob(jobEvent.JobSpec)
+			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
 				fmt.Printf("there was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
 				return
@@ -64,12 +64,12 @@ func NewComputeNode(
 		// we have been given the goahead to run the job
 		case system.JOB_EVENT_BID_ACCEPTED:
 
-			// we only care if the accepted bid is from us
+			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return
 			}
 
-			cid, err := node.RunJob(job)
+			cid, err := computeNode.RunJob(job)
 
 			if err != nil {
 				fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
@@ -93,7 +93,7 @@ func NewComputeNode(
 		}
 	})
 
-	return node, nil
+	return computeNode, nil
 }
 
 // how this is implemented could be improved

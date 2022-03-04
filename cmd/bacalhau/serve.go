@@ -138,7 +138,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 
 		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, requesterNode)
 
-		return nil
-
+		// wait forever because everything else is running in a goroutine
+		select {}
 	},
 }
