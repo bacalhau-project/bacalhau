@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const TEST_CONCURRENCY = 2
+
 func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
@@ -87,7 +89,7 @@ raspberry
 	// ipfs add the file to 2 nodes
 	// this tests self selection
 	for i, node := range stack.Nodes {
-		if i >= 2 {
+		if i >= TEST_CONCURRENCY {
 			continue
 		}
 
@@ -107,7 +109,7 @@ raspberry
 			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 		}, []string{
 			fileCid,
-		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
 		return err
 	}, "submit job", 100)

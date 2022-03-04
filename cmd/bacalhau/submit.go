@@ -10,6 +10,7 @@ import (
 
 var jobCids []string
 var jobCommands []string
+var jobConcurrency int
 
 func init() {
 	submitCmd.PersistentFlags().StringSliceVar(
@@ -20,10 +21,15 @@ func init() {
 		&jobCommands, "commands", []string{},
 		`The commands for the job (comma separated, or specify multiple times)`,
 	)
+	submitCmd.PersistentFlags().IntVar(
+		&jobConcurrency, "concurrency", 1,
+		`How many nodes should run the job`,
+	)
 }
 
 func SubmitJob(
 	commands, cids []string,
+	concurrency int,
 	rpcHost string,
 	rpcPort int,
 ) (*types.Job, error) {
@@ -52,7 +58,7 @@ func SubmitJob(
 	}
 
 	deal := &types.JobDeal{
-		Concurrency: 1,
+		Concurrency: concurrency,
 	}
 
 	args := &internal.SubmitArgs{
@@ -84,7 +90,13 @@ var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		_, err := SubmitJob(jobCommands, jobCids, jsonrpcHost, jsonrpcPort)
+		_, err := SubmitJob(
+			jobCommands,
+			jobCids,
+			jobConcurrency,
+			jsonrpcHost,
+			jsonrpcPort,
+		)
 		return err
 	},
 }

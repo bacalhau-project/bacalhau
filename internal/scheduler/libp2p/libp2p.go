@@ -302,6 +302,7 @@ func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Sending event: %s\n", string(msgBytes))
 	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
 }
 
@@ -344,7 +345,7 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 		}
 
 		for _, subscribeFunc := range scheduler.SubscribeFuncs {
-			subscribeFunc(jobEvent, scheduler.Jobs[jobEvent.JobId])
+			go subscribeFunc(jobEvent, scheduler.Jobs[jobEvent.JobId])
 		}
 	}
 }
