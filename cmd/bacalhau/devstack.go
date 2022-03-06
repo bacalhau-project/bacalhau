@@ -36,6 +36,5 @@ var devstackCmd = &cobra.Command{
 		// wait forever because everything else is running in a goroutine
 		select {}
 
-		return nil
 	},
 }

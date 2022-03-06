@@ -1,0 +1,1 @@
+awk -F, '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.1^2) print}' ../temperature_sensor_data.csv

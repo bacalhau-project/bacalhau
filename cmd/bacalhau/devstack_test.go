@@ -94,6 +94,8 @@ raspberry
 
 	var job *types.Job
 
+	numberOfJobsToCheck := 0
+
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob([]string{
 			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
@@ -101,19 +103,38 @@ raspberry
 			fileCid,
 		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
+		numberOfJobsToCheck += 1
+
 		return err
 	}, "submit job", 100)
 
 	assert.NoError(t, err)
 
-	system.TryUntilSucceedsN(func() error {
+	// Second command with single quotes in it
+	err = system.TryUntilSucceedsN(func() error {
+		job, err = SubmitJob([]string{
+			fmt.Sprintf("sed -n '/kiwi/p' /ipfs/%s", fileCid),
+		}, []string{
+			fileCid,
+		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+
+		numberOfJobsToCheck += 1
+
+		return err
+	}, "submit job", 100)
+
+	assert.NoError(t, err)
+
+	err = system.TryUntilSucceedsN(func() error {
 		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
 		if err != nil {
 			return err
 		}
 
-		if len(result.Jobs) != 1 {
-			return fmt.Errorf("expected 1 job, got %d", len(result.Jobs))
+		if len(result.Jobs) != numberOfJobsToCheck {
+			msg := fmt.Sprintf("expected %d job(s), got %d", numberOfJobsToCheck, len(result.Jobs))
+			assert.Fail(t, msg)
+			return fmt.Errorf(msg)
 		}
 
 		job := result.Jobs[0]
@@ -130,6 +151,8 @@ raspberry
 
 		return nil
 	}, "wait for results to be", 100)
+
+	assert.NoError(t, err)
 
 	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, stack.Nodes[0].Node.Id))
 	assert.NoError(t, err)

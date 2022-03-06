@@ -78,11 +78,11 @@ func StartDaemon(
 	// cmd.Stderr = os.Stderr
 	// cmd.Stdout = os.Stdout
 
-	err = cmd.Start()
+	_ = cmd.Start() // TODO handle start
 	go func(ctx context.Context, cmd *exec.Cmd) {
 		fmt.Printf("waiting for ipfs context done\n")
 		<-ctx.Done()
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill() // TODO handle kill
 		fmt.Printf("got to after closing ipfs daemon\n")
 	}(ctx, cmd)
 	return nil
@@ -182,12 +182,15 @@ func HasCid(repoPath, cid string) (bool, error) {
 		"refs",
 		"local",
 	})
-	fmt.Printf(" ---> FINISHED running ipfs refs local: %s %s\n", allLocalRefString, err)
+
+	countLocalRefsString := len(strings.Split(allLocalRefString, "\n"))
+
+	fmt.Printf(" ---> FINISHED running ipfs refs local: From %d refs - err: %s\n", countLocalRefsString, err)
 	if err != nil {
 		return false, err
 	}
 	got := contains(strings.Split(allLocalRefString, "\n"), cid)
-	fmt.Sprintf("--> HasCid %s looking for %s in %s\n", got, cid, allLocalRefString)
+	fmt.Printf("--> HasCid %t looking for %s in %d refs\n", got, cid, countLocalRefsString)
 	return got, nil
 }
 
