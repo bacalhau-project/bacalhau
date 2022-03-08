@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -106,11 +107,11 @@ func NewComputeNode(
 	go server.ReadLoopJobCreate()
 	go server.ReadLoopJobUpdate()
 	go func() {
-		fmt.Printf("waiting for bacalhau libp2p context done\n")
+		logger.Debug("waiting for bacalhau libp2p context done\n")
 		<-ctx.Done()
-		fmt.Printf("closing bacalhau libp2p daemon\n")
+		logger.Debug("closing bacalhau libp2p daemon\n")
 		host.Close()
-		fmt.Printf("closed bacalhau libp2p daemon\n")
+		logger.Debug("closed bacalhau libp2p daemon\n")
 	}()
 	return server, nil
 }

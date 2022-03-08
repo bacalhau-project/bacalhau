@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/phayes/freeport"
 )
@@ -20,19 +21,19 @@ const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
 // TODO: We should inject the ipfs binary in the future
 func IpfsCommand(repoPath string, args []string) (string, error) {
-	fmt.Printf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", repoPath, strings.Join(args, " "))
+	logger.Debugf(fmt.Sprintf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", repoPath, strings.Join(args, " ")))
 
 	// TODO: We should have a struct that allows us to set the ipfs binary, rather than relying on system paths, etc
 	ipfs_binary, err := exec.LookPath("ipfs")
 
 	if err != nil {
-		return "", fmt.Errorf("Could not find 'ipfs' binary on your path.")
+		logger.Error("Could not find 'ipfs' binary on your path.")
 	}
 
 	ipfs_binary_full_path, _ := filepath.Abs(ipfs_binary)
 
 	if strings.Contains(ipfs_binary_full_path, "/snap/") {
-		return "", fmt.Errorf("You installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider.")
+		logger.Error("You installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider.")
 	}
 
 	if repoPath == "" {
@@ -96,10 +97,10 @@ func StartDaemon(
 
 	err = cmd.Start() // nolint
 	go func(ctx context.Context, cmd *exec.Cmd) {
-		fmt.Printf("waiting for ipfs context done\n")
+		logger.Debug("waiting for ipfs context done\n")
 		<-ctx.Done()
 		_ = cmd.Process.Kill()
-		fmt.Printf("got to after closing ipfs daemon\n")
+		logger.Debug("got to after closing ipfs daemon\n")
 	}(ctx, cmd)
 	return nil
 }
@@ -162,7 +163,7 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 			"id",
 		})
 		if err != nil {
-			fmt.Printf("error running command: %s\n", err)
+			logger.Errorf("error running command: %s\n", err)
 			return err
 		}
 		result := struct {
@@ -170,7 +171,7 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 		}{}
 		err = json.Unmarshal([]byte(jsonBlob), &result)
 		if err != nil {
-			fmt.Printf("error parsing JSON: %s\n", err)
+			logger.Errorf("error parsing JSON: %s\n", err)
 			return err
 		}
 		// TODO: extract the most public address so that vms in ignite
@@ -193,17 +194,22 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 }
 
 func HasCid(repoPath, cid string) (bool, error) {
-	fmt.Printf("IN HasCid with %s, %s\n", repoPath, cid)
+	logger.Debug("Beginning to collect all refs in IPFS Repo.")
+	logger.Debugf("RepoPath {%s}", repoPath)
 	allLocalRefString, err := IpfsCommand(repoPath, []string{
 		"refs",
 		"local",
 	})
-	fmt.Printf(" ---> FINISHED running ipfs refs local: %s %s\n", allLocalRefString, err)
+	logger.Debug("Finished collecting refs in IPFS Repo.")
 	if err != nil {
 		return false, err
 	}
-	got := contains(strings.Split(allLocalRefString, "\n"), cid)
-	fmt.Printf("--> HasCid %t looking for %s in %s\n", got, cid, allLocalRefString)
+	logger.Debugf("Comparing CID (%s) collecting to all refs in repo.")
+	allLocalRefsArray := strings.Split(allLocalRefString, "\n")
+	logger.Debugf("Total number of local refs: %d", len(allLocalRefsArray))
+	got := contains(allLocalRefsArray, cid)
+
+	logger.Debugf("CID (%s) in local refs: %t", cid, got)
 	return got, nil
 }
 

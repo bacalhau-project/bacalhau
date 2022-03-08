@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 )
@@ -50,11 +51,13 @@ func NewRuntime(job *types.JobSpec) (*Runtime, error) {
 		kind = "ignite"
 		doubleDash = "--"
 	}
+
+	logger.Debugf("Bacalhau Runtime Used: %s", kind)
+
 	if !(kind == "ignite" || kind == "docker") {
-		panic(fmt.Sprintf(
-			`unsupported runtime requested via BACALHAU_RUNTIME (%s), `+
-				`please specify one of "ignite" or "docker"`, kind,
-		))
+		msg := fmt.Sprintf(`unsupported runtime requested via BACALHAU_RUNTIME (%s), `+
+			`please specify one of "ignite" or "docker"`, kind)
+		logger.Fatalf(msg)
 	}
 	runtime := &Runtime{
 		Kind:       kind,
