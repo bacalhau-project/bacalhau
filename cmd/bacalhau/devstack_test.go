@@ -125,6 +125,21 @@ raspberry
 
 	assert.NoError(t, err)
 
+	// Third command with a quote in it
+	err = system.TryUntilSucceedsN(func() error {
+		job, err = SubmitJob([]string{
+			fmt.Sprintf("awk -F','  '$1 ~ /kiwi/ {print $0}' /ipfs/%s", fileCid),
+		}, []string{
+			fileCid,
+		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+
+		numberOfJobsToCheck += 1
+
+		return err
+	}, "submit job", 100)
+
+	assert.NoError(t, err)
+
 	err = system.TryUntilSucceedsN(func() error {
 		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
 		if err != nil {

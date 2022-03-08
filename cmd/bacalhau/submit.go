@@ -17,9 +17,9 @@ func init() {
 		&jobCids, "cids", []string{},
 		`The cids of the data used by the job (comma separated, or specify multiple times)`,
 	)
-	submitCmd.PersistentFlags().StringSliceVar(
+	submitCmd.PersistentFlags().StringArrayVar(
 		&jobCommands, "commands", []string{},
-		`The commands for the job (comma separated, or specify multiple times)`,
+		`The commands for the job (specify multiple times for multiple commands)`,
 	)
 }
 
