@@ -18,7 +18,7 @@ export SSH_FINGERPRINT="$(doctl compute ssh-key get ID_FIELD_FROM_OUTPUT --no-he
 export DROPLET_NAME="bacalhau.node"
 
 # Below requires having login in via 'doctl auth init'
-doctl compute droplet create --size s-4vcpu-8gb --region nyc1 --image ubuntu-20-04-x64 --ssh-keys $SSH_FINGERPRINT bacalhau.node
+doctl compute droplet create --size s-4vcpu-8gb --region nyc1 --image ubuntu-20-04-x64 --ssh-keys $SSH_FINGERPRINT $DROPLET_NAME
 
 # Get the IP Address
 export DROPLET_IP_ADDRESS="$(doctl compute droplet get $DROPLET_NAME --format PublicIPv4 --no-header)"
@@ -26,6 +26,7 @@ export DROPLET_USERNAME="STANDARD_UNIX_USERNAME"
 
 # Bypass the yes/no host confirmation dialogue
 ssh-keyscan $DROPLET_IP_ADDRESS >> $HOME/.ssh/known_hosts
+# wait 20s for sshd daemon to initialize on the host
 # Create a non-root user
 ssh root@$DROPLET_IP_ADDRESS "useradd --create-home $DROPLET_USERNAME && usermod -aG sudo $DROPLET_USERNAME"
 ssh root@$DROPLET_IP_ADDRESS 'echo "ALL            ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers'
@@ -50,7 +51,7 @@ tar -xvzf bacalhau_v0.0.2_amd64.tar.gz
 cd bacalhau_v0.0.2_amd64/
 
 # Or B) build the latest release from scratch
-sudo apt-get update && apt-get install -y make gcc zip
+sudo apt-get update && sudo apt-get install -y make gcc zip
 sudo snap install go --classic
 wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
 unzip main.zip
@@ -58,13 +59,15 @@ cd bacalhau-main
 go build
 
 # Install IPFS *v0.11* specifically (due to issues in v0.12) via https://docs.ipfs.io/install/command-line/#official-distributions
+cd ..
 wget https://dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
 tar -xvzf go-ipfs_v0.11.0_linux-amd64.tar.gz
 cd go-ipfs
 sudo bash install.sh
+cd -
 
 # Install containerd
-sudo apt-get install containerd
+sudo apt-get install -y containerd
 
 # Install the CNI plugin - https://ignite.readthedocs.io/en/stable/installation/#cni-plugins
 export CNI_VERSION=v0.9.1
@@ -100,9 +103,11 @@ ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
 bash
 openssl rand -out large_file.txt -base64 $(( 2**30 * 3/4 ))
 file_path="/home/STANDARD_UNIX_USERNAME/large_file.txt" # large_file.txt above
-# Note the IPFS PATH directory value must be manually edited
-export IPFS_PATH=/tmp/bacalhau-ipfs2925144396
+export IPFS_PATH="$(ls -d /tmp/bacalhau* | head -1)"
 cid=$( ipfs add -q $file_path)
+
+# Set the port number manually from the output of lsof
+sudo lsof -i -P -n | grep bacalhau | grep LISTEN | tail -n 1
 export JSON_RPC_PORT=12345
 
 # Execute a command against IPFS on all nodes
