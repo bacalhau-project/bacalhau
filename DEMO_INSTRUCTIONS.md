@@ -15,6 +15,7 @@ doctl compute ssh-key import A_UNIQUE_KEY_NAME --public-key-file ~/.ssh/id_rsa.p
 
 # Use ID field frome output above - can get again with doctl compute ssh-key list
 export SSH_FINGERPRINT="$(doctl compute ssh-key get ID_FIELD_FROM_OUTPUT --no-header --format 'FingerPrint')"
+export DROPLET_NAME="bacalhau.node"
 
 # Below requires having login in via 'doctl auth init'
 doctl compute droplet create --size s-4vcpu-8gb --region nyc1 --image ubuntu-20-04-x64 --ssh-keys $SSH_FINGERPRINT bacalhau.node
@@ -32,14 +33,13 @@ ssh root@$DROPLET_IP_ADDRESS 'echo "ALL            ALL = (ALL) NOPASSWD: ALL" >>
 # Copy the ssh keys in
 cat ~/.ssh/id_rsa.pub | ssh root@$DROPLET_IP_ADDRESS  "su - $DROPLET_USERNAME -c 'mkdir -p ~/.ssh && tee -a ~/.ssh/authorized_keys'"
 
-# Test
-ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
 ```
 
 
 Open two terminal windows. In the first one, type the following commands:
 
 ```
+ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
 bash
 
 # Either A) Download a build of the bacalhau cli from here - <https://github.com/filecoin-project/bacalhau/releases/>
@@ -47,10 +47,10 @@ sudo apt-get update
 sudo apt-get zip -y
 wget https://github.com/filecoin-project/bacalhau/releases/download/v0.0.2/bacalhau_v0.0.2_amd64.tar.gz
 tar -xvzf bacalhau_v0.0.2_amd64.tar.gz
+cd bacalhau_v0.0.2_amd64/
 
 # Or B) build the latest release from scratch
-sudo apt-get update
-sudo apt-get install make gcc zip -y
+sudo apt-get update && apt-get install -y make gcc zip
 sudo snap install go --classic
 wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
 unzip main.zip
@@ -72,8 +72,22 @@ export ARCH=$([ $(uname -m) = "x86_64" ] && echo amd64 || echo arm64)
 sudo mkdir -p /opt/cni/bin
 curl -sSL https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-${ARCH}-${CNI_VERSION}.tgz | sudo tar -xz -C /opt/cni/bin
 
+# Install Ignite
+sudo apt-get install -y --no-install-recommends dmsetup openssh-client git binutils
+export VERSION=v0.10.0
+export GOARCH=$(go env GOARCH 2>/dev/null || echo "amd64")
+for binary in ignite ignited; do
+    echo "Installing ${binary}..."
+    curl -sfLo ${binary} https://github.com/weaveworks/ignite/releases/download/${VERSION}/${binary}-${GOARCH}
+    chmod +x ${binary}
+    sudo mv ${binary} /usr/local/bin
+done
+
+# Optional: install and set runtime to docker
+# sudo apt install -y docker.io
+# BACALHAU_RUNTIME=docker
 # Start bacalhau dev stack
-bacalhau --dev devstack
+./bacalhau --dev devstack
 ```
 
 In the second terminal window, create a new file and add it to IPFS:
