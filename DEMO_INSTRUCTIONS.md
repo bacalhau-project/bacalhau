@@ -1,12 +1,14 @@
 # Demo instructions
 
-Create a bare metal instance that supports ignite (<https://ignite.readthedocs.io/en/stable/cloudprovider/#digitalocean>)
-    1. For the purposes of this demo, we will assume you use Digital Ocean
-    2. Install digital ocean CLI tool
-       1. Mac: `brew update && brew install doctl`
-       2. Ubuntu: `sudo snap install doctl`
-       3. Others: <https://docs.digitalocean.com/reference/doctl/how-to/install/>
-    3. Create VM:
+
+For the purposes of this demo, we will assume you use Digital Ocean. To install digital ocean CLI tool:
+      - Mac: `brew update && brew install doctl`
+      - Ubuntu: `sudo snap install doctl`
+      - Others: <https://docs.digitalocean.com/reference/doctl/how-to/install/>
+
+1. Create a bare metal instance that supports [Weave Ignite](https://ignite.readthedocs.io/en/stable/cloudprovider/#digitalocean)
+  
+
 
 ```bash
 # NOTE you should already have an ssh key, below, assuming you're using the default name 'id_rsa.pub'
@@ -37,7 +39,7 @@ cat ~/.ssh/id_rsa.pub | ssh root@$DROPLET_IP_ADDRESS  "su - $DROPLET_USERNAME -c
 ```
 
 
-Open two terminal windows. In the first one, type the following commands:
+2. Open two terminal windows. In the first one, type the following commands:
 
 ```
 ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
@@ -93,7 +95,7 @@ done
 ./bacalhau --dev devstack
 ```
 
-In the second terminal window, create a new file and add it to IPFS:
+3. In the second terminal window, create a new file and add it to IPFS:
 
 ```
 export DROPLET_NAME="bacalhau.node"
@@ -115,13 +117,13 @@ export JSON_RPC_PORT=12345
 ./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" --jsonrpc-port $JSON_RPC_PORT
 
 ```
-You can watch this resolve by watching this:
+4. Watch this resolve by watching this:
 
 ```
 ./bacalhau list --jsonrpc-port=$JSON_RPC_PORT
 ```
 
-Reminder to delete your droplet when finished
+5. Reminder to delete your droplet when finished
 ```
 doctl compute droplet delete $DROPLET_NAME 
 ```
