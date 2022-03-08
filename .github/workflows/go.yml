@@ -54,14 +54,14 @@ jobs:
         with:
           commit_message: Auto-fix go.sum discrepancies
 
-      - name: golangci-lint
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v2.2.1
-        with:
-          version: ${{ env.GOLANGCILINT_VER }}
-      - name: Run go mod tidy check diff
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: make modtidy check-diff
+      # - name: golangci-lint
+      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+      #   uses: golangci/golangci-lint-action@v2.2.1
+      #   with:
+      #     version: ${{ env.GOLANGCILINT_VER }}
+      # - name: Run go mod tidy check diff
+      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+      #   run: make modtidy check-diff
 
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
@@ -69,6 +69,9 @@ jobs:
 
       - name: Build
         run: make build
+
+      - name: Install IPFS
+        run: wget https://dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz && tar -xvzf go-ipfs_v0.11.0_linux-amd64.tar.gz && cd go-ipfs && bash install.sh
 
       - name: Test
         run: make test

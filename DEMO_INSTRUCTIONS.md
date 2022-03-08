@@ -35,60 +35,16 @@ cat ~/.ssh/id_rsa.pub | ssh root@$DROPLET_IP_ADDRESS  "su - $DROPLET_USERNAME -c
 ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
 ```
 
-1. Install Ignite:
-
-```bash
-ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
-
-# Create a local ssh key
-ssh-keygen
-
-# Install go (if not already installed)
-wget https://go.dev/dl/go1.17.7.linux-amd64.tar.gz
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.7.linux-amd64.tar.gz
-echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
-source ~/.profile
-
-# NOTE, you should check to make sure your go version matches your architecture
-export VERSION=v0.10.0
-export GOARCH=$(go env GOARCH 2>/dev/null || echo "amd64")
-
-for binary in ignite ignited; do
-    echo "Installing ${binary}..."
-    curl -sfLo ${binary} https://github.com/weaveworks/ignite/releases/download/${VERSION}/${binary}-${GOARCH}
-    chmod +x ${binary}
-    sudo mv ${binary} /usr/local/bin
-done
-
-# Test the ignite installation
-ignite version
-```
-
 1. Download a build of the bacalhau cli from here - <https://github.com/filecoin-project/bacalhau/releases/>
 
-1. Open three terminal windows. In the first one, type the following command:
+1. Open two terminal windows. In the first one, type the following command:
 
 ```bash
-bacalhau --dev serve
-
-# The above will output a line like the following:
-# ./bacalhau serve --peer /ip4/0.0.0.0/tcp/8080/p2p/QmaxwhcG8cf8rduKg5dc5amsa2ycNRNmiqLKU5bq43ZkeH --jsonrpc-port 33743 --dev
-```
-
-1. In the second, copy and paste the command from above.
-2. In the third, copy and paste the command from the SECOND window.
-3. In the fourth, create a new file and add it to IPFS:
-
-```bash
-openssl rand -out large_file.txt -base64 $(( 2**30 * 3/4 ))
-```
-
-1. Add this to the bacalhau network
-
-```bash
-# You may need to install ipfs, if not already
-sudo snap install ipfs
-ipfs init
+# You may need to install ipfs, if not already installed - https://docs.ipfs.io/install/command-line/#official-distributions
+wget https://dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
+tar -xvzf go-ipfs_v0.11.0_linux-amd64.tar.gz
+cd go-ipfs
+sudo bash install.sh
 
 # Install containerd
 sudo apt-get install containerd
@@ -99,25 +55,65 @@ export ARCH=$([ $(uname -m) = "x86_64" ] && echo amd64 || echo arm64)
 sudo mkdir -p /opt/cni/bin
 curl -sSL https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-${ARCH}-${CNI_VERSION}.tgz | sudo tar -xz -C /opt/cni/bin
 
-# IN THE FOURTH TERMINAL (make sure, otherwise your 'cid' value below will be blank)
-# Now add the file to ipfs and get the CID (you should have this command from the last terminal you ran)
-cid=$(IPFS_PATH=data/ipfs/QmaxwhcG8cf8rduKg5dc5amsa2ycNRNmiqLKU5bq43ZkeH ipfs add -q large_file.txt)
+# Start bacalhau dev stack
+bacalhau --dev devstack
+```
+
+1. In the second, create a new file and add it to IPFS:
+
+```bash
+openssl rand -out large_file.txt -base64 $(( 2**30 * 3/4 ))
+```
+
+1. Add this to the bacalhau network
+
+```bash
+# IN THE SECOND TERMINAL
+# Add the file to ipfs and get the CID (you should have this command from the last terminal you ran)
+file_path="path_to_file" # large_file.txt above
+cid=$(IPFS_PATH=/tmp/bacalhau-ipfs489449709 ipfs add -q $file_path)
 
 # Execute a command against IPFS on all nodes
- ./bc submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" # Counts the number of the letter 'W' in the file
+ ./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" # Counts the number of the letter 'W' in the file
+```
+You can watch this resolve by watching this:
+
+```
+./bacalhau list --jsonrpc-port=41923
 ```
 
-STOPPED HERE WITH FOLLOWING ERROR:
+STOPPED HERE WITH THE FOLLOWING ERROR - job just sitting there doing nothing:
 ```
-we ignored a job self selecting:
-&{Id:5edb3a03-5e8a-4960-80be-d8fd0f0355ca Cids:[Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu] Commands:[grep -o 'W' /ipfs/Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu | wc -l] Cpu:1 Memory:2 Disk:10}
-we have 7 jobs
-[{Id:970cc7f2-97c6-4786-95f4-c86b6fdf85c0 Cids:[] Commands:[grep -o 'W' large_file.txt | wc -l] Cpu:1 Memory:2 Disk:10} {Id:8c08596f-5281-4654-8efb-b006a44e0e5a Cids:[] Commands:[grep -o 'W' large_file.txt | wc -l] Cpu:1 Memory:2 Disk:10} {Id:caeb6350-dbdd-41fa-9384-710b003026eb Cids:[] Commands:[grep -o 'W' large_file.txt | wc -l] Cpu:1 Memory:2 Disk:10} {Id:97d3097b-349e-4b0d-a766-5a700f204b72 Cids:[] Commands:[grep -o 'W' /ipfs/ | wc -l] Cpu:1 Memory:2 Disk:10} {Id:00be1ea9-4d71-4d7c-a73a-51c2c811ee2a Cids:[Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu] Commands:[grep -o 'W' /ipfs/Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu | wc -l] Cpu:1 Memory:2 Disk:10} {Id:5edb3a03-5e8a-4960-80be-d8fd0f0355ca Cids:[Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu] Commands:[grep -o 'W' /ipfs/Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu | wc -l] Cpu:1 Memory:2 Disk:10} {Id:4bf86e2b-5536-42e1-8cd6-ecfc2bafb1d5 Cids:[Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu] Commands:[grep -o 'W' /ipfs/Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu | wc -l] Cpu:1 Memory:2 Disk:10}]
-we ignored a job self selecting:
-&{Id:4bf86e2b-5536-42e1-8cd6-ecfc2bafb1d5 Cids:[Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu] Commands:[grep -o 'W' /ipfs/Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu | wc -l] Cpu:1 Memory:2 Disk:10}
-ERRO[0152] failed to run shell command: wait: remote command exited without exit status or exit signal
-2022/02/22 04:07:13 Starting ipfs daemon --mount inside the vm failed with: exit status 1
-```
+#Terminal 1
+aronchick@bacalhau:~$ ./code/bacalhau/bin/bacalhau list --jsonrpc-port=41923
+ JOB       COMMAND                  DATA                     NODE                     STATE     STATUS                                             OUTPUT
+ d978308c  grep -o 'W' /ipfs/Qm...  Qmdd3GdLhQJENPLs6VyG...  QmSPXxU5aFDwjMeqedkK...  selected  Job was selected because jobs CID are local:
+                                                                                                 [Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu]
 
+aronchick@bacalhau:~$
 
+# TERMINAL 2
+we are updating a job!:
+&{JobId:d978308c-95d2-4193-99b6-a1c1f9fbd189 NodeId:QmSPXxU5aFDwjMeqedkKhGGWmEkSPPVjFtXE811SYak2cL State:selected Status:Job was selected because jobs CID are local:
+ [Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu]
+ Output:}
+INFO[0001] Created VM with ID "8af9ab483799ac66" and name "d978308c-95d2-4193-99b6-a1c1f9fbd189a9fa74f4-e62f-46b8-87ae-28676ba25fd4"
+INFO[0001] Networking is handled by "cni"
+INFO[0001] Started Firecracker VM "8af9ab483799ac66" in a container with ID "ignite-8af9ab483799ac66"
+INFO[0001] Waiting for the ssh daemon within the VM to start...
+generating ED25519 keypair...done
+peer identity: 12D3KooWLaE9mxuP57Pn4wC3JrKTnpmeqKWQJmYwB7RwjSbiYaqK
+initializing IPFS node at /root/.ipfs
+to get started, enter:
+
+        ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
+
+2022-03-01T17:22:42.502Z        ERROR   provider.queue  queue/queue.go:124      Failed to enqueue cid: leveldb: closed
+removed /dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN
+removed /dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa
+removed /dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb
+removed /dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt
+removed /ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
+removed /ip4/104.131.131.82/udp/4001/quic/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
+added /ip4/127.0.0.1/tcp/36815/p2p/12D3KooWPszx6ZjoexB2nMnWWxPCtxbnSv6S4tck61jPCDLGid5x
 ```

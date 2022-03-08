@@ -19,14 +19,25 @@ const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 
 type Runtime struct {
-	Kind     string // "ignite" or "docker"
-	Id       string
-	Name     string
-	Job      *types.Job
-	stopChan chan bool
+	Kind       string // "ignite" or "docker"
+	doubleDash string
+	Id         string
+	Name       string
+	Job        *types.JobSpec
+	stopChan   chan bool
 }
 
-func NewRuntime(job *types.Job) (*Runtime, error) {
+func cleanEmpty(values []string) []string {
+	result := []string{}
+	for _, entry := range values {
+		if entry != "" {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+func NewRuntime(job *types.JobSpec) (*Runtime, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
@@ -34,8 +45,10 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 	name := fmt.Sprintf("%s%s", job.Id, id.String())
 	// allow CI to use docker in place of ignite
 	kind := os.Getenv("BACALHAU_RUNTIME")
+	doubleDash := ""
 	if kind == "" {
 		kind = "ignite"
+		doubleDash = "--"
 	}
 	if !(kind == "ignite" || kind == "docker") {
 		panic(fmt.Sprintf(
@@ -44,11 +57,12 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 		))
 	}
 	runtime := &Runtime{
-		Kind:     kind,
-		Id:       id.String(),
-		Name:     name,
-		Job:      job,
-		stopChan: make(chan bool),
+		Kind:       kind,
+		doubleDash: doubleDash,
+		Id:         id.String(),
+		Name:       name,
+		Job:        job,
+		stopChan:   make(chan bool),
 	}
 	return runtime, nil
 }
@@ -133,44 +147,44 @@ func (runtime *Runtime) PrepareJob(
 		return err
 	}
 
-	err = system.RunCommand("sudo", []string{
+	err = system.RunCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs", "init",
-	})
+		runtime.doubleDash, "ipfs", "init",
+	}))
 	if err != nil {
 		return err
 	}
 
 	if connectToIpfsMultiaddress != "" {
-		err = system.RunCommand("sudo", []string{
+		err = system.RunCommand("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
 			runtime.Name,
-			"ipfs", "bootstrap", "rm", "--all",
-		})
+			runtime.doubleDash, "ipfs", "bootstrap", "rm", "--all",
+		}))
 		if err != nil {
 			return err
 		}
-		err = system.RunCommand("sudo", []string{
+		err = system.RunCommand("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
 			runtime.Name,
-			"ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
-		})
+			runtime.doubleDash, "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
+		}))
 		if err != nil {
 			return err
 		}
 	}
 
 	command := "sudo"
-	args := []string{
+	args := cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"ipfs", "daemon", "--mount",
-	}
+		runtime.doubleDash, "ipfs", "daemon", "--mount",
+	})
 
 	system.CommandLogger(command, args)
 
@@ -194,6 +208,8 @@ func (runtime *Runtime) PrepareJob(
 
 	go func() {
 		<-runtime.stopChan
+
+		// TODO: Should we check the result here?
 		cmd.Process.Kill() // nolint
 	}()
 
@@ -210,12 +226,12 @@ func (runtime *Runtime) PrepareJob(
 // TODO: bunlde the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 
-	err, stdout, stderr := system.RunTeeCommand("sudo", []string{
+	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
-		"psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
-	})
+		runtime.doubleDash, "psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
+	}))
 	if err != nil {
 		return err
 	}

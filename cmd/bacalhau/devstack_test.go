@@ -92,7 +92,7 @@ raspberry
 
 	fileCid = strings.TrimSpace(fileCid)
 
-	var job *types.Job
+	var job *types.JobSpec
 
 	numberOfJobsToCheck := 0
 
@@ -152,12 +152,17 @@ raspberry
 			return fmt.Errorf(msg)
 		}
 
-		job := result.Jobs[0]
+		var jobData *types.JobData
+
+		for _, j := range result.Jobs {
+			jobData = j
+			break
+		}
 
 		jobStates := []string{}
 
-		for _, state := range result.JobState[job.Id] {
-			jobStates = append(jobStates, state)
+		for _, state := range jobData.State {
+			jobStates = append(jobStates, state.State)
 		}
 
 		if !reflect.DeepEqual(jobStates, []string{"complete", "complete"}) {

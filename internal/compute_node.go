@@ -28,16 +28,9 @@ type ComputeNode struct {
 	IpfsConnectMultiAddress string
 
 	Ctx context.Context
+
 	// the jobs we have already filtered and might want to process
-	Jobs []types.Job
-
-	// see types.Update for the message that updates these fields
-
-	// a map of job id into bacalhau nodes that are in progress of doing some work with their claimed state and human readable statuses
-	JobState  map[string]map[string]string
-	JobStatus map[string]map[string]string
-	// a map of job id onto bacalhau compute nodes that claim to have done the work onto cids of the job results published by them
-	JobResults map[string]map[string]string
+	Jobs map[string]*types.JobData
 
 	Host                  host.Host
 	PubSub                *pubsub.PubSub
@@ -102,12 +95,9 @@ func NewComputeNode(
 		IpfsRepo:                "",
 		IpfsConnectMultiAddress: "",
 		Ctx:                     ctx,
-		Jobs:                    []types.Job{},
+		Jobs:                    make(map[string]*types.JobData),
 		Host:                    host,
 		PubSub:                  pubsub,
-		JobState:                make(map[string]map[string]string),
-		JobStatus:               make(map[string]map[string]string),
-		JobResults:              make(map[string]map[string]string),
 		JobCreateTopic:          jobCreateTopic,
 		JobCreateSubscription:   jobCreateSubscription,
 		JobUpdateTopic:          jobUpdateTopic,
@@ -149,7 +139,7 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 	return nil
 }
 
-func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
+func (server *ComputeNode) FilterJob(job *types.JobSpec) (bool, error) {
 	fmt.Printf("--> FilterJob with %s\n", job.Cids)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Cids) == 0 {
@@ -168,11 +158,15 @@ func (server *ComputeNode) FilterJob(job *types.Job) (bool, error) {
 	return false, nil
 }
 
-func (server *ComputeNode) AddJob(job *types.Job) {
+func (server *ComputeNode) AddJob(job *types.JobSpec) {
 
 	// add the job to the mempool of all nodes because then we can ask a question "list the jobs"
 	// TODO: this is not efficient but it's state that we can use in the CLI
-	server.Jobs = append(server.Jobs, *job)
+	server.Jobs[job.Id] = &types.JobData{
+		Job:   job,
+		State: make(map[string]*types.JobState),
+	}
+
 	fmt.Printf("we have %d jobs\n", len(server.Jobs))
 	fmt.Printf("%+v\n", server.Jobs)
 
@@ -238,29 +232,14 @@ func (server *ComputeNode) AddJob(job *types.Job) {
 	}
 }
 
-func (server *ComputeNode) UpdateJob(update *types.Update) {
+func (server *ComputeNode) UpdateJob(update *types.JobState) {
 	fmt.Printf("we are updating a job!: \n%+v\n", update)
-
-	if server.JobState[update.JobId] == nil {
-		server.JobState[update.JobId] = make(map[string]string)
-	}
-
-	if server.JobStatus[update.JobId] == nil {
-		server.JobStatus[update.JobId] = make(map[string]string)
-	}
-
-	if server.JobResults[update.JobId] == nil {
-		server.JobResults[update.JobId] = make(map[string]string)
-	}
-
-	server.JobState[update.JobId][update.NodeId] = update.State
-	server.JobStatus[update.JobId][update.NodeId] = update.Status
-	server.JobResults[update.JobId][update.NodeId] = update.Output
+	server.Jobs[update.JobId].State[update.NodeId] = update
 }
 
 // return a CID of the job results when finished
 // this is obtained by running "ipfs add -r <results folder>"
-func (server *ComputeNode) RunJob(job *types.Job) (string, error) {
+func (server *ComputeNode) RunJob(job *types.JobSpec) (string, error) {
 
 	vm, err := runtime.NewRuntime(job)
 
@@ -313,7 +292,7 @@ func (server *ComputeNode) ReadLoopJobCreate() {
 		if msg.ReceivedFrom == server.Host.ID() {
 			continue
 		}
-		job := new(types.Job)
+		job := new(types.JobSpec)
 		err = json.Unmarshal(msg.Data, job)
 		if err != nil {
 			continue
@@ -332,16 +311,18 @@ func (server *ComputeNode) ReadLoopJobUpdate() {
 		if msg.ReceivedFrom == server.Host.ID() {
 			continue
 		}
-		jobUpdate := new(types.Update)
+		jobUpdate := new(types.JobState)
 		err = json.Unmarshal(msg.Data, jobUpdate)
 		if err != nil {
 			continue
 		}
 		go server.UpdateJob(jobUpdate)
+
+		// emit the event to listeners
 	}
 }
 
-func (server *ComputeNode) Publish(job *types.Job) error {
+func (server *ComputeNode) Publish(job *types.JobSpec) error {
 	fmt.Printf("NEW JOB: %+v\n", job)
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
@@ -354,13 +335,13 @@ func (server *ComputeNode) Publish(job *types.Job) error {
 	return topic.Publish(ctx, msgBytes)
 }
 
-func (server *ComputeNode) ChangeJobState(job *types.Job, state, status, output string) error {
-	update := &types.Update{
-		JobId:  job.Id,
-		NodeId: server.Id,
-		State:  state,
-		Status: status,
-		Output: output,
+func (server *ComputeNode) ChangeJobState(job *types.JobSpec, state, status, resultCid string) error {
+	update := &types.JobState{
+		JobId:     job.Id,
+		NodeId:    server.Id,
+		State:     state,
+		Status:    status,
+		ResultCid: resultCid,
 	}
 	msgBytes, err := json.Marshal(update)
 	if err != nil {

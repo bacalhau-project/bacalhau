@@ -1,6 +1,6 @@
 package types
 
-type Job struct {
+type JobSpec struct {
 	Id       string
 	Cids     []string
 	Commands []string
@@ -9,28 +9,23 @@ type Job struct {
 	Disk     int
 }
 
-// a message from a peer on the network updating about a job on a node
-type Update struct {
-	JobId  string
-	NodeId string
-	State  string
-	Status string
-	Output string
+type JobState struct {
+	JobId     string
+	NodeId    string
+	State     string
+	Status    string
+	ResultCid string
+}
+
+// the view of a single job
+// multiple compute nodes will be running this job
+type JobData struct {
+	Job   *JobSpec
+	State map[string]*JobState
 }
 
 // the data structure a client can use to render a view of the state of the world
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
-	Jobs       []Job
-	JobState   map[string]map[string]string
-	JobStatus  map[string]map[string]string
-	JobResults map[string]map[string]string
-}
-
-// the view of a single job
-type JobData struct {
-	Job     Job
-	State   map[string]string
-	Status  map[string]string
-	Results map[string]string
+	Jobs map[string]*JobData
 }

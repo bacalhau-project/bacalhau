@@ -11,6 +11,9 @@ GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.
 GO_OS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
 GO_ARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 
+# use docker runtime rather than ignite, meaning we run basically everywhere (no need for hardware virtualization support)
+export BACALHAU_RUNTIME = docker
+
 define GO_MISMATCH_ERROR
 
 Your go binary does not match your architecture.
@@ -86,7 +89,7 @@ build: build-bacalhau
 
 
 ################################################################################
-# Target: build-bacalhau                                                          #
+# Target: build-bacalhau                                                       #
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
@@ -95,7 +98,7 @@ build-bacalhau: fmt vet
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
-# Target: build-bacalhau-tgz                                                       #
+# Target: build-bacalhau-tgz                                                   #
 ################################################################################
 .PHONY: build-bacalhau-tgz
 build-bacalhau-tgz: build-bacalhau
@@ -111,7 +114,7 @@ build-bacalhau-tgz: build-bacalhau
 	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 
 ################################################################################
-# Target: clean					                                               #
+# Target: clean					                               #
 ################################################################################
 .PHONY: clean
 clean:
@@ -119,14 +122,18 @@ clean:
 
 
 ################################################################################
-# Target: test					                                               #
+# Target: test					                               #
 ################################################################################
 .PHONY: test
-test: build-bacalhau
+test:
 	go test ./... -v
 
+.PHONY: test-devstack
+test-devstack:
+	go test -v -count 1 -timeout 300s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+
 ################################################################################
-# Target: lint					                                               #
+# Target: lint					                               #
 ################################################################################
 .PHONY: lint
 lint: build-bacalhau
@@ -149,7 +156,7 @@ check-diff:
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################
-# Target: test-junit			                                               #
+# Target: test-junit			                                       #
 ################################################################################
 .PHONY: test-junit
 test-junit: build-bacalhau
