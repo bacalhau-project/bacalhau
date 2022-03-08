@@ -11,7 +11,7 @@ import (
 )
 
 func truncateFloat(f float64) float64 {
-	ret, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", f), 8)
+	ret, _ := strconv.ParseFloat(fmt.Sprintf("%.32f", f), 32)
 	return ret
 }
 
