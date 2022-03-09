@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -191,22 +192,49 @@ func (runtime *Runtime) PrepareJob(
 	system.CommandLogger(command, args)
 
 	cmd := exec.Command(command, args...)
-	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+
+	// get the stdout and stderr stream
+	erc, err := cmd.StderrPipe()
+	if err != nil {
+		logger.Errorf("Failed to get stderr reader: ", err)
+	}
+	orc, err := cmd.StdoutPipe()
+	if err != nil {
+		logger.Errorf("Failed to get stdout reader: ", err)
+	}
+
+	// combine stdout and stderror ReadCloser
+	rc := io.MultiReader(erc, orc)
+
+	// Prepare the writer
+	f, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		logger.Fatalf("Failed to create file")
+	}
+
 	if err != nil {
 		return err
 	}
-	cmd.Stderr = logfile
-	cmd.Stdout = logfile
 
 	// cmd.Stderr = os.Stderr
 	// cmd.Stdout = os.Stdout
 
 	go func() {
 		logger.Debugf("Executing command: %s", cmd.String())
-		err := cmd.Run()
-		if err != nil {
-			logger.Errorf("Failed to mount ipfs the runtime failed with: %s", err)
+
+		// Command.Start starts a new go routine
+		if err := cmd.Start(); err != nil {
+			logger.Fatalf("Failed to start the command: %s", err)
 		}
+
+		if _, err := io.Copy(f, rc); err != nil {
+			logger.Fatalf("Failed to stream to file: %s", err)
+		}
+
+		if err := cmd.Wait(); err != nil {
+			logger.Fatalf("Failed to wait the command to execute: %s", err)
+		}
+
 	}()
 
 	go func() {
