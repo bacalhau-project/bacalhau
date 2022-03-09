@@ -3,7 +3,6 @@ package runtime
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -203,9 +202,10 @@ func (runtime *Runtime) PrepareJob(
 	// cmd.Stdout = os.Stdout
 
 	go func() {
+		logger.Debugf("Executing command: %s", cmd.String())
 		err := cmd.Run()
 		if err != nil {
-			log.Printf("Starting ipfs daemon --mount inside the runtime failed with: %s", err)
+			logger.Errorf("Failed to mount ipfs the runtime failed with: %s", err)
 		}
 	}()
 
@@ -228,7 +228,7 @@ func (runtime *Runtime) PrepareJob(
 // copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
-
+	logger.Debugf("Executing Job: %s", runtime.Job.Id)
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
@@ -240,13 +240,13 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	// write the command stdout & stderr to the results dir
-	fmt.Printf("writing stdout to %s/stdout.log\n", resultsFolder)
+	logger.Debugf("	Stdout to %s/stdout.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stdout.log", resultsFolder), stdout.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("writing stderr to %s/stderr.log\n", resultsFolder)
+	logger.Debugf("	Stderr to %s/stderr.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stderr.log", resultsFolder), stderr.Bytes(), 0644)
 	if err != nil {
 		return err
@@ -259,7 +259,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	for _, file := range filesToCopy {
-		fmt.Printf("writing %s to %s/%s\n", file, resultsFolder, file)
+		logger.Debugf("	%s to %s/%s\n", file, resultsFolder, file)
 		err = system.RunCommand("sudo", []string{
 			runtime.Kind,
 			"cp",

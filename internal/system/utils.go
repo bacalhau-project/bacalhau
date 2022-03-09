@@ -97,3 +97,19 @@ func ShortId(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
 }
+
+func MapStringArray(vs []string, f func(string) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
+}
+
+func MapByteArray(vs []byte, f func(byte) byte) []byte {
+	vsm := make([]byte, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
+}

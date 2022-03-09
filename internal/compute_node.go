@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/logger"
@@ -39,6 +40,23 @@ type ComputeNode struct {
 	JobCreateSubscription *pubsub.Subscription
 	JobUpdateTopic        *pubsub.Topic
 	JobUpdateSubscription *pubsub.Subscription
+}
+
+func PrettyPrintComputeNode(cn *ComputeNode) string {
+	jobString, _ := json.MarshalIndent(cn.Jobs, "", "  ")
+	return fmt.Sprintf(`
+	Id: %s
+	IpfsRepo: %s
+	IpfsConnectMultiAddress: %s 
+	Ctx: %s
+	Jobs: %v
+	Host: %s
+	JobCreateTopic: %s
+	JobCreateSubscription: %s
+	JobUpdateTopic: %s
+	JobUpdateSubscription: %s
+`, cn.Id, cn.IpfsRepo, cn.IpfsConnectMultiAddress, cn.Ctx, string(jobString), cn.Host, cn.JobCreateTopic.String(), cn.JobCreateSubscription.Topic(), cn.JobUpdateTopic.String(), cn.JobUpdateSubscription.Topic())
+
 }
 
 func makeLibp2pHost(
@@ -141,21 +159,25 @@ func (server *ComputeNode) Connect(peerConnect string) error {
 }
 
 func (server *ComputeNode) FilterJob(job *types.JobSpec) (bool, error) {
-	fmt.Printf("--> FilterJob with %s\n", job.Cids)
+	logger.Debugf("Testing to see whether or not this server (Id: %s) should accept job Id (%s) with CIDs (%s)", server.Id, job.Id, strings.Join(job.Cids, ", "))
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Cids) == 0 {
+		logger.Infof("	No CIDs selected, so all jobs apply. Accepting job id: %s", job.Id)
 		return true, nil
 	}
+	logger.Debugf("Job has CIDs, so determining if CIDs are on this server.")
 	for _, cid := range job.Cids {
 		hasCid, err := ipfs.HasCid(server.IpfsRepo, cid)
 		if err != nil {
 			return false, err
 		}
 		if hasCid {
+			logger.Infof("CID (%s) found on this server (Id: %s). Accepting job id: %s", cid, server.Id, job.Id)
 			return true, nil
 		}
 	}
 
+	logger.Infof("No matching CIDs found on this server (Id: %s). Passing on job (%s)", server.Id, job.Id)
 	return false, nil
 }
 
@@ -168,23 +190,26 @@ func (server *ComputeNode) AddJob(job *types.JobSpec) {
 		State: make(map[string]*types.JobState),
 	}
 
-	fmt.Printf("we have %d jobs\n", len(server.Jobs))
-	fmt.Printf("%+v\n", server.Jobs)
+	jobsArray, _ := json.MarshalIndent(server.Jobs, "", "  ")
+	logger.Infof("Determining whether or not Job (Id: %s) is a fit for Server (Id: %s)", job.Id, server.Id)
+	logger.Debug("Jobs on this server: %d", len(server.Jobs), string(jobsArray))
 
 	shouldRunJob, err := server.FilterJob(job)
 
 	if err != nil {
-		fmt.Printf("there was an error self selecting: %s\n%+v\n", err, job)
+		logger.Errorf("Error in self selecting: %s\n%+v\n", err, job)
 		return
 	}
 
 	if !shouldRunJob {
-		fmt.Printf("we ignored a job self selecting: \n%+v\n", job)
+		logger.Infof("Server %s did not select job with id: %s", server.Id, job.Id)
 		return
 	}
 
 	// TODO: split this into an async thing that is working through the mempool
-	fmt.Printf("we are running a job!: \n%+v\n", job)
+	logger.Infof("-----------")
+	logger.Infof("Server %s DID select job: %s", server.Id, job.Id)
+	logger.Infof("-----------")
 
 	// update the network with the fact that we have selected the job
 	err = server.ChangeJobState(
@@ -195,46 +220,46 @@ func (server *ComputeNode) AddJob(job *types.JobSpec) {
 	)
 
 	if err != nil {
-		fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+		logger.Errorf("Server %s could not change job (Id: %s) state to SELECTED. Error: %s", server.Id, job.Id, err)
 		return
 	}
 
 	cid, err := server.RunJob(job)
 
 	if err != nil {
-		fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
+		logger.Errorf("Server %s could not run job (Id: %s). Error: %s", server.Id, job.Id, err)
 
 		err = server.ChangeJobState(
 			job,
 			"error",
-			fmt.Sprintf("Error running the job: %s\n", err),
+			fmt.Sprintf("Error running the job (Id: %s): %s", job.Id, err),
 			"",
 		)
 
 		if err != nil {
-			fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+			logger.Errorf("Server %s could not change job (Id: %s) state to ERROR. Error: %s", server.Id, job.Id, err)
+			return
 		}
 
 		return
 	}
 
-	fmt.Printf("-------------\n\nCID: %s\n\n", cid)
-
 	//nolint
 	err = server.ChangeJobState(
 		job,
 		"complete",
-		fmt.Sprintf("Job is now complete\n"),
+		fmt.Sprintf("Job (Id: %s) is now complete", job.Id),
 		cid,
 	)
 
 	if err != nil {
-		fmt.Printf("there was an error changing job state: %s\n%+v\n", err, job)
+		logger.Errorf("Server %s could not change job (Id: %s) state to COMPLETE. Error: %s", server.Id, job.Id, err)
+		return
 	}
 }
 
 func (server *ComputeNode) UpdateJob(update *types.JobState) {
-	fmt.Printf("we are updating a job!: \n%+v\n", update)
+	logger.Infof("Server (Id: %s) updating job (Id: %s). Was: %s\tNow: %s", server.Id, update.JobId, server.Jobs[update.JobId].State, update.State)
 	server.Jobs[update.JobId].State[update.NodeId] = update
 }
 
@@ -324,13 +349,17 @@ func (server *ComputeNode) ReadLoopJobUpdate() {
 }
 
 func (server *ComputeNode) Publish(job *types.JobSpec) error {
-	fmt.Printf("NEW JOB: %+v\n", job)
+	logger.Infof(`
+New job registered: %s
+
+`, types.PrettyPrintJob(job))
+
 	msgBytes, err := json.Marshal(job)
 	if err != nil {
 		return err
 	}
 	go server.AddJob(job)
-	fmt.Printf("server --> %+v\n", server)
+	logger.Debugf("Server Details:\n%s", PrettyPrintComputeNode(server))
 	ctx := server.Ctx
 	topic := server.JobCreateTopic
 	return topic.Publish(ctx, msgBytes)

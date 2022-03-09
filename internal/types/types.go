@@ -1,5 +1,10 @@
 package types
 
+import (
+	"fmt"
+	"strings"
+)
+
 type JobSpec struct {
 	Id       string
 	Cids     []string
@@ -28,4 +33,17 @@ type JobData struct {
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
 	Jobs map[string]*JobData
+}
+
+func PrettyPrintJob(j *JobSpec) string {
+
+	return fmt.Sprintf(`
+	Id: %s
+	Cids: %s
+	Commands: %s
+	Cpu: %d
+	Memory %d
+	Disk: %d
+`, j.Id, strings.Join(j.Cids, ","), strings.Join(j.Commands, "', '"), j.Cpu, j.Disk, j.Memory)
+
 }

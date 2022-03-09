@@ -204,7 +204,7 @@ func HasCid(repoPath, cid string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	logger.Debugf("Comparing CID (%s) collecting to all refs in repo.")
+	logger.Debugf("Comparing CID (%s) collecting to all refs in repo.", cid)
 	allLocalRefsArray := strings.Split(allLocalRefString, "\n")
 	logger.Debugf("Total number of local refs: %d", len(allLocalRefsArray))
 	got := contains(allLocalRefsArray, cid)
