@@ -50,9 +50,10 @@ var devstackCmd = &cobra.Command{
 		for nodeNumber, node := range stack.Nodes {
 			logger.Infof(`
 Node %d:
-	IPFS_PATH=%s ipfs
+	IPFS_PATH=%s
+	JSON_PORT=%d
 	bin/bacalhau --jsonrpc-port=%d list
-`, nodeNumber, node.IpfsRepo, node.JsonRpcPort)
+`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort)
 		}
 
 		logger.Infof(`
