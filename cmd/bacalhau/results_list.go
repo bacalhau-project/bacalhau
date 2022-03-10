@@ -40,7 +40,7 @@ var resultsListCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE"})
+		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE", "CORRECT"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
 
 		clustered := traces.TraceCollection{
@@ -82,12 +82,22 @@ var resultsListCmd = &cobra.Command{
 			if _, err := os.Stat(resultsFolder); !os.IsNotExist(err) {
 				folderString = fmt.Sprintf("~/.bacalhau/%s", row.Folder)
 			}
+
+			correctStatus := "❌"
+
+			for _, correctId := range correctGroup {
+				if correctId == row.Cid {
+					correctStatus = "✅"
+				}
+			}
+
 			t.AppendRows([]table.Row{
 				{
 					row.Node,
 					fmt.Sprintf("https://ipfs.io/ipfs/%s", row.Cid),
 					folderString,
 					scores[row.Cid]["real"],
+					correctStatus,
 				},
 			})
 		}
