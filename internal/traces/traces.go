@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -225,17 +226,28 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 }
 
 // naively (for now) cluster the results into two buckets: "right" and "wrong"
-func (t *TraceCollection) Cluster() {
+func (t *TraceCollection) Cluster() ([]string, []string, error) {
 
 	scores, _ := t.Scores()
 
+	var resultsToResultIdMap = make(map[string][]string)
+
 	var d clusters.Observations
 
-	for _, score := range scores {
+	for resultId, score := range scores {
+		r := fmt.Sprintf("%f", score["real"])
+		_, ok := resultsToResultIdMap[r]
+		if !ok {
+			resultsToResultIdMap[r] = []string{}
+		}
+
+		resultsToResultIdMap[r] = append(resultsToResultIdMap[r], resultId)
+
 		d = append(d, clusters.Coordinates{
 			score["real"],
 		})
 	}
+	fmt.Printf("resultsToResultIdMap = %+v\n", resultsToResultIdMap)
 
 	// map[string]map[string]float64
 	// map resultId -> column -> score (average distance from average for that column)
@@ -248,13 +260,34 @@ func (t *TraceCollection) Cluster() {
 		fmt.Printf("Matching data points: %+v\n\n", c.Observations)
 	}
 
-	// // larger bucket wins - majority wins
+	// reconstitute the results from the clusters...
 
-	// if len(clusters[0].Observations) > len(clusters[1].Observations) {
-	// 	// 0 is the winner
-	// 	return clusters[0].Observations, clusters[1].Observations
-	// } else {
-	// 	// 1 is the winner
-	// 	return clusters[1].Observations, clusters[0].Observations
-	// }
+	l := [][]string{[]string{}, []string{}}
+	for i := 0; i < 2; i++ {
+		deduped := map[string]bool{}
+		for _, obs := range clusters[i].Observations {
+			o := fmt.Sprintf("%f", obs.Coordinates()[0])
+			ids := resultsToResultIdMap[o]
+			fmt.Printf("Picked ids for %s: %+v\n", o, ids)
+			for _, id := range ids {
+				deduped[id] = true
+			}
+		}
+		for k := range deduped {
+			l[i] = append(l[i], k)
+		}
+		sort.Strings(l[i])
+	}
+
+	if len(l[0]) == len(l[1]) {
+		// a tie, OH NO, NO MAJORITY - HUNG PARLIAMENT 😱
+		return nil, nil, fmt.Errorf("no majority, please set concurrency to an odd number")
+	} else if len(l[0]) > len(l[1]) {
+		// 0 is winner
+		return l[0], l[1], nil
+	} else { // len(l[0]) < len(l[1])
+		// 1 is winner
+		return l[1], l[0], nil
+	}
+
 }

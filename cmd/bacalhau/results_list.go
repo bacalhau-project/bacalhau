@@ -63,7 +63,10 @@ var resultsListCmd = &cobra.Command{
 			})
 		}
 
-		clustered.Cluster()
+		correctGroup, incorrectGroup, _ := clustered.Cluster()
+
+		fmt.Printf("correct: %+v\n", correctGroup)
+		fmt.Printf("incorrect: %+v\n", incorrectGroup)
 
 		scores, err := clustered.Scores()
 		if err != nil {
