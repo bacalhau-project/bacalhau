@@ -340,8 +340,10 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 			scheduler.Jobs[jobEvent.JobId].Deal = jobEvent.JobDeal
 		}
 
-		if jobEvent.JobState != nil {
-			scheduler.Jobs[jobEvent.JobId].State[string(msg.From)] = jobEvent.JobState
+		// both the jobState struct and the NodeId are required
+		// because the job state is "against" the node
+		if jobEvent.JobState != nil && jobEvent.NodeId != "" {
+			scheduler.Jobs[jobEvent.JobId].State[jobEvent.NodeId] = jobEvent.JobState
 		}
 
 		for _, subscribeFunc := range scheduler.SubscribeFuncs {

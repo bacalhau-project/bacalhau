@@ -66,9 +66,11 @@ var devstackCmd = &cobra.Command{
 			fmt.Printf("go run . --jsonrpc-port=%d list\n", node.JsonRpcPort)
 		}
 
-		fmt.Printf(`To add a file, type the following:
+		fmt.Printf(`
+To add a file, type the following:
 file_path="your_file_path_here"
-cid=$( IPFS_PATH=%s ipfs add -q $file_path )`, stack.Nodes[0].IpfsRepo)
+cid=$( IPFS_PATH=%s ipfs add -q $file_path )
+`, stack.Nodes[0].IpfsRepo)
 
 		// wait forever because everything else is running in a goroutine
 		select {}
