@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"reflect"
 	"strings"
 	"testing"
@@ -18,19 +19,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const TEST_CONCURRENCY = 2
+
 func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
 	os.Setenv("DEBUG", "true")
+	os.Setenv("BACALHAU_RUNTIME", "docker")
 
 	stack, err := internal.NewDevStack(ctxWithCancel, 3)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatalf("Unable to create devstack: %s", err)
 	}
-
-	fmt.Printf("JSON RPC: %d\n", stack.Nodes[0].JsonRpcPort)
 
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
 	time.Sleep(time.Second * 2)
@@ -45,8 +47,19 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
+	os.Setenv("LOG_LEVEL", "debug")
+
 	stack, cancelFunction := setupTest(t)
 	defer teardownTest(stack, cancelFunction)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			teardownTest(stack, cancelFunction)
+			os.Exit(1)
+		}
+	}()
 
 	// create test data
 	// ipfs add file on 2 nodes
@@ -79,7 +92,7 @@ raspberry
 	// ipfs add the file to 2 nodes
 	// this tests self selection
 	for i, node := range stack.Nodes {
-		if i >= 2 {
+		if i >= TEST_CONCURRENCY {
 			continue
 		}
 
@@ -92,14 +105,14 @@ raspberry
 
 	fileCid = strings.TrimSpace(fileCid)
 
-	var job *types.JobSpec
+	var job *types.Job
 
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob([]string{
 			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 		}, []string{
 			fileCid,
-		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
 		return err
 	}, "submit job", 100)
@@ -116,7 +129,7 @@ raspberry
 			return fmt.Errorf("expected 1 job, got %d", len(result.Jobs))
 		}
 
-		var jobData *types.JobData
+		var jobData *types.Job
 
 		for _, j := range result.Jobs {
 			jobData = j
@@ -136,7 +149,10 @@ raspberry
 		return nil
 	}, "wait for results to be", 100)
 
-	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, stack.Nodes[0].Node.Id))
+	hostId, err := stack.Nodes[0].ComputeNode.Scheduler.HostId()
+	assert.NoError(t, err)
+
+	resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
 	assert.NoError(t, err)
 
 	stdoutText, err := ioutil.ReadFile(fmt.Sprintf("%s/stdout.log", resultsDirectory))

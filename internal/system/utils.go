@@ -8,13 +8,15 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/internal/logger"
 )
 
 func CommandLogger(command string, args []string) {
 	if os.Getenv("DEBUG") == "" {
 		return
 	}
-	fmt.Printf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
+	logger.Debugf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
 }
 
 func RunCommand(command string, args []string) error {

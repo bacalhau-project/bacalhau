@@ -200,6 +200,7 @@ func HasCid(repoPath, cid string) (bool, error) {
 		"refs",
 		"local",
 	})
+
 	logger.Debug("Finished collecting refs in IPFS Repo.")
 	if err != nil {
 		return false, err
@@ -207,9 +208,13 @@ func HasCid(repoPath, cid string) (bool, error) {
 	logger.Debugf("Comparing CID (%s) collecting to all refs in repo.", cid)
 	allLocalRefsArray := strings.Split(allLocalRefString, "\n")
 	logger.Debugf("Total number of local refs: %d", len(allLocalRefsArray))
-	got := contains(allLocalRefsArray, cid)
 
+	if err != nil {
+		return false, err
+	}
+	got := contains(strings.Split(allLocalRefString, "\n"), cid)
 	logger.Debugf("CID (%s) in local refs: %t", cid, got)
+
 	return got, nil
 }
 

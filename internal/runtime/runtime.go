@@ -1,9 +1,7 @@
 package runtime
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -39,12 +37,12 @@ func cleanEmpty(values []string) []string {
 	return result
 }
 
-func NewRuntime(job *types.JobSpec) (*Runtime, error) {
+func NewRuntime(job *types.Job) (*Runtime, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("%s%s", job.Id, id.String())
+	name := fmt.Sprintf("bacalhau%s%s", job.Id, id.String())
 	// allow CI to use docker in place of ignite
 	kind := os.Getenv("BACALHAU_RUNTIME")
 	doubleDash := ""
@@ -52,20 +50,18 @@ func NewRuntime(job *types.JobSpec) (*Runtime, error) {
 		kind = "ignite"
 		doubleDash = "--"
 	}
-
-	logger.Debugf("Bacalhau Runtime Used: %s", kind)
-
 	if !(kind == "ignite" || kind == "docker") {
-		msg := fmt.Sprintf(`unsupported runtime requested via BACALHAU_RUNTIME (%s), `+
-			`please specify one of "ignite" or "docker"`, kind)
-		logger.Fatalf(msg)
+		panic(fmt.Sprintf(
+			`unsupported runtime requested via BACALHAU_RUNTIME (%s), `+
+				`please specify one of "ignite" or "docker"`, kind,
+		))
 	}
 	runtime := &Runtime{
 		Kind:       kind,
 		doubleDash: doubleDash,
 		Id:         id.String(),
 		Name:       name,
-		Job:        job,
+		Job:        job.Spec,
 		stopChan:   make(chan bool),
 	}
 	return runtime, nil
@@ -193,56 +189,18 @@ func (runtime *Runtime) PrepareJob(
 	system.CommandLogger(command, args)
 
 	cmd := exec.Command(command, args...)
-
-	// get the stdout and stderr stream
-	erc, err := cmd.StderrPipe()
-	if err != nil {
-		logger.Errorf("Failed to get stderr reader: ", err)
-	}
-	orc, err := cmd.StdoutPipe()
-	if err != nil {
-		logger.Errorf("Failed to get stdout reader: ", err)
-	}
-
-	// combine stdout and stderror ReadCloser
-	rc := io.MultiReader(erc, orc)
-
-	// Prepare the writer
-	f, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		logger.Fatalf("Failed to create file")
-	}
-
+	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-
-	// cmd.Stderr = os.Stderr
-	// cmd.Stdout = os.Stdout
+	cmd.Stderr = logfile
+	cmd.Stdout = logfile
 
 	go func() {
-		logger.Debugf("Executing command: %s", cmd.String())
-
-		// Command.Start starts a new go routine
-		if err := cmd.Start(); err != nil {
-			logger.Fatalf("Failed to start the command: %s", err)
+		err := cmd.Run()
+		if err != nil {
+			logger.Debugf("Failed to run : %s", err)
 		}
-
-		var bufferRead bytes.Buffer
-		teereader := io.TeeReader(rc, &bufferRead)
-
-		if _, err := io.Copy(f, teereader); err != nil {
-			logger.Fatalf("Failed to stream to file: %s", err)
-		}
-
-		s := bufferRead.String()
-		logger.Debugf("S: %s", s)
-		_ = s
-
-		if err := cmd.Wait(); err != nil {
-			logger.Fatalf("Failed to wait the command to execute: %s", err)
-		}
-
 	}()
 
 	go func() {
@@ -264,7 +222,7 @@ func (runtime *Runtime) PrepareJob(
 // copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
-	logger.Debugf("Executing Job: %s", runtime.Job.Id)
+
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
@@ -276,13 +234,13 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	// write the command stdout & stderr to the results dir
-	logger.Debugf("	Stdout to %s/stdout.log\n", resultsFolder)
+	fmt.Printf("writing stdout to %s/stdout.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stdout.log", resultsFolder), stdout.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
-	logger.Debugf("	Stderr to %s/stderr.log\n", resultsFolder)
+	fmt.Printf("writing stderr to %s/stderr.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stderr.log", resultsFolder), stderr.Bytes(), 0644)
 	if err != nil {
 		return err
@@ -295,7 +253,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	for _, file := range filesToCopy {
-		logger.Debugf("	%s to %s/%s\n", file, resultsFolder, file)
+		fmt.Printf("writing %s to %s/%s\n", file, resultsFolder, file)
 		err = system.RunCommand("sudo", []string{
 			runtime.Kind,
 			"cp",

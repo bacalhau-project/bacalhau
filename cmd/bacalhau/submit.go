@@ -5,12 +5,12 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/types"
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
 var jobCids []string
 var jobCommands []string
+var jobConcurrency int
 
 func init() {
 	submitCmd.PersistentFlags().StringSliceVar(
@@ -21,37 +21,54 @@ func init() {
 		&jobCommands, "commands", []string{},
 		`The commands for the job (comma separated, or specify multiple times)`,
 	)
+	submitCmd.PersistentFlags().IntVar(
+		&jobConcurrency, "concurrency", 1,
+		`How many nodes should run the job`,
+	)
 }
 
 func SubmitJob(
 	commands, cids []string,
+	concurrency int,
 	rpcHost string,
 	rpcPort int,
-) (*types.JobSpec, error) {
-	jobUuid, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
-	}
-
+) (*types.Job, error) {
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
 	}
 
-	job := &types.JobSpec{
-		Id:       jobUuid.String(),
-		Cpu:      1,
-		Memory:   2,
-		Disk:     10,
-		Cids:     cids,
+	if len(cids) <= 0 {
+		return nil, fmt.Errorf("Empty input list")
+	}
+
+	jobInputs := []types.JobStorage{}
+
+	for _, cid := range cids {
+		jobInputs = append(jobInputs, types.JobStorage{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Cid:    cid,
+		})
+	}
+
+	spec := &types.JobSpec{
 		Commands: commands,
+		Inputs:   jobInputs,
+	}
+
+	deal := &types.JobDeal{
+		Concurrency: concurrency,
 	}
 
 	args := &internal.SubmitArgs{
-		Job: job,
+		Spec: spec,
+		Deal: deal,
 	}
-	result := &types.JobSpec{}
 
-	err = JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
+	result := &types.Job{}
+
+	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
 		return nil, err
 	}
@@ -64,16 +81,22 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	fmt.Printf("job id: %s\n", job.Id)
+	fmt.Printf("job id: %s\n", result.Id)
 
-	return job, nil
+	return result, nil
 }
 
 var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		_, err := SubmitJob(jobCommands, jobCids, jsonrpcHost, jsonrpcPort)
+		_, err := SubmitJob(
+			jobCommands,
+			jobCids,
+			jobConcurrency,
+			jsonrpcHost,
+			jsonrpcPort,
+		)
 		return err
 	},
 }
