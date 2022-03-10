@@ -55,7 +55,7 @@ func NewRequesterNode(
 			if bidAccepted {
 				scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
 			} else {
-				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId)
+				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, "")
 			}
 		}
 
@@ -87,6 +87,9 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, err
 	if alreadyAssigned {
 		return false, nil
 	}
+
+	// TODO: call out to the reputation system to decide if we want this
+	// compute node to join our fleet
 
 	return true, nil
 }

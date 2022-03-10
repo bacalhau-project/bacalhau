@@ -190,14 +190,17 @@ func (scheduler *Libp2pScheduler) AcceptJobBid(jobId, nodeId string) error {
 	})
 }
 
-func (scheduler *Libp2pScheduler) RejectJobBid(jobId, nodeId string) error {
+func (scheduler *Libp2pScheduler) RejectJobBid(jobId, nodeId, message string) error {
+	if message == "" {
+		message = "Job bid rejected by client"
+	}
 	return scheduler.writeJobEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_BID_REJECTED,
 		JobState: &types.JobState{
 			State:  system.JOB_STATE_ERROR,
-			Status: "Job bid rejected by client",
+			Status: message,
 		},
 	})
 }
@@ -208,20 +211,22 @@ func (scheduler *Libp2pScheduler) AcceptResult(jobId, nodeId string) error {
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
-			Status: "Job bid rejected by client",
+			State: system.JOB_STATE_COMPLETE,
 		},
 	})
 }
 
-func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId string) error {
+func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId, message string) error {
+	if message == "" {
+		message = "Job result rejected by client"
+	}
 	return scheduler.writeJobEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_BID_REJECTED,
 		JobState: &types.JobState{
 			State:  system.JOB_STATE_ERROR,
-			Status: "Job bid rejected by client",
+			Status: message,
 		},
 	})
 }

@@ -47,14 +47,14 @@ type Scheduler interface {
 	AcceptJobBid(jobId, hostId string) error
 	// Executed by the client (Connie) to tell Prue they shouldn't try to run
 	// this job.
-	RejectJobBid(jobId, hostId string) error
+	RejectJobBid(jobId, hostId, message string) error
 	// Executed by the client when they are satisfied with the outcome of a job
 	// (e.g they have completed some verification of a job). Along with the id
 	// of the server who did the work this is Input to the reputation system.
 	AcceptResult(jobId, hostId string) error
 	// Executed by the client when they believe a job has been executed
 	// incorrectly. Also input to reputation system.
-	RejectResult(jobId, hostId string) error
+	RejectResult(jobId, hostId, message string) error
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
