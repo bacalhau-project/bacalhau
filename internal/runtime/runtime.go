@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -227,9 +228,16 @@ func (runtime *Runtime) PrepareJob(
 			logger.Fatalf("Failed to start the command: %s", err)
 		}
 
-		if _, err := io.Copy(f, rc); err != nil {
+		var bufferRead bytes.Buffer
+		teereader := io.TeeReader(rc, &bufferRead)
+
+		if _, err := io.Copy(f, teereader); err != nil {
 			logger.Fatalf("Failed to stream to file: %s", err)
 		}
+
+		s := bufferRead.String()
+		logger.Debugf("S: %s", s)
+		_ = s
 
 		if err := cmd.Wait(); err != nil {
 			logger.Fatalf("Failed to wait the command to execute: %s", err)
