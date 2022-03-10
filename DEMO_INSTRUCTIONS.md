@@ -1,12 +1,14 @@
 # Demo instructions
 
-1. Create a bare metal instance that supports ignite (<https://ignite.readthedocs.io/en/stable/cloudprovider/#digitalocean>)
-    1. For the purposes of this demo, we will assume you use Digital Ocean
-    1. Install digital ocean CLI tool
-       1. Mac: `brew update && brew install doctl`
-       2. Ubuntu: `sudo snap install doctl`
-       3. Others: <https://docs.digitalocean.com/reference/doctl/how-to/install/>
-    1. Create VM:
+
+For the purposes of this demo, we will assume you use Digital Ocean. To install digital ocean CLI tool:
+      - Mac: `brew update && brew install doctl`
+      - Ubuntu: `sudo snap install doctl`
+      - Others: <https://docs.digitalocean.com/reference/doctl/how-to/install/>
+
+1. Create a bare metal instance that supports [Weave Ignite](https://ignite.readthedocs.io/en/stable/cloudprovider/#digitalocean)
+  
+
 
 ```bash
 # NOTE you should already have an ssh key, below, assuming you're using the default name 'id_rsa.pub'
@@ -15,15 +17,18 @@ doctl compute ssh-key import A_UNIQUE_KEY_NAME --public-key-file ~/.ssh/id_rsa.p
 
 # Use ID field frome output above - can get again with doctl compute ssh-key list
 export SSH_FINGERPRINT="$(doctl compute ssh-key get ID_FIELD_FROM_OUTPUT --no-header --format 'FingerPrint')"
+export DROPLET_NAME="bacalhau.node"
 
 # Below requires having login in via 'doctl auth init'
-doctl compute droplet create --size s-4vcpu-8gb --region nyc1 --image ubuntu-20-04-x64 --ssh-keys $SSH_FINGERPRINT bacalhau.node
+doctl compute droplet create --size s-4vcpu-8gb --region nyc1 --image ubuntu-20-04-x64 --ssh-keys $SSH_FINGERPRINT $DROPLET_NAME
 
 # Get the IP Address
-doctl compute droplet list # Get the IP address
-export DROPLET_IP_ADDRESS="IP_ADDRESS_FROM_LIST"
+export DROPLET_IP_ADDRESS="$(doctl compute droplet get $DROPLET_NAME --format PublicIPv4 --no-header)"
 export DROPLET_USERNAME="STANDARD_UNIX_USERNAME"
 
+# Bypass the yes/no host confirmation dialogue
+ssh-keyscan $DROPLET_IP_ADDRESS >> $HOME/.ssh/known_hosts
+# wait 20s for sshd daemon to initialize on the host
 # Create a non-root user
 ssh root@$DROPLET_IP_ADDRESS "useradd --create-home $DROPLET_USERNAME && usermod -aG sudo $DROPLET_USERNAME"
 ssh root@$DROPLET_IP_ADDRESS 'echo "ALL            ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers'
@@ -31,23 +36,40 @@ ssh root@$DROPLET_IP_ADDRESS 'echo "ALL            ALL = (ALL) NOPASSWD: ALL" >>
 # Copy the ssh keys in
 cat ~/.ssh/id_rsa.pub | ssh root@$DROPLET_IP_ADDRESS  "su - $DROPLET_USERNAME -c 'mkdir -p ~/.ssh && tee -a ~/.ssh/authorized_keys'"
 
-# Test
-ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
 ```
 
-1. Download a build of the bacalhau cli from here - <https://github.com/filecoin-project/bacalhau/releases/>
 
-1. Open two terminal windows. In the first one, type the following command:
+2. Open two terminal windows. In the first one, type the following commands:
 
-```bash
-# You may need to install ipfs, if not already installed - https://docs.ipfs.io/install/command-line/#official-distributions
+```
+ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
+bash
+
+# Either A) Download a build of the bacalhau cli from here - <https://github.com/filecoin-project/bacalhau/releases/>
+sudo apt-get update
+sudo apt-get zip -y
+wget https://github.com/filecoin-project/bacalhau/releases/download/v0.0.2/bacalhau_v0.0.2_amd64.tar.gz
+tar -xvzf bacalhau_v0.0.2_amd64.tar.gz
+cd bacalhau_v0.0.2_amd64/
+
+# Or B) build the latest release from scratch
+sudo apt-get update && sudo apt-get install -y make gcc zip
+sudo snap install go --classic
+wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
+unzip main.zip
+cd bacalhau-main
+go build
+
+# Install IPFS *v0.11* specifically (due to issues in v0.12) via https://docs.ipfs.io/install/command-line/#official-distributions
+cd ..
 wget https://dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
 tar -xvzf go-ipfs_v0.11.0_linux-amd64.tar.gz
 cd go-ipfs
 sudo bash install.sh
+cd -
 
 # Install containerd
-sudo apt-get install containerd
+sudo apt-get install -y containerd
 
 # Install the CNI plugin - https://ignite.readthedocs.io/en/stable/installation/#cni-plugins
 export CNI_VERSION=v0.9.1
@@ -55,65 +77,53 @@ export ARCH=$([ $(uname -m) = "x86_64" ] && echo amd64 || echo arm64)
 sudo mkdir -p /opt/cni/bin
 curl -sSL https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-${ARCH}-${CNI_VERSION}.tgz | sudo tar -xz -C /opt/cni/bin
 
+# Install Ignite
+sudo apt-get install -y --no-install-recommends dmsetup openssh-client git binutils
+export VERSION=v0.10.0
+export GOARCH=$(go env GOARCH 2>/dev/null || echo "amd64")
+for binary in ignite ignited; do
+    echo "Installing ${binary}..."
+    curl -sfLo ${binary} https://github.com/weaveworks/ignite/releases/download/${VERSION}/${binary}-${GOARCH}
+    chmod +x ${binary}
+    sudo mv ${binary} /usr/local/bin
+done
+
+# Optional: install and set runtime to docker
+# sudo apt install -y docker.io
+# BACALHAU_RUNTIME=docker
 # Start bacalhau dev stack
-bacalhau --dev devstack
+./bacalhau --dev devstack
 ```
 
-1. In the second, create a new file and add it to IPFS:
+3. In the second terminal window, create a new file and add it to IPFS:
 
-```bash
+```
+export DROPLET_NAME="bacalhau.node"
+export DROPLET_IP_ADDRESS="$(doctl compute droplet get $DROPLET_NAME --format PublicIPv4 --no-header)"
+export DROPLET_USERNAME="STANDARD_UNIX_USERNAME"
+ssh $DROPLET_USERNAME@$DROPLET_IP_ADDRESS
+bash
 openssl rand -out large_file.txt -base64 $(( 2**30 * 3/4 ))
-```
+file_path="/home/STANDARD_UNIX_USERNAME/large_file.txt" # large_file.txt above
+export IPFS_PATH="$(ls -d /tmp/bacalhau* | head -1)"
+cid=$( ipfs add -q $file_path)
 
-1. Add this to the bacalhau network
-
-```bash
-# IN THE SECOND TERMINAL
-# Add the file to ipfs and get the CID (you should have this command from the last terminal you ran)
-file_path="path_to_file" # large_file.txt above
-cid=$(IPFS_PATH=/tmp/bacalhau-ipfs489449709 ipfs add -q $file_path)
+# Set the port number manually from the output of lsof
+sudo lsof -i -P -n | grep bacalhau | grep LISTEN | tail -n 1
+export JSON_RPC_PORT=12345
 
 # Execute a command against IPFS on all nodes
- ./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" # Counts the number of the letter 'W' in the file
-```
-You can watch this resolve by watching this:
+# Counts the number of the letter 'W' in the file
+./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" --jsonrpc-port $JSON_RPC_PORT
 
 ```
-./bacalhau list --jsonrpc-port=41923
+4. Watch this resolve by watching this:
+
+```
+./bacalhau list --jsonrpc-port=$JSON_RPC_PORT
 ```
 
-STOPPED HERE WITH THE FOLLOWING ERROR - job just sitting there doing nothing:
+5. Reminder to delete your droplet when finished
 ```
-#Terminal 1
-aronchick@bacalhau:~$ ./code/bacalhau/bin/bacalhau list --jsonrpc-port=41923
- JOB       COMMAND                  DATA                     NODE                     STATE     STATUS                                             OUTPUT
- d978308c  grep -o 'W' /ipfs/Qm...  Qmdd3GdLhQJENPLs6VyG...  QmSPXxU5aFDwjMeqedkK...  selected  Job was selected because jobs CID are local:
-                                                                                                 [Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu]
-
-aronchick@bacalhau:~$
-
-# TERMINAL 2
-we are updating a job!:
-&{JobId:d978308c-95d2-4193-99b6-a1c1f9fbd189 NodeId:QmSPXxU5aFDwjMeqedkKhGGWmEkSPPVjFtXE811SYak2cL State:selected Status:Job was selected because jobs CID are local:
- [Qmdd3GdLhQJENPLs6VyGByaZWytDCcjJezGUcWonEybrzu]
- Output:}
-INFO[0001] Created VM with ID "8af9ab483799ac66" and name "d978308c-95d2-4193-99b6-a1c1f9fbd189a9fa74f4-e62f-46b8-87ae-28676ba25fd4"
-INFO[0001] Networking is handled by "cni"
-INFO[0001] Started Firecracker VM "8af9ab483799ac66" in a container with ID "ignite-8af9ab483799ac66"
-INFO[0001] Waiting for the ssh daemon within the VM to start...
-generating ED25519 keypair...done
-peer identity: 12D3KooWLaE9mxuP57Pn4wC3JrKTnpmeqKWQJmYwB7RwjSbiYaqK
-initializing IPFS node at /root/.ipfs
-to get started, enter:
-
-        ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
-
-2022-03-01T17:22:42.502Z        ERROR   provider.queue  queue/queue.go:124      Failed to enqueue cid: leveldb: closed
-removed /dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN
-removed /dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa
-removed /dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb
-removed /dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt
-removed /ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
-removed /ip4/104.131.131.82/udp/4001/quic/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ
-added /ip4/127.0.0.1/tcp/36815/p2p/12D3KooWPszx6ZjoexB2nMnWWxPCtxbnSv6S4tck61jPCDLGid5x
+doctl compute droplet delete $DROPLET_NAME 
 ```
