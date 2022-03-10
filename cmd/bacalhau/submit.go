@@ -11,6 +11,8 @@ import (
 var jobCids []string
 var jobCommands []string
 var jobConcurrency int
+var jobConfidence int
+var jobTolerance float32
 
 func init() {
 	submitCmd.PersistentFlags().StringSliceVar(
@@ -25,11 +27,20 @@ func init() {
 		&jobConcurrency, "concurrency", 1,
 		`How many nodes should run the job`,
 	)
+	submitCmd.PersistentFlags().IntVar(
+		&jobConfidence, "confidence", 1,
+		`How many nodes should agree on a result before we accept it`,
+	)
+	submitCmd.PersistentFlags().Float32Var(
+		&jobTolerance, "tolerance", 0,
+		`The percentage difference between two results to count them as the "same"`,
+	)
 }
 
 func SubmitJob(
 	commands, cids []string,
-	concurrency int,
+	concurrency, confidence int,
+	tolerance float32,
 	rpcHost string,
 	rpcPort int,
 ) (*types.Job, error) {
@@ -39,6 +50,22 @@ func SubmitJob(
 
 	if len(cids) <= 0 {
 		return nil, fmt.Errorf("Empty input list")
+	}
+
+	if concurrency <= 0 {
+		return nil, fmt.Errorf("Concurrency must be >= 1")
+	}
+
+	if confidence > concurrency {
+		return nil, fmt.Errorf("Confidence cannot be more than concurrency")
+	}
+
+	if confidence <= 0 {
+		return nil, fmt.Errorf("Confidence must be >= 1")
+	}
+
+	if tolerance < 0 || tolerance >= 1 {
+		return nil, fmt.Errorf("Tolerance must be >= 0 and < 1")
 	}
 
 	jobInputs := []types.JobStorage{}
@@ -59,6 +86,8 @@ func SubmitJob(
 
 	deal := &types.JobDeal{
 		Concurrency: concurrency,
+		Confidence:  confidence,
+		Tolerance:   tolerance,
 	}
 
 	args := &internal.SubmitArgs{
@@ -94,6 +123,8 @@ var submitCmd = &cobra.Command{
 			jobCommands,
 			jobCids,
 			jobConcurrency,
+			jobConfidence,
+			jobTolerance,
 			jsonrpcHost,
 			jsonrpcPort,
 		)
