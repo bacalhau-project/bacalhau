@@ -45,7 +45,7 @@ func NewRequesterNode(
 		// we also pay attention to the job deal concurrency setting
 		case system.JOB_EVENT_BID:
 
-			bidAccepted, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
+			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 
 			if err != nil {
 				fmt.Printf("there was an error considering bid: %s\n", err)
@@ -55,7 +55,7 @@ func NewRequesterNode(
 			if bidAccepted {
 				scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
 			} else {
-				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, "")
+				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
 			}
 		}
 
@@ -66,13 +66,13 @@ func NewRequesterNode(
 
 // a compute node has bid on the job
 // should we accept the bid or not?
-func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, error) {
+func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, string, error) {
 
 	concurrency := job.Deal.Concurrency
 
 	// we are already over-subscribed
 	if len(job.Deal.AssignedNodes) >= concurrency {
-		return false, nil
+		return false, "job is over subscribed", nil
 	}
 
 	// sanity check to not allow a node to bid on a job twice
@@ -85,11 +85,11 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, err
 	}
 
 	if alreadyAssigned {
-		return false, nil
+		return false, "this node is already assigned", nil
 	}
 
 	// TODO: call out to the reputation system to decide if we want this
 	// compute node to join our fleet
 
-	return true, nil
+	return true, "", nil
 }
