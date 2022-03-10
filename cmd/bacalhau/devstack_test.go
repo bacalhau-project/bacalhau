@@ -126,7 +126,7 @@ raspberry
 			fmt.Sprintf("sed -n '/kiwi/p' /ipfs/%s", fileCid),
 		}, []string{
 			fileCid,
-		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
 		numberOfJobsToCheck += 1
 
@@ -141,7 +141,7 @@ raspberry
 			fmt.Sprintf("awk -F','  '$1 ~ /kiwi/ {print $0}' /ipfs/%s", fileCid),
 		}, []string{
 			fileCid,
-		}, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
 		numberOfJobsToCheck += 1
 
