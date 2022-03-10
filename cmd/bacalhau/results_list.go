@@ -63,6 +63,8 @@ var resultsListCmd = &cobra.Command{
 			})
 		}
 
+		clustered.Cluster()
+
 		scores, err := clustered.Scores()
 		if err != nil {
 			return err

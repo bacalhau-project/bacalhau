@@ -1,0 +1,1 @@
+import random; import time; "0"*1024*1024*100 if random.random() > 0.3 else print("fast"); sleep(100)

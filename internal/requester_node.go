@@ -57,6 +57,17 @@ func NewRequesterNode(
 			} else {
 				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
 			}
+
+		// a compute node has submitted some results
+		// let's consult our confidence and tolerance settings
+		// to see if we can "accept" these results
+		// or if we need to wait for some more results to arrive
+		case system.JOB_EVENT_RESULTS:
+			err := requesterNode.ProcessResults(job, jobEvent.NodeId)
+
+			if err != nil {
+				scheduler.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
+			}
 		}
 
 	})
@@ -92,4 +103,22 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, str
 	// compute node to join our fleet
 
 	return true, "", nil
+}
+
+// some results have arrived from a compute node
+// let's run over all results we currently have and compare them using the "tolerance" setting
+// then let's see how many of the results we can get to agree and check the "confidence" setting
+// if "number of agreeing nodes" > "confidence" - we can trigger
+// "ResultsAccepted" and "ResultsRejected" methods on the scheduler interface
+// we need to wait until we have at least "N >= confidence" results otherwise we have nothing
+// to compare
+func (node *RequesterNode) ProcessResults(job *types.Job, nodeId string) error {
+
+	// loop over current job states
+	// filter down into the ones that are "complete"
+	// using the threshold - group into results that are the "same"
+	// identify if there is a group with > "confidence" members
+	// if yes - trigger "ResultsAccepted" and "ResultsRejected" methods on the scheduler interface
+	//
+	return nil
 }

@@ -44,13 +44,18 @@ func SubmitJob(
 	rpcHost string,
 	rpcPort int,
 ) (*types.Job, error) {
+
+	commands = []string{
+		`python3 -c "import random; import time; x = '0'*1024*1024*100 if random.random() > 0 else print('noalloc'); time.sleep(10)"`,
+	}
+
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
 	}
 
-	if len(cids) <= 0 {
-		return nil, fmt.Errorf("Empty input list")
-	}
+	// if len(cids) <= 0 {
+	// 	return nil, fmt.Errorf("Empty input list")
+	// }
 
 	if concurrency <= 0 {
 		return nil, fmt.Errorf("Concurrency must be >= 1")

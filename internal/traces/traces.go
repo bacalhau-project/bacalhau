@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/muesli/clusters"
+	"github.com/muesli/kmeans"
 	"gonum.org/v1/gonum/stat"
 )
 
@@ -220,4 +222,39 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 
 	// TODO Maybe return a single value? Or just use memory for now
 
+}
+
+// naively (for now) cluster the results into two buckets: "right" and "wrong"
+func (t *TraceCollection) Cluster() {
+
+	scores, _ := t.Scores()
+
+	var d clusters.Observations
+
+	for _, score := range scores {
+		d = append(d, clusters.Coordinates{
+			score["real"],
+		})
+	}
+
+	// map[string]map[string]float64
+	// map resultId -> column -> score (average distance from average for that column)
+
+	km := kmeans.New()
+	clusters, _ := km.Partition(d, 2)
+
+	for _, c := range clusters {
+		fmt.Printf("Centered at x: %.2f\n", c.Center[0])
+		fmt.Printf("Matching data points: %+v\n\n", c.Observations)
+	}
+
+	// // larger bucket wins - majority wins
+
+	// if len(clusters[0].Observations) > len(clusters[1].Observations) {
+	// 	// 0 is the winner
+	// 	return clusters[0].Observations, clusters[1].Observations
+	// } else {
+	// 	// 1 is the winner
+	// 	return clusters[1].Observations, clusters[0].Observations
+	// }
 }
