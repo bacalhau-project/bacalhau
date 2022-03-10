@@ -193,7 +193,6 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 }
 
 func HasCid(repoPath, cid string) (bool, error) {
-	fmt.Printf("IN HasCid with %s, %s\n", repoPath, cid)
 	allLocalRefString, err := IpfsCommand(repoPath, []string{
 		"refs",
 		"local",
@@ -202,12 +201,15 @@ func HasCid(repoPath, cid string) (bool, error) {
 	countLocalRefsString := len(strings.Split(allLocalRefString, "\n"))
 
 	fmt.Printf(" ---> FINISHED running ipfs refs local: From %d refs - err: %s\n", countLocalRefsString, err)
-	if err != nil {
+
+  if err != nil {
 		return false, err
 	}
 	got := contains(strings.Split(allLocalRefString, "\n"), cid)
-	fmt.Printf("--> HasCid %t looking for %s in %d refs\n", got, cid, countLocalRefsString)
-	return got, nil
+
+  fmt.Printf("--> HasCid %t looking for %s in %d refs\n", got, cid, countLocalRefsString)
+
+  return got, nil
 }
 
 func AddFolder(repoPath, folder string) (string, error) {

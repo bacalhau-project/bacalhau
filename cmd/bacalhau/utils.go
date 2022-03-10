@@ -59,7 +59,7 @@ type ResultsList struct {
 	Folder string
 }
 
-func getJobData(jobId string) (*types.JobData, error) {
+func getJobData(jobId string) (*types.Job, error) {
 	args := &internal.ListArgs{}
 	result := &types.ListResponse{}
 	err := JsonRpcMethod("List", args, result)
@@ -68,7 +68,7 @@ func getJobData(jobId string) (*types.JobData, error) {
 	}
 
 	for _, jobData := range result.Jobs {
-		if strings.HasPrefix(jobData.Job.Id, jobId) {
+		if strings.HasPrefix(jobData.Id, jobId) {
 			return jobData, nil
 		}
 	}
@@ -78,18 +78,26 @@ func getJobData(jobId string) (*types.JobData, error) {
 
 func getJobResults(jobId string) (*[]ResultsList, error) {
 
-	data, err := getJobData(jobId)
+	job, err := getJobData(jobId)
 
 	if err != nil {
 		return nil, err
 	}
 
 	results := []ResultsList{}
-	for node := range data.State {
+
+	for node := range job.State {
+
+		cid := ""
+
+		if len(job.State[node].Outputs) > 0 {
+			cid = job.State[node].Outputs[0].Cid
+		}
+
 		results = append(results, ResultsList{
 			Node:   node,
-			Cid:    data.State[node].ResultCid,
-			Folder: system.GetResultsDirectory(data.Job.Id, node),
+			Cid:    cid,
+			Folder: system.GetResultsDirectory(job.Id, node),
 		})
 	}
 

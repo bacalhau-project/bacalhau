@@ -5,14 +5,16 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/phayes/freeport"
 )
 
 type DevStackNode struct {
-	Node        *ComputeNode
-	JsonRpcPort int
-	IpfsRepo    string
+	ComputeNode   *ComputeNode
+	RequesterNode *RequesterNode
+	JsonRpcPort   int
+	IpfsRepo      string
 }
 
 type DevStack struct {
@@ -31,22 +33,39 @@ func NewDevStack(
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
-		computePort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-		node, err := NewComputeNode(ctx, computePort)
+		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", node.Host.Addrs()[0].String(), node.Host.ID())
+		libp2pScheduler, err := libp2p.NewLibp2pScheduler(ctx, libp2pPort)
+		if err != nil {
+			return nil, err
+		}
+
+		requesterNode, err := NewRequesterNode(ctx, libp2pScheduler)
+		if err != nil {
+			return nil, err
+		}
+
+		computeNode, err := NewComputeNode(ctx, libp2pScheduler)
+		if err != nil {
+			return nil, err
+		}
+
+		// at this point the requester and compute nodes are both subscribing to the scheduler events
+		err = libp2pScheduler.Start()
+		if err != nil {
+			return nil, err
+		}
+
+		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", libp2pScheduler.Host.Addrs()[0].String(), libp2pScheduler.Host.ID())
 
 		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 
 		// if we have started any bacalhau servers already, use the first one
 		if len(bacalhauMultiAddresses) > 0 {
-			err = node.Connect(bacalhauMultiAddresses[0])
+			err = libp2pScheduler.Connect(bacalhauMultiAddresses[0])
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +76,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		go RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, node)
+		RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requesterNode)
 
 		connectToMultiAddress := ""
 
@@ -75,17 +94,18 @@ func NewDevStack(
 		bacalhauMultiAddresses = append(bacalhauMultiAddresses, bacalhauMultiAddress)
 		ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
 
-		node.IpfsRepo = ipfsRepo
-		node.IpfsConnectMultiAddress = ipfsMultiaddress
+		computeNode.IpfsRepo = ipfsRepo
+		computeNode.IpfsConnectMultiAddress = ipfsMultiaddress
 
 		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 		fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)
 		fmt.Printf("ipfs repo: %s\n", ipfsRepo)
 
 		devStackNode := &DevStackNode{
-			Node:        node,
-			JsonRpcPort: jsonRpcPort,
-			IpfsRepo:    ipfsRepo,
+			ComputeNode:   computeNode,
+			RequesterNode: requesterNode,
+			JsonRpcPort:   jsonRpcPort,
+			IpfsRepo:      ipfsRepo,
 		}
 
 		nodes = append(nodes, devStackNode)
