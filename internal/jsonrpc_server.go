@@ -11,27 +11,33 @@ import (
 )
 
 type JobServer struct {
-	ComputeNode *ComputeNode
+	RequesterNode *RequesterNode
 }
 
 type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Job *types.JobSpec
+	Spec *types.JobSpec
+	Deal *types.JobDeal
 }
 
 func (server *JobServer) List(args *ListArgs, reply *types.ListResponse) error {
-	*reply = types.ListResponse{
-		Jobs: server.ComputeNode.Jobs,
+	res, err := server.RequesterNode.Scheduler.List()
+	if err != nil {
+		return err
 	}
+	*reply = res
 	return nil
 }
 
-func (server *JobServer) Submit(args *SubmitArgs, reply *types.JobSpec) error {
+func (server *JobServer) Submit(args *SubmitArgs, reply *types.Job) error {
 	//nolint
-	server.ComputeNode.Publish(args.Job)
-	*reply = *args.Job
+	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
+	if err != nil {
+		return err
+	}
+	*reply = *job
 	return nil
 }
 
@@ -39,10 +45,10 @@ func RunBacalhauJsonRpcServer(
 	ctx context.Context,
 	host string,
 	port int,
-	computeNode *ComputeNode,
+	requesterNode *RequesterNode,
 ) {
 	job := &JobServer{
-		ComputeNode: computeNode,
+		RequesterNode: requesterNode,
 	}
 
 	rpcServer := rpc.NewServer()
@@ -64,15 +70,12 @@ func RunBacalhauJsonRpcServer(
 		}
 	}()
 
-	fmt.Printf("waiting for json rpc context done\n")
-
-	<-ctx.Done()
-
-	fmt.Printf("closing json rpc server\n")
-
-	isClosing = true
-
-	httpServer.Close()
-
-	fmt.Printf("closed json rpc server\n")
+	go func() {
+		fmt.Printf("waiting for json rpc context done\n")
+		<-ctx.Done()
+		fmt.Printf("closing json rpc server\n")
+		isClosing = true
+		httpServer.Close()
+		fmt.Printf("closed json rpc server\n")
+	}()
 }

@@ -3,7 +3,10 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
@@ -46,19 +49,30 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for range c {
+				cancelFunction()
+				// need some time to let ipfs processes shut down
+				time.Sleep(time.Second * 1)
+				os.Exit(1)
+			}
+		}()
+
 		for i, node := range stack.Nodes {
 			fmt.Printf("\nnode %d:\n", i)
 			fmt.Printf("IPFS_PATH=%s ipfs\n", node.IpfsRepo)
 			fmt.Printf("go run . --jsonrpc-port=%d list\n", node.JsonRpcPort)
 		}
 
-		fmt.Printf(`To add a file, type the following:
+		fmt.Printf(`
+To add a file, type the following:
 file_path="your_file_path_here"
-cid=$( IPFS_PATH=%s ipfs add -q $file_path )`, stack.Nodes[0].IpfsRepo)
+cid=$( IPFS_PATH=%s ipfs add -q $file_path )
+`, stack.Nodes[0].IpfsRepo)
 
 		// wait forever because everything else is running in a goroutine
 		select {}
-
-		//return nil
 	},
 }
