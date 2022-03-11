@@ -126,9 +126,11 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test -v -count 1 -timeout 300s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	go test ./... -v
 
-#go test ./... -v
+.PHONY: test-devstack
+test-devstack:
+	go test -v -count 1 -timeout 300s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
 
 ################################################################################
 # Target: lint					                               #

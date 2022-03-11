@@ -59,7 +59,7 @@ type ResultsList struct {
 	Folder string
 }
 
-func getJobData(jobId string) (*types.JobData, error) {
+func getJobData(jobId string) (*types.Job, error) {
 	args := &internal.ListArgs{}
 	result := &types.ListResponse{}
 	err := JsonRpcMethod("List", args, result)
@@ -67,42 +67,37 @@ func getJobData(jobId string) (*types.JobData, error) {
 		return nil, err
 	}
 
-	var foundJob *types.Job
-
-	for _, job := range result.Jobs {
-		if strings.HasPrefix(job.Id, jobId) {
-			foundJob = &job
+	for _, jobData := range result.Jobs {
+		if strings.HasPrefix(jobData.Id, jobId) {
+			return jobData, nil
 		}
 	}
 
-	if foundJob == nil {
-		return nil, fmt.Errorf("Could not find job: %s", jobId)
-	}
-
-	data := types.JobData{
-		Job:     *foundJob,
-		State:   result.JobState[foundJob.Id],
-		Status:  result.JobStatus[foundJob.Id],
-		Results: result.JobResults[foundJob.Id],
-	}
-
-	return &data, nil
+	return nil, fmt.Errorf("Could not find job: %s", jobId)
 }
 
 func getJobResults(jobId string) (*[]ResultsList, error) {
 
-	data, err := getJobData(jobId)
+	job, err := getJobData(jobId)
 
 	if err != nil {
 		return nil, err
 	}
 
 	results := []ResultsList{}
-	for node := range data.State {
+
+	for node := range job.State {
+
+		cid := ""
+
+		if len(job.State[node].Outputs) > 0 {
+			cid = job.State[node].Outputs[0].Cid
+		}
+
 		results = append(results, ResultsList{
 			Node:   node,
-			Cid:    data.Results[node],
-			Folder: system.GetResultsDirectory(data.Job.Id, node),
+			Cid:    cid,
+			Folder: system.GetResultsDirectory(job.Id, node),
 		})
 	}
 

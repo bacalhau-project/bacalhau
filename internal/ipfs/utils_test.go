@@ -36,12 +36,29 @@ func (suite *IpfsUtilsTestSuite) Test_IpfsNotSnap() {
 
 	ipfs_binary_full_path, _ := filepath.Abs(ipfs_binary)
 
-	if  !strings.Contains(ipfs_binary_full_path, "/snap/") {
+	if !strings.Contains(ipfs_binary_full_path, "/snap/") {
 		suite.Suite.T().Skip("ipfs not installed with snap, skipping test")
 	}
 
 	_, err = IpfsCommand("", nil)
 	assert.Contains(suite.T(), string(err.Error()), "using snap")
+
+}
+
+func (suite *IpfsUtilsTestSuite) Test_NoDocker() {
+
+	docker_path, err := exec.LookPath("docker")
+
+	if err != nil {
+		assert.Fail(suite.T(), "Could not find 'docker' binary on your path.")
+	}
+
+	if docker_path != "" {
+		suite.Suite.T().Skip("docker is installed, cannot test abscence")
+	}
+
+	_, err = IpfsCommand("", nil)
+	assert.Contains(suite.T(), string(err.Error()), "bacalhau requires that 'docker'")
 
 }
 

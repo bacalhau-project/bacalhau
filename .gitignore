@@ -16,4 +16,9 @@ env.*
 bin/*/*
 .vscode
 vendor/*
-bacalhau
+bin/*
+/bacalhau
+.venv
+temperature_sensor_data.csv
+temperature_sensor_data.csv.bz2
+.ipynb_checkpoints

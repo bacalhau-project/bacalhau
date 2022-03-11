@@ -23,7 +23,7 @@ type Runtime struct {
 	doubleDash string
 	Id         string
 	Name       string
-	Job        *types.Job
+	Job        *types.JobSpec
 	stopChan   chan bool
 }
 
@@ -42,7 +42,7 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("%s%s", job.Id, id.String())
+	name := fmt.Sprintf("bacalhau%s%s", job.Id, id.String())
 	// allow CI to use docker in place of ignite
 	kind := os.Getenv("BACALHAU_RUNTIME")
 	doubleDash := ""
@@ -61,7 +61,7 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 		doubleDash: doubleDash,
 		Id:         id.String(),
 		Name:       name,
-		Job:        job,
+		Job:        job.Spec,
 		stopChan:   make(chan bool),
 	}
 	return runtime, nil
@@ -208,7 +208,9 @@ func (runtime *Runtime) PrepareJob(
 
 	go func() {
 		<-runtime.stopChan
-		cmd.Process.Kill()
+
+		// TODO: Should we check the result here?
+		cmd.Process.Kill() // nolint
 	}()
 
 	// sleep here to give the "ipfs daemon --mount" command time to start
