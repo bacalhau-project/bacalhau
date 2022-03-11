@@ -45,23 +45,25 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      - uses: evantorrie/mott-the-tidier@v1-beta
-        with:
-          gomods: |
-            **/go.mod
-            -tools/go.mod
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: Auto-fix go.sum discrepancies
+#       - uses: evantorrie/mott-the-tidier@v1-beta
+#         with:
+#           gomods: |
+#             **/go.mod
+#             -tools/go.mod
+            
+#       - uses: stefanzweifel/git-auto-commit-action@v4
+#         with:
+#           commit_message: Auto-fix go.sum discrepancies
 
-      # - name: golangci-lint
-      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-      #   uses: golangci/golangci-lint-action@v2.2.1
-      #   with:
-      #     version: ${{ env.GOLANGCILINT_VER }}
-      # - name: Run go mod tidy check diff
-      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-      #   run: make modtidy check-diff
+      - name: golangci-lint
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: golangci/golangci-lint-action@v2.2.1
+        with:
+          version: ${{ env.GOLANGCILINT_VER }}
+      
+      - name: Run go mod tidy check diff
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: make modtidy check-diff
 
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
