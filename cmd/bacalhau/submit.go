@@ -3,7 +3,7 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/spf13/cobra"
 )
@@ -106,14 +106,14 @@ func SubmitJob(
 		Tolerance:   tolerance,
 	}
 
-	args := &internal.SubmitArgs{
+	args := &types.SubmitArgs{
 		Spec: spec,
 		Deal: deal,
 	}
 
 	result := &types.Job{}
 
-	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "Submit", args, result)
+	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
 		return nil, err
 	}
