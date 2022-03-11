@@ -12,7 +12,7 @@ var jobCids []string
 var jobCommands []string
 var jobConcurrency int
 var jobConfidence int
-var jobTolerance float32
+var jobTolerance float64
 
 func init() {
 	submitCmd.PersistentFlags().StringSliceVar(
@@ -31,31 +31,42 @@ func init() {
 		&jobConfidence, "confidence", 1,
 		`How many nodes should agree on a result before we accept it`,
 	)
-	submitCmd.PersistentFlags().Float32Var(
-		&jobTolerance, "tolerance", 0,
-		`The percentage difference between two results to count them as the "same"`,
+	// this is currently fixed to the "real memory" usage of the validator (traces) module
+	//
+	// some example numbers for 3 jobs that are the same:
+	// -0.1012000000000027
+	// 0.08959999999999875
+	// 0.011600000000003875
+	//
+	// and some example numbers for 3 jobs that are different:
+	// 57.8706
+	// -29.044399999999996
+	// -28.826199999999993
+	//
+	// so - "0.5" seems to be a reasonable "gap" to count results as the same
+	// TODO: have the tolerance be scaled somehow so you can give a number between 0 and 1
+	// TODO: have the tolerance apply to difference validation modules (currently: psrecord + real memory usage)
+	submitCmd.PersistentFlags().Float64Var(
+		&jobTolerance, "tolerance", 0.5,
+		`The allowable difference between two results to count them as the "same"`,
 	)
 }
 
 func SubmitJob(
 	commands, cids []string,
 	concurrency, confidence int,
-	tolerance float32,
+	tolerance float64,
 	rpcHost string,
 	rpcPort int,
 ) (*types.Job, error) {
 
 	commands = []string{
-		`python3 -c "import random; import time; x = '0'*1024*1024*100 if random.random() > 0 else print('noalloc'); time.sleep(10)"`,
+		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
 	}
 
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
 	}
-
-	// if len(cids) <= 0 {
-	// 	return nil, fmt.Errorf("Empty input list")
-	// }
 
 	if concurrency <= 0 {
 		return nil, fmt.Errorf("Concurrency must be >= 1")
@@ -69,8 +80,8 @@ func SubmitJob(
 		return nil, fmt.Errorf("Confidence must be >= 1")
 	}
 
-	if tolerance < 0 || tolerance >= 1 {
-		return nil, fmt.Errorf("Tolerance must be >= 0 and < 1")
+	if tolerance < 0 {
+		return nil, fmt.Errorf("Tolerance must be >= 0")
 	}
 
 	jobInputs := []types.JobStorage{}

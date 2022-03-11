@@ -40,7 +40,7 @@ type JobDeal struct {
 	Confidence int
 	// how "fuzzy" will we tolerate results such they are classed as the "same"
 	// this only applies to validation engines that are non-determistic
-	Tolerance float32
+	Tolerance float64
 	// the nodes we have assigned (and will pay)
 	// other nodes are welcome to submit results without having been assigned
 	// this is how they can bootstrap their reputation

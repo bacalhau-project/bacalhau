@@ -24,6 +24,11 @@ var resultsListCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 
+		job, err := getJobData(cmdArgs[0])
+		if err != nil {
+			return err
+		}
+
 		data, err := getJobResults(cmdArgs[0])
 		if err != nil {
 			return err
@@ -43,8 +48,12 @@ var resultsListCmd = &cobra.Command{
 		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE", "CORRECT"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
 
+		fmt.Printf("-------------------------> %f\n", job.Deal.Tolerance)
+
+		// TODO: load the job so we can get at Deal.Tolerance
 		clustered := traces.TraceCollection{
-			Traces: []traces.Trace{},
+			Traces:    []traces.Trace{},
+			Tolerance: job.Deal.Tolerance,
 		}
 
 		for _, row := range *data {

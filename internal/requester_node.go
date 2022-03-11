@@ -105,20 +105,14 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, str
 	return true, "", nil
 }
 
-// some results have arrived from a compute node
-// let's run over all results we currently have and compare them using the "tolerance" setting
-// then let's see how many of the results we can get to agree and check the "confidence" setting
-// if "number of agreeing nodes" > "confidence" - we can trigger
-// "ResultsAccepted" and "ResultsRejected" methods on the scheduler interface
-// we need to wait until we have at least "N >= confidence" results otherwise we have nothing
-// to compare
+// a compute node has submitted some results
+// let's check if we have >= concurrency results in the set
+// if we do - then let's see which results can be grouped as the "same"
+// if we have a majority in that case - let's mark those results as "accepted"
+// (and reject the rest)
 func (node *RequesterNode) ProcessResults(job *types.Job, nodeId string) error {
 
-	// loop over current job states
-	// filter down into the ones that are "complete"
-	// using the threshold - group into results that are the "same"
-	// identify if there is a group with > "confidence" members
-	// if yes - trigger "ResultsAccepted" and "ResultsRejected" methods on the scheduler interface
 	//
+
 	return nil
 }

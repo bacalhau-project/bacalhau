@@ -34,7 +34,7 @@ func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 
 	os.Setenv("DEBUG", "true")
 
-	stack, err := internal.NewDevStack(ctxWithCancel, 3)
+	stack, err := internal.NewDevStack(ctxWithCancel, 3, 0)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatalf("Unable to create devstack: %s", err)

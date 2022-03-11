@@ -3,6 +3,7 @@ package traces
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -22,6 +23,8 @@ type Trace struct {
 
 type TraceCollection struct {
 	Traces []Trace
+
+	Tolerance float64
 
 	// internal
 	// resultId -> list of samples -> column -> value
@@ -255,14 +258,28 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 	km := kmeans.New()
 	clusters, _ := km.Partition(d, 2)
 
+	// TODO: Print the means here
+
+	if math.Abs(float64(clusters[0].Center[0])-float64(clusters[1].Center[0])) < t.Tolerance {
+
+		allIds := []string{}
+		emptyIds := []string{}
+
+		for resultId := range scores {
+			allIds = append(allIds, resultId)
+		}
+		sort.Strings(allIds)
+		return allIds, emptyIds, nil
+	}
+
 	for _, c := range clusters {
 		fmt.Printf("Centered at x: %.2f\n", c.Center[0])
 		fmt.Printf("Matching data points: %+v\n\n", c.Observations)
 	}
 
 	// reconstitute the results from the clusters...
+	l := make([][]string, 2)
 
-	l := [][]string{[]string{}, []string{}}
 	for i := 0; i < 2; i++ {
 		deduped := map[string]bool{}
 		for _, obs := range clusters[i].Observations {
