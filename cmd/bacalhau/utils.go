@@ -52,3 +52,11 @@ func getJobResults(jobId string) (*[]system.ResultsList, error) {
 		jobId,
 	)
 }
+
+func fetchJobResults(jobId string) error {
+	return system.FetchJobResults(
+		jsonrpcHost,
+		jsonrpcPort,
+		jobId,
+	)
+}

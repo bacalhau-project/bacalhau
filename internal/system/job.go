@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -38,6 +39,10 @@ func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) 
 		return nil, err
 	}
 
+	return ProcessJobIntoResults(job)
+}
+
+func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 	results := []ResultsList{}
 
 	for node := range job.State {
@@ -56,4 +61,45 @@ func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) 
 	}
 
 	return &results, nil
+}
+
+func FetchJobResult(results ResultsList) error {
+	resultsFolder, err := GetSystemDirectory(results.Folder)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(resultsFolder); !os.IsNotExist(err) {
+		return nil
+	}
+	fmt.Printf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
+	resultsFolder, err = EnsureSystemDirectory(results.Folder)
+	if err != nil {
+		return err
+	}
+	err = RunCommand("ipfs", []string{
+		"get",
+		results.Cid,
+		"--output",
+		resultsFolder,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func FetchJobResults(host string, port int, jobId string) error {
+	data, err := GetJobResults(host, port, jobId)
+	if err != nil {
+		return err
+	}
+
+	for _, row := range *data {
+		err = FetchJobResult(row)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
