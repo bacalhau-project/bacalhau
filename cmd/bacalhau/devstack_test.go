@@ -26,6 +26,8 @@ func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
 	os.Setenv("DEBUG", "true")
+	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("BACALHAU_RUNTIME", "docker")
 
 	stack, err := internal.NewDevStack(ctxWithCancel, 3)
 	assert.NoError(t, err)
@@ -156,4 +158,139 @@ raspberry
 	assert.NoError(t, err)
 
 	assert.True(t, strings.Contains(string(stdoutText), "kiwi is delicious"))
+}
+
+func TestCommands(t *testing.T) {
+	tests := map[string]struct {
+		file                string
+		cmd                 string
+		contains            string
+		expected_line_count int
+	}{
+		"grep": {file: "../../testdata/grep_file.txt", cmd: "grep kiwi /ipfs/%s", contains: "kiwi is delicious", expected_line_count: 4},
+		"sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+		"awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+	}
+
+	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("BACALHAU_RUNTIME", "docker")
+
+	stack, cancelFunction := setupTest(t)
+	defer teardownTest(stack, cancelFunction)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			teardownTest(stack, cancelFunction)
+			os.Exit(1)
+		}
+	}()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			cid, err := add_file_to_nodes(t, stack, tc.file)
+
+			assert.NoError(t, err)
+
+			job, hostId, err := execute_command(t, stack, tc.cmd, cid)
+			assert.NoError(t, err)
+
+			resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
+			assert.NoError(t, err)
+
+			stdoutText, err := ioutil.ReadFile(fmt.Sprintf("%s/stdout.log", resultsDirectory))
+			assert.NoError(t, err)
+
+			assert.True(t, strings.Contains(string(stdoutText), tc.contains))
+			actual_line_count := len(strings.Split(string(stdoutText), "\n"))
+			assert.Equal(t, actual_line_count, tc.expected_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", tc.expected_line_count, actual_line_count))
+
+		})
+	}
+}
+
+func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) (string, error) {
+
+	fileCid := ""
+	var err error
+
+	// ipfs add the file to 2 nodes
+	// this tests self selection
+	for i, node := range stack.Nodes {
+		if i >= TEST_CONCURRENCY {
+			continue
+		}
+
+		fileCid, err = ipfs.IpfsCommand(node.IpfsRepo, []string{
+			"add", "-Q", filename,
+		})
+
+		assert.NoError(t, err)
+	}
+
+	fileCid = strings.TrimSpace(fileCid)
+
+	return fileCid, nil
+}
+
+func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid string) (*types.Job, string, error) {
+
+	var job *types.Job
+	var err error
+
+	err = system.TryUntilSucceedsN(func() error {
+		job, err = SubmitJob([]string{
+			fmt.Sprintf(cmd, fileCid),
+		}, []string{
+			fileCid,
+		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+
+		return err
+	}, "submit job", 100)
+
+	assert.NoError(t, err)
+
+	system.TryUntilSucceedsN(func() error { // nolint
+		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		if err != nil {
+			return err
+		}
+
+		var jobData *types.Job
+
+		// TODO: Super fragile if executed in parallel.
+		for _, j := range result.Jobs {
+			jobData = j
+		}
+
+		jobStates := []string{}
+
+		for _, state := range jobData.State {
+			jobStates = append(jobStates, state.State)
+		}
+
+		if !reflect.DeepEqual(jobStates, []string{"complete", "complete"}) {
+			return fmt.Errorf("expected job to be complete, got %+v", jobStates)
+		}
+
+		return nil
+	}, "wait for results to be", 100)
+
+	hostId, err := stack.Nodes[0].ComputeNode.Scheduler.HostId()
+	assert.NoError(t, err)
+
+	return job, hostId, nil
+}
+
+// Split slices s into all substrings separated by sep and
+// returns a slice of the substrings between those separators.
+func Split(s, sep string) []string {
+	var result []string
+	i := strings.Index(s, sep)
+	for i > -1 {
+		result = append(result, s[:i])
+		s = s[i+len(sep):]
+		i = strings.Index(s, sep)
+	}
+	return append(result, s)
 }

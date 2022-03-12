@@ -69,6 +69,7 @@ func RunCommandGetResultsEnv(command string, args []string, env []string) (strin
 	return string(result), err
 }
 
+// TODO: Pretty high priority to allow this to be configurable
 func GetSystemDirectory(path string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

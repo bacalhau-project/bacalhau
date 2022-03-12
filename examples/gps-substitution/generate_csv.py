@@ -16,7 +16,7 @@ import math
 
 def main():
     EARTH_RADIUS = 6372
-    NUMBER_OF_ENTRIES = 1000000
+    NUMBER_OF_ENTRIES = 1000
     DISTANCE_TO_FILTER_IN_KM = 25
     # start_date = datetime.datetime.now()
     START_DATE = datetime.datetime(2021, 1, 1, 0, 0, 0)
