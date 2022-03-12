@@ -16,6 +16,7 @@ const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
 type ComputeNode struct {
 	IpfsRepo                string
 	IpfsConnectMultiAddress string
+	BadActor                bool
 
 	Ctx context.Context
 
@@ -25,6 +26,7 @@ type ComputeNode struct {
 func NewComputeNode(
 	ctx context.Context,
 	scheduler scheduler.Scheduler,
+	badActor bool,
 ) (*ComputeNode, error) {
 
 	nodeId, err := scheduler.HostId()
@@ -38,6 +40,7 @@ func NewComputeNode(
 		IpfsConnectMultiAddress: "",
 		Ctx:                     ctx,
 		Scheduler:               scheduler,
+		BadActor:                badActor,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
@@ -121,6 +124,15 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 // return a CID of the job results when finished
 // this is obtained by running "ipfs add -r <results folder>"
 func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
+
+	// replace the job commands with a sleep because we are a bad actor
+	if node.BadActor {
+		jobCopy := *job
+		specCopy := *job.Spec
+		specCopy.Commands = []string{"sleep 10"}
+		jobCopy.Spec = &specCopy
+		job = &jobCopy
+	}
 
 	vm, err := runtime.NewRuntime(job)
 

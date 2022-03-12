@@ -3,10 +3,14 @@ package traces
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/muesli/clusters"
+	"github.com/muesli/kmeans"
 	"gonum.org/v1/gonum/stat"
 )
 
@@ -19,6 +23,8 @@ type Trace struct {
 
 type TraceCollection struct {
 	Traces []Trace
+
+	Tolerance float64
 
 	// internal
 	// resultId -> list of samples -> column -> value
@@ -219,5 +225,86 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 	return res, nil
 
 	// TODO Maybe return a single value? Or just use memory for now
+
+}
+
+// naively (for now) cluster the results into two buckets: "right" and "wrong"
+func (t *TraceCollection) Cluster() ([]string, []string, error) {
+
+	scores, _ := t.Scores()
+
+	var resultsToResultIdMap = make(map[string][]string)
+
+	var d clusters.Observations
+
+	for resultId, score := range scores {
+		r := fmt.Sprintf("%f", score["real"])
+		_, ok := resultsToResultIdMap[r]
+		if !ok {
+			resultsToResultIdMap[r] = []string{}
+		}
+
+		resultsToResultIdMap[r] = append(resultsToResultIdMap[r], resultId)
+
+		d = append(d, clusters.Coordinates{
+			score["real"],
+		})
+	}
+	fmt.Printf("resultsToResultIdMap = %+v\n", resultsToResultIdMap)
+
+	// map[string]map[string]float64
+	// map resultId -> column -> score (average distance from average for that column)
+
+	km := kmeans.New()
+	clusters, _ := km.Partition(d, 2)
+
+	// TODO: Print the means here
+
+	if math.Abs(float64(clusters[0].Center[0])-float64(clusters[1].Center[0])) < t.Tolerance {
+
+		allIds := []string{}
+		emptyIds := []string{}
+
+		for resultId := range scores {
+			allIds = append(allIds, resultId)
+		}
+		sort.Strings(allIds)
+		return allIds, emptyIds, nil
+	}
+
+	for _, c := range clusters {
+		fmt.Printf("Centered at x: %.2f\n", c.Center[0])
+		fmt.Printf("Matching data points: %+v\n\n", c.Observations)
+	}
+
+	// reconstitute the results from the clusters...
+	l := make([][]string, 2)
+
+	for i := 0; i < 2; i++ {
+		deduped := map[string]bool{}
+		for _, obs := range clusters[i].Observations {
+			o := fmt.Sprintf("%f", obs.Coordinates()[0])
+			ids := resultsToResultIdMap[o]
+			fmt.Printf("Picked ids for %s: %+v\n", o, ids)
+			for _, id := range ids {
+				deduped[id] = true
+			}
+		}
+		for k := range deduped {
+			l[i] = append(l[i], k)
+		}
+		sort.Strings(l[i])
+	}
+
+	if len(l[0]) == len(l[1]) {
+		// a tie, OH NO, NO MAJORITY - HUNG PARLIAMENT 😱
+		return nil, nil, fmt.Errorf("no majority, please set concurrency to an odd number")
+	} else if len(l[0]) > len(l[1]) {
+		// 0 is winner
+		return l[0], l[1], nil
+	} else { // len(l[0]) < len(l[1])
+		// 1 is winner
+		return l[1], l[0], nil
+	}
 
 }

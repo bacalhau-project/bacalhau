@@ -199,7 +199,7 @@ func (scheduler *Libp2pScheduler) RejectJobBid(jobId, nodeId, message string) er
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_BID_REJECTED,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
+			State:  system.JOB_STATE_BID_REJECTED,
 			Status: message,
 		},
 	})
@@ -211,7 +211,7 @@ func (scheduler *Libp2pScheduler) AcceptResult(jobId, nodeId string) error {
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
 		JobState: &types.JobState{
-			State: system.JOB_STATE_COMPLETE,
+			State: system.JOB_STATE_RESULTS_ACCEPTED,
 		},
 	})
 }
@@ -223,9 +223,9 @@ func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId, message string) er
 	return scheduler.writeJobEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_BID_REJECTED,
+		EventName: system.JOB_EVENT_RESULTS_REJECTED,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
+			State:  system.JOB_STATE_RESULTS_REJECTED,
 			Status: message,
 		},
 	})
@@ -262,7 +262,25 @@ func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_ERROR,
 		JobState: &types.JobState{
-			State: system.JOB_STATE_ERROR,
+			State:  system.JOB_STATE_ERROR,
+			Status: status,
+		},
+	})
+}
+
+// this is when the requester node needs to error the status for a node
+// for example - results have been given by the compute node
+// and in checking the results, the requester node came across some kind of error
+// we need to flag that error against the node that submitted the results
+// (but we are the requester node) - so we need this util function
+func (scheduler *Libp2pScheduler) ErrorJobForNode(jobId, nodeId, status string) error {
+	return scheduler.writeJobEvent(&types.JobEvent{
+		JobId:     jobId,
+		NodeId:    nodeId,
+		EventName: system.JOB_EVENT_ERROR,
+		JobState: &types.JobState{
+			State:  system.JOB_STATE_ERROR,
+			Status: status,
 		},
 	})
 }

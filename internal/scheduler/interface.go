@@ -68,5 +68,10 @@ type Scheduler interface {
 	SubmitResult(jobId, status string, results []types.JobStorage) error
 
 	// something has gone wrong with running the job
+	// called by the compute node and so will have the nodeId auto-filled
 	ErrorJob(jobId, status string) error
+
+	// something has gone wrong is checking the job from the requester node
+	// called by the requester node and so we need to be given the nodeId
+	ErrorJobForNode(jobId, nodeId, status string) error
 }

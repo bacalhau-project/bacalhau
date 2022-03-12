@@ -23,7 +23,7 @@ type DevStack struct {
 
 func NewDevStack(
 	ctx context.Context,
-	count int,
+	count, badActors int,
 ) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
@@ -48,7 +48,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := NewComputeNode(ctx, libp2pScheduler)
+		computeNode, err := NewComputeNode(ctx, libp2pScheduler, badActors > i)
 		if err != nil {
 			return nil, err
 		}

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal"
+	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -27,9 +27,9 @@ func ListJobs(
 	rpcHost string,
 	rpcPort int,
 ) (*types.ListResponse, error) {
-	args := &internal.ListArgs{}
+	args := &types.ListArgs{}
 	result := &types.ListResponse{}
-	err := JsonRpcMethodWithConnection(rpcHost, rpcPort, "List", args, result)
+	err := system.JsonRpcMethod(rpcHost, rpcPort, "List", args, result)
 	if err != nil {
 		return nil, err
 	}
