@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/phayes/freeport"
@@ -33,6 +34,9 @@ func NewDevStack(
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
+		logger.Debug("---------------------")
+		logger.Infof("	Creating Node #%d", i)
+		logger.Debug("---------------------")
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -61,7 +65,7 @@ func NewDevStack(
 
 		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", libp2pScheduler.Host.Addrs()[0].String(), libp2pScheduler.Host.ID())
 
-		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
+		logger.Debugf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 
 		// if we have started any bacalhau servers already, use the first one
 		if len(bacalhauMultiAddresses) > 0 {
@@ -97,9 +101,9 @@ func NewDevStack(
 		computeNode.IpfsRepo = ipfsRepo
 		computeNode.IpfsConnectMultiAddress = ipfsMultiaddress
 
-		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
-		fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)
-		fmt.Printf("ipfs repo: %s\n", ipfsRepo)
+		logger.Debugf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
+		logger.Debugf("ipfs multiaddress: %s\n", ipfsMultiaddress)
+		logger.Debugf("ipfs repo: %s\n", ipfsRepo)
 
 		devStackNode := &DevStackNode{
 			ComputeNode:   computeNode,
@@ -109,11 +113,13 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, devStackNode)
+		logger.Debug("==== Complete")
 	}
 
 	stack := &DevStack{
 		Nodes: nodes,
 	}
 
+	logger.Debug("Finished provisioning nodes.")
 	return stack, nil
 }

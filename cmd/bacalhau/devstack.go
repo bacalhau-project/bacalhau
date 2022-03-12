@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/logger"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -65,13 +66,16 @@ var devstackCmd = &cobra.Command{
 			}
 		}()
 
-		for i, node := range stack.Nodes {
-			fmt.Printf("\nnode %d:\n", i)
-			fmt.Printf("IPFS_PATH=%s ipfs\n", node.IpfsRepo)
-			fmt.Printf("go run . --jsonrpc-port=%d list\n", node.JsonRpcPort)
+		for nodeNumber, node := range stack.Nodes {
+			logger.Infof(`
+Node %d:
+	IPFS_PATH=%s
+	JSON_PORT=%d
+	bin/bacalhau --jsonrpc-port=%d list
+`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort)
 		}
 
-		fmt.Printf(`
+		logger.Infof(`
 To add a file, type the following:
 file_path="your_file_path_here"
 cid=$( IPFS_PATH=%s ipfs add -q $file_path )

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -50,18 +51,18 @@ func NewComputeNode(
 		// a new job has arrived - decide if we want to bid on it
 		case system.JOB_EVENT_CREATED:
 
-			fmt.Printf("new job seen: \n%+v\n", jobEvent.JobSpec)
+			logger.Debugf("Found new job to schedule: \n%+v\n", jobEvent.JobSpec)
 
 			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
-				fmt.Printf("there was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
+				logger.Errorf("There was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
 				return
 			}
 			if shouldRun {
-				fmt.Printf("we are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
+				logger.Debugf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
 				scheduler.BidJob(jobEvent.JobId)
 			} else {
-				fmt.Printf("we ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
+				logger.Debugf("We ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
@@ -75,10 +76,10 @@ func NewComputeNode(
 			cid, err := computeNode.RunJob(job)
 
 			if err != nil {
-				fmt.Printf("there was an error running the job: %s\n%+v\n", err, job)
+				logger.Errorf("ERROR running the job: %s\n%+v\n", err, job)
 				scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
-				fmt.Printf("we completed the job - results cid: %s\n%+v\n", cid, job)
+				logger.Infof("Completed the job - results cid: %s\n%+v\n", cid, job)
 
 				results := []types.JobStorage{
 					{
@@ -103,7 +104,7 @@ func NewComputeNode(
 // for example - it should be possible to shell out to a user-defined program
 // that will decide if it's worth doing the job or not
 func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
-	fmt.Printf("--> FilterJob with %s\n", job.Inputs)
+	logger.Debugf("Selecting for job with matching CID(s): %s\n", job.Inputs)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Inputs) == 0 {
 		return true, nil
@@ -114,10 +115,12 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 			return false, err
 		}
 		if hasCid {
+			logger.Infof("++++++++++\nCID (%s) found on this server. Accepting job.\n+++++++++++", job.Inputs)
 			return true, nil
 		}
 	}
 
+	logger.Infof("---------No matching CIDs found on this server. Passing on job")
 	return false, nil
 }
 

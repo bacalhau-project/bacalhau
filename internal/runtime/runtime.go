@@ -3,7 +3,6 @@ package runtime
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 )
@@ -196,13 +196,10 @@ func (runtime *Runtime) PrepareJob(
 	cmd.Stderr = logfile
 	cmd.Stdout = logfile
 
-	// cmd.Stderr = os.Stderr
-	// cmd.Stdout = os.Stdout
-
 	go func() {
 		err := cmd.Run()
 		if err != nil {
-			log.Printf("Starting ipfs daemon --mount inside the runtime failed with: %s", err)
+			logger.Debugf("Failed to run : %s", err)
 		}
 	}()
 

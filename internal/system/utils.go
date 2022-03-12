@@ -8,13 +8,15 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/internal/logger"
 )
 
 func CommandLogger(command string, args []string) {
 	if os.Getenv("DEBUG") == "" {
 		return
 	}
-	fmt.Printf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
+	logger.Debugf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
 }
 
 func RunCommand(command string, args []string) error {
@@ -97,4 +99,20 @@ func GetResultsDirectory(jobId, hostId string) string {
 func ShortId(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
+}
+
+func MapStringArray(vs []string, f func(string) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
+}
+
+func MapByteArray(vs []byte, f func(byte) byte) []byte {
+	vsm := make([]byte, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
 }

@@ -32,7 +32,6 @@ func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
-	os.Setenv("DEBUG", "true")
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
@@ -55,6 +54,8 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
+	os.Setenv("LOG_LEVEL", "debug")
+
 	stack, cancelFunction := setupTest(t)
 	defer teardownTest(stack, cancelFunction)
 
