@@ -2,8 +2,8 @@ package internal
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -48,14 +48,16 @@ func NewRequesterNode(
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 
 			if err != nil {
-				fmt.Printf("there was an error considering bid: %s\n", err)
+				logger.Warnf("There was an error considering bid: %s", err)
 				return
 			}
 
 			if bidAccepted {
-				scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
+				// TODO: Check result of accept job bid
+				_ = scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
 			} else {
-				scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
+				// TODO: Check result of reject job bid
+				_ = scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
 			}
 
 		// a compute node has submitted some results
@@ -66,7 +68,8 @@ func NewRequesterNode(
 			err := requesterNode.ProcessResults(job, jobEvent.NodeId)
 
 			if err != nil {
-				scheduler.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
+				// TODO: Check result of Error Job for Node
+				_ = scheduler.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
 			}
 		}
 

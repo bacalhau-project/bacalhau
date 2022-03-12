@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
@@ -104,11 +105,11 @@ func (scheduler *Libp2pScheduler) Start() error {
 	}
 	go scheduler.readLoopJobEvents()
 	go func() {
-		fmt.Printf("waiting for bacalhau libp2p context done\n")
+		logger.Debug("Waiting for bacalhau libp2p context to finish.\n")
 		<-scheduler.Ctx.Done()
-		fmt.Printf("closing bacalhau libp2p daemon\n")
+		logger.Debug("Closing bacalhau libp2p daemon\n")
 		scheduler.Host.Close()
-		fmt.Printf("closed bacalhau libp2p daemon\n")
+		logger.Debug("Closed bacalhau libp2p daemon\n")
 	}()
 	return nil
 }
@@ -325,7 +326,7 @@ func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Sending event: %s\n", string(msgBytes))
+	logger.Debugf("Sending event: %s\n", string(msgBytes))
 	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
 }
 

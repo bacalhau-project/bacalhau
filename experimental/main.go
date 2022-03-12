@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -64,7 +63,7 @@ func main() {
 
 	// b := string(a)
 
-	fmt.Printf("Temp file name: %s", f.Name())
+	logger.Debugf("Temp file name: %s", f.Name())
 
 	if _, err := io.Copy(f, teereader); err != nil {
 		logger.Fatalf("Failed to stream to file: %s", err)
@@ -74,7 +73,7 @@ func main() {
 		logger.Fatalf("Failed to wait the command to execute: %s", err)
 	}
 
-	fmt.Printf("\nBuffer: %s", bufferRead.String())
+	logger.Debugf("Buffer: %s", bufferRead.String())
 
 	// TODO: Should we check the result here?
 	if cmd != nil && cmd.Process != nil {

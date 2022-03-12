@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,7 +76,7 @@ func StartDaemon(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("IPFS_PATH=%s ipfs daemon\n", repoPath)
+	logger.Debugf("Starting IPFS Daemon: IPFS_PATH=%s ipfs daemon", repoPath)
 	cmd := exec.Command("ipfs", "daemon")
 	cmd.Env = []string{
 		"IPFS_PATH=" + repoPath,
@@ -111,12 +110,9 @@ func StartDaemon(
 func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddress string) (string, string, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatalf("Could not create temporary directory for ipfs repo: %+v", err)
 	}
-	_, err = system.EnsureSystemDirectory(repoDir)
-	if err != nil {
-		return "", "", err
-	}
+
 	gatewayPort, err := freeport.GetFreePort()
 	if err != nil {
 		return "", "", err
@@ -239,4 +235,8 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func ResultsFolderLogging(nodeId string, jobId string) {
+	logger.Warnf("Results folder: ")
 }

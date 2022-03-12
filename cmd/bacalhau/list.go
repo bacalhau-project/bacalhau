@@ -2,10 +2,10 @@ package bacalhau
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -52,7 +52,7 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%s\n", msgBytes)
+			logger.Debugf("List msg bytes: %s\n", msgBytes)
 			return nil
 		}
 

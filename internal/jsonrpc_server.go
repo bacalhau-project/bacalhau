@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/types"
 )
 
@@ -63,11 +64,11 @@ func RunBacalhauJsonRpcServer(
 	}()
 
 	go func() {
-		fmt.Printf("waiting for json rpc context done\n")
+		logger.Debug("Waiting for json rpc context to finish.")
 		<-ctx.Done()
-		fmt.Printf("closing json rpc server\n")
+		logger.Debug("Closing json rpc server.")
 		isClosing = true
 		httpServer.Close()
-		fmt.Printf("closed json rpc server\n")
+		logger.Debug("Closed json rpc server.")
 	}()
 }

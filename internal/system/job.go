@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/types"
 )
 
@@ -71,19 +72,21 @@ func FetchJobResult(results ResultsList) error {
 	if _, err := os.Stat(resultsFolder); !os.IsNotExist(err) {
 		return nil
 	}
-	fmt.Printf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
+	logger.Debugf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
 	resultsFolder, err = EnsureSystemDirectory(results.Folder)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error ensuring system directory: %s", err)
 	}
-	err = RunCommand("ipfs", []string{
+	output, err := RunCommandGetResults("ipfs", []string{
 		"get",
 		results.Cid,
 		"--output",
 		resultsFolder,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf(`Error getting fetching results:
+Output: %s
+Error: %s`, output, err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/spf13/cobra"
@@ -60,9 +61,9 @@ func SubmitJob(
 	rpcPort int,
 ) (*types.Job, error) {
 
-	commands = []string{
-		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
-	}
+	// commands = []string{
+	// 	`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
+	// }
 
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
@@ -126,7 +127,7 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	fmt.Printf("job id: %s\n", result.Id)
+	logger.Infof("Submitted Job Id: %s\n", result.Id)
 
 	return result, nil
 }

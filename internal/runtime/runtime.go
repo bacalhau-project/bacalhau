@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -68,9 +69,9 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 }
 
 // start the runtime so we can exec to prepare and run the job
-func (runtime *Runtime) Start() error {
+func (runtime *Runtime) Start() (string, error) {
 	if runtime.Kind == "ignite" {
-		return system.RunCommand("sudo", []string{
+		return system.RunCommandGetResults("sudo", []string{
 			"ignite",
 			"run",
 			IGNITE_IMAGE,
@@ -85,7 +86,7 @@ func (runtime *Runtime) Start() error {
 			"--ssh",
 		})
 	} else {
-		return system.RunCommand("sudo", []string{
+		return system.RunCommandGetResults("sudo", []string{
 			"docker",
 			"run",
 			"--privileged",
@@ -103,9 +104,9 @@ func (runtime *Runtime) Start() error {
 
 }
 
-func (runtime *Runtime) Stop() error {
+func (runtime *Runtime) Stop() (string, error) {
 	runtime.stopChan <- true
-	return system.RunCommand("sudo", []string{
+	return system.RunCommandGetResults("sudo", []string{
 		runtime.Kind,
 		"rm",
 		"-f",
@@ -137,45 +138,57 @@ func (runtime *Runtime) PrepareJob(
 	if err != nil {
 		return err
 	}
-	err = system.RunCommand("sudo", []string{
+
+	logger.Debugf("Script to run for job: %s", script)
+
+	output, err := system.RunCommandGetResults("sudo", []string{
 		runtime.Kind,
 		"cp",
 		tmpFile.Name(),
 		fmt.Sprintf("%s:/job.sh", runtime.Name),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf(`Error copying script to execution location: 
+Error: %+v
+Output: %s`, err, output)
 	}
 
-	err = system.RunCommand("sudo", cleanEmpty([]string{
+	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
 		runtime.doubleDash, "ipfs", "init",
 	}))
 	if err != nil {
-		return err
+		return fmt.Errorf(`Error copying script to execution location: 
+Error: %+v
+Output: %s`, err, output)
 	}
 
 	if connectToIpfsMultiaddress != "" {
-		err = system.RunCommand("sudo", cleanEmpty([]string{
+		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
 			runtime.Name,
 			runtime.doubleDash, "ipfs", "bootstrap", "rm", "--all",
 		}))
 		if err != nil {
-			return err
+			return fmt.Errorf(`Error rm during bootstraping ipfs to execution location: 
+Error: %+v
+Output: %s`, err, output)
 		}
-		err = system.RunCommand("sudo", cleanEmpty([]string{
+		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
 			runtime.Name,
 			runtime.doubleDash, "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
 		}))
 		if err != nil {
-			return err
+			return fmt.Errorf(`Error adding during bootstraping ipfs to execution location: 
+Error: %+v
+Output: %s`, err, output)
 		}
+
 	}
 
 	command := "sudo"
@@ -186,9 +199,10 @@ func (runtime *Runtime) PrepareJob(
 		runtime.doubleDash, "ipfs", "daemon", "--mount",
 	})
 
-	system.CommandLogger(command, args)
-
 	cmd := exec.Command(command, args...)
+
+	logger.Debugf("Running system ipfs daemon mount: %s", cmd.String())
+
 	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
@@ -234,17 +248,30 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	// write the command stdout & stderr to the results dir
-	fmt.Printf("writing stdout to %s/stdout.log\n", resultsFolder)
+	logger.Debugf("Writing stdout to %s/stdout.log", resultsFolder)
+
+	directoryExists := false
+	if _, err := os.Stat(resultsFolder); !errors.Is(err, exec.ErrNotFound) {
+		logger.Debugf("Directory found: %s", resultsFolder)
+		directoryExists = true
+	} else {
+		logger.Debugf("Directory NOT found: %s", resultsFolder)
+	}
+
+	logger.Debugf("Expected folder %s exists?: %t", resultsFolder, directoryExists)
+
 	err = os.WriteFile(fmt.Sprintf("%s/stdout.log", resultsFolder), stdout.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("writing stderr to %s/stderr.log\n", resultsFolder)
+	logger.Debugf("Writing stderr to %s/stderr.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stderr.log", resultsFolder), stderr.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
+
+	logger.Infof("Finished writing results of job (Id: %s) to results folder (%s).", runtime.Id, resultsFolder)
 
 	// copy the psrecord metrics out of the runtime
 	filesToCopy := []string{
@@ -253,7 +280,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	for _, file := range filesToCopy {
-		fmt.Printf("writing %s to %s/%s\n", file, resultsFolder, file)
+		logger.Debugf("Copying files - Writing %s to %s/%s\n", file, resultsFolder, file)
 		err = system.RunCommand("sudo", []string{
 			runtime.Kind,
 			"cp",

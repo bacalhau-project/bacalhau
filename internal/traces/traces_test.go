@@ -2,16 +2,16 @@ package traces
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/stretchr/testify/assert"
 )
 
 func truncateFloat(f float64) float64 {
-	ret, _ := strconv.ParseFloat(fmt.Sprintf("%.8f", f), 8)
+	ret, _ := strconv.ParseFloat(fmt.Sprintf("%.32f", f), 32)
 	return ret
 }
 
@@ -32,12 +32,10 @@ func TestFixtureMetrics(t *testing.T) {
 	}}
 	scores, err := clustered.Scores()
 	if err != nil {
-		fmt.Printf("error getting scores: %s\n", err)
+		logger.Debugf("Error getting scores: %s\n", err)
 		panic(err)
 	}
-	if os.Getenv("DEBUG") != "" {
-		fmt.Printf("Scores: %+v\n", scores)
-	}
+	logger.Debugf("Scores: %+v\n", scores)
 
 	shouldEqual := map[string]map[string]float64{
 		"job-1": {

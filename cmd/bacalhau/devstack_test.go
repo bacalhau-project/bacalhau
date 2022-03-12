@@ -14,28 +14,30 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/stretchr/testify/assert"
 )
 
 // run the job on 2 nodes
-const TEST_CONCURRENCY = 2
+const TEST_CONCURRENCY = 1
 
 // both nodes must agree on the result
-const TEST_CONFIDENCE = 2
+const TEST_CONFIDENCE = 1
 
 // the results must be within 10% of each other
 const TEST_TOLERANCE = 0.1
 
-func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
+func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
-	stack, err := internal.NewDevStack(ctxWithCancel, 3, 0)
+	stack, err := internal.NewDevStack(ctxWithCancel, nodes, badActors)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatalf("Unable to create devstack: %s", err)
@@ -54,9 +56,7 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
-	os.Setenv("LOG_LEVEL", "debug")
-
-	stack, cancelFunction := setupTest(t)
+	stack, cancelFunction := setupTest(t, 3, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -134,7 +134,8 @@ raspberry
 
 	assert.NoError(t, err)
 
-	system.TryUntilSucceedsN(func() error { // nolint
+	// TODO: Do something with the error
+	err = system.TryUntilSucceedsN(func() error {
 		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
 		if err != nil {
 			return err
@@ -157,7 +158,7 @@ raspberry
 			jobStates = append(jobStates, state.State)
 		}
 
-		if !reflect.DeepEqual(jobStates, []string{"complete", "complete"}) {
+		if !reflect.DeepEqual(jobStates, []string{"complete"}) {
 			return fmt.Errorf("expected job to be complete, got %+v", jobStates)
 		}
 
@@ -185,30 +186,35 @@ func TestCommands(t *testing.T) {
 	}{
 		"grep": {file: "../../testdata/grep_file.txt", cmd: "grep kiwi /ipfs/%s", contains: "kiwi is delicious", expected_line_count: 4},
 		"sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
-		"awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 	}
 
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
-	stack, cancelFunction := setupTest(t)
-	defer teardownTest(stack, cancelFunction)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			teardownTest(stack, cancelFunction)
-			os.Exit(1)
-		}
-	}()
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			// t.Parallel()
+
+			_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
+
+			stack, cancelFunction := setupTest(t, 3, 0)
+			defer teardownTest(stack, cancelFunction)
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				for range c {
+					teardownTest(stack, cancelFunction)
+					os.Exit(1)
+				}
+			}()
+
 			cid, err := add_file_to_nodes(t, stack, tc.file)
 
 			assert.NoError(t, err)
 
-			job, hostId, err := execute_command(t, stack, tc.cmd, cid)
+			job, hostId, err := execute_command(t, stack, tc.cmd, cid, TEST_CONCURRENCY, TEST_CONFIDENCE, TEST_TOLERANCE)
 			assert.NoError(t, err)
 
 			resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
@@ -249,12 +255,15 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 	return fileCid, nil
 }
 
-func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid string) (*types.Job, string, error) {
+func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid string, concurrency int, confidence int, tolerance float64) (*types.Job, string, error) {
 
 	var job *types.Job
 	var err error
 
 	err = system.TryUntilSucceedsN(func() error {
+
+		logger.Debugf(`About to submit job:
+cmd: %s`, fmt.Sprintf(cmd, fileCid))
 
 		job, err = SubmitJob(
 			[]string{
@@ -263,9 +272,9 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 			[]string{
 				fileCid,
 			},
-			TEST_CONCURRENCY,
-			TEST_CONFIDENCE,
-			TEST_TOLERANCE,
+			concurrency,
+			confidence,
+			tolerance,
 			"127.0.0.1",
 			stack.Nodes[0].JsonRpcPort,
 		)
@@ -274,7 +283,8 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 
 	assert.NoError(t, err)
 
-	system.TryUntilSucceedsN(func() error { // nolint
+	// TODO: Do something with the error
+	err = system.TryUntilSucceedsN(func() error {
 		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
 		if err != nil {
 			return err
@@ -293,8 +303,8 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 			jobStates = append(jobStates, state.State)
 		}
 
-		if !reflect.DeepEqual(jobStates, []string{"complete", "complete"}) {
-			return fmt.Errorf("expected job to be complete, got %+v", jobStates)
+		if !reflect.DeepEqual(jobStates, []string{"complete"}) {
+			return fmt.Errorf("Expected job to be complete, got %+v", jobStates)
 		}
 
 		return nil
@@ -304,4 +314,57 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 	assert.NoError(t, err)
 
 	return job, hostId, nil
+}
+
+func TestNoBadActors(t *testing.T) {
+
+	tests := map[string]struct {
+		nodes       int
+		concurrency int
+		confidence  int
+		tolerance   float64
+		badActors   int
+		expectation bool
+	}{
+		"both_agree": {nodes: 1, concurrency: 1, confidence: 1, tolerance: 0.1, badActors: 0, expectation: true},
+		// "one_bad_actor": {nodes: 3, concurrency: 2, confidence: 2, tolerance: 0.1, badActors: 1, expectation: false},
+	}
+
+	// TODO:  sThis is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
+	commands := []string{
+		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// t.Parallel()
+
+			_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
+
+			stack, cancelFunction := setupTest(t, tc.nodes, tc.badActors)
+			defer teardownTest(stack, cancelFunction)
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				for range c {
+					teardownTest(stack, cancelFunction)
+					os.Exit(1)
+				}
+			}()
+
+			job, _, err := execute_command(t, stack, commands[0], "", tc.concurrency, tc.confidence, tc.tolerance)
+			assert.NoError(t, err, "Error executing command: %+v", err)
+
+			resultsList, err := system.ProcessJobIntoResults(job)
+			assert.NoError(t, err, "Error processing job into results: %+v", err)
+
+			correctGroup, incorrectGroup, err := traces.ProcessResults(job, resultsList)
+
+			assert.Equal(t, (len(correctGroup)-len(incorrectGroup)) == tc.nodes, fmt.Sprintf("Expected %d good actors, got %d", tc.nodes, len(correctGroup)))
+			assert.Equal(t, (len(incorrectGroup)) == tc.badActors, fmt.Sprintf("Expected %d bad actors, got %d", tc.badActors, len(incorrectGroup)))
+			assert.NoError(t, err, "Expected to run with no error. Actual: %+v", err)
+
+		})
+	}
 }

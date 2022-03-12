@@ -12,15 +12,8 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/logger"
 )
 
-func CommandLogger(command string, args []string) {
-	if os.Getenv("DEBUG") == "" {
-		return
-	}
-	logger.Debugf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
-}
-
 func RunCommand(command string, args []string) error {
-	CommandLogger(command, args)
+	logger.Debugf(`IPFS Command: %s %s`, command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -31,7 +24,8 @@ func RunCommand(command string, args []string) error {
 func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
-	CommandLogger(command, args)
+
+	logger.Debugf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
@@ -46,7 +40,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 			if attempt > retries {
 				return err
 			} else {
-				fmt.Printf("Error %s: %v, pausing and trying again...\n", desc, err)
+				logger.Debugf("Error %s: %v, pausing and trying again...\n", desc, err)
 				time.Sleep(time.Duration(attempt) * time.Second)
 			}
 		} else {
@@ -57,21 +51,21 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
-	CommandLogger(command, args)
+	logger.Debugf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
-	CommandLogger(command, args)
+	logger.Debugf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
-// TODO: Pretty high priority to allow this to be configurable
+// TODO: Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
 func GetSystemDirectory(path string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -85,6 +79,9 @@ func EnsureSystemDirectory(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	logger.Debugf("Enforcing creation of results dir: %s", path)
+
 	err = RunCommand("mkdir", []string{
 		"-p",
 		path,

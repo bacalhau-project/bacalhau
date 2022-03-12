@@ -18,6 +18,7 @@ type ComputeNode struct {
 	IpfsRepo                string
 	IpfsConnectMultiAddress string
 	BadActor                bool
+	NodeId                  string
 
 	Ctx context.Context
 
@@ -42,6 +43,7 @@ func NewComputeNode(
 		Ctx:                     ctx,
 		Scheduler:               scheduler,
 		BadActor:                badActor,
+		NodeId:                  nodeId,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
@@ -60,7 +62,13 @@ func NewComputeNode(
 			}
 			if shouldRun {
 				logger.Debugf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
-				scheduler.BidJob(jobEvent.JobId)
+
+				// TODO: Check result of bid job
+				err = scheduler.BidJob(jobEvent.JobId)
+				if err != nil {
+					logger.Errorf("Error bidding on job: %+v", err)
+				}
+				return
 			} else {
 				logger.Debugf("We ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
 			}
@@ -73,11 +81,15 @@ func NewComputeNode(
 				return
 			}
 
+			logger.Debugf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
+
 			cid, err := computeNode.RunJob(job)
 
 			if err != nil {
 				logger.Errorf("ERROR running the job: %s\n%+v\n", err, job)
-				scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+
+				// TODO: Check result of Error job
+				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				logger.Infof("Completed the job - results cid: %s\n%+v\n", cid, job)
 
@@ -88,7 +100,8 @@ func NewComputeNode(
 					},
 				}
 
-				scheduler.SubmitResult(
+				// TODO: Check result of submit result
+				_ = scheduler.SubmitResult(
 					job.Id,
 					fmt.Sprintf("Got job results cid: %s", cid),
 					results,
@@ -115,18 +128,20 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 			return false, err
 		}
 		if hasCid {
-			logger.Infof("++++++++++\nCID (%s) found on this server. Accepting job.\n+++++++++++", job.Inputs)
+			logger.Infof("CID (%s) found on this server. Accepting job.", job.Inputs)
 			return true, nil
 		}
 	}
 
-	logger.Infof("---------No matching CIDs found on this server. Passing on job")
+	logger.Infof("No matching CIDs found on this server. Passing on job")
 	return false, nil
 }
 
 // return a CID of the job results when finished
 // this is obtained by running "ipfs add -r <results folder>"
 func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
+
+	logger.Debugf("Running job on node: %s", node.NodeId)
 
 	// replace the job commands with a sleep because we are a bad actor
 	if node.BadActor {
@@ -150,14 +165,19 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	}
 
 	resultsFolder, err := system.EnsureSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
+
 	if err != nil {
 		return "", err
 	}
 
-	err = vm.Start()
+	logger.Debugf("Ensured results directory created: %s", resultsFolder)
+
+	output, err := vm.Start()
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf(`Error starting VM: 
+Output: %s
+Error: %s`, output, err)
 	}
 
 	//nolint
