@@ -39,4 +39,5 @@ func ProcessResults(job *types.Job, data *[]system.ResultsList) ([]string, []str
 		return []string{}, []string{}, err
 	}
 
+	return correctGroup, incorrectGroup, err
 }

@@ -254,12 +254,20 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 	var err error
 
 	err = system.TryUntilSucceedsN(func() error {
-		job, err = SubmitJob([]string{
-			fmt.Sprintf(cmd, fileCid),
-		}, []string{
-			fileCid,
-		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
 
+		job, err = SubmitJob(
+			[]string{
+				fmt.Sprintf(cmd, fileCid),
+			},
+			[]string{
+				fileCid,
+			},
+			TEST_CONCURRENCY,
+			TEST_CONFIDENCE,
+			TEST_TOLERANCE,
+			"127.0.0.1",
+			stack.Nodes[0].JsonRpcPort,
+		)
 		return err
 	}, "submit job", 100)
 
@@ -295,17 +303,4 @@ func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid
 	assert.NoError(t, err)
 
 	return job, hostId, nil
-}
-
-// Split slices s into all substrings separated by sep and
-// returns a slice of the substrings between those separators.
-func Split(s, sep string) []string {
-	var result []string
-	i := strings.Index(s, sep)
-	for i > -1 {
-		result = append(result, s[:i])
-		s = s[i+len(sep):]
-		i = strings.Index(s, sep)
-	}
-	return append(result, s)
 }
