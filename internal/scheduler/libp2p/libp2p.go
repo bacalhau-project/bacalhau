@@ -5,9 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"log"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
@@ -18,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/rs/zerolog/log"
 )
 
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
@@ -43,7 +42,7 @@ func makeLibp2pHost(
 	// TODO: allow the user to provide an existing keypair
 	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err)
 		return nil, err
 	}
 
@@ -105,11 +104,11 @@ func (scheduler *Libp2pScheduler) Start() error {
 	}
 	go scheduler.readLoopJobEvents()
 	go func() {
-		logger.Debug("Waiting for bacalhau libp2p context to finish.\n")
+		log.Debug().Msg("Waiting for bacalhau libp2p context to finish.\n")
 		<-scheduler.Ctx.Done()
-		logger.Debug("Closing bacalhau libp2p daemon\n")
+		log.Debug().Msg("Closing bacalhau libp2p daemon\n")
 		scheduler.Host.Close()
-		logger.Debug("Closed bacalhau libp2p daemon\n")
+		log.Debug().Msg("Closed bacalhau libp2p daemon\n")
 	}()
 	return nil
 }
@@ -326,7 +325,7 @@ func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
 	if err != nil {
 		return err
 	}
-	logger.Debugf("Sending event: %s\n", string(msgBytes))
+	log.Debug().Msgf("Sending event: %s\n", string(msgBytes))
 	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
 }
 

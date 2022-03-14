@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 	"reflect"
@@ -13,12 +12,15 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/internal"
+	_ "github.com/filecoin-project/bacalhau/internal/logger"
+
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/rs/zerolog/log"
 )
 
 // run the job on 2 nodes
@@ -40,7 +42,7 @@ func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, cont
 	stack, err := internal.NewDevStack(ctxWithCancel, nodes, badActors)
 	assert.NoError(t, err)
 	if err != nil {
-		log.Fatalf("Unable to create devstack: %s", err)
+		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
 	}
 
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
@@ -256,14 +258,13 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 }
 
 func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid string, concurrency int, confidence int, tolerance float64) (*types.Job, string, error) {
-
 	var job *types.Job
 	var err error
 
 	err = system.TryUntilSucceedsN(func() error {
 
-		logger.Debugf(`About to submit job:
-cmd: %s`, fmt.Sprintf(cmd, fileCid))
+		log.Debug().Msg(fmt.Sprintf(`About to submit job:
+cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
 		job, err = SubmitJob(
 			[]string{

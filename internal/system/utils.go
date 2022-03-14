@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/rs/zerolog/log"
 )
 
 func RunCommand(command string, args []string) error {
-	logger.Debugf(`IPFS Command: %s %s`, command, args)
+	log.Trace().Msgf(`IPFS Command: %s %s`, command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -25,7 +25,7 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 
-	logger.Debugf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
@@ -40,7 +40,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 			if attempt > retries {
 				return err
 			} else {
-				logger.Debugf("Error %s: %v, pausing and trying again...\n", desc, err)
+				log.Debug().Msgf("Error %s: %v, pausing and trying again...\n", desc, err)
 				time.Sleep(time.Duration(attempt) * time.Second)
 			}
 		} else {
@@ -51,14 +51,14 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
-	logger.Debugf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
-	logger.Debugf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
@@ -80,7 +80,7 @@ func EnsureSystemDirectory(path string) (string, error) {
 		return "", err
 	}
 
-	logger.Debugf("Enforcing creation of results dir: %s", path)
+	log.Debug().Msgf("Enforcing creation of results dir: %s", path)
 
 	err = RunCommand("mkdir", []string{
 		"-p",

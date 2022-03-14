@@ -3,10 +3,10 @@ package internal
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 )
 
 type RequesterNode struct {
@@ -48,7 +48,7 @@ func NewRequesterNode(
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 
 			if err != nil {
-				logger.Warnf("There was an error considering bid: %s", err)
+				log.Warn().Msgf("There was an error considering bid: %s", err)
 				return
 			}
 

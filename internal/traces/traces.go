@@ -2,16 +2,15 @@ package traces
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/muesli/clusters"
 	"github.com/muesli/kmeans"
+	"github.com/rs/zerolog/log"
 	"gonum.org/v1/gonum/stat"
 )
 
@@ -122,7 +121,7 @@ func (t *TraceCollection) calculateValuesPerWaypoint() error {
 }
 
 func (t *TraceCollection) calculateValuesPerWaypointForResultIdAndColumn(resultId, column string) {
-	logger.Debugf("Doing %s\n", resultId)
+	log.Debug().Msgf("Doing %s\n", resultId)
 	jobData := t.data[resultId]
 	currentWaypointIdx := 0
 	maxWaypointIdx := NUM_WAYPOINTS - 1
@@ -193,20 +192,20 @@ func (t *TraceCollection) Scores() (map[string]map[string]float64, error) {
 		return nil, err
 	}
 
-	logger.Debugf("WAYPOINTS --> %+v\n", t.waypoints)
+	log.Debug().Msgf("WAYPOINTS --> %+v\n", t.waypoints)
 
 	err = t.calculateValuesPerWaypoint()
 	if err != nil {
 		return nil, err
 	}
-	logger.Debugf("VALUES PER WAYPOINT --> %+v\n", t.valuesPerWaypoint)
+	log.Debug().Msgf("VALUES PER WAYPOINT --> %+v\n", t.valuesPerWaypoint)
 
 	t.averages = make(map[string]map[float64]float64)
 	for _, col := range t.columns {
 		t.calcAvgs(col)
 	}
 
-	logger.Debugf("AVERAGE VALUES PER WAYPOINT --> %+v\n", t.averages)
+	log.Debug().Msgf("AVERAGE VALUES PER WAYPOINT --> %+v\n", t.averages)
 
 	for resultId := range t.data {
 		for _, col := range t.columns {
@@ -245,7 +244,7 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 			score["real"],
 		})
 	}
-	logger.Debugf("resultsToResultIdMap = %+v\n", resultsToResultIdMap)
+	log.Debug().Msgf("resultsToResultIdMap = %+v\n", resultsToResultIdMap)
 
 	// map[string]map[string]float64
 	// map resultId -> column -> score (average distance from average for that column)
@@ -268,8 +267,8 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 	}
 
 	for _, c := range clusters {
-		logger.Debugf("Centered at x: %.2f\n", c.Center[0])
-		logger.Debugf("Matching data points: %+v\n\n", c.Observations)
+		log.Debug().Msgf("Centered at x: %.2f\n", c.Center[0])
+		log.Debug().Msgf("Matching data points: %+v\n\n", c.Observations)
 	}
 
 	// reconstitute the results from the clusters...
@@ -280,7 +279,7 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 		for _, obs := range clusters[i].Observations {
 			o := fmt.Sprintf("%f", obs.Coordinates()[0])
 			ids := resultsToResultIdMap[o]
-			logger.Debugf("Picked ids for %s: %+v\n", o, ids)
+			log.Debug().Msgf("Picked ids for %s: %+v\n", o, ids)
 			for _, id := range ids {
 				deduped[id] = true
 			}

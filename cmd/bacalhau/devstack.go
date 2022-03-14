@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/logger"
 
 	"github.com/spf13/cobra"
 )
@@ -32,13 +33,13 @@ var devstackCmd = &cobra.Command{
 		result, err := ipfs.IpfsCommand("", []string{"version"})
 
 		if err != nil {
-			logger.Error(fmt.Sprintf("Error running command 'ipfs version': %s", err))
+			log.Error().Msg(fmt.Sprintf("Error running command 'ipfs version': %s", err))
 			return err
 		}
 
 		if strings.Contains(result, "0.12.0") {
 			err = fmt.Errorf("\n********************\nDue to a regression, we do not support 0.12.0. Please install from here:\nhttps://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz\n********************\n")
-			logger.Error(err.Error())
+			log.Error().Err(err)
 			return err
 		}
 
@@ -64,19 +65,19 @@ var devstackCmd = &cobra.Command{
 		}()
 
 		for nodeNumber, node := range stack.Nodes {
-			logger.Infof(`
+			log.Info().Msg(fmt.Sprintf(`
 Node %d:
 	IPFS_PATH=%s
 	JSON_PORT=%d
 	bin/bacalhau --jsonrpc-port=%d list
-`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort)
+`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort))
 		}
 
-		logger.Infof(`
+		log.Info().Msg(fmt.Sprintf(`
 To add a file, type the following:
 file_path="your_file_path_here"
 cid=$( IPFS_PATH=%s ipfs add -q $file_path )
-`, stack.Nodes[0].IpfsRepo)
+`, stack.Nodes[0].IpfsRepo))
 
 		// wait forever because everything else is running in a goroutine
 		select {}

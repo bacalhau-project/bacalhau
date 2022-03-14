@@ -3,9 +3,9 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -127,7 +127,7 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	logger.Infof("Submitted Job Id: %s\n", result.Id)
+	log.Info().Msgf("Submitted Job Id: %s\n", result.Id)
 
 	return result, nil
 }

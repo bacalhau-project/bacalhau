@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,10 +32,10 @@ func TestFixtureMetrics(t *testing.T) {
 	}}
 	scores, err := clustered.Scores()
 	if err != nil {
-		logger.Debugf("Error getting scores: %s\n", err)
+		log.Debug().Msgf("Error getting scores: %s\n", err)
 		panic(err)
 	}
-	logger.Debugf("Scores: %+v\n", scores)
+	log.Debug().Msgf("Scores: %+v\n", scores)
 
 	shouldEqual := map[string]map[string]float64{
 		"job-1": {

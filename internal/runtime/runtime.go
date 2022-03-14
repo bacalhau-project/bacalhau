@@ -126,6 +126,8 @@ func (runtime *Runtime) PrepareJob(
 	// have a local development cluster of ipfs nodes instead
 	connectToIpfsMultiaddress string,
 ) error {
+	threadLogger := logger.LoggerWithRuntimeInfo(runtime.Id)
+
 	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
 	if err != nil {
 		return err
@@ -139,7 +141,7 @@ func (runtime *Runtime) PrepareJob(
 		return err
 	}
 
-	logger.Debugf("Script to run for job: %s", script)
+	threadLogger.Debug().Msgf("Script to run for job: %s", script)
 
 	output, err := system.RunCommandGetResults("sudo", []string{
 		runtime.Kind,
@@ -201,7 +203,7 @@ Output: %s`, err, output)
 
 	cmd := exec.Command(command, args...)
 
-	logger.Debugf("Running system ipfs daemon mount: %s", cmd.String())
+	threadLogger.Debug().Msgf("Running system ipfs daemon mount: %s", cmd.String())
 
 	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -213,7 +215,7 @@ Output: %s`, err, output)
 	go func() {
 		err := cmd.Run()
 		if err != nil {
-			logger.Debugf("Failed to run : %s", err)
+			threadLogger.Debug().Msgf("Failed to run : %s", err)
 		}
 	}()
 
@@ -236,6 +238,7 @@ Output: %s`, err, output)
 // copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
+	threadLogger := logger.LoggerWithRuntimeInfo(runtime.Id)
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
@@ -248,30 +251,30 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	// write the command stdout & stderr to the results dir
-	logger.Debugf("Writing stdout to %s/stdout.log", resultsFolder)
+	threadLogger.Debug().Msgf("Writing stdout to %s/stdout.log", resultsFolder)
 
 	directoryExists := false
 	if _, err := os.Stat(resultsFolder); !errors.Is(err, exec.ErrNotFound) {
-		logger.Debugf("Directory found: %s", resultsFolder)
+		threadLogger.Debug().Msgf("Directory found: %s", resultsFolder)
 		directoryExists = true
 	} else {
-		logger.Debugf("Directory NOT found: %s", resultsFolder)
+		threadLogger.Debug().Msgf("Directory NOT found: %s", resultsFolder)
 	}
 
-	logger.Debugf("Expected folder %s exists?: %t", resultsFolder, directoryExists)
+	threadLogger.Debug().Msgf("Expected folder %s exists?: %t", resultsFolder, directoryExists)
 
 	err = os.WriteFile(fmt.Sprintf("%s/stdout.log", resultsFolder), stdout.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
-	logger.Debugf("Writing stderr to %s/stderr.log\n", resultsFolder)
+	threadLogger.Debug().Msgf("Writing stderr to %s/stderr.log\n", resultsFolder)
 	err = os.WriteFile(fmt.Sprintf("%s/stderr.log", resultsFolder), stderr.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
-	logger.Infof("Finished writing results of job (Id: %s) to results folder (%s).", runtime.Id, resultsFolder)
+	threadLogger.Info().Msgf("Finished writing results of job (Id: %s) to results folder (%s).", runtime.Id, resultsFolder)
 
 	// copy the psrecord metrics out of the runtime
 	filesToCopy := []string{
@@ -280,7 +283,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 	}
 
 	for _, file := range filesToCopy {
-		logger.Debugf("Copying files - Writing %s to %s/%s\n", file, resultsFolder, file)
+		threadLogger.Debug().Msgf("Copying files - Writing %s to %s/%s\n", file, resultsFolder, file)
 		err = system.RunCommand("sudo", []string{
 			runtime.Kind,
 			"cp",

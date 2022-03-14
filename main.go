@@ -5,11 +5,14 @@ import (
 
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	logger.Initialize()
+
 	start := time.Now()
-	logger.Debugf("Top of execution - %s", start.UTC())
+	log.Trace().Msgf("Top of execution - %s", start.UTC())
 	bacalhau.Execute()
-	logger.Debugf("Execution finished - %s", time.Since(start))
+	log.Trace().Msgf("Execution finished - %s", time.Since(start))
 }

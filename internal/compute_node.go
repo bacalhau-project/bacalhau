@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 )
 
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
@@ -53,24 +53,24 @@ func NewComputeNode(
 		// a new job has arrived - decide if we want to bid on it
 		case system.JOB_EVENT_CREATED:
 
-			logger.Debugf("Found new job to schedule: \n%+v\n", jobEvent.JobSpec)
+			log.Debug().Msgf("Found new job to schedule: \n%+v\n", jobEvent.JobSpec)
 
 			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
-				logger.Errorf("There was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
+				log.Error().Msgf("There was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
 				return
 			}
 			if shouldRun {
-				logger.Debugf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
 				err = scheduler.BidJob(jobEvent.JobId)
 				if err != nil {
-					logger.Errorf("Error bidding on job: %+v", err)
+					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
 				return
 			} else {
-				logger.Debugf("We ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
@@ -81,17 +81,17 @@ func NewComputeNode(
 				return
 			}
 
-			logger.Debugf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
+			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
 
 			cid, err := computeNode.RunJob(job)
 
 			if err != nil {
-				logger.Errorf("ERROR running the job: %s\n%+v\n", err, job)
+				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)
 
 				// TODO: Check result of Error job
 				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
-				logger.Infof("Completed the job - results cid: %s\n%+v\n", cid, job)
+				log.Info().Msgf("Completed the job - results cid: %s\n%+v\n", cid, job)
 
 				results := []types.JobStorage{
 					{
@@ -117,7 +117,7 @@ func NewComputeNode(
 // for example - it should be possible to shell out to a user-defined program
 // that will decide if it's worth doing the job or not
 func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
-	logger.Debugf("Selecting for job with matching CID(s): %s\n", job.Inputs)
+	log.Debug().Msgf("Selecting for job with matching CID(s): %s\n", job.Inputs)
 	// Accept jobs where there are no cids specified or we have any one of the specified cids
 	if len(job.Inputs) == 0 {
 		return true, nil
@@ -128,12 +128,12 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 			return false, err
 		}
 		if hasCid {
-			logger.Infof("CID (%s) found on this server. Accepting job.", job.Inputs)
+			log.Info().Msgf("CID (%s) found on this server. Accepting job.", job.Inputs)
 			return true, nil
 		}
 	}
 
-	logger.Infof("No matching CIDs found on this server. Passing on job")
+	log.Info().Msgf("No matching CIDs found on this server. Passing on job")
 	return false, nil
 }
 
@@ -141,7 +141,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 // this is obtained by running "ipfs add -r <results folder>"
 func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 
-	logger.Debugf("Running job on node: %s", node.NodeId)
+	log.Debug().Msgf("Running job on node: %s", node.NodeId)
 
 	// replace the job commands with a sleep because we are a bad actor
 	if node.BadActor {
@@ -170,7 +170,7 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	logger.Debugf("Ensured results directory created: %s", resultsFolder)
+	log.Debug().Msgf("Ensured results directory created: %s", resultsFolder)
 
 	output, err := vm.Start()
 

@@ -3,12 +3,11 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/rpc"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 )
 
 type JobServer struct {
@@ -47,7 +46,7 @@ func RunBacalhauJsonRpcServer(
 	rpcServer := rpc.NewServer()
 	err := rpcServer.Register(job)
 	if err != nil {
-		log.Fatalf("Format of service Job isn't correct. %s", err)
+		log.Fatal().Msgf("Format of service Job isn't correct. %s", err)
 	}
 
 	httpServer := &http.Server{
@@ -59,16 +58,16 @@ func RunBacalhauJsonRpcServer(
 	go func() {
 		err = httpServer.ListenAndServe()
 		if err != nil && !isClosing {
-			log.Fatalf("http.ListenAndServe failed: %s", err)
+			log.Fatal().Msgf("http.ListenAndServe failed: %s", err)
 		}
 	}()
 
 	go func() {
-		logger.Debug("Waiting for json rpc context to finish.")
+		log.Debug().Msg("Waiting for json rpc context to finish.")
 		<-ctx.Done()
-		logger.Debug("Closing json rpc server.")
+		log.Debug().Msg("Closing json rpc server.")
 		isClosing = true
 		httpServer.Close()
-		logger.Debug("Closed json rpc server.")
+		log.Debug().Msg("Closed json rpc server.")
 	}()
 }
