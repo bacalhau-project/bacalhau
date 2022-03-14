@@ -145,6 +145,8 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 			return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 		}
 	}
+
+	// TODO: Is this shutting down after a single run?
 	err = StartDaemon(ctx, repoDir, gatewayPort, apiPort, swarmPort)
 	if err != nil {
 		return "", "", err

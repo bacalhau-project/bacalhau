@@ -25,6 +25,7 @@ type Runtime struct {
 	Id         string
 	Name       string
 	Job        *types.JobSpec
+	JobId      string
 	stopChan   chan bool
 }
 
@@ -61,6 +62,7 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 		Kind:       kind,
 		doubleDash: doubleDash,
 		Id:         id.String(),
+		JobId:      job.Id,
 		Name:       name,
 		Job:        job.Spec,
 		stopChan:   make(chan bool),
@@ -126,7 +128,7 @@ func (runtime *Runtime) PrepareJob(
 	// have a local development cluster of ipfs nodes instead
 	connectToIpfsMultiaddress string,
 ) error {
-	threadLogger := logger.LoggerWithRuntimeInfo(runtime.Id)
+	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
 	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
 	if err != nil {
@@ -238,7 +240,7 @@ Output: %s`, err, output)
 // copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
-	threadLogger := logger.LoggerWithRuntimeInfo(runtime.Id)
+	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,

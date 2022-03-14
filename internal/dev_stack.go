@@ -33,9 +33,10 @@ func NewDevStack(
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
-		log.Debug().Msgf("---------------------")
-		log.Info().Msgf("	Creating Node #%d", i)
-		log.Debug().Msg("---------------------")
+		log.Debug().Msgf(`
+---------------------
+  Creating Node #%d
+---------------------`, i)
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err

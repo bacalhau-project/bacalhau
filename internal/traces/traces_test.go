@@ -8,6 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+
+	_ "github.com/filecoin-project/bacalhau/internal/logger"
 )
 
 func truncateFloat(f float64) float64 {

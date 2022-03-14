@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
@@ -171,6 +172,13 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	}
 
 	log.Debug().Msgf("Ensured results directory created: %s", resultsFolder)
+
+	// Having an issue with this directory not existing, so double confirming here
+	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
+		log.Warn().Msgf("Expected results directory for job id (%s) to exist, it does not: %s", job.Id, resultsFolder)
+	} else {
+		log.Info().Msgf("Results directory for job id (%s) exists: %s", job.Id, resultsFolder)
+	}
 
 	output, err := vm.Start()
 

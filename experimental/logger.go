@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/internal/logger"
@@ -38,7 +37,7 @@ func log_breadth(i int) {
 	// subLogger.Warn().Msg(fmt.Sprintf("Warn: foo %s", "mank"))
 	// subLogger.Error().Msg(fmt.Sprintf("Error: foo %s", "mank"))
 
-	s := logger.LoggerWithNodeAndJobInfo(strconv.Itoa(i), string(uuid.NewString()))
+	s := logger.LoggerWithRuntimeInfo(fmt.Sprintf("%d - %s", i, uuid.NewString()))
 
 	s.Trace().Msgf("Trace: foo %s", "mank")
 	s.Debug().Msgf("Debug: foo %s", "mank")

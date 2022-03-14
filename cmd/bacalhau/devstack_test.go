@@ -58,7 +58,7 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
-	stack, cancelFunction := setupTest(t, 3, 0)
+	stack, cancelFunction := setupTest(t, 1, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -194,23 +194,32 @@ func TestCommands(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
+	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
+
+	stack, cancelFunction := setupTest(t, 3, 0)
+	defer teardownTest(stack, cancelFunction)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			teardownTest(stack, cancelFunction)
+			os.Exit(1)
+		}
+	}()
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			log.Warn().Msgf(`
+========================================
+Starting new job:
+	name: %s
+     cmd: %s
+    file: %s
+========================================
+`, name, tc.cmd, tc.file)
+
 			// t.Parallel()
-
-			_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
-
-			stack, cancelFunction := setupTest(t, 3, 0)
-			defer teardownTest(stack, cancelFunction)
-
-			c := make(chan os.Signal, 1)
-			signal.Notify(c, os.Interrupt)
-			go func() {
-				for range c {
-					teardownTest(stack, cancelFunction)
-					os.Exit(1)
-				}
-			}()
 
 			cid, err := add_file_to_nodes(t, stack, tc.file)
 
@@ -327,20 +336,22 @@ func TestNoBadActors(t *testing.T) {
 		badActors   int
 		expectation bool
 	}{
-		"both_agree": {nodes: 1, concurrency: 1, confidence: 1, tolerance: 0.1, badActors: 0, expectation: true},
+		"two_agree": {nodes: 3, concurrency: 2, confidence: 1, tolerance: 0.1, badActors: 0, expectation: true},
 		// "one_bad_actor": {nodes: 3, concurrency: 2, confidence: 2, tolerance: 0.1, badActors: 1, expectation: false},
 	}
+
+	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
 	// TODO:  sThis is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
 	commands := []string{
 		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
 	}
 
+	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			// t.Parallel()
-
-			_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
 			stack, cancelFunction := setupTest(t, tc.nodes, tc.badActors)
 			defer teardownTest(stack, cancelFunction)
