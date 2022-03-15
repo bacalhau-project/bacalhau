@@ -181,6 +181,7 @@ Output: %s`, err, output)
 Error: %+v
 Output: %s`, err, output)
 		}
+		threadLogger.Debug().Msgf("\n\nADDING IPFS PEER -------------> %s\n\n\n", connectToIpfsMultiaddress)
 		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
