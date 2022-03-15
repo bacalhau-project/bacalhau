@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -126,7 +127,7 @@ func (runtime *Runtime) PrepareJob(
 	// if this is defined then it means we are in development mode
 	// and don't want to connect to the mainline ipfs DHT but
 	// have a local development cluster of ipfs nodes instead
-	connectToIpfsMultiaddress string,
+	connectToIpfsMultiaddresses []string,
 ) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
@@ -186,7 +187,7 @@ Error: %+v
 Output: %s`, err, output)
 	}
 
-	if connectToIpfsMultiaddress != "" {
+	if len(connectToIpfsMultiaddresses) > 0 {
 		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
@@ -198,19 +199,24 @@ Output: %s`, err, output)
 Error: %+v
 Output: %s`, err, output)
 		}
-		threadLogger.Debug().Msgf("\n\nADDING IPFS PEER -------------> %s\n\n\n", connectToIpfsMultiaddress)
-		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-			runtime.Kind,
-			"exec",
-			runtime.Name,
-			runtime.doubleDash, "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
-		}))
-		if err != nil {
-			return fmt.Errorf(`Error adding during bootstraping ipfs to execution location: 
-Error: %+v
-Output: %s`, err, output)
-		}
 
+		for _, connectToIpfsMultiaddress := range connectToIpfsMultiaddresses {
+
+			threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap add: %s\n", connectToIpfsMultiaddress)
+
+			output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+				runtime.Kind,
+				"exec",
+				runtime.Name,
+				runtime.doubleDash, "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
+			}))
+
+			if err != nil {
+				return fmt.Errorf(`Error adding during bootstraping ipfs to execution location: 
+	Error: %+v
+	Output: %s`, err, output)
+			}
+		}
 	}
 
 	command := "sudo"
@@ -260,12 +266,19 @@ Output: %s`, err, output)
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
+	log.Warn().Msgf(`
+========================================
+Running job: %s
+========================================
+`, strings.Join(runtime.Job.Commands[:], "\n"))
+
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
 		runtime.doubleDash, "psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
 	}))
+
 	if err != nil {
 		return err
 	}

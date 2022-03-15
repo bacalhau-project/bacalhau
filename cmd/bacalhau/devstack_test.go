@@ -186,7 +186,7 @@ func TestCommands(t *testing.T) {
 		contains            string
 		expected_line_count int
 	}{
-		"grep": {file: "../../testdata/grep_file.txt", cmd: "grep kiwi /ipfs/%s", contains: "kiwi is delicious", expected_line_count: 4},
+		"grep": {file: "../../testdata/grep_file.txt", cmd: `timeout 20 grep kiwi /ipfs/%s || echo "ipfs read timed out"`, contains: "kiwi is delicious", expected_line_count: 4},
 		// "sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 	}
@@ -210,7 +210,11 @@ func TestCommands(t *testing.T) {
 			log.Warn().Msgf(`
 ========================================
 Starting new job:
+<<<<<<< HEAD
 	name: %s
+=======
+  name: %s
+>>>>>>> 0d8bc59 (try some manual debugging)
    cmd: %s
   file: %s
 ========================================
@@ -263,7 +267,15 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 	return fileCid, nil
 }
 
-func execute_command(t *testing.T, stack *internal.DevStack, cmd string, fileCid string, concurrency int, confidence int, tolerance float64) (*types.Job, string, error) {
+func execute_command(
+	t *testing.T,
+	stack *internal.DevStack,
+	cmd string,
+	fileCid string,
+	concurrency int,
+	confidence int,
+	tolerance float64,
+) (*types.Job, string, error) {
 	var job *types.Job
 	var err error
 
