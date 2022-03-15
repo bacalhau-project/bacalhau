@@ -107,7 +107,7 @@ func StartDaemon(
 // this is useful for when developing locally and you want an IPFS server that can co-exist with
 // others on the same machine
 // TODO: how we connect to ipfs **should** be over the network (rather than shelling out to the ipfs cli with env vars set)
-func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddress string) (string, string, error) {
+func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddress string) (string, []string, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Could not create temporary directory for ipfs repo.")
@@ -115,44 +115,44 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 
 	gatewayPort, err := freeport.GetFreePort()
 	if err != nil {
-		return "", "", err
+		return "", []string{}, err
 	}
 	apiPort, err := freeport.GetFreePort()
 	if err != nil {
-		return "", "", err
+		return "", []string{}, err
 	}
 	swarmPort, err := freeport.GetFreePort()
 	if err != nil {
-		return "", "", err
+		return "", []string{}, err
 	}
 	result, err := IpfsCommand(repoDir, []string{
 		"init",
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
+		return "", []string{}, fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 	}
 	result, err = IpfsCommand(repoDir, []string{
 		"bootstrap", "rm", "--all",
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
+		return "", []string{}, fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 	}
 	if connectToMultiAddress != "" {
 		result, err = IpfsCommand(repoDir, []string{
 			"bootstrap", "add", connectToMultiAddress,
 		})
 		if err != nil {
-			return "", "", fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
+			return "", []string{}, fmt.Errorf("Error in command:\noutput: %s\nerror: %s", result, err)
 		}
 	}
 
 	// TODO: Is this shutting down after a single run?
 	err = StartDaemon(ctx, repoDir, gatewayPort, apiPort, swarmPort)
 	if err != nil {
-		return "", "", err
+		return "", []string{}, err
 	}
 
-	nodeAddress := ""
+	nodeAddresses := []string{}
 
 	// give the daemon a better chance to win the race over the lockfile (not perfect though)
 	time.Sleep(1 * time.Second)
@@ -172,23 +172,18 @@ func StartBacalhauDevelopmentIpfsServer(ctx context.Context, connectToMultiAddre
 			log.Error().Msgf("error parsing JSON: %s\n", err)
 			return err
 		}
-		// TODO: extract the most public address so that vms in ignite
-		// will be able to connect to this ipfs server
-		// it turns out that using a 127.0.0.1 address still works because of clever
-		// broadcast packets: https://github.com/filecoin-project/bacalhau/issues/30
-		if len(result.Addresses) > 0 {
-			nodeAddress = result.Addresses[0]
-			return nil
-		} else {
-			return fmt.Errorf("no node address")
-		}
+
+		nodeAddresses = result.Addresses
+
+		return nil
+
 	}, "extracting ipfs node id", 10)
 
 	if err != nil {
-		return "", "", err
+		return "", []string{}, err
 	}
 
-	return repoDir, nodeAddress, nil
+	return repoDir, nodeAddresses, nil
 }
 
 func HasCid(repoPath, cid string) (bool, error) {

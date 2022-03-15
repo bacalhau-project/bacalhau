@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -33,7 +34,9 @@ func init() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
+	//file, _ := ioutil.TempFile("tmp", "logs")
+
+	output := zerolog.ConsoleWriter{Out: system.Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,
