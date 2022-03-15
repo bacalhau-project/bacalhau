@@ -32,12 +32,13 @@ func ProcessResults(job *types.Job, data *[]system.ResultsList) ([]string, []str
 		})
 	}
 
+	// TODO: actually process the results and return them
 	// these are lists of CIDs of the results
-	correctGroup, incorrectGroup, err := clustered.Cluster()
+	// correctGroup, incorrectGroup, err := clustered.Cluster()
 
-	if err != nil {
-		return nil, nil, err
-	}
+	// if err != nil {
+	// 	return []string{}, []string{}, err
+	// }
 
-	return correctGroup, incorrectGroup, err
+	return []string{}, []string{}, nil
 }
