@@ -35,6 +35,12 @@ type JobState struct {
 type JobDeal struct {
 	// how many nodes do we want to run this job?
 	Concurrency int
+	// how many nodes should agree on a result before we use that as the result
+	// this cannot be more than the concurrency
+	Confidence int
+	// how "fuzzy" will we tolerate results such they are classed as the "same"
+	// this only applies to validation engines that are non-determistic
+	Tolerance float64
 	// the nodes we have assigned (and will pay)
 	// other nodes are welcome to submit results without having been assigned
 	// this is how they can bootstrap their reputation
@@ -65,6 +71,16 @@ type JobEvent struct {
 	JobDeal *JobDeal
 	// most other events are a case of a client<->node state change
 	JobState *JobState
+}
+
+// JSON RPC
+
+type ListArgs struct {
+}
+
+type SubmitArgs struct {
+	Spec *JobSpec
+	Deal *JobDeal
 }
 
 // the data structure a client can use to render a view of the state of the world

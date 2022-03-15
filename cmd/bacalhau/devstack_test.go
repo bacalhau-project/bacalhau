@@ -19,7 +19,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// run the job on 2 nodes
 const TEST_CONCURRENCY = 2
+
+// both nodes must agree on the result
+const TEST_CONFIDENCE = 2
+
+// the results must be within 10% of each other
+const TEST_TOLERANCE = 0.1
 
 func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 	ctx := context.Background()
@@ -27,7 +34,7 @@ func setupTest(t *testing.T) (*internal.DevStack, context.CancelFunc) {
 
 	os.Setenv("DEBUG", "true")
 
-	stack, err := internal.NewDevStack(ctxWithCancel, 3)
+	stack, err := internal.NewDevStack(ctxWithCancel, 3, 0)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatalf("Unable to create devstack: %s", err)
@@ -105,11 +112,19 @@ raspberry
 	var job *types.Job
 
 	err = system.TryUntilSucceedsN(func() error {
-		job, err = SubmitJob([]string{
-			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
-		}, []string{
-			fileCid,
-		}, TEST_CONCURRENCY, "127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		job, err = SubmitJob(
+			[]string{
+				fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
+			},
+			[]string{
+				fileCid,
+			},
+			TEST_CONCURRENCY,
+			TEST_CONFIDENCE,
+			TEST_TOLERANCE,
+			"127.0.0.1",
+			stack.Nodes[0].JsonRpcPort,
+		)
 
 		return err
 	}, "submit job", 100)

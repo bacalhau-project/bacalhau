@@ -56,7 +56,7 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler)
+		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler, false)
 		if err != nil {
 			return err
 		}

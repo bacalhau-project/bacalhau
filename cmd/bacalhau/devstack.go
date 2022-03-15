@@ -15,8 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func init() {
+var devStackBadActors int
 
+func init() {
+	devstackCmd.PersistentFlags().IntVar(
+		&devStackBadActors, "bad-actors", 0,
+		`How many nodes should be bad actors`,
+	)
 }
 
 var devstackCmd = &cobra.Command{
@@ -42,7 +47,7 @@ var devstackCmd = &cobra.Command{
 		ctx := context.Background()
 		ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
-		stack, err := internal.NewDevStack(ctxWithCancel, 3)
+		stack, err := internal.NewDevStack(ctxWithCancel, 3, devStackBadActors)
 
 		if err != nil {
 			cancelFunction()
