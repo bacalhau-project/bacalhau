@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -61,9 +62,12 @@ func SubmitJob(
 	rpcPort int,
 ) (*types.Job, error) {
 
-	// commands = []string{
-	// 	`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
-	// }
+	// for testing the tracing - just run a job that allocates some memory
+	if os.Getenv("BACALHAU_MOCK_JOB") != "" {
+		commands = []string{
+			`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
+		}
+	}
 
 	if len(commands) <= 0 {
 		return nil, fmt.Errorf("Empty command list")
