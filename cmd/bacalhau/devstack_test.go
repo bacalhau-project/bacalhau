@@ -191,9 +191,9 @@ func TestCommands(t *testing.T) {
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 	}
 
-	//_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
+	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	stack, cancelFunction := setupTest(t, 1, 0)
+	stack, cancelFunction := setupTest(t, 3, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
