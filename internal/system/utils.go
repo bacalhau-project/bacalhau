@@ -3,6 +3,7 @@ package system
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,14 +20,15 @@ func RunCommand(command string, args []string) error {
 	return cmd.Run()
 }
 
-// same as run command but returns buffers for stdout and stdin
-func RunCommandWithBuffer(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
+// same as run command but also returns buffers for stdout and stdin
+func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
+
 	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
-	cmd.Stdout = stdoutBuf
-	cmd.Stderr = stderrBuf
+	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
 	return cmd.Run(), stdoutBuf, stderrBuf
 }
 
