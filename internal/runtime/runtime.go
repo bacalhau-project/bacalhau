@@ -242,12 +242,17 @@ Output: %s`, err, output)
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
-	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
+	err, stdout, stderr := system.RunCommandWithBuffer("sudo", cleanEmpty([]string{
 		runtime.Kind,
 		"exec",
 		runtime.Name,
 		runtime.doubleDash, "psrecord", "bash /job.sh", "--log", "/tmp/metrics.log", "--plot", "/tmp/metrics.png", "--include-children",
 	}))
+
+	// TODO: https://github.com/filecoin-project/bacalhau/issues/59
+	threadLogger.Debug().Msgf("Job stdout:\n%s\n", stdout)
+	threadLogger.Debug().Msgf("Job stderr:\n%s\n", stderr)
+
 	if err != nil {
 		return err
 	}
