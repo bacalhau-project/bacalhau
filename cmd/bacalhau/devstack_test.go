@@ -187,16 +187,13 @@ func TestCommands(t *testing.T) {
 		expected_line_count int
 	}{
 		"grep": {file: "../../testdata/grep_file.txt", cmd: "grep kiwi /ipfs/%s", contains: "kiwi is delicious", expected_line_count: 4},
-		"sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+		// "sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 	}
 
-	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("BACALHAU_RUNTIME", "docker")
+	//_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
-
-	stack, cancelFunction := setupTest(t, 3, 0)
+	stack, cancelFunction := setupTest(t, 1, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -214,8 +211,8 @@ func TestCommands(t *testing.T) {
 ========================================
 Starting new job:
 	name: %s
-     cmd: %s
-    file: %s
+   cmd: %s
+  file: %s
 ========================================
 `, name, tc.cmd, tc.file)
 
@@ -312,6 +309,8 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 		for _, state := range jobData.State {
 			jobStates = append(jobStates, state.State)
 		}
+
+		log.Debug().Msgf("Checking job states: %+v\n", jobStates)
 
 		if !reflect.DeepEqual(jobStates, []string{"complete"}) {
 			return fmt.Errorf("Expected job to be complete, got %+v", jobStates)
