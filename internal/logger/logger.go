@@ -78,3 +78,7 @@ func init() {
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
 }
+
+func LoggerWithNodeAndJobInfo(nodeId string, jobId string) zerolog.Logger {
+	return log.With().Str("N", nodeId).Str("J", jobId).Logger()
+}

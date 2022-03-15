@@ -227,6 +227,12 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 
 	scores, _ := t.Scores()
 
+	if len(scores) == 0 {
+		err := fmt.Errorf("Could not run clustering, no scores attached to traces.")
+		log.Error().Err(err)
+		return nil, nil, err
+	}
+
 	var resultsToResultIdMap = make(map[string][]string)
 
 	var d clusters.Observations

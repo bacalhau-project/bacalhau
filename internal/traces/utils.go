@@ -36,7 +36,7 @@ func ProcessResults(job *types.Job, data *[]system.ResultsList) ([]string, []str
 	correctGroup, incorrectGroup, err := clustered.Cluster()
 
 	if err != nil {
-		return []string{}, []string{}, err
+		return nil, nil, err
 	}
 
 	return correctGroup, incorrectGroup, err
