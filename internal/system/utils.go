@@ -32,6 +32,8 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 
 	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
+
+	// https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
 	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(Stderr, stderrBuf)
 	return cmd.Run(), stdoutBuf, stderrBuf
@@ -46,7 +48,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 				return err
 			} else {
 				log.Debug().Msgf("Error %s: %v, pausing and trying again...\n", desc, err)
-				time.Sleep(time.Duration(attempt) * time.Second)
+				time.Sleep(1 * time.Second)
 			}
 		} else {
 			return nil

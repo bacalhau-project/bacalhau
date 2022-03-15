@@ -98,7 +98,7 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, str
 	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeId, job.Id)
 
 	concurrency := job.Deal.Concurrency
-	threadLogger.Debug().Msgf("Concurrency for this job: %s", concurrency)
+	threadLogger.Debug().Msgf("Concurrency for this job: %d", concurrency)
 
 	// we are already over-subscribed
 	if len(job.Deal.AssignedNodes) >= concurrency {
