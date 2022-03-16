@@ -119,3 +119,8 @@ func MapByteArray(vs []byte, f func(byte) byte) []byte {
 	}
 	return vsm
 }
+
+func GenerateJobScript(commands []string) string {
+	// put sleep here because otherwise psrecord does not have enough time to capture metrics
+	return fmt.Sprintf("sleep 2\n%s\nsleep 2\n", strings.Join(commands, "\n"))
+}

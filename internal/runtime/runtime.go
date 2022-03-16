@@ -149,8 +149,9 @@ func (runtime *Runtime) PrepareJob(
 	}
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
-	// put sleep here because otherwise psrecord does not have enough time to capture metrics
-	script := fmt.Sprintf("sleep 2\n%s\nsleep 2\n", strings.Join(runtime.Job.Commands[:], "\n"))
+
+	script := system.GenerateJobScript(runtime.Job.Commands[:])
+
 	_, err = tmpFile.WriteString(script)
 	if err != nil {
 		return err
