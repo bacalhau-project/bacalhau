@@ -129,6 +129,7 @@ raspberry
 			TEST_TOLERANCE,
 			"127.0.0.1",
 			stack.Nodes[0].JsonRpcPort,
+			true,
 		)
 
 		return err
@@ -292,6 +293,7 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 			tolerance,
 			"127.0.0.1",
 			stack.Nodes[0].JsonRpcPort,
+			true,
 		)
 		return err
 	}, "submit job", 100)

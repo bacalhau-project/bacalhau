@@ -15,6 +15,7 @@ var jobCommands []string
 var jobConcurrency int
 var jobConfidence int
 var jobTolerance float64
+var skipSyntaxChecking bool
 
 func init() {
 	submitCmd.PersistentFlags().StringSliceVar(
@@ -32,6 +33,10 @@ func init() {
 	submitCmd.PersistentFlags().IntVar(
 		&jobConfidence, "confidence", 1,
 		`How many nodes should agree on a result before we accept it`,
+	)
+	submitCmd.PersistentFlags().BoolVar(
+		&skipSyntaxChecking, "skip-syntax-checking", false,
+		`Skip having 'shellchecker' verify syntax of the command`,
 	)
 	// this is currently fixed to the "real memory" usage of the validator (traces) module
 	//
@@ -60,6 +65,7 @@ func SubmitJob(
 	tolerance float64,
 	rpcHost string,
 	rpcPort int,
+	skipSyntaxChecking bool,
 ) (*types.Job, error) {
 
 	// for testing the tracing - just run a job that allocates some memory
@@ -87,6 +93,13 @@ func SubmitJob(
 
 	if tolerance < 0 {
 		return nil, fmt.Errorf("Tolerance must be >= 0")
+	}
+
+	if !skipSyntaxChecking {
+		err, _, _ := system.CheckBashSyntax(jobCommands)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	jobInputs := []types.JobStorage{}
@@ -148,6 +161,7 @@ var submitCmd = &cobra.Command{
 			jobTolerance,
 			jsonrpcHost,
 			jsonrpcPort,
+			skipSyntaxChecking,
 		)
 		return err
 	},
