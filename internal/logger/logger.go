@@ -34,6 +34,8 @@ func init() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
+	//file, _ := ioutil.TempFile("tmp", "logs")
+
 	output := zerolog.ConsoleWriter{Out: system.Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
@@ -78,4 +80,8 @@ func init() {
 
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
+}
+
+func LoggerWithNodeAndJobInfo(nodeId string, jobId string) zerolog.Logger {
+	return log.With().Str("N", nodeId).Str("J", jobId).Logger()
 }

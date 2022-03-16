@@ -46,6 +46,10 @@ func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) 
 func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 	results := []ResultsList{}
 
+	log.Debug().Msgf("All job states: %+v", job)
+
+	log.Debug().Msgf("Number of job states created: %d", len(job.State))
+
 	for node := range job.State {
 
 		cid := ""
@@ -60,6 +64,8 @@ func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 			Folder: GetResultsDirectory(job.Id, node),
 		})
 	}
+
+	log.Debug().Msgf("Number of results created: %d", len(results))
 
 	return &results, nil
 }

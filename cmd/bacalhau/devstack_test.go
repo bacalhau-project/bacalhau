@@ -316,11 +316,16 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
 		jobStates := []string{}
 
+		numberOfComplete := 0
+
 		for _, state := range jobData.State {
 			jobStates = append(jobStates, state.State)
+			if state.State == "complete" {
+				numberOfComplete++
+			}
 		}
 
-		log.Debug().Msgf("Checking job states: %+v\n", jobStates)
+		log.Debug().Msgf("Compare job states:\n%+v\nVS.\n%+v\n", jobStates, []string{"complete"})
 
 		if !reflect.DeepEqual(jobStates, []string{"complete"}) {
 			return fmt.Errorf("Expected job to be complete, got %+v", jobStates)
@@ -335,7 +340,7 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 	return job, hostId, nil
 }
 
-func TestNoBadActors(t *testing.T) {
+func TestCatchBadActors(t *testing.T) {
 
 	tests := map[string]struct {
 		nodes       int
@@ -345,13 +350,13 @@ func TestNoBadActors(t *testing.T) {
 		badActors   int
 		expectation bool
 	}{
-		"two_agree": {nodes: 3, concurrency: 2, confidence: 1, tolerance: 0.1, badActors: 0, expectation: true},
+		"two_agree": {nodes: 3, concurrency: 3, confidence: 2, tolerance: 0.1, badActors: 0, expectation: true},
 		// "one_bad_actor": {nodes: 3, concurrency: 2, confidence: 2, tolerance: 0.1, badActors: 1, expectation: false},
 	}
 
 	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	// TODO:  This is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
+	// TODO: #57  This is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
 	commands := []string{
 		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
 	}
