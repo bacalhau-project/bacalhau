@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
+	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -136,10 +137,8 @@ func (runtime *Runtime) Stop() (string, error) {
 // (so we can "bash job.sh" as the command)
 // let's write our "job.sh" and copy it onto the runtime
 func (runtime *Runtime) PrepareJob(
-	// if this is defined then it means we are in development mode
-	// and don't want to connect to the mainline ipfs DHT but
-	// have a local development cluster of ipfs nodes instead
-	connectToIpfsMultiaddresses []string,
+	// are we connecting to the public IPFS network or a private devstack?
+	privateIpfsRepo string,
 ) error {
 	logger.Initialize()
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
@@ -194,13 +193,15 @@ Output: %s`, err, output)
 		"--json",
 		"false",
 	}))
+
 	if err != nil {
 		return fmt.Errorf(`Error disabling MDNS discovery:
 Error: %+v
 Output: %s`, err, output)
 	}
 
-	if len(connectToIpfsMultiaddresses) > 0 {
+	// if we are connecting to a private ipfs network then clear out bootstrap list
+	if privateIpfsRepo != "" {
 		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
 			"exec",
@@ -212,31 +213,6 @@ Output: %s`, err, output)
 Error: %+v
 Output: %s`, err, output)
 		}
-
-		for _, connectToIpfsMultiaddress := range connectToIpfsMultiaddresses {
-
-			// inside the VM or the container, 127.0.0.1 will resolve to the
-			// guest, not the host, so don't even try.
-			if strings.Contains(connectToIpfsMultiaddress, "127.0.0.1") {
-				threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap SKIP: '%s'\n", connectToIpfsMultiaddress)
-				continue
-			}
-
-			threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap add: '%s'\n", connectToIpfsMultiaddress)
-
-			output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-				runtime.Kind,
-				"exec",
-				runtime.Name,
-				runtime.doubleDash, "ipfs", "bootstrap", "add", connectToIpfsMultiaddress,
-			}))
-
-			if err != nil {
-				return fmt.Errorf(`Error adding during bootstraping ipfs to execution location: 
-	Error: %+v
-	Output: %s`, err, output)
-			}
-		}
 	}
 
 	command := "sudo"
@@ -247,19 +223,19 @@ Output: %s`, err, output)
 		runtime.doubleDash, "ipfs", "daemon", "--mount",
 	})
 
-	cmd := exec.Command(command, args...)
+	ipfsMountCmd := exec.Command(command, args...)
 
-	threadLogger.Debug().Msgf("Running system ipfs daemon mount: %s", cmd.String())
+	threadLogger.Debug().Msgf("Running system ipfs daemon mount: %s", ipfsMountCmd.String())
 
 	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-	cmd.Stderr = logfile
-	cmd.Stdout = logfile
+	ipfsMountCmd.Stderr = logfile
+	ipfsMountCmd.Stdout = logfile
 
 	go func() {
-		err := cmd.Run()
+		err := ipfsMountCmd.Run()
 		if err != nil {
 			threadLogger.Debug().Msgf("Failed to run : %s", err)
 		}
@@ -269,11 +245,115 @@ Output: %s`, err, output)
 		<-runtime.stopChan
 
 		// TODO: Should we check the result here?
-		cmd.Process.Kill() // nolint
+		ipfsMountCmd.Process.Kill() // nolint
 	}()
 
 	// sleep here to give the "ipfs daemon --mount" command time to start
 	time.Sleep(5 * time.Second)
+
+	// connect the host ipfs swarm to the known IP/port of the container
+	if privateIpfsRepo != "" {
+		containerIp := ""
+		containerIpfsId := ""
+
+		if runtime.Kind == "docker" {
+			containerIp, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+				"docker",
+				"inspect",
+				"-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
+				runtime.Name,
+			}))
+		} else {
+			containerIp, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+				"ignite",
+				"inspect",
+				"vm",
+				runtime.Name,
+				"-t",
+				"{{.Status.Network.IPAddresses}}",
+			}))
+		}
+
+		if err != nil {
+			return fmt.Errorf(`Error getting container ip address:
+	Error: %+v
+	Output: %s`, err, output)
+		}
+
+		containerIp = strings.TrimSuffix(containerIp, "\n")
+		containerIp = strings.ReplaceAll(containerIp, "'", "")
+
+		containerIpfsId, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+			runtime.Kind,
+			"exec",
+			runtime.Name,
+			runtime.doubleDash,
+			"ipfs",
+			"id",
+			"-f", "<id>",
+		}))
+
+		containerIpfsId = strings.TrimSuffix(containerIpfsId, "\n")
+
+		if err != nil {
+			return fmt.Errorf(`Error getting container ipfs id:
+	Error: %+v
+	Output: %s`, err, output)
+		}
+
+		output, err = ipfs.IpfsCommand(privateIpfsRepo, []string{
+			"swarm", "connect", fmt.Sprintf("/ip4/%s/tcp/4001/p2p/%s", containerIp, containerIpfsId),
+		})
+
+		if err != nil {
+			return fmt.Errorf(`Error connecting host ipfs into container:
+	Error: %+v
+	Output: %s`, err, output)
+		}
+	}
+
+	// it seems that the ipfs swarm addresses that are automatically announed
+	// have the wrong port - the container ip is correct but rather than 4001
+	// we get a random port probably because of docker network NAT traversal
+	//
+	// if runtime.Kind == "docker" {
+	// 	containerIpAddress, err := system.RunCommandGetResults("sudo", cleanEmpty([]string{
+	// 		runtime.Kind,
+	// 		"inspect",
+	// 		"-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
+	// 		runtime.Name,
+	// 	}))
+
+	// 	if err != nil {
+	// 		return fmt.Errorf(`Error getting container ip address:
+	// Error: %+v
+	// Output: %s`, err, output)
+	// 	}
+
+	// 	containerIpAddress = strings.TrimSuffix(containerIpAddress, "\n")
+	// 	containerIpAddress = strings.ReplaceAll(containerIpAddress, "'", "")
+
+	// 	threadLogger.Debug().Msgf(`---------------------------> IP: %s\n`, containerIpAddress)
+	// 	threadLogger.Debug().Msgf(`---------------------------> ADDING ANNOUNCE: ["/ip4/%s/tcp/4001"]\n`, containerIpAddress)
+
+	// 	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+	// 		runtime.Kind,
+	// 		"exec",
+	// 		runtime.Name,
+	// 		runtime.doubleDash,
+	// 		"ipfs",
+	// 		"config",
+	// 		"Addresses.Announce",
+	// 		"--json",
+	// 		fmt.Sprintf(`["/ip4/%s/tcp/4001"]`, containerIpAddress),
+	// 	}))
+
+	// 	if err != nil {
+	// 		return fmt.Errorf(`Error setting announce address:
+	// Error: %+v
+	// Output: %s`, err, output)
+	// 	}
+	// }
 
 	return nil
 }

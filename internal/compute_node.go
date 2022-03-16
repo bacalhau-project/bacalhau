@@ -16,10 +16,9 @@ import (
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
 
 type ComputeNode struct {
-	IpfsRepo                  string
-	IpfsConnectMultiAddresses []string
-	BadActor                  bool
-	NodeId                    string
+	IpfsRepo string
+	BadActor bool
+	NodeId   string
 
 	Ctx context.Context
 
@@ -39,12 +38,11 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		IpfsRepo:                  "",
-		IpfsConnectMultiAddresses: []string{},
-		Ctx:                       ctx,
-		Scheduler:                 scheduler,
-		BadActor:                  badActor,
-		NodeId:                    nodeId,
+		IpfsRepo:  "",
+		Ctx:       ctx,
+		Scheduler: scheduler,
+		BadActor:  badActor,
+		NodeId:    nodeId,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
@@ -191,7 +189,8 @@ Error: %s`, output, err)
 	//nolint
 	defer vm.Stop()
 
-	err = vm.PrepareJob(node.IpfsConnectMultiAddresses)
+	// we are in private ipfs network mode if we have got a folder path for our repo
+	err = vm.PrepareJob(node.IpfsRepo)
 
 	if err != nil {
 		return "", err

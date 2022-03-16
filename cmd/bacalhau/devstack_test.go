@@ -314,21 +314,21 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 			jobData = j
 		}
 
-		jobStates := []string{}
+		actualJobStates := []string{}
+		requiredJobStates := []string{}
 
-		numberOfComplete := 0
-
-		for _, state := range jobData.State {
-			jobStates = append(jobStates, state.State)
-			if state.State == "complete" {
-				numberOfComplete++
-			}
+		for i := 0; i < concurrency; i++ {
+			requiredJobStates = append(requiredJobStates, "complete")
 		}
 
-		log.Debug().Msgf("Compare job states:\n%+v\nVS.\n%+v\n", jobStates, []string{"complete"})
+		for _, state := range jobData.State {
+			actualJobStates = append(actualJobStates, state.State)
+		}
 
-		if !reflect.DeepEqual(jobStates, []string{"complete"}) {
-			return fmt.Errorf("Expected job to be complete, got %+v", jobStates)
+		log.Debug().Msgf("Compare job states:\n%+v\nVS.\n%+v\n", actualJobStates, requiredJobStates)
+
+		if !reflect.DeepEqual(actualJobStates, requiredJobStates) {
+			return fmt.Errorf("Expected job states to be %+v, got %+v", requiredJobStates, actualJobStates)
 		}
 
 		return nil
@@ -342,6 +342,8 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
 func TestCatchBadActors(t *testing.T) {
 
+	t.Skip()
+
 	tests := map[string]struct {
 		nodes       int
 		concurrency int
@@ -354,14 +356,10 @@ func TestCatchBadActors(t *testing.T) {
 		// "one_bad_actor": {nodes: 3, concurrency: 2, confidence: 2, tolerance: 0.1, badActors: 1, expectation: false},
 	}
 
-	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
-
 	// TODO: #57  This is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
 	commands := []string{
 		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
 	}
-
-	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

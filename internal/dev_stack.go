@@ -99,7 +99,6 @@ func NewDevStack(
 		devstackIpfsMultiAddresses = append(devstackIpfsMultiAddresses, computeNodeIpfsMultiaddresses[0])
 
 		computeNode.IpfsRepo = ipfsRepo
-		computeNode.IpfsConnectMultiAddresses = computeNodeIpfsMultiaddresses
 
 		log.Debug().Msgf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 		log.Debug().Msgf("ipfs multiaddress: %s\n", devstackIpfsMultiAddresses)
