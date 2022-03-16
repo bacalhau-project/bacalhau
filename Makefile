@@ -134,7 +134,7 @@ test-devstack:
 
 .PHONY: test-commands
 test-commands:
-	go test -v -count 1 -timeout 300s -run ^TestCommands$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	go test -v -count 1 -timeout 3000s -run ^TestCommands$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
 
 ################################################################################
 # Target: lint					                               #

@@ -108,6 +108,18 @@ func (runtime *Runtime) Start() (string, error) {
 }
 
 func (runtime *Runtime) Stop() (string, error) {
+	output, err := system.RunCommandGetResults("sudo", cleanEmpty([]string{
+		runtime.Kind,
+		"exec",
+		runtime.Name,
+		runtime.doubleDash, "ipfs", "swarm", "peers",
+	}))
+	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
+	if err != nil {
+		threadLogger.Debug().Msgf("-----> ON CONTAINER SHUTDOWN, ipfs swarm peers errored: %s", err)
+		// not returning err because this is just for debugging and we still want to clean up
+	}
+	threadLogger.Debug().Msgf("-----> ON CONTAINER SHUTDOWN, ipfs swarm peers is: %s", output)
 	runtime.stopChan <- true
 	return system.RunCommandGetResults("sudo", []string{
 		runtime.Kind,
@@ -129,6 +141,7 @@ func (runtime *Runtime) PrepareJob(
 	// have a local development cluster of ipfs nodes instead
 	connectToIpfsMultiaddresses []string,
 ) error {
+	logger.Initialize()
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
 	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
@@ -202,7 +215,14 @@ Output: %s`, err, output)
 
 		for _, connectToIpfsMultiaddress := range connectToIpfsMultiaddresses {
 
-			threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap add: %s\n", connectToIpfsMultiaddress)
+			// inside the VM or the container, 127.0.0.1 will resolve to the
+			// guest, not the host, so don't even try.
+			if strings.Contains(connectToIpfsMultiaddress, "127.0.0.1") {
+				threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap SKIP: '%s'\n", connectToIpfsMultiaddress)
+				continue
+			}
+
+			threadLogger.Debug().Msgf("---------------------------> IPFS bootstrap add: '%s'\n", connectToIpfsMultiaddress)
 
 			output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 				runtime.Kind,

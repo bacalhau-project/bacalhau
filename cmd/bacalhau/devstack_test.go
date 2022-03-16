@@ -186,7 +186,7 @@ func TestCommands(t *testing.T) {
 		contains            string
 		expected_line_count int
 	}{
-		"grep": {file: "../../testdata/grep_file.txt", cmd: `timeout 20 grep kiwi /ipfs/%s || echo "ipfs read timed out"`, contains: "kiwi is delicious", expected_line_count: 4},
+		"grep": {file: "../../testdata/grep_file.txt", cmd: `timeout 2000 grep kiwi /ipfs/%s || echo "ipfs read timed out"`, contains: "kiwi is delicious", expected_line_count: 4},
 		// "sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 	}
@@ -254,8 +254,10 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 		fileCid, err = ipfs.IpfsCommand(node.IpfsRepo, []string{
 			"add", "-Q", filename,
 		})
-
-		assert.NoError(t, err)
+		if err != nil {
+			log.Debug().Msgf(`Error running ipfs add -Q: %s`, err)
+			return "", err
+		}
 	}
 
 	fileCid = strings.TrimSpace(fileCid)
