@@ -210,11 +210,7 @@ func TestCommands(t *testing.T) {
 			log.Warn().Msgf(`
 ========================================
 Starting new job:
-<<<<<<< HEAD
-	name: %s
-=======
   name: %s
->>>>>>> 0d8bc59 (try some manual debugging)
    cmd: %s
   file: %s
 ========================================
@@ -353,7 +349,7 @@ func TestNoBadActors(t *testing.T) {
 
 	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	// TODO:  sThis is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
+	// TODO:  This is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
 	commands := []string{
 		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
 	}
