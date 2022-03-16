@@ -8,20 +8,20 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
-func CommandLogger(command string, args []string) {
-	if os.Getenv("DEBUG") == "" {
-		return
-	}
-	fmt.Printf("----------------------------------\nRunning command: %s %s\n----------------------------------\n", command, strings.Join(args, " "))
-}
+// we need these to avoid stream based deadlocks
+// https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
+var Stdout = struct{ io.Writer }{os.Stdout}
+var Stderr = struct{ io.Writer }{os.Stderr}
 
 func RunCommand(command string, args []string) error {
-	CommandLogger(command, args)
+	log.Trace().Msgf(`IPFS Command: %s %s`, command, args)
 	cmd := exec.Command(command, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	cmd.Stderr = Stderr
+	cmd.Stdout = Stdout
 	return cmd.Run()
 }
 
@@ -29,10 +29,12 @@ func RunCommand(command string, args []string) error {
 func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
-	CommandLogger(command, args)
+
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
-	cmd.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
-	cmd.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
+
+	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
+	cmd.Stderr = io.MultiWriter(Stderr, stderrBuf)
 	return cmd.Run(), stdoutBuf, stderrBuf
 }
 
@@ -44,8 +46,8 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 			if attempt > retries {
 				return err
 			} else {
-				fmt.Printf("Error %s: %v, pausing and trying again...\n", desc, err)
-				time.Sleep(time.Duration(attempt) * time.Second)
+				log.Debug().Msgf("Error %s: %v, pausing and trying again...\n", desc, err)
+				time.Sleep(1 * time.Second)
 			}
 		} else {
 			return nil
@@ -55,20 +57,21 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
-	CommandLogger(command, args)
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
-	CommandLogger(command, args)
+	log.Debug().Msgf("Running system command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
+// TODO: Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
 func GetSystemDirectory(path string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -82,6 +85,9 @@ func EnsureSystemDirectory(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	log.Debug().Msgf("Enforcing creation of results dir: %s", path)
+
 	err = RunCommand("mkdir", []string{
 		"-p",
 		path,
@@ -96,4 +102,20 @@ func GetResultsDirectory(jobId, hostId string) string {
 func ShortId(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
+}
+
+func MapStringArray(vs []string, f func(string) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
+}
+
+func MapByteArray(vs []byte, f func(byte) byte) []byte {
+	vsm := make([]byte, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
 }

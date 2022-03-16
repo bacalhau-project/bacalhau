@@ -1,11 +1,11 @@
 package traces
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 )
 
 // return 2 lists of job ids - correct and incorrect
@@ -23,7 +23,7 @@ func ProcessResults(job *types.Job, data *[]system.ResultsList) ([]string, []str
 		}
 
 		if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-			fmt.Printf("continue not exist\n")
+			log.Info().Msg("Results folder does not exist, continuing.")
 			continue
 		}
 		clustered.Traces = append(clustered.Traces, Trace{

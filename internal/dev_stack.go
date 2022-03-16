@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/phayes/freeport"
+	"github.com/rs/zerolog/log"
 )
 
 type DevStackNode struct {
@@ -29,10 +29,14 @@ func NewDevStack(
 	nodes := []*DevStackNode{}
 
 	bacalhauMultiAddresses := []string{}
-	ipfsMultiAddresses := []string{}
+	devstackIpfsMultiAddresses := []string{}
 
 	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
+		log.Debug().Msgf(`
+---------------------
+  Creating Node #%d
+---------------------`, i)
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -61,7 +65,7 @@ func NewDevStack(
 
 		bacalhauMultiAddress := fmt.Sprintf("%s/p2p/%s", libp2pScheduler.Host.Addrs()[0].String(), libp2pScheduler.Host.ID())
 
-		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
+		log.Debug().Msgf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 
 		// if we have started any bacalhau servers already, use the first one
 		if len(bacalhauMultiAddresses) > 0 {
@@ -81,25 +85,24 @@ func NewDevStack(
 		connectToMultiAddress := ""
 
 		// if we have started any ipfs servers already, use the first one
-		if len(ipfsMultiAddresses) > 0 {
-			connectToMultiAddress = ipfsMultiAddresses[0]
+		if len(devstackIpfsMultiAddresses) > 0 {
+			connectToMultiAddress = devstackIpfsMultiAddresses[0]
 		}
 
-		ipfsRepo, ipfsMultiaddress, err := ipfs.StartBacalhauDevelopmentIpfsServer(ctx, connectToMultiAddress)
+		ipfsRepo, computeNodeIpfsMultiaddresses, err := ipfs.StartBacalhauDevelopmentIpfsServer(ctx, connectToMultiAddress)
 		if err != nil {
-			log.Error(err)
+			log.Error().Err(err).Msg("Unable to start Bacalhau Dev Ipfs Server")
 			return nil, err
 		}
 
 		bacalhauMultiAddresses = append(bacalhauMultiAddresses, bacalhauMultiAddress)
-		ipfsMultiAddresses = append(ipfsMultiAddresses, ipfsMultiaddress)
+		devstackIpfsMultiAddresses = append(devstackIpfsMultiAddresses, computeNodeIpfsMultiaddresses[0])
 
 		computeNode.IpfsRepo = ipfsRepo
-		computeNode.IpfsConnectMultiAddress = ipfsMultiaddress
 
-		fmt.Printf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
-		fmt.Printf("ipfs multiaddress: %s\n", ipfsMultiaddress)
-		fmt.Printf("ipfs repo: %s\n", ipfsRepo)
+		log.Debug().Msgf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
+		log.Debug().Msgf("ipfs multiaddress: %s\n", devstackIpfsMultiAddresses)
+		log.Debug().Msgf("ipfs repo: %s\n", ipfsRepo)
 
 		devStackNode := &DevStackNode{
 			ComputeNode:   computeNode,
@@ -109,11 +112,13 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, devStackNode)
+		log.Debug().Msg("==== Complete")
 	}
 
 	stack := &DevStack{
 		Nodes: nodes,
 	}
 
+	log.Debug().Msg("Finished provisioning nodes.")
 	return stack, nil
 }

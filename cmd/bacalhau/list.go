@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ var listCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%s\n", msgBytes)
+			log.Debug().Msg(fmt.Sprintf("List msg bytes: %s\n", msgBytes))
 			return nil
 		}
 

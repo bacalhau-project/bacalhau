@@ -1,5 +1,10 @@
 package types
 
+import (
+	"fmt"
+	"strings"
+)
+
 // a representation of some data on a storage engine
 // this opens up jobs that could operate on different types
 // of storage at once
@@ -87,4 +92,15 @@ type SubmitArgs struct {
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
 	Jobs map[string]*Job
+}
+
+func PrettyPrintJob(j *JobSpec) string {
+
+	return fmt.Sprintf(`
+	Commands: %s
+	Cpu: %d
+	Memory %d
+	Disk: %d
+`, strings.Join(j.Commands, "', '"), j.Cpu, j.Disk, j.Memory)
+
 }

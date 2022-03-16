@@ -1,0 +1,10 @@
+apple
+orange
+pineapple
+pear
+peach
+cherry
+kiwi is delicious
+strawberry
+lemon
+raspberry

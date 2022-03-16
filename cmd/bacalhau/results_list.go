@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,7 @@ var resultsListCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%s\n", msgBytes)
+			log.Debug().Msg(fmt.Sprintf("Result list msgBytes: %s\n", msgBytes))
 			return nil
 		}
 
@@ -48,7 +49,7 @@ var resultsListCmd = &cobra.Command{
 		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE", "CORRECT"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
 
-		fmt.Printf("-------------------------> %f\n", job.Deal.Tolerance)
+		log.Debug().Msg(fmt.Sprintf("Job deal tolerance: %f\n", job.Deal.Tolerance))
 
 		// TODO: load the job so we can get at Deal.Tolerance
 		clustered := traces.TraceCollection{
@@ -63,7 +64,7 @@ var resultsListCmd = &cobra.Command{
 			}
 
 			if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-				fmt.Printf("continue not exist\n")
+				log.Warn().Msg("Results folder does not exist, continuing.")
 				continue
 			}
 			clustered.Traces = append(clustered.Traces, traces.Trace{
@@ -74,8 +75,10 @@ var resultsListCmd = &cobra.Command{
 
 		correctGroup, incorrectGroup, _ := clustered.Cluster()
 
-		fmt.Printf("correct: %+v\n", correctGroup)
-		fmt.Printf("incorrect: %+v\n", incorrectGroup)
+		log.Info().Msg(fmt.Sprintf(`
+Returned results:
+	Correct: %+v
+	Incorrect: %+v`, correctGroup, incorrectGroup))
 
 		scores, err := clustered.Scores()
 		if err != nil {

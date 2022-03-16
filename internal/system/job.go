@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/rs/zerolog/log"
 )
 
 type ResultsList struct {
@@ -45,6 +46,10 @@ func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) 
 func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 	results := []ResultsList{}
 
+	log.Debug().Msgf("All job states: %+v", job)
+
+	log.Debug().Msgf("Number of job states created: %d", len(job.State))
+
 	for node := range job.State {
 
 		cid := ""
@@ -60,6 +65,8 @@ func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 		})
 	}
 
+	log.Debug().Msgf("Number of results created: %d", len(results))
+
 	return &results, nil
 }
 
@@ -71,19 +78,21 @@ func FetchJobResult(results ResultsList) error {
 	if _, err := os.Stat(resultsFolder); !os.IsNotExist(err) {
 		return nil
 	}
-	fmt.Printf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
+	log.Debug().Msgf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
 	resultsFolder, err = EnsureSystemDirectory(results.Folder)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error ensuring system directory: %s", err)
 	}
-	err = RunCommand("ipfs", []string{
+	output, err := RunCommandGetResults("ipfs", []string{
 		"get",
 		results.Cid,
 		"--output",
 		resultsFolder,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf(`Error getting fetching results:
+Output: %s
+Error: %s`, output, err)
 	}
 	return nil
 }
