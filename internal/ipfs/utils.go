@@ -76,6 +76,17 @@ func StartDaemon(
 	if err != nil {
 		return err
 	}
+	// we don't want to discover local peers on our network
+	// especially when testing in parallel with multiple clusters
+	_, err = IpfsCommand(repoPath, []string{
+		"config",
+		"Discovery.MDNS.Enabled",
+		"--json",
+		"false",
+	})
+	if err != nil {
+		return err
+	}
 	log.Debug().Msgf("Starting IPFS Daemon: IPFS_PATH=%s ipfs daemon", repoPath)
 	cmd := exec.Command("ipfs", "daemon")
 	cmd.Env = []string{

@@ -169,6 +169,23 @@ Error: %+v
 Output: %s`, err, output)
 	}
 
+	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
+		runtime.Kind,
+		"exec",
+		runtime.Name,
+		runtime.doubleDash,
+		"ipfs",
+		"config",
+		"Discovery.MDNS.Enabled",
+		"--json",
+		"false",
+	}))
+	if err != nil {
+		return fmt.Errorf(`Error disabling MDNS discovery:
+Error: %+v
+Output: %s`, err, output)
+	}
+
 	if connectToIpfsMultiaddress != "" {
 		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 			runtime.Kind,
