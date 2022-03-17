@@ -40,7 +40,7 @@ func ListJobs(
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
 		result, err := ListJobs(jsonrpcHost, jsonrpcPort)
 

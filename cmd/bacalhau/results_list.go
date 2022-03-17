@@ -23,7 +23,7 @@ var resultsListCmd = &cobra.Command{
 	Use:   "list [job_id]",
 	Short: "List results for a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
 		job, err := getJobData(cmdArgs[0])
 		if err != nil {

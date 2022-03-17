@@ -28,7 +28,7 @@ func init() {
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of 3 bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { // nolint
 
 		result, err := ipfs.IpfsCommand("", []string{"version"})
 

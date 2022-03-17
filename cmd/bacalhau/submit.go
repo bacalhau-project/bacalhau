@@ -96,7 +96,7 @@ func SubmitJob(
 	}
 
 	if !skipSyntaxChecking {
-		err, _, _ := system.CheckBashSyntax(jobCommands)
+		err := system.CheckBashSyntax(jobCommands)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func SubmitJob(
 var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 		_, err := SubmitJob(
 			jobCommands,
 			jobCids,
