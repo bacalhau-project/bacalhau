@@ -41,10 +41,10 @@ func TestSubmitSyntaxErrors(t *testing.T) {
 
 // https://github.com/koalaman/shellcheck
 var (
-	GOOD_PYTHON           = `python3 -c "time.sleep(10); %s"`
-	MISSING_QUOTE         = `python3 -c "time.sleep(10); %s` // note that trailing quote is missing
+	GOOD_PYTHON       = `python3 -c "time.sleep(10); %s"`
+	MISSING_QUOTE     = `python3 -c "time.sleep(10); %s` // note that trailing quote is missing
 	UNMATCHED_BRACKET = `function f1() {
     echo "Hello World"
 
-f1`             											 // Unmatched bracket
+f1`  // Unmatched bracket
 )

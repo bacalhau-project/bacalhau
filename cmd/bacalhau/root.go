@@ -37,9 +37,18 @@ var RootCmd = &cobra.Command{
 	Long:  `Compute over data`,
 }
 
-func Execute() {
+func Execute(version string) {
+	RootCmd.Version = version
+
+	setVersion()
+
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func setVersion() {
+	template := fmt.Sprintf("Bacalhau Version: %s\n", RootCmd.Version)
+	RootCmd.SetVersionTemplate(template)
 }
