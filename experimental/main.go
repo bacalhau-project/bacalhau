@@ -6,6 +6,13 @@ package main
 // func (*Writer) Write(p []byte) (s string) {
 // 	return s
 // }
+import (
+	"context"
+
+	dockerclient "github.com/docker/docker/client"
+	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/rs/zerolog/log"
+)
 
 func main() {
 
@@ -76,5 +83,14 @@ func main() {
 	// log.Info().Msg(fmt.Sprintf("I'm here: %s", "manks")
 	// fmt.Printf("I'm here: %s", foo)
 
-	Logger_Exp()
+	c, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		log.Fatal().Msg("fooz")
+	}
+
+	_, err = c.Info(context.Background())
+
+	if err != nil {
+		log.Fatal().Msg("fooz")
+	}
 }
