@@ -1,0 +1,2 @@
+0 1 * * * /usr/local/bin/scripts/update_peer_and_ip.sh
+@reboot /usr/local/bin/scripts/update_peer_and_ip.sh

@@ -2,9 +2,9 @@
 
 terraform apply --auto-approve
 
-echo -n "Sleeping for 30s to allow ssh to start..."
-sleep 30
-echo "Done."
+# echo -n "Sleeping for 60s to allow ssh to start..."
+# sleep 60
+# echo "Done."
 
 runRemote() {
   local args script
@@ -29,7 +29,7 @@ while IFS='' read -r line; do all_nodes_private+=("$line"); done <  <(terraform 
 first_node="${all_nodes_public[1]}"
 echo "Connecting to: ubuntu@$first_node"
 runRemote $first_node ./setup_node.sh
-peer_token=$(ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$first_node" "cat /tmp/bacalhau_peer_token")
+peer_token=$(curl "$first_node/peer_token.html")
 
 index=1
 len_nodes=${#all_nodes_public[@]}
@@ -42,12 +42,11 @@ for i in "${!all_nodes_public[@]}"; do
     this_node_public="${all_nodes_public[((i+1))]}"
     last_node_private="${all_nodes_private[((i))]}"
 
-    PEER_STRING="--peer /ip4/$last_node_private/tcp/0/p2p/$peer_token"
+    # PEER_STRING="--peer /ip4/$last_node_private/tcp/0/p2p/$peer_token"
+    PEER_STRING="--peer /ip4/0.0.0.0/tcp/0/p2p/$peer_token"
     echo "Peer string: $PEER_STRING"
 
     echo "Connecting to: ubuntu@$this_node_public"
-    echo "$PEER_STRING" | ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@$this_node_public -T "cat > /tmp/PEER_STRING"
-    runRemote "$this_node_public" ./setup_node.sh
-    peer_token=$(ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$this_node_public" "cat /tmp/bacalhau_peer_token")
+    runRemote "$this_node_public" ./setup_node.sh $PEER_STRING
     ((index=index+1))
 done

@@ -7,29 +7,43 @@ resource "aws_security_group" "allow_ssh_and_bacalhau" {
   vpc_id      = aws_vpc.bacalhau_vpc.id
   name        = "allow_ssh_and_bacalhau"
   description = "security group that allows ssh and bacalhau and all egress traffic"
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-  }
+
+}
+resource "aws_security_group_rule" "egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
+}
 
 
-  tags = {
-    Name = "allow_ssh_and_bacalhau"
-  }
+resource "aws_security_group_rule" "ingress_ssh" {
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
+}
+
+resource "aws_security_group_rule" "ingress_http" {
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
+}
+
+resource "aws_security_group_rule" "ingress_bacalhau" {
+  type              = "ingress"
+  from_port         = 54545
+  to_port           = 54545
+  protocol          = "tcp"
+  self              = true
+  security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
 }
 
 # https://geekdudes.wordpress.com/2018/01/09/install-packages-to-amazon-virtual-machine-using-terraform/
@@ -48,25 +62,45 @@ resource "aws_vpc" "bacalhau_vpc" {
 
 
 # Subnets
-resource "aws_subnet" "bacalhau_public_1" {
+resource "aws_subnet" "bacalhau_public_1_a" {
   vpc_id                  = aws_vpc.bacalhau_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = "true"
   availability_zone       = "eu-west-1a"
   tags = {
-    Name = "bacalhau_public_1"
+    Name = "bacalhau_public_1_a"
   }
 }
-resource "aws_subnet" "bacalhau_private_1" {
+resource "aws_subnet" "bacalhau_private_1_a" {
   vpc_id                  = aws_vpc.bacalhau_vpc.id
   cidr_block              = "10.0.2.0/24"
   map_public_ip_on_launch = "false"
   availability_zone       = "eu-west-1a"
 
   tags = {
-    Name = "bacalhau_private_1"
+    Name = "bacalhau_private_1_a"
   }
 }
+resource "aws_subnet" "bacalhau_public_1_b" {
+  vpc_id                  = aws_vpc.bacalhau_vpc.id
+  cidr_block              = "10.0.3.0/24"
+  map_public_ip_on_launch = "true"
+  availability_zone       = "eu-west-1b"
+  tags = {
+    Name = "bacalhau_public_1_b"
+  }
+}
+resource "aws_subnet" "bacalhau_private_1_b" {
+  vpc_id                  = aws_vpc.bacalhau_vpc.id
+  cidr_block              = "10.0.4.0/24"
+  map_public_ip_on_launch = "false"
+  availability_zone       = "eu-west-1b"
+
+  tags = {
+    Name = "bacalhau_private_1_b"
+  }
+}
+
 
 # Internet GW
 resource "aws_internet_gateway" "bacalhau_gw" {
@@ -92,9 +126,78 @@ resource "aws_route_table" "bacalhau_public_route_table" {
 
 # route associations public
 resource "aws_route_table_association" "bacalhau_public_1_a" {
-  subnet_id      = aws_subnet.bacalhau_public_1.id
+  subnet_id      = aws_subnet.bacalhau_public_1_a.id
   route_table_id = aws_route_table.bacalhau_public_route_table.id
 }
+resource "aws_route_table_association" "bacalhau_public_1_b" {
+  subnet_id      = aws_subnet.bacalhau_public_1_b.id
+  route_table_id = aws_route_table.bacalhau_public_route_table.id
+}
+
+resource "aws_alb" "alb" {
+  name               = "bacalhau-alb"
+  security_groups    = ["${aws_security_group.allow_ssh_and_bacalhau.id}"]
+  subnets            = [aws_subnet.bacalhau_private_1_a.id, aws_subnet.bacalhau_private_1_b.id, ]
+  load_balancer_type = "application"
+  internal           = false
+  idle_timeout       = 60
+
+  timeouts {
+    create = "30m"
+    delete = "30m"
+  }
+  tags = {
+    Name = "bacalhau-alb"
+  }
+}
+
+resource "aws_alb_listener" "http_listener" {
+  load_balancer_arn = aws_alb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = aws_alb_target_group.bacalhau_alb_http_target_group.arn
+    type             = "forward"
+  }
+}
+
+
+resource "aws_alb_listener" "bacalhau_listener" {
+  load_balancer_arn = aws_alb.alb.arn
+  port              = 54545
+  protocol          = "TCP"
+
+  default_action {
+    target_group_arn = aws_alb_target_group.bacalhau_alb_bac_target_group.arn
+    type             = "forward"
+  }
+}
+resource "aws_alb_target_group" "bacalhau_alb_http_target_group" {
+  name     = "bacalhau-alb-http-target"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.bacalhau_vpc.id
+  stickiness {
+    type = "lb_cookie"
+  }
+  health_check {
+    path = "/"
+    port = 80 
+  }
+}
+
+
+resource "aws_alb_target_group" "bacalhau_alb_bac_target_group" {
+  name     = "bacalhau-alb-bac-target"
+  port     = 54545
+  protocol = "TCP"
+  vpc_id   = aws_vpc.bacalhau_vpc.id
+  stickiness {
+    type = "lb_cookie"
+  }
+}
+
 
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
@@ -108,7 +211,7 @@ module "instance" {
 
   PATH_TO_PUBLIC_KEY             = var.PATH_TO_PUBLIC_KEY
   PATH_TO_PRIVATE_KEY            = var.PATH_TO_PRIVATE_KEY
-  SUBNET_ID                      = aws_subnet.bacalhau_public_1.id
+  SUBNET_ID                      = aws_subnet.bacalhau_public_1_a.id
   AWS_INTERNET_GATEWAY_ID        = aws_internet_gateway.bacalhau_gw.id
   SECURITY_GROUP_ALLOW_SSH_ID    = aws_security_group.allow_ssh_and_bacalhau.id
   AWS_KEY_PAIR_DEPLOYER_KEY_NAME = aws_key_pair.deployer.key_name

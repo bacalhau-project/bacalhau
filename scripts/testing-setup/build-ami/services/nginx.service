@@ -1,0 +1,12 @@
+[Unit]
+Description=Nginxng
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/health_check
+ExecStart=docker run --name health-check -v /home/ubuntu/health_check:/usr/share/nginx/html:ro -d -p 80:80 nginx
+Type=simple
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

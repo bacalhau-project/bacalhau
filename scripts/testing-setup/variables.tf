@@ -15,7 +15,7 @@ variable "AWS_CREDENTIALS_FILE" {
 variable "AMIS" {
   type = map(string)
   default = {
-    eu-west-1 = "ami-0ef38d2cfb7fd2d03"
+    eu-west-1 = "ami-0c9673c29fdb48c12"
   }
 }
 
