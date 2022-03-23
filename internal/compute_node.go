@@ -54,6 +54,13 @@ func NewComputeNode(
 
 			log.Debug().Msgf("Found new job to schedule: \n%+v\n", jobEvent.JobSpec)
 
+			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
+			// if job.Engine == "docker" && !system.IsDockerRunning() {
+			// 	err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
+			// 	log.Warn().Msgf(err.Error())
+			// 	return false, err
+			// }
+
 			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
@@ -122,6 +129,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 		return true, nil
 	}
 	for _, input := range job.Inputs {
+
 		hasCid, err := ipfs.HasCid(node.IpfsRepo, input.Cid)
 		if err != nil {
 			return false, err
@@ -154,6 +162,12 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	vm, err := runtime.NewRuntime(job)
 
 	if err != nil {
+		return "", err
+	}
+
+	if vm.Kind == "docker" && !system.IsDockerRunning() {
+		err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
+		log.Warn().Msgf(err.Error())
 		return "", err
 	}
 
