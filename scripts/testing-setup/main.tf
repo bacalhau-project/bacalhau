@@ -1,6 +1,15 @@
 provider "aws" {
   region                   = var.AWS_REGION
   shared_credentials_files = [var.AWS_CREDENTIALS_FILE]
+
+  default_tags {
+    tags = {
+      Project = "bacalhau-test-cluster"
+    }
+  }
+}
+resource "random_id" "run" {
+  byte_length = 4
 }
 
 resource "aws_security_group" "allow_ssh_and_bacalhau" {
@@ -17,7 +26,6 @@ resource "aws_security_group_rule" "egress_all" {
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
 }
-
 
 resource "aws_security_group_rule" "ingress_ssh" {
   type              = "ingress"
@@ -42,7 +50,7 @@ resource "aws_security_group_rule" "ingress_bacalhau" {
   from_port         = 54545
   to_port           = 54545
   protocol          = "tcp"
-  self              = true
+  cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.allow_ssh_and_bacalhau.id
 }
 
@@ -134,11 +142,10 @@ resource "aws_route_table_association" "bacalhau_public_1_b" {
   route_table_id = aws_route_table.bacalhau_public_route_table.id
 }
 
-resource "aws_alb" "alb" {
-  name               = "bacalhau-alb"
-  security_groups    = ["${aws_security_group.allow_ssh_and_bacalhau.id}"]
+resource "aws_lb" "nlb" {
+  name               = "bacalhau-nlb-${random_id.run.hex}"
   subnets            = [aws_subnet.bacalhau_private_1_a.id, aws_subnet.bacalhau_private_1_b.id, ]
-  load_balancer_type = "application"
+  load_balancer_type = "network"
   internal           = false
   idle_timeout       = 60
 
@@ -147,60 +154,54 @@ resource "aws_alb" "alb" {
     delete = "30m"
   }
   tags = {
-    Name = "bacalhau-alb"
+    Name = "bacalhau-nlb"
   }
 }
 
-resource "aws_alb_listener" "http_listener" {
-  load_balancer_arn = aws_alb.alb.arn
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.nlb.arn
   port              = 80
-  protocol          = "HTTP"
+  protocol          = "TCP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.bacalhau_alb_http_target_group.arn
+    target_group_arn = aws_lb_target_group.bacalhau_lb_http_target_group.arn
     type             = "forward"
   }
 }
 
 
-resource "aws_alb_listener" "bacalhau_listener" {
-  load_balancer_arn = aws_alb.alb.arn
+resource "aws_lb_listener" "bacalhau_listener" {
+  load_balancer_arn = aws_lb.nlb.arn
   port              = 54545
   protocol          = "TCP"
 
   default_action {
-    target_group_arn = aws_alb_target_group.bacalhau_alb_bac_target_group.arn
+    target_group_arn = aws_lb_target_group.bacalhau_lb_bac_target_group.arn
     type             = "forward"
   }
 }
-resource "aws_alb_target_group" "bacalhau_alb_http_target_group" {
-  name     = "bacalhau-alb-http-target"
+resource "aws_lb_target_group" "bacalhau_lb_http_target_group" {
+  name     = "bacalhau-lb-http-target"
   port     = 80
-  protocol = "HTTP"
+  protocol = "TCP"
   vpc_id   = aws_vpc.bacalhau_vpc.id
-  stickiness {
-    type = "lb_cookie"
-  }
   health_check {
     path = "/"
-    port = 80 
+    port = 80
   }
 }
 
 
-resource "aws_alb_target_group" "bacalhau_alb_bac_target_group" {
-  name     = "bacalhau-alb-bac-target"
+resource "aws_lb_target_group" "bacalhau_lb_bac_target_group" {
+  name     = "bacalhau-lb-bac-target-${random_id.run.hex}"
   port     = 54545
   protocol = "TCP"
   vpc_id   = aws_vpc.bacalhau_vpc.id
-  stickiness {
-    type = "lb_cookie"
-  }
 }
 
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "deployer-key"
+resource "aws_key_pair" "bacalhau_deployer_key" {
+  key_name   = "bacalhau-deployer-key-${random_id.run.hex}"
   public_key = file("${var.PATH_TO_PUBLIC_KEY}")
 }
 
@@ -214,10 +215,10 @@ module "instance" {
   SUBNET_ID                      = aws_subnet.bacalhau_public_1_a.id
   AWS_INTERNET_GATEWAY_ID        = aws_internet_gateway.bacalhau_gw.id
   SECURITY_GROUP_ALLOW_SSH_ID    = aws_security_group.allow_ssh_and_bacalhau.id
-  AWS_KEY_PAIR_DEPLOYER_KEY_NAME = aws_key_pair.deployer.key_name
+  AWS_KEY_PAIR_DEPLOYER_KEY_NAME = aws_key_pair.bacalhau_deployer_key.key_name
   AMIS                           = var.AMIS
   AWS_REGION                     = var.AWS_REGION
-  INSTANCE_TYPE                  = "t2.micro"
+  INSTANCE_TYPE                  = "t2.small"
   NODE_NUMBER                    = tostring(count.index)
 }
 

@@ -3,7 +3,7 @@ Description=Bacalhau
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/
-ExecStart=/usr/local/bin/scripts/run_bacalhau.sh ${PEER_STRING}
+ExecStart=/usr/local/bin/scripts/run_bacalhau.sh
 Type=simple
 TimeoutStopSec=10
 Restart=on-failure

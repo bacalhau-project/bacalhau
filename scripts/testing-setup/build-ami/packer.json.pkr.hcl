@@ -19,7 +19,7 @@ variable "ssh_username" {
 # https://www.packer.io/docs/templates/hcl_templates/blocks/source
 source "amazon-ebs" "builder_ebs_image" {
   ami_name                = format("%s-%s-%s", "bacalhau_latest_", regex_replace(timestamp(), "[- TZ:]", ""), uuidv4())
-  instance_type           = "t2.medium"
+  instance_type           = "c6a.xlarge"
   region                  = "eu-west-1"
   shared_credentials_file = "~/.aws/credentials"
   source_ami              = "ami-01061ffae6ddd2896"
@@ -44,6 +44,10 @@ build {
   sources = ["source.amazon-ebs.builder_ebs_image"]
 
   provisioner "shell" {
+    inline = [ "cloud-init status --wait"]
+  }
+
+  provisioner "shell" {
     inline = [<<EOM
   mkdir -p /tmp/services
   mkdir -p /tmp/scripts
@@ -59,11 +63,6 @@ build {
   provisioner "file" {
     destination = "/tmp/scripts"
     source      = "scripts/"
-  }
-
-  provisioner "file" {
-    destination = "/home/ubuntu/crontab_entries"
-    source      = "crontab_entries"
   }
 
   provisioner "shell" {
@@ -87,5 +86,4 @@ build {
   provisioner "shell" {
     inline = ["sudo /usr/local/bin/scripts/setup_node.sh"]
   }
-
 }
