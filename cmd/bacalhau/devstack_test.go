@@ -190,6 +190,11 @@ func TestCommands(t *testing.T) {
 		"grep": {file: "../../testdata/grep_file.txt", cmd: `timeout 2000 grep kiwi /ipfs/%s || echo "ipfs read timed out"`, contains: "kiwi is delicious", expected_line_count: 4},
 		// "sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+		// NEED DEDUPE FILES
+		// NEED RUN DOCKER CONTAINER
+		// NEED INSTALL IMAGEMAGICK AND RUN
+		// NEED CONFLICTING LIBRARY (CUDA?)
+		// NEED RUN PYTHON SCRIPT
 	}
 
 	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
