@@ -47,4 +47,5 @@ var (
     echo "Hello World"
 
 f1`  // Unmatched bracket across several lines
+	// TODO: Need to do a test for binary listed not on path (possible??)
 )

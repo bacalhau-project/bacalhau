@@ -264,6 +264,8 @@ Output: %s`, err, output)
 				"-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
 				runtime.Name,
 			}))
+
+			threadLogger.Debug().Msgf("Docker provided IPAddress for command results: %s", containerIp)
 		} else {
 			containerIp, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
 				"ignite",
@@ -273,6 +275,7 @@ Output: %s`, err, output)
 				"-t",
 				"{{.Status.Network.IPAddresses}}",
 			}))
+			threadLogger.Debug().Msgf("Ignite provided IPAddress for command results: %s", containerIp)
 		}
 
 		if err != nil {
@@ -296,12 +299,16 @@ Output: %s`, err, output)
 
 		containerIpfsId = strings.TrimSuffix(containerIpfsId, "\n")
 
+		threadLogger.Debug().Msgf("Container Ipfs ID: %s", containerIpfsId)
+
 		if err != nil {
 			return fmt.Errorf(`Error getting container ipfs id:
 	Error: %+v
 	Output: %s`, err, output)
 		}
 
+		// TODO: Is this correct? Does it work under firecracker?
+		// TODO: This fails with internal docker networking (for some reason)
 		output, err = ipfs.IpfsCommand(privateIpfsRepo, []string{
 			"swarm", "connect", fmt.Sprintf("/ip4/%s/tcp/4001/p2p/%s", containerIp, containerIpfsId),
 		})

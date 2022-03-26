@@ -130,15 +130,15 @@ test:
 
 .PHONY: test-devstack
 test-devstack:
-	go test -v -count 1 -timeout 300s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-commands
 test-commands:
-	go test -v -count 1 -timeout 3000s -run ^TestCommands$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestCommands$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
 
 .PHONY: test-badactors
 test-badactors:
-	go test -v -count 1 -timeout 3000s -run ^TestCatchBadActors$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestCatchBadActors$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
 
 ################################################################################
 # Target: lint					                               #
