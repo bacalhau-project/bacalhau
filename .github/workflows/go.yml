@@ -31,10 +31,13 @@ jobs:
         include:
           - os: ubuntu-latest
             target_os: linux
-            target_arch: [amd64, x86_64]
+            target_arch: amd64
+          - os: ubuntu-latest
+            target_os: linux
+            target_arch: x86_64
           - os: macOS-latest
             target_os: darwin
-            target_arch: [arm64]
+            target_arch: arm64
 
     steps:
       - uses: actions/checkout@main
