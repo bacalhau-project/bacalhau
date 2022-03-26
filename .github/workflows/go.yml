@@ -29,12 +29,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macOS-latest]
-        target_arch: [arm, arm64, amd64]
+        target_arch: [arm64, amd64, x86_64]
         include:
           - os: ubuntu-latest
             target_os: linux
+            target_arch: [amd64, x86_64]
           - os: macOS-latest
             target_os: darwin
+            target_arch: [arm64]
 
     steps:
       - uses: actions/checkout@main
