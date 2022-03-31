@@ -51,10 +51,19 @@ func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, cont
 	return stack, cancelFunction
 }
 
+// this might be called multiple times if KEEP_STACK is active
+// the first time - once the test has completed, this function will be called
+// it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
 func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
-	cancelFunction()
-	// need some time to let ipfs processes shut down
-	time.Sleep(time.Second * 1)
+	if os.Getenv("KEEP_STACK") == "" {
+		cancelFunction()
+		// need some time to let ipfs processes shut down
+		time.Sleep(time.Second * 1)
+	} else {
+		stack.PrintNodeInfo()
+		os.Setenv("KEEP_STACK", "")
+		select {}
+	}
 }
 
 func TestDevStack(t *testing.T) {
@@ -188,7 +197,7 @@ func TestCommands(t *testing.T) {
 		expected_line_count int
 	}{
 		"grep": {file: "../../testdata/grep_file.txt", cmd: `timeout 2000 grep kiwi /ipfs/%s || echo "ipfs read timed out"`, contains: "kiwi is delicious", expected_line_count: 4},
-		// "sed":  {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
+		// "sed": {file: "../../testdata/sed_file.txt", cmd: "sed -n '/38.7[2-4]..,-9.1[3-7]../p' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// "awk":  {file: "../../testdata/awk_file.txt", cmd: "awk -F',' '{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}' /ipfs/%s", contains: "LISBON", expected_line_count: 7},
 		// NEED DEDUPE FILES
 		// NEED RUN DOCKER CONTAINER

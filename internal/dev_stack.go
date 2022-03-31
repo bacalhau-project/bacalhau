@@ -122,3 +122,20 @@ func NewDevStack(
 	log.Debug().Msg("Finished provisioning nodes.")
 	return stack, nil
 }
+
+func (stack *DevStack) PrintNodeInfo() {
+	for nodeNumber, node := range stack.Nodes {
+		log.Info().Msg(fmt.Sprintf(`
+Node %d:
+IPFS_PATH=%s
+JSON_PORT=%d
+bin/bacalhau --jsonrpc-port=%d list
+`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort))
+	}
+
+	log.Info().Msg(fmt.Sprintf(`
+To add a file, type the following:
+file_path="your_file_path_here"
+cid=$( IPFS_PATH=%s ipfs add -q $file_path )
+`, stack.Nodes[0].IpfsRepo))
+}
