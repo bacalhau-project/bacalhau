@@ -374,7 +374,7 @@ Output: %s`, err, output)
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
-	log.Warn().Msgf(`
+	log.Info().Msgf(`
 ========================================
 Running job: %s
 ========================================
