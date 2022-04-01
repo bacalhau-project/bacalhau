@@ -153,6 +153,17 @@ test-badactors:
 	TEST=TestCatchBadActors make test-one
 
 ################################################################################
+# Target: devstack
+################################################################################
+.PHONY: devstack
+devstack:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack
+
+.PHONY: devstack-badactor
+devstack-badactor:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1
+
+################################################################################
 # Target: lint					                               #
 ################################################################################
 .PHONY: lint
