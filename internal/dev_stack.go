@@ -124,18 +124,30 @@ func NewDevStack(
 }
 
 func (stack *DevStack) PrintNodeInfo() {
+
+	logString := `
+-------------------------------
+environment
+-------------------------------	
+`
 	for nodeNumber, node := range stack.Nodes {
-		log.Info().Msg(fmt.Sprintf(`
-Node %d:
-IPFS_PATH=%s
-JSON_PORT=%d
-bin/bacalhau --jsonrpc-port=%d list
-`, nodeNumber, node.IpfsRepo, node.JsonRpcPort, node.JsonRpcPort))
+
+		logString = logString + fmt.Sprintf(`
+IPFS_PATH_%d=%s
+JSON_PORT_%d=%d`, nodeNumber, node.IpfsRepo, nodeNumber, node.JsonRpcPort)
+
 	}
 
-	log.Info().Msg(fmt.Sprintf(`
-To add a file, type the following:
-file_path="your_file_path_here"
-cid=$( IPFS_PATH=%s ipfs add -q $file_path )
-`, stack.Nodes[0].IpfsRepo))
+	log.Info().Msg(logString + "\n")
+
+	log.Info().Msg(`
+-------------------------------
+example job
+-------------------------------
+
+cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
+go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep kiwi /ipfs/$cid"
+go run . --jsonrpc-port=$JSON_PORT_0 list
+
+`)
 }
