@@ -120,6 +120,9 @@ func (runtime *Runtime) Stop() (string, error) {
 		threadLogger.Debug().Msgf("-----> ON CONTAINER SHUTDOWN, ipfs swarm peers errored: %s", err)
 		// not returning err because this is just for debugging and we still want to clean up
 	}
+	if os.Getenv("KEEP_CONTAINERS") != "" {
+		return "", nil
+	}
 	threadLogger.Debug().Msgf("-----> ON CONTAINER SHUTDOWN, ipfs swarm peers is: %s", output)
 	runtime.stopChan <- true
 	return system.RunCommandGetResults("sudo", []string{
@@ -374,7 +377,7 @@ Output: %s`, err, output)
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
-	log.Warn().Msgf(`
+	log.Info().Msgf(`
 ========================================
 Running job: %s
 ========================================

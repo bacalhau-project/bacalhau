@@ -136,17 +136,32 @@ clean:
 test:
 	go test ./... -v
 
+.PHONY: test-one
+test-one:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+
 .PHONY: test-devstack
 test-devstack:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestDevStack$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	TEST=TestDevStack make test-one
 
 .PHONY: test-commands
 test-commands:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestCommands$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	TEST=TestCommands make test-one
 
 .PHONY: test-badactors
 test-badactors:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestCatchBadActors$$ github.com/filecoin-project/bacalhau/cmd/bacalhau
+	TEST=TestCatchBadActors make test-one
+
+################################################################################
+# Target: devstack
+################################################################################
+.PHONY: devstack
+devstack:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack
+
+.PHONY: devstack-badactor
+devstack-badactor:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1
 
 ################################################################################
 # Target: lint					                               #

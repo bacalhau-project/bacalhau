@@ -75,7 +75,7 @@ var resultsListCmd = &cobra.Command{
 
 		correctGroup, incorrectGroup, _ := clustered.Cluster()
 
-		log.Info().Msg(fmt.Sprintf(`
+		log.Debug().Msg(fmt.Sprintf(`
 Returned results:
 	Correct: %+v
 	Incorrect: %+v`, correctGroup, incorrectGroup))

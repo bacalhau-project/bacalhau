@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
@@ -161,13 +160,13 @@ func (node *RequesterNode) ProcessResults(job *types.Job, nodeId string) error {
 	}
 
 	if completedNodes < job.Deal.Concurrency {
-		err := fmt.Errorf("Not enough nodes have completed task. Actual: %d  Needed: %d", completedNodes, job.Deal.Concurrency)
-		log.Debug().Err(err)
-		return err
+		log.Debug().Msgf("Not enough nodes have completed task. Actual: %d  Needed: %d", completedNodes, job.Deal.Concurrency)
+		return nil
 	}
 
 	// ok all of the nodes that have been assigned have marked the status as complete
 	// let's work out who is "correct" and who is "incorrect"
+	// TODO: implement the client side checking here to trigger "results-accepted" and "results-rejected" messages
 
 	return nil
 }

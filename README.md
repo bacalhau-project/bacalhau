@@ -110,3 +110,7 @@ NOTE: once you have pushed a new version of the image you must:
 sudo ignite image ls
 sudo ignite image rm <id_of_old_image>
 ```
+
+## local devstack
+
+The easiest way to spin up bacalhau and kick the tires is to use the [devstack](./docs/devstack.md)

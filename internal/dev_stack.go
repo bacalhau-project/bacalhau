@@ -122,3 +122,32 @@ func NewDevStack(
 	log.Debug().Msg("Finished provisioning nodes.")
 	return stack, nil
 }
+
+func (stack *DevStack) PrintNodeInfo() {
+
+	logString := `
+-------------------------------
+environment
+-------------------------------	
+`
+	for nodeNumber, node := range stack.Nodes {
+
+		logString = logString + fmt.Sprintf(`
+IPFS_PATH_%d=%s
+JSON_PORT_%d=%d`, nodeNumber, node.IpfsRepo, nodeNumber, node.JsonRpcPort)
+
+	}
+
+	log.Info().Msg(logString + "\n")
+
+	log.Info().Msg(`
+-------------------------------
+example job
+-------------------------------
+
+cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
+go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep kiwi /ipfs/$cid"
+go run . --jsonrpc-port=$JSON_PORT_0 list
+
+`)
+}
