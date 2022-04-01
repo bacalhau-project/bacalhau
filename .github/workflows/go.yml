@@ -13,36 +13,38 @@ on:
         required: false
         default: "false"
 
+env:
+  golang_ci_lint_version: 1.44.2
+
 jobs:
-  build:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+  release:
+    name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.os }}
     env:
-      GOVER: 1.17
-      GOLANGCILINT_VER: v1.44
+      GOVER: ${{ matrix.go-version }}
+      GOLANGCILINT_VER: v1.44.2
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
-      TEST_OUTPUT_FILE_PREFIX: test_report
     strategy:
       fail-fast: false
       matrix:
+        go-version: [1.17.6]
+        os: [ubuntu-latest]
+        target_arch: [amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
-            target_arch: amd64
-          # - os: macOS-latest
-          #   target_os: darwin
-          #   target_arch: arm64
 
     steps:
       - uses: actions/checkout@main
-      - name: Set up Go ${{ env.GOVER }}
+      - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ env.GOVER }}
+          go-version: ${{ matrix.go-version }}
       - run: go version
+
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
