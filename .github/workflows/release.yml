@@ -12,7 +12,7 @@ on:
         default: "false"
 
 env:
-  golang_ci_lint_version: 1.44.2
+  golang_ci_lint_version: 1.44
 
 jobs:
   release:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GOVER: ${{ matrix.go-version }}
-      GOLANGCILINT_VER: v1.44.2
+      GOLANGCILINT_VER: ${{ env.golang_ci_lint_version }}
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
