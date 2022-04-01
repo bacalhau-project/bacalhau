@@ -110,7 +110,7 @@ func StartDaemon(
 		log.Debug().Msg("waiting for ipfs context done\n")
 		<-ctx.Done()
 		_ = cmd.Process.Kill()
-		log.Debug().Msg("got to after closing ipfs daemon\n")
+		log.Debug().Msg("Closed ipfs server\n")
 	}(ctx, cmd)
 	return nil
 }

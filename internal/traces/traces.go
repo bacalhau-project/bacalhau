@@ -260,7 +260,7 @@ func (t *TraceCollection) Cluster() ([]string, []string, error) {
 
 	// TODO: Print the means here
 
-	if math.Abs(float64(clusters[0].Center[0])-float64(clusters[1].Center[0])) < t.Tolerance {
+	if len(clusters) <= 1 || math.Abs(float64(clusters[0].Center[0])-float64(clusters[1].Center[0])) < t.Tolerance {
 
 		allIds := []string{}
 		emptyIds := []string{}
