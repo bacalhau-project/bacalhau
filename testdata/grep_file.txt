@@ -1,7 +1,7 @@
 apple
 orange
 pineapple
-pear
+pear is nice
 peach
 cherry
 kiwi is delicious
