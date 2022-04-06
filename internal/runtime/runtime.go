@@ -24,7 +24,6 @@ const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
 type Runtime struct {
 	Kind       string // "ignite" or "docker"
 	doubleDash string
-	Id         string
 	Name       string
 	Job        *types.JobSpec
 	JobId      string
@@ -42,11 +41,12 @@ func cleanEmpty(values []string) []string {
 }
 
 func NewRuntime(job *types.Job) (*Runtime, error) {
-	id, err := uuid.NewRandom()
+	// runtimeId exists only to ensure we don't have two containers / ignite vms with the same name
+	runtimeId, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("bacalhau%s%s", job.Id, id.String())
+	name := fmt.Sprintf("bacalhau%s%s", job.Id, runtimeId.String())
 	// allow CI to use docker in place of ignite
 	kind := os.Getenv("BACALHAU_RUNTIME")
 	doubleDash := ""
@@ -63,7 +63,6 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 	runtime := &Runtime{
 		Kind:       kind,
 		doubleDash: doubleDash,
-		Id:         id.String(),
 		JobId:      job.Id,
 		Name:       name,
 		Job:        job.Spec,
@@ -418,7 +417,7 @@ Running job: %s
 		return err
 	}
 
-	threadLogger.Info().Msgf("Finished writing results of job (Id: %s) to results folder (%s).", runtime.Id, resultsFolder)
+	threadLogger.Info().Msgf("Finished writing results of job (Id: %s) to results folder (%s).", runtime.JobId, resultsFolder)
 
 	// copy the psrecord metrics out of the runtime
 	filesToCopy := []string{
