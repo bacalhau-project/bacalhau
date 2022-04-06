@@ -42,6 +42,7 @@ func cleanEmpty(values []string) []string {
 }
 
 func NewRuntime(job *types.Job) (*Runtime, error) {
+	// TODO: #77 Can we comment out next four lines and just use runtime.Job.Id?
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
@@ -144,6 +145,7 @@ func (runtime *Runtime) PrepareJob(
 	privateIpfsRepo string,
 ) error {
 	logger.Initialize()
+	// TODO: #78 Swap all threadloggers to use eventual unique jobid + slice id
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
 	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
@@ -248,7 +250,7 @@ Output: %s`, err, output)
 	go func() {
 		<-runtime.stopChan
 
-		// TODO: Should we check the result here?
+		// TODO: #73 Should we check the result here?
 		ipfsMountCmd.Process.Kill() // nolint
 	}()
 
@@ -369,11 +371,11 @@ Output: %s`, err, output)
 	return nil
 }
 
-// TODO: mount input data files
-// TODO: mount output data files
+// TODO: #74 mount input data files
+// TODO: #75 mount output data files
 // psrecord invoke the job that we have prepared at /job.sh
 // copy the psrecord metrics out of the runtime
-// TODO: bunlde the results data and metrics
+// TODO: #76 bundle the results data and metrics
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
