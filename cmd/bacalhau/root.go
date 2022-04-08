@@ -1,10 +1,12 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 )
 
 var jsonrpcPort int
@@ -37,15 +39,21 @@ var RootCmd = &cobra.Command{
 	Long:  `Compute over data`,
 }
 
-func Execute(version string) {
-	RootCmd.Version = version
+func Execute(version string, ctx context.Context) {
 
+	_, span := otel.Tracer("Root Command").Start(ctx, "Root Span")
+	defer span.End()
+
+	RootCmd.Version = version
 	setVersion()
 
-	if err := RootCmd.Execute(); err != nil {
+	if err := RootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		span.End()
 		os.Exit(1)
 	}
+
+	span.End()
 }
 
 func setVersion() {
