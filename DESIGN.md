@@ -133,3 +133,5 @@ Compute-Over-Data == Cod == Bacalhau
 * IPTF - IPFS + TensorFlow (2018) - https://github.com/tesserai/iptf
 * Lurk -> Run queries over Filecoin Sealed Data (no public paper yet)
 * Radix - Nomad based scheduler for  IPFS cluster (only) - high level spec doc https://docs.google.com/document/d/18hdYBmDlvusEOQ-iSNIO_IAEOvJVFL1MyAU_B8hON9Q/edit?usp=sharing
+* Bringing Arbitrary Compute to Authoritative Data https://queue.acm.org/detail.cfm?id=2645649
+* Manta: a scalable, distributed object store https://github.com/joyent/manta
