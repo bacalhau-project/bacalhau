@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -45,23 +48,46 @@ func TestOtelTrace(t *testing.T) {
 
 	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value("id"))))
 	span.SetAttributes(attribute.String("Start", fmt.Sprintf("%s", time.Now().UTC())))
-	// bacalhau.Execute(VERSION, otelCtx)
-	// log.Trace().Msgf("Execution finished - %s", time.Since(start))
+	span.AddEvent("Test Root Event")
+
+	_, subspan := tracer.Start(otelCtx, "Sub Span")
+	subspan.SetAttributes(attribute.String("Sub Span Start", fmt.Sprintf("%s", time.Now().UTC())))
+	subspan.AddEvent("Test Sub Event")
+	subspan.SetAttributes(attribute.String("Sub Span End", fmt.Sprintf("%s", time.Now().UTC())))
+
+	subspan.End()
+
 	span.SetAttributes(attribute.String("End", fmt.Sprintf("%s", time.Now().UTC())))
 
 	span.End()
 
 	cleanUpOtel()
 
-	var result Trace
-	s := []byte(w.String())
-	json.Unmarshal(s, &result)
+	traces := make(map[string]Trace)
 
-	fmt.Print(ctxWithId)
+	decoder := json.NewDecoder(strings.NewReader(w.String()))
+	for {
+		var trace Trace
 
-	assert.Equal(t, result.Attributes[0].Key, "Id")
-	assert.Equal(t, result.Attributes[0].Value.Value, otelCtx.Value("id").(uuid.UUID).String())
-	assert.Contains(t, result.Attributes[1].Key, "Start")
-	assert.Contains(t, result.Attributes[2].Key, "End")
+		err := decoder.Decode(&trace)
+		if err == io.EOF {
+			// all done
+			break
+		}
+		if err != nil {
+			log.Fatal().Msg("Failed to decode trace")
+		}
+		traces[trace.Name] = trace
+	}
+
+	assert.Equal(t, traces["Main Span"].Attributes[0].Key, "Id")
+	assert.Equal(t, traces["Main Span"].Attributes[0].Value.Value, otelCtx.Value("id").(uuid.UUID).String())
+	assert.Contains(t, traces["Main Span"].Attributes[1].Key, "Start")
+	assert.Contains(t, traces["Main Span"].Attributes[2].Key, "End")
+	assert.Equal(t, len(traces["Main Span"].Events), 1)
+
+	assert.Equal(t, traces["Sub Span"].Attributes[0].Key, "Sub Span Start")
+	assert.Equal(t, len(traces["Sub Span"].Events), 1)
+	assert.Equal(t, traces["Sub Span"].Attributes[1].Key, "Sub Span End")
 
 }

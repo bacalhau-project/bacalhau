@@ -2,6 +2,10 @@ package otel_tracer
 
 import "time"
 
+type TraceContent struct {
+	ContentsAsString string
+}
+
 type Trace struct {
 	Name                   string                 `json:"Name"`
 	SpanContext            SpanContext            `json:"SpanContext"`
@@ -10,7 +14,7 @@ type Trace struct {
 	StartTime              time.Time              `json:"StartTime"`
 	EndTime                time.Time              `json:"EndTime"`
 	Attributes             []Attribute            `json:"Attributes"`
-	Events                 interface{}            `json:"Events"`
+	Events                 []Event                `json:"Events"`
 	Links                  interface{}            `json:"Links"`
 	Status                 Status                 `json:"Status"`
 	DroppedAttributes      int                    `json:"DroppedAttributes"`
@@ -61,4 +65,11 @@ type InstrumentationLibrary struct {
 	Name      string `json:"Name"`
 	Version   string `json:"Version"`
 	SchemaURL string `json:"SchemaURL"`
+}
+
+type Event struct {
+	Name                  string      `json:"Name"`
+	DroppedAttributeCount int64       `json:"DroppedAttributeCount"`
+	Time                  time.Time   `json:"Time"`
+	Attributes            []Attribute `json:"Attributes"`
 }
