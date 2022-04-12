@@ -34,14 +34,26 @@ func InitializeOtelWithWriter(ctxWithId context.Context, w io.Writer) (*sdktrace
 
 	// Read in config from $HOME/.bacalhau
 	// which contains the HONEYCOMB key
-	viper.AddConfigPath("$HOME/.bacalhau")
-	viper.SetConfigFile(".env")
-	viper.ReadInConfig()
+	userHome := os.Getenv("HOME")
+	viper.SetConfigFile(fmt.Sprintf("%s/.bacalhau/config.toml", userHome))
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Debug().Msg("No config file found.")
+		} else {
+			log.Fatal().Msgf("Config file found, but another error", err)
+		}
+	}
+
+	viper.AutomaticEnv()
 
 	var tp *sdktrace.TracerProvider
 	var cleanupFunc func()
 
-	if (os.Getenv("HONEYCOMB_API_KEY") == "") || (os.Getenv("OTEL_STDOUT") != "") {
+	honeycomb_key := viper.GetString("HONEYCOMB_API_KEY")
+	otel_stdout_override := viper.GetString("OTEL_STDOUT")
+
+	if (honeycomb_key == "") || (otel_stdout_override != "") {
 		tp, cleanupFunc = initStdOutTracer(ctxWithId, w)
 	} else {
 		tp, cleanupFunc = initHCTracer(ctxWithId)
@@ -73,7 +85,7 @@ func newExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 		otlptracegrpc.WithHeaders(map[string]string{
 			"x-honeycomb-team":    hcKey,
-			"x-honeycomb-dataset": fmt.Sprint(ctx.Value("Bacalhau-Tracing")),
+			"x-honeycomb-dataset": fmt.Sprint("Bacalhau-Tracing"),
 		}),
 		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}

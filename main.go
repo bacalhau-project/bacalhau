@@ -35,14 +35,15 @@ func main() {
 	defer func() { _ = tp.Shutdown(ctxWithId) }()
 	defer cleanUpOtel()
 
-	tracer := otel.GetTracerProvider().Tracer("Main Trace") // if not already in scope
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 	otelCtx, span := tracer.Start(ctxWithId, "Main Span")
-	defer span.End()
 
 	start := time.Now()
 
-	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value("id"))))
+	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", ctxWithId.Value("id"))))
 	log.Trace().Msgf("Top of execution - %s", start.UTC())
 	bacalhau.Execute(VERSION, otelCtx)
 	log.Trace().Msgf("Execution finished - %s", time.Since(start))
+	span.End()
+
 }
