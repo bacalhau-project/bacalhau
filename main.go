@@ -25,24 +25,24 @@ func main() {
 	// Set up global context with a uuid
 	id, _ := uuid.NewRandom()
 	ctx, cancel := context.WithCancel(context.Background())
-	ctxWithId := context.WithValue(ctx, "id", id)
+	ctx = context.WithValue(ctx, "id", id)
 	defer cancel()
 
 	// Initialize the root trace for all of Otel
-	tp, cleanUpOtel := otel_tracer.InitializeOtel(ctxWithId)
+	tp, cleanUpOtel := otel_tracer.InitializeOtel(ctx)
 
 	// Defer shutdown in as reasonable way as possible
-	defer func() { _ = tp.Shutdown(ctxWithId) }()
+	defer func() { _ = tp.Shutdown(ctx) }()
 	defer cleanUpOtel()
 
 	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-	otelCtx, span := tracer.Start(ctxWithId, "Main Span")
+	ctx, span := tracer.Start(ctx, "Main Span")
 
 	start := time.Now()
 
-	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", ctxWithId.Value("id"))))
+	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", ctx.Value("id"))))
 	log.Trace().Msgf("Top of execution - %s", start.UTC())
-	bacalhau.Execute(VERSION, otelCtx)
+	bacalhau.Execute(VERSION, ctx)
 	log.Trace().Msgf("Execution finished - %s", time.Since(start))
 	span.End()
 

@@ -35,6 +35,8 @@ var devstackCmd = &cobra.Command{
 		ctx := cmd.Context()
 		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 		_, span := tracer.Start(ctx, "DevStack Span")
+
+		// In LIFO order
 		defer span.End()
 
 		if err != nil {
@@ -54,28 +56,24 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		stack.PrintNodeInfo()
+
+		nodeChannel := make(chan os.Signal, 1)
+		signal.Notify(nodeChannel, syscall.SIGINT, syscall.SIGTERM)
 		done := make(chan bool, 1)
 
 		go func() {
 
-			for range sigs {
+			for range nodeChannel {
 				// need some time to let ipfs processes shut down
 				span.End()
 				time.Sleep(time.Second * 2)
 				log.Info().Msgf("Force quit.")
+				done <- true
 			}
-			<-cmd.Context().Done()
-			done <- true
-			os.Exit(1)
-
 		}()
 		<-done
 
-		stack.PrintNodeInfo()
-
-		// wait forever because everything else is running in a goroutine
-		select {}
+		return nil
 	},
 }

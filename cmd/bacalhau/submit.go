@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var jobCids []string
@@ -60,6 +63,7 @@ func init() {
 }
 
 func SubmitJob(
+	ctx context.Context,
 	commands, cids []string,
 	concurrency, confidence int,
 	tolerance float64,
@@ -130,6 +134,11 @@ func SubmitJob(
 	}
 
 	result := &types.Job{}
+	result.Id = ctx.Value("id").(string)
+
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	_, span := tracer.Start(ctx, "Submitting Job to RPC")
+	span.SetAttributes(attribute.String("JobId", result.Id))
 
 	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
@@ -153,7 +162,14 @@ var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+		ctx := cmd.Context()
+		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		_, span := tracer.Start(ctx, "Submit Job")
+		defer ctx.Done()
+		defer span.End()
+
 		_, err := SubmitJob(
+			ctx,
 			jobCommands,
 			jobCids,
 			jobConcurrency,
