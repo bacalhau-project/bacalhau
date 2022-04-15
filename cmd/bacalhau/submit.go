@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -60,6 +61,8 @@ func init() {
 }
 
 func SubmitJob(
+	ctx context.Context,
+	spanContext,
 	commands, cids []string,
 	concurrency, confidence int,
 	tolerance float64,
@@ -153,6 +156,7 @@ var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+		
 		_, err := SubmitJob(
 			jobCommands,
 			jobCids,
