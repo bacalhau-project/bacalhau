@@ -78,6 +78,7 @@ func NewLibp2pScheduler(
 		return nil, err
 	}
 	scheduler := &Libp2pScheduler{
+		Context:              ctx,
 		Host:                 host,
 		PubSub:               pubsub,
 		Jobs:                 make(map[string]*types.Job),

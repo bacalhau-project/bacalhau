@@ -136,11 +136,11 @@ raspberry
 
 	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 	_, span := tracer.Start(ctxWithId, "TestDevStack Span")
+	defer span.End()
 
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob(
 			ctxWithId,
-			span.SpanContext(),
 			[]string{
 				fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			},
@@ -314,10 +314,10 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
 		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 		_, span := tracer.Start(ctx, "TestDevStack Span")
+		defer span.End()
 
 		job, err = SubmitJob(
 			ctx,
-			span.SpanContext(),
 			[]string{
 				fmt.Sprintf(cmd, fileCid),
 			},

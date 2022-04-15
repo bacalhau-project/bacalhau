@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var jobCids []string
@@ -66,7 +65,6 @@ func init() {
 
 func SubmitJob(
 	ctx context.Context,
-	spanContext trace.SpanContext,
 	commands, cids []string,
 	concurrency, confidence int,
 	tolerance float64,
@@ -132,9 +130,8 @@ func SubmitJob(
 	}
 
 	args := &types.SubmitArgs{
-		Spec:        spec,
-		Deal:        deal,
-		SpanContext: spanContext,
+		Spec: spec,
+		Deal: deal,
 	}
 
 	result := &types.Job{}
@@ -170,10 +167,10 @@ var submitCmd = &cobra.Command{
 
 		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 		ctx, span := tracer.Start(cmd.Root().Context(), "Submit Command")
+		defer span.End()
 
 		_, err := SubmitJob(
 			ctx,
-			span.SpanContext(),
 			jobCommands,
 			jobCids,
 			jobConcurrency,

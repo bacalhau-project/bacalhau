@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/trace"
+	"github.com/opentracing/opentracing-go"
 )
 
 // a representation of some data on a storage engine
@@ -91,7 +91,7 @@ type ListArgs struct {
 type SubmitArgs struct {
 	Spec        *JobSpec
 	Deal        *JobDeal
-	SpanContext trace.SpanContext
+	SpanContext opentracing.SpanContext
 }
 
 // the data structure a client can use to render a view of the state of the world

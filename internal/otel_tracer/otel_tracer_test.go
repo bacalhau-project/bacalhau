@@ -41,9 +41,10 @@ func TestOtelTrace(t *testing.T) {
 	var w bytes.Buffer
 
 	// Initialize the root trace for all of Otel
+	os.Setenv("OTEL_STDOUT", "true") // Use the writer instead of pushing to HC, even if the key is there
 	_, cleanUpOtel := InitializeOtelWithWriter(ctxWithId, &w)
 
-	tracer := otel.GetTracerProvider().Tracer("Main Trace") // if not already in scope
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 	otelCtx, span := tracer.Start(ctxWithId, "Main Span")
 
 	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value("id"))))
@@ -65,7 +66,11 @@ func TestOtelTrace(t *testing.T) {
 
 	traces := make(map[string]Trace)
 
-	decoder := json.NewDecoder(strings.NewReader(w.String()))
+	otelContent := w.String()
+	if otelContent == "" {
+		assert.Fail(t, "No content in the trace, did you set the environment variables correctly?")
+	}
+	decoder := json.NewDecoder(strings.NewReader(otelContent))
 	for {
 		var trace Trace
 

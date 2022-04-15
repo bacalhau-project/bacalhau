@@ -52,10 +52,11 @@ func InitializeOtelWithWriter(ctxWithId context.Context, w io.Writer) (*sdktrace
 	otel_stdout_override := viper.GetString("OTEL_STDOUT")
 
 	if (honeycomb_key == "") || (otel_stdout_override != "") {
+		log.Debug().Msgf("Either no Honeycomb API key found or stdout override found. Pushing logs to writer: %s.", w)
 		tp, cleanupFunc = initStdOutTracer(ctxWithId, w)
 	} else {
+		log.Debug().Msg("Honeycomb API key found, and stdout override not found. Pushing logs to Honeycomb.")
 		tp, cleanupFunc = initHCTracer(ctxWithId)
-
 	}
 	// Create a new tracer provider with a batch span processor and the otlp exporter.
 
