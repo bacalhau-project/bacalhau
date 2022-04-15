@@ -104,6 +104,7 @@ func (runtime *Runtime) Start() (string, error) {
 			IGNITE_IMAGE,
 			"-c",
 			"tail -f /dev/null",
+			"-P", // Probably too hacky (opens all ports), but just doing this to get the containers talking to each other
 		})
 	}
 

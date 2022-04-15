@@ -41,7 +41,7 @@ var RootCmd = &cobra.Command{
 
 func Execute(version string, ctx context.Context) {
 
-	_, span := otel.Tracer("Root Command").Start(ctx, "Root Span")
+	_, span := otel.Tracer("bacalhau.org").Start(ctx, "Root Span")
 	defer span.End()
 
 	RootCmd.Version = version
@@ -49,10 +49,12 @@ func Execute(version string, ctx context.Context) {
 
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		ctx.Done()
 		span.End()
 		os.Exit(1)
 	}
 
+	ctx.Done()
 	span.End()
 }
 

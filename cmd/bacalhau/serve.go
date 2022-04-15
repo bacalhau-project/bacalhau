@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"text/template"
@@ -45,18 +44,18 @@ var serveCmd = &cobra.Command{
 	Short: "Start the bacalhau compute node",
 	RunE: func(cmd *cobra.Command, args []string) error { // nolint
 
-		ctx := context.Background()
+		ctx := cmd.Root().Context()
 
 		libp2pScheduler, err := libp2p.NewLibp2pScheduler(ctx, hostPort)
 		if err != nil {
 			return err
 		}
 
-		requesterNode, err := internal.NewRequesterNode(ctx, libp2pScheduler)
+		requesterNode, err := internal.NewRequesterNode(libp2pScheduler)
 		if err != nil {
 			return err
 		}
-		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler, false)
+		computeNode, err := internal.NewComputeNode(libp2pScheduler, false)
 		if err != nil {
 			return err
 		}

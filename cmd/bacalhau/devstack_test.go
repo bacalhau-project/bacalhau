@@ -13,6 +13,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -32,9 +34,11 @@ const TEST_CONFIDENCE = 1
 // the results must be within 10% of each other
 const TEST_TOLERANCE = 0.1
 
-func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, context.CancelFunc) {
+func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, context.Context, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
+	id, _ := uuid.NewRandom()
+	ctxWithId := context.WithValue(ctxWithCancel, "id", id)
 
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
@@ -48,7 +52,7 @@ func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, cont
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
 	time.Sleep(time.Second * 2)
 
-	return stack, cancelFunction
+	return stack, ctxWithId, cancelFunction
 }
 
 // this might be called multiple times if KEEP_STACK is active
@@ -67,7 +71,7 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
-	stack, cancelFunction := setupTest(t, 1, 0)
+	stack, ctx, cancelFunction := setupTest(t, 1, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -125,8 +129,18 @@ raspberry
 
 	var job *types.Job
 
+	id, _ := uuid.NewRandom()
+	ctx, cancel := context.WithCancel(context.Background())
+	ctxWithId := context.WithValue(ctx, "id", id)
+	defer cancel()
+
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	_, span := tracer.Start(ctxWithId, "TestDevStack Span")
+
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob(
+			ctxWithId,
+			span.SpanContext(),
 			[]string{
 				fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			},
@@ -208,7 +222,7 @@ func TestCommands(t *testing.T) {
 
 	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	stack, cancelFunction := setupTest(t, 3, 0)
+	stack, ctx, cancelFunction := setupTest(t, 3, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -237,7 +251,7 @@ Starting new job:
 
 			assert.NoError(t, err)
 
-			job, hostId, err := execute_command(t, stack, tc.cmd, cid, TEST_CONCURRENCY, TEST_CONFIDENCE, TEST_TOLERANCE)
+			job, hostId, err := execute_command(t, ctx, stack, tc.cmd, cid, TEST_CONCURRENCY, TEST_CONFIDENCE, TEST_TOLERANCE)
 			assert.NoError(t, err)
 
 			resultsDirectory, err := system.GetSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
@@ -282,6 +296,7 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 
 func execute_command(
 	t *testing.T,
+	ctx context.Context,
 	stack *internal.DevStack,
 	cmd string,
 	fileCid string,
@@ -297,7 +312,12 @@ func execute_command(
 		log.Debug().Msg(fmt.Sprintf(`About to submit job:
 cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
+		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		_, span := tracer.Start(ctx, "TestDevStack Span")
+
 		job, err = SubmitJob(
+			ctx,
+			span.SpanContext(),
 			[]string{
 				fmt.Sprintf(cmd, fileCid),
 			},
@@ -383,7 +403,7 @@ func TestCatchBadActors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// t.Parallel()
 
-			stack, cancelFunction := setupTest(t, tc.nodes, tc.badActors)
+			stack, ctx, cancelFunction := setupTest(t, tc.nodes, tc.badActors)
 			defer teardownTest(stack, cancelFunction)
 
 			c := make(chan os.Signal, 1)
@@ -395,7 +415,7 @@ func TestCatchBadActors(t *testing.T) {
 				}
 			}()
 
-			job, _, err := execute_command(t, stack, commands[0], "", tc.concurrency, tc.confidence, tc.tolerance)
+			job, _, err := execute_command(t, ctx, stack, commands[0], "", tc.concurrency, tc.confidence, tc.tolerance)
 			assert.NoError(t, err, "Error executing command: %+v", err)
 
 			resultsList, err := system.ProcessJobIntoResults(job)
