@@ -1,18 +1,26 @@
-# Bacalhau - The Filecoin Distributed Computation Framework
+  <p align="center">
+  <img src="docs/images/bacalhau-fish.jpeg" alt="Bacalhau Logo" width="300" />
+  </p>
 
-## Background
 
-To read more about this project, please read our [Read Me](https://github.com/filecoin-project/bacalhau/wiki)
+<h1 align="center">The Filecoin Distributed Computation Framework</h1>
 
-## Latest
 
-Our most recent demo (2022-02-11):
+## Project Background
+ * [DESIGN.MD](DESIGN.md)
+ * [Bacalhau Overview at PL Eng Res February 2022](https://youtu.be/wmu-lOhSSZo?t=3367)
+ 
+## Latest Updates
+  * Most recent [Bacalhau Project Report](https://github.com/filecoin-project/bacalhau/wiki)
+  * Our [most recent demo (2022-03-11)](https://user-images.githubusercontent.com/264658/157901296-2443fb79-0413-4903-8c75-0ebb2fddadaf.mp4)
 
-https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-983a-8e26acf4b86d.mp4
 
-## running locally
+## Basic Build Instructions
 
-### requirements
+Please see [docs/devstack.md](docs/devstack.md) for instructions.
+
+
+### Requirements
 
  * x86_64 linux host
  * go >= 1.16
@@ -20,7 +28,7 @@ https://user-images.githubusercontent.com/264658/152514573-b7b115ce-4123-486c-98
  * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
    * NOTE: You must use ipfs v0.11.0 https://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
 
-### pull ignite base image
+### Pull ignite base image
 
 This prepares the system for running ignite VMs:
 
@@ -56,7 +64,7 @@ For example:
 go run . serve --peer /ip4/127.0.0.1/tcp/8080/p2p/<peerid> --jsonrpc-port <randomport> --start-ipfs-dev-only
 ```
 
-### submit a job with the CLI
+### Submit a job with the CLI
 
 First we add a data file to run the job against - the `serve` command will have printed out the command to do this - it's just an `ipfs add` command that targets a specific bacalhau node so we can show self selection of jobs working:
 
@@ -78,7 +86,7 @@ go run . list --output json
 go run . list --wide
 ```
 
-### running the demo on seperate servers
+### Running the demo on seperate servers
 
 When running a real demo (i.e. on different machines with public ips) - here are the things to consider:
 
@@ -88,11 +96,11 @@ When running a real demo (i.e. on different machines with public ips) - here are
  * start the ipfs daemon on each node before starting bacalhau
  * don't start the bacalhau daemon with `--dev` or `--start-ipfs-dev-only`
 
-### running the client standalone
+### Running the client standalone
 
 If you are running the bacalhau client on a machine that is not running the server - then you must start the ipfs daemon yourself, manually (so we can do `ipfs get` for the results)
 
-## firecracker os image
+## Firecracker os image
 
 We use Docker to build the image that firecracker VMs are started with.
 
@@ -111,6 +119,6 @@ sudo ignite image ls
 sudo ignite image rm <id_of_old_image>
 ```
 
-## local devstack
+## Local devstack
 
 The easiest way to spin up bacalhau and kick the tires is to use the [devstack](./docs/devstack.md)

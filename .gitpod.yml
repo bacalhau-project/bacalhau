@@ -8,3 +8,7 @@ tasks:
       sudo bash go-ipfs/install.sh
 
     command: echo 'start script'
+
+vscode:
+  extensions:
+    - hashicorp.terraform
