@@ -15,10 +15,12 @@
   * Our [most recent demo (2022-03-11)](https://user-images.githubusercontent.com/264658/157901296-2443fb79-0413-4903-8c75-0ebb2fddadaf.mp4)
 
 
-## Basic Build Instructions
+## Running Bacalhau with devstack
 
-Please see [docs/devstack.md](docs/devstack.md) for instructions.
+The easiest way to spin up bacalhau and kick the tires is to use the devstack command. Please see [docs/devstack.md](docs/devstack.md) for instructions.
 
+
+## Running Locally
 
 ### Requirements
 
@@ -119,6 +121,3 @@ sudo ignite image ls
 sudo ignite image rm <id_of_old_image>
 ```
 
-## Local devstack
-
-The easiest way to spin up bacalhau and kick the tires is to use the [devstack](./docs/devstack.md)
