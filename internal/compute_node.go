@@ -70,7 +70,7 @@ func NewComputeNode(
 				log.Debug().Msgf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = scheduler.BidJob(jobEvent.JobId)
+				err = scheduler.BidJob(ctx, jobEvent.JobId)
 				if err != nil {
 					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
@@ -89,13 +89,13 @@ func NewComputeNode(
 
 			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
 
-			cid, err := computeNode.RunJob(job)
+			cid, err := computeNode.RunJob(ctx, job)
 
 			if err != nil {
 				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)
 
 				// TODO: Check result of Error job
-				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = scheduler.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				log.Info().Msgf("Completed the job - results cid: %s\n%+v\n", cid, job)
 
@@ -108,6 +108,7 @@ func NewComputeNode(
 
 				// TODO: Check result of submit result
 				_ = scheduler.SubmitResult(
+					ctx,
 					job.Id,
 					fmt.Sprintf("Got job results cid: %s", cid),
 					results,
@@ -146,7 +147,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 
 // return a CID of the job results when finished
 // this is obtained by running "ipfs add -r <results folder>"
-func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
+func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (string, error) {
 
 	log.Debug().Msgf("Running job on node: %s", node.NodeId)
 

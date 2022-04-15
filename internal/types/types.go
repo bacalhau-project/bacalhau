@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -55,7 +56,8 @@ type JobDeal struct {
 // the view of a single job
 // multiple compute nodes will be running this job
 type Job struct {
-	Id string
+	Context context.Context
+	Id      string
 	// the client node that "owns" this job (as in who submitted it)
 	Owner string
 	Spec  *JobSpec
@@ -67,6 +69,7 @@ type Job struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
+	Context   context.Context
 	JobId     string
 	NodeId    string
 	EventName string

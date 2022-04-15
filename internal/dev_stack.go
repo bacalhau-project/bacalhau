@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
@@ -138,6 +139,9 @@ func NewDevStack(
 
 func (stack *DevStack) PrintNodeInfo() {
 
+	debugScriptContent := "#!/bin/bash"
+	scriptForDebuggingPath := "/tmp/debug_script.sh"
+
 	logString := `
 -------------------------------
 environment
@@ -148,6 +152,10 @@ environment
 		logString = logString + fmt.Sprintf(`
 IPFS_PATH_%d=%s
 JSON_PORT_%d=%d`, nodeNumber, node.IpfsRepo, nodeNumber, node.JsonRpcPort)
+
+		debugScriptContent = debugScriptContent + fmt.Sprintf(`
+export IPFS_PATH_%d=%s
+export JSON_PORT_%d=%d`, nodeNumber, node.IpfsRepo, nodeNumber, node.JsonRpcPort)
 
 	}
 
@@ -163,4 +171,17 @@ go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep kiwi /i
 go run . --jsonrpc-port=$JSON_PORT_0 list
 
 `)
+	debugScriptContent = debugScriptContent + fmt.Sprintf(`
+export cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
+`)
+
+	if os.Getenv("WRITE_TEMP_SCRIPT") != "" {
+		debugScriptFile, err := os.OpenFile(scriptForDebuggingPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0700)
+		if err != nil {
+			log.Fatal().Msgf("Could not write temporary script for execution")
+			return
+		}
+		debugScriptFile.WriteString(debugScriptContent)
+	}
+
 }

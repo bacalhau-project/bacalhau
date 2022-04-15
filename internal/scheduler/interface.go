@@ -1,6 +1,10 @@
 package scheduler
 
-import "github.com/filecoin-project/bacalhau/internal/types"
+import (
+	"context"
+
+	"github.com/filecoin-project/bacalhau/internal/types"
+)
 
 type Scheduler interface {
 
@@ -35,26 +39,26 @@ type Scheduler interface {
 
 	// Executed by the client (Connie) requesting the work, puts the job into a
 	// mempool of work that is available to be done.
-	SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error)
+	SubmitJob(ctx context.Context, spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error)
 	// Update the job deal - for example updating concurrency
-	UpdateDeal(jobId string, deal *types.JobDeal) error
+	UpdateDeal(ctx context.Context, jobId string, deal *types.JobDeal) error
 	// Client has decided they no longer want the work done. Can only happen
 	// when no runs of the job are in progress.
-	CancelJob(jobId string) error
+	CancelJob(ctx context.Context, jobId string) error
 	// Executed by the client (Connie) to tell Prue they are good to start.
 	// Enables coordination to avoid excess job starting, also allows client to
 	// be selective about reputation.
-	AcceptJobBid(jobId, hostId string) error
+	AcceptJobBid(ctx context.Context, jobId string, hostId string) error
 	// Executed by the client (Connie) to tell Prue they shouldn't try to run
 	// this job.
-	RejectJobBid(jobId, hostId, message string) error
+	RejectJobBid(ctx context.Context, jobId string, hostId string, message string) error
 	// Executed by the client when they are satisfied with the outcome of a job
 	// (e.g they have completed some verification of a job). Along with the id
 	// of the server who did the work this is Input to the reputation system.
-	AcceptResult(jobId, hostId string) error
+	AcceptResult(ctx context.Context, jobId string, hostId string) error
 	// Executed by the client when they believe a job has been executed
 	// incorrectly. Also input to reputation system.
-	RejectResult(jobId, hostId, message string) error
+	RejectResult(ctx context.Context, jobId string, hostId string, message string) error
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
@@ -62,16 +66,16 @@ type Scheduler interface {
 
 	// Executed by the compute node (Prue) when they want to start working on a
 	// job.
-	BidJob(jobId string) error
+	BidJob(ctx context.Context, jobId string) error
 
 	// Executed by the compute node when they have completed a job.
-	SubmitResult(jobId, status string, results []types.JobStorage) error
+	SubmitResult(ctx context.Context, jobId string, status string, results []types.JobStorage) error
 
 	// something has gone wrong with running the job
 	// called by the compute node and so will have the nodeId auto-filled
-	ErrorJob(jobId, status string) error
+	ErrorJob(ctx context.Context, jobId string, status string) error
 
 	// something has gone wrong is checking the job from the requester node
 	// called by the requester node and so we need to be given the nodeId
-	ErrorJobForNode(jobId, nodeId, status string) error
+	ErrorJobForNode(ctx context.Context, jobId string, nodeId string, status string) error
 }

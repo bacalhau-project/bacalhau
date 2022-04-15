@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
@@ -134,7 +135,7 @@ func SubmitJob(
 	}
 
 	result := &types.Job{}
-	result.Id = ctx.Value("id").(string)
+	result.Id = ctx.Value("id").(uuid.UUID).String()
 
 	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 	_, span := tracer.Start(ctx, "Submitting Job to RPC")
