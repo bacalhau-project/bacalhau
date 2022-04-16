@@ -23,7 +23,6 @@ const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pScheduler struct {
 	Context     context.Context
-	SpanContext string
 
 	Jobs map[string]*types.Job
 
@@ -136,7 +135,7 @@ func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.J
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal, serializedOtelContext *types.SerializedOtelContext) (*types.Job, error) {
+func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("Error in creating job id. %s", err)

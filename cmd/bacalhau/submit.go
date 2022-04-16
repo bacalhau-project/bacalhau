@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -130,7 +130,10 @@ func SubmitJob(
 		Tolerance:   tolerance,
 	}
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.InitializeOtel(ctx)
+	tracer := tp.Tracer("bacalhau.org")
+
 	ctx, submittingJobSpan := tracer.Start(ctx, "Submitting Job to RPC")
 
     propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
@@ -177,7 +180,9 @@ var submitCmd = &cobra.Command{
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		// Initialize the root trace for all of Otel
+		tp, _ := otel_tracer.InitializeOtel(cmd.Root().Context())
+		tracer := tp.Tracer("bacalhau.org")
 		ctx, span := tracer.Start(cmd.Root().Context(), "Submit Command")
 		defer span.End()
 

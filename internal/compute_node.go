@@ -6,14 +6,13 @@ import (
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/propagation"
 )
 
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
@@ -47,13 +46,10 @@ func NewComputeNode(
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
-		propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
-		carrier := propagation.MapCarrier{}
+		tp, _ := otel_tracer.InitializeOtel(computeNode.Ctx)
+		tracer := tp.Tracer("bacalhau.org")
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org")
-		ctx := propagator.Extract(context.Background(), carrier)
-
-		_, nodeSpan := tracer.Start(ctx, fmt.Sprintf("Node Listening: Id %s", nodeId))
+		_, nodeSpan := tracer.Start(computeNode.Ctx, fmt.Sprintf("Node Listening: Id %s", nodeId))
 		defer nodeSpan.End()
 
 		nodeSpan.SetAttributes(attribute.String("NodeId", nodeId))
@@ -100,7 +96,7 @@ func NewComputeNode(
 
 			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
 
-			cid, err := computeNode.RunJob(ctx, job)
+			cid, err := computeNode.RunJob(computeNode.Ctx, job)
 
 			if err != nil {
 				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)

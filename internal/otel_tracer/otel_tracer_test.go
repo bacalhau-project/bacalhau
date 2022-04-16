@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -42,9 +41,9 @@ func TestOtelTrace(t *testing.T) {
 
 	// Initialize the root trace for all of Otel
 	os.Setenv("OTEL_STDOUT", "true") // Use the writer instead of pushing to HC, even if the key is there
-	_, cleanUpOtel := InitializeOtelWithWriter(ctxWithId, &w)
+	tp, cleanUpOtel := InitializeOtelWithWriter(ctxWithId, &w)
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	tracer := tp.Tracer("bacalhau.org")
 	otelCtx, span := tracer.Start(ctxWithId, "Main Span")
 
 	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value("id"))))

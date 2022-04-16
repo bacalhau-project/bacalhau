@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -57,6 +58,8 @@ type JobDeal struct {
 // the view of a single job
 // multiple compute nodes will be running this job
 type Job struct {
+	Context context.Context
+
 	Id string
 	// the client node that "owns" this job (as in who submitted it)
 	Owner string

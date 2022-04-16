@@ -37,7 +37,7 @@ type Scheduler interface {
 
 	// Executed by the client (Connie) requesting the work, puts the job into a
 	// mempool of work that is available to be done.
-	SubmitJob(spec *types.JobSpec, deal *types.JobDeal, serializedOtelContext *types.SerializedOtelContext) (*types.Job, error)
+	SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error)
 
 	// Update the job deal - for example updating concurrency
 	UpdateDeal(jobId string, deal *types.JobDeal) error

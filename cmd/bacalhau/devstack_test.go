@@ -13,8 +13,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -134,7 +134,9 @@ raspberry
 	ctxWithId := context.WithValue(ctx, "id", id)
 	defer cancel()
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.InitializeOtel(ctx)
+	tracer := tp.Tracer("bacalhau.org") // if not already in scope
 	_, span := tracer.Start(ctxWithId, "TestDevStack Span")
 	defer span.End()
 
@@ -312,7 +314,9 @@ func execute_command(
 		log.Debug().Msg(fmt.Sprintf(`About to submit job:
 cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		// Initialize the root trace for all of Otel
+		tp, _ := otel_tracer.InitializeOtel(ctx)
+		tracer := tp.Tracer("bacalhau.org")
 		_, span := tracer.Start(ctx, "TestDevStack Span")
 		defer span.End()
 
