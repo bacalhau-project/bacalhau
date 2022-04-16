@@ -36,10 +36,11 @@ func NewRequesterNode(
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
-		ctx := jobEvent.Context
+		schedulerContext := context.Background()
+		schedulerContext = context.WithValue(schedulerContext, "id", job.Id)
 
 		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-		_, nodeSpan := tracer.Start(ctx, fmt.Sprintf("Node Listening: Id %s", nodeId))
+		_, nodeSpan := tracer.Start(schedulerContext, fmt.Sprintf("Node Listening: Id %s", nodeId))
 		nodeSpan.SetAttributes(attribute.String("NodeId", nodeId))
 
 		// TODO: Why is there NodeId (as a local variable) and jobEvent.NodeId (is the latter the requesting node?)
@@ -59,9 +60,9 @@ func NewRequesterNode(
 		// we also pay attention to the job deal concurrency setting
 		case system.JOB_EVENT_BID:
 
-			_, nodeBidConsiderSpan := tracer.Start(ctx, "Considering bid")
+			_, nodeBidConsiderSpan := tracer.Start(schedulerContext, "Considering bid")
 			nodeBidConsiderSpan.SetAttributes(attribute.String("JobId", jobEvent.JobId))
-			bidAccepted, message, err := requesterNode.ConsiderBid(ctx, job, jobEvent.NodeId)
+			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 			nodeBidConsiderSpan.End()
 
 			if err != nil {
@@ -70,22 +71,22 @@ func NewRequesterNode(
 			}
 
 			if bidAccepted {
-				_, nodeBidAcceptingSpan := tracer.Start(ctx, "Accepting job")
+				_, nodeBidAcceptingSpan := tracer.Start(schedulerContext, "Accepting job")
 				nodeBidAcceptingSpan.SetAttributes(attribute.String("JobId", jobEvent.JobId))
 
 				// TODO: Check result of accept job bid
-				err = scheduler.AcceptJobBid(ctx, jobEvent.JobId, jobEvent.NodeId)
+				err = scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
 				nodeBidAcceptingSpan.End()
 
 			} else {
-				_, nodeBidRejectingSpan := tracer.Start(ctx, "Rejecting job")
+				_, nodeBidRejectingSpan := tracer.Start(schedulerContext, "Rejecting job")
 				nodeBidRejectingSpan.SetAttributes(attribute.String("JobId", jobEvent.JobId))
 
 				// TODO: Check result of reject job bid
-				err = scheduler.RejectJobBid(ctx, jobEvent.JobId, jobEvent.NodeId, message)
+				err = scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
@@ -98,14 +99,14 @@ func NewRequesterNode(
 		// to see if we can "accept" these results
 		// or if we need to wait for some more results to arrive
 		case system.JOB_EVENT_RESULTS:
-			_, nodeProcessResultsSpan := tracer.Start(ctx, "Processing results job")
+			_, nodeProcessResultsSpan := tracer.Start(schedulerContext, "Processing results job")
 			nodeProcessResultsSpan.SetAttributes(attribute.String("JobId", jobEvent.JobId))
 			err := requesterNode.ProcessResults(job, jobEvent.NodeId)
 			nodeProcessResultsSpan.End()
 
 			if err != nil {
 				// TODO: Check result of Error Job for Node
-				err = scheduler.ErrorJobForNode(ctx, jobEvent.JobId, jobEvent.NodeId, err.Error())
+				err = scheduler.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
 				threadLogger.Error().Err(err)
 			}
 		}
@@ -117,12 +118,14 @@ func NewRequesterNode(
 
 // a compute node has bid on the job
 // should we accept the bid or not?
-func (node *RequesterNode) ConsiderBid(ctx context.Context, job *types.Job, nodeId string) (bool, string, error) {
+func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, string, error) {
+
+	ctx := context.Background()
 
 	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeId, job.Id)
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-	_, considerBidSpan := tracer.Start(ctx, "Inside considering bid")
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org")
+	_, considerBidSpan := tracer.Start(ctx, "Considering bid")
 
 	concurrency := job.Deal.Concurrency
 	threadLogger.Debug().Msgf("Concurrency for this job: %d", concurrency)

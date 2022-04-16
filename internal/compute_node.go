@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
@@ -46,11 +47,15 @@ func NewComputeNode(
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
+		propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+		carrier := propagation.MapCarrier{}
 
-		ctx := jobEvent.Context
+		tracer := otel.GetTracerProvider().Tracer("bacalhau.org")
+		ctx := propagator.Extract(context.Background(), carrier)
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
 		_, nodeSpan := tracer.Start(ctx, fmt.Sprintf("Node Listening: Id %s", nodeId))
+		defer nodeSpan.End()
+
 		nodeSpan.SetAttributes(attribute.String("NodeId", nodeId))
 
 		switch jobEvent.EventName {
@@ -76,7 +81,7 @@ func NewComputeNode(
 				log.Debug().Msgf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = scheduler.BidJob(ctx, jobEvent.JobId)
+				err = scheduler.BidJob(jobEvent.JobId)
 				if err != nil {
 					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
@@ -101,7 +106,7 @@ func NewComputeNode(
 				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)
 
 				// TODO: Check result of Error job
-				_ = scheduler.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				log.Info().Msgf("Completed the job - results cid: %s\n%+v\n", cid, job)
 
@@ -114,7 +119,6 @@ func NewComputeNode(
 
 				// TODO: Check result of submit result
 				_ = scheduler.SubmitResult(
-					ctx,
 					job.Id,
 					fmt.Sprintf("Got job results cid: %s", cid),
 					results,

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 var jobCids []string
@@ -129,20 +130,31 @@ func SubmitJob(
 		Tolerance:   tolerance,
 	}
 
-	args := &types.SubmitArgs{
-		Spec: spec,
-		Deal: deal,
+	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	ctx, submittingJobSpan := tracer.Start(ctx, "Submitting Job to RPC")
+
+    propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+	carrier := propagation.MapCarrier{}
+
+	job := &types.Job{}
+	job.Id = ctx.Value("id").(uuid.UUID).String()
+	submittingJobSpan.SetAttributes(attribute.String("JobId", job.Id))
+
+	fmt.Println(carrier)
+	propagator.Inject(ctx, carrier)
+	fmt.Println(carrier)
+
+	serializedOtelContext := &types.SerializedOtelContext{
+		Context: carrier,
 	}
 
-	result := &types.Job{}
-	result.Id = ctx.Value("id").(uuid.UUID).String()
+	args := &types.SubmitArgs{
+		SerializedOtelContext: serializedOtelContext,
+		Spec:                  spec,
+		Deal:                  deal,
+	}
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-	_, span := tracer.Start(ctx, "Submitting Job to RPC")
-	span.SetAttributes(attribute.String("JobId", result.Id))
-	span.SpanContext()
-
-	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
+	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, job)
 	if err != nil {
 		return nil, err
 	}
@@ -155,9 +167,9 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	log.Info().Msgf("Submitted Job Id: %s\n", result.Id)
+	log.Info().Msgf("Submitted Job Id: %s\n", job.Id)
 
-	return result, nil
+	return job, nil
 }
 
 var submitCmd = &cobra.Command{

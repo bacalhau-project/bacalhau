@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -41,7 +40,7 @@ func main() {
 	defer func() { _ = tp.Shutdown(ctx) }()
 	defer cleanUpOtel()
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	tracer := tp.Tracer("bacalhau.org") // if not already in scope
 	ctx, span := tracer.Start(ctx, "Main Span")
 
 	start := time.Now()

@@ -23,9 +23,9 @@ func (server *JobServer) List(args *types.ListArgs, reply *types.ListResponse) e
 	return nil
 }
 
-func (server *JobServer) Submit(ctx context.Context, args *types.SubmitArgs, reply *types.Job) error {
+func (server *JobServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
 	//nolint
-	job, err := server.RequesterNode.Scheduler.SubmitJob(ctx, args.Spec, args.Deal)
+	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal, args.SerializedOtelContext)
 	if err != nil {
 		return err
 	}
