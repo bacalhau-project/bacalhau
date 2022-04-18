@@ -1,4 +1,4 @@
-# Demo instructions
+# Demo instructions for Digital Ocean
 
 
 For the purposes of this demo, we will assume you use Digital Ocean. To install digital ocean CLI tool:
@@ -100,7 +100,7 @@ done
 # sudo apt install -y docker.io
 # BACALHAU_RUNTIME=docker
 # Start bacalhau dev stack
-./bacalhau --dev devstack
+./bacalhau --dev devstack BACALHAU_RUNTIME=docker
 ```
 
 **Add a sample file to IPFS and submit Bacalhau job**
