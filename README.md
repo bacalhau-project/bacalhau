@@ -17,4 +17,4 @@
 
 ## Running Bacalhau locally with devstack
 
-The easiest way to spin up bacalhau and run a local demo is to use the devstack command. Please see [docs/running_locally.md](docs/devstack.md) for instructions.
+The easiest way to spin up bacalhau and run a local demo is to use the devstack command. Please see [docs/running_locally.md](docs/running_locally.md) for instructions.

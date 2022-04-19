@@ -8,7 +8,7 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
 
  * x86_64 linux host
     * Ubuntu 20.0+ has most often been used for development and testing
-    * Note: Mac M1 (ARM64) compatible builds are not yet supported at this time. Please consider development on a hosted alternative, such as [gitpod](gitpod.io/#https://github.com/filecoin-project/bacalhau)
+    * Note: Mac M1 (ARM64) compatible builds are not yet supported at this time. Please consider development on a hosted alternative, such as [Gitpod](https://gitpod.io/#https://github.com/filecoin-project/bacalhau)
  * Go >= 1.17
  * IPFS v0.11
  * [Docker Engine](https://docs.docker.com/get-docker/)
@@ -77,7 +77,7 @@ Each node has it's own `IPFS_PATH` value which points to a path on the local fil
 To add a file to only one of ipfs node within the devstack cluster, execute the `ipfs add` in the following manner:
 
 ```bash
-cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q /etc/passwd )
+cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
 ```
 *Note: the CID is saved as an environment variable so that it can be referenced in the job submission step.
 
@@ -98,7 +98,7 @@ go run . --jsonrpc-port=$NODE1_JSONRPC_PORT list
 This will submit a simple job to a single node:
 
 ```bash
-cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q /etc/passwd )
+cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
 go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep usr /ipfs/$cid"
 go run . --jsonrpc-port=$JSON_PORT_0 list
 ```
