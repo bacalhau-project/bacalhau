@@ -99,7 +99,7 @@ This will submit a simple job to a single node:
 
 ```bash
 cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
-go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep usr /ipfs/$cid"
+go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep kiwi /ipfs/$cid"
 go run . --jsonrpc-port=$JSON_PORT_0 list
 ```
 
