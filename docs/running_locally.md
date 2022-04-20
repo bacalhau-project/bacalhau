@@ -1,16 +1,47 @@
-# devstack
+# Running locally with the 'devstack' command
 
 The `devstack` command of bacalhau will start a 3 node cluster alongside isolated ipfs servers.
 
 This is useful to kick the tires and/or developing on the codebase.  It's also the tool used by some of the tests.
 
-## pre-requisites
+## Pre-requisites
 
- * go >= 1.16
- * [ipfs cli](https://github.com/ipfs/go-ipfs#install-prebuilt-binaries)
- * [docker](https://docs.docker.com/get-docker/)
+ * x86_64 linux host
+    * Ubuntu 20.0+ has most often been used for development and testing
+    * Note: Mac M1 (ARM64) compatible builds are not yet supported at this time. Please consider development on a hosted alternative, such as [Gitpod](https://gitpod.io/#https://github.com/filecoin-project/bacalhau)
+ * Go >= 1.17
+ * IPFS v0.11
+ * [Docker Engine](https://docs.docker.com/get-docker/)
+ * A build of the [latest Bacalhau release](https://github.com/filecoin-project/bacalhau/releases/)
 
-## start cluster
+
+### IPFS Installation Instructions
+
+```
+# Install IPFS *v0.11* specifically (due to issues in v0.12) via https://docs.ipfs.io/install/command-line/#official-distributions
+
+wget https://dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz
+tar -xvzf go-ipfs_v0.11.0_linux-amd64.tar.gz
+cd go-ipfs
+sudo bash install.sh
+cd -
+```
+
+## (Optional) Building Bacalhau from source
+
+```
+sudo apt-get update && sudo apt-get install -y make gcc zip
+sudo snap install go --classic
+wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
+unzip main.zip
+cd bacalhau-main
+go build
+
+```
+
+
+
+## Start the cluster
 
 ```bash
 make devstack
@@ -35,33 +66,34 @@ IPFS_PATH_2=/tmp/bacalhau-ipfs490124113
 JSON_PORT_2=41347
 ```
 
-Copy and paste these variables into another terminal.
+## New Terminal Window
+* Open an additional terminal window to be used for data submission to the local IPFS instances and and job submission to the 3 node devestack Bacalhau cluster.
+* Copy and paste the IPFS and JSON port variables into the new terminal window.
 
-## adding files
+## Add files to IPFS
 
-Each node has it's own `IPFS_PATH` value.  This means you can use the `ipfs` cli in isolation from the other 2 nodes.
+Each node has it's own `IPFS_PATH` value which points to a path on the local filesystem.  This allows to use the ipfs cli to test adding files to one or multiple nodes.  This is especially useful when you want to test self selection of a job based on whether the cid is *local* to that node.
 
-For example - to add a file to only one of the ipfs nodes:
+To add a file to only one of ipfs node within the devstack cluster, execute the `ipfs add` in the following manner:
 
 ```bash
 cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
 ```
+*Note: the CID is saved as an environment variable so that it can be referenced in the job submission step.
 
-This is especially useful when you want to test self selection of a job based on whether the cid is `local` to that node.
+## Set a json rpc port
 
-## json rpc
-
-Each node is it's own `--jsonrpc-port` value.  This means you can use the `go run .` cli in isolation from the other 2 nodes.
+Each node has it's own `--jsonrpc-port` value.  This means you can use the `go run .` cli in isolation from the other 2 nodes.
 
 For example - to view the current job list from the perspective of only one of the 3 nodes:
 
 ```bash
-# replace this with the correct port from the output
-export NODE1_JSONRPC_PORT=38967
+# Note: replace 12345 this with the correct port from the output
+export NODE1_JSONRPC_PORT=12345
 go run . --jsonrpc-port=$NODE1_JSONRPC_PORT list
 ```
 
-## run simple job
+## Submit a simple job
 
 This will submit a simple job to a single node:
 
