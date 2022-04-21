@@ -1,8 +1,11 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/opentracing/opentracing-go"
 )
 
 // a representation of some data on a storage engine
@@ -55,7 +58,8 @@ type JobDeal struct {
 // the view of a single job
 // multiple compute nodes will be running this job
 type Job struct {
-	Id string
+	Context context.Context
+	Id      string
 	// the client node that "owns" this job (as in who submitted it)
 	Owner string
 	Spec  *JobSpec
@@ -67,6 +71,7 @@ type Job struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
+	Context   context.Context
 	JobId     string
 	NodeId    string
 	EventName string
@@ -84,8 +89,9 @@ type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Spec *JobSpec
-	Deal *JobDeal
+	Spec        *JobSpec
+	Deal        *JobDeal
+	SpanContext opentracing.SpanContext
 }
 
 // the data structure a client can use to render a view of the state of the world

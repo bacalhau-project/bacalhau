@@ -1,14 +1,15 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
@@ -29,8 +30,14 @@ var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of 3 bacalhau nodes for testing and development",
 	RunE: func(cmd *cobra.Command, args []string) error { // nolint
-
 		result, err := ipfs.IpfsCommand("", []string{"version"})
+
+		ctx := cmd.Context()
+		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		_, span := tracer.Start(ctx, "DevStack Span")
+
+		// In LIFO order
+		defer span.End()
 
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("Error running command 'ipfs version': %s", err))
@@ -43,30 +50,30 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
-		ctx := context.Background()
-		ctxWithCancel, cancelFunction := context.WithCancel(ctx)
-
-		stack, err := internal.NewDevStack(ctxWithCancel, 3, devStackBadActors)
+		stack, err := internal.NewDevStack(ctx, 3, devStackBadActors)
 
 		if err != nil {
-			cancelFunction()
 			return err
 		}
 
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for range c {
-				cancelFunction()
-				// need some time to let ipfs processes shut down
-				time.Sleep(time.Second * 1)
-				os.Exit(1)
-			}
-		}()
-
 		stack.PrintNodeInfo()
 
-		// wait forever because everything else is running in a goroutine
-		select {}
+		nodeChannel := make(chan os.Signal, 1)
+		signal.Notify(nodeChannel, syscall.SIGINT, syscall.SIGTERM)
+		done := make(chan bool, 1)
+
+		go func() {
+
+			for range nodeChannel {
+				// need some time to let ipfs processes shut down
+				span.End()
+				time.Sleep(time.Second * 2)
+				log.Info().Msgf("Force quit.")
+				done <- true
+			}
+		}()
+		<-done
+
+		return nil
 	},
 }

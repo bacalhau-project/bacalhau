@@ -25,3 +25,6 @@ temperature_sensor_data.csv.bz2
 __debug_bin
 .terraform*
 terraform.tfstate*
+
+trace.out
+trace_otel.out
