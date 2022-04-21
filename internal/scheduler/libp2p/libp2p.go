@@ -22,7 +22,7 @@ import (
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pScheduler struct {
-	Context context.Context
+	Context     context.Context
 
 	Jobs map[string]*types.Job
 
@@ -94,6 +94,14 @@ func NewLibp2pScheduler(
 
 */
 
+func (scheduler *Libp2pScheduler) SetContext(ctx context.Context) {
+	scheduler.Context = ctx
+}
+
+func (scheduler *Libp2pScheduler) GetContext() context.Context {
+	return scheduler.Context
+}
+
 func (scheduler *Libp2pScheduler) HostId() (string, error) {
 	return scheduler.Host.ID().String(), nil
 }
@@ -135,7 +143,7 @@ func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.J
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pScheduler) SubmitJob(ctx context.Context, spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
+func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("Error in creating job id. %s", err)
@@ -144,7 +152,6 @@ func (scheduler *Libp2pScheduler) SubmitJob(ctx context.Context, spec *types.Job
 	jobId := jobUuid.String()
 
 	err = scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_CREATED,
 		JobSpec:   spec,
@@ -155,35 +162,33 @@ func (scheduler *Libp2pScheduler) SubmitJob(ctx context.Context, spec *types.Job
 		return nil, err
 	}
 
+	// Initialize Server Side Tracing
 	job := &types.Job{
-		Context: ctx,
-		Id:      jobId,
-		Spec:    spec,
-		Deal:    deal,
-		State:   make(map[string]*types.JobState),
+		Id:    jobId,
+		Spec:  spec,
+		Deal:  deal,
+		State: make(map[string]*types.JobState),
 	}
 
 	return job, nil
 }
 
-func (scheduler *Libp2pScheduler) UpdateDeal(ctx context.Context, jobId string, deal *types.JobDeal) error {
+func (scheduler *Libp2pScheduler) UpdateDeal(jobId string, deal *types.JobDeal) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_DEAL_UPDATED,
 		JobDeal:   deal,
 	})
 }
 
-func (scheduler *Libp2pScheduler) CancelJob(ctx context.Context, jobId string) error {
+func (scheduler *Libp2pScheduler) CancelJob(jobId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pScheduler) AcceptJobBid(ctx context.Context, jobId string, nodeId string) error {
+func (scheduler *Libp2pScheduler) AcceptJobBid(jobId string, nodeId string) error {
 	deal := scheduler.Jobs[jobId].Deal
 	deal.AssignedNodes = append(deal.AssignedNodes, nodeId)
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_BID_ACCEPTED,
@@ -194,12 +199,11 @@ func (scheduler *Libp2pScheduler) AcceptJobBid(ctx context.Context, jobId string
 	})
 }
 
-func (scheduler *Libp2pScheduler) RejectJobBid(ctx context.Context, jobId string, nodeId string, message string) error {
+func (scheduler *Libp2pScheduler) RejectJobBid(jobId string, nodeId string, message string) error {
 	if message == "" {
 		message = "Job bid rejected by client"
 	}
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_BID_REJECTED,
@@ -210,9 +214,8 @@ func (scheduler *Libp2pScheduler) RejectJobBid(ctx context.Context, jobId string
 	})
 }
 
-func (scheduler *Libp2pScheduler) AcceptResult(ctx context.Context, jobId string, nodeId string) error {
+func (scheduler *Libp2pScheduler) AcceptResult(jobId string, nodeId string) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
@@ -222,12 +225,11 @@ func (scheduler *Libp2pScheduler) AcceptResult(ctx context.Context, jobId string
 	})
 }
 
-func (scheduler *Libp2pScheduler) RejectResult(ctx context.Context, jobId string, nodeId string, message string) error {
+func (scheduler *Libp2pScheduler) RejectResult(jobId string, nodeId string, message string) error {
 	if message == "" {
 		message = "Job result rejected by client"
 	}
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		NodeId:    nodeId,
 		EventName: system.JOB_EVENT_RESULTS_REJECTED,
@@ -242,9 +244,8 @@ func (scheduler *Libp2pScheduler) RejectResult(ctx context.Context, jobId string
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pScheduler) BidJob(ctx context.Context, jobId string) error {
+func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_BID,
 		JobState: &types.JobState{
@@ -253,9 +254,8 @@ func (scheduler *Libp2pScheduler) BidJob(ctx context.Context, jobId string) erro
 	})
 }
 
-func (scheduler *Libp2pScheduler) SubmitResult(ctx context.Context, jobId, status string, outputs []types.JobStorage) error {
+func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.JobStorage) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_RESULTS,
 		JobState: &types.JobState{
@@ -266,9 +266,8 @@ func (scheduler *Libp2pScheduler) SubmitResult(ctx context.Context, jobId, statu
 	})
 }
 
-func (scheduler *Libp2pScheduler) ErrorJob(ctx context.Context, jobId, status string) error {
+func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
-		Context:   ctx,
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_ERROR,
 		JobState: &types.JobState{
@@ -283,7 +282,7 @@ func (scheduler *Libp2pScheduler) ErrorJob(ctx context.Context, jobId, status st
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (scheduler *Libp2pScheduler) ErrorJobForNode(ctx context.Context, jobId, nodeId, status string) error {
+func (scheduler *Libp2pScheduler) ErrorJobForNode(jobId, nodeId, status string) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,
@@ -336,6 +335,7 @@ func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
 		return err
 	}
 	log.Debug().Msgf("Sending event: %s\n", string(msgBytes))
+
 	return scheduler.JobEventTopic.Publish(scheduler.Context, msgBytes)
 }
 

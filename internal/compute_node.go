@@ -6,11 +6,13 @@ import (
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/runtime"
 	"github.com/filecoin-project/bacalhau/internal/scheduler"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
@@ -20,7 +22,7 @@ type ComputeNode struct {
 	BadActor bool
 	NodeId   string
 
-	Ctx context.Context
+	Context context.Context
 
 	Scheduler scheduler.Scheduler
 }
@@ -31,6 +33,8 @@ func NewComputeNode(
 	badActor bool,
 ) (*ComputeNode, error) {
 
+	ctx = scheduler.GetContext()
+
 	nodeId, err := scheduler.HostId()
 
 	if err != nil {
@@ -39,13 +43,20 @@ func NewComputeNode(
 
 	computeNode := &ComputeNode{
 		IpfsRepo:  "",
-		Ctx:       ctx,
+		Context:   ctx,
 		Scheduler: scheduler,
 		BadActor:  badActor,
 		NodeId:    nodeId,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
+		tp, _ := otel_tracer.GetOtelTP(ctx)
+		tracer := tp.Tracer("bacalhau.org")
+
+		_, nodeSpan := tracer.Start(ctx, fmt.Sprintf("Compute Node Listening: Id %s", nodeId))
+		defer nodeSpan.End()
+
+		nodeSpan.SetAttributes(attribute.String("NodeId", nodeId))
 
 		switch jobEvent.EventName {
 
@@ -70,7 +81,7 @@ func NewComputeNode(
 				log.Debug().Msgf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = scheduler.BidJob(ctx, jobEvent.JobId)
+				err = scheduler.BidJob(jobEvent.JobId)
 				if err != nil {
 					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
@@ -89,13 +100,13 @@ func NewComputeNode(
 
 			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
 
-			cid, err := computeNode.RunJob(ctx, job)
+			cid, err := computeNode.RunJob(computeNode.Context, job)
 
 			if err != nil {
 				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)
 
 				// TODO: Check result of Error job
-				_ = scheduler.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				log.Info().Msgf("Completed the job - results cid: %s\n%+v\n", cid, job)
 
@@ -108,7 +119,6 @@ func NewComputeNode(
 
 				// TODO: Check result of submit result
 				_ = scheduler.SubmitResult(
-					ctx,
 					job.Id,
 					fmt.Sprintf("Got job results cid: %s", cid),
 					results,

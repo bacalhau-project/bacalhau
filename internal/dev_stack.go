@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel"
 )
 
 type DevStackNode struct {
@@ -33,9 +33,12 @@ func NewDevStack(
 	bacalhauMultiAddresses := []string{}
 	devstackIpfsMultiAddresses := []string{}
 
-	// create 3 bacalhau compute nodes
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.GetOtelTP(ctx)
+	tracer := tp.Tracer("bacalhau.org")
 	_, span := tracer.Start(ctx, "Provisioning Nodes")
+
+	// create 3 bacalhau compute nodes
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`
 ---------------------

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // a representation of some data on a storage engine
@@ -59,7 +59,8 @@ type JobDeal struct {
 // multiple compute nodes will be running this job
 type Job struct {
 	Context context.Context
-	Id      string
+
+	Id string
 	// the client node that "owns" this job (as in who submitted it)
 	Owner string
 	Spec  *JobSpec
@@ -71,7 +72,6 @@ type Job struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	Context   context.Context
 	JobId     string
 	NodeId    string
 	EventName string
@@ -89,15 +89,21 @@ type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Spec        *JobSpec
-	Deal        *JobDeal
-	SpanContext opentracing.SpanContext
+	Spec                  *JobSpec
+	Deal                  *JobDeal
+	OTELCarrier 		  propagation.MapCarrier
 }
 
 // the data structure a client can use to render a view of the state of the world
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
 	Jobs map[string]*Job
+}
+
+type ContextKey string
+
+type SerializedOtelContext struct {
+	Context propagation.MapCarrier
 }
 
 func PrettyPrintJob(j *JobSpec) string {

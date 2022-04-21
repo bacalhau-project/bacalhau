@@ -13,8 +13,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal"
 	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel"
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/system"
@@ -34,16 +34,11 @@ const TEST_CONFIDENCE = 1
 // the results must be within 10% of each other
 const TEST_TOLERANCE = 0.1
 
-func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, context.Context, context.CancelFunc) {
-	ctx := context.Background()
-	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
-	id, _ := uuid.NewRandom()
-	ctxWithId := context.WithValue(ctxWithCancel, "id", id)
-
+func setupTest(t *testing.T, ctx context.Context, nodes int, badActors int) *internal.DevStack {
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
-	stack, err := internal.NewDevStack(ctxWithCancel, nodes, badActors)
+	stack, err := internal.NewDevStack(ctx, nodes, badActors)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
@@ -52,7 +47,7 @@ func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, cont
 	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
 	time.Sleep(time.Second * 2)
 
-	return stack, ctxWithId, cancelFunction
+	return stack
 }
 
 // this might be called multiple times if KEEP_STACK is active
@@ -71,8 +66,23 @@ func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
 }
 
 func TestDevStack(t *testing.T) {
-	stack, ctx, cancelFunction := setupTest(t, 1, 0)
+	// os.Setenv("OTEL_STDOUT", "true")
+	ctx := context.Background()
+	ctx, cancelFunction := context.WithCancel(ctx)
+	id, _ := uuid.NewRandom()
+	ctx = context.WithValue(ctx, "id", id)
+	defer cancelFunction()
+
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.GetOtelTP(ctx)
+	tracer := tp.Tracer("bacalhau.org")
+	ctx, span := tracer.Start(ctx, "TestDevStack Span")
+	defer span.End()
+
+	ctx, setupTestSpan := tracer.Start(ctx, "Setup Nodes for Test")
+	stack := setupTest(t, ctx, 1, 0)
 	defer teardownTest(stack, cancelFunction)
+	setupTestSpan.End()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -113,6 +123,7 @@ raspberry
 
 	// ipfs add the file to 2 nodes
 	// this tests self selection
+	_, addingFilesToNodes := tracer.Start(ctx, "Adding files to nodes")
 	for i, node := range stack.Nodes {
 		if i >= TEST_CONCURRENCY {
 			continue
@@ -124,23 +135,15 @@ raspberry
 
 		assert.NoError(t, err)
 	}
+	addingFilesToNodes.End()
 
 	fileCid = strings.TrimSpace(fileCid)
 
 	var job *types.Job
 
-	id, _ := uuid.NewRandom()
-	ctx, cancel := context.WithCancel(context.Background())
-	ctxWithId := context.WithValue(ctx, "id", id)
-	defer cancel()
-
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-	_, span := tracer.Start(ctxWithId, "TestDevStack Span")
-	defer span.End()
-
 	err = system.TryUntilSucceedsN(func() error {
 		job, err = SubmitJob(
-			ctxWithId,
+			ctx,
 			[]string{
 				fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			},
@@ -204,6 +207,19 @@ raspberry
 }
 
 func TestCommands(t *testing.T) {
+	t.Skip("Skipping during refactoring - we'll just use TestDevStack as the integration test to focus on.")
+	ctx := context.Background()
+	ctx, cancelFunction := context.WithCancel(ctx)
+	id, _ := uuid.NewRandom()
+	ctx = context.WithValue(ctx, "id", id)
+	defer cancelFunction()
+
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.GetOtelTP(ctx)
+	tracer := tp.Tracer("bacalhau.org")
+	_, span := tracer.Start(ctx, "TestDevStack Span")
+	defer span.End()
+
 	tests := map[string]struct {
 		file                string
 		cmd                 string
@@ -222,7 +238,7 @@ func TestCommands(t *testing.T) {
 
 	_ = system.RunCommand("sudo", []string{"pkill", "ipfs"})
 
-	stack, ctx, cancelFunction := setupTest(t, 3, 0)
+	stack := setupTest(t, ctx, 3, 0)
 	defer teardownTest(stack, cancelFunction)
 
 	c := make(chan os.Signal, 1)
@@ -312,7 +328,9 @@ func execute_command(
 		log.Debug().Msg(fmt.Sprintf(`About to submit job:
 cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		// Initialize the root trace for all of Otel
+		tp, _ := otel_tracer.GetOtelTP(ctx)
+		tracer := tp.Tracer("bacalhau.org")
 		_, span := tracer.Start(ctx, "TestDevStack Span")
 		defer span.End()
 
@@ -379,7 +397,6 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 }
 
 func TestCatchBadActors(t *testing.T) {
-
 	t.Skip()
 
 	tests := map[string]struct {
@@ -394,6 +411,18 @@ func TestCatchBadActors(t *testing.T) {
 		// "one_bad_actor": {nodes: 3, concurrency: 2, confidence: 2, tolerance: 0.1, badActors: 1, expectation: false},
 	}
 
+	ctx := context.Background()
+	ctx, cancelFunction := context.WithCancel(ctx)
+	id, _ := uuid.NewRandom()
+	ctx = context.WithValue(ctx, "id", id)
+	defer cancelFunction()
+
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.GetOtelTP(ctx)
+	tracer := tp.Tracer("bacalhau.org")
+	_, span := tracer.Start(ctx, "TestDevStack Span")
+	defer span.End()
+
 	// TODO: #57  This is stupid (for now) but need to add the %s at the end because we don't have an elegant way to run without a cid (yet). Will fix later.
 	commands := []string{
 		`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10); %s"`,
@@ -403,7 +432,7 @@ func TestCatchBadActors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// t.Parallel()
 
-			stack, ctx, cancelFunction := setupTest(t, tc.nodes, tc.badActors)
+			stack := setupTest(t, ctx, tc.nodes, tc.badActors)
 			defer teardownTest(stack, cancelFunction)
 
 			c := make(chan os.Signal, 1)

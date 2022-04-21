@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 
@@ -25,53 +26,58 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 )
 
-func InitializeOtel(ctxWithId context.Context) (*sdktrace.TracerProvider, func()) {
+var (
+	tp *sdktrace.TracerProvider
+	cleanupFunc func()
+	once sync.Once
+)
+
+func GetOtelTP(ctxWithId context.Context) (*sdktrace.TracerProvider, func()) {
 	// This is the default, pass along os.Stdout as the writer
 	return InitializeOtelWithWriter(ctxWithId, os.Stdout)
 }
 
 func InitializeOtelWithWriter(ctxWithId context.Context, w io.Writer) (*sdktrace.TracerProvider, func()) {
 
-	// Read in config from $HOME/.bacalhau
-	// which contains the HONEYCOMB key
-	userHome := os.Getenv("HOME")
-	viper.SetConfigFile(fmt.Sprintf("%s/.bacalhau/config.toml", userHome))
+	once.Do(func() {
+		// Read in config from $HOME/.bacalhau
+		// which contains the HONEYCOMB key
+		userHome := os.Getenv("HOME")
+		viper.SetConfigFile(fmt.Sprintf("%s/.bacalhau/config.toml", userHome))
 
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			log.Debug().Msg("No config file found.")
-		} else {
-			log.Fatal().Msgf("Config file found, but another error", err)
+		if err := viper.ReadInConfig(); err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+				log.Debug().Msg("No config file found.")
+			} else {
+				log.Fatal().Msgf("Config file found, but another error: %s", err)
+			}
 		}
-	}
 
-	viper.AutomaticEnv()
+		viper.AutomaticEnv()
 
-	var tp *sdktrace.TracerProvider
-	var cleanupFunc func()
+		honeycomb_key := viper.GetString("HONEYCOMB_API_KEY")
+		otel_stdout_override := viper.GetString("OTEL_STDOUT")
 
-	honeycomb_key := viper.GetString("HONEYCOMB_API_KEY")
-	otel_stdout_override := viper.GetString("OTEL_STDOUT")
+		if (honeycomb_key == "") || (otel_stdout_override != "") {
+			log.Debug().Msgf("Either no Honeycomb API key found or stdout override found. Pushing logs to writer: %s.", w)
+			tp, cleanupFunc = initStdOutTracer(ctxWithId, w)
+		} else {
+			log.Debug().Msg("Honeycomb API key found, and stdout override not found. Pushing logs to Honeycomb.")
+			tp, cleanupFunc = initHCTracer(ctxWithId)
+		}
+		// Create a new tracer provider with a batch span processor and the otlp exporter.
 
-	if (honeycomb_key == "") || (otel_stdout_override != "") {
-		log.Debug().Msgf("Either no Honeycomb API key found or stdout override found. Pushing logs to writer: %s.", w)
-		tp, cleanupFunc = initStdOutTracer(ctxWithId, w)
-	} else {
-		log.Debug().Msg("Honeycomb API key found, and stdout override not found. Pushing logs to Honeycomb.")
-		tp, cleanupFunc = initHCTracer(ctxWithId)
-	}
-	// Create a new tracer provider with a batch span processor and the otlp exporter.
+		// Start the Tracer Provider and the W3C Trace Context propagator as globals
+		otel.SetTracerProvider(tp)
 
-	// Start the Tracer Provider and the W3C Trace Context propagator as globals
-	otel.SetTracerProvider(tp)
-
-	// Register the trace context and baggage propagators so data is propagated across services/processes.
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
+		// Register the trace context and baggage propagators so data is propagated across services/processes.
+		otel.SetTextMapPropagator(
+			propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			),
+		)
+	})
 
 	return tp, cleanupFunc
 }

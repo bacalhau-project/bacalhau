@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel"
 
 	"github.com/filecoin-project/bacalhau/internal"
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,9 @@ var devstackCmd = &cobra.Command{
 		result, err := ipfs.IpfsCommand("", []string{"version"})
 
 		ctx := cmd.Context()
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		// Initialize the root trace for all of Otel
+		tp, _ := otel_tracer.GetOtelTP(ctx)
+		tracer := tp.Tracer("bacalhau.org")
 		_, span := tracer.Start(ctx, "DevStack Span")
 
 		// In LIFO order

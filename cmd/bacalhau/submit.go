@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 var jobCids []string
@@ -73,6 +74,9 @@ func SubmitJob(
 	skipSyntaxChecking bool,
 ) (*types.Job, error) {
 
+	tp, _ := otel_tracer.GetOtelTP(ctx)
+	_, preppingSubmitJobSpan := tp.Tracer("bacalhau.org").Start(ctx, "Submit Job")
+
 	// for testing the tracing - just run a job that allocates some memory
 	if os.Getenv("BACALHAU_MOCK_JOB") != "" {
 		commands = []string{
@@ -128,20 +132,36 @@ func SubmitJob(
 		Confidence:  confidence,
 		Tolerance:   tolerance,
 	}
+	preppingSubmitJobSpan.End()
+
+	_, submittingJobSpan := tp.Tracer("bacalhau.org").Start(ctx, "Submitting Job to RPC")
+
+	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+	carrier := propagation.MapCarrier{}
+
+	job := &types.Job{}
+	job.Id = ctx.Value("id").(uuid.UUID).String()
+	submittingJobSpan.SetAttributes(attribute.String("JobId", job.Id))
+
+	propagator.Inject(ctx, carrier)
+	log.Debug().Msgf("OTEL Carrier: %s", carrier)
 
 	args := &types.SubmitArgs{
-		Spec: spec,
-		Deal: deal,
+		OTELCarrier: carrier,
+		Spec:        spec,
+		Deal:        deal,
 	}
 
-	result := &types.Job{}
-	result.Id = ctx.Value("id").(uuid.UUID).String()
+	methodName := "Submit"
 
-	tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
-	_, span := tracer.Start(ctx, "Submitting Job to RPC")
-	span.SetAttributes(attribute.String("JobId", result.Id))
+	log.Debug().Msgf(fmt.Sprintf(`Total job submission info:
+rpcHost: %s
+rpcPort: %d
+Method Name: %s
+Args: %v+
+Job: %v+`, rpcHost, rpcPort, methodName, args, job))
 
-	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
+	err := system.JsonRpcMethod(rpcHost, rpcPort, methodName, args, job)
 	if err != nil {
 		return nil, err
 	}
@@ -154,9 +174,10 @@ func SubmitJob(
 	// fmt.Printf("to open all metrics pngs\n")
 	// fmt.Printf("------------------------\n\n")
 	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	log.Info().Msgf("Submitted Job Id: %s\n", result.Id)
+	log.Info().Msgf("Submitted Job Id: %s\n", job.Id)
 
-	return result, nil
+	submittingJobSpan.End()
+	return job, nil
 }
 
 var submitCmd = &cobra.Command{
@@ -164,7 +185,9 @@ var submitCmd = &cobra.Command{
 	Short: "Submit a job to the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
-		tracer := otel.GetTracerProvider().Tracer("bacalhau.org") // if not already in scope
+		// Initialize the root trace for all of Otel
+		tp, _ := otel_tracer.GetOtelTP(cmd.Root().Context())
+		tracer := tp.Tracer("bacalhau.org")
 		ctx, span := tracer.Start(cmd.Root().Context(), "Submit Command")
 		defer span.End()
 

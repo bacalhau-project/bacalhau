@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/rpc"
 
+	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type JobServer struct {
@@ -23,9 +25,20 @@ func (server *JobServer) List(args *types.ListArgs, reply *types.ListResponse) e
 	return nil
 }
 
-func (server *JobServer) Submit(ctx context.Context, args *types.SubmitArgs, reply *types.Job) error {
+func (server *JobServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
 	//nolint
-	job, err := server.RequesterNode.Scheduler.SubmitJob(ctx, args.Spec, args.Deal)
+
+	// Initialize Server Side Tracing
+	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+	jobContext := propagator.Extract(context.Background(), args.OTELCarrier)
+
+	// Initialize the root trace for all of Otel
+	tp, _ := otel_tracer.GetOtelTP(jobContext)
+	tracer := tp.Tracer("bacalhau.org")
+	_, submitJobReceivedSpan := tracer.Start(jobContext, "Final Function from Client to Server")
+	defer submitJobReceivedSpan.End()
+
+	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
 	if err != nil {
 		return err
 	}
