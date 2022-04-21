@@ -11,58 +11,38 @@ import (
 )
 
 var jobCids []string
-var jobCommands []string
+var jobImage string
+var jobEntrypoint string
 var jobConcurrency int
-var jobConfidence int
-var jobTolerance float64
 var skipSyntaxChecking bool
 
 func init() {
-	submitCmd.PersistentFlags().StringSliceVar(
+	runCmd.PersistentFlags().StringSliceVar(
 		&jobCids, "cids", []string{},
 		`The cids of the data used by the job (comma separated, or specify multiple times)`,
 	)
-	submitCmd.PersistentFlags().StringSliceVar(
-		&jobCommands, "commands", []string{},
-		`The commands for the job (comma separated, or specify multiple times)`,
-	)
-	submitCmd.PersistentFlags().IntVar(
+	runCmd.PersistentFlags().IntVar(
 		&jobConcurrency, "concurrency", 1,
 		`How many nodes should run the job`,
 	)
-	submitCmd.PersistentFlags().IntVar(
-		&jobConfidence, "confidence", 1,
-		`How many nodes should agree on a result before we accept it`,
+	runCmd.PersistentFlags().StringVar(
+		&jobImage, "image", "ubuntu:latest",
+		`What image do we use for the job`,
 	)
-	submitCmd.PersistentFlags().BoolVar(
+	runCmd.PersistentFlags().StringVar(
+		&jobEntrypoint, "entrypoint", "",
+		`The entrypoint to use for the container`,
+	)
+	runCmd.PersistentFlags().BoolVar(
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	// this is currently fixed to the "real memory" usage of the validator (traces) module
-	//
-	// some example numbers for 3 jobs that are the same:
-	// -0.1012000000000027
-	// 0.08959999999999875
-	// 0.011600000000003875
-	//
-	// and some example numbers for 3 jobs that are different:
-	// 57.8706
-	// -29.044399999999996
-	// -28.826199999999993
-	//
-	// so - "0.5" seems to be a reasonable "gap" to count results as the same
-	// TODO: have the tolerance be scaled somehow so you can give a number between 0 and 1
-	// TODO: have the tolerance apply to difference validation modules (currently: psrecord + real memory usage)
-	submitCmd.PersistentFlags().Float64Var(
-		&jobTolerance, "tolerance", 0.5,
-		`The allowable difference between two results to count them as the "same"`,
-	)
 }
 
-func SubmitJob(
-	commands, cids []string,
-	concurrency, confidence int,
-	tolerance float64,
+func RunJob(
+	cids []string,
+	image, entrypoint string,
+	concurrency int,
 	rpcHost string,
 	rpcPort int,
 	skipSyntaxChecking bool,
@@ -70,33 +50,15 @@ func SubmitJob(
 
 	// for testing the tracing - just run a job that allocates some memory
 	if os.Getenv("BACALHAU_MOCK_JOB") != "" {
-		commands = []string{
-			`python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`,
-		}
-	}
-
-	if len(commands) <= 0 {
-		return nil, fmt.Errorf("Empty command list")
+		entrypoint = `python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`
 	}
 
 	if concurrency <= 0 {
 		return nil, fmt.Errorf("Concurrency must be >= 1")
 	}
 
-	if confidence > concurrency {
-		return nil, fmt.Errorf("Confidence cannot be more than concurrency")
-	}
-
-	if confidence <= 0 {
-		return nil, fmt.Errorf("Confidence must be >= 1")
-	}
-
-	if tolerance < 0 {
-		return nil, fmt.Errorf("Tolerance must be >= 0")
-	}
-
 	if !skipSyntaxChecking {
-		err := system.CheckBashSyntax(jobCommands)
+		err := system.CheckBashSyntax([]string{entrypoint})
 		if err != nil {
 			return nil, err
 		}
@@ -114,14 +76,13 @@ func SubmitJob(
 	}
 
 	spec := &types.JobSpec{
-		Commands: commands,
-		Inputs:   jobInputs,
+		Image:      image,
+		Entrypoint: entrypoint,
+		Inputs:     jobInputs,
 	}
 
 	deal := &types.JobDeal{
 		Concurrency: concurrency,
-		Confidence:  confidence,
-		Tolerance:   tolerance,
 	}
 
 	args := &types.SubmitArgs{
@@ -149,16 +110,15 @@ func SubmitJob(
 	return result, nil
 }
 
-var submitCmd = &cobra.Command{
-	Use:   "submit",
-	Short: "Submit a job to the network",
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run a job on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
-		_, err := SubmitJob(
-			jobCommands,
+		_, err := RunJob(
 			jobCids,
+			jobImage,
+			jobEntrypoint,
 			jobConcurrency,
-			jobConfidence,
-			jobTolerance,
 			jsonrpcHost,
 			jsonrpcPort,
 			skipSyntaxChecking,

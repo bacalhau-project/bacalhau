@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"strings"
 )
 
 // a representation of some data on a storage engine
@@ -17,12 +16,12 @@ type JobStorage struct {
 // what we pass off to the executor to "run" the job
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
-	Engine   string
-	Commands []string
-	Image    string
-	Cpu      int
-	Memory   int
-	Disk     int
+	Engine     string
+	Entrypoint string
+	Image      string
+	Cpu        int
+	Memory     int
+	Disk       int
 	// for example a list of IPFS cids (if we are using the IPFS storage engine)
 	Inputs []JobStorage
 }
@@ -40,12 +39,6 @@ type JobState struct {
 type JobDeal struct {
 	// how many nodes do we want to run this job?
 	Concurrency int
-	// how many nodes should agree on a result before we use that as the result
-	// this cannot be more than the concurrency
-	Confidence int
-	// how "fuzzy" will we tolerate results such they are classed as the "same"
-	// this only applies to validation engines that are non-determistic
-	Tolerance float64
 	// the nodes we have assigned (and will pay)
 	// other nodes are welcome to submit results without having been assigned
 	// this is how they can bootstrap their reputation
@@ -97,10 +90,11 @@ type ListResponse struct {
 func PrettyPrintJob(j *JobSpec) string {
 
 	return fmt.Sprintf(`
-	Commands: %s
+	Image: %s
+	Entrypoint: %s
 	Cpu: %d
 	Memory %d
 	Disk: %d
-`, strings.Join(j.Commands, "', '"), j.Cpu, j.Disk, j.Memory)
+`, j.Image, j.Entrypoint, j.Cpu, j.Disk, j.Memory)
 
 }

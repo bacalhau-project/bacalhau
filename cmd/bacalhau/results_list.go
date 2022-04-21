@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -25,7 +24,7 @@ var resultsListCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
-		job, err := getJobData(cmdArgs[0])
+		_, err := getJobData(cmdArgs[0])
 		if err != nil {
 			return err
 		}
@@ -46,16 +45,8 @@ var resultsListCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS", "DIFFERENCE", "CORRECT"})
+		t.AppendHeader(table.Row{"NODE", "IPFS", "RESULTS"})
 		t.SetColumnConfigs([]table.ColumnConfig{})
-
-		log.Debug().Msg(fmt.Sprintf("Job deal tolerance: %f\n", job.Deal.Tolerance))
-
-		// TODO: load the job so we can get at Deal.Tolerance
-		clustered := traces.TraceCollection{
-			Traces:    []traces.Trace{},
-			Tolerance: job.Deal.Tolerance,
-		}
 
 		for _, row := range *data {
 			resultsFolder, err := system.GetSystemDirectory(row.Folder)
@@ -67,22 +58,6 @@ var resultsListCmd = &cobra.Command{
 				log.Warn().Msg("Results folder does not exist, continuing.")
 				continue
 			}
-			clustered.Traces = append(clustered.Traces, traces.Trace{
-				ResultId: row.Cid,
-				Filename: resultsFolder + "/metrics.log",
-			})
-		}
-
-		correctGroup, incorrectGroup, _ := clustered.Cluster()
-
-		log.Debug().Msg(fmt.Sprintf(`
-Returned results:
-	Correct: %+v
-	Incorrect: %+v`, correctGroup, incorrectGroup))
-
-		scores, err := clustered.Scores()
-		if err != nil {
-			return err
 		}
 
 		for _, row := range *data {
@@ -95,21 +70,11 @@ Returned results:
 				folderString = fmt.Sprintf("~/.bacalhau/%s", row.Folder)
 			}
 
-			correctStatus := "❌"
-
-			for _, correctId := range correctGroup {
-				if correctId == row.Cid {
-					correctStatus = "✅"
-				}
-			}
-
 			t.AppendRows([]table.Row{
 				{
 					row.Node,
 					fmt.Sprintf("https://ipfs.io/ipfs/%s", row.Cid),
 					folderString,
-					scores[row.Cid]["real"],
-					correctStatus,
 				},
 			})
 		}

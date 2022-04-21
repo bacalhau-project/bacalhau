@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/traces"
 	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/stretchr/testify/assert"
 
@@ -126,16 +125,13 @@ raspberry
 	var job *types.Job
 
 	err = system.TryUntilSucceedsN(func() error {
-		job, err = SubmitJob(
-			[]string{
-				fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
-			},
+		job, err = RunJob(
 			[]string{
 				fileCid,
 			},
+			"ubuntu:latest",
+			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			TEST_CONCURRENCY,
-			TEST_CONFIDENCE,
-			TEST_TOLERANCE,
 			"127.0.0.1",
 			stack.Nodes[0].JsonRpcPort,
 			true,
@@ -297,16 +293,13 @@ func execute_command(
 		log.Debug().Msg(fmt.Sprintf(`About to submit job:
 cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
-		job, err = SubmitJob(
-			[]string{
-				fmt.Sprintf(cmd, fileCid),
-			},
+		job, err = RunJob(
 			[]string{
 				fileCid,
 			},
+			"ubuntu:latest",
+			fmt.Sprintf(cmd, fileCid),
 			concurrency,
-			confidence,
-			tolerance,
 			"127.0.0.1",
 			stack.Nodes[0].JsonRpcPort,
 			true,
@@ -398,14 +391,8 @@ func TestCatchBadActors(t *testing.T) {
 			job, _, err := execute_command(t, stack, commands[0], "", tc.concurrency, tc.confidence, tc.tolerance)
 			assert.NoError(t, err, "Error executing command: %+v", err)
 
-			resultsList, err := system.ProcessJobIntoResults(job)
+			_, err = system.ProcessJobIntoResults(job)
 			assert.NoError(t, err, "Error processing job into results: %+v", err)
-
-			correctGroup, incorrectGroup, err := traces.ProcessResults(job, resultsList)
-
-			assert.Equal(t, (len(correctGroup)-len(incorrectGroup)) == tc.nodes, fmt.Sprintf("Expected %d good actors, got %d", tc.nodes, len(correctGroup)))
-			assert.Equal(t, (len(incorrectGroup)) == tc.badActors, fmt.Sprintf("Expected %d bad actors, got %d", tc.badActors, len(incorrectGroup)))
-			assert.NoError(t, err, "Expected to run with no error. Actual: %+v", err)
 
 		})
 	}

@@ -20,7 +20,7 @@ func JsonRpcMethod(method string, req, res interface{}) error {
 	)
 }
 
-func getString(st string) string {
+func shortenString(st string) string {
 	if tableOutputWide {
 		return st
 	}

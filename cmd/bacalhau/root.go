@@ -13,7 +13,7 @@ var developmentMode bool
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
-	RootCmd.AddCommand(submitCmd)
+	RootCmd.AddCommand(runCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(resultsCmd)
 	RootCmd.AddCommand(devstackCmd)

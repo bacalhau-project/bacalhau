@@ -7,12 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
 	"github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/system"
 	"github.com/filecoin-project/bacalhau/internal/types"
@@ -20,6 +19,9 @@ import (
 
 const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"
 const BACALHAU_LOGFILE = "/tmp/bacalhau.log"
+
+const BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE string = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
+const BACALHAU_DOCKER_IPFS_SIDECAR_NAME string = "bacalhau-ipfs-sidecar"
 
 type Runtime struct {
 	Kind       string // "ignite" or "docker"
@@ -72,42 +74,6 @@ func NewRuntime(job *types.Job) (*Runtime, error) {
 	return runtime, nil
 }
 
-// start the runtime so we can exec to prepare and run the job
-func (runtime *Runtime) Start() (string, error) {
-	if runtime.Kind == "ignite" {
-		return system.RunCommandGetResults("sudo", []string{
-			"ignite",
-			"run",
-			IGNITE_IMAGE,
-			"--name",
-			runtime.Name,
-			"--cpus",
-			fmt.Sprintf("%d", runtime.Job.Cpu),
-			"--memory",
-			fmt.Sprintf("%dGB", runtime.Job.Memory),
-			"--size",
-			fmt.Sprintf("%dGB", runtime.Job.Disk),
-			"--ssh",
-		})
-	} else {
-		return system.RunCommandGetResults("sudo", []string{
-			"docker",
-			"run",
-			"--privileged",
-			"-d",
-			"--rm",
-			"--name",
-			runtime.Name,
-			"--entrypoint",
-			"bash",
-			IGNITE_IMAGE,
-			"-c",
-			"tail -f /dev/null",
-		})
-	}
-
-}
-
 func (runtime *Runtime) Stop() (string, error) {
 	output, err := system.RunCommandGetResults("sudo", cleanEmpty([]string{
 		runtime.Kind,
@@ -133,238 +99,85 @@ func (runtime *Runtime) Stop() (string, error) {
 	})
 }
 
-// create a script from the job commands
-// these means we can run all commands as a single process
-// that can be invoked by psrecord
-// to do this - we need the commands inside the runtime as a "job.sh" file
-// (so we can "bash job.sh" as the command)
-// let's write our "job.sh" and copy it onto the runtime
-func (runtime *Runtime) PrepareJob(
+var ipfsSidecarMutex sync.Mutex
+
+// acquire a sidecar mutex to stop two of these functions running concurrently
+// ask docker if our sidecar is already running
+// if yes - return (later: maybe reconfigure it if the config changed)
+// start our sidecar container
+//   * environment for
+//     * deleteDefaultBootstrapAddresses
+//     * disableMdnsDiscovery
+//     * ipfsPeerAddresses
+//   * entrypoint.sh will action these
+//   * run test for fuse to be up and running
+func (runtime *Runtime) EnsureIpfsSidecarRunning(
 	// are we connecting to the public IPFS network or a private devstack?
-	privateIpfsRepo string,
+	deleteDefaultBootstrapAddresses bool,
+	disableMdnsDiscovery bool,
+	ipfsPeerAddresses []string,
 ) error {
-	logger.Initialize()
-	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
-	tmpFile, err := ioutil.TempFile("", "bacalhau-ignite-job.*.sh")
-	if err != nil {
-		return err
-	}
-	defer tmpFile.Close()
-	defer os.Remove(tmpFile.Name())
+	ipfsSidecarMutex.Lock()
+	defer ipfsSidecarMutex.Unlock()
 
-	script := system.GenerateJobScript(runtime.Job.Commands[:])
-
-	_, err = tmpFile.WriteString(script)
-	if err != nil {
-		return err
-	}
-
-	threadLogger.Debug().Msgf("Script to run for job: %s", script)
-
-	output, err := system.RunCommandGetResults("sudo", []string{
-		runtime.Kind,
-		"cp",
-		tmpFile.Name(),
-		fmt.Sprintf("%s:/job.sh", runtime.Name),
-	})
-	if err != nil {
-		return fmt.Errorf(`Error copying script to execution location: 
-Error: %+v
-Output: %s`, err, output)
-	}
-
-	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-		runtime.Kind,
-		"exec",
-		runtime.Name,
-		runtime.doubleDash, "ipfs", "init",
-	}))
-	if err != nil {
-		return fmt.Errorf(`Error copying script to execution location: 
-Error: %+v
-Output: %s`, err, output)
-	}
-
-	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-		runtime.Kind,
-		"exec",
-		runtime.Name,
-		runtime.doubleDash,
-		"ipfs",
-		"config",
-		"Discovery.MDNS.Enabled",
-		"--json",
-		"false",
-	}))
-
-	if err != nil {
-		return fmt.Errorf(`Error disabling MDNS discovery:
-Error: %+v
-Output: %s`, err, output)
-	}
-
-	// if we are connecting to a private ipfs network then clear out bootstrap list
-	if privateIpfsRepo != "" {
-		output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-			runtime.Kind,
-			"exec",
-			runtime.Name,
-			runtime.doubleDash, "ipfs", "bootstrap", "rm", "--all",
-		}))
-		if err != nil {
-			return fmt.Errorf(`Error rm during bootstraping ipfs to execution location: 
-Error: %+v
-Output: %s`, err, output)
-		}
-	}
-
-	command := "sudo"
-	args := cleanEmpty([]string{
-		runtime.Kind,
-		"exec",
-		runtime.Name,
-		runtime.doubleDash, "ipfs", "daemon", "--mount",
+	result, err := system.RunCommandGetResults("docker", []string{
+		"ps", "-q", "--filter",
+		fmt.Sprintf("name=%s,status=running", BACALHAU_DOCKER_IPFS_SIDECAR_NAME),
 	})
 
-	ipfsMountCmd := exec.Command(command, args...)
-
-	threadLogger.Debug().Msgf("Running system ipfs daemon mount: %s", ipfsMountCmd.String())
-
-	logfile, err := os.OpenFile(BACALHAU_LOGFILE, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
-	ipfsMountCmd.Stderr = logfile
-	ipfsMountCmd.Stdout = logfile
 
-	go func() {
-		err := ipfsMountCmd.Run()
-		if err != nil {
-			threadLogger.Debug().Msgf("Failed to run : %s", err)
-		}
-	}()
-
-	go func() {
-		<-runtime.stopChan
-
-		// TODO: Should we check the result here?
-		ipfsMountCmd.Process.Kill() // nolint
-	}()
-
-	// sleep here to give the "ipfs daemon --mount" command time to start
-	time.Sleep(5 * time.Second)
-
-	// connect the host ipfs swarm to the known IP/port of the container
-	if privateIpfsRepo != "" {
-		containerIp := ""
-		containerIpfsId := ""
-
-		if runtime.Kind == "docker" {
-			containerIp, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-				"docker",
-				"inspect",
-				"-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
-				runtime.Name,
-			}))
-
-			threadLogger.Debug().Msgf("Docker provided IPAddress for command results: %s", containerIp)
-		} else {
-			containerIp, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-				"ignite",
-				"inspect",
-				"vm",
-				runtime.Name,
-				"-t",
-				"{{.Status.Network.IPAddresses}}",
-			}))
-			threadLogger.Debug().Msgf("Ignite provided IPAddress for command results: %s", containerIp)
-		}
-
-		if err != nil {
-			return fmt.Errorf(`Error getting container ip address:
-	Error: %+v
-	Output: %s`, err, output)
-		}
-
-		containerIp = strings.TrimSuffix(containerIp, "\n")
-		containerIp = strings.ReplaceAll(containerIp, "'", "")
-
-		containerIpfsId, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-			runtime.Kind,
-			"exec",
-			runtime.Name,
-			runtime.doubleDash,
-			"ipfs",
-			"id",
-			"-f", "<id>",
-		}))
-
-		containerIpfsId = strings.TrimSuffix(containerIpfsId, "\n")
-
-		threadLogger.Debug().Msgf("Container Ipfs ID: %s", containerIpfsId)
-
-		if err != nil {
-			return fmt.Errorf(`Error getting container ipfs id:
-	Error: %+v
-	Output: %s`, err, output)
-		}
-
-		// TODO: Is this correct? Does it work under firecracker?
-		// TODO: This fails with internal docker networking (for some reason)
-		output, err = ipfs.IpfsCommand(privateIpfsRepo, []string{
-			"swarm", "connect", fmt.Sprintf("/ip4/%s/tcp/4001/p2p/%s", containerIp, containerIpfsId),
-		})
-
-		if err != nil {
-			return fmt.Errorf(`Error connecting host ipfs into container:
-	Error: %+v
-	Output: %s`, err, output)
-		}
+	// docker ps will return an empty string if there's no container matching
+	// the name
+	if result != "" {
+		return nil
 	}
 
-	// it seems that the ipfs swarm addresses that are automatically announed
-	// have the wrong port - the container ip is correct but rather than 4001
-	// we get a random port probably because of docker network NAT traversal
-	//
-	// if runtime.Kind == "docker" {
-	// 	containerIpAddress, err := system.RunCommandGetResults("sudo", cleanEmpty([]string{
-	// 		runtime.Kind,
-	// 		"inspect",
-	// 		"-f", "'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}'",
-	// 		runtime.Name,
-	// 	}))
+	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(fmt.Sprintf("%s/data", dir), 0777)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(fmt.Sprintf("%s/ipns", dir), 0777)
+	if err != nil {
+		return err
+	}
 
-	// 	if err != nil {
-	// 		return fmt.Errorf(`Error getting container ip address:
-	// Error: %+v
-	// Output: %s`, err, output)
-	// 	}
+	// turn bools into env
+	deleteDefaultBootstrapAddressesString := ""
+	disableMdnsDiscoveryString := ""
 
-	// 	containerIpAddress = strings.TrimSuffix(containerIpAddress, "\n")
-	// 	containerIpAddress = strings.ReplaceAll(containerIpAddress, "'", "")
+	if deleteDefaultBootstrapAddresses {
+		deleteDefaultBootstrapAddressesString = "true"
+	}
 
-	// 	threadLogger.Debug().Msgf(`---------------------------> IP: %s\n`, containerIpAddress)
-	// 	threadLogger.Debug().Msgf(`---------------------------> ADDING ANNOUNCE: ["/ip4/%s/tcp/4001"]\n`, containerIpAddress)
+	if disableMdnsDiscovery {
+		disableMdnsDiscoveryString = "true"
+	}
 
-	// 	output, err = system.RunCommandGetResults("sudo", cleanEmpty([]string{
-	// 		runtime.Kind,
-	// 		"exec",
-	// 		runtime.Name,
-	// 		runtime.doubleDash,
-	// 		"ipfs",
-	// 		"config",
-	// 		"Addresses.Announce",
-	// 		"--json",
-	// 		fmt.Sprintf(`["/ip4/%s/tcp/4001"]`, containerIpAddress),
-	// 	}))
+	_, err = system.RunCommandGetResults("docker", []string{
+		"run",
+		"-d",
+		"--cap-add", "SYS_ADMIN",
+		"--device", "/dev/fuse",
+		"--name", BACALHAU_DOCKER_IPFS_SIDECAR_NAME,
+		"--mount", fmt.Sprintf("type=bind,source=%s,target=/ipfs,bind-propagation=rshared", dir),
+		"--privileged",
+		"-e", fmt.Sprintf("BACALHAU_DISABLE_MDNS_DISCOVERY=%s", disableMdnsDiscoveryString),
+		"-e", fmt.Sprintf("BACALHAU_DELETE_BOOTSTRAP_ADDRESSES=%s", deleteDefaultBootstrapAddressesString),
+		"-e", fmt.Sprintf("BACALHAU_IPFS_PEER_ADDRESSES=%s", strings.Join(ipfsPeerAddresses, ",")),
+		BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE,
+	})
 
-	// 	if err != nil {
-	// 		return fmt.Errorf(`Error setting announce address:
-	// Error: %+v
-	// Output: %s`, err, output)
-	// 	}
-	// }
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -374,14 +187,15 @@ Output: %s`, err, output)
 // psrecord invoke the job that we have prepared at /job.sh
 // copy the psrecord metrics out of the runtime
 // TODO: bunlde the results data and metrics
+// docker run --rm -ti --name ipfs_client  --mount type=bind,source=/ipfs/data,target=/ipfs,bind-propagation=rshared ubuntu bash
 func (runtime *Runtime) RunJob(resultsFolder string) error {
 	threadLogger := logger.LoggerWithRuntimeInfo(runtime.JobId)
 
 	log.Info().Msgf(`
 ========================================
-Running job: %s
+Running job: %s %s
 ========================================
-`, strings.Join(runtime.Job.Commands[:], "\n"))
+`, runtime.Job.Image, runtime.Job.Entrypoint)
 
 	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
 		runtime.Kind,

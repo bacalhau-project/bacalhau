@@ -154,7 +154,7 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	if node.BadActor {
 		jobCopy := *job
 		specCopy := *job.Spec
-		specCopy.Commands = []string{"sleep 10"}
+		specCopy.Entrypoint = "sleep 10"
 		jobCopy.Spec = &specCopy
 		job = &jobCopy
 	}
