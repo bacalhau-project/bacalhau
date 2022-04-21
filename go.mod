@@ -9,8 +9,6 @@ require (
 	github.com/libp2p/go-libp2p v0.17.0
 	github.com/libp2p/go-libp2p-core v0.13.0
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
-	github.com/muesli/clusters v0.0.0-20200529215643-2700303c1762
-	github.com/muesli/kmeans v0.3.0
 	github.com/multiformats/go-multiaddr v0.4.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.26.1
@@ -18,7 +16,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.21.0
-	gonum.org/v1/gonum v0.9.3
 	mvdan.cc/sh/v3 v3.4.3
 )
 
