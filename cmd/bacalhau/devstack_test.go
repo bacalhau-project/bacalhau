@@ -129,6 +129,7 @@ raspberry
 			[]string{
 				fileCid,
 			},
+			[]string{},
 			"ubuntu:latest",
 			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			TEST_CONCURRENCY,
@@ -297,6 +298,7 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 			[]string{
 				fileCid,
 			},
+			[]string{},
 			"ubuntu:latest",
 			fmt.Sprintf(cmd, fileCid),
 			concurrency,

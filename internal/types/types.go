@@ -22,6 +22,7 @@ type JobSpec struct {
 	Cpu        int
 	Memory     int
 	Disk       int
+	Env        []string
 	// for example a list of IPFS cids (if we are using the IPFS storage engine)
 	Inputs []JobStorage
 }

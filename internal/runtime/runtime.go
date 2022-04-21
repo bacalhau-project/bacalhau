@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -179,6 +180,9 @@ func (runtime *Runtime) EnsureIpfsSidecarRunning(
 		return err
 	}
 
+	// TODO: do an actual test that ipfs mount is up and running
+	time.Sleep(time.Second * 5)
+
 	return nil
 }
 
@@ -197,7 +201,11 @@ Running job: %s %s
 ========================================
 `, runtime.Job.Image, runtime.Job.Entrypoint)
 
-	err, stdout, stderr := system.RunTeeCommand("sudo", cleanEmpty([]string{
+	err, stdout, stderr := system.RunTeeCommand("docker", cleanEmpty([]string{
+		"run",
+		"--rm",
+		"--name",
+
 		runtime.Kind,
 		"exec",
 		runtime.Name,

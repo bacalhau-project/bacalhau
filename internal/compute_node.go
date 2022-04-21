@@ -13,21 +13,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const IGNITE_IMAGE string = "docker.io/binocarlos/bacalhau-ignite-image:latest"
-
 type ComputeNode struct {
-	IpfsRepo string
-	BadActor bool
-	NodeId   string
+	// the address to connect to the accompanying ipfs server
+	IpfsMultiAddress string
 
-	Ctx context.Context
+	// are we running in bad actor mode? (useful for tests)
+	BadActor bool
 
 	Scheduler scheduler.Scheduler
+	Ctx       context.Context
 }
 
 func NewComputeNode(
 	ctx context.Context,
 	scheduler scheduler.Scheduler,
+	ipfsMultiAddress string,
 	badActor bool,
 ) (*ComputeNode, error) {
 
@@ -38,11 +38,10 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		IpfsRepo:  "",
-		Ctx:       ctx,
-		Scheduler: scheduler,
-		BadActor:  badActor,
-		NodeId:    nodeId,
+		IpfsMultiAddress: ipfsMultiAddress,
+		BadActor:         badActor,
+		Scheduler:        scheduler,
+		Ctx:              ctx,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
@@ -87,7 +86,7 @@ func NewComputeNode(
 				return
 			}
 
-			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", computeNode.NodeId, job.Id)
+			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
 			cid, err := computeNode.RunJob(job)
 
@@ -130,7 +129,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	}
 	for _, input := range job.Inputs {
 
-		hasCid, err := ipfs.HasCid(node.IpfsRepo, input.Cid)
+		hasCid, err := ipfs.HasCid(node.IpfsMultiAddress, input.Cid)
 		if err != nil {
 			return false, err
 		}
@@ -148,7 +147,13 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 // this is obtained by running "ipfs add -r <results folder>"
 func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 
-	log.Debug().Msgf("Running job on node: %s", node.NodeId)
+	hostId, err := node.Scheduler.HostId()
+
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug().Msgf("Running job on node: %s", hostId)
 
 	// replace the job commands with a sleep because we are a bad actor
 	if node.BadActor {
@@ -171,12 +176,6 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	hostId, err := node.Scheduler.HostId()
-
-	if err != nil {
-		return "", err
-	}
-
 	resultsFolder, err := system.EnsureSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
 
 	if err != nil {
@@ -192,19 +191,8 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 		log.Info().Msgf("Results directory for job id (%s) exists: %s", job.Id, resultsFolder)
 	}
 
-	output, err := vm.Start()
-
-	if err != nil {
-		return "", fmt.Errorf(`Error starting VM: 
-Output: %s
-Error: %s`, output, err)
-	}
-
-	//nolint
-	defer vm.Stop()
-
 	// we are in private ipfs network mode if we have got a folder path for our repo
-	err = vm.PrepareJob(node.IpfsRepo)
+	err = vm.EnsureIpfsSidecarRunning(node.IpfsRepo)
 
 	if err != nil {
 		return "", err

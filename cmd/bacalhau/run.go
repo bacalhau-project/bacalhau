@@ -11,6 +11,7 @@ import (
 )
 
 var jobCids []string
+var jobEnv []string
 var jobImage string
 var jobEntrypoint string
 var jobConcurrency int
@@ -20,6 +21,10 @@ func init() {
 	runCmd.PersistentFlags().StringSliceVar(
 		&jobCids, "cids", []string{},
 		`The cids of the data used by the job (comma separated, or specify multiple times)`,
+	)
+	runCmd.PersistentFlags().StringSliceVarP(
+		&jobEnv, "env", "e", []string{},
+		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
 	runCmd.PersistentFlags().IntVar(
 		&jobConcurrency, "concurrency", 1,
@@ -41,6 +46,7 @@ func init() {
 
 func RunJob(
 	cids []string,
+	env []string,
 	image, entrypoint string,
 	concurrency int,
 	rpcHost string,
@@ -78,6 +84,7 @@ func RunJob(
 	spec := &types.JobSpec{
 		Image:      image,
 		Entrypoint: entrypoint,
+		Env:        env,
 		Inputs:     jobInputs,
 	}
 
@@ -116,6 +123,7 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 		_, err := RunJob(
 			jobCids,
+			jobEnv,
 			jobImage,
 			jobEntrypoint,
 			jobConcurrency,
