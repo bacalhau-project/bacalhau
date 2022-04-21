@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"sync"
 
@@ -13,7 +12,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/internal/logger"
 
 	"github.com/spf13/viper"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -27,9 +25,9 @@ import (
 )
 
 var (
-	tp *sdktrace.TracerProvider
+	tp          *sdktrace.TracerProvider
 	cleanupFunc func()
-	once sync.Once
+	once        sync.Once
 )
 
 func GetOtelTP(ctxWithId context.Context) (*sdktrace.TracerProvider, func()) {
@@ -92,7 +90,7 @@ func newExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 		otlptracegrpc.WithHeaders(map[string]string{
 			"x-honeycomb-team":    hcKey,
-			"x-honeycomb-dataset": fmt.Sprint("Bacalhau-Tracing"),
+			"x-honeycomb-dataset": "Bacalhau-Tracing",
 		}),
 		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}
@@ -118,17 +116,17 @@ func newTraceProvider(exp *otlptrace.Exporter) *sdktrace.TracerProvider {
 	)
 }
 
-// Implement an HTTP Handler func to be instrumented
-func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, World")
-}
+// // Implement an HTTP Handler func to be instrumented
+// func httpHandler(w http.ResponseWriter, r *http.Request) {
+// 	fmt.Fprintf(w, "Hello, World")
+// }
 
-// Wrap the HTTP handler func with OTel HTTP instrumentation
-func wrapHandler() {
-	handler := http.HandlerFunc(httpHandler)
-	wrappedHandler := otelhttp.NewHandler(handler, "hello")
-	http.Handle("/hello", wrappedHandler)
-}
+// // Wrap the HTTP handler func with OTel HTTP instrumentation
+// func wrapHandler() {
+// 	handler := http.HandlerFunc(httpHandler)
+// 	wrappedHandler := otelhttp.NewHandler(handler, "hello")
+// 	http.Handle("/hello", wrappedHandler)
+// }
 
 func initStdOutTracer(ctx context.Context, w io.Writer) (*sdktrace.TracerProvider, func()) {
 	var err error

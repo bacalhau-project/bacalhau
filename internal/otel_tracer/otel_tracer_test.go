@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func setupTest(t *testing.T) (context.Context, context.CancelFunc) {
 	// Set up global context with a uuid
 	id, _ := uuid.NewRandom()
 	ctx, cancel := context.WithCancel(context.Background())
-	ctxWithId := context.WithValue(ctx, "id", id)
+	ctxWithId := context.WithValue(ctx, types.ContextId{}, id)
 
 	os.Setenv("OTEL_LOCAL", "true")
 
@@ -46,7 +47,7 @@ func TestOtelTrace(t *testing.T) {
 	tracer := tp.Tracer("bacalhau.org")
 	otelCtx, span := tracer.Start(ctxWithId, "Main Span")
 
-	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value("id"))))
+	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", otelCtx.Value(types.ContextId{}).(uuid.UUID).String())))
 	span.SetAttributes(attribute.String("Start", fmt.Sprintf("%s", time.Now().UTC())))
 	span.AddEvent("Test Root Event")
 
@@ -85,7 +86,7 @@ func TestOtelTrace(t *testing.T) {
 	}
 
 	assert.Equal(t, traces["Main Span"].Attributes[0].Key, "Id")
-	assert.Equal(t, traces["Main Span"].Attributes[0].Value.Value, otelCtx.Value("id").(uuid.UUID).String())
+	assert.Equal(t, traces["Main Span"].Attributes[0].Value.Value, otelCtx.Value(types.ContextId{}).(uuid.UUID).String())
 	assert.Contains(t, traces["Main Span"].Attributes[1].Key, "Start")
 	assert.Contains(t, traces["Main Span"].Attributes[2].Key, "End")
 	assert.Equal(t, len(traces["Main Span"].Events), 1)

@@ -140,7 +140,7 @@ func SubmitJob(
 	carrier := propagation.MapCarrier{}
 
 	job := &types.Job{}
-	job.Id = ctx.Value("id").(uuid.UUID).String()
+	job.Id = ctx.Value(types.ContextId{}).(uuid.UUID).String()
 	submittingJobSpan.SetAttributes(attribute.String("JobId", job.Id))
 
 	propagator.Inject(ctx, carrier)

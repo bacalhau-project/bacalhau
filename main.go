@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	_ "github.com/filecoin-project/bacalhau/internal/logger"
 	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
+	"github.com/filecoin-project/bacalhau/internal/types"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
@@ -24,7 +24,7 @@ func main() {
 	// Set up global context with a uuid
 	id, _ := uuid.NewRandom()
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, "id", id)
+	ctx = context.WithValue(ctx, types.ContextId{}, id)
 	defer cancel()
 
 	// Initialize the root trace for all of Otel
@@ -39,7 +39,7 @@ func main() {
 
 	start := time.Now()
 
-	span.SetAttributes(attribute.String("Id", fmt.Sprintf("%s", ctx.Value("id"))))
+	span.SetAttributes(attribute.String("Id", ctx.Value(types.ContextId{}).(uuid.UUID).String()))
 	log.Trace().Msgf("Top of execution - %s", start.UTC())
 	bacalhau.Execute(VERSION, ctx)
 	log.Trace().Msgf("Execution finished - %s", time.Since(start))

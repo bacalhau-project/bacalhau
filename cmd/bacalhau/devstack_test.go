@@ -70,7 +70,7 @@ func TestDevStack(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancelFunction := context.WithCancel(ctx)
 	id, _ := uuid.NewRandom()
-	ctx = context.WithValue(ctx, "id", id)
+	ctx = context.WithValue(ctx, types.ContextId{}, id)
 	defer cancelFunction()
 
 	// Initialize the root trace for all of Otel

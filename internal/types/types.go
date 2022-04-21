@@ -89,9 +89,9 @@ type ListArgs struct {
 }
 
 type SubmitArgs struct {
-	Spec                  *JobSpec
-	Deal                  *JobDeal
-	OTELCarrier 		  propagation.MapCarrier
+	Spec        *JobSpec
+	Deal        *JobDeal
+	OTELCarrier propagation.MapCarrier
 }
 
 // the data structure a client can use to render a view of the state of the world
@@ -100,7 +100,7 @@ type ListResponse struct {
 	Jobs map[string]*Job
 }
 
-type ContextKey string
+type ContextId struct{} // or exported to use outside the package
 
 type SerializedOtelContext struct {
 	Context propagation.MapCarrier
