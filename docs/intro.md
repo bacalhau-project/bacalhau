@@ -5,9 +5,13 @@ slug: /
 hide_title: true
 ---
 
-# Welcome to the documentation of the Bacalhau Project
+# Welcome to the Bacalhau Project
 
-[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate) (Portuguese for Cod (Compute over Data))
+*[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate)* is the Portuguese word for for Cod (Compute over Data)
+
+<p align="center">
+<img src="../static/img/bacalhau-fish.jpeg" alt="Bacalhau Logo" width="300" />
+</p>
 
 On this website, you will find:
 
