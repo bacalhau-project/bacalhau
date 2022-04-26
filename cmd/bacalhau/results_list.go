@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"

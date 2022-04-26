@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"

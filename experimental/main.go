@@ -10,7 +10,7 @@ import (
 	"context"
 
 	dockerclient "github.com/docker/docker/client"
-	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/rs/zerolog/log"
 )
 

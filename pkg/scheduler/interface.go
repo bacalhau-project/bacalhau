@@ -1,6 +1,6 @@
 package scheduler
 
-import "github.com/filecoin-project/bacalhau/internal/types"
+import "github.com/filecoin-project/bacalhau/pkg/types"
 
 type Scheduler interface {
 

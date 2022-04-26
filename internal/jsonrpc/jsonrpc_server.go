@@ -1,4 +1,4 @@
-package internal
+package jsonrpc
 
 import (
 	"context"
@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"net/rpc"
 
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type JobServer struct {
-	RequesterNode *RequesterNode
+	RequesterNode *requestor_node.RequesterNode
 }
 
 func (server *JobServer) List(args *types.ListArgs, reply *types.ListResponse) error {
@@ -37,7 +38,7 @@ func RunBacalhauJsonRpcServer(
 	ctx context.Context,
 	host string,
 	port int,
-	requesterNode *RequesterNode,
+	requesterNode *requestor_node.RequesterNode,
 ) {
 	job := &JobServer{
 		RequesterNode: requesterNode,

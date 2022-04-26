@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )

@@ -1,18 +1,22 @@
-package internal
+package devstack
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
 
 type DevStackNode struct {
-	ComputeNode   *ComputeNode
-	RequesterNode *RequesterNode
+	ComputeNode   *compute_node.ComputeNode
+	RequesterNode *requestor_node.RequesterNode
 	JsonRpcPort   int
 	IpfsRepo      string
 }
@@ -47,12 +51,12 @@ func NewDevStack(
 			return nil, err
 		}
 
-		requesterNode, err := NewRequesterNode(ctx, libp2pScheduler)
+		requesterNode, err := requestor_node.NewRequesterNode(ctx, libp2pScheduler)
 		if err != nil {
 			return nil, err
 		}
 
-		computeNode, err := NewComputeNode(ctx, libp2pScheduler, badActors > i)
+		computeNode, err := compute_node.NewComputeNode(ctx, libp2pScheduler, map[string]executor.Executor{})
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +84,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requesterNode)
+		jsonrpc.RunBacalhauJsonRpcServer(ctx, "0.0.0.0", jsonRpcPort, requesterNode)
 
 		connectToMultiAddress := ""
 
@@ -98,7 +102,7 @@ func NewDevStack(
 		bacalhauMultiAddresses = append(bacalhauMultiAddresses, bacalhauMultiAddress)
 		devstackIpfsMultiAddresses = append(devstackIpfsMultiAddresses, computeNodeIpfsMultiaddresses[0])
 
-		computeNode.IpfsRepo = ipfsRepo
+		//computeNode.IpfsRepo = ipfsRepo
 
 		log.Debug().Msgf("bacalhau multiaddress: %s\n", bacalhauMultiAddress)
 		log.Debug().Msgf("ipfs multiaddress: %s\n", devstackIpfsMultiAddresses)

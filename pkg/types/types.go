@@ -10,7 +10,13 @@ import (
 type JobStorage struct {
 	// e.g. ipfs, filecoin or s3
 	Engine string
-	Cid    string
+	// the id of the storage resource (e.g. cid in the case of ipfs)
+	// this is empty in the case of outputs
+	Cid string
+	// for compute engines that "mount" the storage as filesystems (e.g. docker)
+	// what path should we mount the storage to
+	// this can be "stdout", "stderr" or "stdin"
+	MountPath string
 }
 
 // what we pass off to the executor to "run" the job
@@ -23,8 +29,12 @@ type JobSpec struct {
 	Memory     int
 	Disk       int
 	Env        []string
-	// for example a list of IPFS cids (if we are using the IPFS storage engine)
+	// the data volumes we will read in the job
+	// for example "read this ipfs cid"
 	Inputs []JobStorage
+	// the data volumes we will write in the job
+	// for example "write the results to ipfs"
+	Outputs []JobStorage
 }
 
 // keep track of job states on a particular node

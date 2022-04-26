@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal/system"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

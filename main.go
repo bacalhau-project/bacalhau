@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/rs/zerolog/log"
 )
 

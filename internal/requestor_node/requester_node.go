@@ -1,15 +1,13 @@
-package internal
+package requestor_node
 
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
-	"github.com/filecoin-project/bacalhau/internal/scheduler"
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/scheduler"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
-
-	_ "github.com/filecoin-project/bacalhau/internal/logger"
 )
 
 type RequesterNode struct {

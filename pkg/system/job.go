@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 

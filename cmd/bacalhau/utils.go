@@ -3,8 +3,8 @@ package bacalhau
 import (
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 var listOutputFormat string

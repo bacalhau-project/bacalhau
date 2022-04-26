@@ -10,8 +10,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/internal"
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 
 	"github.com/spf13/cobra"
 )
@@ -46,7 +46,7 @@ var devstackCmd = &cobra.Command{
 		ctx := context.Background()
 		ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
-		stack, err := internal.NewDevStack(ctxWithCancel, 3, devStackBadActors)
+		stack, err := devstack.NewDevStack(ctxWithCancel, 3, devStackBadActors)
 
 		if err != nil {
 			cancelFunction()

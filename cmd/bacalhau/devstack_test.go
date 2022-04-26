@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/internal"
-	_ "github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/rs/zerolog/log"
@@ -31,14 +31,14 @@ const TEST_CONFIDENCE = 1
 // the results must be within 10% of each other
 const TEST_TOLERANCE = 0.1
 
-func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, context.CancelFunc) {
+func setupTest(t *testing.T, nodes int, badActors int) (*devstack.DevStack, context.CancelFunc) {
 	ctx := context.Background()
 	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
 
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("BACALHAU_RUNTIME", "docker")
 
-	stack, err := internal.NewDevStack(ctxWithCancel, nodes, badActors)
+	stack, err := devstack.NewDevStack(ctxWithCancel, nodes, badActors)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
@@ -53,7 +53,7 @@ func setupTest(t *testing.T, nodes int, badActors int) (*internal.DevStack, cont
 // this might be called multiple times if KEEP_STACK is active
 // the first time - once the test has completed, this function will be called
 // it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
-func teardownTest(stack *internal.DevStack, cancelFunction context.CancelFunc) {
+func teardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
 	if os.Getenv("KEEP_STACK") == "" {
 		cancelFunction()
 		// need some time to let ipfs processes shut down
@@ -251,7 +251,7 @@ Starting new job:
 	}
 }
 
-func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) (string, error) {
+func add_file_to_nodes(t *testing.T, stack *devstack.DevStack, filename string) (string, error) {
 
 	fileCid := ""
 	var err error
@@ -279,7 +279,7 @@ func add_file_to_nodes(t *testing.T, stack *internal.DevStack, filename string) 
 
 func execute_command(
 	t *testing.T,
-	stack *internal.DevStack,
+	stack *devstack.DevStack,
 	cmd string,
 	fileCid string,
 	concurrency int,

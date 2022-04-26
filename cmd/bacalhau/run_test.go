@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	_ "github.com/filecoin-project/bacalhau/internal/logger"
-	"github.com/filecoin-project/bacalhau/internal/system"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/assert"
 )
 

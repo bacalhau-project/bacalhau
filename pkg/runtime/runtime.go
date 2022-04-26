@@ -13,9 +13,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 const IGNITE_IMAGE string = "binocarlos/bacalhau-ignite-image:v1"

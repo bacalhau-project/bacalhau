@@ -6,9 +6,12 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/filecoin-project/bacalhau/internal"
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/scheduler/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 )
@@ -52,11 +55,11 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		requesterNode, err := internal.NewRequesterNode(ctx, libp2pScheduler)
+		requesterNode, err := requestor_node.NewRequesterNode(ctx, libp2pScheduler)
 		if err != nil {
 			return err
 		}
-		computeNode, err := internal.NewComputeNode(ctx, libp2pScheduler, false)
+		computeNode, err := compute_node.NewComputeNode(ctx, libp2pScheduler, map[string]executor.Executor{})
 		if err != nil {
 			return err
 		}
@@ -81,7 +84,7 @@ var serveCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			computeNode.IpfsRepo = ipfsRepo
+			//computeNode.IpfsRepo = ipfsRepo
 			ipfsPathDevString = fmt.Sprintf("IPFS_PATH=%s ", ipfsRepo)
 			devString += " --start-ipfs-dev-only"
 		}
@@ -136,7 +139,7 @@ go run . submit --cids=$cid --commands="grep admin /ipfs/$cid"
 			return err
 		}
 
-		internal.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, requesterNode)
+		jsonrpc.RunBacalhauJsonRpcServer(ctx, hostAddress, jsonrpcPort, requesterNode)
 
 		// wait forever because everything else is running in a goroutine
 		select {}

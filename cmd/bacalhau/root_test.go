@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	testutils "github.com/filecoin-project/bacalhau/internal/test"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
