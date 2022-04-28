@@ -1,24 +1,20 @@
-package system
+package job
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
-type ResultsList struct {
-	Node   string
-	Cid    string
-	Folder string
-}
-
 func GetJobData(host string, port int, jobId string) (*types.Job, error) {
 	args := &types.ListArgs{}
 	result := &types.ListResponse{}
-	err := JsonRpcMethod(host, port, "List", args, result)
+	err := jsonrpc.JsonRpcMethod(host, port, "List", args, result)
 	if err != nil {
 		return nil, err
 	}
@@ -28,11 +24,10 @@ func GetJobData(host string, port int, jobId string) (*types.Job, error) {
 			return jobData, nil
 		}
 	}
-
 	return nil, fmt.Errorf("Could not find job: %s", jobId)
 }
 
-func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) {
+func GetJobResults(host string, port int, jobId string) (*[]types.ResultsList, error) {
 
 	job, err := GetJobData(host, port, jobId)
 
@@ -43,8 +38,8 @@ func GetJobResults(host string, port int, jobId string) (*[]ResultsList, error) 
 	return ProcessJobIntoResults(job)
 }
 
-func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
-	results := []ResultsList{}
+func ProcessJobIntoResults(job *types.Job) (*[]types.ResultsList, error) {
+	results := []types.ResultsList{}
 
 	log.Debug().Msgf("All job states: %+v", job)
 
@@ -58,10 +53,10 @@ func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 			cid = job.State[node].Outputs[0].Cid
 		}
 
-		results = append(results, ResultsList{
+		results = append(results, types.ResultsList{
 			Node:   node,
 			Cid:    cid,
-			Folder: GetResultsDirectory(job.Id, node),
+			Folder: system.GetResultsDirectory(job.Id, node),
 		})
 	}
 
@@ -70,8 +65,8 @@ func ProcessJobIntoResults(job *types.Job) (*[]ResultsList, error) {
 	return &results, nil
 }
 
-func FetchJobResult(results ResultsList) error {
-	resultsFolder, err := GetSystemDirectory(results.Folder)
+func FetchJobResult(results types.ResultsList) error {
+	resultsFolder, err := system.GetSystemDirectory(results.Folder)
 	if err != nil {
 		return err
 	}
@@ -79,11 +74,11 @@ func FetchJobResult(results ResultsList) error {
 		return nil
 	}
 	log.Debug().Msgf("Fetching results for job %s ---> %s\n", results.Cid, results.Folder)
-	resultsFolder, err = EnsureSystemDirectory(results.Folder)
+	resultsFolder, err = system.EnsureSystemDirectory(results.Folder)
 	if err != nil {
 		return fmt.Errorf("Error ensuring system directory: %s", err)
 	}
-	output, err := RunCommandGetResults("ipfs", []string{
+	output, err := system.RunCommandGetResults("ipfs", []string{
 		"get",
 		results.Cid,
 		"--output",

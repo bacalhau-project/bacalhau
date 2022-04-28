@@ -20,7 +20,7 @@ var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
 func RunCommand(command string, args []string) error {
-	log.Trace().Msgf(`IPFS Command: %s %s`, command, args)
+	log.Trace().Msgf(`Command: %s %s`, command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = Stderr
 	cmd.Stdout = Stdout
@@ -32,7 +32,7 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 
-	log.Debug().Msgf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 
 	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
@@ -59,14 +59,14 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
-	log.Debug().Msgf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
-	log.Debug().Msgf("Running system command: %s %s", command, args)
+	log.Debug().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
@@ -104,6 +104,15 @@ func GetResultsDirectory(jobId, hostId string) string {
 func ShortId(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
+}
+
+func StringArrayContains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func MapStringArray(vs []string, f func(string) string) []string {

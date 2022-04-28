@@ -3,22 +3,25 @@ package docker
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 type DockerExecutor struct {
+	// the global context for stopping any running jobs
+	Ctx context.Context
 	// the address to connect to the accompanying ipfs server
+	// this is optional as we might be wanting to only run jobs
+	// with other types of executors
 	IpfsMultiAddress string
 	// are we running in bad actor mode? (useful for tests)
 	BadActor bool
-	// the global context for stopping any running jobs
-	Ctx context.Context
 }
 
 func NewDockerExecutor(
+	ctx context.Context,
 	ipfsMultiAddress string,
 	badActor bool,
-	ctx context.Context,
 ) (*DockerExecutor, error) {
 	dockerExecutor := &DockerExecutor{
 		IpfsMultiAddress: ipfsMultiAddress,
@@ -32,14 +35,11 @@ func (docker *DockerExecutor) IsInstalled() (bool, error) {
 	return false, nil
 }
 
-func (docker *DockerExecutor) HasStorage(storage types.JobStorage) (bool, error) {
-	return false, nil
-}
-
-func (docker *DockerExecutor) PrepareStorage(storage types.JobStorage) error {
+func (docker *DockerExecutor) PrepareStorage(storageProvider storage.Storage, volume types.StorageSpec) error {
 	return nil
 }
 
-func (docker *DockerExecutor) RunJob(job *types.Job) error {
-	return nil
+func (docker *DockerExecutor) RunJob(job *types.Job) ([]types.StorageSpec, error) {
+	outputs := []types.StorageSpec{}
+	return outputs, nil
 }

@@ -30,6 +30,7 @@ type Libp2pScheduler struct {
 	SubscribeFuncs []func(jobEvent *types.JobEvent, job *types.Job)
 
 	Host                 host.Host
+	Port                 int
 	PubSub               *pubsub.PubSub
 	JobEventTopic        *pubsub.Topic
 	JobEventSubscription *pubsub.Subscription
@@ -80,6 +81,7 @@ func NewLibp2pScheduler(
 	scheduler := &Libp2pScheduler{
 		Ctx:                  ctx,
 		Host:                 host,
+		Port:                 port,
 		PubSub:               pubsub,
 		Jobs:                 make(map[string]*types.Job),
 		JobEventTopic:        jobEventTopic,
@@ -104,11 +106,11 @@ func (scheduler *Libp2pScheduler) Start() error {
 	}
 	go scheduler.readLoopJobEvents()
 	go func() {
-		log.Debug().Msg("Waiting for bacalhau libp2p context to finish.\n")
+		log.Debug().Msg("Libp2p scheduler has started")
 		<-scheduler.Ctx.Done()
-		log.Debug().Msg("Closing bacalhau libp2p daemon\n")
+		log.Debug().Msg("Closing bacalhau libp2p daemon")
 		scheduler.Host.Close()
-		log.Debug().Msg("Closed bacalhau libp2p daemon\n")
+		log.Debug().Msg("Closed bacalhau libp2p daemon")
 	}()
 	return nil
 }
@@ -245,7 +247,7 @@ func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
 	})
 }
 
-func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.JobStorage) error {
+func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.StorageSpec) error {
 	return scheduler.writeJobEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_RESULTS,

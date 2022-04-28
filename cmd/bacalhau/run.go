@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -70,10 +71,10 @@ func RunJob(
 		}
 	}
 
-	jobInputs := []types.JobStorage{}
+	jobInputs := []types.StorageSpec{}
 
 	for _, cid := range cids {
-		jobInputs = append(jobInputs, types.JobStorage{
+		jobInputs = append(jobInputs, types.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: "ipfs",
@@ -99,7 +100,7 @@ func RunJob(
 
 	result := &types.Job{}
 
-	err := system.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
+	err := jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
 		return nil, err
 	}

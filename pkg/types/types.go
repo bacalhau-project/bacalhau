@@ -1,13 +1,9 @@
 package types
 
-import (
-	"fmt"
-)
-
 // a representation of some data on a storage engine
 // this opens up jobs that could operate on different types
 // of storage at once
-type JobStorage struct {
+type StorageSpec struct {
 	// e.g. ipfs, filecoin or s3
 	Engine string
 	// the id of the storage resource (e.g. cid in the case of ipfs)
@@ -22,19 +18,30 @@ type JobStorage struct {
 // what we pass off to the executor to "run" the job
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
-	Engine     string
+	Engine string
+
+	// for VM based executors
+
+	// this should be pullable by docker
+	Image string
+	// optionally override the default entrypoint
 	Entrypoint string
-	Image      string
-	Cpu        int
-	Memory     int
-	Disk       int
-	Env        []string
+	// a map of env to run the container with
+	Env []string
+	// https://github.com/BTBurke/k8sresource strings
+	Cpu    string
+	Memory string
+	Disk   string
+
+	// for WASM based executors
+	Bytecode StorageSpec
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	Inputs []JobStorage
+	Inputs []StorageSpec
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []JobStorage
+	Outputs []StorageSpec
 }
 
 // keep track of job states on a particular node
@@ -42,7 +49,7 @@ type JobState struct {
 	State  string
 	Status string
 	// for example a list of IPFS cids (if we are using the IPFS storage engine)
-	Outputs []JobStorage
+	Outputs []StorageSpec
 }
 
 // omly the client can update this as it's the client that will
@@ -82,6 +89,12 @@ type JobEvent struct {
 	JobState *JobState
 }
 
+type ResultsList struct {
+	Node   string
+	Cid    string
+	Folder string
+}
+
 // JSON RPC
 
 type ListArgs struct {
@@ -96,16 +109,4 @@ type SubmitArgs struct {
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
 	Jobs map[string]*Job
-}
-
-func PrettyPrintJob(j *JobSpec) string {
-
-	return fmt.Sprintf(`
-	Image: %s
-	Entrypoint: %s
-	Cpu: %d
-	Memory %d
-	Disk: %d
-`, j.Image, j.Entrypoint, j.Cpu, j.Disk, j.Memory)
-
 }

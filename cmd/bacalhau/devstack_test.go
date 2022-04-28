@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +113,7 @@ raspberry
 			continue
 		}
 
-		fileCid, err = ipfs.IpfsCommand(node.IpfsRepo, []string{
+		fileCid, err = ipfs.IpfsCommand(node.IpfsNode.Repo, []string{
 			"add", "-Q", testFilePath,
 		})
 
@@ -134,7 +134,7 @@ raspberry
 			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 			TEST_CONCURRENCY,
 			"127.0.0.1",
-			stack.Nodes[0].JsonRpcPort,
+			stack.Nodes[0].JSONRpcNode.Port,
 			true,
 		)
 
@@ -145,7 +145,7 @@ raspberry
 
 	// TODO: Do something with the error
 	err = system.TryUntilSucceedsN(func() error {
-		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
 		if err != nil {
 			return err
 		}
@@ -263,7 +263,7 @@ func add_file_to_nodes(t *testing.T, stack *devstack.DevStack, filename string) 
 			continue
 		}
 
-		fileCid, err = ipfs.IpfsCommand(node.IpfsRepo, []string{
+		fileCid, err = ipfs.IpfsCommand(node.IpfsNode.Repo, []string{
 			"add", "-Q", filename,
 		})
 		if err != nil {
@@ -303,7 +303,7 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 			fmt.Sprintf(cmd, fileCid),
 			concurrency,
 			"127.0.0.1",
-			stack.Nodes[0].JsonRpcPort,
+			stack.Nodes[0].JSONRpcNode.Port,
 			true,
 		)
 		return err
@@ -313,7 +313,7 @@ cmd: %s`, fmt.Sprintf(cmd, fileCid)))
 
 	// TODO: Do something with the error
 	err = system.TryUntilSucceedsN(func() error {
-		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JsonRpcPort)
+		result, err := ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
 		if err != nil {
 			return err
 		}
@@ -393,7 +393,7 @@ func TestCatchBadActors(t *testing.T) {
 			job, _, err := execute_command(t, stack, commands[0], "", tc.concurrency, tc.confidence, tc.tolerance)
 			assert.NoError(t, err, "Error executing command: %+v", err)
 
-			_, err = system.ProcessJobIntoResults(job)
+			_, err = jobutils.ProcessJobIntoResults(job)
 			assert.NoError(t, err, "Error processing job into results: %+v", err)
 
 		})

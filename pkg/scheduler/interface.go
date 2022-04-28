@@ -65,7 +65,7 @@ type Scheduler interface {
 	BidJob(jobId string) error
 
 	// Executed by the compute node when they have completed a job.
-	SubmitResult(jobId, status string, results []types.JobStorage) error
+	SubmitResult(jobId, status string, results []types.StorageSpec) error
 
 	// something has gone wrong with running the job
 	// called by the compute node and so will have the nodeId auto-filled

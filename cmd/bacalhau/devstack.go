@@ -1,24 +1,26 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 
 	"github.com/spf13/cobra"
 )
 
+var devStackNodes int
 var devStackBadActors int
 
 func init() {
+	devstackCmd.PersistentFlags().IntVar(
+		&devStackNodes, "nodes", 3,
+		`How many nodes should be started in the cluster`,
+	)
 	devstackCmd.PersistentFlags().IntVar(
 		&devStackBadActors, "bad-actors", 0,
 		`How many nodes should be bad actors`,
@@ -27,8 +29,12 @@ func init() {
 
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
-	Short: "Start a cluster of 3 bacalhau nodes for testing and development",
+	Short: "Start a cluster of bacalhau nodes for testing and development",
 	RunE: func(cmd *cobra.Command, args []string) error { // nolint
+
+		if devStackBadActors > devStackNodes {
+			return fmt.Errorf("Cannot have more bad actors than there are nodes")
+		}
 
 		result, err := ipfs.IpfsCommand("", []string{"version"})
 
@@ -43,26 +49,14 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
-		ctx := context.Background()
-		ctxWithCancel, cancelFunction := context.WithCancel(ctx)
+		ctx, cancelFunction := system.GetCancelContext()
 
-		stack, err := devstack.NewDevStack(ctxWithCancel, 3, devStackBadActors)
+		stack, err := devstack.NewDevStack(ctx, devStackNodes, devStackBadActors)
 
 		if err != nil {
 			cancelFunction()
 			return err
 		}
-
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for range c {
-				cancelFunction()
-				// need some time to let ipfs processes shut down
-				time.Sleep(time.Second * 1)
-				os.Exit(1)
-			}
-		}()
 
 		stack.PrintNodeInfo()
 

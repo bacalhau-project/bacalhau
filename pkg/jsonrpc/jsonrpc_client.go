@@ -1,4 +1,4 @@
-package system
+package jsonrpc
 
 import (
 	"fmt"
@@ -15,5 +15,5 @@ func JsonRpcMethod(
 	if err != nil {
 		return fmt.Errorf("Error in dialing. %s", err)
 	}
-	return client.Call(fmt.Sprintf("JobServer.%s", method), req, res)
+	return client.Call(fmt.Sprintf("JSONRpcServer.%s", method), req, res)
 }

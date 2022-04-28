@@ -11,47 +11,37 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type JobServer struct {
+type JSONRpcServer struct {
+	Ctx           context.Context
+	Host          string
+	Port          int
 	RequesterNode *requestor_node.RequesterNode
 }
 
-func (server *JobServer) List(args *types.ListArgs, reply *types.ListResponse) error {
-	res, err := server.RequesterNode.Scheduler.List()
-	if err != nil {
-		return err
-	}
-	*reply = res
-	return nil
-}
-
-func (server *JobServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
-	//nolint
-	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
-	if err != nil {
-		return err
-	}
-	*reply = *job
-	return nil
-}
-
-func RunBacalhauJsonRpcServer(
+func NewBacalhauJsonRpcServer(
 	ctx context.Context,
 	host string,
 	port int,
 	requesterNode *requestor_node.RequesterNode,
-) {
-	job := &JobServer{
+) *JSONRpcServer {
+	server := &JSONRpcServer{
+		Ctx:           ctx,
+		Host:          host,
+		Port:          port,
 		RequesterNode: requesterNode,
 	}
+	return server
+}
 
+func StartBacalhauJsonRpcServer(server *JSONRpcServer) error {
 	rpcServer := rpc.NewServer()
-	err := rpcServer.Register(job)
+	err := rpcServer.Register(server)
 	if err != nil {
-		log.Fatal().Msgf("Format of service Job isn't correct. %s", err)
+		return err
 	}
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", host, port),
+		Addr:    fmt.Sprintf("%s:%d", server.Host, server.Port),
 		Handler: rpcServer,
 	}
 
@@ -64,11 +54,31 @@ func RunBacalhauJsonRpcServer(
 	}()
 
 	go func() {
-		log.Debug().Msg("Waiting for json rpc context to finish.")
-		<-ctx.Done()
-		log.Debug().Msg("Closing json rpc server.")
+		<-server.Ctx.Done()
+		log.Debug().Msg("Closing json rpc server")
 		isClosing = true
 		httpServer.Close()
-		log.Debug().Msg("Closed json rpc server.")
+		log.Debug().Msg("Closed json rpc server")
 	}()
+
+	return nil
+}
+
+func (server *JSONRpcServer) List(args *types.ListArgs, reply *types.ListResponse) error {
+	res, err := server.RequesterNode.Scheduler.List()
+	if err != nil {
+		return err
+	}
+	*reply = res
+	return nil
+}
+
+func (server *JSONRpcServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
+	//nolint
+	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
+	if err != nil {
+		return err
+	}
+	*reply = *job
+	return nil
 }
