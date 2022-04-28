@@ -1,14 +1,17 @@
 package storage
 
-import "github.com/filecoin-project/bacalhau/pkg/types"
+import (
+	"github.com/filecoin-project/bacalhau/pkg/types"
+)
 
-type Storage interface {
+type StorageVolume struct {
+	Type   string
+	Source string
+	Target string
+}
 
-	// tells you if the required software is installed on this machine
-	// this is used in job selection
+type StorageProvider interface {
 	IsInstalled() (bool, error)
-
-	// do we have access to the given storage resource?
-	// this is used to filter the job
-	HasResourceLocally(storage types.StorageSpec) (bool, error)
+	HasStorage(volume types.StorageSpec) (bool, error)
+	PrepareStorage(volume types.StorageSpec) (StorageVolume, error)
 }

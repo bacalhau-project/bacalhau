@@ -6,8 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -24,25 +23,12 @@ func init() {
 	)
 }
 
-func ListJobs(
-	rpcHost string,
-	rpcPort int,
-) (*types.ListResponse, error) {
-	args := &types.ListArgs{}
-	result := &types.ListResponse{}
-	err := jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "List", args, result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
-		result, err := ListJobs(jsonrpcHost, jsonrpcPort)
+		result, err := job.ListJobs(jsonrpcHost, jsonrpcPort)
 
 		if err != nil {
 			return err

@@ -6,24 +6,21 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type ComputeNode struct {
-	Ctx              context.Context
-	Scheduler        scheduler.Scheduler
-	Executors        map[string]executor.Executor
-	StorageProviders map[string]storage.Storage
+	Ctx       context.Context
+	Scheduler scheduler.Scheduler
+	Executors map[string]executor.Executor
 }
 
 func NewComputeNode(
 	ctx context.Context,
 	scheduler scheduler.Scheduler,
 	executors map[string]executor.Executor,
-	storageProviders map[string]storage.Storage,
 ) (*ComputeNode, error) {
 
 	nodeId, err := scheduler.HostId()
@@ -33,10 +30,9 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		Ctx:              ctx,
-		Scheduler:        scheduler,
-		Executors:        executors,
-		StorageProviders: storageProviders,
+		Ctx:       ctx,
+		Scheduler: scheduler,
+		Executors: executors,
 	}
 
 	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
@@ -115,9 +111,8 @@ func NewComputeNode(
 func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 
 	// check that we have the executor and it's installed
-	err := node.checkExecutor(job.Engine)
+	executor, err := node.getExecutor(job.Engine)
 	if err != nil {
-		log.Debug().Msgf(err.Error())
 		return false, nil
 	}
 
@@ -131,17 +126,8 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 
 	for _, input := range job.Inputs {
 
-		// check we have the storage engine for the input
-		err := node.checkStorageProvider(input.Engine)
-		if err != nil {
-			log.Debug().Msgf(err.Error())
-			return false, nil
-		}
-
-		storageEngine := node.StorageProviders[input.Engine]
-
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := storageEngine.HasResourceLocally(input)
+		hasStorage, err := executor.HasStorage(input)
 		if err != nil {
 			log.Error().Msgf("Error checking for storage resource locality: %s\n", err.Error())
 			return false, err
@@ -168,62 +154,29 @@ func (node *ComputeNode) RunJob(job *types.Job) ([]types.StorageSpec, error) {
 	outputs := []types.StorageSpec{}
 
 	// check that we have the executor to run this job
-	err := node.checkExecutor(job.Spec.Engine)
+	executor, err := node.getExecutor(job.Spec.Engine)
 	if err != nil {
 		return outputs, err
 	}
 
-	// loop over the job storage inputs and prepare them
-	for _, input := range job.Spec.Inputs {
-
-		// check we have the storage engine for the input
-		err := node.checkStorageProvider(input.Engine)
-		if err != nil {
-			return outputs, err
-		}
-
-		storageProvider := node.StorageProviders[input.Engine]
-		executor := node.Executors[job.Spec.Engine]
-
-		err = executor.PrepareStorage(storageProvider, input)
-		if err != nil {
-			return outputs, err
-		}
-	}
+	outputs, err = executor.RunJob(job)
 
 	return outputs, nil
 }
 
-// make sure that we can use the given executor engine on this node
-func (node *ComputeNode) checkExecutor(engine string) error {
+func (node *ComputeNode) getExecutor(engine string) (executor.Executor, error) {
 	if _, ok := node.Executors[engine]; !ok {
-		return fmt.Errorf("No matching executor found on this server: %s.", engine)
+		return nil, fmt.Errorf("No matching executor found on this server: %s.", engine)
 	}
 	executorEngine := node.Executors[engine]
 	installed, err := executorEngine.IsInstalled()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !installed {
-		return fmt.Errorf("Executor is not installed: %s.", engine)
+		return nil, fmt.Errorf("Executor is not installed: %s.", engine)
 	}
-	return nil
-}
-
-// make sure that we can use the given executor engine on this node
-func (node *ComputeNode) checkStorageProvider(engine string) error {
-	if _, ok := node.StorageProviders[engine]; !ok {
-		return fmt.Errorf("No matching storage provider found on this server: %s.", engine)
-	}
-	storageProviderEngine := node.StorageProviders[engine]
-	installed, err := storageProviderEngine.IsInstalled()
-	if err != nil {
-		return err
-	}
-	if !installed {
-		return fmt.Errorf("Storage provider is not installed: %s.", engine)
-	}
-	return nil
+	return executorEngine, nil
 }
 
 // func (node *ComputeNode) RunJob(job *types.Job) (string, error) {

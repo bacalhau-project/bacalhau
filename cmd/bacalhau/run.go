@@ -1,13 +1,7 @@
 package bacalhau
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/rs/zerolog/log"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/spf13/cobra"
 )
 
@@ -45,84 +39,11 @@ func init() {
 	)
 }
 
-func RunJob(
-	cids []string,
-	env []string,
-	image, entrypoint string,
-	concurrency int,
-	rpcHost string,
-	rpcPort int,
-	skipSyntaxChecking bool,
-) (*types.Job, error) {
-
-	// for testing the tracing - just run a job that allocates some memory
-	if os.Getenv("BACALHAU_MOCK_JOB") != "" {
-		entrypoint = `python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`
-	}
-
-	if concurrency <= 0 {
-		return nil, fmt.Errorf("Concurrency must be >= 1")
-	}
-
-	if !skipSyntaxChecking {
-		err := system.CheckBashSyntax([]string{entrypoint})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	jobInputs := []types.StorageSpec{}
-
-	for _, cid := range cids {
-		jobInputs = append(jobInputs, types.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
-			Cid:    cid,
-		})
-	}
-
-	spec := &types.JobSpec{
-		Image:      image,
-		Entrypoint: entrypoint,
-		Env:        env,
-		Inputs:     jobInputs,
-	}
-
-	deal := &types.JobDeal{
-		Concurrency: concurrency,
-	}
-
-	args := &types.SubmitArgs{
-		Spec: spec,
-		Deal: deal,
-	}
-
-	result := &types.Job{}
-
-	err := jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
-	if err != nil {
-		return nil, err
-	}
-
-	//we got our result in result
-	// fmt.Printf("submit job: %+v\nreply job: %+v\n\n", args.Job, result)
-	// fmt.Printf("to view all files by all nodes\n")
-	// fmt.Printf("------------------------------\n\n")
-	// fmt.Printf("tree ./outputs/%s\n\n", job.Id)
-	// fmt.Printf("to open all metrics pngs\n")
-	// fmt.Printf("------------------------\n\n")
-	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	log.Info().Msgf("Submitted Job Id: %s\n", result.Id)
-
-	return result, nil
-}
-
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a job on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
-		_, err := RunJob(
+		_, err := job.RunJob(
 			jobCids,
 			jobEnv,
 			jobImage,

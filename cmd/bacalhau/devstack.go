@@ -7,7 +7,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 
 	"github.com/spf13/cobra"
@@ -36,7 +37,9 @@ var devstackCmd = &cobra.Command{
 			return fmt.Errorf("Cannot have more bad actors than there are nodes")
 		}
 
-		result, err := ipfs.IpfsCommand("", []string{"version"})
+		cli := ipfs_cli.NewIPFSCli("")
+
+		result, err := cli.Run([]string{"version"})
 
 		if err != nil {
 			log.Error().Msg(fmt.Sprintf("Error running command 'ipfs version': %s", err))
@@ -50,8 +53,14 @@ var devstackCmd = &cobra.Command{
 		}
 
 		ctx, cancelFunction := system.GetCancelContext()
+		executors := map[string]executor.Executor{}
 
-		stack, err := devstack.NewDevStack(ctx, devStackNodes, devStackBadActors)
+		stack, err := devstack.NewDevStack(
+			ctx,
+			devStackNodes,
+			devStackBadActors,
+			executors,
+		)
 
 		if err != nil {
 			cancelFunction()

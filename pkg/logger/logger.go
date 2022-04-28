@@ -2,14 +2,17 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
+
+var Stdout = struct{ io.Writer }{os.Stdout}
+var Stderr = struct{ io.Writer }{os.Stderr}
 
 func Initialize() {
 	// Needs no functionality, but need some function to create
@@ -36,7 +39,7 @@ func init() {
 
 	//file, _ := ioutil.TempFile("tmp", "logs")
 
-	output := zerolog.ConsoleWriter{Out: system.Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
+	output := zerolog.ConsoleWriter{Out: Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,

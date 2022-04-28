@@ -1,11 +1,10 @@
-package bacalhau
+package system
 
 import (
 	"fmt"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +24,7 @@ func TestSubmitSyntaxErrors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// t.Parallel()
 
-			err := system.CheckBashSyntax(tc.cmds)
+			err := CheckBashSyntax(tc.cmds)
 
 			if tc.error_code != 0 {
 				error_content := err.Error()

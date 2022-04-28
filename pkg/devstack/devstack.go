@@ -6,11 +6,11 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -20,6 +20,7 @@ type DevStackNode struct {
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
+	IpfsCli       *ipfs_cli.IPFSCli
 	SchedulerNode *libp2p.Libp2pScheduler
 	JSONRpcNode   *jsonrpc.JSONRpcServer
 }
@@ -31,12 +32,10 @@ type DevStack struct {
 func NewDevStack(
 	ctx context.Context,
 	count, badActors int,
+	executors map[string]executor.Executor,
 ) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
-
-	executors := map[string]executor.Executor{}
-	storageProviders := map[string]storage.Storage{}
 
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -76,7 +75,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := compute_node.NewComputeNode(ctx, schedulerNode, executors, storageProviders)
+		computeNode, err := compute_node.NewComputeNode(ctx, schedulerNode, executors)
 		if err != nil {
 			return nil, err
 		}
@@ -132,6 +131,7 @@ func NewDevStack(
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
+			IpfsCli:       ipfs_cli.NewIPFSCli(ipfsNode.Repo),
 			SchedulerNode: schedulerNode,
 			JSONRpcNode:   jsonRpcNode,
 		}
@@ -175,15 +175,4 @@ go run . --jsonrpc-port=%d list`, node.JSONRpcNode.Port)
 	}
 
 	log.Info().Msg(logString + "\n")
-
-	// log.Info().Msg(`
-	// -------------------------------
-	// example job
-	// -------------------------------
-
-	// cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
-	// go run . --jsonrpc-port=$JSON_PORT_0 submit --cids=$cid --commands="grep kiwi /ipfs/$cid"
-	// go run . --jsonrpc-port=$JSON_PORT_0 list
-
-	// `)
 }
