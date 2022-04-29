@@ -136,7 +136,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
-	log.Debug().Msgf("Starting IPFS Daemon: IPFS_PATH=%s ipfs daemon", server.Repo)
+	log.Debug().Msgf("IPFS daemon is starting\n  IPFS_PATH=%s", server.Repo)
 	cmd := exec.Command("ipfs", "daemon")
 	cmd.Env = []string{
 		"IPFS_PATH=" + server.Repo,
@@ -153,11 +153,12 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
+	log.Debug().Msgf("IPFS daemon has started")
+
 	go func(ctx context.Context, cmd *exec.Cmd) {
 		<-ctx.Done()
-		log.Debug().Msg("Closing ipfs server")
 		_ = cmd.Process.Kill()
-		log.Debug().Msg("Closed ipfs server")
+		log.Debug().Msgf("IPFS daemon has stopped")
 	}(server.Ctx, cmd)
 
 	return nil

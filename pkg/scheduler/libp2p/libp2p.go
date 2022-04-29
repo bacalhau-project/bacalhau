@@ -6,9 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/scheduler"
 	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -24,10 +23,8 @@ const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 type Libp2pScheduler struct {
 	Ctx context.Context
 
-	Jobs map[string]*types.Job
-
-	// the list of functions to call when we get an update about a job
-	SubscribeFuncs []func(jobEvent *types.JobEvent, job *types.Job)
+	// the writer we emit events through
+	GenericScheduler *scheduler.GenericScheduler
 
 	Host                 host.Host
 	Port                 int
@@ -78,16 +75,25 @@ func NewLibp2pScheduler(
 	if err != nil {
 		return nil, err
 	}
-	scheduler := &Libp2pScheduler{
+
+	libp2pScheduler := &Libp2pScheduler{
 		Ctx:                  ctx,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,
-		Jobs:                 make(map[string]*types.Job),
 		JobEventTopic:        jobEventTopic,
 		JobEventSubscription: jobEventSubscription,
 	}
-	return scheduler, nil
+
+	// setup the event writer
+	libp2pScheduler.GenericScheduler = scheduler.NewGenericScheduler(
+		host.ID().String(),
+		func(event *types.JobEvent) error {
+			return libp2pScheduler.writeJobEvent(event)
+		},
+	)
+
+	return libp2pScheduler, nil
 }
 
 /*
@@ -101,16 +107,15 @@ func (scheduler *Libp2pScheduler) HostId() (string, error) {
 }
 
 func (scheduler *Libp2pScheduler) Start() error {
-	if len(scheduler.SubscribeFuncs) <= 0 {
+	if len(scheduler.GenericScheduler.SubscribeFuncs) <= 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
 	go scheduler.readLoopJobEvents()
 	go func() {
 		log.Debug().Msg("Libp2p scheduler has started")
 		<-scheduler.Ctx.Done()
-		log.Debug().Msg("Closing bacalhau libp2p daemon")
 		scheduler.Host.Close()
-		log.Debug().Msg("Closed bacalhau libp2p daemon")
+		log.Debug().Msg("Libp2p scheduler has stopped")
 	}()
 	return nil
 }
@@ -120,17 +125,15 @@ func (scheduler *Libp2pScheduler) Start() error {
 /////////////////////////////////////////////////////////////
 
 func (scheduler *Libp2pScheduler) List() (types.ListResponse, error) {
-	return types.ListResponse{
-		Jobs: scheduler.Jobs,
-	}, nil
+	return scheduler.GenericScheduler.List()
 }
 
 func (scheduler *Libp2pScheduler) Get(id string) (*types.Job, error) {
-	return scheduler.Jobs[id], nil
+	return scheduler.GenericScheduler.Get(id)
 }
 
 func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
-	scheduler.SubscribeFuncs = append(scheduler.SubscribeFuncs, subscribeFunc)
+	scheduler.GenericScheduler.Subscribe(subscribeFunc)
 }
 
 /////////////////////////////////////////////////////////////
@@ -138,40 +141,11 @@ func (scheduler *Libp2pScheduler) Subscribe(subscribeFunc func(jobEvent *types.J
 /////////////////////////////////////////////////////////////
 
 func (scheduler *Libp2pScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
-	jobUuid, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
-	}
-
-	jobId := jobUuid.String()
-
-	err = scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		EventName: system.JOB_EVENT_CREATED,
-		JobSpec:   spec,
-		JobDeal:   deal,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	job := &types.Job{
-		Id:    jobId,
-		Spec:  spec,
-		Deal:  deal,
-		State: make(map[string]*types.JobState),
-	}
-
-	return job, nil
+	return scheduler.GenericScheduler.SubmitJob(spec, deal)
 }
 
 func (scheduler *Libp2pScheduler) UpdateDeal(jobId string, deal *types.JobDeal) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		EventName: system.JOB_EVENT_DEAL_UPDATED,
-		JobDeal:   deal,
-	})
+	return scheduler.GenericScheduler.UpdateDeal(jobId, deal)
 }
 
 func (scheduler *Libp2pScheduler) CancelJob(jobId string) error {
@@ -179,58 +153,19 @@ func (scheduler *Libp2pScheduler) CancelJob(jobId string) error {
 }
 
 func (scheduler *Libp2pScheduler) AcceptJobBid(jobId, nodeId string) error {
-	deal := scheduler.Jobs[jobId].Deal
-	deal.AssignedNodes = append(deal.AssignedNodes, nodeId)
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_BID_ACCEPTED,
-		JobDeal:   deal,
-		JobState: &types.JobState{
-			State: system.JOB_STATE_RUNNING,
-		},
-	})
+	return scheduler.GenericScheduler.AcceptJobBid(jobId, nodeId)
 }
 
 func (scheduler *Libp2pScheduler) RejectJobBid(jobId, nodeId, message string) error {
-	if message == "" {
-		message = "Job bid rejected by client"
-	}
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_BID_REJECTED,
-		JobState: &types.JobState{
-			State:  system.JOB_STATE_BID_REJECTED,
-			Status: message,
-		},
-	})
+	return scheduler.GenericScheduler.RejectJobBid(jobId, nodeId, message)
 }
 
 func (scheduler *Libp2pScheduler) AcceptResult(jobId, nodeId string) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
-		JobState: &types.JobState{
-			State: system.JOB_STATE_RESULTS_ACCEPTED,
-		},
-	})
+	return scheduler.GenericScheduler.AcceptResult(jobId, nodeId)
 }
 
 func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId, message string) error {
-	if message == "" {
-		message = "Job result rejected by client"
-	}
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_RESULTS_REJECTED,
-		JobState: &types.JobState{
-			State:  system.JOB_STATE_RESULTS_REJECTED,
-			Status: message,
-		},
-	})
+	return scheduler.GenericScheduler.RejectResult(jobId, nodeId, message)
 }
 
 /////////////////////////////////////////////////////////////
@@ -238,36 +173,15 @@ func (scheduler *Libp2pScheduler) RejectResult(jobId, nodeId, message string) er
 /////////////////////////////////////////////////////////////
 
 func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		EventName: system.JOB_EVENT_BID,
-		JobState: &types.JobState{
-			State: system.JOB_STATE_BIDDING,
-		},
-	})
+	return scheduler.GenericScheduler.BidJob(jobId)
 }
 
 func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.StorageSpec) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		EventName: system.JOB_EVENT_RESULTS,
-		JobState: &types.JobState{
-			State:   system.JOB_STATE_COMPLETE,
-			Status:  status,
-			Outputs: outputs,
-		},
-	})
+	return scheduler.GenericScheduler.SubmitResult(jobId, status, outputs)
 }
 
 func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		EventName: system.JOB_EVENT_ERROR,
-		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
-			Status: status,
-		},
-	})
+	return scheduler.GenericScheduler.ErrorJob(jobId, status)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -276,15 +190,7 @@ func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
 func (scheduler *Libp2pScheduler) ErrorJobForNode(jobId, nodeId, status string) error {
-	return scheduler.writeJobEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_ERROR,
-		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
-			Status: status,
-		},
-	})
+	return scheduler.GenericScheduler.ErrorJobForNode(jobId, nodeId, status)
 }
 
 /////////////////////////////////////////////////////////////
@@ -316,13 +222,6 @@ func (scheduler *Libp2pScheduler) Connect(peerConnect string) error {
 }
 
 func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
-	if event.NodeId == "" {
-		nodeId, err := scheduler.HostId()
-		if err != nil {
-			return fmt.Errorf("Error in creating job id. %s", err)
-		}
-		event.NodeId = nodeId
-	}
 	msgBytes, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -344,35 +243,6 @@ func (scheduler *Libp2pScheduler) readLoopJobEvents() {
 			continue
 		}
 
-		// let's initialise the state for this job because it was just created
-		if jobEvent.EventName == system.JOB_EVENT_CREATED {
-			scheduler.Jobs[jobEvent.JobId] = &types.Job{
-				Id:    jobEvent.JobId,
-				Owner: jobEvent.NodeId,
-				Spec:  nil,
-				Deal:  nil,
-				State: make(map[string]*types.JobState),
-			}
-		}
-
-		// for "create" and "update" events - this will be filled in
-		if jobEvent.JobSpec != nil {
-			scheduler.Jobs[jobEvent.JobId].Spec = jobEvent.JobSpec
-		}
-
-		// only the owner of the job can update
-		if jobEvent.JobDeal != nil {
-			scheduler.Jobs[jobEvent.JobId].Deal = jobEvent.JobDeal
-		}
-
-		// both the jobState struct and the NodeId are required
-		// because the job state is "against" the node
-		if jobEvent.JobState != nil && jobEvent.NodeId != "" {
-			scheduler.Jobs[jobEvent.JobId].State[jobEvent.NodeId] = jobEvent.JobState
-		}
-
-		for _, subscribeFunc := range scheduler.SubscribeFuncs {
-			go subscribeFunc(jobEvent, scheduler.Jobs[jobEvent.JobId])
-		}
+		scheduler.GenericScheduler.ReadEvent(jobEvent)
 	}
 }
