@@ -1,28 +1,16 @@
 package noop
 
 import (
-	"context"
-
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 type NoopExecutor struct {
-	// the global context for stopping any running jobs
-	Ctx context.Context
-
-	// are we running in bad actor mode? (useful for tests)
-	BadActor bool
+	Jobs []*types.Job
 }
 
-func NewNoopExecutor(
-	ctx context.Context,
-	badActor bool,
-	storageProviders map[string]storage.StorageProvider,
-) (*NoopExecutor, error) {
+func NewNoopExecutor() (*NoopExecutor, error) {
 	NoopExecutor := &NoopExecutor{
-		Ctx:      ctx,
-		BadActor: badActor,
+		Jobs: []*types.Job{},
 	}
 	return NoopExecutor, nil
 }
@@ -36,6 +24,6 @@ func (noop *NoopExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
 }
 
 func (noop *NoopExecutor) RunJob(job *types.Job) ([]types.StorageSpec, error) {
-	outputs := []types.StorageSpec{}
-	return outputs, nil
+	noop.Jobs = append(noop.Jobs, job)
+	return []types.StorageSpec{}, nil
 }

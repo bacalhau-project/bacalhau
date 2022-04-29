@@ -42,8 +42,6 @@ func NewComputeNode(
 		// a new job has arrived - decide if we want to bid on it
 		case system.JOB_EVENT_CREATED:
 
-			log.Debug().Msgf("Found new job to schedule: \n%+v\n", jobEvent.JobSpec)
-
 			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
 			// if job.Engine == "docker" && !system.IsDockerRunning() {
 			// 	err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
@@ -57,7 +55,7 @@ func NewComputeNode(
 				return
 			}
 			if shouldRun {
-				log.Debug().Msgf("We are bidding on a job because the data is local! \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We are bidding on a job: \n%+v\n", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
 				err = scheduler.BidJob(jobEvent.JobId)
@@ -66,7 +64,7 @@ func NewComputeNode(
 				}
 				return
 			} else {
-				log.Debug().Msgf("We ignored a job because we didn't have the data: \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We ignored a job: \n%+v\n", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
@@ -77,7 +75,7 @@ func NewComputeNode(
 				return
 			}
 
-			log.Debug().Msgf("BID ACCEPTED. Server (id: %s) - Job (id: %s)", nodeId, job.Id)
+			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
 			outputs, err := computeNode.RunJob(job)
 

@@ -131,11 +131,6 @@ func RunJob(
 	skipSyntaxChecking bool,
 ) (*types.Job, error) {
 
-	// for testing the tracing - just run a job that allocates some memory
-	if os.Getenv("BACALHAU_MOCK_JOB") != "" {
-		entrypoint = `python3 -c "import time; x = '0'*1024*1024*100; time.sleep(10)"`
-	}
-
 	if concurrency <= 0 {
 		return nil, fmt.Errorf("Concurrency must be >= 1")
 	}
