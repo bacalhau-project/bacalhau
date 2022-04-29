@@ -122,6 +122,7 @@ func ListJobs(
 }
 
 func RunJob(
+	engine string,
 	cids []string,
 	env []string,
 	image, entrypoint string,
@@ -154,6 +155,7 @@ func RunJob(
 	}
 
 	spec := &types.JobSpec{
+		Engine:     engine,
 		Image:      image,
 		Entrypoint: entrypoint,
 		Env:        env,
@@ -176,15 +178,7 @@ func RunJob(
 		return nil, err
 	}
 
-	//we got our result in result
-	// fmt.Printf("submit job: %+v\nreply job: %+v\n\n", args.Job, result)
-	// fmt.Printf("to view all files by all nodes\n")
-	// fmt.Printf("------------------------------\n\n")
-	// fmt.Printf("tree ./outputs/%s\n\n", job.Id)
-	// fmt.Printf("to open all metrics pngs\n")
-	// fmt.Printf("------------------------\n\n")
-	// fmt.Printf("find ./outputs/%s -type f -name 'metrics.png' 2> /dev/null | while read -r FILE ; do xdg-open \"$FILE\" ; done\n\n", job.Id)
-	log.Info().Msgf("Submitted Job Id: %s\n", result.Id)
+	log.Info().Msgf("Submitted Job Id: %s", result.Id)
 
 	return result, nil
 }

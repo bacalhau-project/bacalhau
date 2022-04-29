@@ -24,13 +24,17 @@ func NewDockerStorageIPFS(
 }
 
 func (docker *DockerStorageIPFS) IsInstalled() (bool, error) {
-	return false, nil
+	return true, nil
 }
 
-func (docker *DockerStorageIPFS) HasStorage(volume types.StorageSpec) error {
-	return nil
+func (docker *DockerStorageIPFS) HasStorage(volume types.StorageSpec) (bool, error) {
+	return true, nil
 }
 
 func (docker *DockerStorageIPFS) PrepareStorage(volume types.StorageSpec) (*storage.StorageVolume, error) {
-	return nil, nil
+	return &storage.StorageVolume{
+		Type:   "bind",
+		Source: "apples",
+		Target: "pears",
+	}, nil
 }

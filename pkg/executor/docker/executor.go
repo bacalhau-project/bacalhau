@@ -13,21 +13,16 @@ type DockerExecutor struct {
 	// the global context for stopping any running jobs
 	Ctx context.Context
 
-	// are we running in bad actor mode? (useful for tests)
-	BadActor bool
-
 	// the storage providers we can implement for a job
 	StorageProviders map[string]storage.StorageProvider
 }
 
 func NewDockerExecutor(
 	ctx context.Context,
-	badActor bool,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
 	dockerExecutor := &DockerExecutor{
 		Ctx:              ctx,
-		BadActor:         badActor,
 		StorageProviders: storageProviders,
 	}
 	return dockerExecutor, nil
@@ -39,7 +34,7 @@ func (noop *DockerExecutor) getStorageProvider(engine string) (storage.StoragePr
 
 // check if docker itself is installed
 func (docker *DockerExecutor) IsInstalled() (bool, error) {
-	return false, nil
+	return true, nil
 }
 
 func (docker *DockerExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
@@ -62,9 +57,10 @@ func (docker *DockerExecutor) RunJob(job *types.Job) ([]types.StorageSpec, error
 		if err != nil {
 			return outputs, err
 		}
-
-		fmt.Printf("Mounted %s to %s\n", volumeMount.Source, volumeMount.Target)
+		if volumeMount == nil {
+			return outputs, fmt.Errorf("no volume mount was returned for input: %+v\n", input)
+		}
+		fmt.Printf("\n\n\nMounted %s to %s\n\n\n", volumeMount.Source, volumeMount.Target)
 	}
-
 	return outputs, nil
 }

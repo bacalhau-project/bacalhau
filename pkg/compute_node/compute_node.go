@@ -51,11 +51,11 @@ func NewComputeNode(
 
 			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
-				log.Error().Msgf("There was an error self selecting: %s\n%+v\n", err, jobEvent.JobSpec)
+				log.Error().Msgf("There was an error self selecting: %s\n%+v", err, jobEvent.JobSpec)
 				return
 			}
 			if shouldRun {
-				log.Debug().Msgf("We are bidding on a job: \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We are bidding on a job: \n%+v", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
 				err = scheduler.BidJob(jobEvent.JobId)
@@ -64,7 +64,7 @@ func NewComputeNode(
 				}
 				return
 			} else {
-				log.Debug().Msgf("We ignored a job: \n%+v\n", jobEvent.JobSpec)
+				log.Debug().Msgf("We ignored a job: \n%+v", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
@@ -80,14 +80,10 @@ func NewComputeNode(
 			outputs, err := computeNode.RunJob(job)
 
 			if err != nil {
-				log.Error().Msgf("ERROR running the job: %s\n%+v\n", err, job)
-
-				// TODO: Check result of Error job
+				log.Error().Msgf("ERROR running the job: %s\n%+v", err, job)
 				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
-				log.Info().Msgf("Completed the job - results: %+v\n%+v\n", job, outputs)
-
-				// TODO: Check result of submit result
+				log.Info().Msgf("Completed the job - results: %+v\n%+v", job, outputs)
 				_ = scheduler.SubmitResult(
 					job.Id,
 					fmt.Sprintf("Got job results: %+v", outputs),
@@ -111,7 +107,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	// check that we have the executor and it's installed
 	executor, err := node.getExecutor(job.Engine)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 
 	// Accept jobs where there are no cids specified
@@ -127,7 +123,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 		// see if the storage engine reports that we have the resource locally
 		hasStorage, err := executor.HasStorage(input)
 		if err != nil {
-			log.Error().Msgf("Error checking for storage resource locality: %s\n", err.Error())
+			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err
 		}
 		if hasStorage {
@@ -136,10 +132,10 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	}
 
 	if foundInputs >= len(job.Inputs) {
-		log.Info().Msgf("Found all inputs - accepting job\n")
+		log.Info().Msgf("Found all inputs - accepting job")
 		return true, nil
 	} else {
-		log.Info().Msgf("Found %d of %d inputs - passing on job\n", foundInputs, len(job.Inputs))
+		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
 		return false, nil
 	}
 }

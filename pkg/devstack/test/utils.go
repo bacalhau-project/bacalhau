@@ -19,24 +19,22 @@ import (
 // run the job on 2 nodes
 const TEST_CONCURRENCY = 1
 
-// both nodes must agree on the result
-const TEST_CONFIDENCE = 1
-
-// the results must be within 10% of each other
-const TEST_TOLERANCE = 0.1
-
 func setupTest(
 	t *testing.T,
 	nodes int,
 	badActors int,
-	executors map[string]executor.Executor,
 ) (*devstack.DevStack, context.CancelFunc) {
 	ctx, cancelFunction := system.GetCancelContext()
+
+	getExecutors := func(ipfsMultiAddress string) (map[string]executor.Executor, error) {
+		return devstack.NewDockerIPFSExecutors(ctx, ipfsMultiAddress)
+	}
+
 	stack, err := devstack.NewDevStack(
 		ctx,
 		nodes,
 		badActors,
-		executors,
+		getExecutors,
 	)
 	assert.NoError(t, err)
 	if err != nil {

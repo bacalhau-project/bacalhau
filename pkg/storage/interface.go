@@ -13,5 +13,5 @@ type StorageVolume struct {
 type StorageProvider interface {
 	IsInstalled() (bool, error)
 	HasStorage(volume types.StorageSpec) (bool, error)
-	PrepareStorage(volume types.StorageSpec) (StorageVolume, error)
+	PrepareStorage(volume types.StorageSpec) (*StorageVolume, error)
 }

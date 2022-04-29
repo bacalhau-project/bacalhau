@@ -226,7 +226,7 @@ func (scheduler *Libp2pScheduler) writeJobEvent(event *types.JobEvent) error {
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("Sending event: %s\n", string(msgBytes))
+	log.Debug().Msgf("Sending event: %s", string(msgBytes))
 	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
 }
 

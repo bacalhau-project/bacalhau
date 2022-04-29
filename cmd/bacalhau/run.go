@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var jobEngine string
 var jobCids []string
 var jobEnv []string
 var jobImage string
@@ -13,6 +14,10 @@ var jobConcurrency int
 var skipSyntaxChecking bool
 
 func init() {
+	runCmd.PersistentFlags().StringVar(
+		&jobEngine, "engine", "docker",
+		`What executor engine to use to run the job`,
+	)
 	runCmd.PersistentFlags().StringSliceVar(
 		&jobCids, "cids", []string{},
 		`The cids of the data used by the job (comma separated, or specify multiple times)`,
@@ -44,6 +49,7 @@ var runCmd = &cobra.Command{
 	Short: "Run a job on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 		_, err := job.RunJob(
+			jobEngine,
 			jobCids,
 			jobEnv,
 			jobImage,

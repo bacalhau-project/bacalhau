@@ -6,11 +6,14 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
+	"github.com/filecoin-project/bacalhau/pkg/executor/docker/ipfs"
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -29,10 +32,26 @@ type DevStack struct {
 	Nodes []*DevStackNode
 }
 
+func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
+	executors := map[string]executor.Executor{}
+	ipfsStorage, err := ipfs.NewDockerStorageIPFS(ctx, ipfsMultiAddress)
+	if err != nil {
+		return executors, err
+	}
+	dockerExecutor, err := docker.NewDockerExecutor(ctx, map[string]storage.StorageProvider{
+		"ipfs": ipfsStorage,
+	})
+	if err != nil {
+		return executors, err
+	}
+	executors["docker"] = dockerExecutor
+	return executors, nil
+}
+
 func NewDevStack(
 	ctx context.Context,
 	count, badActors int,
-	executors map[string]executor.Executor,
+	getExecutors func(ipfsMultiAddress string) (map[string]executor.Executor, error),
 ) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
@@ -71,6 +90,11 @@ func NewDevStack(
 		}
 
 		requesterNode, err := requestor_node.NewRequesterNode(ctx, schedulerNode)
+		if err != nil {
+			return nil, err
+		}
+
+		executors, err := getExecutors(ipfsNode.Address())
 		if err != nil {
 			return nil, err
 		}

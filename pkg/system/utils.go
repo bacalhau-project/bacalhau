@@ -48,7 +48,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 			if attempt > retries {
 				return err
 			} else {
-				log.Debug().Msgf("Error %s: %v, pausing and trying again...\n", desc, err)
+				log.Debug().Msgf("Error %s: %v, pausing and trying again...", desc, err)
 				time.Sleep(1 * time.Second)
 			}
 		} else {
