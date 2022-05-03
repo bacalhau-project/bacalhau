@@ -26,38 +26,32 @@ func TestDevStack(t *testing.T) {
 	defer teardownTest(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(testConcurrency, []byte(`apple
-	orange
-	pineapple
-	pear
-	peach
-	cherry
-	kiwi is delicious
-	strawberry
-	lemon
-	raspberry
-	`))
+orange
+pineapple
+pear
+peach
+cherry
+kiwi is delicious
+strawberry
+lemon
+raspberry
+`))
 
 	assert.NoError(t, err)
 
-	var job *types.Job
-
-	err = system.TryUntilSucceedsN(func() error {
-		job, err = jobutils.RunJob(
-			"docker",
-			[]string{
-				fileCid,
-			},
-			[]string{},
-			"ubuntu:latest",
-			fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
-			testConcurrency,
-			"127.0.0.1",
-			stack.Nodes[0].JSONRpcNode.Port,
-			true,
-		)
-
-		return err
-	}, "submit job", 10)
+	job, err := jobutils.RunJob(
+		"docker",
+		[]string{
+			fileCid,
+		},
+		[]string{},
+		"ubuntu:latest",
+		fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
+		testConcurrency,
+		"127.0.0.1",
+		stack.Nodes[0].JSONRpcNode.Port,
+		true,
+	)
 
 	assert.NoError(t, err)
 

@@ -13,8 +13,9 @@ import (
 var globalInProcessSchedulers = []*InProcessScheduler{}
 
 type InProcessScheduler struct {
-	Ctx context.Context
-	Id  string
+	Ctx    context.Context
+	Id     string
+	Events []*types.JobEvent
 	// the list of functions to call when we get an update about a job
 	SubscribeFuncs []func(jobEvent *types.JobEvent, job *types.Job)
 
@@ -141,6 +142,7 @@ func (scheduler *InProcessScheduler) Connect(peerConnect string) error {
 // loop over all inprocess schdulers and call readJobEvent for each of them
 // do this in a go-routine to simulate the network
 func (scheduler *InProcessScheduler) writeJobEvent(event *types.JobEvent) error {
+	scheduler.Events = append(scheduler.Events, event)
 	for _, loopGlobalInProcessScheduler := range globalInProcessSchedulers {
 		go func(globalInProcessScheduler *InProcessScheduler) {
 			globalInProcessScheduler.GenericScheduler.ReadEvent(event)

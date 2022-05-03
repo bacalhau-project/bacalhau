@@ -1,6 +1,7 @@
 package test
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -67,4 +68,54 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	time.Sleep(time.Second * 1)
 	assert.Equal(t, 1, len(noopExecutor.Jobs))
 	assert.Equal(t, jobSelected.Id, noopExecutor.Jobs[0].Id)
+}
+
+func TestSchedulerEvents(t *testing.T) {
+	ctx, _ := system.GetCancelContext()
+	noopExecutor, err := noop.NewNoopExecutor()
+	assert.NoError(t, err)
+	executors := map[string]executor.Executor{
+		"noop": noopExecutor,
+	}
+	scheduler, err := inprocess.NewInprocessScheduler(ctx)
+	assert.NoError(t, err)
+	_, err = compute_node.NewComputeNode(ctx, scheduler, executors)
+	assert.NoError(t, err)
+	_, err = requestor_node.NewRequesterNode(ctx, scheduler)
+	assert.NoError(t, err)
+
+	// first let's test submitting a job with an engine we do not have
+	spec := &types.JobSpec{
+		Image:      "image",
+		Engine:     "noop",
+		Entrypoint: "entrypoint",
+		Env:        []string{"env"},
+		Inputs: []types.StorageSpec{
+			{
+				Engine: "ipfs",
+			},
+		},
+	}
+
+	deal := &types.JobDeal{
+		Concurrency: 1,
+	}
+
+	_, err = scheduler.SubmitJob(spec, deal)
+	assert.NoError(t, err)
+	time.Sleep(time.Second * 1)
+
+	expectedEventNames := []string{
+		system.JOB_EVENT_CREATED,
+		system.JOB_EVENT_BID,
+		system.JOB_EVENT_BID_ACCEPTED,
+		system.JOB_EVENT_RESULTS,
+	}
+	actualEventNames := []string{}
+
+	for _, event := range scheduler.Events {
+		actualEventNames = append(actualEventNames, event.EventName)
+	}
+
+	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }

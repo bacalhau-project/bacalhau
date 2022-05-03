@@ -40,7 +40,8 @@ func setupTest(
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
 	}
-	// we need a better method for this - i.e. waiting for all the ipfs nodes to be ready
+	// TODO: add a waitgroup with checks on each part of a node
+	// (i.e. libp2p connected, jsonrpc serving, ipfs functional)
 	time.Sleep(time.Second * 2)
 	return stack, cancelFunction
 }

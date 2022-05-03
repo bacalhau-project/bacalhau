@@ -51,11 +51,11 @@ func NewComputeNode(
 
 			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
 			if err != nil {
-				log.Error().Msgf("There was an error self selecting: %s\n%+v", err, jobEvent.JobSpec)
+				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return
 			}
 			if shouldRun {
-				log.Debug().Msgf("We are bidding on a job: \n%+v", jobEvent.JobSpec)
+				log.Debug().Msgf("We are bidding on a job: %+v", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
 				err = scheduler.BidJob(jobEvent.JobId)
@@ -64,7 +64,7 @@ func NewComputeNode(
 				}
 				return
 			} else {
-				log.Debug().Msgf("We ignored a job: \n%+v", jobEvent.JobSpec)
+				log.Debug().Msgf("We ignored a job: %+v", jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
@@ -80,10 +80,10 @@ func NewComputeNode(
 			outputs, err := computeNode.RunJob(job)
 
 			if err != nil {
-				log.Error().Msgf("ERROR running the job: %s\n%+v", err, job)
+				log.Error().Msgf("ERROR running the job: %s %+v", err, job)
 				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
-				log.Info().Msgf("Completed the job - results: %+v\n%+v", job, outputs)
+				log.Info().Msgf("Completed the job - results: %+v %+v", job, outputs)
 				_ = scheduler.SubmitResult(
 					job.Id,
 					fmt.Sprintf("Got job results: %+v", outputs),
