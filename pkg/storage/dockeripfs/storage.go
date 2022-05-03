@@ -1,4 +1,4 @@
-package ipfs
+package dockeripfs
 
 import (
 	"context"
@@ -7,31 +7,31 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
-type DockerStorageIPFS struct {
+type StorageDockerIPFS struct {
 	Ctx              context.Context
 	IpfsMultiAddress string
 }
 
-func NewDockerStorageIPFS(
+func NewStorageDockerIPFS(
 	ctx context.Context,
 	ipfsMultiAddress string,
-) (*DockerStorageIPFS, error) {
-	dockerStorageIPFS := &DockerStorageIPFS{
+) (*StorageDockerIPFS, error) {
+	StorageDockerIPFS := &StorageDockerIPFS{
 		Ctx:              ctx,
 		IpfsMultiAddress: ipfsMultiAddress,
 	}
-	return dockerStorageIPFS, nil
+	return StorageDockerIPFS, nil
 }
 
-func (docker *DockerStorageIPFS) IsInstalled() (bool, error) {
+func (docker *StorageDockerIPFS) IsInstalled() (bool, error) {
 	return true, nil
 }
 
-func (docker *DockerStorageIPFS) HasStorage(volume types.StorageSpec) (bool, error) {
+func (docker *StorageDockerIPFS) HasStorage(volume types.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (docker *DockerStorageIPFS) PrepareStorage(volume types.StorageSpec) (*storage.StorageVolume, error) {
+func (docker *StorageDockerIPFS) PrepareStorage(volume types.StorageSpec) (*storage.StorageVolume, error) {
 	return &storage.StorageVolume{
 		Type:   "bind",
 		Source: "apples",

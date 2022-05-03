@@ -3,17 +3,20 @@ package devstack
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor/docker/ipfs"
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/dockeripfs"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -34,7 +37,7 @@ type DevStack struct {
 
 func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsStorage, err := ipfs.NewDockerStorageIPFS(ctx, ipfsMultiAddress)
+	ipfsStorage, err := dockeripfs.NewStorageDockerIPFS(ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
@@ -199,4 +202,51 @@ go run . --jsonrpc-port=%d list`, node.JSONRpcNode.Port)
 	}
 
 	log.Info().Msg(logString + "\n")
+}
+
+func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {
+
+	returnFileCid := ""
+
+	// ipfs add the file to 2 nodes
+	// this tests self selection
+	for i, node := range stack.Nodes {
+		if i >= nodeCount {
+			continue
+		}
+
+		nodeId, err := node.ComputeNode.Scheduler.HostId()
+
+		if err != nil {
+			return "", err
+		}
+
+		fileCid, err := node.IpfsCli.Run([]string{
+			"add", "-Q", filePath,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		returnFileCid = fileCid
+		log.Debug().Msgf("Added CID: %s to NODE: %s", fileCid, nodeId)
+	}
+
+	returnFileCid = strings.TrimSpace(returnFileCid)
+
+	return returnFileCid, nil
+}
+
+func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
+	testDir, err := ioutil.TempDir("", "bacalhau-test")
+
+	if err != nil {
+		return "", err
+	}
+
+	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
+	err = os.WriteFile(testFilePath, fileContent, 0644)
+
+	return stack.AddFileToNodes(nodeCount, testFilePath)
 }

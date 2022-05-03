@@ -2,10 +2,7 @@ package test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -28,49 +25,19 @@ func TestDevStack(t *testing.T) {
 
 	defer teardownTest(stack, cancelFunction)
 
-	// create test data
-	// ipfs add file on 2 nodes
-	// submit job on 1 node
-	// wait for job to be done
-	// download results and check sanity
+	fileCid, err := stack.AddTextToNodes(testConcurrency, []byte(`apple
+	orange
+	pineapple
+	pear
+	peach
+	cherry
+	kiwi is delicious
+	strawberry
+	lemon
+	raspberry
+	`))
 
-	testDir, err := ioutil.TempDir("", "bacalhau-test")
 	assert.NoError(t, err)
-
-	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-
-	dataBytes := []byte(`apple
-orange
-pineapple
-pear
-peach
-cherry
-kiwi is delicious
-strawberry
-lemon
-raspberry
-`)
-
-	err = os.WriteFile(testFilePath, dataBytes, 0644)
-	assert.NoError(t, err)
-
-	fileCid := ""
-
-	// ipfs add the file to 2 nodes
-	// this tests self selection
-	for i, node := range stack.Nodes {
-		if i >= testConcurrency {
-			continue
-		}
-
-		fileCid, err = node.IpfsCli.Run([]string{
-			"add", "-Q", testFilePath,
-		})
-
-		assert.NoError(t, err)
-	}
-
-	fileCid = strings.TrimSpace(fileCid)
 
 	var job *types.Job
 
