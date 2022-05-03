@@ -121,26 +121,15 @@ func ListJobs(
 	return result, nil
 }
 
-func RunJob(
+func ConstructJob(
 	engine string,
 	cids []string,
 	env []string,
 	image, entrypoint string,
 	concurrency int,
-	rpcHost string,
-	rpcPort int,
-	skipSyntaxChecking bool,
-) (*types.Job, error) {
-
+) (*types.JobSpec, *types.JobDeal, error) {
 	if concurrency <= 0 {
-		return nil, fmt.Errorf("Concurrency must be >= 1")
-	}
-
-	if !skipSyntaxChecking {
-		err := system.CheckBashSyntax([]string{entrypoint})
-		if err != nil {
-			return nil, err
-		}
+		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
 	}
 
 	jobInputs := []types.StorageSpec{}
@@ -166,6 +155,33 @@ func RunJob(
 		Concurrency: concurrency,
 	}
 
+	return spec, deal, nil
+}
+
+func RunJob(
+	engine string,
+	cids []string,
+	env []string,
+	image, entrypoint string,
+	concurrency int,
+	rpcHost string,
+	rpcPort int,
+	skipSyntaxChecking bool,
+) (*types.Job, error) {
+
+	spec, deal, err := ConstructJob(engine, cids, env, image, entrypoint, concurrency)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !skipSyntaxChecking {
+		err := system.CheckBashSyntax([]string{spec.Entrypoint})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	args := &types.SubmitArgs{
 		Spec: spec,
 		Deal: deal,
@@ -173,7 +189,7 @@ func RunJob(
 
 	result := &types.Job{}
 
-	err := jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
+	err = jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
 	if err != nil {
 		return nil, err
 	}

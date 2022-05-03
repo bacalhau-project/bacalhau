@@ -2,14 +2,10 @@ package test
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,38 +51,43 @@ raspberry
 
 	assert.NoError(t, err)
 
-	// TODO: Do something with the error
-	err = system.TryUntilSucceedsN(func() error {
-		result, err := jobutils.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
-		if err != nil {
-			return err
-		}
+	err = stack.WaitForJobWithConcurrency(
+		job.Id,
+		testConcurrency,
+	)
 
-		if len(result.Jobs) != 1 {
-			return fmt.Errorf("expected 1 job, got %d", len(result.Jobs))
-		}
+	// // TODO: Do something with the error
+	// err = system.TryUntilSucceedsN(func() error {
+	// 	result, err := jobutils.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		var jobData *types.Job
+	// 	if len(result.Jobs) != 1 {
+	// 		return fmt.Errorf("expected 1 job, got %d", len(result.Jobs))
+	// 	}
 
-		for _, j := range result.Jobs {
-			jobData = j
-			break
-		}
+	// 	var jobData *types.Job
 
-		jobStates := []string{}
+	// 	for _, j := range result.Jobs {
+	// 		jobData = j
+	// 		break
+	// 	}
 
-		for _, state := range jobData.State {
-			jobStates = append(jobStates, state.State)
-		}
+	// 	jobStates := []string{}
 
-		if !reflect.DeepEqual(jobStates, []string{"complete", "complete", "complete"}) {
-			return fmt.Errorf("expected job to be complete, got %+v", jobStates)
-		}
+	// 	for _, state := range jobData.State {
+	// 		jobStates = append(jobStates, state.State)
+	// 	}
 
-		return nil
-	}, "wait for results to be", 100)
+	// 	if !reflect.DeepEqual(jobStates, []string{"complete", "complete", "complete"}) {
+	// 		return fmt.Errorf("expected job to be complete, got %+v", jobStates)
+	// 	}
 
-	spew.Dump(job)
+	// 	return nil
+	// }, "wait for results to be", 100)
+
+	// spew.Dump(job)
 
 	// hostId, err := stack.Nodes[0].ComputeNode.Scheduler.HostId()
 	// assert.NoError(t, err)

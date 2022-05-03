@@ -6,17 +6,21 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/dockeripfs"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -229,11 +233,10 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 			return "", err
 		}
 
+		fileCid = strings.TrimSpace(fileCid)
 		returnFileCid = fileCid
 		log.Debug().Msgf("Added CID: %s to NODE: %s", fileCid, nodeId)
 	}
-
-	returnFileCid = strings.TrimSpace(returnFileCid)
 
 	return returnFileCid, nil
 }
@@ -249,4 +252,102 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	err = os.WriteFile(testFilePath, fileContent, 0644)
 
 	return stack.AddFileToNodes(nodeCount, testFilePath)
+}
+
+func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
+	result, err := jobutils.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var jobData *types.Job
+
+	for _, j := range result.Jobs {
+		if j.Id == jobId {
+			jobData = j
+			break
+		}
+	}
+
+	if jobData == nil {
+		return []string{}, fmt.Errorf("job not found")
+	}
+
+	jobStates := []string{}
+
+	for _, state := range jobData.State {
+		jobStates = append(jobStates, state.State)
+	}
+
+	return jobStates, nil
+}
+
+func (stack *DevStack) WaitForJob(
+	jobId string,
+	// a map of job states onto the number of those states we expect to see
+	expectedStates map[string]int,
+	// a list of states that if any job gets into is an immediate error
+	errorStates []string,
+) error {
+
+	waiter := &system.FunctionWaiter{
+		Name:        "wait for job",
+		MaxAttempts: 100,
+		Delay:       time.Second * 1,
+		Logging:     true,
+		Handler: func() (bool, error) {
+
+			// load the current states of the job
+			states, err := stack.GetJobStates(jobId)
+			if err != nil {
+				return false, err
+			}
+
+			// collect a count of the states we saw
+			foundStates := map[string]int{}
+			for _, state := range states {
+				for _, errorState := range errorStates {
+					if state == errorState {
+						return true, fmt.Errorf("job has error state: %s", state)
+					}
+				}
+				if _, ok := foundStates[state]; !ok {
+					foundStates[state] = 0
+				}
+				foundStates[state] = foundStates[state] + 1
+			}
+
+			// now compare the found states to the expected states
+			for expectedState, expectedCount := range expectedStates {
+				foundCount := 0
+				if _, ok := foundStates[expectedState]; ok {
+					foundCount = foundStates[expectedState]
+				}
+				if foundCount != expectedCount {
+					return false, fmt.Errorf("job has %d %s states, expected %d", foundCount, expectedState, expectedCount)
+				}
+			}
+
+			// if we got to here - then the expected states line up with the actual ones
+			return true, nil
+		},
+	}
+
+	return waiter.Wait()
+}
+
+func (stack *DevStack) WaitForJobWithError(
+	jobId string,
+	expectedStates map[string]int,
+) error {
+	return stack.WaitForJob(jobId, expectedStates, []string{system.JOB_STATE_ERROR})
+}
+
+func (stack *DevStack) WaitForJobWithConcurrency(
+	jobId string,
+	concurrency int,
+) error {
+	expectedStates := map[string]int{}
+	expectedStates[system.JOB_STATE_COMPLETE] = concurrency
+	return stack.WaitForJobWithError(jobId, expectedStates)
 }
