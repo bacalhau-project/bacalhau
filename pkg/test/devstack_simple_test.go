@@ -13,16 +13,16 @@ func TestDevStack(t *testing.T) {
 
 	testConcurrency := 3
 
-	stack, cancelFunction := setupTest(
+	stack, cancelFunction := SetupTest(
 		t,
 		3,
 		0,
 	)
 
-	defer teardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(testConcurrency, []byte(`apple
-orange
+orange2
 pineapple
 pear
 peach
