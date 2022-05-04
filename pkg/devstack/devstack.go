@@ -41,7 +41,7 @@ type DevStack struct {
 
 func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsStorage, err := dockeripfs.NewStorageDockerIPFS(ctx, ipfsMultiAddress)
+	ipfsStorage, err := dockeripfs.NewStorageDockerIPFS(ctx, ipfsMultiAddress, true)
 	if err != nil {
 		return executors, err
 	}
@@ -66,27 +66,32 @@ func NewDevStack(
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
+		//////////////////////////////////////
+		// IPFS
+		//////////////////////////////////////
 		ipfsConnectAddress := ""
 
 		if i > 0 {
 			// connect the libp2p scheduler node
 			firstNode := nodes[0]
-			ipfsConnectAddress = firstNode.IpfsNode.Address()
-		}
-
-		// create some random ports to allocate to our servers
-		libp2pPort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-
-		jsonRpcPort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
+			ipfsConnectAddress = firstNode.IpfsNode.SwarmAddress()
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(ctx)
+		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+
+		err = ipfsNode.Start(ipfsConnectAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
+		// Scheduler
+		//////////////////////////////////////
+		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -96,17 +101,31 @@ func NewDevStack(
 			return nil, err
 		}
 
+		//////////////////////////////////////
+		// Requestor node
+		//////////////////////////////////////
 		requesterNode, err := requestor_node.NewRequesterNode(ctx, schedulerNode)
 		if err != nil {
 			return nil, err
 		}
 
-		executors, err := getExecutors(ipfsNode.Address())
+		//////////////////////////////////////
+		// Compute node
+		//////////////////////////////////////
+		executors, err := getExecutors(ipfsNode.ApiAddress())
 		if err != nil {
 			return nil, err
 		}
 
 		computeNode, err := compute_node.NewComputeNode(ctx, schedulerNode, executors)
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
+		// JSON RPC
+		//////////////////////////////////////
+		jsonRpcPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -121,23 +140,19 @@ func NewDevStack(
 			return nil, err
 		}
 
-		// start the various servers
-		err = schedulerNode.Start()
-		if err != nil {
-			return nil, err
-		}
-
-		err = ipfsNode.Start(ipfsConnectAddress)
-		if err != nil {
-			return nil, err
-		}
-
 		err = jsonrpc.StartBacalhauJsonRpcServer(jsonRpcNode)
 		if err != nil {
 			return nil, err
 		}
 
-		// connect subsequent servers to the first one
+		//////////////////////////////////////
+		// intra-connections
+		//////////////////////////////////////
+		err = schedulerNode.Start()
+		if err != nil {
+			return nil, err
+		}
+
 		if len(nodes) > 0 {
 			// connect the libp2p scheduler node
 			firstNode := nodes[0]

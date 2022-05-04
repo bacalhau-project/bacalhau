@@ -33,6 +33,8 @@ func NewBacalhauJsonRpcServer(
 	return server
 }
 
+// this is not a method of the JSONRpcServer because
+// those methods are actual JSONRPC methods and this is just an internal bootstrap
 func StartBacalhauJsonRpcServer(server *JSONRpcServer) error {
 	rpcServer := rpc.NewServer()
 	err := rpcServer.Register(server)

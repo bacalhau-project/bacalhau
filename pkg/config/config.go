@@ -11,6 +11,7 @@ import (
 
 const ENV_PREFIX = "BACALHAU"
 const DEFAULT_LOG_FILE = "/tmp/bacalhau.log"
+const DEFAULT_IPFS_DOCKER_IMAGE = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
 
 var GlobalConfig *viper.Viper
 
@@ -55,6 +56,7 @@ func CreateConfig(cmd *cobra.Command) (*viper.Viper, error) {
 	}
 
 	config.SetDefault("logfile", DEFAULT_LOG_FILE)
+	config.SetDefault("ipfs_docker_sidecar_image", DEFAULT_IPFS_DOCKER_IMAGE)
 
 	// do we have a specific config file to read or are we seafching the system for one?
 	configFilePath := os.Getenv("BACALHAU_CONFIG_FILE")

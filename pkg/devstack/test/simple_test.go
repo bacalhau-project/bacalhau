@@ -56,6 +56,8 @@ raspberry
 		testConcurrency,
 	)
 
+	assert.NoError(t, err)
+
 	// // TODO: Do something with the error
 	// err = system.TryUntilSucceedsN(func() error {
 	// 	result, err := jobutils.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)

@@ -132,7 +132,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	}
 
 	if foundInputs >= len(job.Inputs) {
-		log.Info().Msgf("Found all inputs - accepting job")
+		log.Info().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
 		return true, nil
 	} else {
 		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))

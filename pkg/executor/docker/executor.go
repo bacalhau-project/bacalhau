@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -15,26 +16,34 @@ type DockerExecutor struct {
 
 	// the storage providers we can implement for a job
 	StorageProviders map[string]storage.StorageProvider
+
+	Client *docker.DockerClient
 }
 
 func NewDockerExecutor(
 	ctx context.Context,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
+	dockerClient, err := docker.NewDockerClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 	dockerExecutor := &DockerExecutor{
 		Ctx:              ctx,
 		StorageProviders: storageProviders,
+		Client:           dockerClient,
 	}
 	return dockerExecutor, nil
 }
 
-func (noop *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
-	return executor.GetStorageProvider(engine, noop.StorageProviders)
+func (docker *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
+	return executor.GetStorageProvider(engine, docker.StorageProviders)
 }
 
 // check if docker itself is installed
 func (docker *DockerExecutor) IsInstalled() (bool, error) {
-	return true, nil
+	isRunning := docker.Client.IsInstalled()
+	return isRunning, nil
 }
 
 func (docker *DockerExecutor) HasStorage(volume types.StorageSpec) (bool, error) {

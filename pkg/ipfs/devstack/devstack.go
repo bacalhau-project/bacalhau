@@ -18,6 +18,7 @@ type IPFSDevServer struct {
 	Id          string
 	Repo        string
 	LogFile     string
+	Isolated    bool
 	Cli         *ipfs_cli.IPFSCli
 	GatewayPort int
 	ApiPort     int
@@ -26,6 +27,7 @@ type IPFSDevServer struct {
 
 func NewDevServer(
 	ctx context.Context,
+	isolated bool,
 ) (*IPFSDevServer, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
 	if err != nil {
@@ -47,11 +49,37 @@ func NewDevServer(
 	if err != nil {
 		return nil, fmt.Errorf("Could not create random port for swarm: %s", err.Error())
 	}
+	cli := ipfs_cli.NewIPFSCli(repoDir)
+
+	_, err = cli.Run([]string{
+		"init",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// this must be called after init because we need the keys generated
+	jsonBlob, err := cli.Run([]string{
+		"id",
+	})
+	if err != nil {
+		return nil, err
+	}
+	idResult := struct {
+		ID string
+	}{}
+	err = json.Unmarshal([]byte(jsonBlob), &idResult)
+	if err != nil {
+		return nil, err
+	}
+
 	server := &IPFSDevServer{
 		Ctx:         ctx,
+		Id:          idResult.ID,
 		Repo:        repoDir,
 		LogFile:     logFile.Name(),
-		Cli:         ipfs_cli.NewIPFSCli(repoDir),
+		Cli:         cli,
+		Isolated:    isolated,
 		GatewayPort: gatewayPort,
 		ApiPort:     apiPort,
 		SwarmPort:   swarmPort,
@@ -61,39 +89,17 @@ func NewDevServer(
 
 func (server *IPFSDevServer) Start(connectToAddress string) error {
 
-	_, err := server.Cli.Run([]string{
-		"init",
-	})
-	if err != nil {
-		return err
-	}
-
-	// this must be called after init because we need the keys generated
-	jsonBlob, err := server.Cli.Run([]string{
-		"id",
-	})
-	if err != nil {
-		return err
-	}
-	result := struct {
-		ID string
-	}{}
-	err = json.Unmarshal([]byte(jsonBlob), &result)
-	if err != nil {
-		return err
-	}
-
-	server.Id = result.ID
-
-	_, err = server.Cli.Run([]string{
-		"bootstrap", "rm", "--all",
-	})
-	if err != nil {
-		return err
+	if server.Isolated {
+		_, err := server.Cli.Run([]string{
+			"bootstrap", "rm", "--all",
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	if connectToAddress != "" {
-		_, err = server.Cli.Run([]string{
+		_, err := server.Cli.Run([]string{
 			"bootstrap", "add", connectToAddress,
 		})
 		if err != nil {
@@ -101,7 +107,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 	}
 
-	_, err = server.Cli.Run([]string{
+	_, err := server.Cli.Run([]string{
 		"config",
 		"Addresses.Gateway",
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", server.GatewayPort),
@@ -126,14 +132,17 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	if err != nil {
 		return err
 	}
-	_, err = server.Cli.Run([]string{
-		"config",
-		"Discovery.MDNS.Enabled",
-		"--json",
-		"false",
-	})
-	if err != nil {
-		return err
+
+	if server.Isolated {
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Discovery.MDNS.Enabled",
+			"--json",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Debug().Msgf("IPFS daemon is starting\n  IPFS_PATH=%s", server.Repo)
@@ -164,6 +173,14 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	return nil
 }
 
-func (server *IPFSDevServer) Address() string {
-	return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", server.SwarmPort, server.Id)
+func (server *IPFSDevServer) Address(port int) string {
+	return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", port, server.Id)
+}
+
+func (server *IPFSDevServer) SwarmAddress() string {
+	return server.Address(server.SwarmPort)
+}
+
+func (server *IPFSDevServer) ApiAddress() string {
+	return server.Address(server.ApiPort)
 }

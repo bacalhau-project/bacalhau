@@ -2,7 +2,6 @@ package system
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	dockerclient "github.com/docker/docker/client"
 	"github.com/rs/zerolog/log"
 )
 
@@ -129,14 +127,4 @@ func MapByteArray(vs []byte, f func(byte) byte) []byte {
 		vsm[i] = f(v)
 	}
 	return vsm
-}
-
-func IsDockerRunning() bool {
-	c, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return false
-	}
-
-	_, err = c.Info(context.Background())
-	return err == nil
 }
