@@ -10,13 +10,12 @@ import (
 
 func TestIpfsHttpClient(t *testing.T) {
 
-	stack, cancelFunction := SetupTest(
+	stack, cancelFunction := SetupTest_IPFS(
 		t,
 		2,
-		0,
 	)
 
-	defer TeardownTest(stack, cancelFunction)
+	defer TeardownTest_IPFS(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(1, []byte(`hello world`))
 	assert.NoError(t, err)
