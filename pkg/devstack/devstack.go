@@ -36,6 +36,7 @@ type DevStackNode struct {
 }
 
 type DevStack struct {
+	Ctx   context.Context
 	Nodes []*DevStackNode
 }
 
@@ -186,6 +187,7 @@ func NewDevStack(
 	}
 
 	stack := &DevStack{
+		Ctx:   ctx,
 		Nodes: nodes,
 	}
 

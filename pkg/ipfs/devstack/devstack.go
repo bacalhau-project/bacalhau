@@ -145,7 +145,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 	}
 
-	log.Debug().Msgf("IPFS daemon is starting\n  IPFS_PATH=%s", server.Repo)
+	log.Debug().Msgf("IPFS daemon is starting IPFS_PATH=%s", server.Repo)
 	cmd := exec.Command("ipfs", "daemon")
 	cmd.Env = []string{
 		"IPFS_PATH=" + server.Repo,
