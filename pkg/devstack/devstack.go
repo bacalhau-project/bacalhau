@@ -42,7 +42,7 @@ type DevStack struct {
 
 func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsStorage, err := dockeripfs.NewStorageDockerIPFS(ctx, ipfsMultiAddress, true)
+	ipfsStorage, err := dockeripfs.NewStorageDockerIPFS(ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}

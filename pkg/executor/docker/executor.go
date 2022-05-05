@@ -24,7 +24,7 @@ func NewDockerExecutor(
 	ctx context.Context,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
-	dockerClient, err := docker.NewDockerClient(ctx)
+	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}

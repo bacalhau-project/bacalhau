@@ -29,7 +29,7 @@ func TestIpfsHttpClient(t *testing.T) {
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(addrs), 1)
 
-	assertThatNodeHasCid := func(cid string, nodeIndex int, expectedResult bool) {
+	assertNodeHasCid := func(cid string, nodeIndex int, expectedResult bool) {
 		api, err := ipfs_http.NewIPFSHttpClient(stack.Ctx, stack.Nodes[nodeIndex].IpfsNode.ApiAddress())
 		assert.NoError(t, err)
 		result, err := api.HasCidLocally(cid)
@@ -37,6 +37,6 @@ func TestIpfsHttpClient(t *testing.T) {
 		assert.Equal(t, expectedResult, result)
 	}
 
-	assertThatNodeHasCid(fileCid, 0, true)
-	assertThatNodeHasCid(fileCid, 1, false)
+	assertNodeHasCid(fileCid, 0, true)
+	assertNodeHasCid(fileCid, 1, false)
 }

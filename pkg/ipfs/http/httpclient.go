@@ -2,6 +2,7 @@ package ipfs_http
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -46,6 +47,23 @@ func (ipfsHttp *IPFSHttpClient) GetLocalAddrStrings() ([]string, error) {
 	}
 	for _, addr := range addrs {
 		addressStrings = append(addressStrings, addr.String())
+	}
+	return addressStrings, nil
+}
+
+// the libp2p addresses we should connect to
+func (ipfsHttp *IPFSHttpClient) GetSwarmAddresses() ([]string, error) {
+	addressStrings := []string{}
+	addresses, err := ipfsHttp.GetLocalAddrStrings()
+	if err != nil {
+		return addressStrings, nil
+	}
+	peerId, err := ipfsHttp.GetPeerId()
+	if err != nil {
+		return addressStrings, nil
+	}
+	for _, address := range addresses {
+		addressStrings = append(addressStrings, fmt.Sprintf("%s/p2p/%s", address, peerId))
 	}
 	return addressStrings, nil
 }

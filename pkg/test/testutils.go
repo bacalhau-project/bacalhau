@@ -98,7 +98,7 @@ func TeardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
 	if os.Getenv("KEEP_STACK") == "" {
 		cancelFunction()
 		// need some time to let ipfs processes shut down
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()
 		os.Setenv("KEEP_STACK", "")
@@ -110,7 +110,7 @@ func TeardownTest_IPFS(stack *devstack.DevStack_IPFS, cancelFunction context.Can
 	if os.Getenv("KEEP_STACK") == "" {
 		cancelFunction()
 		// need some time to let ipfs processes shut down
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()
 		os.Setenv("KEEP_STACK", "")
