@@ -1,4 +1,4 @@
-package dockeripfs
+package ipfs_fuse_docker
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -24,7 +26,7 @@ const BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE string = "binocarlos/bacalhau-ipfs-side
 const BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT = "/ipfs_mount"
 const BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_SWARM_PORT = 4001
 
-type StorageDockerIPFS struct {
+type IpfsFuseDocker struct {
 	Ctx context.Context
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
@@ -35,10 +37,10 @@ type StorageDockerIPFS struct {
 	DockerClient *docker.DockerClient
 }
 
-func NewStorageDockerIPFS(
+func NewIpfsFuseDocker(
 	ctx context.Context,
 	ipfsMultiAddress string,
-) (*StorageDockerIPFS, error) {
+) (*IpfsFuseDocker, error) {
 	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
@@ -51,7 +53,7 @@ func NewStorageDockerIPFS(
 	if err != nil {
 		return nil, err
 	}
-	storageHandler := &StorageDockerIPFS{
+	storageHandler := &IpfsFuseDocker{
 		Ctx:          ctx,
 		Id:           peerId,
 		IPFSClient:   api,
@@ -59,7 +61,7 @@ func NewStorageDockerIPFS(
 	}
 
 	// remove the sidecar when the context finishes
-	go func(ctx context.Context, storage *StorageDockerIPFS) {
+	go func(ctx context.Context, storage *IpfsFuseDocker) {
 		<-ctx.Done()
 		dockerClient, err := docker.NewDockerClient()
 		if err != nil {
@@ -75,7 +77,7 @@ func NewStorageDockerIPFS(
 	return storageHandler, nil
 }
 
-func (dockerIpfs *StorageDockerIPFS) IsInstalled() (bool, error) {
+func (dockerIpfs *IpfsFuseDocker) IsInstalled() (bool, error) {
 	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs()
 	if err != nil {
 		return false, err
@@ -86,7 +88,7 @@ func (dockerIpfs *StorageDockerIPFS) IsInstalled() (bool, error) {
 	return true, nil
 }
 
-func (dockerIpfs *StorageDockerIPFS) HasStorage(volume types.StorageSpec) (bool, error) {
+func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, error) {
 	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
 }
 
@@ -101,8 +103,40 @@ docker run --rm --name ipfs \
   -e BACALHAU_IPFS_PEER_ADDRESSES=/ip4/192.168.1.151/tcp/4001/p2p/12D3KooWCrZmXHYaY4PYUP6GptpcwA4benxxcjfU9zyzkRZm6YYN \
   binocarlos/bacalhau-ipfs-sidebar-image:v1
 */
-func (dockerIpfs *StorageDockerIPFS) PrepareStorage(volume types.StorageSpec) (*storage.PreparedStorageVolume, error) {
+func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
 
+	err := dockerIpfs.ensureSidecar()
+	if err != nil {
+		return nil, err
+	}
+
+	mountdir, err := dockerIpfs.getMountDir()
+	if err != nil {
+		return nil, err
+	}
+	if mountdir == "" {
+		return nil, fmt.Errorf("Could not get mount dir")
+	}
+
+	log.Debug().Msgf("Mount dir %s", mountdir)
+
+	volume := &storage.PreparedStorageVolume{
+		Type:   "bind",
+		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
+		Target: storageSpec.MountPath,
+	}
+
+	// wait for the file to show up
+	err = system.WaitForFileSudo(volume.Source, 100, time.Millisecond*100)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return volume, nil
+}
+
+func (dockerIpfs *IpfsFuseDocker) ensureSidecar() error {
 	dockerIpfs.Mutex.Lock()
 	defer dockerIpfs.Mutex.Unlock()
 
@@ -110,7 +144,7 @@ func (dockerIpfs *StorageDockerIPFS) PrepareStorage(volume types.StorageSpec) (*
 	// we lookup by name
 	sidecar, err := dockerIpfs.getSidecar()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// some kind of sidecar container exists
@@ -122,7 +156,7 @@ func (dockerIpfs *StorageDockerIPFS) PrepareStorage(volume types.StorageSpec) (*
 			err = dockerIpfs.DockerClient.RemoveContainer(sidecar.ID)
 
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			sidecar = nil
@@ -133,19 +167,14 @@ func (dockerIpfs *StorageDockerIPFS) PrepareStorage(volume types.StorageSpec) (*
 	if sidecar == nil {
 		err = dockerIpfs.startSidecar()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	//dockerIpfs.DockerClient.Client.
-	return &storage.PreparedStorageVolume{
-		Type:   "bind",
-		Source: "apples",
-		Target: "pears",
-	}, nil
+	return nil
 }
 
-func (dockerIpfs *StorageDockerIPFS) startSidecar() error {
+func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 
 	addresses, err := dockerIpfs.IPFSClient.GetSwarmAddresses()
 	if err != nil {
@@ -230,15 +259,19 @@ func (dockerIpfs *StorageDockerIPFS) startSidecar() error {
 	return nil
 }
 
-func (dockerIpfs *StorageDockerIPFS) stopSidecar() error {
+func (dockerIpfs *IpfsFuseDocker) stopSidecar() error {
 	return dockerIpfs.DockerClient.RemoveContainer(dockerIpfs.sidecarContainerName())
 }
 
-func (dockerIpfs *StorageDockerIPFS) sidecarContainerName() string {
+func (dockerIpfs *IpfsFuseDocker) sidecarContainerName() string {
 	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", dockerIpfs.Id)
 }
 
-func (dockerIpfs *StorageDockerIPFS) createMountDir() (string, error) {
+func (dockerIpfs *IpfsFuseDocker) getSidecar() (*dockertypes.Container, error) {
+	return dockerIpfs.DockerClient.GetContainer(dockerIpfs.sidecarContainerName())
+}
+
+func (dockerIpfs *IpfsFuseDocker) createMountDir() (string, error) {
 	// create a temporary directory to mount the ipfs volume with fuse
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
@@ -255,13 +288,9 @@ func (dockerIpfs *StorageDockerIPFS) createMountDir() (string, error) {
 	return dir, nil
 }
 
-func (dockerIpfs *StorageDockerIPFS) getSidecar() (*dockertypes.Container, error) {
-	return dockerIpfs.DockerClient.GetContainer(dockerIpfs.sidecarContainerName())
-}
-
 // read from the running container what mount folder we have assigned
 // we then use this for job container mounts for CID -> filepath volumes
-func (dockerIpfs *StorageDockerIPFS) getMountDir() (string, error) {
+func (dockerIpfs *IpfsFuseDocker) getMountDir() (string, error) {
 	sidecar, err := dockerIpfs.getSidecar()
 	if err != nil {
 		return "", err
