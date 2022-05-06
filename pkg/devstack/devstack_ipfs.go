@@ -89,8 +89,7 @@ IPFS_PATH=%s ipfs id`, node.IpfsNode.Repo)
 	log.Info().Msg(logString + "\n")
 }
 
-func (stack *DevStack_IPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
-
+func (stack *DevStack_IPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
 	returnFileCid := ""
 
 	// ipfs add the file to 2 nodes
@@ -100,9 +99,15 @@ func (stack *DevStack_IPFS) AddFileToNodes(nodeCount int, filePath string) (stri
 			continue
 		}
 
-		fileCid, err := node.IpfsCli.Run([]string{
-			"add", "-Q", filePath,
-		})
+		args := []string{"add", "-Q"}
+
+		if isDirectory {
+			args = append(args, "-r")
+		}
+
+		args = append(args, filePath)
+
+		fileCid, err := node.IpfsCli.Run(args)
 
 		if err != nil {
 			return "", err
@@ -114,6 +119,14 @@ func (stack *DevStack_IPFS) AddFileToNodes(nodeCount int, filePath string) (stri
 	}
 
 	return returnFileCid, nil
+}
+
+func (stack *DevStack_IPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
+	return stack.addItemToNodes(nodeCount, filePath, false)
+}
+
+func (stack *DevStack_IPFS) AddFolderToNodes(nodeCount int, folderPath string) (string, error) {
+	return stack.addItemToNodes(nodeCount, folderPath, true)
 }
 
 func (stack *DevStack_IPFS) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
