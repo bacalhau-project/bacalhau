@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -37,6 +38,10 @@ func NewIPFSHttpClient(
 
 func (ipfsHttp *IPFSHttpClient) GetLocalAddrs() ([]ma.Multiaddr, error) {
 	return ipfsHttp.Api.Swarm().LocalAddrs(ipfsHttp.Ctx)
+}
+
+func (ipfsHttp *IPFSHttpClient) GetPeers() ([]iface.ConnectionInfo, error) {
+	return ipfsHttp.Api.Swarm().Peers(ipfsHttp.Ctx)
 }
 
 func (ipfsHttp *IPFSHttpClient) GetLocalAddrStrings() ([]string, error) {

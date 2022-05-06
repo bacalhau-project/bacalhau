@@ -110,6 +110,8 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 		return nil, err
 	}
 
+	time.Sleep(time.Second * 1)
+
 	mountdir, err := dockerIpfs.getMountDir()
 	if err != nil {
 		return nil, err
@@ -118,16 +120,31 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 		return nil, fmt.Errorf("Could not get mount dir")
 	}
 
-	log.Debug().Msgf("Mount dir %s", mountdir)
-
 	volume := &storage.PreparedStorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
 		Target: storageSpec.MountPath,
 	}
 
-	// wait for the file to show up
-	err = system.WaitForFileSudo(volume.Source, 100, time.Millisecond*100)
+	waiter := &system.FunctionWaiter{
+		Name:        fmt.Sprintf("wait for file to appear: %s", volume.Source),
+		MaxAttempts: 100,
+		Delay:       time.Millisecond * 100,
+		Logging:     true,
+		Handler: func() (bool, error) {
+			_, err := system.RunCommandGetResults("sudo", []string{
+				"timeout", "5s", "ls", "-la",
+				volume.Source,
+			})
+
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		},
+	}
+
+	err = waiter.Wait()
 
 	if err != nil {
 		return nil, err
@@ -225,7 +242,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 					Source: mountDir,
 					Target: BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT,
 					BindOptions: &mount.BindOptions{
-						Propagation: mount.PropagationShared,
+						Propagation: mount.PropagationRShared,
 					},
 				},
 			},
@@ -251,6 +268,12 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	}
 
 	err = dockerIpfs.DockerClient.Client.ContainerStart(dockerIpfs.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
+
+	if err != nil {
+		return err
+	}
+
+	err = system.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 100, time.Millisecond*100, "Daemon is ready")
 
 	if err != nil {
 		return err

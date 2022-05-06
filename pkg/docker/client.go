@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -54,6 +55,26 @@ func (dockerClient *DockerClient) GetContainer(nameOrId string) (*types.Containe
 		}
 	}
 	return nil, nil
+}
+
+func (dockerClient *DockerClient) GetLogs(nameOrId string) (string, error) {
+	container, err := dockerClient.GetContainer(nameOrId)
+	if err != nil {
+		return "", err
+	}
+	if container == nil {
+		return "", fmt.Errorf("No container found: %s", nameOrId)
+	}
+	logsReader, err := dockerClient.Client.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(logsReader)
+	return buf.String(), nil
 }
 
 func (dockerClient *DockerClient) RemoveContainer(nameOrId string) error {
