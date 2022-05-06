@@ -1,4 +1,4 @@
-package test
+package devstack
 
 import (
 	"fmt"
@@ -9,17 +9,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// a full end to end test of ipfs, libp2p scheduler and docker executor
 func TestDevStack(t *testing.T) {
 
 	testConcurrency := 3
 
-	stack, cancelFunction := SetupTest(
+	stack, cancelFunction := setupTest(
 		t,
 		3,
 		0,
 	)
 
-	defer TeardownTest(stack, cancelFunction)
+	defer teardownTest(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(testConcurrency, []byte(`apple
 orange2

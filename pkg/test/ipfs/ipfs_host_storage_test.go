@@ -1,4 +1,4 @@
-package test
+package ipfs
 
 import (
 	"context"
@@ -17,12 +17,12 @@ import (
 func runTest(t *testing.T, engine string, getStorageDriver func(ctx context.Context, api string) (storage.StorageProvider, error)) {
 	EXAMPLE_TEXT := `hello world`
 	// get a single IPFS server
-	stack, cancelFunction := SetupTest_IPFS(
+	stack, cancelFunction := setupTest(
 		t,
 		1,
 	)
 
-	defer TeardownTest_IPFS(stack, cancelFunction)
+	defer teardownTest(stack, cancelFunction)
 
 	// add this file to the server
 	fileCid, err := stack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))

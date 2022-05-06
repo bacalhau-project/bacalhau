@@ -1,4 +1,4 @@
-package test
+package ipfs
 
 import (
 	"testing"
@@ -10,12 +10,12 @@ import (
 
 func TestIpfsHttpClient(t *testing.T) {
 
-	stack, cancelFunction := SetupTest_IPFS(
+	stack, cancelFunction := setupTest(
 		t,
 		2,
 	)
 
-	defer TeardownTest_IPFS(stack, cancelFunction)
+	defer teardownTest(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(1, []byte(`hello world`))
 	assert.NoError(t, err)
