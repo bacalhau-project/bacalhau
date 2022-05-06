@@ -84,7 +84,9 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*s
 }
 
 func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, volume *storage.PreparedStorageVolume) error {
-	return nil
+	return system.RunCommand("sudo", []string{
+		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
+	})
 }
 
 func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
