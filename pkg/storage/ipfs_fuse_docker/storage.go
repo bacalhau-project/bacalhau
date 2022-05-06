@@ -61,16 +61,7 @@ func NewIpfsFuseDocker(
 	}
 
 	// remove the sidecar when the context finishes
-	go func(ctx context.Context, storage *IpfsFuseDocker) {
-		<-ctx.Done()
-		dockerClient, err := docker.NewDockerClient()
-		if err != nil {
-			log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
-			return
-		}
-		dockerClient.RemoveContainer(storage.sidecarContainerName())
-		log.Debug().Msgf("Docker IPFS sidecar has stopped")
-	}(ctx, storageHandler)
+	go cleanupStorageDriver(ctx, storageHandler)
 
 	log.Debug().Msgf("Docker IPFS sidecar Created")
 
@@ -109,8 +100,6 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 	if err != nil {
 		return nil, err
 	}
-
-	time.Sleep(time.Second * 1)
 
 	mountdir, err := dockerIpfs.getMountDir()
 	if err != nil {
@@ -198,7 +187,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	mountDir, err := dockerIpfs.createMountDir()
+	mountDir, err := createMountDir()
 	if err != nil {
 		return err
 	}
@@ -279,6 +268,9 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
+	// TODO: we probably don't need this?
+	time.Sleep(time.Second * 1)
+
 	return nil
 }
 
@@ -294,7 +286,50 @@ func (dockerIpfs *IpfsFuseDocker) getSidecar() (*dockertypes.Container, error) {
 	return dockerIpfs.DockerClient.GetContainer(dockerIpfs.sidecarContainerName())
 }
 
-func (dockerIpfs *IpfsFuseDocker) createMountDir() (string, error) {
+// read from the running container what mount folder we have assigned
+// we then use this for job container mounts for CID -> filepath volumes
+func (dockerIpfs *IpfsFuseDocker) getMountDir() (string, error) {
+	sidecar, err := dockerIpfs.getSidecar()
+	if err != nil {
+		return "", err
+	}
+	return getMountDirFromContainer(sidecar), nil
+}
+
+func cleanupStorageDriver(ctx context.Context, storageHandler *IpfsFuseDocker) {
+	<-ctx.Done()
+	dockerClient, err := docker.NewDockerClient()
+	if err != nil {
+		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
+		return
+	}
+	container, err := dockerClient.GetContainer(storageHandler.sidecarContainerName())
+	if err != nil {
+		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
+		return
+	}
+	if container == nil {
+		return
+	}
+	mountDir := getMountDirFromContainer(container)
+
+	if mountDir != "" {
+		err = cleanupMountDir(mountDir)
+		if err != nil {
+			log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
+			return
+		}
+	}
+
+	err = dockerClient.RemoveContainer(container.ID)
+	if err != nil {
+		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
+		return
+	}
+	log.Debug().Msgf("Docker IPFS sidecar has stopped")
+}
+
+func createMountDir() (string, error) {
 	// create a temporary directory to mount the ipfs volume with fuse
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
@@ -311,20 +346,32 @@ func (dockerIpfs *IpfsFuseDocker) createMountDir() (string, error) {
 	return dir, nil
 }
 
-// read from the running container what mount folder we have assigned
-// we then use this for job container mounts for CID -> filepath volumes
-func (dockerIpfs *IpfsFuseDocker) getMountDir() (string, error) {
-	sidecar, err := dockerIpfs.getSidecar()
+func cleanupMountDir(mountDir string) error {
+	err := system.RunCommand("sudo", []string{
+		"umount",
+		fmt.Sprintf("%s/data", mountDir),
+	})
 	if err != nil {
-		return "", err
+		return err
 	}
-	if sidecar == nil {
-		return "", nil
+	err = system.RunCommand("sudo", []string{
+		"umount",
+		fmt.Sprintf("%s/ipns", mountDir),
+	})
+	if err != nil {
+		return err
 	}
-	for _, mount := range sidecar.Mounts {
+	return nil
+}
+
+func getMountDirFromContainer(container *dockertypes.Container) string {
+	if container == nil {
+		return ""
+	}
+	for _, mount := range container.Mounts {
 		if mount.Destination == BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT {
-			return mount.Source, nil
+			return mount.Source
 		}
 	}
-	return "", nil
+	return ""
 }
