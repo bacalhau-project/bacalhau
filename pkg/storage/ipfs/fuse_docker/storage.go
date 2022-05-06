@@ -1,4 +1,4 @@
-package ipfs_fuse_docker
+package fuse_docker
 
 import (
 	"context"
@@ -24,7 +24,6 @@ import (
 
 const BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE string = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
 const BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT = "/ipfs_mount"
-const BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_SWARM_PORT = 4001
 
 type IpfsFuseDocker struct {
 	Ctx context.Context
@@ -83,17 +82,6 @@ func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, er
 	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
 }
 
-/*
-docker run --rm --name ipfs \
-  --privileged \
-  --cap-add SYS_ADMIN \
-  --device /dev/fuse \
-  --mount type=bind,source=/tmp/ipfs_test,target=/ipfs,bind-propagation=rshared \
-  -e BACALHAU_DISABLE_MDNS_DISCOVERY=1 \
-  -e BACALHAU_DELETE_BOOTSTRAP_ADDRESSES=1 \
-  -e BACALHAU_IPFS_PEER_ADDRESSES=/ip4/192.168.1.151/tcp/4001/p2p/12D3KooWCrZmXHYaY4PYUP6GptpcwA4benxxcjfU9zyzkRZm6YYN \
-  binocarlos/bacalhau-ipfs-sidebar-image:v1
-*/
 func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
 
 	err := dockerIpfs.ensureSidecar()

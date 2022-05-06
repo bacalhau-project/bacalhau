@@ -1,12 +1,10 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fuse_docker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +28,7 @@ func TestIpfsSidecar(t *testing.T) {
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-	dockerStorage, err := ipfs_fuse_docker.NewIpfsFuseDocker(stack.Ctx, ipfsNodeAddress)
+	dockerStorage, err := fuse_docker.NewIpfsFuseDocker(stack.Ctx, ipfsNodeAddress)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -49,7 +47,6 @@ func TestIpfsSidecar(t *testing.T) {
 	volume, err := dockerStorage.PrepareStorage(storage)
 	assert.NoError(t, err)
 
-	spew.Dump(volume)
 	// we should now be able to read our file content
 	// from the file on the host via fuse
 	result, err := system.RunCommandGetResults("sudo", []string{
@@ -58,6 +55,5 @@ func TestIpfsSidecar(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	fmt.Printf("RESULT: %s -- %s\n", result, err)
 	assert.Equal(t, result, EXAMPLE_TEXT)
 }

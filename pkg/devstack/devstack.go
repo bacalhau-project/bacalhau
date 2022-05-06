@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fuse_docker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
@@ -42,7 +42,7 @@ type DevStack struct {
 
 func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsStorage, err := ipfs_fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
+	ipfsStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
