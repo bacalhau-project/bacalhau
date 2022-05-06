@@ -11,6 +11,9 @@ GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.
 GO_OS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
 GO_ARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidebar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 ifeq ($(GO_ARCH), x86_64)
 GO_ARCH = "amd64"
 endif
@@ -103,6 +106,13 @@ build: build-bacalhau
 build-bacalhau: fmt vet
 	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_ARCH)/bacalhau main.go
 	cp bin/$(GO_ARCH)/bacalhau bin/bacalhau
+
+################################################################################
+# Target: build-bacalhau                                                       #
+################################################################################
+.PHONY: build-docker-images
+build-docker-images: 
+	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################

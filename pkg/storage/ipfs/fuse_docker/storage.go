@@ -22,8 +22,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE string = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
-const BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT = "/ipfs_mount"
+// a storage driver runs ipfs in a container
+// that connects to an upstream IPFS node
+// and fuse mounts to a bind with rshared mount propagation
+// the result is a container that manages the host fuse mount
+// we can then create docker volumes directly from
+// host folders e.g. -v /tmp/ipfs_mnt/123:/file.txt
+
+// TODO: this should come from a CI build
+const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
+const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
 type IpfsFuseDocker struct {
 	Ctx context.Context
@@ -130,6 +138,10 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 	return volume, nil
 }
 
+func (dockerIpfs *IpfsFuseDocker) CleanupStorage(storageSpec types.StorageSpec, volume *storage.PreparedStorageVolume) error {
+	return nil
+}
+
 func (dockerIpfs *IpfsFuseDocker) ensureSidecar() error {
 	dockerIpfs.Mutex.Lock()
 	defer dockerIpfs.Mutex.Unlock()
@@ -198,14 +210,18 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	sidecarContainer, err := dockerIpfs.DockerClient.Client.ContainerCreate(
 		dockerIpfs.Ctx,
 		&container.Config{
-			Image: BACALHAU_DOCKER_IPFS_SIDECAR_IMAGE,
+			Image: BACALHAU_IPFS_FUSE_IMAGE,
 			Tty:   false,
 			Env: []string{
+				// TODO: allow this to be configured - it's the bacalhau host ip
+				// that will announce to the upstream ipfs server
+				// if the upstream ipfs server is on the same host as bacalhau
+				// then we can use 127.0.0.1 because the sidecar uses --net=host
+				fmt.Sprintf("BACALHAU_IPFS_SWARM_ANNOUNCE_IP=%s", "127.0.0.1"),
+				fmt.Sprintf("BACALHAU_IPFS_FUSE_MOUNT=%s", BACALHAU_IPFS_FUSE_MOUNT),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_GATEWAY=%d", gatewayPort),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_API=%d", apiPort),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_SWARM=%d", swarmPort),
-				"BACALHAU_DISABLE_MDNS_DISCOVERY=true",
-				"BACALHAU_DELETE_BOOTSTRAP_ADDRESSES=true",
 				fmt.Sprintf("BACALHAU_IPFS_PEER_ADDRESSES=%s", strings.Join(addresses, ",")),
 			},
 		},
@@ -217,7 +233,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 				{
 					Type:   mount.TypeBind,
 					Source: mountDir,
-					Target: BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT,
+					Target: BACALHAU_IPFS_FUSE_MOUNT,
 					BindOptions: &mount.BindOptions{
 						Propagation: mount.PropagationRShared,
 					},
@@ -357,7 +373,7 @@ func getMountDirFromContainer(container *dockertypes.Container) string {
 		return ""
 	}
 	for _, mount := range container.Mounts {
-		if mount.Destination == BACALHAU_DOCKER_IPFS_SIDECAR_INTERNAL_MOUNT {
+		if mount.Destination == BACALHAU_IPFS_FUSE_MOUNT {
 			return mount.Source
 		}
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -42,12 +43,17 @@ type DevStack struct {
 
 func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
+	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
+	if err != nil {
+		return executors, err
+	}
+	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
 	dockerExecutor, err := docker.NewDockerExecutor(ctx, map[string]storage.StorageProvider{
-		"ipfs": ipfsStorage,
+		storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
+		storage.IPFS_API_COPY:    ipfsApiCopyStorage,
 	})
 	if err != nil {
 		return executors, err
