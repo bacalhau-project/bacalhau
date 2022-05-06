@@ -15,13 +15,24 @@ type StorageSpec struct {
 	MountPath string
 }
 
-// what we pass off to the executor to "run" the job
-type JobSpec struct {
-	// e.g. firecracker, docker or wasm
-	Engine string
+// a storage entity that is consumed are produced by a job
+type StorageVolume struct {
+	Type   string
+	Source string
+	Target string
+}
 
-	// for VM based executors
+// the mapping of how to copy the data from the job into resultant
+// storage volumes - for example, we can copy stdout to a file
+// or we can copy a folder inside a container to ipfs
+type StorageOutput struct {
+	// this can be "stdout" or "filesystem"
+	Type string
+	Path string
+}
 
+// for VM style executors
+type JobSpecVm struct {
 	// this should be pullable by docker
 	Image string
 	// optionally override the default entrypoint
@@ -32,6 +43,21 @@ type JobSpec struct {
 	Cpu    string
 	Memory string
 	Disk   string
+}
+
+// for Wasm style executors
+type JobSpecWasm struct {
+	Bytecode StorageSpec
+}
+
+// what we pass off to the executor to "run" the job
+type JobSpec struct {
+	// e.g. firecracker, docker or wasm
+	Engine string
+
+	// for VM based executors
+	Vm   *JobSpecVm
+	Wasm *JobSpecWasm
 
 	// for WASM based executors
 	Bytecode StorageSpec
@@ -41,7 +67,7 @@ type JobSpec struct {
 	Inputs []StorageSpec
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec
+	Outputs []StorageOutput
 }
 
 // keep track of job states on a particular node
