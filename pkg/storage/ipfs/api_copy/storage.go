@@ -117,7 +117,7 @@ func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*type
 	volume := &types.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
-		Target: storageSpec.MountPath,
+		Target: storageSpec.Path,
 	}
 	return volume, nil
 }

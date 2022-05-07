@@ -12,7 +12,7 @@ type StorageSpec struct {
 	// for compute engines that "mount" the storage as filesystems (e.g. docker)
 	// what path should we mount the storage to
 	// this can be "stdout", "stderr" or "stdin"
-	MountPath string
+	Path string
 }
 
 // a storage entity that is consumed are produced by a job

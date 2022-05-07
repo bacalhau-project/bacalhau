@@ -107,7 +107,7 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 	volume := &types.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
-		Target: storageSpec.MountPath,
+		Target: storageSpec.Path,
 	}
 
 	waiter := &system.FunctionWaiter{

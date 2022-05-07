@@ -38,9 +38,9 @@ func runFileTest(t *testing.T, engine string, getStorageDriver func(ctx context.
 
 	// the storage spec for the cid we added
 	storage := types.StorageSpec{
-		Engine:    engine,
-		Cid:       fileCid,
-		MountPath: "/data/file.txt",
+		Engine: engine,
+		Cid:    fileCid,
+		Path:   "/data/file.txt",
 	}
 
 	// does the storage client think we have the cid locally?
@@ -96,9 +96,9 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver func(ctx contex
 
 	// the storage spec for the cid we added
 	storage := types.StorageSpec{
-		Engine:    engine,
-		Cid:       folderCid,
-		MountPath: "/data/folder",
+		Engine: engine,
+		Cid:    folderCid,
+		Path:   "/data/folder",
 	}
 
 	// does the storage client think we have the cid locally?

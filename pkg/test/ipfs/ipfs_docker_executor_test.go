@@ -36,9 +36,9 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	assert.NoError(t, err)
 
 	storageSpec := types.StorageSpec{
-		Engine:    storage.IPFS_FUSE_DOCKER,
-		Cid:       fileCid,
-		MountPath: "/data/file.txt",
+		Engine: storage.IPFS_FUSE_DOCKER,
+		Cid:    fileCid,
+		Path:   "/data/file.txt",
 	}
 
 	job := &types.Job{
@@ -55,7 +55,7 @@ func TestIpfsDockerExecutor(t *testing.T) {
 			},
 			Outputs: []types.StorageSpec{
 				{
-					MountPath: "stdout",
+					Path: "stdout",
 				},
 			},
 		},
