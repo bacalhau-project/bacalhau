@@ -3,6 +3,7 @@ package ipfs
 import (
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -45,16 +46,16 @@ func TestIpfsDockerExecutor(t *testing.T) {
 		Owner: "test-owner",
 		Spec: &types.JobSpec{
 			Engine: executor.EXECUTOR_DOCKER,
-			Vm: &types.JobSpecVm{
+			Vm: types.JobSpecVm{
 				Image:      "ubuntu",
 				Entrypoint: "bash -c 'cat /data/file.txt'",
 			},
 			Inputs: []types.StorageSpec{
 				storageSpec,
 			},
-			Outputs: []types.StorageOutput{
+			Outputs: []types.StorageSpec{
 				{
-					Type: "stdout",
+					MountPath: "stdout",
 				},
 			},
 		},
@@ -72,4 +73,5 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasStorage)
 
+	spew.Dump(job)
 }

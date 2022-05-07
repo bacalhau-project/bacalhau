@@ -18,7 +18,6 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.1
-	go.uber.org/zap v1.21.0
 	mvdan.cc/sh/v3 v3.4.3
 )
 
@@ -170,6 +169,7 @@ require (
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect

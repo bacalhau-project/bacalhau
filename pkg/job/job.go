@@ -144,11 +144,14 @@ func ConstructJob(
 	}
 
 	spec := &types.JobSpec{
-		Engine:     engine,
-		Image:      image,
-		Entrypoint: entrypoint,
-		Env:        env,
-		Inputs:     jobInputs,
+		Engine: engine,
+		Vm: types.JobSpecVm{
+			Image:      image,
+			Entrypoint: entrypoint,
+			Env:        env,
+		},
+
+		Inputs: jobInputs,
 	}
 
 	deal := &types.JobDeal{
@@ -176,7 +179,7 @@ func RunJob(
 	}
 
 	if !skipSyntaxChecking {
-		err := system.CheckBashSyntax([]string{spec.Entrypoint})
+		err := system.CheckBashSyntax([]string{spec.Vm.Entrypoint})
 		if err != nil {
 			return nil, err
 		}

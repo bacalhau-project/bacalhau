@@ -63,7 +63,7 @@ func (dockerIpfs *IpfsApiCopy) HasStorage(volume types.StorageSpec) (bool, error
 	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
 }
 
-func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
+func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
 
 	var statResult struct {
 		Hash string
@@ -83,13 +83,13 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*s
 	}
 }
 
-func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, volume *storage.PreparedStorageVolume) error {
+func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, volume *types.StorageVolume) error {
 	return system.RunCommand("sudo", []string{
 		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
 	})
 }
 
-func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
+func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
 	res, err := dockerIpfs.IPFSClient.Api.Request("get", storageSpec.Cid).Send(dockerIpfs.Ctx)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*stor
 	if err != nil {
 		return nil, err
 	}
-	volume := &storage.PreparedStorageVolume{
+	volume := &types.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
 		Target: storageSpec.MountPath,

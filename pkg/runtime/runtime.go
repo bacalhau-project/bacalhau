@@ -199,7 +199,7 @@ func (runtime *Runtime) RunJob(resultsFolder string) error {
 ========================================
 Running job: %s %s
 ========================================
-`, runtime.Job.Image, runtime.Job.Entrypoint)
+`, runtime.Job.Vm.Image, runtime.Job.Vm.Entrypoint)
 
 	err, stdout, stderr := system.RunTeeCommand("docker", cleanEmpty([]string{
 		"run",

@@ -69,7 +69,7 @@ var listCmd = &cobra.Command{
 				t.AppendRows([]table.Row{
 					{
 						shortId(jobData.Id),
-						jobData.Spec.Entrypoint,
+						jobData.Spec.Vm.Entrypoint,
 						shortenString(strings.Join(inputCids, "\n")),
 						shortenString(node),
 						jobState.State,

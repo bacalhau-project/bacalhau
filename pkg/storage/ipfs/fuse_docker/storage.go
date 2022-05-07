@@ -15,7 +15,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
@@ -90,7 +89,7 @@ func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, er
 	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
 }
 
-func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*storage.PreparedStorageVolume, error) {
+func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
 
 	err := dockerIpfs.ensureSidecar()
 	if err != nil {
@@ -105,7 +104,7 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 		return nil, fmt.Errorf("Could not get mount dir")
 	}
 
-	volume := &storage.PreparedStorageVolume{
+	volume := &types.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
 		Target: storageSpec.MountPath,
@@ -138,7 +137,7 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 	return volume, nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) CleanupStorage(storageSpec types.StorageSpec, volume *storage.PreparedStorageVolume) error {
+func (dockerIpfs *IpfsFuseDocker) CleanupStorage(storageSpec types.StorageSpec, volume *types.StorageVolume) error {
 	return nil
 }
 

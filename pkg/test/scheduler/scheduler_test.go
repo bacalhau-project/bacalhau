@@ -43,10 +43,12 @@ func TestSchedulerSubmitJob(t *testing.T) {
 
 	// first let's test submitting a job with an engine we do not have
 	spec := &types.JobSpec{
-		Image:      "image",
-		Engine:     "apples",
-		Entrypoint: "entrypoint",
-		Env:        []string{"env"},
+		Engine: "apples",
+		Vm: types.JobSpecVm{
+			Image:      "image",
+			Entrypoint: "entrypoint",
+			Env:        []string{"env"},
+		},
 		Inputs: []types.StorageSpec{
 			{
 				Engine: "ipfs",
@@ -86,10 +88,12 @@ func TestSchedulerEvents(t *testing.T) {
 
 	// first let's test submitting a job with an engine we do not have
 	spec := &types.JobSpec{
-		Image:      "image",
-		Engine:     "noop",
-		Entrypoint: "entrypoint",
-		Env:        []string{"env"},
+		Engine: "noop",
+		Vm: types.JobSpecVm{
+			Image:      "image",
+			Entrypoint: "entrypoint",
+			Env:        []string{"env"},
+		},
 		Inputs: []types.StorageSpec{
 			{
 				Engine: "ipfs",

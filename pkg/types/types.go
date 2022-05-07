@@ -22,15 +22,6 @@ type StorageVolume struct {
 	Target string
 }
 
-// the mapping of how to copy the data from the job into resultant
-// storage volumes - for example, we can copy stdout to a file
-// or we can copy a folder inside a container to ipfs
-type StorageOutput struct {
-	// this can be "stdout" or "filesystem"
-	Type string
-	Path string
-}
-
 // for VM style executors
 type JobSpecVm struct {
 	// this should be pullable by docker
@@ -56,8 +47,8 @@ type JobSpec struct {
 	Engine string
 
 	// for VM based executors
-	Vm   *JobSpecVm
-	Wasm *JobSpecWasm
+	Vm   JobSpecVm
+	Wasm JobSpecWasm
 
 	// for WASM based executors
 	Bytecode StorageSpec
@@ -67,7 +58,7 @@ type JobSpec struct {
 	Inputs []StorageSpec
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageOutput
+	Outputs []StorageSpec
 }
 
 // keep track of job states on a particular node
