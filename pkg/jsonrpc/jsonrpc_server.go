@@ -77,7 +77,7 @@ func (server *JSONRpcServer) List(args *types.ListArgs, reply *types.ListRespons
 
 func (server *JSONRpcServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
 	//nolint
-	job, err := server.RequesterNode.Scheduler.SubmitJob(args.Spec, args.Deal)
+	job, err := server.RequesterNode.Transport.SubmitJob(args.Spec, args.Deal)
 	if err != nil {
 		return err
 	}

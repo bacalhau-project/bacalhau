@@ -2,7 +2,6 @@ package devstack
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"context"
@@ -48,13 +47,13 @@ func setupTest(
 // the first time - once the test has completed, this function will be called
 // it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
 func teardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
-	if os.Getenv("KEEP_STACK") == "" {
+	if !system.ShouldKeepStack() {
 		cancelFunction()
 		// need some time to let ipfs processes shut down
 		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()
-		os.Setenv("KEEP_STACK", "")
+		system.ClearKeepStack()
 		select {}
 	}
 }

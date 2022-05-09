@@ -1,9 +1,9 @@
 package ipfs
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -71,9 +71,8 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasStorage)
 
-	outputVolumes, err := dockerExecutor.RunJob(job)
+	resultsDirectory, err := dockerExecutor.RunJob(job)
 	assert.NoError(t, err)
 
-	spew.Dump(job)
-	spew.Dump(outputVolumes)
+	fmt.Printf("RESULTS: %s\n\n", resultsDirectory)
 }

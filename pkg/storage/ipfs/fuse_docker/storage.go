@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -41,7 +42,7 @@ type IpfsFuseDocker struct {
 	Mutex        sync.Mutex
 	Id           string
 	IPFSClient   *ipfs_http.IPFSHttpClient
-	DockerClient *docker.DockerClient
+	DockerClient *dockerclient.Client
 }
 
 func NewIpfsFuseDocker(
@@ -159,7 +160,7 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar() error {
 		// ahhh but it's not running
 		// so let's remove what is there
 		if sidecar.State != "running" {
-			err = dockerIpfs.DockerClient.RemoveContainer(sidecar.ID)
+			err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
 
 			if err != nil {
 				return err
@@ -207,7 +208,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	sidecarContainer, err := dockerIpfs.DockerClient.Client.ContainerCreate(
+	sidecarContainer, err := dockerIpfs.DockerClient.ContainerCreate(
 		dockerIpfs.Ctx,
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
@@ -260,13 +261,13 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	err = dockerIpfs.DockerClient.Client.ContainerStart(dockerIpfs.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
+	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 
 	if err != nil {
 		return err
 	}
 
-	err = system.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 100, time.Millisecond*100, "Daemon is ready")
+	err = docker.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 100, time.Millisecond*100, "Daemon is ready")
 
 	if err != nil {
 		return err
@@ -279,7 +280,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 }
 
 func (dockerIpfs *IpfsFuseDocker) stopSidecar() error {
-	return dockerIpfs.DockerClient.RemoveContainer(dockerIpfs.sidecarContainerName())
+	return docker.RemoveContainer(dockerIpfs.DockerClient, dockerIpfs.sidecarContainerName())
 }
 
 func (dockerIpfs *IpfsFuseDocker) sidecarContainerName() string {
@@ -287,7 +288,7 @@ func (dockerIpfs *IpfsFuseDocker) sidecarContainerName() string {
 }
 
 func (dockerIpfs *IpfsFuseDocker) getSidecar() (*dockertypes.Container, error) {
-	return dockerIpfs.DockerClient.GetContainer(dockerIpfs.sidecarContainerName())
+	return docker.GetContainer(dockerIpfs.DockerClient, dockerIpfs.sidecarContainerName())
 }
 
 // read from the running container what mount folder we have assigned
@@ -307,7 +308,7 @@ func cleanupStorageDriver(ctx context.Context, storageHandler *IpfsFuseDocker) {
 		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
 		return
 	}
-	container, err := dockerClient.GetContainer(storageHandler.sidecarContainerName())
+	container, err := docker.GetContainer(dockerClient, storageHandler.sidecarContainerName())
 	if err != nil {
 		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
 		return
@@ -325,7 +326,7 @@ func cleanupStorageDriver(ctx context.Context, storageHandler *IpfsFuseDocker) {
 		}
 	}
 
-	err = dockerClient.RemoveContainer(container.ID)
+	err = docker.RemoveContainer(dockerClient, container.ID)
 	if err != nil {
 		log.Error().Msgf("Docker IPFS sidecar stop error: %s", err.Error())
 		return

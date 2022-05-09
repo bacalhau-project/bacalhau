@@ -2,7 +2,6 @@ package ipfs
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"context"
@@ -37,13 +36,13 @@ func setupTest(
 }
 
 func teardownTest(stack *devstack.DevStack_IPFS, cancelFunction context.CancelFunc) {
-	if os.Getenv("KEEP_STACK") == "" {
+	if !system.ShouldKeepStack() {
 		cancelFunction()
 		// need some time to let ipfs processes shut down
 		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()
-		os.Setenv("KEEP_STACK", "")
+		system.ClearKeepStack()
 		select {}
 	}
 }

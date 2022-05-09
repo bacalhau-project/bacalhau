@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -32,7 +33,7 @@ type DockerExecutor struct {
 	// the storage providers we can implement for a job
 	StorageProviders map[string]storage.StorageProvider
 
-	Client *docker.DockerClient
+	Client *dockerclient.Client
 }
 
 func NewDockerExecutor(
@@ -58,25 +59,25 @@ func NewDockerExecutor(
 	return dockerExecutor, nil
 }
 
-func (docker *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
-	return executor.GetStorageProvider(engine, docker.StorageProviders)
+func (dockerExecutor *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
+	return executor.GetStorageProvider(engine, dockerExecutor.StorageProviders)
 }
 
 // check if docker itself is installed
-func (docker *DockerExecutor) IsInstalled() (bool, error) {
-	isRunning := docker.Client.IsInstalled()
+func (dockerExecutor *DockerExecutor) IsInstalled() (bool, error) {
+	isRunning := docker.IsInstalled(dockerExecutor.Client)
 	return isRunning, nil
 }
 
-func (docker *DockerExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
-	storage, err := docker.getStorageProvider(volume.Engine)
+func (dockerExecutor *DockerExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
+	storage, err := dockerExecutor.getStorageProvider(volume.Engine)
 	if err != nil {
 		return false, err
 	}
 	return storage.HasStorage(volume)
 }
 
-func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
+func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 	spec := job.Spec
 
@@ -85,7 +86,7 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 	}
 
-	jobResultsDir, err := docker.ensureJobResultsDir(job)
+	jobResultsDir, err := dockerExecutor.ensureJobResultsDir(job)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +97,7 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range job.Spec.Inputs {
-		storageProvider, err := docker.getStorageProvider(inputStorage.Engine)
+		storageProvider, err := dockerExecutor.getStorageProvider(inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
@@ -148,8 +149,8 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	}
 
 	// let's pull the image down
-	imagePullStream, err := docker.Client.Client.ImagePull(
-		docker.Ctx,
+	imagePullStream, err := dockerExecutor.Client.ImagePull(
+		dockerExecutor.Ctx,
 		job.Spec.Vm.Image,
 		dockertypes.ImagePullOptions{},
 	)
@@ -162,8 +163,8 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	docker.Client.Client.ContainerCreate(
-		docker.Ctx,
+	jobContainer, err := dockerExecutor.Client.ContainerCreate(
+		dockerExecutor.Ctx,
 		&container.Config{
 			Image:      job.Spec.Vm.Image,
 			Tty:        false,
@@ -175,8 +176,51 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		},
 		&network.NetworkingConfig{},
 		nil,
-		docker.jobContainerName(job),
+		dockerExecutor.jobContainerName(job),
 	)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer dockerExecutor.cleanupJob(dockerExecutor.Ctx, job)
+
+	err = dockerExecutor.Client.ContainerStart(
+		dockerExecutor.Ctx,
+		jobContainer.ID,
+		dockertypes.ContainerStartOptions{},
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	statusChan, errChan := dockerExecutor.Client.ContainerWait(
+		dockerExecutor.Ctx,
+		jobContainer.ID,
+		container.WaitConditionNextExit,
+	)
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			return "", err
+		}
+	case <-statusChan:
+	}
+
+	logs, err := docker.GetLogsWithOptions(dockerExecutor.Client, jobContainer.ID, dockertypes.ContainerLogsOptions{
+		ShowStdout: true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(logs), 0644)
+	if err != nil {
+		return "", err
+	}
+
 	return jobResultsDir, nil
 }
 
@@ -192,16 +236,23 @@ func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
 	}
 }
 
-func (docker *DockerExecutor) jobContainerName(job *types.Job) string {
-	return fmt.Sprintf("bacalhau-%s-%s", docker.Id, job.Id)
+func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types.Job) {
+	if system.ShouldKeepStack() {
+		return
+	}
+	docker.RemoveContainer(dockerExecutor.Client, dockerExecutor.jobContainerName(job))
 }
 
-func (docker *DockerExecutor) jobResultsDir(job *types.Job) string {
-	return fmt.Sprintf("%s/%s", docker.ResultsDir, job.Id)
+func (dockerExecutor *DockerExecutor) jobContainerName(job *types.Job) string {
+	return fmt.Sprintf("bacalhau-%s-%s", dockerExecutor.Id, job.Id)
 }
 
-func (docker *DockerExecutor) ensureJobResultsDir(job *types.Job) (string, error) {
-	dir := docker.jobResultsDir(job)
+func (dockerExecutor *DockerExecutor) jobResultsDir(job *types.Job) string {
+	return fmt.Sprintf("%s/%s", dockerExecutor.ResultsDir, job.Id)
+}
+
+func (dockerExecutor *DockerExecutor) ensureJobResultsDir(job *types.Job) (string, error) {
+	dir := dockerExecutor.jobResultsDir(job)
 	err := os.MkdirAll(dir, 0777)
 	return dir, err
 }
