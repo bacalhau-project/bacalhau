@@ -42,8 +42,12 @@ raspberry
 			fileCid,
 		},
 		[]string{},
+		[]string{
+			"grep",
+			"kiwi",
+			fmt.Sprintf("/ipfs/%s", fileCid),
+		},
 		"ubuntu:latest",
-		fmt.Sprintf("grep kiwi /ipfs/%s", fileCid),
 		testConcurrency,
 		"127.0.0.1",
 		stack.Nodes[0].JSONRpcNode.Port,

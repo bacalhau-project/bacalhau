@@ -47,8 +47,11 @@ func TestIpfsDockerExecutor(t *testing.T) {
 		Spec: &types.JobSpec{
 			Engine: executor.EXECUTOR_DOCKER,
 			Vm: types.JobSpecVm{
-				Image:      "ubuntu",
-				Entrypoint: "bash -c 'cat /data/file.txt'",
+				Image: "ubuntu",
+				Entrypoint: []string{
+					"cat",
+					"/data/file.txt",
+				},
 			},
 			Inputs: []types.StorageSpec{
 				inputStorageSpec,

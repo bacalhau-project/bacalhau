@@ -162,19 +162,13 @@ func (docker *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	cmd := []string{}
-	if job.Spec.Vm.Entrypoint != "" {
-		cmd = append(cmd, job.Spec.Vm.Entrypoint)
-	}
-
-	// now create the container
 	docker.Client.Client.ContainerCreate(
 		docker.Ctx,
 		&container.Config{
-			Image: job.Spec.Vm.Image,
-			Tty:   false,
-			Env:   job.Spec.Vm.Env,
-			Cmd:   cmd,
+			Image:      job.Spec.Vm.Image,
+			Tty:        false,
+			Env:        job.Spec.Vm.Env,
+			Entrypoint: job.Spec.Vm.Entrypoint,
 		},
 		&container.HostConfig{
 			Mounts: mounts,

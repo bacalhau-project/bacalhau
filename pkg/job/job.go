@@ -118,7 +118,8 @@ func ConstructJob(
 	engine string,
 	cids []string,
 	env []string,
-	image, entrypoint string,
+	entrypoint []string,
+	image string,
 	concurrency int,
 ) (*types.JobSpec, *types.JobDeal, error) {
 	if concurrency <= 0 {
@@ -158,21 +159,22 @@ func RunJob(
 	engine string,
 	cids []string,
 	env []string,
-	image, entrypoint string,
+	entrypoint []string,
+	image string,
 	concurrency int,
 	rpcHost string,
 	rpcPort int,
 	skipSyntaxChecking bool,
 ) (*types.Job, error) {
 
-	spec, deal, err := ConstructJob(engine, cids, env, image, entrypoint, concurrency)
+	spec, deal, err := ConstructJob(engine, cids, env, entrypoint, image, concurrency)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if !skipSyntaxChecking {
-		err := system.CheckBashSyntax([]string{spec.Vm.Entrypoint})
+		err := system.CheckBashSyntax(entrypoint)
 		if err != nil {
 			return nil, err
 		}

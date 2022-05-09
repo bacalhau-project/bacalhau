@@ -38,7 +38,7 @@ type JobSpecVm struct {
 	// this should be pullable by docker
 	Image string
 	// optionally override the default entrypoint
-	Entrypoint string
+	Entrypoint []string
 	// a map of env to run the container with
 	Env []string
 	// https://github.com/BTBurke/k8sresource strings

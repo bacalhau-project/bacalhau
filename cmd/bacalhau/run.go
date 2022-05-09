@@ -8,8 +8,8 @@ import (
 var jobEngine string
 var jobCids []string
 var jobEnv []string
+var jobEntrypoint []string
 var jobImage string
-var jobEntrypoint string
 var jobConcurrency int
 var skipSyntaxChecking bool
 
@@ -34,8 +34,8 @@ func init() {
 		&jobImage, "image", "ubuntu:latest",
 		`What image do we use for the job`,
 	)
-	runCmd.PersistentFlags().StringVar(
-		&jobEntrypoint, "entrypoint", "",
+	runCmd.PersistentFlags().StringSliceVar(
+		&jobEntrypoint, "entrypoint", []string{},
 		`The entrypoint to use for the container`,
 	)
 	runCmd.PersistentFlags().BoolVar(
@@ -52,8 +52,8 @@ var runCmd = &cobra.Command{
 			jobEngine,
 			jobCids,
 			jobEnv,
-			jobImage,
 			jobEntrypoint,
+			jobImage,
 			jobConcurrency,
 			jsonrpcHost,
 			jsonrpcPort,

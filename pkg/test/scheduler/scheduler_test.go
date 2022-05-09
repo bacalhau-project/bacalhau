@@ -46,7 +46,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 		Engine: "apples",
 		Vm: types.JobSpecVm{
 			Image:      "image",
-			Entrypoint: "entrypoint",
+			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
 		Inputs: []types.StorageSpec{
@@ -91,7 +91,7 @@ func TestSchedulerEvents(t *testing.T) {
 		Engine: "noop",
 		Vm: types.JobSpecVm{
 			Image:      "image",
-			Entrypoint: "entrypoint",
+			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
 		Inputs: []types.StorageSpec{
