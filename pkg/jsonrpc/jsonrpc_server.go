@@ -67,7 +67,7 @@ func StartBacalhauJsonRpcServer(server *JSONRpcServer) error {
 }
 
 func (server *JSONRpcServer) List(args *types.ListArgs, reply *types.ListResponse) error {
-	res, err := server.RequesterNode.Scheduler.List()
+	res, err := server.RequesterNode.Transport.List()
 	if err != nil {
 		return err
 	}

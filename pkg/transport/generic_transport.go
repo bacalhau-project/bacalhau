@@ -1,4 +1,4 @@
-package scheduler
+package transport
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 // a useful generic scheduler that given a function to write a job event
 // will look after a lot of the boilerplate on behalf on a scheduler implementation
 
-type GenericScheduler struct {
+type GenericTransport struct {
 	NodeId string
 	Jobs   map[string]*types.Job
 	// the list of functions to call when we get an update about a job
@@ -19,11 +19,11 @@ type GenericScheduler struct {
 	WriteEventHandler func(event *types.JobEvent) error
 }
 
-func NewGenericScheduler(
+func NewGenericTransport(
 	nodeId string,
 	writeEvent func(event *types.JobEvent) error,
-) *GenericScheduler {
-	return &GenericScheduler{
+) *GenericTransport {
+	return &GenericTransport{
 		NodeId:            nodeId,
 		Jobs:              make(map[string]*types.Job),
 		SubscribeFuncs:    []func(jobEvent *types.JobEvent, job *types.Job){},
@@ -31,14 +31,14 @@ func NewGenericScheduler(
 	}
 }
 
-func (scheduler *GenericScheduler) writeEvent(event *types.JobEvent) error {
+func (scheduler *GenericTransport) writeEvent(event *types.JobEvent) error {
 	if event.NodeId == "" {
 		event.NodeId = scheduler.NodeId
 	}
 	return scheduler.WriteEventHandler(event)
 }
 
-func (scheduler *GenericScheduler) ReadEvent(event *types.JobEvent) {
+func (scheduler *GenericTransport) ReadEvent(event *types.JobEvent) {
 	// let's initialise the state for this job because it was just created
 	if event.EventName == system.JOB_EVENT_CREATED {
 		scheduler.Jobs[event.JobId] = &types.Job{
@@ -71,13 +71,13 @@ func (scheduler *GenericScheduler) ReadEvent(event *types.JobEvent) {
 	}
 }
 
-func (scheduler *GenericScheduler) List() (types.ListResponse, error) {
+func (scheduler *GenericTransport) List() (types.ListResponse, error) {
 	return types.ListResponse{
 		Jobs: scheduler.Jobs,
 	}, nil
 }
 
-func (scheduler *GenericScheduler) Get(id string) (*types.Job, error) {
+func (scheduler *GenericTransport) Get(id string) (*types.Job, error) {
 	job, ok := scheduler.Jobs[id]
 	if !ok {
 		return nil, fmt.Errorf("Job %s not found", id)
@@ -86,11 +86,11 @@ func (scheduler *GenericScheduler) Get(id string) (*types.Job, error) {
 	}
 }
 
-func (scheduler *GenericScheduler) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
+func (scheduler *GenericTransport) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
 	scheduler.SubscribeFuncs = append(scheduler.SubscribeFuncs, subscribeFunc)
 }
 
-func (scheduler *GenericScheduler) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
+func (scheduler *GenericTransport) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("Error in creating job id. %s", err)
@@ -119,7 +119,7 @@ func (scheduler *GenericScheduler) SubmitJob(spec *types.JobSpec, deal *types.Jo
 	return job, nil
 }
 
-func (scheduler *GenericScheduler) UpdateDeal(jobId string, deal *types.JobDeal) error {
+func (scheduler *GenericTransport) UpdateDeal(jobId string, deal *types.JobDeal) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_DEAL_UPDATED,
@@ -127,7 +127,7 @@ func (scheduler *GenericScheduler) UpdateDeal(jobId string, deal *types.JobDeal)
 	})
 }
 
-func (scheduler *GenericScheduler) AcceptJobBid(jobId, nodeId string) error {
+func (scheduler *GenericTransport) AcceptJobBid(jobId, nodeId string) error {
 	job, err := scheduler.Get(jobId)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (scheduler *GenericScheduler) AcceptJobBid(jobId, nodeId string) error {
 	})
 }
 
-func (scheduler *GenericScheduler) RejectJobBid(jobId, nodeId, message string) error {
+func (scheduler *GenericTransport) RejectJobBid(jobId, nodeId, message string) error {
 	if message == "" {
 		message = "Job bid rejected by client"
 	}
@@ -159,7 +159,7 @@ func (scheduler *GenericScheduler) RejectJobBid(jobId, nodeId, message string) e
 	})
 }
 
-func (scheduler *GenericScheduler) AcceptResult(jobId, nodeId string) error {
+func (scheduler *GenericTransport) AcceptResult(jobId, nodeId string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,
@@ -170,7 +170,7 @@ func (scheduler *GenericScheduler) AcceptResult(jobId, nodeId string) error {
 	})
 }
 
-func (scheduler *GenericScheduler) RejectResult(jobId, nodeId, message string) error {
+func (scheduler *GenericTransport) RejectResult(jobId, nodeId, message string) error {
 	if message == "" {
 		message = "Job result rejected by client"
 	}
@@ -189,7 +189,7 @@ func (scheduler *GenericScheduler) RejectResult(jobId, nodeId, message string) e
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (scheduler *GenericScheduler) BidJob(jobId string) error {
+func (scheduler *GenericTransport) BidJob(jobId string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_BID,
@@ -199,7 +199,7 @@ func (scheduler *GenericScheduler) BidJob(jobId string) error {
 	})
 }
 
-func (scheduler *GenericScheduler) SubmitResult(jobId, status, resultsId string) error {
+func (scheduler *GenericTransport) SubmitResult(jobId, status, resultsId string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_RESULTS,
@@ -211,7 +211,7 @@ func (scheduler *GenericScheduler) SubmitResult(jobId, status, resultsId string)
 	})
 }
 
-func (scheduler *GenericScheduler) ErrorJob(jobId, status string) error {
+func (scheduler *GenericTransport) ErrorJob(jobId, status string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_ERROR,
@@ -227,7 +227,7 @@ func (scheduler *GenericScheduler) ErrorJob(jobId, status string) error {
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (scheduler *GenericScheduler) ErrorJobForNode(jobId, nodeId, status string) error {
+func (scheduler *GenericTransport) ErrorJobForNode(jobId, nodeId, status string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		NodeId:    nodeId,

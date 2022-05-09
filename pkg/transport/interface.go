@@ -1,8 +1,8 @@
-package scheduler
+package transport
 
 import "github.com/filecoin-project/bacalhau/pkg/types"
 
-type Scheduler interface {
+type Transport interface {
 
 	/////////////////////////////////////////////////////////////
 	/// LIFECYCLE

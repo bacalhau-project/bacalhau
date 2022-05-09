@@ -4,22 +4,22 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/scheduler"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 type RequesterNode struct {
 	Ctx       context.Context
-	Scheduler scheduler.Scheduler
+	Transport transport.Transport
 }
 
 func NewRequesterNode(
 	ctx context.Context,
-	scheduler scheduler.Scheduler,
+	transport transport.Transport,
 ) (*RequesterNode, error) {
 
-	nodeId, err := scheduler.HostId()
+	nodeId, err := transport.HostId()
 	threadLogger := logger.LoggerWithRuntimeInfo(nodeId)
 
 	if err != nil {
@@ -29,10 +29,10 @@ func NewRequesterNode(
 
 	requesterNode := &RequesterNode{
 		Ctx:       ctx,
-		Scheduler: scheduler,
+		Transport: transport,
 	}
 
-	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
 
 		// we only care about jobs that we own
 		if job.Owner != nodeId {
@@ -56,13 +56,13 @@ func NewRequesterNode(
 
 			if bidAccepted {
 				// TODO: Check result of accept job bid
-				err = scheduler.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
+				err = transport.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
 			} else {
 				// TODO: Check result of reject job bid
-				err = scheduler.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
+				err = transport.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
@@ -77,7 +77,7 @@ func NewRequesterNode(
 
 			if err != nil {
 				// TODO: Check result of Error Job for Node
-				err = scheduler.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
+				err = transport.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
 				threadLogger.Error().Err(err)
 			}
 		}

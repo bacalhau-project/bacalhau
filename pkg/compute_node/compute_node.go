@@ -5,25 +5,25 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/scheduler"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type ComputeNode struct {
 	Ctx       context.Context
-	Scheduler scheduler.Scheduler
+	Transport transport.Transport
 	Executors map[string]executor.Executor
 }
 
 func NewComputeNode(
 	ctx context.Context,
-	scheduler scheduler.Scheduler,
+	transport transport.Transport,
 	executors map[string]executor.Executor,
 ) (*ComputeNode, error) {
 
-	nodeId, err := scheduler.HostId()
+	nodeId, err := transport.HostId()
 
 	if err != nil {
 		return nil, err
@@ -31,11 +31,11 @@ func NewComputeNode(
 
 	computeNode := &ComputeNode{
 		Ctx:       ctx,
-		Scheduler: scheduler,
+		Transport: transport,
 		Executors: executors,
 	}
 
-	scheduler.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
 
 		switch jobEvent.EventName {
 
@@ -58,7 +58,7 @@ func NewComputeNode(
 				log.Debug().Msgf("We are bidding on a job: %+v", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = scheduler.BidJob(jobEvent.JobId)
+				err = transport.BidJob(jobEvent.JobId)
 				if err != nil {
 					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
@@ -81,10 +81,10 @@ func NewComputeNode(
 
 			if err != nil {
 				log.Error().Msgf("ERROR running the job: %s %+v", err, job)
-				_ = scheduler.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
 				log.Info().Msgf("Completed the job - results: %+v %+v", job, outputs)
-				_ = scheduler.SubmitResult(
+				_ = transport.SubmitResult(
 					job.Id,
 					fmt.Sprintf("Got job results: %+v", outputs),
 					outputs,

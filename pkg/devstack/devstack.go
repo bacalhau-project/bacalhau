@@ -16,11 +16,11 @@ import (
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
-	"github.com/filecoin-project/bacalhau/pkg/scheduler/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -32,7 +32,7 @@ type DevStackNode struct {
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
 	IpfsCli       *ipfs_cli.IPFSCli
-	SchedulerNode *libp2p.Libp2pScheduler
+	Transport     *libp2p.Libp2pTransport
 	JSONRpcNode   *jsonrpc.JSONRpcServer
 }
 
@@ -103,7 +103,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		schedulerNode, err := libp2p.NewLibp2pScheduler(ctx, libp2pPort)
+		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
-		requesterNode, err := requestor_node.NewRequesterNode(ctx, schedulerNode)
+		requesterNode, err := requestor_node.NewRequesterNode(ctx, transport)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +124,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := compute_node.NewComputeNode(ctx, schedulerNode, executors)
+		computeNode, err := compute_node.NewComputeNode(ctx, transport, executors)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// intra-connections
 		//////////////////////////////////////
-		err = schedulerNode.Start()
+		err = transport.Start()
 		if err != nil {
 			return nil, err
 		}
@@ -165,15 +165,15 @@ func NewDevStack(
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostId, err := firstNode.SchedulerNode.HostId()
+			libp2pHostId, err := firstNode.Transport.HostId()
 			if err != nil {
 				return nil, err
 			}
 
 			// connect this scheduler to the first
-			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.SchedulerNode.Port, libp2pHostId)
+			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Transport.Port, libp2pHostId)
 			log.Debug().Msgf("Connect to first libp2p scheduler node: %s", firstSchedulerAddress)
-			err = schedulerNode.Connect(firstSchedulerAddress)
+			err = transport.Connect(firstSchedulerAddress)
 			if err != nil {
 				return nil, err
 			}
@@ -185,7 +185,7 @@ func NewDevStack(
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
 			IpfsCli:       ipfs_cli.NewIPFSCli(ipfsNode.Repo),
-			SchedulerNode: schedulerNode,
+			Transport:     transport,
 			JSONRpcNode:   jsonRpcNode,
 		}
 
@@ -242,7 +242,7 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 			continue
 		}
 
-		nodeId, err := node.ComputeNode.Scheduler.HostId()
+		nodeId, err := node.ComputeNode.Transport.HostId()
 
 		if err != nil {
 			return "", err
