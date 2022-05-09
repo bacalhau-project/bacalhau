@@ -59,13 +59,6 @@ var listCmd = &cobra.Command{
 			}
 
 			for node, jobState := range jobData.State {
-
-				outputCid := ""
-
-				if len(jobState.Outputs) > 0 {
-					outputCid = jobState.Outputs[0].Cid
-				}
-
 				t.AppendRows([]table.Row{
 					{
 						shortId(jobData.Id),
@@ -74,7 +67,7 @@ var listCmd = &cobra.Command{
 						shortenString(node),
 						jobState.State,
 						jobState.Status,
-						outputCid,
+						jobState.ResultsId,
 					},
 				})
 			}

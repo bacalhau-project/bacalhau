@@ -176,8 +176,8 @@ func (scheduler *Libp2pScheduler) BidJob(jobId string) error {
 	return scheduler.GenericScheduler.BidJob(jobId)
 }
 
-func (scheduler *Libp2pScheduler) SubmitResult(jobId, status string, outputs []types.StorageSpec) error {
-	return scheduler.GenericScheduler.SubmitResult(jobId, status, outputs)
+func (scheduler *Libp2pScheduler) SubmitResult(jobId, status, resultsId string) error {
+	return scheduler.GenericScheduler.SubmitResult(jobId, status, resultsId)
 }
 
 func (scheduler *Libp2pScheduler) ErrorJob(jobId, status string) error {

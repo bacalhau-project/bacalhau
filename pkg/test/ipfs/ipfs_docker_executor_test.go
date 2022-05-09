@@ -30,12 +30,12 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(stack.Ctx, stack.Nodes[0].IpfsNode.ApiAddress())
 	assert.NoError(t, err)
 
-	dockerExecutor, err := docker.NewDockerExecutor(stack.Ctx, map[string]storage.StorageProvider{
+	dockerExecutor, err := docker.NewDockerExecutor(stack.Ctx, "dockertest", map[string]storage.StorageProvider{
 		storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 	})
 	assert.NoError(t, err)
 
-	storageSpec := types.StorageSpec{
+	inputStorageSpec := types.StorageSpec{
 		Engine: storage.IPFS_FUSE_DOCKER,
 		Cid:    fileCid,
 		Path:   "/data/file.txt",
@@ -51,12 +51,7 @@ func TestIpfsDockerExecutor(t *testing.T) {
 				Entrypoint: "bash -c 'cat /data/file.txt'",
 			},
 			Inputs: []types.StorageSpec{
-				storageSpec,
-			},
-			Outputs: []types.StorageSpec{
-				{
-					Path: "stdout",
-				},
+				inputStorageSpec,
 			},
 		},
 		Deal: &types.JobDeal{
@@ -69,9 +64,13 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, isInstalled)
 
-	hasStorage, err := dockerExecutor.HasStorage(storageSpec)
+	hasStorage, err := dockerExecutor.HasStorage(inputStorageSpec)
 	assert.NoError(t, err)
 	assert.True(t, hasStorage)
 
+	outputVolumes, err := dockerExecutor.RunJob(job)
+	assert.NoError(t, err)
+
 	spew.Dump(job)
+	spew.Dump(outputVolumes)
 }

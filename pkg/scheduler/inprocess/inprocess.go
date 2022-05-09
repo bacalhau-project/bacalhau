@@ -114,8 +114,8 @@ func (scheduler *InProcessScheduler) BidJob(jobId string) error {
 	return scheduler.GenericScheduler.BidJob(jobId)
 }
 
-func (scheduler *InProcessScheduler) SubmitResult(jobId, status string, outputs []types.StorageSpec) error {
-	return scheduler.GenericScheduler.SubmitResult(jobId, status, outputs)
+func (scheduler *InProcessScheduler) SubmitResult(jobId, status, resultsId string) error {
+	return scheduler.GenericScheduler.SubmitResult(jobId, status, resultsId)
 }
 
 func (scheduler *InProcessScheduler) ErrorJob(jobId, status string) error {

@@ -46,16 +46,9 @@ func ProcessJobIntoResults(job *types.Job) (*[]types.ResultsList, error) {
 	log.Debug().Msgf("Number of job states created: %d", len(job.State))
 
 	for node := range job.State {
-
-		cid := ""
-
-		if len(job.State[node].Outputs) > 0 {
-			cid = job.State[node].Outputs[0].Cid
-		}
-
 		results = append(results, types.ResultsList{
 			Node:   node,
-			Cid:    cid,
+			Cid:    job.State[node].ResultsId,
 			Folder: system.GetResultsDirectory(job.Id, node),
 		})
 	}

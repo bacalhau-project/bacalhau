@@ -1,5 +1,7 @@
 package storage
 
+const STORAGE_VOLUME_TYPE_BIND = "bind"
+
 const IPFS_TYPE_DIRECTORY = "directory"
 const IPFS_TYPE_FILE = "file"
 

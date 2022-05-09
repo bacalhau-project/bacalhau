@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
@@ -105,7 +106,7 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 	}
 
 	volume := &types.StorageVolume{
-		Type:   "bind",
+		Type:   storage.STORAGE_VOLUME_TYPE_BIND,
 		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
 		Target: storageSpec.Path,
 	}

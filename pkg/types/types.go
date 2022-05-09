@@ -6,6 +6,10 @@ package types
 type StorageSpec struct {
 	// e.g. ipfs, filecoin or s3
 	Engine string
+	// we name input and output volumes so we can reference them
+	// (possibly in dags and pipelines)
+	// output volumes must have names
+	Name string
 	// the id of the storage resource (e.g. cid in the case of ipfs)
 	// this is empty in the case of outputs
 	Cid string
@@ -16,6 +20,13 @@ type StorageSpec struct {
 }
 
 // a storage entity that is consumed are produced by a job
+// input storage specs are turned into storage volumes by drivers
+// for example - the input storage spec might be ipfs cid XXX
+// and a driver will turn that into a host path that can be consumed by a job
+// another example - a wasm storage driver references the upstream ipfs
+// cid (source) that can be streamed via a library call using the target name
+// put simply - the nature of a storage volume depends on it's use by the
+// executor engine
 type StorageVolume struct {
 	Type   string
 	Source string
@@ -63,10 +74,9 @@ type JobSpec struct {
 
 // keep track of job states on a particular node
 type JobState struct {
-	State  string
-	Status string
-	// for example a list of IPFS cids (if we are using the IPFS storage engine)
-	Outputs []StorageSpec
+	State     string
+	Status    string
+	ResultsId string
 }
 
 // omly the client can update this as it's the client that will

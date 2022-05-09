@@ -128,3 +128,7 @@ func MapByteArray(vs []byte, f func(byte) byte) []byte {
 	}
 	return vsm
 }
+
+func IsDebug() bool {
+	return os.Getenv("LOG_LEVEL") == "debug"
+}

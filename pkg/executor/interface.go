@@ -14,5 +14,6 @@ type Executor interface {
 	HasStorage(volume types.StorageSpec) (bool, error)
 
 	// run the given job - it's expected that we have already prepared the job
-	RunJob(*types.Job) ([]types.StorageSpec, error)
+	// this will return a local filesystem path to the jobs results
+	RunJob(job *types.Job) (string, error)
 }

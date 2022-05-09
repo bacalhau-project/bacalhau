@@ -140,22 +140,13 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	}
 }
 
-func (node *ComputeNode) RunJob(job *types.Job) ([]types.StorageSpec, error) {
-
-	// the job states how it would like to collect it's results
-	// for example job.Spec.Outputs == [{Engine: "ipfs"}]
-	// then we need to produce [{Engine: "ipfs", Cid: "Qm..."}]
-	outputs := []types.StorageSpec{}
-
+func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	// check that we have the executor to run this job
 	executor, err := node.getExecutor(job.Spec.Engine)
 	if err != nil {
-		return outputs, err
+		return "", err
 	}
-
-	outputs, err = executor.RunJob(job)
-
-	return outputs, nil
+	return executor.RunJob(job)
 }
 
 func (node *ComputeNode) getExecutor(engine string) (executor.Executor, error) {
@@ -172,59 +163,3 @@ func (node *ComputeNode) getExecutor(engine string) (executor.Executor, error) {
 	}
 	return executorEngine, nil
 }
-
-// func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
-
-// 	err := node.checkExecutor(job.Spec.Engine)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	vm, err := runtime.NewRuntime(job)
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	if vm.Kind == "docker" && !system.IsDockerRunning() {
-// 		err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
-// 		log.Warn().Msgf(err.Error())
-// 		return "", err
-// 	}
-
-// 	resultsFolder, err := system.EnsureSystemDirectory(system.GetResultsDirectory(job.Id, hostId))
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	log.Debug().Msgf("Ensured results directory created: %s", resultsFolder)
-
-// 	// Having an issue with this directory not existing, so double confirming here
-// 	if _, err := os.Stat(resultsFolder); os.IsNotExist(err) {
-// 		log.Warn().Msgf("Expected results directory for job id (%s) to exist, it does not: %s", job.Id, resultsFolder)
-// 	} else {
-// 		log.Info().Msgf("Results directory for job id (%s) exists: %s", job.Id, resultsFolder)
-// 	}
-
-// 	// we are in private ipfs network mode if we have got a folder path for our repo
-// 	err = vm.EnsureIpfsSidecarRunning(node.IpfsRepo)
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	err = vm.RunJob(resultsFolder)
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	resultCid, err := ipfs.AddFolder(node.IpfsRepo, resultsFolder)
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	return resultCid, nil
-// }

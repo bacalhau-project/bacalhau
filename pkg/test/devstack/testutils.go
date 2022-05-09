@@ -24,8 +24,8 @@ func setupTest(
 ) (*devstack.DevStack, context.CancelFunc) {
 	ctx, cancelFunction := system.GetCancelContext()
 
-	getExecutors := func(ipfsMultiAddress string) (map[string]executor.Executor, error) {
-		return devstack.NewDockerIPFSExecutors(ctx, ipfsMultiAddress)
+	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
+		return devstack.NewDockerIPFSExecutors(ctx, fmt.Sprintf("devstacknode%d", nodeIndex), ipfsMultiAddress)
 	}
 
 	stack, err := devstack.NewDevStack(

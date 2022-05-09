@@ -23,7 +23,7 @@ func (noop *NoopExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (noop *NoopExecutor) RunJob(job *types.Job) ([]types.StorageSpec, error) {
+func (noop *NoopExecutor) RunJob(job *types.Job) (string, error) {
 	noop.Jobs = append(noop.Jobs, job)
-	return []types.StorageSpec{}, nil
+	return "", nil
 }

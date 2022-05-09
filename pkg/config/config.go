@@ -10,6 +10,7 @@ import (
 )
 
 const ENV_PREFIX = "BACALHAU"
+
 const DEFAULT_LOG_FILE = "/tmp/bacalhau.log"
 const DEFAULT_IPFS_DOCKER_IMAGE = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
 const DEFAULT_SWARM_ANNOUNCE_IP = "127.0.0.1"

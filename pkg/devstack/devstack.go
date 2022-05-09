@@ -41,7 +41,7 @@ type DevStack struct {
 	Nodes []*DevStackNode
 }
 
-func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[string]executor.Executor, error) {
+func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string, dockerId string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
 	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
 	if err != nil {
@@ -51,7 +51,7 @@ func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[s
 	if err != nil {
 		return executors, err
 	}
-	dockerExecutor, err := docker.NewDockerExecutor(ctx, map[string]storage.StorageProvider{
+	dockerExecutor, err := docker.NewDockerExecutor(ctx, dockerId, map[string]storage.StorageProvider{
 		storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 		storage.IPFS_API_COPY:    ipfsApiCopyStorage,
 	})
@@ -65,7 +65,7 @@ func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string) (map[s
 func NewDevStack(
 	ctx context.Context,
 	count, badActors int,
-	getExecutors func(ipfsMultiAddress string) (map[string]executor.Executor, error),
+	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
 ) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
@@ -119,7 +119,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Compute node
 		//////////////////////////////////////
-		executors, err := getExecutors(ipfsNode.ApiAddress())
+		executors, err := getExecutors(ipfsNode.ApiAddress(), i)
 		if err != nil {
 			return nil, err
 		}

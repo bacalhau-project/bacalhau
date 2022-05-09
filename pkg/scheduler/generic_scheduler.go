@@ -199,14 +199,14 @@ func (scheduler *GenericScheduler) BidJob(jobId string) error {
 	})
 }
 
-func (scheduler *GenericScheduler) SubmitResult(jobId, status string, outputs []types.StorageSpec) error {
+func (scheduler *GenericScheduler) SubmitResult(jobId, status, resultsId string) error {
 	return scheduler.writeEvent(&types.JobEvent{
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_RESULTS,
 		JobState: &types.JobState{
-			State:   system.JOB_STATE_COMPLETE,
-			Status:  status,
-			Outputs: outputs,
+			State:     system.JOB_STATE_COMPLETE,
+			Status:    status,
+			ResultsId: resultsId,
 		},
 	})
 }
