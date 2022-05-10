@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -74,5 +75,7 @@ func TestIpfsDockerExecutor(t *testing.T) {
 	resultsDirectory, err := dockerExecutor.RunJob(job)
 	assert.NoError(t, err)
 
-	fmt.Printf("RESULTS: %s\n\n", resultsDirectory)
+	stdout, err := os.ReadFile(fmt.Sprintf("%s/stdout", resultsDirectory))
+	assert.NoError(t, err)
+	assert.Equal(t, string(stdout), EXAMPLE_TEXT)
 }
