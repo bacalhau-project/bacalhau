@@ -49,6 +49,27 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrId string) (*types.Co
 	return nil, nil
 }
 
+func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelValue string) ([]types.Container, error) {
+	results := []types.Container{}
+	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
+		All: true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, container := range containers {
+		value, ok := container.Labels[labelName]
+		if !ok {
+			continue
+		}
+		if value == labelValue {
+			results = append(results, container)
+		}
+	}
+	return results, nil
+}
+
 func GetLogsWithOptions(dockerClient *dockerclient.Client, nameOrId string, options types.ContainerLogsOptions) (string, error) {
 	container, err := GetContainer(dockerClient, nameOrId)
 	if err != nil {

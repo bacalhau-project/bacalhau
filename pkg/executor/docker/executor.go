@@ -170,6 +170,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 			Tty:        false,
 			Env:        job.Spec.Vm.Env,
 			Entrypoint: job.Spec.Vm.Entrypoint,
+			Labels:     dockerExecutor.jobContainerLabels(job),
 		},
 		&container.HostConfig{
 			Mounts: mounts,
@@ -226,7 +227,18 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
 	<-ctx.Done()
-	err := system.RunCommand("sudo", []string{
+	if system.ShouldKeepStack() {
+		return
+	}
+	containersWithLabel, err := docker.GetContainersWithLabel(executor.Client, "bacalhau-executor", executor.Id)
+	if err != nil {
+		log.Error().Msgf("Docker executor stop error: %s", err.Error())
+		return
+	}
+	for _, container := range containersWithLabel {
+		docker.RemoveContainer(executor.Client, container.ID)
+	}
+	err = system.RunCommand("sudo", []string{
 		"rm", "-rf",
 		fmt.Sprintf("%s/*", executor.ResultsDir),
 	})
@@ -245,6 +257,12 @@ func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types
 
 func (dockerExecutor *DockerExecutor) jobContainerName(job *types.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", dockerExecutor.Id, job.Id)
+}
+
+func (dockerExecutor *DockerExecutor) jobContainerLabels(job *types.Job) map[string]string {
+	return map[string]string{
+		"bacalhau-executor": dockerExecutor.Id,
+	}
 }
 
 func (dockerExecutor *DockerExecutor) jobResultsDir(job *types.Job) string {
