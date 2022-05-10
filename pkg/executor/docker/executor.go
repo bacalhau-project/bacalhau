@@ -56,6 +56,7 @@ func NewDockerExecutor(
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
 	}
+	go cleanupDockerExecutor(ctx, dockerExecutor)
 	return dockerExecutor, nil
 }
 
@@ -199,7 +200,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	statusChan, errChan := dockerExecutor.Client.ContainerWait(
 		dockerExecutor.Ctx,
 		jobContainer.ID,
-		container.WaitConditionNextExit,
+		container.WaitConditionNotRunning,
 	)
 
 	select {
@@ -207,17 +208,26 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		if err != nil {
 			return "", err
 		}
-	case <-statusChan:
+	case exitStatus := <-statusChan:
+		if exitStatus.Error != nil {
+			return "", fmt.Errorf(exitStatus.Error.Message)
+		}
+		if exitStatus.StatusCode != 0 {
+			return "", fmt.Errorf("exit code was non zero: %d", exitStatus.StatusCode)
+		}
 	}
 
-	logs, err := docker.GetLogsWithOptions(dockerExecutor.Client, jobContainer.ID, dockertypes.ContainerLogsOptions{
-		ShowStdout: true,
-	})
+	stdout, stderr, err := docker.GetLogs(dockerExecutor.Client, jobContainer.ID)
 	if err != nil {
 		return "", err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(logs), 0644)
+	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), 0644)
+	if err != nil {
+		return "", err
+	}
+
+	err = os.WriteFile(fmt.Sprintf("%s/stderr", jobResultsDir), []byte(stderr), 0644)
 	if err != nil {
 		return "", err
 	}
@@ -227,6 +237,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
 	<-ctx.Done()
+
 	if system.ShouldKeepStack() {
 		return
 	}
@@ -238,14 +249,14 @@ func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
 	for _, container := range containersWithLabel {
 		docker.RemoveContainer(executor.Client, container.ID)
 	}
-	err = system.RunCommand("sudo", []string{
-		"rm", "-rf",
-		fmt.Sprintf("%s/*", executor.ResultsDir),
-	})
-	if err != nil {
-		log.Error().Msgf("Docker executor stop error: %s", err.Error())
-		return
-	}
+	// err = system.RunCommand("sudo", []string{
+	// 	"rm", "-rf",
+	// 	executor.ResultsDir,
+	// })
+	// if err != nil {
+	// 	log.Error().Msgf("Docker executor stop error: %s", err.Error())
+	// 	return
+	// }
 }
 
 func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types.Job) {

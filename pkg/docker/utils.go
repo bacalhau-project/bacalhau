@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/moby/moby/pkg/stdcopy"
 	"github.com/rs/zerolog/log"
 )
 
@@ -70,28 +71,25 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 	return results, nil
 }
 
-func GetLogsWithOptions(dockerClient *dockerclient.Client, nameOrId string, options types.ContainerLogsOptions) (string, error) {
+func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string, error) {
 	container, err := GetContainer(dockerClient, nameOrId)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if container == nil {
-		return "", fmt.Errorf("No container found: %s", nameOrId)
+		return "", "", fmt.Errorf("No container found: %s", nameOrId)
 	}
-	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, options)
-	if err != nil {
-		return "", err
-	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(logsReader)
-	return buf.String(), nil
-}
-
-func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, error) {
-	return GetLogsWithOptions(dockerClient, nameOrId, types.ContainerLogsOptions{
+	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	})
+	if err != nil {
+		return "", "", err
+	}
+	stdout := bytes.NewBuffer([]byte{})
+	stderr := bytes.NewBuffer([]byte{})
+	stdcopy.StdCopy(stdout, stderr, logsReader)
+	return stdout.String(), stderr.String(), nil
 }
 
 func RemoveContainer(dockerClient *dockerclient.Client, nameOrId string) error {
@@ -154,11 +152,11 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 			if container.State != "running" {
 				return false, nil
 			}
-			logs, err := GetLogs(client, id)
+			stdout, stderr, err := GetLogs(client, id)
 			if err != nil {
 				return false, err
 			}
-			return strings.Contains(logs, findString), nil
+			return strings.Contains(stdout, findString) || strings.Contains(stderr, findString), nil
 		},
 	}
 	return waiter.Wait()
