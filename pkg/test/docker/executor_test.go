@@ -12,32 +12,27 @@ func TestSingleFile(t *testing.T) {
 	MOUNT_PATH := "/data/file.txt"
 	OUTPUT_FILE := "output_file.txt"
 	HELLO_WORLD := `hello world`
-	FRUITS := `apple
-orange
-pineapple
-pear
-peach
-cherry
-kiwi is delicious
-strawberry
-lemon
-raspberry
-	`
 
 	tests := []struct {
 		name           string
-		fileContents   string
-		mountPath      string
-		expectedOutput string
-		expectedMode   IExpectedMode
+		setupStorage   ISetupStorage
+		resultsChecker ICheckResults
 		getJobSpec     IGetJobSpec
 	}{
 		{
-			name:           "cat_file",
-			fileContents:   HELLO_WORLD,
-			mountPath:      MOUNT_PATH,
-			expectedOutput: HELLO_WORLD,
-			expectedMode:   ExpectedModeEquals,
+			name: "cat_file",
+			setupStorage: singleFileSetupStorageWithData(
+				t,
+				HELLO_WORLD,
+				MOUNT_PATH,
+			),
+			resultsChecker: singleFileResultsCheckerContains(
+				t,
+				OUTPUT_FILE,
+				HELLO_WORLD,
+				ExpectedModeEquals,
+				1,
+			),
 			getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
 				return types.JobSpecVm{
 					Image: "ubuntu",
@@ -49,11 +44,19 @@ raspberry
 			},
 		},
 		{
-			name:           "grep_file",
-			fileContents:   FRUITS,
-			mountPath:      MOUNT_PATH,
-			expectedOutput: "kiwi is delicious",
-			expectedMode:   ExpectedModeContains,
+			name: "grep_file",
+			setupStorage: singleFileSetupStorageWithFile(
+				t,
+				"../../../testdata/grep_file.txt",
+				MOUNT_PATH,
+			),
+			resultsChecker: singleFileResultsCheckerContains(
+				t,
+				OUTPUT_FILE,
+				"kiwi is delicious",
+				ExpectedModeContains,
+				2,
+			),
 			getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
 				return types.JobSpecVm{
 					Image: "ubuntu",
@@ -65,6 +68,59 @@ raspberry
 				}
 			},
 		},
+		{
+			name: "sed_file",
+			setupStorage: singleFileSetupStorageWithFile(
+				t,
+				"../../../testdata/sed_file.txt",
+				MOUNT_PATH,
+			),
+			resultsChecker: singleFileResultsCheckerContains(
+				t,
+				OUTPUT_FILE,
+				"LISBON",
+				ExpectedModeContains,
+				5,
+			),
+			getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
+				return types.JobSpecVm{
+					Image: "ubuntu",
+					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
+						"sed",
+						"-n",
+						"/38.7[2-4]..,-9.1[3-7]../p",
+						MOUNT_PATH,
+					}),
+				}
+			},
+		},
+		// TODO: this test fails because of quoting issues
+		// {
+		// 	name: "awk_file",
+		// 	setupStorage: singleFileSetupStorageWithFile(
+		// 		t,
+		// 		"../../../testdata/awk_file.txt",
+		// 		MOUNT_PATH,
+		// 	),
+		// 	resultsChecker: singleFileResultsCheckerContains(
+		// 		t,
+		// 		OUTPUT_FILE,
+		// 		"LISBON",
+		// 		ExpectedModeContains,
+		// 		501,
+		// 	),
+		// 	getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
+		// 		return types.JobSpecVm{
+		// 			Image: "ubuntu",
+		// 			Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
+		// 				"awk",
+		// 				"-F,",
+		// 				"'{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}'",
+		// 				MOUNT_PATH,
+		// 			}),
+		// 		}
+		// 	},
+		// },
 	}
 
 	for _, test := range tests {
@@ -72,17 +128,8 @@ raspberry
 		dockerExecutorStorageTest(
 			t,
 			test.name,
-			singleFileSetupStorage(
-				t,
-				test.fileContents,
-				test.mountPath,
-			),
-			singleFileResultsChecker(
-				t,
-				test.expectedOutput,
-				test.expectedMode,
-				OUTPUT_FILE,
-			),
+			test.setupStorage,
+			test.resultsChecker,
 			test.getJobSpec,
 		)
 

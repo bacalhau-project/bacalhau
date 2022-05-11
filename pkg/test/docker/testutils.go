@@ -76,11 +76,11 @@ var OUTPUT_MODES = []IOutputMode{
 
 /*
 
-	Results Checkers
+	Setup storage
 
 */
 
-func singleFileSetupStorage(
+func singleFileSetupStorageWithData(
 	t *testing.T,
 	fileContents string,
 	mountPath string,
@@ -97,25 +97,61 @@ func singleFileSetupStorage(
 		}
 		return inputStorageSpecs, nil
 	}
-
 }
 
-func singleFileResultsChecker(
+func singleFileSetupStorageWithFile(
 	t *testing.T,
+	filePath string,
+	mountPath string,
+) ISetupStorage {
+	return func(stack *devstack.DevStack_IPFS) ([]types.StorageSpec, error) {
+		fileCid, err := stack.AddFileToNodes(1, filePath)
+		assert.NoError(t, err)
+		inputStorageSpecs := []types.StorageSpec{
+			{
+				Engine: TEST_STORAGE_DRIVER_NAME,
+				Cid:    fileCid,
+				Path:   mountPath,
+			},
+		}
+		return inputStorageSpecs, nil
+	}
+}
+
+/*
+
+	Results checkers
+
+*/
+
+func singleFileGetData(
+	outputMode IOutputMode,
+	resultsDir string,
+	outputPathVolume string,
+) ([]byte, error) {
+	outputPath := "stdout"
+	if outputMode == OutputModeVolume {
+		outputPath = fmt.Sprintf("%s/%s", TEST_OUTPUT_VOLUME_NAME, outputPathVolume)
+	}
+	outputFile := fmt.Sprintf("%s/%s", resultsDir, outputPath)
+	return os.ReadFile(outputFile)
+}
+
+func singleFileResultsCheckerContains(
+	t *testing.T,
+	outputPathVolume string,
 	expectedString string,
 	expectedMode IExpectedMode,
-	outputPathVolume string,
+	expectedLines int,
 ) ICheckResults {
 	return func(resultsDir string, outputMode IOutputMode) {
-		outputPath := "stdout"
-		if outputMode == OutputModeVolume {
-			outputPath = fmt.Sprintf("%s/%s", TEST_OUTPUT_VOLUME_NAME, outputPathVolume)
-		}
-		outputFile := fmt.Sprintf("%s/%s", resultsDir, outputPath)
-		resultsContent, err := os.ReadFile(outputFile)
+		resultsContent, err := singleFileGetData(outputMode, resultsDir, outputPathVolume)
 		assert.NoError(t, err)
 
 		log.Debug().Msgf("resultsContent: %s", resultsContent)
+
+		actual_line_count := len(strings.Split(string(resultsContent), "\n"))
+		assert.Equal(t, expectedLines, actual_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actual_line_count))
 
 		if expectedMode == ExpectedModeEquals {
 			assert.Equal(t, expectedString, string(resultsContent))

@@ -217,18 +217,27 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		container.WaitConditionNotRunning,
 	)
 
+	handleErrorLogs := func() {
+		stdout, stderr, _ := docker.GetLogs(dockerExecutor.Client, jobContainer.ID)
+		log.Error().Msgf("Container stdout: %s", stdout)
+		log.Error().Msgf("Container stderr: %s", stderr)
+	}
+
 	// TODO: we should record all logs and as much diagnostics as possible
 	// in the error case so a user can debug why their job failed
 	select {
 	case err := <-errChan:
 		if err != nil {
+			handleErrorLogs()
 			return "", err
 		}
 	case exitStatus := <-statusChan:
 		if exitStatus.Error != nil {
+			handleErrorLogs()
 			return "", fmt.Errorf(exitStatus.Error.Message)
 		}
 		if exitStatus.StatusCode != 0 {
+			handleErrorLogs()
 			return "", fmt.Errorf("exit code was non zero: %d", exitStatus.StatusCode)
 		}
 	}
