@@ -138,6 +138,13 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 			return "", fmt.Errorf("output volume has no path: %+v\n", output)
 		}
 
+		sourceFolder := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
+		err = os.Mkdir(sourceFolder, 0755)
+
+		if err != nil {
+			return "", err
+		}
+
 		log.Debug().Msgf("Output Volume: %+v", output)
 
 		// create a mount so the output data does not need to be copied back to the host
@@ -146,7 +153,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 			// this is an output volume so can be written to
 			ReadOnly: false,
 			// we create a named folder in the job results folder for this output
-			Source: fmt.Sprintf("%s/%s", jobResultsDir, output.Name),
+			Source: sourceFolder,
 			// the path of the output volume is from the perspective of inside the container
 			Target: output.Path,
 		})
