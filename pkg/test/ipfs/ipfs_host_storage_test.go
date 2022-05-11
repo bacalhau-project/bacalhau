@@ -19,12 +19,12 @@ import (
 func runFileTest(t *testing.T, engine string, getStorageDriver func(ctx context.Context, api string) (storage.StorageProvider, error)) {
 	EXAMPLE_TEXT := `hello world`
 	// get a single IPFS server
-	stack, cancelFunction := setupTest(
+	stack, cancelFunction := SetupTest(
 		t,
 		1,
 	)
 
-	defer teardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelFunction)
 
 	// add this file to the server
 	fileCid, err := stack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
@@ -77,12 +77,12 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver func(ctx contex
 	assert.NoError(t, err)
 
 	// get a single IPFS server
-	stack, cancelFunction := setupTest(
+	stack, cancelFunction := SetupTest(
 		t,
 		1,
 	)
 
-	defer teardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelFunction)
 
 	// add this file to the server
 	folderCid, err := stack.AddFolderToNodes(1, dir)

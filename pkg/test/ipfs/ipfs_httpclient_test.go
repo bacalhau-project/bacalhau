@@ -10,12 +10,12 @@ import (
 
 func TestIpfsHttpClient(t *testing.T) {
 
-	stack, cancelFunction := setupTest(
+	stack, cancelFunction := SetupTest(
 		t,
 		2,
 	)
 
-	defer teardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelFunction)
 
 	fileCid, err := stack.AddTextToNodes(1, []byte(`hello world`))
 	assert.NoError(t, err)

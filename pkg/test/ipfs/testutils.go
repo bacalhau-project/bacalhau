@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func setupTest(
+func SetupTest(
 	t *testing.T,
 	nodes int,
 ) (*devstack.DevStack_IPFS, context.CancelFunc) {
@@ -35,7 +35,7 @@ func setupTest(
 	return stack, cancelFunction
 }
 
-func teardownTest(stack *devstack.DevStack_IPFS, cancelFunction context.CancelFunc) {
+func TeardownTest(stack *devstack.DevStack_IPFS, cancelFunction context.CancelFunc) {
 	if !system.ShouldKeepStack() {
 		cancelFunction()
 		// need some time to let ipfs processes shut down

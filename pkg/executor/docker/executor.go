@@ -111,6 +111,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		}
 
 		if volumeMount.Type == storage.STORAGE_VOLUME_TYPE_BIND {
+			log.Debug().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
 			mounts = append(mounts, mount.Mount{
 				Type: "bind",
 
@@ -136,6 +137,8 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		if output.Path == "" {
 			return "", fmt.Errorf("output volume has no path: %+v\n", output)
 		}
+
+		log.Debug().Msgf("Output Volume: %+v", output)
 
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
@@ -164,15 +167,19 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
+	containerConfig := &container.Config{
+		Image:      job.Spec.Vm.Image,
+		Tty:        false,
+		Env:        job.Spec.Vm.Env,
+		Entrypoint: job.Spec.Vm.Entrypoint,
+		Labels:     dockerExecutor.jobContainerLabels(job),
+	}
+
+	log.Debug().Msgf("Container: %+v", containerConfig)
+
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
 		dockerExecutor.Ctx,
-		&container.Config{
-			Image:      job.Spec.Vm.Image,
-			Tty:        false,
-			Env:        job.Spec.Vm.Env,
-			Entrypoint: job.Spec.Vm.Entrypoint,
-			Labels:     dockerExecutor.jobContainerLabels(job),
-		},
+		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
 		},
@@ -203,6 +210,8 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		container.WaitConditionNotRunning,
 	)
 
+	// TODO: we should record all logs and as much diagnostics as possible
+	// in the error case so a user can debug why their job failed
 	select {
 	case err := <-errChan:
 		if err != nil {
@@ -216,6 +225,8 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 			return "", fmt.Errorf("exit code was non zero: %d", exitStatus.StatusCode)
 		}
 	}
+
+	log.Debug().Msgf("Container stopped: %s", jobContainer.ID)
 
 	stdout, stderr, err := docker.GetLogs(dockerExecutor.Client, jobContainer.ID)
 	if err != nil {
