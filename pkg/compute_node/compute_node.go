@@ -3,6 +3,7 @@ package compute_node
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -13,6 +14,7 @@ import (
 
 type ComputeNode struct {
 	Ctx       context.Context
+	Mutex     sync.Mutex
 	Transport transport.Transport
 	Executors map[string]executor.Executor
 }
@@ -150,6 +152,9 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 }
 
 func (node *ComputeNode) getExecutor(engine string) (executor.Executor, error) {
+	node.Mutex.Lock()
+	defer node.Mutex.Unlock()
+
 	if _, ok := node.Executors[engine]; !ok {
 		return nil, fmt.Errorf("No matching executor found on this server: %s.", engine)
 	}
