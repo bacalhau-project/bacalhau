@@ -144,7 +144,7 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test ./... -v
+	LOG_LEVEL=debug SKIP_IMAGE_PULL=1 go test ./... -v
 
 .PHONY: test-one
 test-one:
