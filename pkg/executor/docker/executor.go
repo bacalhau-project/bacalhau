@@ -159,11 +159,22 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
+
+		// TODO: work out why this does not work in github actions
+		// err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
+
+		// if err != nil {
+		// 	return "", err
+		// }
+
+		err = system.RunCommand("docker", []string{
+			"pull", job.Spec.Vm.Image,
+		})
 
 		if err != nil {
 			return "", err
 		}
+
 	}
 
 	containerConfig := &container.Config{

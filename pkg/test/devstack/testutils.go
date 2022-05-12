@@ -7,7 +7,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -110,8 +109,6 @@ func DevStackDockerStorageTest(
 	job, err := jobutils.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
 	assert.NoError(t, err)
 
-	spew.Dump(job)
-
 	err = stack.WaitForJob(job.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,
 	}, []string{
@@ -120,7 +117,6 @@ func DevStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	jobs, err := jobutils.ListJobs(rpcHost, rpcPort)
-	assert.NoError(t, err)
-	spew.Dump(jobs)
+	// jobs, err := jobutils.ListJobs(rpcHost, rpcPort)
+	// assert.NoError(t, err)
 }
