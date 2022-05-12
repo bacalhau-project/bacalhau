@@ -95,6 +95,8 @@ func NewDevStack(
 			return nil, err
 		}
 
+		log.Debug().Msgf("IPFS dev server started: %s", ipfsNode.ApiAddress())
+
 		//////////////////////////////////////
 		// Scheduler
 		//////////////////////////////////////
@@ -152,6 +154,8 @@ func NewDevStack(
 			return nil, err
 		}
 
+		log.Debug().Msgf("JSON RPC server started: %d", jsonRpcPort)
+
 		//////////////////////////////////////
 		// intra-connections
 		//////////////////////////////////////
@@ -159,6 +163,8 @@ func NewDevStack(
 		if err != nil {
 			return nil, err
 		}
+
+		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
 		if len(nodes) > 0 {
 			// connect the libp2p scheduler node

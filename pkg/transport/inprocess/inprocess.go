@@ -98,14 +98,6 @@ func (scheduler *InProcessTransport) RejectJobBid(jobId, nodeId, message string)
 	return scheduler.GenericTransport.RejectJobBid(jobId, nodeId, message)
 }
 
-func (scheduler *InProcessTransport) AcceptResult(jobId, nodeId string) error {
-	return scheduler.GenericTransport.AcceptResult(jobId, nodeId)
-}
-
-func (scheduler *InProcessTransport) RejectResult(jobId, nodeId, message string) error {
-	return scheduler.GenericTransport.RejectResult(jobId, nodeId, message)
-}
-
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////

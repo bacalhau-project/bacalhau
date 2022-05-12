@@ -38,7 +38,7 @@ const TEST_OUTPUT_VOLUME_NAME = "output_volume"
 const TEST_OUTPUT_VOLUME_MOUNT_PATH = "/output_volume"
 
 type IGetStorageDriver func(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error)
-type ISetupStorage func(stack *devstack.DevStack_IPFS) ([]types.StorageSpec, error)
+type ISetupStorage func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error)
 type ICheckResults func(resultsDir string, outputMode IOutputMode)
 type IGetJobSpec func(outputMode IOutputMode) types.JobSpecVm
 
@@ -85,12 +85,12 @@ func singleFileSetupStorageWithData(
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack *devstack.DevStack_IPFS) ([]types.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error) {
 		fileCid, err := stack.AddTextToNodes(1, []byte(fileContents))
 		assert.NoError(t, err)
 		inputStorageSpecs := []types.StorageSpec{
 			{
-				Engine: TEST_STORAGE_DRIVER_NAME,
+				Engine: driverName,
 				Cid:    fileCid,
 				Path:   mountPath,
 			},
@@ -104,12 +104,12 @@ func singleFileSetupStorageWithFile(
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack *devstack.DevStack_IPFS) ([]types.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error) {
 		fileCid, err := stack.AddFileToNodes(1, filePath)
 		assert.NoError(t, err)
 		inputStorageSpecs := []types.StorageSpec{
 			{
-				Engine: TEST_STORAGE_DRIVER_NAME,
+				Engine: driverName,
 				Cid:    fileCid,
 				Path:   mountPath,
 			},
@@ -202,7 +202,7 @@ func dockerExecutorStorageTest(
 		})
 		assert.NoError(t, err)
 
-		inputStorageList, err := setupStorage(stack)
+		inputStorageList, err := setupStorage(stack, TEST_STORAGE_DRIVER_NAME)
 		assert.NoError(t, err)
 
 		// this is stdout mode

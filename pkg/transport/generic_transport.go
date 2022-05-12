@@ -159,32 +159,6 @@ func (scheduler *GenericTransport) RejectJobBid(jobId, nodeId, message string) e
 	})
 }
 
-func (scheduler *GenericTransport) AcceptResult(jobId, nodeId string) error {
-	return scheduler.writeEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_RESULTS_ACCEPTED,
-		JobState: &types.JobState{
-			State: system.JOB_STATE_RESULTS_ACCEPTED,
-		},
-	})
-}
-
-func (scheduler *GenericTransport) RejectResult(jobId, nodeId, message string) error {
-	if message == "" {
-		message = "Job result rejected by client"
-	}
-	return scheduler.writeEvent(&types.JobEvent{
-		JobId:     jobId,
-		NodeId:    nodeId,
-		EventName: system.JOB_EVENT_RESULTS_REJECTED,
-		JobState: &types.JobState{
-			State:  system.JOB_STATE_RESULTS_REJECTED,
-			Status: message,
-		},
-	})
-}
-
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////

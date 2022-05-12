@@ -160,14 +160,6 @@ func (scheduler *Libp2pTransport) RejectJobBid(jobId, nodeId, message string) er
 	return scheduler.GenericTransport.RejectJobBid(jobId, nodeId, message)
 }
 
-func (scheduler *Libp2pTransport) AcceptResult(jobId, nodeId string) error {
-	return scheduler.GenericTransport.AcceptResult(jobId, nodeId)
-}
-
-func (scheduler *Libp2pTransport) RejectResult(jobId, nodeId, message string) error {
-	return scheduler.GenericTransport.RejectResult(jobId, nodeId, message)
-}
-
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
