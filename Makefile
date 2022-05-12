@@ -146,8 +146,7 @@ clean:
 .PHONY: test
 test:
 	docker pull ubuntu:latest
-	docker run -rm ubuntu:latest echo hello
-	
+	docker run --rm ubuntu:latest echo hello
 
 .PHONY: test-one
 test-one:
