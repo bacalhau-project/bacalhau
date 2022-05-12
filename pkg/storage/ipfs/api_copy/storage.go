@@ -109,6 +109,9 @@ func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*type
 	err = system.RunCommand("tar", []string{
 		"-vxf", tarfilePath, "-C", dockerIpfs.LocalDir,
 	})
+	if err != nil {
+		return nil, err
+	}
 	log.Debug().Msgf("Extracted tar file: %s", tarfilePath)
 	err = os.Remove(tarfilePath)
 	if err != nil {

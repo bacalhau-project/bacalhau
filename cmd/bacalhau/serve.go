@@ -7,7 +7,6 @@ import (
 var peerConnect string
 var hostAddress string
 var hostPort int
-var startIpfsDevOnly bool
 
 func init() {
 	serveCmd.PersistentFlags().StringVar(

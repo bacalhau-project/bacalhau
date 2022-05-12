@@ -279,10 +279,6 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	return nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) stopSidecar() error {
-	return docker.RemoveContainer(dockerIpfs.DockerClient, dockerIpfs.sidecarContainerName())
-}
-
 func (dockerIpfs *IpfsFuseDocker) sidecarContainerName() string {
 	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", dockerIpfs.Id)
 }

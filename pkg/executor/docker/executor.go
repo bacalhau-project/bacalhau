@@ -266,7 +266,10 @@ func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
 		return
 	}
 	for _, container := range containersWithLabel {
-		docker.RemoveContainer(executor.Client, container.ID)
+		err = docker.RemoveContainer(executor.Client, container.ID)
+		if err != nil {
+			log.Error().Msgf("Docker remove container error: %s", err.Error())
+		}
 	}
 	// err = system.RunCommand("sudo", []string{
 	// 	"rm", "-rf",
@@ -282,7 +285,10 @@ func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types
 	if system.ShouldKeepStack() {
 		return
 	}
-	docker.RemoveContainer(dockerExecutor.Client, dockerExecutor.jobContainerName(job))
+	err := docker.RemoveContainer(dockerExecutor.Client, dockerExecutor.jobContainerName(job))
+	if err != nil {
+		log.Error().Msgf("Docker remove container error: %s", err.Error())
+	}
 }
 
 func (dockerExecutor *DockerExecutor) jobContainerName(job *types.Job) string {

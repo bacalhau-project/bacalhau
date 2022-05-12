@@ -139,5 +139,9 @@ func (stack *DevStack_IPFS) AddTextToNodes(nodeCount int, fileContent []byte) (s
 	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
 	err = os.WriteFile(testFilePath, fileContent, 0644)
 
+	if err != nil {
+		return "", err
+	}
+
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }

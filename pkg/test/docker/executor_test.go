@@ -15,7 +15,7 @@ func TestSingleFile(t *testing.T) {
 
 	for _, test := range tests {
 
-		dockerExecutorStorageTest(
+		DockerExecutorStorageTest(
 			t,
 			test.Name,
 			test.SetupStorage,

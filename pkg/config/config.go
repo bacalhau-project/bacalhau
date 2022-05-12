@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -48,13 +49,20 @@ func getConfigFilePath() (string, error) {
 }
 
 func CreateConfig(cmd *cobra.Command) (*viper.Viper, error) {
+	configPath, err := getConfigFilePath()
+	if err != nil {
+		return nil, err
+	}
 	config := viper.New()
 	// any env variable prefixed with BACALHAU_ will be used as a config
 	config.SetEnvPrefix(ENV_PREFIX)
 	config.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	config.AutomaticEnv()
 	if cmd != nil {
-		config.BindPFlags(cmd.Flags())
+		err = config.BindPFlags(cmd.Flags())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	config.SetDefault("logfile", DEFAULT_LOG_FILE)
@@ -68,17 +76,26 @@ func CreateConfig(cmd *cobra.Command) (*viper.Viper, error) {
 			return nil, err
 		}
 		file, err := os.Open(configFilePath)
-		defer file.Close()
+		defer func() {
+			err = file.Close()
+			if err != nil {
+				log.Error().Msg(err.Error())
+			}
+		}()
 		if err != nil {
 			return nil, err
 		}
-		config.ReadConfig(file)
+		err = config.ReadConfig(file)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		config.SetConfigName("config") // name of config file (without extension)
 		config.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
 		config.AddConfigPath("/etc/bacalhau")
 		config.AddConfigPath("$HOME/.bacalhau")
 		config.AddConfigPath(".")
+		config.AddConfigPath(configPath)
 
 		if err := config.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {

@@ -13,7 +13,7 @@ func TestDevStackDockerStorage(t *testing.T) {
 
 	for _, test := range tests {
 
-		devStackDockerStorageTest(
+		DevStackDockerStorageTest(
 			t,
 			test.Name,
 			test.SetupStorage,

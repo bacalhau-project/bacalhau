@@ -90,7 +90,10 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string
 	}
 	stdout := bytes.NewBuffer([]byte{})
 	stderr := bytes.NewBuffer([]byte{})
-	stdcopy.StdCopy(stdout, stderr, logsReader)
+	_, err = stdcopy.StdCopy(stdout, stderr, logsReader)
+	if err != nil {
+		return "", "", err
+	}
 	return stdout.String(), stderr.String(), nil
 }
 
@@ -180,7 +183,10 @@ func PullImage(
 	}
 
 	if system.IsDebug() {
-		io.Copy(os.Stdout, imagePullStream)
+		_, err = io.Copy(os.Stdout, imagePullStream)
+		if err != nil {
+			return err
+		}
 	}
 
 	return imagePullStream.Close()

@@ -70,7 +70,7 @@ func TeardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
 
 // re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
-func devStackDockerStorageTest(
+func DevStackDockerStorageTest(
 	t *testing.T,
 	name string,
 	setupStorage dockertests.ISetupStorage,

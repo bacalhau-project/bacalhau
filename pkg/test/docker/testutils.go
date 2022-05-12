@@ -173,7 +173,7 @@ func singleFileResultsCheckerContains(
 //  * storage drivers (ipfs_fuse, ipfs_api_copy)
 //  * output types (stdout, named volume)
 
-func dockerExecutorStorageTest(
+func DockerExecutorStorageTest(
 	t *testing.T,
 	name string,
 	setupStorage ISetupStorage,
