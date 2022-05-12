@@ -142,9 +142,12 @@ clean:
 ################################################################################
 # Target: test					                               #
 ################################################################################
+# LOG_LEVEL=debug SKIP_IMAGE_PULL=1 go test ./... -v
 .PHONY: test
 test:
-	LOG_LEVEL=debug SKIP_IMAGE_PULL=1 go test ./... -v
+	docker pull ubuntu:latest
+	docker run -rm ubuntu:latest echo hello
+	
 
 .PHONY: test-one
 test-one:
