@@ -7,6 +7,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
+// each of these tests will use both fuse and api copy storage drivers
+// as well as stdout vs output volume mode
+// so each test will be run 4 times
 func TestSingleFile(t *testing.T) {
 
 	MOUNT_PATH := "/data/file.txt"
@@ -94,33 +97,38 @@ func TestSingleFile(t *testing.T) {
 				}
 			},
 		},
-		// TODO: this test fails because of quoting issues
-		// {
-		// 	name: "awk_file",
-		// 	setupStorage: singleFileSetupStorageWithFile(
-		// 		t,
-		// 		"../../../testdata/awk_file.txt",
-		// 		MOUNT_PATH,
-		// 	),
-		// 	resultsChecker: singleFileResultsCheckerContains(
-		// 		t,
-		// 		OUTPUT_FILE,
-		// 		"LISBON",
-		// 		ExpectedModeContains,
-		// 		501,
-		// 	),
-		// 	getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
-		// 		return types.JobSpecVm{
-		// 			Image: "ubuntu",
-		// 			Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
-		// 				"awk",
-		// 				"-F,",
-		// 				"'{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}'",
-		// 				MOUNT_PATH,
-		// 			}),
-		// 		}
-		// 	},
-		// },
+		{
+			name: "awk_file",
+			setupStorage: singleFileSetupStorageWithFile(
+				t,
+				"../../../testdata/awk_file.txt",
+				MOUNT_PATH,
+			),
+			resultsChecker: singleFileResultsCheckerContains(
+				t,
+				OUTPUT_FILE,
+				"LISBON",
+				ExpectedModeContains,
+				501,
+			),
+			getJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
+				// TODO: work out why we need this extra quote
+				// when we bash -c the command (because we are in test output volumes mode)
+				extraQuote := ""
+				if outputMode == OutputModeVolume {
+					extraQuote = "'"
+				}
+				return types.JobSpecVm{
+					Image: "ubuntu",
+					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
+						"awk",
+						"-F,",
+						extraQuote + "{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}" + extraQuote,
+						MOUNT_PATH,
+					}),
+				}
+			},
+		},
 	}
 
 	for _, test := range tests {
