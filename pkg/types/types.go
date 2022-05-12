@@ -5,6 +5,7 @@ package types
 // of storage at once
 type StorageSpec struct {
 	// e.g. ipfs, filecoin or s3
+	// this can be empty for output volumes
 	Engine string
 	// we name input and output volumes so we can reference them
 	// (possibly in dags and pipelines)

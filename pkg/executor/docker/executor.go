@@ -158,12 +158,10 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		})
 	}
 
-	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
+	err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
 
-		if err != nil {
-			return "", err
-		}
+	if err != nil {
+		return "", err
 	}
 
 	containerConfig := &container.Config{

@@ -37,7 +37,7 @@ func GetTestCases(
 			),
 			GetJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
 				return types.JobSpecVm{
-					Image: "ubuntu",
+					Image: "ubuntu:latest",
 					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
 						"cat",
 						MOUNT_PATH,
@@ -61,7 +61,7 @@ func GetTestCases(
 			),
 			GetJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
 				return types.JobSpecVm{
-					Image: "ubuntu",
+					Image: "ubuntu:latest",
 					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
 						"grep",
 						"kiwi",
@@ -86,7 +86,7 @@ func GetTestCases(
 			),
 			GetJobSpec: func(outputMode IOutputMode) types.JobSpecVm {
 				return types.JobSpecVm{
-					Image: "ubuntu",
+					Image: "ubuntu:latest",
 					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
 						"sed",
 						"-n",
@@ -118,7 +118,7 @@ func GetTestCases(
 					extraQuote = "'"
 				}
 				return types.JobSpecVm{
-					Image: "ubuntu",
+					Image: "ubuntu:latest",
 					Entrypoint: convertEntryPoint(outputMode, OUTPUT_FILE, []string{
 						"awk",
 						"-F,",
