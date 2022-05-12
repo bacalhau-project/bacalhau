@@ -87,6 +87,9 @@ func devStackDockerStorageTest(
 
 	defer TeardownTest(stack, cancelFunction)
 
+	rpcHost := "127.0.0.1"
+	rpcPort := stack.Nodes[0].JSONRpcNode.Port
+
 	inputStorageList, err := setupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
@@ -104,7 +107,7 @@ func devStackDockerStorageTest(
 		Concurrency: nodeCount,
 	}
 
-	job, err := jobutils.SubmitJob(jobSpec, jobDeal, "127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	job, err := jobutils.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
 	assert.NoError(t, err)
 
 	spew.Dump(job)
@@ -116,4 +119,8 @@ func devStackDockerStorageTest(
 		system.JOB_STATE_ERROR,
 	})
 	assert.NoError(t, err)
+
+	jobs, err := jobutils.ListJobs(rpcHost, rpcPort)
+	assert.NoError(t, err)
+	spew.Dump(jobs)
 }
