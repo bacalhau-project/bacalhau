@@ -3,6 +3,7 @@ module github.com/filecoin-project/bacalhau
 go 1.17
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v20.10.13+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-ipfs-http-client v0.3.1
@@ -30,12 +31,9 @@ require (
 	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/containerd v1.6.1 // indirect
-	github.com/containers/image v3.0.2+incompatible // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
-	github.com/distribution/distribution v2.8.1+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
