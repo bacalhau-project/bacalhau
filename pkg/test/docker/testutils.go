@@ -38,7 +38,7 @@ const TEST_OUTPUT_VOLUME_NAME = "output_volume"
 const TEST_OUTPUT_VOLUME_MOUNT_PATH = "/output_volume"
 
 type IGetStorageDriver func(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error)
-type ISetupStorage func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error)
+type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error)
 type ICheckResults func(resultsDir string, outputMode IOutputMode)
 type IGetJobSpec func(outputMode IOutputMode) types.JobSpecVm
 
@@ -85,8 +85,8 @@ func singleFileSetupStorageWithData(
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error) {
-		fileCid, err := stack.AddTextToNodes(1, []byte(fileContents))
+	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error) {
+		fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
 		assert.NoError(t, err)
 		inputStorageSpecs := []types.StorageSpec{
 			{
@@ -104,8 +104,8 @@ func singleFileSetupStorageWithFile(
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string) ([]types.StorageSpec, error) {
-		fileCid, err := stack.AddFileToNodes(1, filePath)
+	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error) {
+		fileCid, err := stack.AddFileToNodes(nodeCount, filePath)
 		assert.NoError(t, err)
 		inputStorageSpecs := []types.StorageSpec{
 			{
@@ -179,6 +179,7 @@ func dockerExecutorStorageTest(
 	setupStorage ISetupStorage,
 	checkResults ICheckResults,
 	getJobSpec IGetJobSpec,
+	nodeCount int,
 ) {
 
 	// the inner test handler that is given the storage driver factory
@@ -189,7 +190,7 @@ func dockerExecutorStorageTest(
 	) {
 		stack, cancelFunction := ipfs.SetupTest(
 			t,
-			1,
+			nodeCount,
 		)
 
 		defer ipfs.TeardownTest(stack, cancelFunction)
@@ -202,7 +203,7 @@ func dockerExecutorStorageTest(
 		})
 		assert.NoError(t, err)
 
-		inputStorageList, err := setupStorage(stack, TEST_STORAGE_DRIVER_NAME)
+		inputStorageList, err := setupStorage(stack, TEST_STORAGE_DRIVER_NAME, nodeCount)
 		assert.NoError(t, err)
 
 		// this is stdout mode
@@ -228,7 +229,7 @@ func dockerExecutorStorageTest(
 				Outputs: outputs,
 			},
 			Deal: &types.JobDeal{
-				Concurrency:   1,
+				Concurrency:   nodeCount,
 				AssignedNodes: []string{},
 			},
 		}

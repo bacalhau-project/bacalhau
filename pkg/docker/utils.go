@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -160,4 +162,26 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 		},
 	}
 	return waiter.Wait()
+}
+
+func PullImage(
+	dockerClient *dockerclient.Client,
+	image string,
+) error {
+
+	imagePullStream, err := dockerClient.ImagePull(
+		context.Background(),
+		image,
+		types.ImagePullOptions{},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if system.IsDebug() {
+		io.Copy(os.Stdout, imagePullStream)
+	}
+
+	return imagePullStream.Close()
 }

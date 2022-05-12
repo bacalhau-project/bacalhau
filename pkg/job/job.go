@@ -155,6 +155,30 @@ func ConstructJob(
 	return spec, deal, nil
 }
 
+func SubmitJob(
+	spec *types.JobSpec,
+	deal *types.JobDeal,
+	rpcHost string,
+	rpcPort int,
+) (*types.Job, error) {
+
+	args := &types.SubmitArgs{
+		Spec: spec,
+		Deal: deal,
+	}
+
+	result := &types.Job{}
+
+	err := jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info().Msgf("Submitted Job Id: %s", result.Id)
+
+	return result, nil
+}
+
 func RunJob(
 	engine string,
 	cids []string,
@@ -180,19 +204,5 @@ func RunJob(
 		}
 	}
 
-	args := &types.SubmitArgs{
-		Spec: spec,
-		Deal: deal,
-	}
-
-	result := &types.Job{}
-
-	err = jsonrpc.JsonRpcMethod(rpcHost, rpcPort, "Submit", args, result)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Info().Msgf("Submitted Job Id: %s", result.Id)
-
-	return result, nil
+	return SubmitJob(spec, deal, rpcHost, rpcPort)
 }

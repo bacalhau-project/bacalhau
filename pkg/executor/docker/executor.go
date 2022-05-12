@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 
@@ -159,19 +158,12 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		})
 	}
 
-	// let's pull the image down
-	imagePullStream, err := dockerExecutor.Client.ImagePull(
-		dockerExecutor.Ctx,
-		job.Spec.Vm.Image,
-		dockertypes.ImagePullOptions{},
-	)
+	if os.Getenv("SKIP_IMAGE_PULL") == "" {
+		err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
 
-	if system.IsDebug() {
-		io.Copy(os.Stdout, imagePullStream)
-	}
-
-	if err = imagePullStream.Close(); err != nil {
-		return "", err
+		if err != nil {
+			return "", err
+		}
 	}
 
 	containerConfig := &container.Config{

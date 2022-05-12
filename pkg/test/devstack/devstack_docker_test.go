@@ -11,7 +11,11 @@ func TestDevStackDockerStorage(t *testing.T) {
 
 	tests := dockertests.GetTestCases(t)
 
-	for _, test := range tests {
+	for i, test := range tests {
+
+		if i > 0 {
+			continue
+		}
 
 		devStackDockerStorageTest(
 			t,
@@ -19,6 +23,7 @@ func TestDevStackDockerStorage(t *testing.T) {
 			test.SetupStorage,
 			test.ResultsChecker,
 			test.GetJobSpec,
+			3,
 		)
 
 	}

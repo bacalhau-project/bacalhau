@@ -21,6 +21,7 @@ func TestSingleFile(t *testing.T) {
 			test.SetupStorage,
 			test.ResultsChecker,
 			test.GetJobSpec,
+			1,
 		)
 
 	}

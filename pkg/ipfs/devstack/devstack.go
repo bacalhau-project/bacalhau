@@ -7,8 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"time"
 
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
+	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -163,6 +166,30 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	}
 
 	log.Debug().Msgf("IPFS daemon has started")
+
+	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(server.Ctx, server.ApiAddress())
+	if err != nil {
+		return err
+	}
+
+	waiter := &system.FunctionWaiter{
+		Name:        fmt.Sprintf("wait for ipfs server to be running: %s", server.ApiAddress()),
+		MaxAttempts: 100,
+		Delay:       time.Millisecond * 100,
+		Logging:     false,
+		Handler: func() (bool, error) {
+			_, err := testConnectionClient.GetPeerId()
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		},
+	}
+
+	err = waiter.Wait()
+	if err != nil {
+		return err
+	}
 
 	go func(ctx context.Context, cmd *exec.Cmd) {
 		<-ctx.Done()

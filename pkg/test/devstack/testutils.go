@@ -10,6 +10,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -75,67 +76,44 @@ func devStackDockerStorageTest(
 	setupStorage dockertests.ISetupStorage,
 	checkResults dockertests.ICheckResults,
 	getJobSpec dockertests.IGetJobSpec,
+	nodeCount int,
 ) {
 
-	// the inner test handler that is given the storage driver factory
-	// and output mode that we are looping over internally
-	runTest := func(
-		storageDriver string,
-	) {
+	stack, cancelFunction := SetupTest(
+		t,
+		nodeCount,
+		0,
+	)
 
-		stack, cancelFunction := SetupTest(
-			t,
-			3,
-			0,
-		)
+	defer TeardownTest(stack, cancelFunction)
 
-		defer TeardownTest(stack, cancelFunction)
+	inputStorageList, err := setupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	assert.NoError(t, err)
 
-		inputStorageList, err := setupStorage(stack, storageDriver)
-		assert.NoError(t, err)
+	// this is stdout mode
+	outputs := []types.StorageSpec{}
 
-		// this is stdout mode
-		outputs := []types.StorageSpec{}
-
-		job := &types.Job{
-			Id:    "test-job",
-			Owner: "test-owner",
-			Spec: &types.JobSpec{
-				Engine:  executor.EXECUTOR_DOCKER,
-				Vm:      getJobSpec(dockertests.OutputModeStdout),
-				Inputs:  inputStorageList,
-				Outputs: outputs,
-			},
-			Deal: &types.JobDeal{
-				Concurrency:   3,
-				AssignedNodes: []string{},
-			},
-		}
-
-		spew.Dump(job)
-
-		// isInstalled, err := dockerExecutor.IsInstalled()
-		// assert.NoError(t, err)
-		// assert.True(t, isInstalled)
-
-		// for _, inputStorageSpec := range inputStorageList {
-		// 	hasStorage, err := dockerExecutor.HasStorage(inputStorageSpec)
-		// 	assert.NoError(t, err)
-		// 	assert.True(t, hasStorage)
-		// }
-
-		// resultsDirectory, err := dockerExecutor.RunJob(job)
-		// assert.NoError(t, err)
-
-		// if err != nil {
-		// 	t.FailNow()
-		// }
-
-		// checkResults(resultsDirectory, outputMode)
+	jobSpec := &types.JobSpec{
+		Engine:  executor.EXECUTOR_DOCKER,
+		Vm:      getJobSpec(dockertests.OutputModeStdout),
+		Inputs:  inputStorageList,
+		Outputs: outputs,
 	}
 
-	for _, storageDriverName := range STORAGE_DRIVER_NAMES {
-		log.Debug().Msgf("Running test %s with storage driver %s", name, storageDriverName)
-		runTest(storageDriverName)
+	jobDeal := &types.JobDeal{
+		Concurrency: nodeCount,
 	}
+
+	job, err := jobutils.SubmitJob(jobSpec, jobDeal, "127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	assert.NoError(t, err)
+
+	spew.Dump(job)
+
+	err = stack.WaitForJob(job.Id, map[string]int{
+		system.JOB_STATE_COMPLETE: nodeCount,
+	}, []string{
+		system.JOB_STATE_BID_REJECTED,
+		system.JOB_STATE_ERROR,
+	})
+	assert.NoError(t, err)
 }
