@@ -31,7 +31,7 @@ import (
 // host folders e.g. -v /tmp/ipfs_mnt/123:/file.txt
 
 // TODO: this should come from a CI build
-const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
+const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
 const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
 type IpfsFuseDocker struct {

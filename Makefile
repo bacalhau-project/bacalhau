@@ -11,7 +11,7 @@ GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.
 GO_OS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
 GO_ARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidebar-image"
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
 IPFS_FUSE_TAG ?= "v1"
 
 ifeq ($(GO_ARCH), x86_64)
@@ -108,11 +108,16 @@ build-bacalhau: fmt vet
 	cp bin/$(GO_ARCH)/bacalhau bin/bacalhau
 
 ################################################################################
-# Target: build-bacalhau                                                       #
+# Target: build-docker-images
 ################################################################################
-.PHONY: build-docker-images
-build-docker-images: 
+.PHONY: build-ipfs-sidecar-image
+build-ipfs-sidecar-image: 
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
+
+
+.PHONY: build-docker-images
+build-docker-images: build-ipfs-sidecar-image
+	@echo docker images built
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -143,7 +148,7 @@ clean:
 # Target: test					                               #
 ################################################################################
 .PHONY: test
-test:
+test: build-ipfs-sidecar-image
 	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: test-one
