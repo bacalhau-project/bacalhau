@@ -1,8 +1,6 @@
 package requestor_node
 
 import (
-	"context"
-
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -10,12 +8,10 @@ import (
 )
 
 type RequesterNode struct {
-	Ctx       context.Context
 	Transport transport.Transport
 }
 
 func NewRequesterNode(
-	ctx context.Context,
 	transport transport.Transport,
 ) (*RequesterNode, error) {
 
@@ -28,7 +24,6 @@ func NewRequesterNode(
 	}
 
 	requesterNode := &RequesterNode{
-		Ctx:       ctx,
 		Transport: transport,
 	}
 

@@ -75,14 +75,14 @@ func TestSchedulerSubmitJob(t *testing.T) {
 }
 
 func TestTransportEvents(t *testing.T) {
-	ctx, cancelFunction := system.GetCancelContext()
-	defer cancelFunction()
+	cancelContext := system.GetCancelContext()
+	defer cancelContext.Stop()
 	noopExecutor, err := noop.NewNoopExecutor()
 	assert.NoError(t, err)
 	executors := map[string]executor.Executor{
 		"noop": noopExecutor,
 	}
-	transport, err := inprocess.NewInprocessTransport(ctx)
+	transport, err := inprocess.NewInprocessTransport(cancelContext.Ctx)
 	assert.NoError(t, err)
 	_, err = compute_node.NewComputeNode(ctx, transport, executors)
 	assert.NoError(t, err)

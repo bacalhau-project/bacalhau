@@ -1,11 +1,11 @@
 package libp2p
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/libp2p/go-libp2p"
@@ -21,10 +21,10 @@ import (
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pTransport struct {
-	Ctx context.Context
+	cancelContext system.CancelContext
 
 	// the writer we emit events through
-	GenericTransport *transport.GenericTransport
+	genericTransport *transport.GenericTransport
 
 	Host                 host.Host
 	Port                 int
@@ -56,14 +56,14 @@ func makeLibp2pHost(
 }
 
 func NewLibp2pTransport(
-	ctx context.Context,
+	ctx system.CancelContext,
 	port int,
 ) (*Libp2pTransport, error) {
 	host, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
 	}
-	pubsub, err := pubsub.NewGossipSub(ctx, host)
+	pubsub, err := pubsub.NewGossipSub(ctx.Ctx, host)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func NewLibp2pTransport(
 	}
 
 	libp2pTransport := &Libp2pTransport{
-		Ctx:                  ctx,
+		cancelContext:        ctx,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,
@@ -86,7 +86,7 @@ func NewLibp2pTransport(
 	}
 
 	// setup the event writer
-	libp2pTransport.GenericTransport = transport.NewGenericTransport(
+	libp2pTransport.genericTransport = transport.NewGenericTransport(
 		host.ID().String(),
 		func(event *types.JobEvent) error {
 			return libp2pTransport.writeJobEvent(event)
@@ -102,21 +102,20 @@ func NewLibp2pTransport(
 
 */
 
-func (scheduler *Libp2pTransport) HostId() (string, error) {
-	return scheduler.Host.ID().String(), nil
+func (transport *Libp2pTransport) HostId() (string, error) {
+	return transport.Host.ID().String(), nil
 }
 
-func (scheduler *Libp2pTransport) Start() error {
-	if len(scheduler.GenericTransport.SubscribeFuncs) <= 0 {
+func (transport *Libp2pTransport) Start() error {
+	if len(transport.genericTransport.SubscribeFuncs) <= 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
-	go scheduler.readLoopJobEvents()
-	go func() {
-		log.Debug().Msg("Libp2p scheduler has started")
-		<-scheduler.Ctx.Done()
-		scheduler.Host.Close()
-		log.Debug().Msg("Libp2p scheduler has stopped")
-	}()
+	go transport.readLoopJobEvents()
+	log.Debug().Msg("Libp2p transport has started")
+	transport.cancelContext.AddShutdownHandler(func() {
+		transport.Host.Close()
+		log.Debug().Msg("Libp2p transport has stopped")
+	})
 	return nil
 }
 
@@ -124,56 +123,56 @@ func (scheduler *Libp2pTransport) Start() error {
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pTransport) List() (types.ListResponse, error) {
-	return scheduler.GenericTransport.List()
+func (transport *Libp2pTransport) List() (types.ListResponse, error) {
+	return transport.genericTransport.List()
 }
 
-func (scheduler *Libp2pTransport) Get(id string) (*types.Job, error) {
-	return scheduler.GenericTransport.Get(id)
+func (transport *Libp2pTransport) Get(id string) (*types.Job, error) {
+	return transport.genericTransport.Get(id)
 }
 
-func (scheduler *Libp2pTransport) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
-	scheduler.GenericTransport.Subscribe(subscribeFunc)
+func (transport *Libp2pTransport) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
+	transport.genericTransport.Subscribe(subscribeFunc)
 }
 
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pTransport) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
-	return scheduler.GenericTransport.SubmitJob(spec, deal)
+func (transport *Libp2pTransport) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
+	return transport.genericTransport.SubmitJob(spec, deal)
 }
 
-func (scheduler *Libp2pTransport) UpdateDeal(jobId string, deal *types.JobDeal) error {
-	return scheduler.GenericTransport.UpdateDeal(jobId, deal)
+func (transport *Libp2pTransport) UpdateDeal(jobId string, deal *types.JobDeal) error {
+	return transport.genericTransport.UpdateDeal(jobId, deal)
 }
 
-func (scheduler *Libp2pTransport) CancelJob(jobId string) error {
+func (transport *Libp2pTransport) CancelJob(jobId string) error {
 	return nil
 }
 
-func (scheduler *Libp2pTransport) AcceptJobBid(jobId, nodeId string) error {
-	return scheduler.GenericTransport.AcceptJobBid(jobId, nodeId)
+func (transport *Libp2pTransport) AcceptJobBid(jobId, nodeId string) error {
+	return transport.genericTransport.AcceptJobBid(jobId, nodeId)
 }
 
-func (scheduler *Libp2pTransport) RejectJobBid(jobId, nodeId, message string) error {
-	return scheduler.GenericTransport.RejectJobBid(jobId, nodeId, message)
+func (transport *Libp2pTransport) RejectJobBid(jobId, nodeId, message string) error {
+	return transport.genericTransport.RejectJobBid(jobId, nodeId, message)
 }
 
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pTransport) BidJob(jobId string) error {
-	return scheduler.GenericTransport.BidJob(jobId)
+func (transport *Libp2pTransport) BidJob(jobId string) error {
+	return transport.genericTransport.BidJob(jobId)
 }
 
-func (scheduler *Libp2pTransport) SubmitResult(jobId, status, resultsId string) error {
-	return scheduler.GenericTransport.SubmitResult(jobId, status, resultsId)
+func (transport *Libp2pTransport) SubmitResult(jobId, status, resultsId string) error {
+	return transport.genericTransport.SubmitResult(jobId, status, resultsId)
 }
 
-func (scheduler *Libp2pTransport) ErrorJob(jobId, status string) error {
-	return scheduler.GenericTransport.ErrorJob(jobId, status)
+func (transport *Libp2pTransport) ErrorJob(jobId, status string) error {
+	return transport.genericTransport.ErrorJob(jobId, status)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -181,15 +180,15 @@ func (scheduler *Libp2pTransport) ErrorJob(jobId, status string) error {
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (scheduler *Libp2pTransport) ErrorJobForNode(jobId, nodeId, status string) error {
-	return scheduler.GenericTransport.ErrorJobForNode(jobId, nodeId, status)
+func (transport *Libp2pTransport) ErrorJobForNode(jobId, nodeId, status string) error {
+	return transport.genericTransport.ErrorJobForNode(jobId, nodeId, status)
 }
 
 /////////////////////////////////////////////////////////////
 /// INTERNAL IMPLEMENTATION
 /////////////////////////////////////////////////////////////
 
-func (scheduler *Libp2pTransport) Connect(peerConnect string) error {
+func (transport *Libp2pTransport) Connect(peerConnect string) error {
 
 	if peerConnect == "" {
 		return nil
@@ -205,26 +204,26 @@ func (scheduler *Libp2pTransport) Connect(peerConnect string) error {
 		return err
 	}
 
-	scheduler.Host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+	transport.Host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
 	//nolint
-	scheduler.Host.Connect(scheduler.Ctx, *info)
+	transport.Host.Connect(transport.cancelContext.Ctx, *info)
 
 	return nil
 }
 
-func (scheduler *Libp2pTransport) writeJobEvent(event *types.JobEvent) error {
+func (transport *Libp2pTransport) writeJobEvent(event *types.JobEvent) error {
 	msgBytes, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
 	log.Debug().Msgf("Sending event: %s", string(msgBytes))
-	return scheduler.JobEventTopic.Publish(scheduler.Ctx, msgBytes)
+	return transport.JobEventTopic.Publish(transport.cancelContext.Ctx, msgBytes)
 }
 
-func (scheduler *Libp2pTransport) readLoopJobEvents() {
+func (transport *Libp2pTransport) readLoopJobEvents() {
 	for {
-		msg, err := scheduler.JobEventSubscription.Next(scheduler.Ctx)
+		msg, err := transport.JobEventSubscription.Next(transport.cancelContext.Ctx)
 		if err != nil {
 			return
 		}
@@ -235,6 +234,6 @@ func (scheduler *Libp2pTransport) readLoopJobEvents() {
 			continue
 		}
 
-		scheduler.GenericTransport.ReadEvent(jobEvent)
+		transport.genericTransport.ReadEvent(jobEvent)
 	}
 }

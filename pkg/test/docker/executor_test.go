@@ -15,14 +15,16 @@ func TestSingleFile(t *testing.T) {
 
 	for _, test := range tests {
 
-		DockerExecutorStorageTest(
-			t,
-			test.Name,
-			test.SetupStorage,
-			test.ResultsChecker,
-			test.GetJobSpec,
-			1,
-		)
+		for i := 1; i < 100; i++ {
+			DockerExecutorStorageTest(
+				t,
+				test.Name,
+				test.SetupStorage,
+				test.ResultsChecker,
+				test.GetJobSpec,
+				1,
+			)
+		}
 
 	}
 }

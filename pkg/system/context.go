@@ -4,22 +4,47 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"time"
+	"sync"
 )
 
-func GetCancelContext() (context.Context, context.CancelFunc) {
-	ctx := context.Background()
-	ctxWithCancel, cancelFunction := context.WithCancel(ctx)
+type CancelContext struct {
+	Ctx    context.Context
+	Cancel context.CancelFunc
+	Wg     sync.WaitGroup
+}
+
+func GetCancelContext() *CancelContext {
+	ctxWithCancel, cancelFunction := context.WithCancel(context.Background())
+	return &CancelContext{
+		Ctx:    ctxWithCancel,
+		Cancel: cancelFunction,
+	}
+}
+
+// used to trigger the stop method on ctrl+c
+func (cancelContext *CancelContext) HandleSignals() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			cancelFunction()
-			//give things time to settle
-			time.Sleep(time.Second * 1)
-			os.Exit(1)
-		}
-	}()
+	<-c
+	cancelContext.Stop()
+	os.Exit(1)
+}
 
-	return ctxWithCancel, cancelFunction
+// add a function that will "shut down" something
+// it will wait for the cancel context to be called
+// then after the shutdown has been run - call done
+// on the wait group
+func (cancelContext *CancelContext) AddShutdownHandler(fn func()) {
+	cancelContext.Wg.Add(1)
+	go func(cancelContext *CancelContext, fn func()) {
+		defer cancelContext.Wg.Done()
+		<-cancelContext.Ctx.Done()
+		fn()
+	}(cancelContext, fn)
+}
+
+// this will block until all shutdown handlers are complete
+func (cancelContext *CancelContext) Stop() {
+	cancelContext.Cancel()
+	cancelContext.Wg.Wait()
 }

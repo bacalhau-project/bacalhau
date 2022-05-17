@@ -36,7 +36,7 @@ type DockerExecutor struct {
 }
 
 func NewDockerExecutor(
-	ctx context.Context,
+	ctx system.CancelContext,
 	id string,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
@@ -49,13 +49,17 @@ func NewDockerExecutor(
 		return nil, err
 	}
 	dockerExecutor := &DockerExecutor{
-		Ctx:              ctx,
+		Ctx:              ctx.Ctx,
 		Id:               id,
 		ResultsDir:       dir,
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
 	}
-	go cleanupDockerExecutor(ctx, dockerExecutor)
+
+	ctx.AddShutdownHandler(func() {
+		dockerExecutor.cleanupAll()
+	})
+
 	return dockerExecutor, nil
 }
 
@@ -265,33 +269,6 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	return jobResultsDir, nil
 }
 
-func cleanupDockerExecutor(ctx context.Context, executor *DockerExecutor) {
-	<-ctx.Done()
-
-	if system.ShouldKeepStack() {
-		return
-	}
-	containersWithLabel, err := docker.GetContainersWithLabel(executor.Client, "bacalhau-executor", executor.Id)
-	if err != nil {
-		log.Error().Msgf("Docker executor stop error: %s", err.Error())
-		return
-	}
-	for _, container := range containersWithLabel {
-		err = docker.RemoveContainer(executor.Client, container.ID)
-		if err != nil {
-			log.Error().Msgf("Docker remove container error: %s", err.Error())
-		}
-	}
-	// err = system.RunCommand("sudo", []string{
-	// 	"rm", "-rf",
-	// 	executor.ResultsDir,
-	// })
-	// if err != nil {
-	// 	log.Error().Msgf("Docker executor stop error: %s", err.Error())
-	// 	return
-	// }
-}
-
 func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types.Job) {
 	if system.ShouldKeepStack() {
 		return
@@ -299,6 +276,23 @@ func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types
 	err := docker.RemoveContainer(dockerExecutor.Client, dockerExecutor.jobContainerName(job))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
+	}
+}
+
+func (dockerExecutor *DockerExecutor) cleanupAll() {
+	if system.ShouldKeepStack() {
+		return
+	}
+	containersWithLabel, err := docker.GetContainersWithLabel(dockerExecutor.Client, "bacalhau-executor", dockerExecutor.Id)
+	if err != nil {
+		log.Error().Msgf("Docker executor stop error: %s", err.Error())
+		return
+	}
+	for _, container := range containersWithLabel {
+		err = docker.RemoveContainer(dockerExecutor.Client, container.ID)
+		if err != nil {
+			log.Error().Msgf("Docker remove container error: %s", err.Error())
+		}
 	}
 }
 

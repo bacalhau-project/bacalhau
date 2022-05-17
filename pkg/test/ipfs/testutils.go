@@ -29,16 +29,12 @@ func SetupTest(
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
 	}
-	// TODO: add a waitgroup with checks on each part of a node
-	// (i.e. libp2p connected, jsonrpc serving, ipfs functional)
-	time.Sleep(time.Second * 2)
 	return stack, cancelFunction
 }
 
 func TeardownTest(stack *devstack.DevStack_IPFS, cancelFunction context.CancelFunc) {
 	if !system.ShouldKeepStack() {
 		cancelFunction()
-		// need some time to let ipfs processes shut down
 		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()

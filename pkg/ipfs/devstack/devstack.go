@@ -1,7 +1,6 @@
 package ipfs_devstack
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,19 +16,19 @@ import (
 )
 
 type IPFSDevServer struct {
-	Ctx         context.Context
-	Id          string
-	Repo        string
-	LogFile     string
-	Isolated    bool
-	Cli         *ipfs_cli.IPFSCli
-	GatewayPort int
-	ApiPort     int
-	SwarmPort   int
+	CancelContext system.CancelContext
+	Id            string
+	Repo          string
+	LogFile       string
+	Isolated      bool
+	Cli           *ipfs_cli.IPFSCli
+	GatewayPort   int
+	ApiPort       int
+	SwarmPort     int
 }
 
 func NewDevServer(
-	ctx context.Context,
+	ctx system.CancelContext,
 	isolated bool,
 ) (*IPFSDevServer, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
@@ -77,15 +76,15 @@ func NewDevServer(
 	}
 
 	server := &IPFSDevServer{
-		Ctx:         ctx,
-		Id:          idResult.ID,
-		Repo:        repoDir,
-		LogFile:     logFile.Name(),
-		Cli:         cli,
-		Isolated:    isolated,
-		GatewayPort: gatewayPort,
-		ApiPort:     apiPort,
-		SwarmPort:   swarmPort,
+		CancelContext: ctx,
+		Id:            idResult.ID,
+		Repo:          repoDir,
+		LogFile:       logFile.Name(),
+		Cli:           cli,
+		Isolated:      isolated,
+		GatewayPort:   gatewayPort,
+		ApiPort:       apiPort,
+		SwarmPort:     swarmPort,
 	}
 	return server, nil
 }
@@ -99,11 +98,64 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if connectToAddress != "" {
-		_, err := server.Cli.Run([]string{
-			"bootstrap", "add", connectToAddress,
+		_, err = server.Cli.Run([]string{
+			"config",
+			"AutoNAT.ServiceMode",
+			"disabled",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Swarm.EnableHolePunching",
+			"--bool",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Swarm.RelayClient.Enabled",
+			"--bool",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Swarm.RelayService.Enabled",
+			"--bool",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Swarm.Transports.Network.Relay",
+			"--bool",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Discovery.MDNS.Enabled",
+			"--json",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
+			"Addresses.Announce",
+			"--json",
+			fmt.Sprintf(`["/ip4/127.0.0.1/tcp/%d"]`, server.SwarmPort),
 		})
 		if err != nil {
 			return err
@@ -136,12 +188,9 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
-	if server.Isolated {
-		_, err = server.Cli.Run([]string{
-			"config",
-			"Discovery.MDNS.Enabled",
-			"--json",
-			"false",
+	if connectToAddress != "" {
+		_, err := server.Cli.Run([]string{
+			"bootstrap", "add", connectToAddress,
 		})
 		if err != nil {
 			return err
@@ -152,6 +201,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	cmd := exec.Command("ipfs", "daemon")
 	cmd.Env = []string{
 		"IPFS_PATH=" + server.Repo,
+		"IPFS_PROFILE=server",
 	}
 
 	logfile, err := os.OpenFile(server.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
@@ -167,12 +217,12 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 
 	log.Debug().Msgf("IPFS daemon has started")
 
-	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(server.Ctx, server.ApiAddress())
+	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(server.CancelContext.Ctx, server.ApiAddress())
 	if err != nil {
 		return err
 	}
 
-	waiter := &system.FunctionWaiter{
+	ipfsReadyWaiter := &system.FunctionWaiter{
 		Name:        fmt.Sprintf("wait for ipfs server to be running: %s", server.ApiAddress()),
 		MaxAttempts: 100,
 		Delay:       time.Millisecond * 100,
@@ -186,16 +236,21 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		},
 	}
 
-	err = waiter.Wait()
+	err = ipfsReadyWaiter.Wait()
 	if err != nil {
 		return err
 	}
 
-	go func(ctx context.Context, cmd *exec.Cmd) {
-		<-ctx.Done()
-		_ = cmd.Process.Kill()
-		log.Debug().Msgf("IPFS daemon has stopped")
-	}(server.Ctx, cmd)
+	server.CancelContext.AddShutdownHandler(func() {
+		err = system.RunCommand("kill", []string{
+			"-9", fmt.Sprintf("%d", cmd.Process.Pid),
+		})
+		if err != nil {
+			log.Error().Msgf("Error closing IPFS daemon %s", err.Error())
+		} else {
+			log.Debug().Msgf("IPFS daemon has stopped")
+		}
+	})
 
 	return nil
 }

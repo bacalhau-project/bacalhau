@@ -30,10 +30,10 @@ func SetupTest(
 	nodes int,
 	badActors int,
 ) (*devstack.DevStack, context.CancelFunc) {
-	ctx, cancelFunction := system.GetCancelContext()
+	ctx, cancelFunction, wg := system.GetCancelContext()
 
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-		return devstack.NewDockerIPFSExecutors(ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+		return devstack.NewDockerIPFSExecutors(ctx, wg, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 
 	stack, err := devstack.NewDevStack(
@@ -58,8 +58,6 @@ func SetupTest(
 func TeardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
 	if !system.ShouldKeepStack() {
 		cancelFunction()
-		// need some time to let ipfs processes shut down
-		time.Sleep(time.Second * 2)
 	} else {
 		stack.PrintNodeInfo()
 		system.ClearKeepStack()

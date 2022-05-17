@@ -1,31 +1,34 @@
 package devstack
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
 type DevStackNode_IPFS struct {
-	Ctx      context.Context
+	Ctx      system.CancelContext
+	Wg       sync.WaitGroup
 	IpfsNode *ipfs_devstack.IPFSDevServer
 	IpfsCli  *ipfs_cli.IPFSCli
 }
 
 type DevStack_IPFS struct {
-	Ctx   context.Context
+	Ctx   system.CancelContext
+	Wg    sync.WaitGroup
 	Nodes []*DevStackNode_IPFS
 }
 
 // a devstack but with only IPFS servers connected to each other
 func NewDevStack_IPFS(
-	ctx context.Context,
+	ctx system.CancelContext,
 	count int,
 ) (*DevStack_IPFS, error) {
 	nodes := []*DevStackNode_IPFS{}

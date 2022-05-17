@@ -1,7 +1,6 @@
 package compute_node
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
@@ -13,14 +12,12 @@ import (
 )
 
 type ComputeNode struct {
-	Ctx       context.Context
 	Mutex     sync.Mutex
 	Transport transport.Transport
 	Executors map[string]executor.Executor
 }
 
 func NewComputeNode(
-	ctx context.Context,
 	transport transport.Transport,
 	executors map[string]executor.Executor,
 ) (*ComputeNode, error) {
@@ -32,7 +29,6 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		Ctx:       ctx,
 		Transport: transport,
 		Executors: executors,
 	}

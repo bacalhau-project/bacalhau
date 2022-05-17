@@ -63,10 +63,10 @@ var STORAGE_DRIVER_FACTORIES = []struct {
 		name:          "fuse",
 		driverFactory: fuseStorageDriverFactory,
 	},
-	{
-		name:          "apiCopy",
-		driverFactory: apiCopyStorageDriverFactory,
-	},
+	// {
+	// 	name:          "apiCopy",
+	// 	driverFactory: apiCopyStorageDriverFactory,
+	// },
 }
 
 var OUTPUT_MODES = []IOutputMode{
@@ -219,6 +219,16 @@ func DockerExecutorStorageTest(
 			}
 		}
 
+		isInstalled, err := dockerExecutor.IsInstalled()
+		assert.NoError(t, err)
+		assert.True(t, isInstalled)
+
+		for _, inputStorageSpec := range inputStorageList {
+			hasStorage, err := dockerExecutor.HasStorage(inputStorageSpec)
+			assert.NoError(t, err)
+			assert.True(t, hasStorage)
+		}
+
 		job := &types.Job{
 			Id:    "test-job",
 			Owner: "test-owner",
@@ -232,16 +242,6 @@ func DockerExecutorStorageTest(
 				Concurrency:   nodeCount,
 				AssignedNodes: []string{},
 			},
-		}
-
-		isInstalled, err := dockerExecutor.IsInstalled()
-		assert.NoError(t, err)
-		assert.True(t, isInstalled)
-
-		for _, inputStorageSpec := range inputStorageList {
-			hasStorage, err := dockerExecutor.HasStorage(inputStorageSpec)
-			assert.NoError(t, err)
-			assert.True(t, hasStorage)
 		}
 
 		resultsDirectory, err := dockerExecutor.RunJob(job)

@@ -21,7 +21,7 @@ if [[ -z "$BACALHAU_IPFS_PORT_SWARM" ]]; then
 fi
 
 ipfs init
-
+ipfs bootstrap rm --all
 ipfs config AutoNAT.ServiceMode "disabled"
 ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/$BACALHAU_IPFS_PORT_GATEWAY"
 ipfs config Addresses.API "/ip4/127.0.0.1/tcp/$BACALHAU_IPFS_PORT_API"
@@ -32,7 +32,6 @@ ipfs config Swarm.RelayClient.Enabled --bool false
 ipfs config Swarm.RelayService.Enabled --bool false
 ipfs config Swarm.Transports.Network.Relay --bool false
 ipfs config Discovery.MDNS.Enabled --json false
-ipfs bootstrap rm --all
 
 peerAddresses=$(echo $BACALHAU_IPFS_PEER_ADDRESSES | tr "," "\n")
 for peerAddress in $peerAddresses

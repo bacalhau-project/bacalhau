@@ -1,7 +1,6 @@
 package devstack
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -27,7 +26,7 @@ import (
 )
 
 type DevStackNode struct {
-	Ctx           context.Context
+	Ctx           system.CancelContext
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
@@ -37,17 +36,17 @@ type DevStackNode struct {
 }
 
 type DevStack struct {
-	Ctx   context.Context
+	Ctx   system.CancelContext
 	Nodes []*DevStackNode
 }
 
-func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string, dockerId string) (map[string]executor.Executor, error) {
+func NewDockerIPFSExecutors(ctx system.CancelContext, ipfsMultiAddress string, dockerId string) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
 	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
-	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(ctx, ipfsMultiAddress)
+	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(ctx.Ctx, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
@@ -63,7 +62,7 @@ func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string, docker
 }
 
 func NewDevStack(
-	ctx context.Context,
+	ctx system.CancelContext,
 	count, badActors int,
 	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
 ) (*DevStack, error) {
@@ -113,7 +112,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
-		requesterNode, err := requestor_node.NewRequesterNode(ctx, transport)
+		requesterNode, err := requestor_node.NewRequesterNode(transport)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +125,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := compute_node.NewComputeNode(ctx, transport, executors)
+		computeNode, err := compute_node.NewComputeNode(transport, executors)
 		if err != nil {
 			return nil, err
 		}
