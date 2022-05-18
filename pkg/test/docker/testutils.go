@@ -63,10 +63,10 @@ var STORAGE_DRIVER_FACTORIES = []struct {
 		name:          "fuse",
 		driverFactory: fuseStorageDriverFactory,
 	},
-	// {
-	// 	name:          "apiCopy",
-	// 	driverFactory: apiCopyStorageDriverFactory,
-	// },
+	{
+		name:          "apiCopy",
+		driverFactory: apiCopyStorageDriverFactory,
+	},
 }
 
 var OUTPUT_MODES = []IOutputMode{

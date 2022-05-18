@@ -100,75 +100,20 @@ func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, er
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
 func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
-	var outerVolume *types.StorageVolume
-	var attempts = 0
-	waiter := &system.FunctionWaiter{
-		Name:        fmt.Sprintf("prepare storage: %s", storageSpec.Path),
-		MaxAttempts: 3,
-		Delay:       time.Millisecond * 500,
-		Logging:     false,
-		Handler: func() (bool, error) {
-			attempts++
-			innerVolume, err := dockerIpfs.prepareStorageAttempt(storageSpec, fmt.Sprintf("attempt: %d", attempts))
-			if err != nil {
-				return false, err
-			}
-			outerVolume = innerVolume
-			return true, nil
-		},
-	}
-	err := waiter.Wait()
-	if err != nil {
-		return nil, err
-	}
-	if outerVolume == nil {
-		return nil, fmt.Errorf("the volume was not constrructed")
-	}
-	return outerVolume, nil
-}
-
-func (dockerIpfs *IpfsFuseDocker) prepareStorageAttempt(storageSpec types.StorageSpec, title string) (*types.StorageVolume, error) {
-	err := dockerIpfs.ensureSidecar()
+	err := dockerIpfs.ensureSidecar(storageSpec.Cid)
 	if err != nil {
 		return nil, err
 	}
 
-	mountdir, err := dockerIpfs.getMountDir()
+	cidMountPath, err := dockerIpfs.getCidMountPath(storageSpec.Cid)
 	if err != nil {
 		return nil, err
-	}
-	if mountdir == "" {
-		return nil, fmt.Errorf("Could not get mount dir")
 	}
 
 	volume := &types.StorageVolume{
 		Type:   storage.STORAGE_VOLUME_TYPE_BIND,
-		Source: fmt.Sprintf("%s/data/%s", mountdir, storageSpec.Cid),
+		Source: cidMountPath,
 		Target: storageSpec.Path,
-	}
-
-	waiter := &system.FunctionWaiter{
-		Name:        fmt.Sprintf("wait for file to appear: %s %s", title, volume.Source),
-		MaxAttempts: 1000,
-		Delay:       time.Second * 1,
-		Logging:     false,
-		Handler: func() (bool, error) {
-			_, err := system.RunCommandGetResults("sudo", []string{
-				"timeout", "1s", "ls", "-la",
-				volume.Source,
-			})
-
-			if err != nil {
-				return false, err
-			}
-			return true, nil
-		},
-	}
-
-	err = waiter.Wait()
-
-	if err != nil {
-		return nil, err
 	}
 
 	return volume, nil
@@ -180,39 +125,94 @@ func (dockerIpfs *IpfsFuseDocker) CleanupStorage(storageSpec types.StorageSpec, 
 	return nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) ensureSidecar() error {
+func (dockerIpfs *IpfsFuseDocker) cleanSidecar() (*dockertypes.Container, error) {
+	sidecar, err := dockerIpfs.getSidecar()
+	if err != nil {
+		return nil, err
+	}
+	if sidecar != nil {
+		// ahhh but it's not running
+		// so let's remove what is there
+		if sidecar.State != "running" {
+			err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
+			if err != nil {
+				return nil, err
+			}
+			sidecar = nil
+		}
+	}
+	return sidecar, nil
+}
+
+func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 	dockerIpfs.Mutex.Lock()
 	defer dockerIpfs.Mutex.Unlock()
 
 	// does the sidecar container already exist?
 	// we lookup by name
-	sidecar, err := dockerIpfs.getSidecar()
+	sidecar, err := dockerIpfs.cleanSidecar()
 	if err != nil {
 		return err
 	}
 
-	// some kind of sidecar container exists
-	if sidecar != nil {
-
-		// ahhh but it's not running
-		// so let's remove what is there
-		if sidecar.State != "running" {
-			err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
-
-			if err != nil {
-				return err
-			}
-
-			sidecar = nil
-		}
-	}
-
-	// do we need to start the sidecar container?
 	if sidecar == nil {
-		err = dockerIpfs.startSidecar()
+
+		// at this point - we know we are "starting" the container
+		// and so we want to loop over:
+		//  * start
+		//  * wait for file
+		//  * clean if error
+		sidecarWaiter := &system.FunctionWaiter{
+			Name:        fmt.Sprintf("wait for ipfs fuse sidecar to start"),
+			MaxAttempts: 3,
+			Delay:       time.Second * 1,
+			Logging:     true,
+			Handler: func() (bool, error) {
+
+				sidecar, err := dockerIpfs.getSidecar()
+				if err != nil {
+					return false, err
+				}
+
+				if sidecar != nil {
+					err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
+					if err != nil {
+						return false, err
+					}
+				}
+
+				err = dockerIpfs.startSidecar()
+				if err != nil {
+					return false, err
+				}
+
+				// this waits for the test fuse file to appear
+				// as confirmation that our connection to the upstream
+				fileWaiter := &system.FunctionWaiter{
+					Name:        fmt.Sprintf("wait for ipfs fuse sidecar file to mount: %s", cid),
+					MaxAttempts: 10,
+					Delay:       time.Second * 1,
+					Logging:     true,
+					Handler: func() (bool, error) {
+						return dockerIpfs.canSeeFuseMount(cid), nil
+					},
+				}
+
+				err = fileWaiter.Wait()
+				if err != nil {
+					return false, err
+				}
+
+				return true, nil
+			},
+		}
+
+		err = sidecarWaiter.Wait()
+
 		if err != nil {
 			return err
 		}
+
 	}
 
 	return nil
@@ -336,6 +336,32 @@ func (dockerIpfs *IpfsFuseDocker) getMountDir() (string, error) {
 	return getMountDirFromContainer(sidecar), nil
 }
 
+func (dockerIpfs *IpfsFuseDocker) getCidMountPath(cid string) (string, error) {
+	mountDir, err := dockerIpfs.getMountDir()
+	if err != nil {
+		return "", err
+	}
+	if mountDir == "" {
+		return "", fmt.Errorf("Mount dir not found")
+	}
+	return fmt.Sprintf("%s/data/%s", mountDir, cid), nil
+}
+
+func (dockerIpfs *IpfsFuseDocker) canSeeFuseMount(cid string) bool {
+	testMountPath, err := dockerIpfs.getCidMountPath(cid)
+	if err != nil {
+		return false
+	}
+	_, err = system.RunCommandGetResults("sudo", []string{
+		"timeout", "1s", "ls", "-la",
+		testMountPath,
+	})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -345,12 +371,11 @@ func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
 	if err != nil {
 		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
 	}
-	err = docker.RemoveContainer(dockerClient, container.ID)
-	if err != nil {
-		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
-	}
-	if container == nil {
-		return nil
+	if container != nil {
+		err = docker.RemoveContainer(dockerClient, container.ID)
+		if err != nil {
+			return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+		}
 	}
 	mountDir := getMountDirFromContainer(container)
 	if mountDir != "" {

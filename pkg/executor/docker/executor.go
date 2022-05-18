@@ -170,9 +170,11 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		// 	return "", err
 		// }
 
-		err = system.RunCommand("docker", []string{
+		stdout, err := system.RunCommandGetResults("docker", []string{
 			"pull", job.Spec.Vm.Image,
 		})
+
+		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Vm.Image, stdout)
 
 		if err != nil {
 			return "", err
@@ -188,7 +190,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		Labels:     dockerExecutor.jobContainerLabels(job),
 	}
 
-	log.Debug().Msgf("Container: %+v", containerConfig)
+	log.Trace().Msgf("Container: %+v", containerConfig)
 
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
 		dockerExecutor.cancelContext.Ctx,

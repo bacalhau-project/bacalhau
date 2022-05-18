@@ -55,6 +55,8 @@ func NewDevServer(
 
 	_, err = cli.Run([]string{
 		"init",
+		"--profile",
+		"test",
 	})
 	if err != nil {
 		return nil, err
@@ -117,6 +119,15 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 		_, err = server.Cli.Run([]string{
 			"config",
+			"Swarm.DisableNatPortMap",
+			"--bool",
+			"true",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
 			"Swarm.RelayClient.Enabled",
 			"--bool",
 			"false",
@@ -144,6 +155,15 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 		_, err = server.Cli.Run([]string{
 			"config",
+			"Swarm.Transports.Network.Relay",
+			"--json",
+			"false",
+		})
+		if err != nil {
+			return err
+		}
+		_, err = server.Cli.Run([]string{
+			"config",
 			"Discovery.MDNS.Enabled",
 			"--json",
 			"false",
@@ -161,7 +181,6 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 	}
-
 	_, err := server.Cli.Run([]string{
 		"config",
 		"Addresses.Gateway",
