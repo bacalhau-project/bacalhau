@@ -1,7 +1,6 @@
 package inprocess
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -10,7 +9,6 @@ import (
 )
 
 type InProcessTransport struct {
-	Ctx    context.Context
 	Id     string
 	Events []*types.JobEvent
 	// the list of functions to call when we get an update about a job
@@ -20,16 +18,13 @@ type InProcessTransport struct {
 	GenericTransport *transport.GenericTransport
 }
 
-func NewInprocessTransport(
-	ctx context.Context,
-) (*InProcessTransport, error) {
+func NewInprocessTransport() (*InProcessTransport, error) {
 	hostId, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("Error in creating host id. %s", err)
 	}
 	inprocessTransport := &InProcessTransport{
-		Ctx: ctx,
-		Id:  hostId.String(),
+		Id: hostId.String(),
 	}
 	inprocessTransport.GenericTransport = transport.NewGenericTransport(
 		hostId.String(),

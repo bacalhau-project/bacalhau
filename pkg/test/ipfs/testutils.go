@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"context"
-	"time"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -18,24 +15,22 @@ import (
 func SetupTest(
 	t *testing.T,
 	nodes int,
-) (*devstack.DevStack_IPFS, context.CancelFunc) {
-	ctx, cancelFunction := system.GetCancelContext()
-
+) (*devstack.DevStack_IPFS, *system.CancelContext) {
+	cancelContext := system.GetCancelContext()
 	stack, err := devstack.NewDevStack_IPFS(
-		ctx,
+		cancelContext,
 		nodes,
 	)
 	assert.NoError(t, err)
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
 	}
-	return stack, cancelFunction
+	return stack, cancelContext
 }
 
-func TeardownTest(stack *devstack.DevStack_IPFS, cancelFunction context.CancelFunc) {
+func TeardownTest(stack *devstack.DevStack_IPFS, cancelContext *system.CancelContext) {
 	if !system.ShouldKeepStack() {
-		cancelFunction()
-		time.Sleep(time.Second * 2)
+		cancelContext.Cancel()
 	} else {
 		stack.PrintNodeInfo()
 		system.ClearKeepStack()

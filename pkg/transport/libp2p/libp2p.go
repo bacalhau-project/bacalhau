@@ -21,7 +21,7 @@ import (
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pTransport struct {
-	cancelContext system.CancelContext
+	cancelContext *system.CancelContext
 
 	// the writer we emit events through
 	genericTransport *transport.GenericTransport
@@ -56,14 +56,14 @@ func makeLibp2pHost(
 }
 
 func NewLibp2pTransport(
-	ctx system.CancelContext,
+	cancelContext *system.CancelContext,
 	port int,
 ) (*Libp2pTransport, error) {
 	host, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
 	}
-	pubsub, err := pubsub.NewGossipSub(ctx.Ctx, host)
+	pubsub, err := pubsub.NewGossipSub(cancelContext.Ctx, host)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func NewLibp2pTransport(
 	}
 
 	libp2pTransport := &Libp2pTransport{
-		cancelContext:        ctx,
+		cancelContext:        cancelContext,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,

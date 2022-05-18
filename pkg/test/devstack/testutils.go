@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"context"
-	"time"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -29,15 +26,13 @@ func SetupTest(
 	t *testing.T,
 	nodes int,
 	badActors int,
-) (*devstack.DevStack, context.CancelFunc) {
-	ctx, cancelFunction, wg := system.GetCancelContext()
-
+) (*devstack.DevStack, *system.CancelContext) {
+	cancelContext := system.GetCancelContext()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-		return devstack.NewDockerIPFSExecutors(ctx, wg, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+		return devstack.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
-
 	stack, err := devstack.NewDevStack(
-		ctx,
+		cancelContext,
 		nodes,
 		badActors,
 		getExecutors,
@@ -46,18 +41,15 @@ func SetupTest(
 	if err != nil {
 		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
 	}
-	// TODO: add a waitgroup with checks on each part of a node
-	// (i.e. libp2p connected, jsonrpc serving, ipfs functional)
-	time.Sleep(time.Second * 2)
-	return stack, cancelFunction
+	return stack, cancelContext
 }
 
 // this might be called multiple times if KEEP_STACK is active
 // the first time - once the test has completed, this function will be called
 // it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
-func TeardownTest(stack *devstack.DevStack, cancelFunction context.CancelFunc) {
+func TeardownTest(stack *devstack.DevStack, cancelContext *system.CancelContext) {
 	if !system.ShouldKeepStack() {
-		cancelFunction()
+		cancelContext.Cancel()
 	} else {
 		stack.PrintNodeInfo()
 		system.ClearKeepStack()
@@ -76,13 +68,13 @@ func DevStackDockerStorageTest(
 	nodeCount int,
 ) {
 
-	stack, cancelFunction := SetupTest(
+	stack, cancelContext := SetupTest(
 		t,
 		nodeCount,
 		0,
 	)
 
-	defer TeardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelContext)
 
 	rpcHost := "127.0.0.1"
 	rpcPort := stack.Nodes[0].JSONRpcNode.Port

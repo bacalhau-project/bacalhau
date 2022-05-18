@@ -12,7 +12,7 @@ import (
 )
 
 type IPFSHttpClient struct {
-	Ctx     context.Context
+	ctx     context.Context
 	Address string
 	Api     *httpapi.HttpApi
 }
@@ -30,18 +30,18 @@ func NewIPFSHttpClient(
 		return nil, err
 	}
 	return &IPFSHttpClient{
-		Ctx:     ctx,
+		ctx:     ctx,
 		Address: address,
 		Api:     api,
 	}, nil
 }
 
 func (ipfsHttp *IPFSHttpClient) GetLocalAddrs() ([]ma.Multiaddr, error) {
-	return ipfsHttp.Api.Swarm().LocalAddrs(ipfsHttp.Ctx)
+	return ipfsHttp.Api.Swarm().LocalAddrs(ipfsHttp.ctx)
 }
 
 func (ipfsHttp *IPFSHttpClient) GetPeers() ([]iface.ConnectionInfo, error) {
-	return ipfsHttp.Api.Swarm().Peers(ipfsHttp.Ctx)
+	return ipfsHttp.Api.Swarm().Peers(ipfsHttp.ctx)
 }
 
 func (ipfsHttp *IPFSHttpClient) GetLocalAddrStrings() ([]string, error) {
@@ -74,7 +74,7 @@ func (ipfsHttp *IPFSHttpClient) GetSwarmAddresses() ([]string, error) {
 }
 
 func (ipfsHttp *IPFSHttpClient) GetPeerId() (string, error) {
-	key, err := ipfsHttp.Api.Key().Self(ipfsHttp.Ctx)
+	key, err := ipfsHttp.Api.Key().Self(ipfsHttp.ctx)
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func (ipfsHttp *IPFSHttpClient) GetPeerId() (string, error) {
 
 // return the peer ids of peers that provide the given cid
 func (ipfsHttp *IPFSHttpClient) GetCidProviders(cid string) ([]string, error) {
-	peerChan, err := ipfsHttp.Api.Dht().FindProviders(ipfsHttp.Ctx, path.New(cid))
+	peerChan, err := ipfsHttp.Api.Dht().FindProviders(ipfsHttp.ctx, path.New(cid))
 	if err != nil {
 		return []string{}, err
 	}

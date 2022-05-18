@@ -1,7 +1,6 @@
 package api_copy
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,16 +19,16 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type IpfsApiCopy struct {
-	Ctx        context.Context
-	IPFSClient *ipfs_http.IPFSHttpClient
-	LocalDir   string
+	cancelContext *system.CancelContext
+	IPFSClient    *ipfs_http.IPFSHttpClient
+	LocalDir      string
 }
 
 func NewIpfsApiCopy(
-	ctx context.Context,
+	cancelContext *system.CancelContext,
 	ipfsMultiAddress string,
 ) (*IpfsApiCopy, error) {
-	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -38,9 +37,9 @@ func NewIpfsApiCopy(
 		return nil, err
 	}
 	storageHandler := &IpfsApiCopy{
-		Ctx:        ctx,
-		IPFSClient: api,
-		LocalDir:   dir,
+		cancelContext: cancelContext,
+		IPFSClient:    api,
+		LocalDir:      dir,
 	}
 
 	log.Debug().Msgf("IPFS API Copy driver created")
@@ -70,7 +69,9 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*t
 		Type string
 	}
 
-	err := dockerIpfs.IPFSClient.Api.Request("files/stat", fmt.Sprintf("/ipfs/%s", storageSpec.Cid)).Exec(dockerIpfs.Ctx, &statResult)
+	err := dockerIpfs.IPFSClient.Api.
+		Request("files/stat", fmt.Sprintf("/ipfs/%s", storageSpec.Cid)).
+		Exec(dockerIpfs.cancelContext.Ctx, &statResult)
 
 	if err != nil {
 		return nil, err
@@ -90,7 +91,9 @@ func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, vol
 }
 
 func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
-	res, err := dockerIpfs.IPFSClient.Api.Request("get", storageSpec.Cid).Send(dockerIpfs.Ctx)
+	res, err := dockerIpfs.IPFSClient.Api.
+		Request("get", storageSpec.Cid).
+		Send(dockerIpfs.cancelContext.Ctx)
 	if err != nil {
 		return nil, err
 	}

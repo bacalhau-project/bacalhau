@@ -16,7 +16,7 @@ import (
 )
 
 type IPFSDevServer struct {
-	CancelContext system.CancelContext
+	cancelContext *system.CancelContext
 	Id            string
 	Repo          string
 	LogFile       string
@@ -28,7 +28,7 @@ type IPFSDevServer struct {
 }
 
 func NewDevServer(
-	ctx system.CancelContext,
+	cancelContext *system.CancelContext,
 	isolated bool,
 ) (*IPFSDevServer, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
@@ -76,7 +76,7 @@ func NewDevServer(
 	}
 
 	server := &IPFSDevServer{
-		CancelContext: ctx,
+		cancelContext: cancelContext,
 		Id:            idResult.ID,
 		Repo:          repoDir,
 		LogFile:       logFile.Name(),
@@ -217,7 +217,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 
 	log.Debug().Msgf("IPFS daemon has started")
 
-	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(server.CancelContext.Ctx, server.ApiAddress())
+	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(server.cancelContext.Ctx, server.ApiAddress())
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
-	server.CancelContext.AddShutdownHandler(func() {
+	server.cancelContext.AddShutdownHandler(func() {
 		err = system.RunCommand("kill", []string{
 			"-9", fmt.Sprintf("%d", cmd.Process.Pid),
 		})

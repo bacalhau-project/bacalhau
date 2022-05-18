@@ -17,30 +17,26 @@ import (
 )
 
 func TestTransportSanity(t *testing.T) {
-	ctx, cancelFunction := system.GetCancelContext()
-	defer cancelFunction()
 	executors := map[string]executor.Executor{}
-	transport, err := inprocess.NewInprocessTransport(ctx)
+	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(ctx, transport, executors)
+	_, err = compute_node.NewComputeNode(transport, executors)
 	assert.NoError(t, err)
-	_, err = requestor_node.NewRequesterNode(ctx, transport)
+	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)
 }
 
 func TestSchedulerSubmitJob(t *testing.T) {
-	ctx, cancelFunction := system.GetCancelContext()
-	defer cancelFunction()
 	noopExecutor, err := noop.NewNoopExecutor()
 	assert.NoError(t, err)
 	executors := map[string]executor.Executor{
 		"noop": noopExecutor,
 	}
-	transport, err := inprocess.NewInprocessTransport(ctx)
+	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(ctx, transport, executors)
+	_, err = compute_node.NewComputeNode(transport, executors)
 	assert.NoError(t, err)
-	_, err = requestor_node.NewRequesterNode(ctx, transport)
+	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)
 
 	// first let's test submitting a job with an engine we do not have
@@ -75,18 +71,16 @@ func TestSchedulerSubmitJob(t *testing.T) {
 }
 
 func TestTransportEvents(t *testing.T) {
-	cancelContext := system.GetCancelContext()
-	defer cancelContext.Stop()
 	noopExecutor, err := noop.NewNoopExecutor()
 	assert.NoError(t, err)
 	executors := map[string]executor.Executor{
 		"noop": noopExecutor,
 	}
-	transport, err := inprocess.NewInprocessTransport(cancelContext.Ctx)
+	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(ctx, transport, executors)
+	_, err = compute_node.NewComputeNode(transport, executors)
 	assert.NoError(t, err)
-	_, err = requestor_node.NewRequesterNode(ctx, transport)
+	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)
 
 	// first let's test submitting a job with an engine we do not have

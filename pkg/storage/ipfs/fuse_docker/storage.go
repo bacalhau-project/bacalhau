@@ -1,7 +1,6 @@
 package fuse_docker
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,7 +34,7 @@ const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:
 const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
 type IpfsFuseDocker struct {
-	Ctx context.Context
+	cancelContext *system.CancelContext
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
@@ -46,10 +45,10 @@ type IpfsFuseDocker struct {
 }
 
 func NewIpfsFuseDocker(
-	ctx system.CancelContext,
+	cancelContext *system.CancelContext,
 	ipfsMultiAddress string,
 ) (*IpfsFuseDocker, error) {
-	api, err := ipfs_http.NewIPFSHttpClient(ctx.Ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -62,13 +61,13 @@ func NewIpfsFuseDocker(
 		return nil, err
 	}
 	storageHandler := &IpfsFuseDocker{
-		Ctx:          ctx.Ctx,
-		Id:           peerId,
-		IPFSClient:   api,
-		DockerClient: dockerClient,
+		cancelContext: cancelContext,
+		Id:            peerId,
+		IPFSClient:    api,
+		DockerClient:  dockerClient,
 	}
 
-	ctx.AddShutdownHandler(func() {
+	cancelContext.AddShutdownHandler(func() {
 		err := cleanupStorageDriver(storageHandler)
 		if err != nil {
 			log.Error().Msg(err.Error())
@@ -247,7 +246,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	}
 
 	sidecarContainer, err := dockerIpfs.DockerClient.ContainerCreate(
-		dockerIpfs.Ctx,
+		dockerIpfs.cancelContext.Ctx,
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
 			Tty:   false,
@@ -299,7 +298,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
+	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.cancelContext.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 
 	if err != nil {
 		return err

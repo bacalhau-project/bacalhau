@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +20,7 @@ import (
 
 type DockerExecutor struct {
 	// the global context for stopping any running jobs
-	Ctx context.Context
+	cancelContext *system.CancelContext
 
 	// used to allow multiple docker executors to run against the same docker server
 	Id string
@@ -36,7 +35,7 @@ type DockerExecutor struct {
 }
 
 func NewDockerExecutor(
-	ctx system.CancelContext,
+	cancelContext *system.CancelContext,
 	id string,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
@@ -49,14 +48,14 @@ func NewDockerExecutor(
 		return nil, err
 	}
 	dockerExecutor := &DockerExecutor{
-		Ctx:              ctx.Ctx,
+		cancelContext:    cancelContext,
 		Id:               id,
 		ResultsDir:       dir,
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
 	}
 
-	ctx.AddShutdownHandler(func() {
+	cancelContext.AddShutdownHandler(func() {
 		dockerExecutor.cleanupAll()
 	})
 
@@ -192,7 +191,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	log.Debug().Msgf("Container: %+v", containerConfig)
 
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
-		dockerExecutor.Ctx,
+		dockerExecutor.cancelContext.Ctx,
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
@@ -206,10 +205,10 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		return "", err
 	}
 
-	defer dockerExecutor.cleanupJob(dockerExecutor.Ctx, job)
+	defer dockerExecutor.cleanupJob(job)
 
 	err = dockerExecutor.Client.ContainerStart(
-		dockerExecutor.Ctx,
+		dockerExecutor.cancelContext.Ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
@@ -219,7 +218,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	}
 
 	statusChan, errChan := dockerExecutor.Client.ContainerWait(
-		dockerExecutor.Ctx,
+		dockerExecutor.cancelContext.Ctx,
 		jobContainer.ID,
 		container.WaitConditionNotRunning,
 	)
@@ -269,7 +268,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	return jobResultsDir, nil
 }
 
-func (dockerExecutor *DockerExecutor) cleanupJob(ctx context.Context, job *types.Job) {
+func (dockerExecutor *DockerExecutor) cleanupJob(job *types.Job) {
 	if system.ShouldKeepStack() {
 		return
 	}

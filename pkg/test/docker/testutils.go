@@ -48,11 +48,11 @@ type IGetJobSpec func(outputMode IOutputMode) types.JobSpecVm
 
 */
 func fuseStorageDriverFactory(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error) {
-	return fuse_docker.NewIpfsFuseDocker(stack.Ctx, stack.Nodes[0].IpfsNode.ApiAddress())
+	return fuse_docker.NewIpfsFuseDocker(stack.CancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
 func apiCopyStorageDriverFactory(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error) {
-	return api_copy.NewIpfsApiCopy(stack.Ctx, stack.Nodes[0].IpfsNode.ApiAddress())
+	return api_copy.NewIpfsApiCopy(stack.CancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
 var STORAGE_DRIVER_FACTORIES = []struct {
@@ -198,7 +198,7 @@ func DockerExecutorStorageTest(
 		storageDriver, err := getStorageDriver(stack)
 		assert.NoError(t, err)
 
-		dockerExecutor, err := docker.NewDockerExecutor(stack.Ctx, "dockertest", map[string]storage.StorageProvider{
+		dockerExecutor, err := docker.NewDockerExecutor(stack.CancelContext, "dockertest", map[string]storage.StorageProvider{
 			TEST_STORAGE_DRIVER_NAME: storageDriver,
 		})
 		assert.NoError(t, err)

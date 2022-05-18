@@ -10,19 +10,19 @@ import (
 
 func TestIpfsHttpClient(t *testing.T) {
 
-	stack, cancelFunction := SetupTest(
+	stack, cancelContext := SetupTest(
 		t,
 		2,
 	)
 
-	defer TeardownTest(stack, cancelFunction)
+	defer TeardownTest(stack, cancelContext)
 
 	fileCid, err := stack.AddTextToNodes(1, []byte(`hello world`))
 	assert.NoError(t, err)
 
 	// test the basic connection and that we can list the IPFS node addresses
 	ipfsMultiAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-	api, err := ipfs_http.NewIPFSHttpClient(stack.Ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(stack.CancelContext.Ctx, ipfsMultiAddress)
 	assert.NoError(t, err)
 
 	addrs, err := api.GetLocalAddrs()
@@ -30,7 +30,7 @@ func TestIpfsHttpClient(t *testing.T) {
 	assert.GreaterOrEqual(t, len(addrs), 1)
 
 	assertNodeHasCid := func(cid string, nodeIndex int, expectedResult bool) {
-		api, err := ipfs_http.NewIPFSHttpClient(stack.Ctx, stack.Nodes[nodeIndex].IpfsNode.ApiAddress())
+		api, err := ipfs_http.NewIPFSHttpClient(stack.CancelContext.Ctx, stack.Nodes[nodeIndex].IpfsNode.ApiAddress())
 		assert.NoError(t, err)
 		result, err := api.HasCidLocally(cid)
 		assert.NoError(t, err)

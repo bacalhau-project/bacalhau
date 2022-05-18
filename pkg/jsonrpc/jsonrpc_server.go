@@ -1,31 +1,31 @@
 package jsonrpc
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/rpc"
 
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type JSONRpcServer struct {
-	Ctx           context.Context
+	cancelContext *system.CancelContext
 	Host          string
 	Port          int
 	RequesterNode *requestor_node.RequesterNode
 }
 
 func NewBacalhauJsonRpcServer(
-	ctx context.Context,
+	cancelContext *system.CancelContext,
 	host string,
 	port int,
 	requesterNode *requestor_node.RequesterNode,
 ) *JSONRpcServer {
 	server := &JSONRpcServer{
-		Ctx:           ctx,
+		cancelContext: cancelContext,
 		Host:          host,
 		Port:          port,
 		RequesterNode: requesterNode,
@@ -56,12 +56,11 @@ func StartBacalhauJsonRpcServer(server *JSONRpcServer) error {
 		log.Debug().Msg("Json rpc server has started")
 	}()
 
-	go func() {
-		<-server.Ctx.Done()
+	server.cancelContext.AddShutdownHandler(func() {
 		isClosing = true
 		httpServer.Close()
 		log.Debug().Msg("Json rpc server has stopped")
-	}()
+	})
 
 	return nil
 }

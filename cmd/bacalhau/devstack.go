@@ -52,21 +52,21 @@ var devstackCmd = &cobra.Command{
 			return err
 		}
 
-		ctx, cancelFunction := system.GetCancelContext()
+		cancelContext := system.GetCancelContext()
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-			return devstack.NewDockerIPFSExecutors(ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			return devstack.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		stack, err := devstack.NewDevStack(
-			ctx,
+			cancelContext,
 			devStackNodes,
 			devStackBadActors,
 			getExecutors,
 		)
 
 		if err != nil {
-			cancelFunction()
+			cancelContext.Cancel()
 			return err
 		}
 

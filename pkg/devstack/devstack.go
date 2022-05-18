@@ -26,7 +26,7 @@ import (
 )
 
 type DevStackNode struct {
-	Ctx           system.CancelContext
+	cancelContext *system.CancelContext
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
@@ -36,21 +36,25 @@ type DevStackNode struct {
 }
 
 type DevStack struct {
-	Ctx   system.CancelContext
-	Nodes []*DevStackNode
+	cancelContext *system.CancelContext
+	Nodes         []*DevStackNode
 }
 
-func NewDockerIPFSExecutors(ctx system.CancelContext, ipfsMultiAddress string, dockerId string) (map[string]executor.Executor, error) {
+func NewDockerIPFSExecutors(
+	cancelContext *system.CancelContext,
+	ipfsMultiAddress string,
+	dockerId string,
+) (map[string]executor.Executor, error) {
 	executors := map[string]executor.Executor{}
-	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
+	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(cancelContext, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
-	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(ctx.Ctx, ipfsMultiAddress)
+	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(cancelContext, ipfsMultiAddress)
 	if err != nil {
 		return executors, err
 	}
-	dockerExecutor, err := docker.NewDockerExecutor(ctx, dockerId, map[string]storage.StorageProvider{
+	dockerExecutor, err := docker.NewDockerExecutor(cancelContext, dockerId, map[string]storage.StorageProvider{
 		storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 		storage.IPFS_API_COPY:    ipfsApiCopyStorage,
 	})
@@ -62,7 +66,7 @@ func NewDockerIPFSExecutors(ctx system.CancelContext, ipfsMultiAddress string, d
 }
 
 func NewDevStack(
-	ctx system.CancelContext,
+	cancelContext *system.CancelContext,
 	count, badActors int,
 	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
 ) (*DevStack, error) {
@@ -84,7 +88,7 @@ func NewDevStack(
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
+		ipfsNode, err := ipfs_devstack.NewDevServer(cancelContext, true)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +108,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
+		transport, err := libp2p.NewLibp2pTransport(cancelContext, libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +143,7 @@ func NewDevStack(
 		}
 
 		jsonRpcNode := jsonrpc.NewBacalhauJsonRpcServer(
-			ctx,
+			cancelContext,
 			"0.0.0.0",
 			jsonRpcPort,
 			requesterNode,
@@ -185,7 +189,7 @@ func NewDevStack(
 		}
 
 		devStackNode := &DevStackNode{
-			Ctx:           ctx,
+			cancelContext: cancelContext,
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
@@ -198,8 +202,8 @@ func NewDevStack(
 	}
 
 	stack := &DevStack{
-		Ctx:   ctx,
-		Nodes: nodes,
+		cancelContext: cancelContext,
+		Nodes:         nodes,
 	}
 
 	return stack, nil
