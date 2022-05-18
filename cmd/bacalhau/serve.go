@@ -58,6 +58,9 @@ var serveCmd = &cobra.Command{
 		}
 
 		executors, err := executor.NewDockerIPFSExecutors(cancelContext, ipfsConnect, fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
+		if err != nil {
+			return err
+		}
 
 		_, err = compute_node.NewComputeNode(transport, executors)
 		if err != nil {

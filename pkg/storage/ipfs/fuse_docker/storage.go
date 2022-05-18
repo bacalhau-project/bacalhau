@@ -163,7 +163,7 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 		//  * wait for file
 		//  * clean if error
 		sidecarWaiter := &system.FunctionWaiter{
-			Name:        fmt.Sprintf("wait for ipfs fuse sidecar to start"),
+			Name:        "wait for ipfs fuse sidecar to start",
 			MaxAttempts: 3,
 			Delay:       time.Second * 1,
 			Logging:     true,
@@ -356,10 +356,7 @@ func (dockerIpfs *IpfsFuseDocker) canSeeFuseMount(cid string) bool {
 		"timeout", "1s", "ls", "-la",
 		testMountPath,
 	})
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
