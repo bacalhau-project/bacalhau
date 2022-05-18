@@ -16,7 +16,7 @@ func SetupTest(
 	t *testing.T,
 	nodes int,
 ) (*devstack.DevStack_IPFS, *system.CancelContext) {
-	cancelContext := system.GetCancelContext()
+	cancelContext := system.GetCancelContextWithSignals()
 	stack, err := devstack.NewDevStack_IPFS(
 		cancelContext,
 		nodes,
@@ -29,11 +29,9 @@ func SetupTest(
 }
 
 func TeardownTest(stack *devstack.DevStack_IPFS, cancelContext *system.CancelContext) {
-	if !system.ShouldKeepStack() {
-		cancelContext.Cancel()
-	} else {
+	cancelContext.Stop()
+	if system.ShouldKeepStack() {
 		stack.PrintNodeInfo()
-		system.ClearKeepStack()
 		select {}
 	}
 }

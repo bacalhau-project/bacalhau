@@ -27,7 +27,7 @@ func SetupTest(
 	nodes int,
 	badActors int,
 ) (*devstack.DevStack, *system.CancelContext) {
-	cancelContext := system.GetCancelContext()
+	cancelContext := system.GetCancelContextWithSignals()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
 		return devstack.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
@@ -49,10 +49,9 @@ func SetupTest(
 // it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
 func TeardownTest(stack *devstack.DevStack, cancelContext *system.CancelContext) {
 	if !system.ShouldKeepStack() {
-		cancelContext.Cancel()
+		cancelContext.Stop()
 	} else {
 		stack.PrintNodeInfo()
-		system.ClearKeepStack()
 		select {}
 	}
 }

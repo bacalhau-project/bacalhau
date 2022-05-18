@@ -20,7 +20,7 @@ if [[ -z "$BACALHAU_IPFS_PORT_SWARM" ]]; then
   exit 1
 fi
 
-ipfs init
+ipfs init --profile test
 ipfs bootstrap rm --all
 ipfs config AutoNAT.ServiceMode "disabled"
 ipfs config Addresses.Gateway "/ip4/127.0.0.1/tcp/$BACALHAU_IPFS_PORT_GATEWAY"
@@ -28,9 +28,12 @@ ipfs config Addresses.API "/ip4/127.0.0.1/tcp/$BACALHAU_IPFS_PORT_API"
 ipfs config Addresses.Swarm --json "[\"/ip4/0.0.0.0/tcp/$BACALHAU_IPFS_PORT_SWARM\"]"
 ipfs config Addresses.Announce --json "[\"/ip4/$BACALHAU_IPFS_SWARM_ANNOUNCE_IP/tcp/$BACALHAU_IPFS_PORT_SWARM\"]"
 ipfs config Swarm.EnableHolePunching --bool false
+ipfs config Swarm.DisableNatPortMap --bool true
 ipfs config Swarm.RelayClient.Enabled --bool false
 ipfs config Swarm.RelayService.Enabled --bool false
 ipfs config Swarm.Transports.Network.Relay --bool false
+ipfs config Swarm.ConnMgr.Type "none"
+#ipfs config Routing.Type "none"
 ipfs config Discovery.MDNS.Enabled --json false
 
 peerAddresses=$(echo $BACALHAU_IPFS_PEER_ADDRESSES | tr "," "\n")
@@ -40,4 +43,4 @@ do
   ipfs bootstrap add $peerAddress
 done
 
-IPFS_PROFILE=server ipfs daemon --mount --mount-ipfs "$BACALHAU_IPFS_FUSE_MOUNT/data" --mount-ipns "$BACALHAU_IPFS_FUSE_MOUNT/ipns"
+ipfs daemon --mount --mount-ipfs "$BACALHAU_IPFS_FUSE_MOUNT/data" --mount-ipns "$BACALHAU_IPFS_FUSE_MOUNT/ipns"

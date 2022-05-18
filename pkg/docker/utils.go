@@ -140,7 +140,8 @@ func WaitForContainer(client *dockerclient.Client, id string, maxAttempts int, d
 	return waiter.Wait()
 }
 
-func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts int, delay time.Duration, findString string) error {
+func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts int, delay time.Duration, findString string) (string, error) {
+	lastLogs := ""
 	waiter := &system.FunctionWaiter{
 		Name:        fmt.Sprintf("wait for container to be running: %s", id),
 		MaxAttempts: maxAttempts,
@@ -161,10 +162,12 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 			if err != nil {
 				return false, err
 			}
+			lastLogs = stdout + "\n" + stderr
 			return strings.Contains(stdout, findString) || strings.Contains(stderr, findString), nil
 		},
 	}
-	return waiter.Wait()
+	err := waiter.Wait()
+	return lastLogs, err
 }
 
 func PullImage(

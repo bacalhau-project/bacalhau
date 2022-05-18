@@ -188,12 +188,12 @@ func DockerExecutorStorageTest(
 		getStorageDriver IGetStorageDriver,
 		outputMode IOutputMode,
 	) {
-		stack, cancelFunction := ipfs.SetupTest(
+		stack, cancelContext := ipfs.SetupTest(
 			t,
 			nodeCount,
 		)
 
-		defer ipfs.TeardownTest(stack, cancelFunction)
+		defer ipfs.TeardownTest(stack, cancelContext)
 
 		storageDriver, err := getStorageDriver(stack)
 		assert.NoError(t, err)

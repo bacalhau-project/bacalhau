@@ -30,7 +30,7 @@ func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 
-	log.Debug().Msgf("Command: %s %s", command, args)
+	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 
 	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
@@ -46,7 +46,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 			if attempt > retries {
 				return err
 			} else {
-				log.Debug().Msgf("Error %s: %v, pausing and trying again...", desc, err)
+				log.Trace().Msgf("Error %s: %v, pausing and trying again...", desc, err)
 				time.Sleep(1 * time.Second)
 			}
 		} else {
@@ -57,14 +57,14 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 }
 
 func RunCommandGetResults(command string, args []string) (string, error) {
-	log.Debug().Msgf("Command: %s %s", command, args)
+	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	result, err := cmd.CombinedOutput()
 	return string(result), err
 }
 
 func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
-	log.Debug().Msgf("Command: %s %s", command, args)
+	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
 	result, err := cmd.CombinedOutput()
@@ -86,7 +86,7 @@ func EnsureSystemDirectory(path string) (string, error) {
 		return "", err
 	}
 
-	log.Debug().Msgf("Enforcing creation of results dir: %s", path)
+	log.Trace().Msgf("Enforcing creation of results dir: %s", path)
 
 	err = RunCommand("mkdir", []string{
 		"-p",
@@ -135,8 +135,4 @@ func IsDebug() bool {
 
 func ShouldKeepStack() bool {
 	return os.Getenv("KEEP_STACK") != ""
-}
-
-func ClearKeepStack() {
-	os.Setenv("KEEP_STACK", "")
 }

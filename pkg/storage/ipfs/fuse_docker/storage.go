@@ -304,14 +304,16 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	err = docker.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 100, time.Millisecond*100, "Daemon is ready")
+	logs, err := docker.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 5, time.Second*2, "Daemon is ready")
 
 	if err != nil {
+		log.Error().Msg(logs)
+		stopErr := cleanupStorageDriver(dockerIpfs)
+		if stopErr != nil {
+			err = fmt.Errorf("Original Error: %s\nStop Error: %s\n", err.Error(), stopErr.Error())
+		}
 		return err
 	}
-
-	// TODO: we probably don't need this?
-	time.Sleep(time.Second * 1)
 
 	return nil
 }
@@ -343,6 +345,10 @@ func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
 	if err != nil {
 		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
 	}
+	err = docker.RemoveContainer(dockerClient, container.ID)
+	if err != nil {
+		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+	}
 	if container == nil {
 		return nil
 	}
@@ -352,10 +358,6 @@ func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
 		if err != nil {
 			return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
 		}
-	}
-	err = docker.RemoveContainer(dockerClient, container.ID)
-	if err != nil {
-		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
 	}
 	log.Debug().Msgf("Docker IPFS sidecar has stopped")
 	return nil
