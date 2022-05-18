@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -35,17 +34,17 @@ var listCmd = &cobra.Command{
 		}
 
 		if listOutputFormat == "json" {
-			msgBytes, err := json.Marshal(result)
+			msgBytes, err := json.MarshalIndent(result, "", "    ")
 			if err != nil {
 				return err
 			}
-			log.Debug().Msg(fmt.Sprintf("List msg bytes: %s\n", msgBytes))
+			fmt.Printf("%s\n", msgBytes)
 			return nil
 		}
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"JOB", "COMMAND", "DATA", "NODE", "STATE", "STATUS", "OUTPUT"})
+		t.AppendHeader(table.Row{"id", "engine", "inputs", "node", "state", "status", "output"})
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{Number: 1, AutoMerge: true},
 			{Number: 2, AutoMerge: true},
@@ -62,7 +61,7 @@ var listCmd = &cobra.Command{
 				t.AppendRows([]table.Row{
 					{
 						shortId(jobData.Id),
-						jobData.Spec.Vm.Entrypoint,
+						jobData.Spec.Engine,
 						shortenString(strings.Join(inputCids, "\n")),
 						shortenString(node),
 						jobState.State,

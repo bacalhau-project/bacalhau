@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -63,7 +62,7 @@ func NewDockerExecutor(
 }
 
 func (dockerExecutor *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
-	return executor.GetStorageProvider(engine, dockerExecutor.StorageProviders)
+	return storage.GetStorageProvider(engine, dockerExecutor.StorageProviders)
 }
 
 // check if docker itself is installed
