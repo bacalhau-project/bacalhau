@@ -24,8 +24,8 @@ type Libp2pTransport struct {
 	cancelContext *system.CancelContext
 
 	// the writer we emit events through
-	genericTransport *transport.GenericTransport
-
+	genericTransport     *transport.GenericTransport
+	GenericTransport     *transport.GenericTransport
 	Host                 host.Host
 	Port                 int
 	PubSub               *pubsub.PubSub

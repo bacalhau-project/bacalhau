@@ -54,6 +54,7 @@ func (transport *GenericTransport) ReadEvent(event *types.JobEvent) {
 			Deal:  nil,
 			State: make(map[string]*types.JobState),
 		}
+
 	}
 
 	// for "create" and "update" events - this will be filled in
@@ -75,6 +76,7 @@ func (transport *GenericTransport) ReadEvent(event *types.JobEvent) {
 	for _, subscribeFunc := range transport.SubscribeFuncs {
 		go subscribeFunc(event, transport.Jobs[event.JobId])
 	}
+
 }
 
 func (transport *GenericTransport) List() (types.ListResponse, error) {

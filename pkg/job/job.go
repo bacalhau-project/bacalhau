@@ -116,7 +116,8 @@ func ListJobs(
 
 func ConstructJob(
 	engine string,
-	cids []string,
+	inputVolumes []string,
+	outputVolumes []string,
 	env []string,
 	entrypoint []string,
 	image string,
@@ -127,13 +128,33 @@ func ConstructJob(
 	}
 
 	jobInputs := []types.StorageSpec{}
+	jobOutputs := []types.StorageSpec{}
 
-	for _, cid := range cids {
+	for _, inputVolume := range inputVolumes {
+		slices := strings.Split(inputVolume, ":")
+		if len(slices) != 2 {
+			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
+		}
 		jobInputs = append(jobInputs, types.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: "ipfs",
-			Cid:    cid,
+			Cid:    slices[0],
+			Path:   slices[1],
+		})
+	}
+
+	for _, outputVolume := range outputVolumes {
+		slices := strings.Split(outputVolume, ":")
+		if len(slices) != 2 {
+			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
+		}
+		jobOutputs = append(jobInputs, types.StorageSpec{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Name:   slices[0],
+			Path:   slices[1],
 		})
 	}
 
@@ -145,7 +166,8 @@ func ConstructJob(
 			Env:        env,
 		},
 
-		Inputs: jobInputs,
+		Inputs:  jobInputs,
+		Outputs: jobOutputs,
 	}
 
 	deal := &types.JobDeal{
@@ -181,7 +203,8 @@ func SubmitJob(
 
 func RunJob(
 	engine string,
-	cids []string,
+	inputVolumes []string,
+	outputVolumes []string,
 	env []string,
 	entrypoint []string,
 	image string,
@@ -191,7 +214,7 @@ func RunJob(
 	skipSyntaxChecking bool,
 ) (*types.Job, error) {
 
-	spec, deal, err := ConstructJob(engine, cids, env, entrypoint, image, concurrency)
+	spec, deal, err := ConstructJob(engine, inputVolumes, outputVolumes, env, entrypoint, image, concurrency)
 
 	if err != nil {
 		return nil, err

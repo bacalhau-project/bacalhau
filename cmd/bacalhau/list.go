@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -44,32 +45,59 @@ var listCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"id", "engine", "inputs", "node", "state", "status", "output"})
+		t.AppendHeader(table.Row{"id", "job", "inputs", "concurrency", "node", "state", "status", "result"})
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{Number: 1, AutoMerge: true},
 			{Number: 2, AutoMerge: true},
 			{Number: 3, AutoMerge: true},
+			{Number: 4, AutoMerge: true},
 		})
 
 		for _, jobData := range result.Jobs {
 			inputCids := []string{}
 			for _, input := range jobData.Spec.Inputs {
-				inputCids = append(inputCids, input.Cid)
+				inputCids = append(inputCids, shortenString(input.Cid))
 			}
 
-			for node, jobState := range jobData.State {
+			jobDesc := []string{
+				jobData.Spec.Engine,
+			}
+
+			if jobData.Spec.Engine == executor.EXECUTOR_DOCKER {
+				jobDesc = append(jobDesc, jobData.Spec.Vm.Image)
+				jobDesc = append(jobDesc, strings.Join(jobData.Spec.Vm.Entrypoint, ""))
+			}
+
+			if len(jobData.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
 						shortId(jobData.Id),
-						jobData.Spec.Engine,
-						shortenString(strings.Join(inputCids, "\n")),
-						shortenString(node),
-						jobState.State,
-						jobState.Status,
-						jobState.ResultsId,
+						strings.Join(jobDesc, "\n"),
+						strings.Join(inputCids, "\n"),
+						jobData.Deal.Concurrency,
+						"",
+						"waiting",
+						"",
+						"",
 					},
 				})
+			} else {
+				for node, jobState := range jobData.State {
+					t.AppendRows([]table.Row{
+						{
+							shortId(jobData.Id),
+							strings.Join(jobDesc, "\n"),
+							strings.Join(inputCids, "\n"),
+							jobData.Deal.Concurrency,
+							shortenString(node),
+							shortenString(jobState.State),
+							shortenString(jobState.Status),
+							shortenString(jobState.ResultsId),
+						},
+					})
+				}
 			}
+
 		}
 		t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		t.Render()

@@ -6,10 +6,9 @@ import (
 )
 
 var jobEngine string
-var jobCids []string
+var jobInputVolumes []string
+var jobOutputVolumes []string
 var jobEnv []string
-var jobEntrypoint []string
-var jobImage string
 var jobConcurrency int
 var skipSyntaxChecking bool
 
@@ -18,9 +17,13 @@ func init() {
 		&jobEngine, "engine", "docker",
 		`What executor engine to use to run the job`,
 	)
-	runCmd.PersistentFlags().StringSliceVar(
-		&jobCids, "cids", []string{},
-		`The cids of the data used by the job (comma separated, or specify multiple times)`,
+	runCmd.PersistentFlags().StringSliceVarP(
+		&jobInputVolumes, "input-volumes", "v", []string{},
+		`cid:path of the input data volumes`,
+	)
+	runCmd.PersistentFlags().StringSliceVarP(
+		&jobOutputVolumes, "output-volumes", "o", []string{},
+		`name:path of the output data volumes`,
 	)
 	runCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
@@ -29,14 +32,6 @@ func init() {
 	runCmd.PersistentFlags().IntVar(
 		&jobConcurrency, "concurrency", 1,
 		`How many nodes should run the job`,
-	)
-	runCmd.PersistentFlags().StringVar(
-		&jobImage, "image", "ubuntu:latest",
-		`What image do we use for the job`,
-	)
-	runCmd.PersistentFlags().StringSliceVar(
-		&jobEntrypoint, "entrypoint", []string{},
-		`The entrypoint to use for the container`,
 	)
 	runCmd.PersistentFlags().BoolVar(
 		&skipSyntaxChecking, "skip-syntax-checking", false,
@@ -47,10 +42,16 @@ func init() {
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a job on the network",
+	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+
+		jobImage := cmdArgs[0]
+		jobEntrypoint := cmdArgs[1:]
+
 		_, err := job.RunJob(
 			jobEngine,
-			jobCids,
+			jobInputVolumes,
+			jobOutputVolumes,
 			jobEnv,
 			jobEntrypoint,
 			jobImage,

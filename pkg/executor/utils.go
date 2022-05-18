@@ -25,6 +25,9 @@ func NewDockerIPFSExecutors(
 	dockerExecutor, err := docker.NewDockerExecutor(cancelContext, dockerId, map[string]storage.StorageProvider{
 		storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 		storage.IPFS_API_COPY:    ipfsApiCopyStorage,
+		// we make the copy driver the "default" storage driver for docker
+		// users have to specify the fuse driver explicitly
+		storage.IPFS_DEFAULT: ipfsApiCopyStorage,
 	})
 	if err != nil {
 		return executors, err
