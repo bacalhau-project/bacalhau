@@ -75,17 +75,17 @@ func NewComputeNode(
 
 			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
-			outputs, err := computeNode.RunJob(job)
+			resultId, err := computeNode.RunJob(job)
 
 			if err != nil {
 				log.Error().Msgf("ERROR running the job: %s %+v", err, job)
 				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
 			} else {
-				log.Info().Msgf("Completed the job - results: %+v %+v", job, outputs)
+				log.Info().Msgf("Completed the job - results: %+v %+v", job, resultId)
 				_ = transport.SubmitResult(
 					job.Id,
-					fmt.Sprintf("Got job results: %+v", outputs),
-					outputs,
+					fmt.Sprintf("Got job result: %s", resultId),
+					resultId,
 				)
 			}
 		}
