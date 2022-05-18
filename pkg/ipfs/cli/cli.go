@@ -51,7 +51,7 @@ func (cli *IPFSCli) Run(args []string) (string, error) {
 		env = append(env, "IPFS_PATH="+cli.Repo)
 	}
 
-	log.Trace().Msgf("ipfs command -->   IPFS_PATH=%s ipfs %s\n", cli.Repo, strings.Join(args, " "))
+	log.Trace().Msgf("ipfs command -->   IPFS_PATH=%s %s %s\n", cli.Repo, ipfsBinaryFullPath, strings.Join(args, " "))
 
 	return system.RunCommandGetResultsEnv(ipfsBinaryFullPath, args, env)
 }

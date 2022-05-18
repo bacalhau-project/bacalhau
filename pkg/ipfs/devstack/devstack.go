@@ -52,7 +52,6 @@ func NewDevServer(
 		return nil, fmt.Errorf("Could not create random port for swarm: %s", err.Error())
 	}
 	cli := ipfs_cli.NewIPFSCli(repoDir)
-
 	_, err = cli.Run([]string{
 		"init",
 		"--profile",
