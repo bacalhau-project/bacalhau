@@ -186,29 +186,33 @@ func (stack *DevStack) PrintNodeInfo() {
 -------------------------------
 ipfs
 -------------------------------
+
+command="add -q testdata/grep_file.txt"
 	`
 	for _, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
-IPFS_PATH=%s ipfs id`, node.IpfsNode.Repo)
+cid=$(IPFS_PATH=%s ipfs $command)`, node.IpfsNode.Repo)
 
 	}
 
-	logString += `
+	logString += fmt.Sprintf(`
 
 -------------------------------
 jsonrpc
 -------------------------------
-	`
+
+go run . --jsonrpc-port=%d list
+go run . --jsonrpc-port=%d run -v $cid:/file.txt -c 3 ubuntu cat /file.txt
+`, stack.Nodes[0].JSONRpcNode.Port, stack.Nodes[0].JSONRpcNode.Port)
 
 	for _, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
-go run . --jsonrpc-port=%d list`, node.JSONRpcNode.Port)
-
+export PORT=%d`, node.JSONRpcNode.Port)
 	}
 
-	log.Info().Msg(logString + "\n")
+	log.Info().Msg(logString)
 }
 
 func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {

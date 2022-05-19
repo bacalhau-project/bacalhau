@@ -29,8 +29,8 @@ func init() {
 		&jobEnv, "env", "e", []string{},
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
-	runCmd.PersistentFlags().IntVar(
-		&jobConcurrency, "concurrency", 1,
+	runCmd.PersistentFlags().IntVarP(
+		&jobConcurrency, "concurrency", "c", 1,
 		`How many nodes should run the job`,
 	)
 	runCmd.PersistentFlags().BoolVar(

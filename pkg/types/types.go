@@ -62,9 +62,6 @@ type JobSpec struct {
 	Vm   JobSpecVm
 	Wasm JobSpecWasm
 
-	// for WASM based executors
-	Bytecode StorageSpec
-
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []StorageSpec

@@ -45,19 +45,16 @@ var listCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"id", "job", "inputs", "concurrency", "node", "state", "status", "result"})
+		t.AppendHeader(table.Row{"id", "job", "inputs", "outputs", "concurrency", "node", "state", "result"})
 		t.SetColumnConfigs([]table.ColumnConfig{
 			{Number: 1, AutoMerge: true},
 			{Number: 2, AutoMerge: true},
 			{Number: 3, AutoMerge: true},
 			{Number: 4, AutoMerge: true},
+			{Number: 5, AutoMerge: true},
 		})
 
 		for _, jobData := range result.Jobs {
-			inputCids := []string{}
-			for _, input := range jobData.Spec.Inputs {
-				inputCids = append(inputCids, shortenString(input.Cid))
-			}
 
 			jobDesc := []string{
 				jobData.Spec.Engine,
@@ -65,19 +62,19 @@ var listCmd = &cobra.Command{
 
 			if jobData.Spec.Engine == executor.EXECUTOR_DOCKER {
 				jobDesc = append(jobDesc, jobData.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(jobData.Spec.Vm.Entrypoint, ""))
+				jobDesc = append(jobDesc, strings.Join(jobData.Spec.Vm.Entrypoint, " "))
 			}
 
 			if len(jobData.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
 						shortId(jobData.Id),
-						strings.Join(jobDesc, "\n"),
-						strings.Join(inputCids, "\n"),
+						shortenString(strings.Join(jobDesc, " ")),
+						len(jobData.Spec.Inputs),
+						len(jobData.Spec.Outputs),
 						jobData.Deal.Concurrency,
 						"",
 						"waiting",
-						"",
 						"",
 					},
 				})
@@ -86,12 +83,12 @@ var listCmd = &cobra.Command{
 					t.AppendRows([]table.Row{
 						{
 							shortId(jobData.Id),
-							strings.Join(jobDesc, "\n"),
-							strings.Join(inputCids, "\n"),
+							shortenString(strings.Join(jobDesc, " ")),
+							len(jobData.Spec.Inputs),
+							len(jobData.Spec.Outputs),
 							jobData.Deal.Concurrency,
 							shortenString(node),
 							shortenString(jobState.State),
-							shortenString(jobState.Status),
 							shortenString(jobState.ResultsId),
 						},
 					})
