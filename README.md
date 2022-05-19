@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/images/bacalhau-fish.jpeg" alt="Bacalhau Logo" width="300" />
+<img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
 </p>
 <p align=center>Compute Over Data == CoD<br>
 Bacalhau == "Salted CoD Fish" (Portuguese)</p>
