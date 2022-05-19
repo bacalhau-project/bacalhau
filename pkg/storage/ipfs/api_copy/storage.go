@@ -2,9 +2,7 @@ package api_copy
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -91,32 +89,7 @@ func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, vol
 }
 
 func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
-	res, err := dockerIpfs.IPFSClient.Api.
-		Request("get", storageSpec.Cid).
-		Send(dockerIpfs.cancelContext.Ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Close()
-	tarfilePath := fmt.Sprintf("%s/%s.tar", dockerIpfs.LocalDir, storageSpec.Cid)
-	log.Debug().Msgf("Writing cid: %s tar file to %s", storageSpec.Cid, tarfilePath)
-	outFile, err := os.Create(tarfilePath)
-	if err != nil {
-		return nil, err
-	}
-	defer outFile.Close()
-	_, err = io.Copy(outFile, res.Output)
-	if err != nil {
-		return nil, err
-	}
-	err = system.RunCommand("tar", []string{
-		"-vxf", tarfilePath, "-C", dockerIpfs.LocalDir,
-	})
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Msgf("Extracted tar file: %s", tarfilePath)
-	err = os.Remove(tarfilePath)
+	err := dockerIpfs.IPFSClient.DownloadTar(dockerIpfs.LocalDir, storageSpec.Cid)
 	if err != nil {
 		return nil, err
 	}

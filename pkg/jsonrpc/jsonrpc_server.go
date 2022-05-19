@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/rpc"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -75,6 +76,10 @@ func (server *JSONRpcServer) List(args *types.ListArgs, reply *types.ListRespons
 }
 
 func (server *JSONRpcServer) Submit(args *types.SubmitArgs, reply *types.Job) error {
+	err := job.VerifyJob(args.Spec, args.Deal)
+	if err != nil {
+		return err
+	}
 	//nolint
 	job, err := server.RequesterNode.Transport.SubmitJob(args.Spec, args.Deal)
 	if err != nil {

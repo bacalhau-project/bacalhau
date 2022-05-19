@@ -1,11 +1,16 @@
 package bacalhau
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 
 var jobEngine string
+var jobVerifier string
 var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
@@ -16,6 +21,10 @@ func init() {
 	runCmd.PersistentFlags().StringVar(
 		&jobEngine, "engine", "docker",
 		`What executor engine to use to run the job`,
+	)
+	runCmd.PersistentFlags().StringVar(
+		&jobEngine, "verifier", "ipfs",
+		`What verification engine to use to run the job`,
 	)
 	runCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
@@ -48,18 +57,34 @@ var runCmd = &cobra.Command{
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
 
-		_, err := job.RunJob(
+		spec, deal, err := job.ConstructJob(
 			jobEngine,
+			jobVerifier,
 			jobInputVolumes,
 			jobOutputVolumes,
 			jobEnv,
 			jobEntrypoint,
 			jobImage,
 			jobConcurrency,
-			jsonrpcHost,
-			jsonrpcPort,
-			skipSyntaxChecking,
 		)
-		return err
+
+		if err != nil {
+			return err
+		}
+
+		if !skipSyntaxChecking {
+			err := system.CheckBashSyntax(jobEntrypoint)
+			if err != nil {
+				return err
+			}
+		}
+
+		job, err := jsonrpc.SubmitJob(spec, deal, jsonrpcHost, jsonrpcPort)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", job.Id)
+		return nil
 	},
 }

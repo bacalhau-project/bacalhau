@@ -11,12 +11,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -100,7 +100,12 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := compute_node.NewComputeNode(transport, executors)
+		verifiers, err := verifier.NewIPFSVerifiers(cancelContext, ipfsNode.ApiAddress())
+		if err != nil {
+			return nil, err
+		}
+
+		computeNode, err := compute_node.NewComputeNode(transport, executors, verifiers)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +270,7 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 }
 
 func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
-	result, err := jobutils.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	result, err := jsonrpc.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
 	if err != nil {
 		return []string{}, err
 	}

@@ -62,21 +62,7 @@ func NewRequesterNode(
 					threadLogger.Error().Err(err)
 				}
 			}
-
-		// a compute node has submitted some results
-		// let's consult our confidence and tolerance settings
-		// to see if we can "accept" these results
-		// or if we need to wait for some more results to arrive
-		case system.JOB_EVENT_RESULTS:
-			err := requesterNode.ProcessResults(job, jobEvent.NodeId)
-
-			if err != nil {
-				// TODO: Check result of Error Job for Node
-				err = transport.ErrorJobForNode(jobEvent.JobId, jobEvent.NodeId, err.Error())
-				threadLogger.Error().Err(err)
-			}
 		}
-
 	})
 
 	return requesterNode, nil
@@ -111,51 +97,4 @@ func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, str
 	}
 
 	return true, "", nil
-}
-
-// a compute node has submitted some results
-// let's check if we have >= concurrency results in the set
-// if we do - then let's see which results can be grouped as the "same"
-// if we have a majority in that case - let's mark those results as "accepted"
-// (and reject the rest)
-func (node *RequesterNode) ProcessResults(job *types.Job, nodeId string) error {
-
-	// // before we do anything - let's fetch the results for the given job
-	// resultsList, err := system.ProcessJobIntoResults(job)
-
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("Error processing job into results.")
-	// 	return err
-	// }
-
-	// for _, result := range *resultsList {
-	// 	log.Debug().Msgf("Currently fetching result for %+v", result)
-	// 	err = system.FetchJobResult(result)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Msgf("Error fetching job results. Job Node: %s", result.Node)
-	// 	}
-	// }
-
-	// // ok the results for this job should now be local
-	// // let's loop over the "AssignedNodes" and see if we have results for all of them
-	// // if yes - then we run the analysis on the results
-	// completedNodes := 0
-
-	// for _, assignedNode := range job.Deal.AssignedNodes {
-	// 	log.Debug().Msgf("Node %s: %s", assignedNode, job.State[assignedNode].State)
-	// 	if job.State[assignedNode].State == system.JOB_STATE_COMPLETE {
-	// 		completedNodes = completedNodes + 1
-	// 	}
-	// }
-
-	// if completedNodes < job.Deal.Concurrency {
-	// 	log.Debug().Msgf("Not enough nodes have completed task. Actual: %d  Needed: %d", completedNodes, job.Deal.Concurrency)
-	// 	return nil
-	// }
-
-	// ok all of the nodes that have been assigned have marked the status as complete
-	// let's work out who is "correct" and who is "incorrect"
-	// TODO: implement the client side checking here to trigger "results-accepted" and "results-rejected" messages
-
-	return nil
 }

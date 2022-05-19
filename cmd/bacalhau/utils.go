@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"strings"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
@@ -39,23 +38,7 @@ func shortId(id string) string {
 }
 
 func getJobData(jobId string) (*types.Job, error) {
-	return jobutils.GetJobData(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
-}
-
-func getJobResults(jobId string) (*[]types.ResultsList, error) {
-	return jobutils.GetJobResults(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
-}
-
-func fetchJobResults(jobId string) error {
-	return jobutils.FetchJobResults(
+	return jsonrpc.GetJobData(
 		jsonrpcHost,
 		jsonrpcPort,
 		jobId,

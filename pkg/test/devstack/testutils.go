@@ -6,12 +6,13 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	dockertests "github.com/filecoin-project/bacalhau/pkg/test/docker"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/rs/zerolog/log"
@@ -85,18 +86,23 @@ func DevStackDockerStorageTest(
 	outputs := []types.StorageSpec{}
 
 	jobSpec := &types.JobSpec{
-		Engine:  executor.EXECUTOR_DOCKER,
-		Vm:      getJobSpec(dockertests.OutputModeStdout),
-		Inputs:  inputStorageList,
-		Outputs: outputs,
+		Engine:   string(executor.EXECUTOR_DOCKER),
+		Verifier: string(verifier.VERIFIER_NOOP),
+		Vm:       getJobSpec(dockertests.OutputModeStdout),
+		Inputs:   inputStorageList,
+		Outputs:  outputs,
 	}
 
 	jobDeal := &types.JobDeal{
 		Concurrency: nodeCount,
 	}
 
-	job, err := jobutils.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
+	job, err := jsonrpc.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
 	assert.NoError(t, err)
+
+	if err != nil {
+		t.FailNow()
+	}
 
 	err = stack.WaitForJob(job.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,

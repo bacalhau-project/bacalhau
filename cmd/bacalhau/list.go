@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +28,7 @@ var listCmd = &cobra.Command{
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 
-		result, err := job.ListJobs(jsonrpcHost, jsonrpcPort)
+		result, err := jsonrpc.ListJobs(jsonrpcHost, jsonrpcPort)
 
 		if err != nil {
 			return err
@@ -60,7 +60,7 @@ var listCmd = &cobra.Command{
 				jobData.Spec.Engine,
 			}
 
-			if jobData.Spec.Engine == executor.EXECUTOR_DOCKER {
+			if jobData.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
 				jobDesc = append(jobDesc, jobData.Spec.Vm.Image)
 				jobDesc = append(jobDesc, strings.Join(jobData.Spec.Vm.Entrypoint, " "))
 			}

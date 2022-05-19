@@ -74,7 +74,7 @@ func NewIpfsFuseDocker(
 		}
 	})
 
-	log.Debug().Msgf("Docker IPFS sidecar Created")
+	log.Debug().Msgf("Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
 
 	return storageHandler, nil
 }

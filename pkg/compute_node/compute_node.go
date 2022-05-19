@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -15,11 +16,13 @@ type ComputeNode struct {
 	Mutex     sync.Mutex
 	Transport transport.Transport
 	Executors map[string]executor.Executor
+	Verifiers map[string]verifier.Verifier
 }
 
 func NewComputeNode(
 	transport transport.Transport,
 	executors map[string]executor.Executor,
+	verifiers map[string]verifier.Verifier,
 ) (*ComputeNode, error) {
 
 	nodeId, err := transport.HostId()
@@ -30,6 +33,7 @@ func NewComputeNode(
 
 	computeNode := &ComputeNode{
 		Transport: transport,
+		Verifiers: verifiers,
 		Executors: executors,
 	}
 
@@ -75,18 +79,40 @@ func NewComputeNode(
 
 			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
-			resultId, err := computeNode.RunJob(job)
+			resultFolder, err := computeNode.RunJob(job)
 
 			if err != nil {
-				log.Error().Msgf("ERROR running the job: %s %+v", err, job)
+				log.Error().Msgf("Error running the job: %s %+v", err, job)
 				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
-			} else {
-				log.Info().Msgf("Completed the job - results: %+v %+v", job, resultId)
-				_ = transport.SubmitResult(
-					job.Id,
-					fmt.Sprintf("Got job result: %s", resultId),
-					resultId,
-				)
+				return
+			}
+
+			verifier, err := computeNode.getVerifier(job.Spec.Verifier)
+
+			if err != nil {
+				log.Error().Msgf("Error geting the verifier for the job: %s %+v", err, job)
+				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
+				return
+			}
+
+			resultValue, err := verifier.ProcessResultsFolder(job, resultFolder)
+
+			if err != nil {
+				log.Error().Msgf("Error verifying results: %s %+v", err, job)
+				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error verifying results: %s", err))
+				return
+			}
+
+			err = transport.SubmitResult(
+				job.Id,
+				fmt.Sprintf("Got job result: %s", resultValue),
+				resultValue,
+			)
+
+			if err != nil {
+				log.Error().Msgf("Error submitting result: %s %+v", err, job)
+				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+				return
 			}
 		}
 	})
@@ -104,6 +130,12 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 
 	// check that we have the executor and it's installed
 	executor, err := node.getExecutor(job.Engine)
+	if err != nil {
+		return false, err
+	}
+
+	// check that we have the verifier and it's installed
+	_, err = node.getVerifier(job.Verifier)
 	if err != nil {
 		return false, err
 	}
@@ -147,20 +179,38 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	return executor.RunJob(job)
 }
 
-func (node *ComputeNode) getExecutor(engine string) (executor.Executor, error) {
+func (node *ComputeNode) getExecutor(name string) (executor.Executor, error) {
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
-	if _, ok := node.Executors[engine]; !ok {
-		return nil, fmt.Errorf("No matching executor found on this server: %s.", engine)
+	if _, ok := node.Executors[name]; !ok {
+		return nil, fmt.Errorf("No matching executor found on this server: %s.", name)
 	}
-	executorEngine := node.Executors[engine]
+	executorEngine := node.Executors[name]
 	installed, err := executorEngine.IsInstalled()
 	if err != nil {
 		return nil, err
 	}
 	if !installed {
-		return nil, fmt.Errorf("Executor is not installed: %s.", engine)
+		return nil, fmt.Errorf("Executor is not installed: %s.", name)
 	}
 	return executorEngine, nil
+}
+
+func (node *ComputeNode) getVerifier(name string) (verifier.Verifier, error) {
+	node.Mutex.Lock()
+	defer node.Mutex.Unlock()
+
+	if _, ok := node.Verifiers[name]; !ok {
+		return nil, fmt.Errorf("No matching verifier found on this server: %s.", name)
+	}
+	verifier := node.Verifiers[name]
+	installed, err := verifier.IsInstalled()
+	if err != nil {
+		return nil, err
+	}
+	if !installed {
+		return nil, fmt.Errorf("Verifier is not installed: %s.", name)
+	}
+	return verifier, nil
 }

@@ -7,21 +7,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var jsonrpcPort int
 var jsonrpcHost string
+var jsonrpcPort int
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
 	RootCmd.AddCommand(runCmd)
 	RootCmd.AddCommand(listCmd)
-	RootCmd.AddCommand(resultsCmd)
 	RootCmd.AddCommand(devstackCmd)
-	RootCmd.PersistentFlags().IntVar(
-		&jsonrpcPort, "jsonrpc-port", 1234,
-		`The port for the client and server to communicate on (via jsonrpc).`,
-	)
 	RootCmd.PersistentFlags().StringVar(
 		&jsonrpcHost, "jsonrpc-host", "0.0.0.0",
+		`The port for the client and server to communicate on (via jsonrpc).`,
+	)
+	RootCmd.PersistentFlags().IntVar(
+		&jsonrpcPort, "jsonrpc-port", 1234,
 		`The port for the client and server to communicate on (via jsonrpc).`,
 	)
 }

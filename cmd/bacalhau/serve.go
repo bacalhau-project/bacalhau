@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = compute_node.NewComputeNode(transport, executors)
+		verifiers, err := verifier.NewIPFSVerifiers(cancelContext, ipfsConnect)
+		if err != nil {
+			return err
+		}
+
+		_, err = compute_node.NewComputeNode(transport, executors, verifiers)
 		if err != nil {
 			return err
 		}

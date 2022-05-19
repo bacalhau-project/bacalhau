@@ -233,7 +233,7 @@ func DockerExecutorStorageTest(
 			Id:    "test-job",
 			Owner: "test-owner",
 			Spec: &types.JobSpec{
-				Engine:  executor.EXECUTOR_DOCKER,
+				Engine:  string(executor.EXECUTOR_DOCKER),
 				Vm:      getJobSpec(outputMode),
 				Inputs:  inputStorageList,
 				Outputs: outputs,

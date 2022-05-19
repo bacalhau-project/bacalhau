@@ -32,6 +32,6 @@ func NewDockerIPFSExecutors(
 	if err != nil {
 		return executors, err
 	}
-	executors[EXECUTOR_DOCKER] = dockerExecutor
+	executors[string(EXECUTOR_DOCKER)] = dockerExecutor
 	return executors, nil
 }
