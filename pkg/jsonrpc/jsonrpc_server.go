@@ -50,11 +50,11 @@ func StartBacalhauJsonRpcServer(server *JSONRpcServer) error {
 
 	isClosing := false
 	go func() {
+		log.Debug().Msg("Json rpc server is starting")
 		err = httpServer.ListenAndServe()
 		if err != nil && !isClosing {
 			log.Fatal().Msgf("http.ListenAndServe failed: %s", err)
 		}
-		log.Debug().Msg("Json rpc server has started")
 	}()
 
 	server.cancelContext.AddShutdownHandler(func() {

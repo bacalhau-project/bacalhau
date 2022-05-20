@@ -32,11 +32,15 @@ func SetupTest(
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
 		return executor.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
+	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
+		return verifier.NewIPFSVerifiers(cancelContext, ipfsMultiAddress)
+	}
 	stack, err := devstack.NewDevStack(
 		cancelContext,
 		nodes,
 		badActors,
 		getExecutors,
+		getVerifiers,
 	)
 	assert.NoError(t, err)
 	if err != nil {
@@ -84,7 +88,7 @@ func devStackDockerStorageTest(
 
 	jobSpec := &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
-		Verifier: string(verifier.VERIFIER_NOOP),
+		Verifier: string(verifier.VERIFIER_IPFS),
 		Vm:       testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  outputs,

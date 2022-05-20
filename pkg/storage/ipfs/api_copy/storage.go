@@ -40,7 +40,7 @@ func NewIpfsApiCopy(
 		LocalDir:      dir,
 	}
 
-	log.Debug().Msgf("IPFS API Copy driver created")
+	log.Debug().Msgf("IPFS API Copy driver created with address: %s", ipfsMultiAddress)
 
 	return storageHandler, nil
 }

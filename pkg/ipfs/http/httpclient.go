@@ -134,7 +134,7 @@ func (ipfsHttp *IPFSHttpClient) GetUrl() (string, error) {
 	return url, nil
 }
 
-func (ipfsHttp *IPFSHttpClient) DownloadTar(cid, targetDir string) error {
+func (ipfsHttp *IPFSHttpClient) DownloadTar(targetDir, cid string) error {
 	res, err := ipfsHttp.Api.
 		Request("get", cid).
 		Send(ipfsHttp.ctx)
@@ -153,7 +153,7 @@ func (ipfsHttp *IPFSHttpClient) DownloadTar(cid, targetDir string) error {
 	if err != nil {
 		return err
 	}
-	err = system.RunCommand("tar", []string{
+	_, err = system.RunCommandGetResults("tar", []string{
 		"-vxf", tarfilePath, "-C", targetDir,
 	})
 	if err != nil {

@@ -1,4 +1,4 @@
-package ipfs
+package verifier
 
 import (
 	"fmt"
@@ -6,9 +6,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func SetupTest(

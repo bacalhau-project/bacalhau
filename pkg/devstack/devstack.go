@@ -40,6 +40,7 @@ func NewDevStack(
 	cancelContext *system.CancelContext,
 	count, badActors int,
 	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
+	getVerifiers func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error),
 ) (*DevStack, error) {
 
 	nodes := []*DevStackNode{}
@@ -100,7 +101,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		verifiers, err := verifier.NewIPFSVerifiers(cancelContext, ipfsNode.ApiAddress())
+		verifiers, err := getVerifiers(ipfsNode.ApiAddress(), i)
 		if err != nil {
 			return nil, err
 		}

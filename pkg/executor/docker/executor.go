@@ -112,7 +112,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		}
 
 		if volumeMount.Type == storage.STORAGE_VOLUME_TYPE_BIND {
-			log.Debug().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
+			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
 			mounts = append(mounts, mount.Mount{
 				Type: "bind",
 
@@ -146,7 +146,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 			return "", err
 		}
 
-		log.Debug().Msgf("Output Volume: %+v", output)
+		log.Trace().Msgf("Output Volume: %+v", output)
 
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
@@ -189,7 +189,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		Labels:     dockerExecutor.jobContainerLabels(job),
 	}
 
-	log.Trace().Msgf("Container: %+v", containerConfig)
+	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
 		dockerExecutor.cancelContext.Ctx,

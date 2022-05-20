@@ -37,7 +37,8 @@ func NewIPFSVerifier(
 }
 
 func (verifier *IPFSVerifier) IsInstalled() (bool, error) {
-	return true, nil
+	_, err := verifier.IPFSClient.GetPeerId()
+	return err == nil, err
 }
 
 func (verifier *IPFSVerifier) ProcessResultsFolder(job *types.Job, resultsFolder string) (string, error) {

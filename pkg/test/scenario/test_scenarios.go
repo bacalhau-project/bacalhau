@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"fmt"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -10,7 +9,9 @@ import (
 
 const HELLO_WORLD = "hello world"
 const SIMPLE_MOUNT_PATH = "/data/file.txt"
+const SIMPLE_OUTPUT_PATH = "/output_data/output_file.txt"
 const STDOUT = "stdout"
+const CAT_PROGRAM = "cat " + SIMPLE_MOUNT_PATH + " > " + SIMPLE_OUTPUT_PATH
 
 func CatFileToStdout(t *testing.T) TestCase {
 	return TestCase{
@@ -44,13 +45,13 @@ func CatFileToVolume(t *testing.T) TestCase {
 		Name: "cat_file_to_volume",
 		SetupStorage: singleFileSetupStorageWithData(
 			t,
-			HELLO_WORLD,
+			CAT_PROGRAM,
 			SIMPLE_MOUNT_PATH,
 		),
 		ResultsChecker: singleFileResultsCheckerContains(
 			t,
 			"test/output_file.txt",
-			HELLO_WORLD,
+			CAT_PROGRAM,
 			ExpectedModeEquals,
 			1,
 		),
@@ -64,8 +65,8 @@ func CatFileToVolume(t *testing.T) TestCase {
 			return types.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
-					"bash", "-c",
-					fmt.Sprintf("'cat %s > /output_data/output_file.txt'", SIMPLE_MOUNT_PATH),
+					"bash",
+					SIMPLE_MOUNT_PATH,
 				},
 			}
 		},

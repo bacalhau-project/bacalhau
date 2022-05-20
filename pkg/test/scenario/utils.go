@@ -69,6 +69,14 @@ var STORAGE_DRIVER_FACTORIES = []StorageDriverFactory{
 	ApiCopyStorageDriverFactory,
 }
 
+var STORAGE_DRIVER_FACTORIES_FUSE = []StorageDriverFactory{
+	FuseStorageDriverFactory,
+}
+
+var STORAGE_DRIVER_FACTORIES_API_COPY = []StorageDriverFactory{
+	ApiCopyStorageDriverFactory,
+}
+
 /*
 
 	Setup storage
@@ -139,7 +147,7 @@ func singleFileResultsCheckerContains(
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
 		assert.NoError(t, err)
 
-		log.Debug().Msgf("resultsContent: %s", resultsContent)
+		log.Trace().Msgf("resultsContent: %s", resultsContent)
 
 		actual_line_count := len(strings.Split(string(resultsContent), "\n"))
 		assert.Equal(t, expectedLines, actual_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actual_line_count))
