@@ -10,7 +10,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	dockertests "github.com/filecoin-project/bacalhau/pkg/test/docker"
+	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
@@ -59,12 +59,9 @@ func TeardownTest(stack *devstack.DevStack, cancelContext *system.CancelContext)
 
 // re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
-func DevStackDockerStorageTest(
+func devStackDockerStorageTest(
 	t *testing.T,
-	name string,
-	setupStorage dockertests.ISetupStorage,
-	checkResults dockertests.ICheckResults,
-	getJobSpec dockertests.IGetJobSpec,
+	testCase scenario.TestCase,
 	nodeCount int,
 ) {
 
@@ -79,7 +76,7 @@ func DevStackDockerStorageTest(
 	rpcHost := "127.0.0.1"
 	rpcPort := stack.Nodes[0].JSONRpcNode.Port
 
-	inputStorageList, err := setupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
 	// this is stdout mode
@@ -88,7 +85,7 @@ func DevStackDockerStorageTest(
 	jobSpec := &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
 		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm:       getJobSpec(dockertests.OutputModeStdout),
+		Vm:       testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  outputs,
 	}

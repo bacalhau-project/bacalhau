@@ -1,0 +1,169 @@
+package scenario
+
+import (
+	"fmt"
+	"testing"
+
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/types"
+)
+
+const HELLO_WORLD = "hello world"
+const SIMPLE_MOUNT_PATH = "/data/file.txt"
+const STDOUT = "stdout"
+
+func CatFileToStdout(t *testing.T) TestCase {
+	return TestCase{
+		Name: "cat_file_to_stdout",
+		SetupStorage: singleFileSetupStorageWithData(
+			t,
+			HELLO_WORLD,
+			SIMPLE_MOUNT_PATH,
+		),
+		ResultsChecker: singleFileResultsCheckerContains(
+			t,
+			STDOUT,
+			HELLO_WORLD,
+			ExpectedModeEquals,
+			1,
+		),
+		GetJobSpec: func() types.JobSpecVm {
+			return types.JobSpecVm{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"cat",
+					SIMPLE_MOUNT_PATH,
+				},
+			}
+		},
+	}
+}
+
+func CatFileToVolume(t *testing.T) TestCase {
+	return TestCase{
+		Name: "cat_file_to_volume",
+		SetupStorage: singleFileSetupStorageWithData(
+			t,
+			HELLO_WORLD,
+			SIMPLE_MOUNT_PATH,
+		),
+		ResultsChecker: singleFileResultsCheckerContains(
+			t,
+			"test/output_file.txt",
+			HELLO_WORLD,
+			ExpectedModeEquals,
+			1,
+		),
+		Outputs: []types.StorageSpec{
+			{
+				Name: "test",
+				Path: "/output_data",
+			},
+		},
+		GetJobSpec: func() types.JobSpecVm {
+			return types.JobSpecVm{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"bash", "-c",
+					fmt.Sprintf("'cat %s > /output_data/output_file.txt'", SIMPLE_MOUNT_PATH),
+				},
+			}
+		},
+	}
+}
+
+func GrepFile(t *testing.T) TestCase {
+	return TestCase{
+		Name: "grep_file",
+		SetupStorage: singleFileSetupStorageWithFile(
+			t,
+			"../../../testdata/grep_file.txt",
+			SIMPLE_MOUNT_PATH,
+		),
+		ResultsChecker: singleFileResultsCheckerContains(
+			t,
+			STDOUT,
+			"kiwi is delicious",
+			ExpectedModeContains,
+			2,
+		),
+		GetJobSpec: func() types.JobSpecVm {
+			return types.JobSpecVm{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"grep",
+					"kiwi",
+					SIMPLE_MOUNT_PATH,
+				},
+			}
+		},
+	}
+}
+
+func SedFile(t *testing.T) TestCase {
+	return TestCase{
+		Name: "sed_file",
+		SetupStorage: singleFileSetupStorageWithFile(
+			t,
+			"../../../testdata/sed_file.txt",
+			SIMPLE_MOUNT_PATH,
+		),
+		ResultsChecker: singleFileResultsCheckerContains(
+			t,
+			STDOUT,
+			"LISBON",
+			ExpectedModeContains,
+			5,
+		),
+		GetJobSpec: func() types.JobSpecVm {
+			return types.JobSpecVm{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"sed",
+					"-n",
+					"/38.7[2-4]..,-9.1[3-7]../p",
+					SIMPLE_MOUNT_PATH,
+				},
+			}
+		},
+	}
+}
+
+func AwkFile(t *testing.T) TestCase {
+	return TestCase{
+		Name: "awk_file",
+		SetupStorage: singleFileSetupStorageWithFile(
+			t,
+			"../../../testdata/awk_file.txt",
+			SIMPLE_MOUNT_PATH,
+		),
+		ResultsChecker: singleFileResultsCheckerContains(
+			t,
+			STDOUT,
+			"LISBON",
+			ExpectedModeContains,
+			501,
+		),
+		GetJobSpec: func() types.JobSpecVm {
+			return types.JobSpecVm{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"awk",
+					"-F,",
+					"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
+					SIMPLE_MOUNT_PATH,
+				},
+			}
+		},
+	}
+}
+
+func GetAllScenarios(t *testing.T) []TestCase {
+	return []TestCase{
+		CatFileToStdout(t),
+		CatFileToVolume(t),
+		GrepFile(t),
+		SedFile(t),
+		AwkFile(t),
+	}
+}

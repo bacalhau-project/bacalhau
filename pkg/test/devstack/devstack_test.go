@@ -1,4 +1,4 @@
-package docker
+package devstack
 
 import (
 	"testing"
@@ -8,41 +8,41 @@ import (
 )
 
 func TestCatFileStdout(t *testing.T) {
-	dockerExecutorStorageTest(
+	devStackDockerStorageTest(
 		t,
 		scenario.CatFileToStdout(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		3,
 	)
 }
 
 func TestCatFileOutputVolume(t *testing.T) {
-	dockerExecutorStorageTest(
+	devStackDockerStorageTest(
 		t,
 		scenario.CatFileToVolume(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		3,
 	)
 }
 
 func TestGrepFile(t *testing.T) {
-	dockerExecutorStorageTest(
+	devStackDockerStorageTest(
 		t,
 		scenario.GrepFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		3,
 	)
 }
 
 func TestSedFile(t *testing.T) {
-	dockerExecutorStorageTest(
+	devStackDockerStorageTest(
 		t,
 		scenario.SedFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		3,
 	)
 }
 
 func TestAwkFile(t *testing.T) {
-	dockerExecutorStorageTest(
+	devStackDockerStorageTest(
 		t,
 		scenario.AwkFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		3,
 	)
 }
