@@ -34,14 +34,6 @@ func shortId(id string) string {
 	return id[:8]
 }
 
-func getJobData(jobId string) (*types.Job, error) {
-	return jsonrpc.GetJobData(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
-}
-
 func getJobResult(job *types.Job, state *types.JobState) string {
 	return "/" + job.Spec.Verifier + "/" + state.ResultsId
 }
