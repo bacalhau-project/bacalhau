@@ -11,38 +11,38 @@ func TestCatFileStdout(t *testing.T) {
 	devStackDockerStorageTest(
 		t,
 		scenario.CatFileToStdout(t),
+		3,
+	)
+}
+
+func TestCatFileOutputVolume(t *testing.T) {
+	devStackDockerStorageTest(
+		t,
+		scenario.CatFileToVolume(t),
 		1,
 	)
 }
 
-// func TestCatFileOutputVolume(t *testing.T) {
-// 	devStackDockerStorageTest(
-// 		t,
-// 		scenario.CatFileToVolume(t),
-// 		3,
-// 	)
-// }
+func TestGrepFile(t *testing.T) {
+	devStackDockerStorageTest(
+		t,
+		scenario.GrepFile(t),
+		3,
+	)
+}
 
-// func TestGrepFile(t *testing.T) {
-// 	devStackDockerStorageTest(
-// 		t,
-// 		scenario.GrepFile(t),
-// 		3,
-// 	)
-// }
+func TestSedFile(t *testing.T) {
+	devStackDockerStorageTest(
+		t,
+		scenario.SedFile(t),
+		3,
+	)
+}
 
-// func TestSedFile(t *testing.T) {
-// 	devStackDockerStorageTest(
-// 		t,
-// 		scenario.SedFile(t),
-// 		3,
-// 	)
-// }
-
-// func TestAwkFile(t *testing.T) {
-// 	devStackDockerStorageTest(
-// 		t,
-// 		scenario.AwkFile(t),
-// 		3,
-// 	)
-// }
+func TestAwkFile(t *testing.T) {
+	devStackDockerStorageTest(
+		t,
+		scenario.AwkFile(t),
+		3,
+	)
+}

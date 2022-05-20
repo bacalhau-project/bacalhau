@@ -2,11 +2,12 @@ package devstack
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -84,15 +85,12 @@ func devStackDockerStorageTest(
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
-	// this is stdout mode
-	outputs := []types.StorageSpec{}
-
 	jobSpec := &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
 		Verifier: string(verifier.VERIFIER_IPFS),
 		Vm:       testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
-		Outputs:  outputs,
+		Outputs:  testCase.Outputs,
 	}
 
 	jobDeal := &types.JobDeal{
@@ -106,6 +104,7 @@ func devStackDockerStorageTest(
 		t.FailNow()
 	}
 
+	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(submittedJob.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,
 	}, []string{
@@ -117,5 +116,13 @@ func devStackDockerStorageTest(
 	loadedJob, err := jsonrpc.GetJobData(rpcHost, rpcPort, submittedJob.Id)
 	assert.NoError(t, err)
 
-	spew.Dump(loadedJob)
+	// now we check the actual results produced by the ipfs verifier
+	for nodeId, state := range loadedJob.State {
+		node, err := stack.GetNode(nodeId)
+		assert.NoError(t, err)
+		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
+		ipfsClient, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, node.IpfsNode.ApiAddress())
+		ipfsClient.DownloadTar(outputDir, state.ResultsId)
+		testCase.ResultsChecker(outputDir + "/" + state.ResultsId)
+	}
 }

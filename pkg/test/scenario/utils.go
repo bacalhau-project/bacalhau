@@ -135,7 +135,7 @@ func singleFileGetData(
 	return os.ReadFile(outputFile)
 }
 
-func singleFileResultsCheckerContains(
+func singleFileResultsChecker(
 	t *testing.T,
 	outputFilePath string,
 	expectedString string,
@@ -147,7 +147,7 @@ func singleFileResultsCheckerContains(
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
 		assert.NoError(t, err)
 
-		log.Trace().Msgf("resultsContent: %s", resultsContent)
+		log.Debug().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
 
 		actual_line_count := len(strings.Split(string(resultsContent), "\n"))
 		assert.Equal(t, expectedLines, actual_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actual_line_count))

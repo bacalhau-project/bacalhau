@@ -21,7 +21,7 @@ func CatFileToStdout(t *testing.T) TestCase {
 			HELLO_WORLD,
 			SIMPLE_MOUNT_PATH,
 		),
-		ResultsChecker: singleFileResultsCheckerContains(
+		ResultsChecker: singleFileResultsChecker(
 			t,
 			STDOUT,
 			HELLO_WORLD,
@@ -48,7 +48,7 @@ func CatFileToVolume(t *testing.T) TestCase {
 			CAT_PROGRAM,
 			SIMPLE_MOUNT_PATH,
 		),
-		ResultsChecker: singleFileResultsCheckerContains(
+		ResultsChecker: singleFileResultsChecker(
 			t,
 			"test/output_file.txt",
 			CAT_PROGRAM,
@@ -81,7 +81,7 @@ func GrepFile(t *testing.T) TestCase {
 			"../../../testdata/grep_file.txt",
 			SIMPLE_MOUNT_PATH,
 		),
-		ResultsChecker: singleFileResultsCheckerContains(
+		ResultsChecker: singleFileResultsChecker(
 			t,
 			STDOUT,
 			"kiwi is delicious",
@@ -109,7 +109,7 @@ func SedFile(t *testing.T) TestCase {
 			"../../../testdata/sed_file.txt",
 			SIMPLE_MOUNT_PATH,
 		),
-		ResultsChecker: singleFileResultsCheckerContains(
+		ResultsChecker: singleFileResultsChecker(
 			t,
 			STDOUT,
 			"LISBON",
@@ -138,7 +138,7 @@ func AwkFile(t *testing.T) TestCase {
 			"../../../testdata/awk_file.txt",
 			SIMPLE_MOUNT_PATH,
 		),
-		ResultsChecker: singleFileResultsCheckerContains(
+		ResultsChecker: singleFileResultsChecker(
 			t,
 			STDOUT,
 			"LISBON",

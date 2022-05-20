@@ -368,3 +368,18 @@ func (stack *DevStack) WaitForJobWithConcurrency(
 	expectedStates[system.JOB_STATE_COMPLETE] = concurrency
 	return stack.WaitForJobWithError(jobId, expectedStates)
 }
+
+func (stack *DevStack) GetNode(
+	nodeId string,
+) (*DevStackNode, error) {
+	for _, node := range stack.Nodes {
+		id, err := node.Transport.HostId()
+		if err != nil {
+			return nil, err
+		}
+		if id == nodeId {
+			return node, nil
+		}
+	}
+	return nil, fmt.Errorf("node not found: %s", nodeId)
+}
