@@ -147,7 +147,7 @@ func singleFileResultsChecker(
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
 		assert.NoError(t, err)
 
-		log.Debug().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
+		log.Trace().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
 
 		actual_line_count := len(strings.Split(string(resultsContent), "\n"))
 		assert.Equal(t, expectedLines, actual_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actual_line_count))
