@@ -23,7 +23,7 @@ func init() {
 		`What executor engine to use to run the job`,
 	)
 	runCmd.PersistentFlags().StringVar(
-		&jobEngine, "verifier", "ipfs",
+		&jobVerifier, "verifier", "ipfs",
 		`What verification engine to use to run the job`,
 	)
 	runCmd.PersistentFlags().StringSliceVarP(

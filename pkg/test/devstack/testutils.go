@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
@@ -98,14 +99,14 @@ func devStackDockerStorageTest(
 		Concurrency: nodeCount,
 	}
 
-	job, err := jsonrpc.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
+	submittedJob, err := jsonrpc.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
 	assert.NoError(t, err)
 
 	if err != nil {
 		t.FailNow()
 	}
 
-	err = stack.WaitForJob(job.Id, map[string]int{
+	err = stack.WaitForJob(submittedJob.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,
 	}, []string{
 		system.JOB_STATE_BID_REJECTED,
@@ -113,6 +114,8 @@ func devStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	// jobs, err := jobutils.ListJobs(rpcHost, rpcPort)
-	// assert.NoError(t, err)
+	loadedJob, err := jsonrpc.GetJobData(rpcHost, rpcPort, submittedJob.Id)
+	assert.NoError(t, err)
+
+	spew.Dump(loadedJob)
 }

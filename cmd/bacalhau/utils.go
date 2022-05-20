@@ -1,8 +1,6 @@
 package bacalhau
 
 import (
-	"strings"
-
 	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
@@ -33,8 +31,7 @@ func shortenString(st string) string {
 }
 
 func shortId(id string) string {
-	parts := strings.Split(id, "-")
-	return parts[0]
+	return id[:8]
 }
 
 func getJobData(jobId string) (*types.Job, error) {
@@ -43,4 +40,8 @@ func getJobData(jobId string) (*types.Job, error) {
 		jsonrpcPort,
 		jobId,
 	)
+}
+
+func getJobResult(job *types.Job, state *types.JobState) string {
+	return "/" + job.Spec.Verifier + "/" + state.ResultsId
 }
