@@ -1,7 +1,6 @@
 package verifier
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -13,6 +12,8 @@ import (
 )
 
 func TestIPFSVerifier(t *testing.T) {
+
+	fixtureContent := "hello world"
 	stack, cancelContext := SetupTest(
 		t,
 		1,
@@ -20,10 +21,12 @@ func TestIPFSVerifier(t *testing.T) {
 
 	defer TeardownTest(stack, cancelContext)
 
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
+	inputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
 	assert.NoError(t, err)
 
-	err = os.WriteFile(dir+"/file.txt", []byte("hello world"), 0644)
+	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
+
+	err = os.WriteFile(inputDir+"/file.txt", []byte(fixtureContent), 0644)
 	assert.NoError(t, err)
 
 	verifier, err := ipfs_verifier.NewIPFSVerifier(cancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
@@ -33,9 +36,14 @@ func TestIPFSVerifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, installed)
 
-	result, err := verifier.ProcessResultsFolder(&types.Job{}, dir)
+	resultHash, err := verifier.ProcessResultsFolder(&types.Job{}, inputDir)
 	assert.NoError(t, err)
 
-	fmt.Printf("RESULT: %s\n", result)
+	err = verifier.IPFSClient.DownloadTar(outputDir, resultHash)
+	assert.NoError(t, err)
 
+	outputContent, err := os.ReadFile(outputDir + "/" + resultHash + "/file.txt")
+	assert.NoError(t, err)
+
+	assert.Equal(t, fixtureContent, string(outputContent))
 }

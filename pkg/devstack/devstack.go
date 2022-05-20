@@ -198,7 +198,8 @@ command="add -q testdata/grep_file.txt"
 	for _, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
-cid=$(IPFS_PATH=%s ipfs $command)`, node.IpfsNode.Repo)
+cid=$(IPFS_PATH=%s ipfs $command)
+curl -XPOST http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.ApiPort)
 
 	}
 

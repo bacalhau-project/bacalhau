@@ -78,11 +78,14 @@ func (stack *DevStack_IPFS) PrintNodeInfo() {
 -------------------------------
 ipfs
 -------------------------------
+
+command="add -q testdata/grep_file.txt"
 	`
 	for _, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
-IPFS_PATH=%s ipfs id`, node.IpfsNode.Repo)
+cid=$(IPFS_PATH=%s ipfs $command)
+curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.ApiPort)
 
 	}
 

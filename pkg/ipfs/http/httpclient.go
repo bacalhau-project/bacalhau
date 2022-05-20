@@ -1,20 +1,16 @@
 package ipfs_http
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"mime/multipart"
-	"net/http"
 	"os"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/path"
-	archiver "github.com/mholt/archiver/v4"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/rs/zerolog/log"
@@ -167,51 +163,19 @@ func (ipfsHttp *IPFSHttpClient) DownloadTar(targetDir, cid string) error {
 	return nil
 }
 
+// TODO: we need to work out how to upload a tar file
+// using just the HTTP api and not needing to shell out
 func (ipfsHttp *IPFSHttpClient) UploadTar(sourceDir string) (string, error) {
-	contentType, body, err := createUploadForm(sourceDir)
-	if err != nil {
-		return "", err
-	}
-	url, err := ipfsHttp.GetUrl()
-	if err != nil {
-		return "", err
-	}
-	resp, err := http.Post(
-		fmt.Sprintf("%s/api/v0/add?pin=true&recursive=true&wrap-with-directory=true", url),
-		contentType,
-		body,
-	)
-	if err != nil {
-		return "", err
-	}
-	respAsBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	fmt.Printf("HAVE RESULT FROM TAR UPLOAD:\n%s\n", string(respAsBytes))
-	return string(respAsBytes), nil
-}
-
-func createUploadForm(folderPath string) (string, io.Reader, error) {
-	files, err := archiver.FilesFromDisk(nil, map[string]string{
-		folderPath: "",
+	result, err := system.RunCommandGetResults("ipfs", []string{
+		"--api", ipfsHttp.Address,
+		"add", "-rq", sourceDir,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
-	format := archiver.CompressedArchive{
-		Compression: archiver.Gz{},
-		Archival:    archiver.Tar{},
+	parts := strings.Split(result, "\n")
+	if len(parts) <= 1 {
+		return "", fmt.Errorf("No parts returned from ipfs add")
 	}
-	body := new(bytes.Buffer)
-	mp := multipart.NewWriter(body)
-	formFieldWriter, err := mp.CreateFormFile("file", "results.tar")
-	if err != nil {
-		return "", nil, err
-	}
-	err = format.Archive(context.Background(), formFieldWriter, files)
-	if err != nil {
-		return "", nil, err
-	}
-	return mp.FormDataContentType(), body, nil
+	return parts[len(parts)-2], nil
 }
