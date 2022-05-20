@@ -188,35 +188,32 @@ func NewDevStack(
 
 func (stack *DevStack) PrintNodeInfo() {
 
-	logString := `
--------------------------------
-ipfs
--------------------------------
+	logString := ""
 
-command="add -q testdata/grep_file.txt"
-	`
-	for _, node := range stack.Nodes {
+	for nodeIndex, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
-cid=$(IPFS_PATH=%s ipfs $command)
-curl -XPOST http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.ApiPort)
-
-	}
-
-	logString += fmt.Sprintf(`
-
 -------------------------------
-jsonrpc
+node %d
 -------------------------------
 
-go run . --jsonrpc-port=%d list
-go run . --jsonrpc-port=%d run -v $cid:/file.txt -c 3 ubuntu cat /file.txt
-`, stack.Nodes[0].JSONRpcNode.Port, stack.Nodes[0].JSONRpcNode.Port)
+export IPFS_API_PORT_%d=%d
+export IPFS_PATH_%d=%s
+export JSON_PORT_%d=%d
+cid=$(IPFS_PATH=%s ipfs add -q testdata/grep_file.txt)
+curl -XPOST http://127.0.0.1:%d/api/v0/id
+`,
+			nodeIndex,
+			nodeIndex,
+			node.IpfsNode.ApiPort,
+			nodeIndex,
+			node.IpfsNode.Repo,
+			nodeIndex,
+			stack.Nodes[0].JSONRpcNode.Port,
+			node.IpfsNode.Repo,
+			node.IpfsNode.ApiPort,
+		)
 
-	for _, node := range stack.Nodes {
-
-		logString = logString + fmt.Sprintf(`
-export PORT=%d`, node.JSONRpcNode.Port)
 	}
 
 	log.Info().Msg(logString)
