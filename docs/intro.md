@@ -10,7 +10,7 @@ hide_title: true
 *[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate)* is the Portuguese word for for Cod (Compute over Data)
 
 <p align="center">
-<img src="../static/img/bacalhau-fish.jpg" alt="Bacalhau Logo" width="300" />
+<img src="img/bacalhau-logo-white.png" alt="Bacalhau Logo" width="300" />
 </p>
 
 On this website, you will find:
