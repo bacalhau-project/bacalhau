@@ -39,7 +39,7 @@ const config = {
         title: "Bacalhau Docs",
         logo: {
           alt: "Bacalhau Docs Logo",
-          src: "img/logo.svg",
+          src: "img/logo.png",
         },
         items: [
           {
@@ -65,10 +65,6 @@ const config = {
               {
                 label: "Getting Started",
                 to: "/getting-started/installation",
-              },
-              {
-                label: "Specs",
-                to: "/specs/overview",
               },
               {
                 label: "About Bacalhau",
