@@ -2,24 +2,23 @@ package bacalhau
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 
-	"github.com/rs/zerolog/log"
-
-	"github.com/filecoin-project/bacalhau/internal"
-	"github.com/filecoin-project/bacalhau/internal/ipfs"
-	"github.com/filecoin-project/bacalhau/internal/otel_tracer"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 
 	"github.com/spf13/cobra"
 )
 
+var devStackNodes int
 var devStackBadActors int
 
 func init() {
+	devstackCmd.PersistentFlags().IntVar(
+		&devStackNodes, "nodes", 3,
+		`How many nodes should be started in the cluster`,
+	)
 	devstackCmd.PersistentFlags().IntVar(
 		&devStackBadActors, "bad-actors", 0,
 		`How many nodes should be bad actors`,
@@ -28,54 +27,38 @@ func init() {
 
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
-	Short: "Start a cluster of 3 bacalhau nodes for testing and development",
+	Short: "Start a cluster of bacalhau nodes for testing and development",
 	RunE: func(cmd *cobra.Command, args []string) error { // nolint
-		result, err := ipfs.IpfsCommand("", []string{"version"})
 
-		ctx := cmd.Context()
-		// Initialize the root trace for all of Otel
-		tp, _ := otel_tracer.GetOtelTP(ctx)
-		tracer := tp.Tracer("bacalhau.org")
-		_, span := tracer.Start(ctx, "DevStack Span")
-
-		// In LIFO order
-		defer span.End()
-
-		if err != nil {
-			log.Error().Msg(fmt.Sprintf("Error running command 'ipfs version': %s", err))
-			return err
+		if devStackBadActors > devStackNodes {
+			return fmt.Errorf("Cannot have more bad actors than there are nodes")
 		}
 
-		if strings.Contains(result, "0.12.0") {
-			err = fmt.Errorf("\n********************\nDue to a regression, we do not support 0.12.0. Please install from here:\nhttps://ipfs.io/ipns/dist.ipfs.io/go-ipfs/v0.11.0/go-ipfs_v0.11.0_linux-amd64.tar.gz\n********************\n")
-			log.Error().Err(err)
-			return err
+		cancelContext := system.GetCancelContextWithSignals()
+
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
+			return executor.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		stack, err := internal.NewDevStack(ctx, 3, devStackBadActors)
+		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
+			return verifier.NewIPFSVerifiers(cancelContext, ipfsMultiAddress)
+		}
+
+		stack, err := devstack.NewDevStack(
+			cancelContext,
+			devStackNodes,
+			devStackBadActors,
+			getExecutors,
+			getVerifiers,
+		)
 
 		if err != nil {
+			cancelContext.Stop()
 			return err
 		}
 
 		stack.PrintNodeInfo()
 
-		nodeChannel := make(chan os.Signal, 1)
-		signal.Notify(nodeChannel, syscall.SIGINT, syscall.SIGTERM)
-		done := make(chan bool, 1)
-
-		go func() {
-
-			for range nodeChannel {
-				// need some time to let ipfs processes shut down
-				span.End()
-				time.Sleep(time.Second * 2)
-				log.Info().Msgf("Force quit.")
-				done <- true
-			}
-		}()
-		<-done
-
-		return nil
+		select {}
 	},
 }

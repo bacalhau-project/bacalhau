@@ -1,17 +1,15 @@
 package bacalhau
 
 import (
-	"strings"
-
-	"github.com/filecoin-project/bacalhau/internal/system"
-	"github.com/filecoin-project/bacalhau/internal/types"
+	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 var listOutputFormat string
 var tableOutputWide bool
 
 func JsonRpcMethod(method string, req, res interface{}) error {
-	return system.JsonRpcMethod(
+	return jsonrpc.JsonRpcMethod(
 		jsonrpcHost,
 		jsonrpcPort,
 		method,
@@ -20,7 +18,7 @@ func JsonRpcMethod(method string, req, res interface{}) error {
 	)
 }
 
-func getString(st string) string {
+func shortenString(st string) string {
 	if tableOutputWide {
 		return st
 	}
@@ -33,30 +31,9 @@ func getString(st string) string {
 }
 
 func shortId(id string) string {
-	parts := strings.Split(id, "-")
-	return parts[0]
+	return id[:8]
 }
 
-func getJobData(jobId string) (*types.Job, error) {
-	return system.GetJobData(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
-}
-
-func getJobResults(jobId string) (*[]system.ResultsList, error) {
-	return system.GetJobResults(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
-}
-
-func fetchJobResults(jobId string) error {
-	return system.FetchJobResults(
-		jsonrpcHost,
-		jsonrpcPort,
-		jobId,
-	)
+func getJobResult(job *types.Job, state *types.JobState) string {
+	return "/" + job.Spec.Verifier + "/" + state.ResultsId
 }

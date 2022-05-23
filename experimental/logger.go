@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/bacalhau/internal/logger"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
 )
 

@@ -1,0 +1,134 @@
+package transport_test
+
+import (
+	"reflect"
+	"testing"
+	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	executor_noop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
+	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
+	"github.com/stretchr/testify/assert"
+)
+
+func setupTest(t *testing.T) (
+	*inprocess.InProcessTransport,
+	*executor_noop.NoopExecutor,
+	*verifier_noop.NoopVerifier,
+) {
+	noopExecutor, err := executor_noop.NewNoopExecutor()
+	assert.NoError(t, err)
+	noopVerifier, err := verifier_noop.NewNoopVerifier()
+	assert.NoError(t, err)
+	executors := map[string]executor.Executor{
+		string(executor.EXECUTOR_NOOP): noopExecutor,
+	}
+	verifiers := map[string]verifier.Verifier{
+		string(verifier.VERIFIER_NOOP): noopVerifier,
+	}
+	transport, err := inprocess.NewInprocessTransport()
+	assert.NoError(t, err)
+	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	assert.NoError(t, err)
+	_, err = requestor_node.NewRequesterNode(transport)
+	assert.NoError(t, err)
+	return transport, noopExecutor, noopVerifier
+}
+
+func TestTransportSanity(t *testing.T) {
+	executors := map[string]executor.Executor{}
+	verifiers := map[string]verifier.Verifier{}
+	transport, err := inprocess.NewInprocessTransport()
+	assert.NoError(t, err)
+	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	assert.NoError(t, err)
+	_, err = requestor_node.NewRequesterNode(transport)
+	assert.NoError(t, err)
+}
+
+func TestSchedulerSubmitJob(t *testing.T) {
+
+	transport, noopExecutor, _ := setupTest(t)
+
+	// first let's test submitting a job with an engine we do not have
+	spec := &types.JobSpec{
+		Engine:   "apples",
+		Verifier: string(verifier.VERIFIER_NOOP),
+		Vm: types.JobSpecVm{
+			Image:      "image",
+			Entrypoint: []string{"entrypoint"},
+			Env:        []string{"env"},
+		},
+		Inputs: []types.StorageSpec{
+			{
+				Engine: storage.IPFS_DEFAULT,
+			},
+		},
+	}
+
+	deal := &types.JobDeal{
+		Concurrency: 1,
+	}
+
+	_, err := transport.SubmitJob(spec, deal)
+	assert.NoError(t, err)
+	time.Sleep(time.Second * 1)
+	assert.Equal(t, 0, len(noopExecutor.Jobs))
+	spec.Engine = string(executor.EXECUTOR_NOOP)
+	jobSelected, err := transport.SubmitJob(spec, deal)
+	assert.NoError(t, err)
+	time.Sleep(time.Second * 1)
+	assert.Equal(t, 1, len(noopExecutor.Jobs))
+	assert.Equal(t, jobSelected.Id, noopExecutor.Jobs[0].Id)
+}
+
+func TestTransportEvents(t *testing.T) {
+
+	transport, _, _ := setupTest(t)
+
+	// first let's test submitting a job with an engine we do not have
+	spec := &types.JobSpec{
+		Engine:   string(executor.EXECUTOR_NOOP),
+		Verifier: string(verifier.VERIFIER_NOOP),
+		Vm: types.JobSpecVm{
+			Image:      "image",
+			Entrypoint: []string{"entrypoint"},
+			Env:        []string{"env"},
+		},
+		Inputs: []types.StorageSpec{
+			{
+				Engine: storage.IPFS_DEFAULT,
+			},
+		},
+	}
+
+	deal := &types.JobDeal{
+		Concurrency: 1,
+	}
+
+	_, err := transport.SubmitJob(spec, deal)
+	assert.NoError(t, err)
+	time.Sleep(time.Second * 1)
+
+	expectedEventNames := []string{
+		system.JOB_EVENT_CREATED,
+		system.JOB_EVENT_BID,
+		system.JOB_EVENT_BID_ACCEPTED,
+		system.JOB_EVENT_RESULTS,
+	}
+	actualEventNames := []string{}
+
+	for _, event := range transport.Events {
+		actualEventNames = append(actualEventNames, event.EventName)
+	}
+
+	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
+}
