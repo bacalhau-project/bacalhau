@@ -42,19 +42,14 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - run: go version
 
+      - name: Set up Honeycomb Otel from Github Secret
+        run: |
+          mkdir -p $HOME/.bacalhau
+          echo "${{ secrets.HONEYCOMB_OTEL_KEY }}" >> $HOME/.bacalhau/config.toml
+
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
-
-      - uses: evantorrie/mott-the-tidier@v1-beta
-        with:
-          gomods: |
-            **/go.mod
-            -tools/go.mod
-
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: Auto-fix go.sum discrepancies
 
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'

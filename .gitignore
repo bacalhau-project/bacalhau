@@ -25,3 +25,9 @@ temperature_sensor_data.csv.bz2
 __debug_bin
 .terraform*
 terraform.tfstate*
+<<<<<<< HEAD
+
+=======
+>>>>>>> 656b0e2... tracing now working server side, but still broken due to inability to pass context
+trace.out
+trace_otel.out

@@ -1,13 +1,18 @@
 <p align="center">
-<img src="docs/images/bacalhau-fish.jpeg" alt="Bacalhau Logo" width="300" />
+<img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
 </p>
+<p align=center>Compute Over Data == CoD<br>
+Bacalhau == "Salted CoD Fish" (Portuguese)</p>
+  
+<br>
 
-
-<h1 align="center">The Filecoin Distributed Computation Framework</h1>
+# The Filecoin Distributed Computation Framework  
 
 
 ## Project Background
+ * Goals: Open, Collaborative Compute Ecosystem
  * [DESIGN.MD](DESIGN.md)
+ * [Master Plan](https://docs.google.com/document/d/1j4SIunk3v2ezUgQYUbOfK7lQaCYPOkVQiEOiXqAUfiI/edit#heading=h.7swkwe805eap)
  * [Bacalhau Overview at PL Eng Res February 2022](https://youtu.be/wmu-lOhSSZo?t=3367)
  
 ## Latest Updates

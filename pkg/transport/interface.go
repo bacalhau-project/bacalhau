@@ -1,6 +1,8 @@
 package transport
 
-import "github.com/filecoin-project/bacalhau/pkg/types"
+import (
+	"github.com/filecoin-project/bacalhau/pkg/types"
+)
 
 type Transport interface {
 
@@ -36,6 +38,7 @@ type Transport interface {
 	// Executed by the client (Connie) requesting the work, puts the job into a
 	// mempool of work that is available to be done.
 	SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error)
+
 	// Update the job deal - for example updating concurrency
 	UpdateDeal(jobId string, deal *types.JobDeal) error
 	// Client has decided they no longer want the work done. Can only happen
@@ -44,7 +47,7 @@ type Transport interface {
 	// Executed by the client (Connie) to tell Prue they are good to start.
 	// Enables coordination to avoid excess job starting, also allows client to
 	// be selective about reputation.
-	AcceptJobBid(jobId, hostId string) error
+	AcceptJobBid(jobId string, hostId string) error
 	// Executed by the client (Connie) to tell Prue they shouldn't try to run
 	// this job.
 	RejectJobBid(jobId, hostId, message string) error
@@ -62,9 +65,9 @@ type Transport interface {
 
 	// something has gone wrong with running the job
 	// called by the compute node and so will have the nodeId auto-filled
-	ErrorJob(jobId, status string) error
+	ErrorJob(jobId string, status string) error
 
 	// something has gone wrong is checking the job from the requester node
 	// called by the requester node and so we need to be given the nodeId
-	ErrorJobForNode(jobId, nodeId, status string) error
+	ErrorJobForNode(jobId string, nodeId string, status string) error
 }
