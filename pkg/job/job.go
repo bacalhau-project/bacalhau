@@ -67,7 +67,7 @@ func ConstructJob(
 		if len(slices) != 2 {
 			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
 		}
-		jobOutputs = append(jobInputs, types.StorageSpec{
+		jobOutputs = append(jobOutputs, types.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: "ipfs",
