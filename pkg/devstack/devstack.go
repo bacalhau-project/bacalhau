@@ -193,6 +193,19 @@ func (stack *DevStack) PrintNodeInfo() {
 	for nodeIndex, node := range stack.Nodes {
 
 		logString = logString + fmt.Sprintf(`
+export IPFS_PATH_%d=%s
+export JSON_PORT_%d=%d`,
+			nodeIndex,
+			node.IpfsNode.Repo,
+			nodeIndex,
+			stack.Nodes[0].JSONRpcNode.Port,
+		)
+
+	}
+
+	for nodeIndex, node := range stack.Nodes {
+
+		logString = logString + fmt.Sprintf(`
 -------------------------------
 node %d
 -------------------------------
