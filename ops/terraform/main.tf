@@ -40,7 +40,7 @@ ipfs init
 
 export LOG_LEVEL=debug
 
-(while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dns4/bootstrap.production.bacalhau.org/tcp/1235; sleep 1; done \
+(while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dns4/bootstrap.production.bacalhau.org/tcp/1235 || true; sleep 1; done \
         2>&1 >> /tmp/bacalhau.log) &
 
 EOF
