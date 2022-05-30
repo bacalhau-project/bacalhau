@@ -38,7 +38,7 @@ ipfs init
 (ipfs daemon \
     2>&1 >> /tmp/ipfs.log) &
 
-(bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dns4/bootstrap.production.bacalhau.org/tcp/1235 \
+(while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dns4/bootstrap.production.bacalhau.org/tcp/1235; sleep 1; done \
         2>&1 >> /tmp/bacalhau.log) &
 
 EOF
