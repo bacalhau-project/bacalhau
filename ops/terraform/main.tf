@@ -19,6 +19,9 @@ resource "google_compute_instance" "bacalhau_vm" {
 
   metadata_startup_script = <<-EOF
 #!/bin/bash -xe
+
+sudo apt-get update && sudo apt-get install -y docker.io
+
 # TODO: move this into two systemd units!
 
 wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.0/bacalhau_v0.1.0_amd64.tar.gz
