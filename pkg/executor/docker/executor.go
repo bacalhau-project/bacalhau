@@ -182,11 +182,12 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	}
 
 	containerConfig := &container.Config{
-		Image:      job.Spec.Vm.Image,
-		Tty:        false,
-		Env:        job.Spec.Vm.Env,
-		Entrypoint: job.Spec.Vm.Entrypoint,
-		Labels:     dockerExecutor.jobContainerLabels(job),
+		Image:           job.Spec.Vm.Image,
+		Tty:             false,
+		Env:             job.Spec.Vm.Env,
+		Entrypoint:      job.Spec.Vm.Entrypoint,
+		Labels:          dockerExecutor.jobContainerLabels(job),
+		NetworkDisabled: true,
 	}
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

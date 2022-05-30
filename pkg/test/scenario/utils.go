@@ -65,7 +65,7 @@ var ApiCopyStorageDriverFactory = StorageDriverFactory{
 }
 
 var STORAGE_DRIVER_FACTORIES = []StorageDriverFactory{
-	FuseStorageDriverFactory,
+	//	FuseStorageDriverFactory,
 	ApiCopyStorageDriverFactory,
 }
 
