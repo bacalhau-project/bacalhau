@@ -1,8 +1,14 @@
+provider "google" {
+  project = var.gcp_project
+  region  = var.region
+  zone    = var.zone
+}
+
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${count.index}"
   count        = var.instance_count
-  machine_type = var.instance_type
+  machine_type = var.machine_type
   zone         = var.zone
 
   boot_disk {
@@ -44,9 +50,9 @@ EOF
   lifecycle {
     ignore_changes = [attached_disk]
   }
-  service_account {
-    # scopes = ["cloud-platform"]
-  }
+#   service_account {
+#     scopes = ["cloud-platform"]
+#   }
   allow_stopping_for_update = true
 
 }
@@ -61,7 +67,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   count    = var.instance_count
   type     = "pd-ssd"
   zone     = var.zone
-  size     = var.volume_size
+  size     = var.volume_size_gb
   snapshot = var.restore_from_backup
 
   lifecycle {
@@ -72,8 +78,9 @@ resource "google_compute_disk" "bacalhau_disk" {
 
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
   name = google_compute_resource_policy.bacalhau_disk_backups.name
-  disk = google_compute_disk.bacalhau_disk.name
+  disk = google_compute_disk.bacalhau_disk[count.index].name
   zone = var.zone
+  count = var.instance_count
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
@@ -135,7 +142,7 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 
   allow {
     protocol = "tcp"
-    // Port 22   - Provides ssh access to the bacalhau runner, for debugging 
+    // Port 22   - Provides ssh access to the bacalhau server, for debugging 
     ports = ["22"]
   }
 
