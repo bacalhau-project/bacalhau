@@ -98,7 +98,7 @@ For example - to view the current job list from the perspective of only one of t
 
 ```bash
 # Note: replace 12345 this with the correct port from the output
-go run . --jsonrpc-port=$JSON_PORT_0 list
+go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list
 ```
 
 ## Submit a simple job
@@ -107,14 +107,14 @@ This will submit a simple job to a single node:
 
 ```bash
 cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
-go run . --jsonrpc-port=$JSON_PORT_0 run -v $cid:/file.txt ubuntu grep kiwi /file.txt
-go run . --jsonrpc-port=$JSON_PORT_0 list --wide
+go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost run -v $cid:/file.txt ubuntu grep kiwi /file.txt
+go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
 ```
 
 After a short while - the job should be in `complete` state.
 
 ```
-kai@xwing:~/projects/bacalhau$ go run . --jsonrpc-port=$JSON_PORT_0 list --wide
+kai@xwing:~/projects/bacalhau$ go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
  ID        JOB                                INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE     RESULT                                               
  22b53c20  docker ubuntu grep kiwi /file.txt       1        0            1  QmedX1zE  complete  /ipfs/QmYLFuXZv8h1Bc1cArbs5VXrE4o5hE4tVh55iqtjQWoDtW 
 ```
@@ -147,6 +147,6 @@ IPFS_PATH=$IPFS_PATH_2 ipfs add -q ./testdata/grep_file.txt
 Then we submit the job but with `--concurrency` setting:
 
 ```bash
-go run . --jsonrpc-port=$JSON_PORT_0 run --concurrency=3 -v $cid:/file.txt ubuntu grep kiwi /file.txt
-go run . --jsonrpc-port=$JSON_PORT_0 list --wide
+go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost run --concurrency=3 -v $cid:/file.txt ubuntu grep kiwi /file.txt
+go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
 ```

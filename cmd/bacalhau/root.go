@@ -16,8 +16,8 @@ func init() {
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
-		&jsonrpcHost, "jsonrpc-host", "0.0.0.0",
-		`The port for the client and server to communicate on (via jsonrpc).`,
+		&jsonrpcHost, "jsonrpc-host", "bootstrap.production.bacalhau.org",
+		`The host for the client and server to communicate on (via jsonrpc).`,
 	)
 	RootCmd.PersistentFlags().IntVar(
 		&jsonrpcPort, "jsonrpc-port", 1234,

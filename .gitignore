@@ -23,11 +23,7 @@ temperature_sensor_data.csv
 temperature_sensor_data.csv.bz2
 .ipynb_checkpoints
 __debug_bin
-.terraform*
+.terraform/*
 terraform.tfstate*
-<<<<<<< HEAD
-
-=======
->>>>>>> 656b0e2... tracing now working server side, but still broken due to inability to pass context
 trace.out
 trace_otel.out
