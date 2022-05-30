@@ -106,7 +106,7 @@ resource "google_compute_attached_disk" "default" {
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {
-  name    = "bacalhau-ingress-firewall-${random_id.default.hex}"
+  name    = "bacalhau-ingress-firewall"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -126,7 +126,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
-  name    = "bacalhau-ssh-firewall-${random_id.default.hex}"
+  name    = "bacalhau-ssh-firewall"
   network = google_compute_network.bacalhau_network.name
 
   allow {
