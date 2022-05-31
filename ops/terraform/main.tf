@@ -24,8 +24,8 @@ sudo apt-get update && sudo apt-get install -y docker.io
 
 # TODO: move this into two systemd units!
 
-wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.0/bacalhau_v0.1.0_amd64.tar.gz
-tar xfv bacalhau_v0.1.0_amd64.tar.gz 
+wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.2/bacalhau_v0.1.2_amd64.tar.gz
+tar xfv bacalhau_v0.1.2_amd64.tar.gz
 sudo mv ./bacalhau /usr/local/bin/bacalhau
 
 wget https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
@@ -34,11 +34,22 @@ cd go-ipfs
 sudo bash install.sh
 ipfs --version
 
+# wait for /dev/sdb to exist
+while [ ! -e /dev/sdb ]; do
+  sleep 1
+  echo "waiting for /dev/sdb to exist"
+done
+
+# mount /dev/sdb at /data
+sudo mkdir -p /data
+sudo mount /dev/sdb /data
+
 ipfs init
 (ipfs daemon \
     2>&1 >> /tmp/ipfs.log) &
 
 export LOG_LEVEL=debug
+export BACALHAU_PATH=/data
 
 (while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dns4/bootstrap.production.bacalhau.org/tcp/1235 || true; sleep 1; done \
         2>&1 >> /tmp/bacalhau.log) &
