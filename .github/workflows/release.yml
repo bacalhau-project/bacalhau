@@ -36,6 +36,8 @@ jobs:
         exclude:
           - os: macOS-latest
             target_arch: arm
+          - os: ubuntu-latest
+            target_arch: arm64
 
     steps:
       - uses: actions/checkout@main

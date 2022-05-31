@@ -49,7 +49,7 @@ BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2
 # Temp dirs
 TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
 TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_$(GO_ARCH)")
+PACKAGE := $(shell echo "bacalhau_$(TAG)_$(GO_OS)_$(GO_ARCH)")
 
 all: go-arch-alignment build
 .PHONY: all
@@ -104,8 +104,7 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_ARCH)/bacalhau main.go
-	cp bin/$(GO_ARCH)/bacalhau bin/bacalhau
+	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_OS)_$(GO_ARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images
@@ -129,7 +128,7 @@ build-bacalhau-tgz: build-bacalhau
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp bin/$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
+	cp bin/$(GO_OS)_$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
 	cd $(TMPRELEASEWORKINGDIR)
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
