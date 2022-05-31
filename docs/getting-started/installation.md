@@ -70,6 +70,11 @@ We are hosting some [Landsat data on IPFS](http://cloudflare-ipfs.com/ipfs/QmeZR
 You can run a job against the data without having to download it!
 In this example we resize all the images down to 100x100px.
 
+`bacalhau run` takes a `-v` argument just like Docker, except the left hand side of the argument is a CID.
+It then ensures that CID is mounted into the container at the desired location as an input volume.
+
+`bacalhau run` also supports a `-o` argument for output volumes. This is where you write the results of your job. See below for an example.
+
 ```
 bacalhau run \
   -v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
