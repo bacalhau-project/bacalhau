@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -26,19 +25,18 @@ func init() {
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
-
-		result, err := jsonrpc.ListJobs(jsonrpcHost, jsonrpcPort)
-
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+		jobs, err := getAPIClient().List()
 		if err != nil {
 			return err
 		}
 
 		if listOutputFormat == "json" {
-			msgBytes, err := json.MarshalIndent(result, "", "    ")
+			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
 			}
+
 			fmt.Printf("%s\n", msgBytes)
 			return nil
 		}
@@ -54,42 +52,41 @@ var listCmd = &cobra.Command{
 			{Number: 5, AutoMerge: true},
 		})
 
-		for _, jobData := range result.Jobs {
-
+		for _, job := range jobs {
 			jobDesc := []string{
-				jobData.Spec.Engine,
+				job.Spec.Engine,
 			}
 
-			if jobData.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
-				jobDesc = append(jobDesc, jobData.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(jobData.Spec.Vm.Entrypoint, " "))
+			if job.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
+				jobDesc = append(jobDesc, job.Spec.Vm.Image)
+				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
 			}
 
-			if len(jobData.State) == 0 {
+			if len(job.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
-						shortId(jobData.Id),
+						shortId(job.Id),
 						shortenString(strings.Join(jobDesc, " ")),
-						len(jobData.Spec.Inputs),
-						len(jobData.Spec.Outputs),
-						jobData.Deal.Concurrency,
+						len(job.Spec.Inputs),
+						len(job.Spec.Outputs),
+						job.Deal.Concurrency,
 						"",
 						"waiting",
 						"",
 					},
 				})
 			} else {
-				for node, jobState := range jobData.State {
+				for node, jobState := range job.State {
 					t.AppendRows([]table.Row{
 						{
-							shortId(jobData.Id),
+							shortId(job.Id),
 							shortenString(strings.Join(jobDesc, " ")),
-							len(jobData.Spec.Inputs),
-							len(jobData.Spec.Outputs),
-							jobData.Deal.Concurrency,
+							len(job.Spec.Inputs),
+							len(job.Spec.Outputs),
+							job.Deal.Concurrency,
 							shortId(node),
 							shortenString(jobState.State),
-							shortenString(getJobResult(jobData, jobState)),
+							shortenString(getJobResult(job, jobState)),
 						},
 					})
 				}

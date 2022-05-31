@@ -1,8 +1,10 @@
 package publicapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -17,8 +19,6 @@ type APIServer struct {
 	Node *requestor_node.RequesterNode
 	Host string
 	Port int
-
-	ctx *system.CancelContext
 }
 
 // NewServer returns a new API server for a requester node.
@@ -28,9 +28,9 @@ func NewServer(
 	port int,
 ) *APIServer {
 	return &APIServer{
+		Node: node,
 		Host: host,
 		Port: port,
-		Node: node,
 	}
 }
 
@@ -39,8 +39,8 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
 }
 
-// Start listens for and serves HTTP requests against the API server.
-func (apiServer *APIServer) Start(ctx *system.CancelContext) error {
+// ListenAndServe listens for and serves HTTP requests against the API server.
+func (apiServer *APIServer) ListenAndServe(ctx *system.CancelContext) error {
 	hostID, err := apiServer.Node.Transport.HostId()
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
@@ -55,15 +55,10 @@ func (apiServer *APIServer) Start(ctx *system.CancelContext) error {
 	srv := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 		Handler: sm,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx.Ctx
+		},
 	}
-
-	ctx.AddShutdownHandler(func() {
-		err := srv.Close()
-		if err != nil {
-			log.Error().Msgf(
-				"Error shutting down API server for host %s: %s", hostID, err)
-		}
-	})
 
 	log.Info().Msgf(
 		"API server listening for host %s on %s...", hostID, srv.Addr)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
@@ -79,7 +78,7 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		job, err := jsonrpc.SubmitJob(spec, deal, jsonrpcHost, jsonrpcPort)
+		job, err := getAPIClient().Submit(spec, deal)
 		if err != nil {
 			return err
 		}

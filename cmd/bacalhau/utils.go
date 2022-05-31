@@ -1,22 +1,14 @@
 package bacalhau
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"fmt"
+
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 var listOutputFormat string
 var tableOutputWide bool
-
-func JsonRpcMethod(method string, req, res interface{}) error {
-	return jsonrpc.JsonRpcMethod(
-		jsonrpcHost,
-		jsonrpcPort,
-		method,
-		req,
-		res,
-	)
-}
 
 func shortenString(st string) string {
 	if tableOutputWide {
@@ -36,4 +28,8 @@ func shortId(id string) string {
 
 func getJobResult(job *types.Job, state *types.JobState) string {
 	return "/" + job.Spec.Verifier + "/" + state.ResultsId
+}
+
+func getAPIClient() *publicapi.APIClient {
+	return publicapi.NewAPIClient(fmt.Sprintf("%s:%d", apiHost, apiPort))
 }

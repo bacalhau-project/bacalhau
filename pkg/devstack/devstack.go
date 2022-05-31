@@ -11,11 +11,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -28,7 +27,8 @@ type DevStackNode struct {
 	IpfsNode      *ipfs_devstack.IPFSDevServer
 	IpfsCli       *ipfs_cli.IPFSCli
 	Transport     *libp2p.Libp2pTransport
-	JSONRpcNode   *jsonrpc.JSONRpcServer
+
+	ApiServer *publicapi.APIServer
 }
 
 type DevStack struct {
@@ -114,27 +114,24 @@ func NewDevStack(
 		//////////////////////////////////////
 		// JSON RPC
 		//////////////////////////////////////
-		jsonRpcPort, err := freeport.GetFreePort()
+		apiPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		jsonRpcNode := jsonrpc.NewBacalhauJsonRpcServer(
-			cancelContext,
-			"0.0.0.0",
-			jsonRpcPort,
+		apiServer := publicapi.NewServer(
 			requesterNode,
+			"0.0.0.0",
+			apiPort,
 		)
-		if err != nil {
-			return nil, err
-		}
 
-		err = jsonrpc.StartBacalhauJsonRpcServer(jsonRpcNode)
-		if err != nil {
-			return nil, err
-		}
+		go func() {
+			if err := apiServer.ListenAndServe(cancelContext); err != nil {
+				panic(err) // if api server can't run, devstack should stop
+			}
+		}()
 
-		log.Debug().Msgf("JSON RPC server started: %d", jsonRpcPort)
+		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
 		//////////////////////////////////////
 		// intra-connections
@@ -172,7 +169,7 @@ func NewDevStack(
 			IpfsNode:      ipfsNode,
 			IpfsCli:       ipfs_cli.NewIPFSCli(ipfsNode.Repo),
 			Transport:     transport,
-			JSONRpcNode:   jsonRpcNode,
+			ApiServer:     apiServer,
 		}
 
 		nodes = append(nodes, devStackNode)
@@ -194,11 +191,11 @@ func (stack *DevStack) PrintNodeInfo() {
 
 		logString = logString + fmt.Sprintf(`
 export IPFS_PATH_%d=%s
-export JSON_PORT_%d=%d`,
+export API_PORT_%d=%d`,
 			nodeIndex,
 			node.IpfsNode.Repo,
 			nodeIndex,
-			stack.Nodes[0].JSONRpcNode.Port,
+			stack.Nodes[0].ApiServer.Port,
 		)
 
 	}
@@ -212,7 +209,7 @@ node %d
 
 export IPFS_API_PORT_%d=%d
 export IPFS_PATH_%d=%s
-export JSON_PORT_%d=%d
+export API_PORT_%d=%d
 cid=$(IPFS_PATH=%s ipfs add -q testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:%d/api/v0/id
 `,
@@ -222,7 +219,7 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			nodeIndex,
 			node.IpfsNode.Repo,
 			nodeIndex,
-			stack.Nodes[0].JSONRpcNode.Port,
+			stack.Nodes[0].ApiServer.Port,
 			node.IpfsNode.Repo,
 			node.IpfsNode.ApiPort,
 		)
@@ -282,31 +279,19 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 }
 
 func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
-	result, err := jsonrpc.ListJobs("127.0.0.1", stack.Nodes[0].JSONRpcNode.Port)
+	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
+
+	job, err := apiClient.Get(jobId)
 	if err != nil {
-		return []string{}, err
+		return nil, nil
 	}
 
-	var jobData *types.Job
-
-	for _, j := range result.Jobs {
-		if j.Id == jobId {
-			jobData = j
-			break
-		}
+	states := []string{}
+	for _, state := range job.State {
+		states = append(states, state.State)
 	}
 
-	if jobData == nil {
-		return []string{}, fmt.Errorf("job not found")
-	}
-
-	jobStates := []string{}
-
-	for _, state := range jobData.State {
-		jobStates = append(jobStates, state.State)
-	}
-
-	return jobStates, nil
+	return states, nil
 }
 
 func (stack *DevStack) WaitForJob(

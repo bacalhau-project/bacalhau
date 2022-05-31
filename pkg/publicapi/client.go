@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -48,6 +49,24 @@ func (apiClient *APIClient) List() (map[string]*types.Job, error) {
 	}
 
 	return res.Jobs, nil
+}
+
+// Get returns job data for a particular job ID.
+// TODO(optimisation): implement with separate API call, don't filter list
+func (apiClient *APIClient) Get(jobID string) (*types.Job, error) {
+	jobs, err := apiClient.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, job := range jobs {
+		// TODO: could have multiple matches in jobs, right? is this bad?
+		if strings.HasPrefix(job.Id, jobID) {
+			return job, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find job with ID: %s", jobID)
 }
 
 // Submit submits a new job to the node's transport.
