@@ -22,7 +22,6 @@ fa11069f-17e0-47de-b8b5-37444cb396b5
 ```
 Copy the first part of the job id, such as `fa11069f`, we'll use it in a moment.
 
-## Check the status of the job
 
 ```
 bacalhau list --wide |grep -A 2 JOB_ID
@@ -63,7 +62,7 @@ hello
 Hooray, you have just run a job on the Bacalhau network!
 
 
-# Introducing data and volumes
+## Introducing data and volumes
 
 We are hosting some [Landsat data on IPFS](http://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72) on the production Bacalhau nodes.
 
