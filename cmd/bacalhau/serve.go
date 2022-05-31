@@ -30,11 +30,11 @@ func init() {
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&hostAddress, "host", "0.0.0.0",
-		`The port to listen on.`,
+		`The host to listen on (for both jsonrpc and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
 		&hostPort, "port", 0,
-		`The port to listen on.`,
+		`The port to listen on for swarm connections.`,
 	)
 }
 
@@ -75,7 +75,7 @@ var serveCmd = &cobra.Command{
 
 		jsonRpcNode := jsonrpc.NewBacalhauJsonRpcServer(
 			cancelContext,
-			jsonrpcHost,
+			hostAddress,
 			jsonrpcPort,
 			requesterNode,
 		)
