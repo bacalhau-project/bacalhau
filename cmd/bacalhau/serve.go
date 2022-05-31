@@ -33,7 +33,7 @@ func init() {
 		`The host to listen on (for both jsonrpc and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", 0,
+		&hostPort, "port", 1235,
 		`The port to listen on for swarm connections.`,
 	)
 }
@@ -44,7 +44,7 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error { // nolint
 
 		if ipfsConnect == "" {
-			return fmt.Errorf("Must specify ipfs-connect")
+			return fmt.Errorf("must specify ipfs-connect")
 		}
 
 		cancelContext := system.GetCancelContext()
@@ -86,6 +86,21 @@ var serveCmd = &cobra.Command{
 		err = jsonrpc.StartBacalhauJsonRpcServer(jsonRpcNode)
 		if err != nil {
 			return err
+		}
+
+		err = transport.Start()
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Msgf("libp2p server started: %d", hostPort)
+
+		if peerConnect != "" {
+			err = transport.Connect(peerConnect)
+			if err != nil {
+				return err
+			}
+			log.Debug().Msgf("libp2p connecting to: %s", peerConnect)
 		}
 
 		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", transport.Host.ID().String())
