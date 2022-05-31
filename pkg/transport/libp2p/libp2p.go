@@ -93,7 +93,7 @@ func makeLibp2pHost(
 		if err := keyOut.Close(); err != nil {
 			return nil, fmt.Errorf("error closing key file: %v", err)
 		}
-		log.Print("wrote %s", privKeyPath)
+		log.Printf("wrote %s", privKeyPath)
 	}
 
 	// Now that we've ensured the private key is written to disk, read it! This
