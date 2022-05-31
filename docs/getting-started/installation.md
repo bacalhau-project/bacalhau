@@ -83,7 +83,7 @@ bacalhau list
 ```
 ```
  ID        JOB          INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE         RESULT
-  eb9e5f9e  docker d...      1        1               QmdZQ7Zb  complete      /ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532
+ eb9e5f9e  docker d...       1        1               QmdZQ7Zb  complete      /ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532
 ```
 Go look at the [output](http://cloudflare-ipfs.com/ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532)!
 
