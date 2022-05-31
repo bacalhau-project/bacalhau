@@ -88,7 +88,10 @@ func makeLibp2pHost(
 		}
 		// base64 encode privBytes
 		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		keyOut.Write([]byte(b64 + "\n"))
+		_, err = keyOut.Write([]byte(b64 + "\n"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to write to key file: %v", err)
+		}
 		if err := keyOut.Close(); err != nil {
 			return nil, fmt.Errorf("error closing key file: %v", err)
 		}
