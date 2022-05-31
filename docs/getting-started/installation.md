@@ -25,7 +25,7 @@ Copy the first part of the job id, such as `fa11069f`, we'll use it in a moment.
 ## Check the status of the job
 
 ```
-bacalhau list --wide |grep -A 3 JOB_ID
+bacalhau list --wide |grep -A 2 JOB_ID
 ```
 
 Replace `JOB_ID` with the job id you copied in the last step.
@@ -84,8 +84,10 @@ bacalhau run \
 ```
 
 ```
-bacalhau list
+bacalhau list |grep -A 2 JOB_ID
 ```
+Replace `JOB_ID` with the first part of the job id from the last step.
+
 ```
  ID        JOB          INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE         RESULT
  eb9e5f9e  docker d...       1        1               QmdZQ7Zb  complete      /ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532
