@@ -28,11 +28,16 @@ jobs:
       fail-fast: false
       matrix:
         go-version: [1.17.6]
-        os: [ubuntu-latest]
-        target_arch: [amd64]
+        os: [ubuntu-latest, macOS-latest]
+        target_arch: [arm, arm64, amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
+          - os: macOS-latest
+            target_os: darwin
+        exclude:
+          - os: macOS-latest
+            target_arch: arm
 
     steps:
       - uses: actions/checkout@main
@@ -41,6 +46,27 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - run: go version
+
+      - name: Cache Go modules (Linux)
+        if: matrix.target_os == 'linux'
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
+      - name: Cache Go modules (macOS)
+        if: matrix.target_os == 'darwin'
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/go-build
+            ~/go/pkg/mod
+          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
 
       - name: Set up Honeycomb Otel from Github Secret
         run: |
