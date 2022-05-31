@@ -42,7 +42,7 @@ done
 
 # mount /dev/sdb at /data
 sudo mkdir -p /data
-sudo mount /dev/sdb /data
+sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data)
 
 ipfs init
 (ipfs daemon \
