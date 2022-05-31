@@ -36,7 +36,7 @@ make devstack
 
 This will start a 3 node bacalhau cluster connected with libp2p.
 
-Each node has it's own ipfs server isolated using the `IPFS_PATH` environment variable and it's own JSON RPC server isolated using a random port.
+Each node has it's own ipfs server isolated using the `IPFS_PATH` environment variable and it's own API RPC server isolated using a random port.
 
 Once everything has started up - you will see output like the following:
 
@@ -47,7 +47,7 @@ node 0
 
 export IPFS_API_PORT_0=36825
 export IPFS_PATH_0=/tmp/bacalhau-ipfs-devstack4061398535
-export JSON_PORT_0=43079
+export API_PORT_0=43079
 
 cid=$(IPFS_PATH=/tmp/bacalhau-ipfs-devstack4061398535 ipfs add -q testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:36825/api/v0/id
@@ -58,7 +58,7 @@ node 1
 
 export IPFS_API_PORT_1=46023
 export IPFS_PATH_1=/tmp/bacalhau-ipfs-devstack3414455455
-export JSON_PORT_1=43079
+export API_PORT_1=43079
 
 cid=$(IPFS_PATH=/tmp/bacalhau-ipfs-devstack3414455455 ipfs add -q testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:46023/api/v0/id
@@ -69,7 +69,7 @@ node 2
 
 export IPFS_API_PORT_2=40277
 export IPFS_PATH_2=/tmp/bacalhau-ipfs-devstack2766996210
-export JSON_PORT_2=43079
+export API_PORT_2=43079
 
 cid=$(IPFS_PATH=/tmp/bacalhau-ipfs-devstack2766996210 ipfs add -q testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:40277/api/v0/id
@@ -77,7 +77,7 @@ curl -XPOST http://127.0.0.1:40277/api/v0/id
 
 ## New Terminal Window
 * Open an additional terminal window to be used for data submission to the local IPFS instances and and job submission to the 3 node devestack Bacalhau cluster.
-* Copy and paste the IPFS and JSON port variables into the new terminal window.
+* Copy and paste the IPFS and API port variables into the new terminal window.
 
 ## Add files to IPFS
 
@@ -92,13 +92,13 @@ cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
 
 ## Set a json rpc port
 
-Each node has it's own `--jsonrpc-port` value.  This means you can use the `go run .` cli in isolation from the other 2 nodes.
+Each node has it's own `--api-port` value.  This means you can use the `go run .` cli in isolation from the other 2 nodes.
 
 For example - to view the current job list from the perspective of only one of the 3 nodes:
 
 ```bash
 # Note: replace 12345 this with the correct port from the output
-go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list
+go run . --api-port=$API_PORT_0 --api-host=localhost list
 ```
 
 ## Submit a simple job
@@ -107,14 +107,14 @@ This will submit a simple job to a single node:
 
 ```bash
 cid=$( IPFS_PATH=$IPFS_PATH_0 ipfs add -q ./testdata/grep_file.txt )
-go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost run -v $cid:/file.txt ubuntu grep kiwi /file.txt
-go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
+go run . --api-port=$API_PORT_0 --api-host=localhost run -v $cid:/file.txt ubuntu grep kiwi /file.txt
+go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
 ```
 
 After a short while - the job should be in `complete` state.
 
 ```
-kai@xwing:~/projects/bacalhau$ go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
+kai@xwing:~/projects/bacalhau$ go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
  ID        JOB                                INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE     RESULT                                               
  22b53c20  docker ubuntu grep kiwi /file.txt       1        0            1  QmedX1zE  complete  /ipfs/QmYLFuXZv8h1Bc1cArbs5VXrE4o5hE4tVh55iqtjQWoDtW 
 ```
@@ -147,6 +147,6 @@ IPFS_PATH=$IPFS_PATH_2 ipfs add -q ./testdata/grep_file.txt
 Then we submit the job but with `--concurrency` setting:
 
 ```bash
-go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost run --concurrency=3 -v $cid:/file.txt ubuntu grep kiwi /file.txt
-go run . --jsonrpc-port=$JSON_PORT_0 --jsonrpc-host=localhost list --wide
+go run . --api-port=$API_PORT_0 --api-host=localhost run --concurrency=3 -v $cid:/file.txt ubuntu grep kiwi /file.txt
+go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
 ```
