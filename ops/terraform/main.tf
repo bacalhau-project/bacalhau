@@ -51,7 +51,7 @@ ipfs init
 export LOG_LEVEL=debug
 export BACALHAU_PATH=/data
 
-(while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 --peer /dnsaddr/bootstrap.ipcs.network 2>&1 || true; sleep 1; done \
+(while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
 EOF

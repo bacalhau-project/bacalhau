@@ -19,6 +19,12 @@ var ipfsConnect string
 var hostAddress string
 var hostPort int
 
+var DefaultBootstrapAddresses = []string{
+	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+}
+
 func init() {
 	serveCmd.PersistentFlags().StringVar(
 		&peerConnect, "peer", "",
@@ -95,7 +101,14 @@ var serveCmd = &cobra.Command{
 
 		log.Debug().Msgf("libp2p server started: %d", hostPort)
 
-		if peerConnect != "" {
+		if peerConnect == "" {
+			for _, addr := range DefaultBootstrapAddresses {
+				err = transport.Connect(addr)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
 			err = transport.Connect(peerConnect)
 			if err != nil {
 				return err
