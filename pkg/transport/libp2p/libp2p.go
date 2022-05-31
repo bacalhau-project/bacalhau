@@ -2,9 +2,8 @@ package libp2p
 
 import (
 	"crypto/rand"
-	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -67,7 +66,7 @@ func makeLibp2pHost(
 	configPath := getConfigPath()
 	// We include the port in the filename so that in devstack multiple nodes
 	// running on the same host get different identities
-	privKeyPath := fmt.Sprintf("%s/id_rsa.%d", configPath, port)
+	privKeyPath := fmt.Sprintf("%s/private_key.%d", configPath, port)
 
 	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
 		// Private key does not exist - create and write it
@@ -83,13 +82,13 @@ func makeLibp2pHost(
 		if err != nil {
 			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
 		}
-		privBytes, err := x509.MarshalPKCS8PrivateKey(prvKey)
+		privBytes, err := crypto.MarshalPrivateKey(prvKey)
 		if err != nil {
 			return nil, fmt.Errorf("unable to marshal private key: %v", err)
 		}
-		if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-			return nil, fmt.Errorf("failed to write data to key.pem: %v", err)
-		}
+		// base64 encode privBytes
+		b64 := base64.StdEncoding.EncodeToString(privBytes)
+		keyOut.Write([]byte(b64 + "\n"))
 		if err := keyOut.Close(); err != nil {
 			return nil, fmt.Errorf("error closing key file: %v", err)
 		}
@@ -105,15 +104,15 @@ func makeLibp2pHost(
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key: %v", err)
 	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %v", err)
+	}
 	// parse the private key
-	prvKey, err := x509.ParsePKCS8PrivateKey(keyBytes)
+	prvKey, err := crypto.UnmarshalPrivateKey(b64)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %v", err)
-	}
-	// cast prvKey to a crypto.PrivKey
-	privKey, ok := prvKey.(crypto.PrivKey)
-	if !ok {
-		return nil, fmt.Errorf("failed to cast private key to crypto.PrivKey")
 	}
 
 	// 0.0.0.0 will listen on any interface device.
@@ -123,7 +122,7 @@ func makeLibp2pHost(
 	// Other options can be added here.
 	return libp2p.New(
 		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(privKey),
+		libp2p.Identity(prvKey),
 	)
 }
 
