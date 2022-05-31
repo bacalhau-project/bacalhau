@@ -9,7 +9,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
@@ -124,29 +123,32 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver func(cancelCont
 	assert.NoError(t, err)
 }
 
-func TestIpfsFuseDockerFile(t *testing.T) {
+// fuse tests disabled for now since we care about being able to run the tests
+// on macOS, and aren't using the fuse driver anyway.
 
-	runFileTest(
-		t,
-		storage.IPFS_FUSE_DOCKER,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
-		},
-	)
+// func TestIpfsFuseDockerFile(t *testing.T) {
 
-}
+// 	runFileTest(
+// 		t,
+// 		storage.IPFS_FUSE_DOCKER,
+// 		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
+// 			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
+// 		},
+// 	)
 
-func TestIpfsFuseDockerFolder(t *testing.T) {
+// }
 
-	runFolderTest(
-		t,
-		storage.IPFS_FUSE_DOCKER,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
-		},
-	)
+// func TestIpfsFuseDockerFolder(t *testing.T) {
 
-}
+// 	runFolderTest(
+// 		t,
+// 		storage.IPFS_FUSE_DOCKER,
+// 		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
+// 			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
+// 		},
+// 	)
+
+// }
 
 func TestIpfsApiCopyFile(t *testing.T) {
 
