@@ -2,8 +2,12 @@ package libp2p
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -33,15 +37,85 @@ type Libp2pTransport struct {
 	JobEventSubscription *pubsub.Subscription
 }
 
+func getConfigPath() string {
+	suffix := "/.bacalhau"
+	env := os.Getenv("BACALHAU_PATH")
+	var d string
+	if env == "" {
+		// e.g. /home/francesca/.bacalhau
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		d = dirname + suffix
+	} else {
+		// e.g. /data/.bacalhau
+		d = env + suffix
+	}
+	// create dir if not exists
+	if err := os.MkdirAll(d, 0700); err != nil {
+		panic(err)
+	}
+	return d
+}
+
 func makeLibp2pHost(
 	port int,
 ) (host.Host, error) {
-	// Creates a new RSA key pair for this host.
-	// TODO: allow the user to provide an existing keypair
-	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+
+	configPath := getConfigPath()
+	// We include the port in the filename so that in devstack multiple nodes
+	// running on the same host get different identities
+	privKeyPath := fmt.Sprintf("%s/private_key.%d", configPath, port)
+
+	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
+		// Private key does not exist - create and write it
+
+		// Creates a new RSA key pair for this host.
+		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+		if err != nil {
+			log.Error().Err(err)
+			return nil, err
+		}
+
+		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
+		}
+		privBytes, err := crypto.MarshalPrivateKey(prvKey)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal private key: %v", err)
+		}
+		// base64 encode privBytes
+		b64 := base64.StdEncoding.EncodeToString(privBytes)
+		_, err = keyOut.Write([]byte(b64 + "\n"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to write to key file: %v", err)
+		}
+		if err := keyOut.Close(); err != nil {
+			return nil, fmt.Errorf("error closing key file: %v", err)
+		}
+		log.Printf("wrote %s", privKeyPath)
+	}
+
+	// Now that we've ensured the private key is written to disk, read it! This
+	// ensures that loading it works even in the case where we've just created
+	// it.
+
+	// read the private key
+	keyBytes, err := ioutil.ReadFile(privKeyPath)
 	if err != nil {
-		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to read private key: %v", err)
+	}
+	// base64 decode keyBytes
+	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key: %v", err)
+	}
+	// parse the private key
+	prvKey, err := crypto.UnmarshalPrivateKey(b64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %v", err)
 	}
 
 	// 0.0.0.0 will listen on any interface device.
