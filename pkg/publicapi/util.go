@@ -27,7 +27,10 @@ func SetupTests(t *testing.T) *APIClient {
 	c := NewAPIClient(s.GetURI())
 	ctx := system.GetCancelContextWithSignals()
 
-	go s.ListenAndServe(ctx)
+	go func() {
+		err := s.ListenAndServe(ctx)
+		assert.NoError(t, err)
+	}()
 	assert.NoError(t, waitForHealthy(c))
 
 	return NewAPIClient(s.GetURI())

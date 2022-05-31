@@ -84,14 +84,17 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	list, err := apiServer.Node.Transport.List()
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	res.WriteHeader(http.StatusOK)
-	json.NewEncoder(res).Encode(listResponse{
+	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: list.Jobs,
 	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 type submitRequest struct {
@@ -111,18 +114,21 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := job.VerifyJob(submitReq.Spec, submitReq.Deal); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	job, err := apiServer.Node.Transport.SubmitJob(submitReq.Spec, submitReq.Deal)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	res.WriteHeader(http.StatusOK)
-	json.NewEncoder(res).Encode(submitResponse{
+	err = json.NewEncoder(res).Encode(submitResponse{
 		Job: job,
 	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
 }
