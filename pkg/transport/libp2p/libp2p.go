@@ -2,8 +2,13 @@ package libp2p
 
 import (
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -33,15 +38,76 @@ type Libp2pTransport struct {
 	JobEventSubscription *pubsub.Subscription
 }
 
+func getConfigPath() string {
+	suffix := "/.bacalhau"
+	env := os.Getenv("BACALHAU_PATH")
+	if env == "" {
+		// e.g. /home/francesca/.bacalhau
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		return dirname + suffix
+	} else {
+		// e.g. /data/.bacalhau
+		return env + suffix
+	}
+}
+
 func makeLibp2pHost(
 	port int,
 ) (host.Host, error) {
-	// Creates a new RSA key pair for this host.
-	// TODO: allow the user to provide an existing keypair
-	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+
+	configPath := getConfigPath()
+	// We include the port in the filename so that in devstack multiple nodes
+	// running on the same host get different identities
+	privKeyPath := fmt.Sprintf("%s/id_rsa.%d", configPath, port)
+
+	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
+		// Private key does not exist - create and write it
+
+		// Creates a new RSA key pair for this host.
+		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+		if err != nil {
+			log.Error().Err(err)
+			return nil, err
+		}
+
+		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
+		}
+		privBytes, err := x509.MarshalPKCS8PrivateKey(prvKey)
+		if err != nil {
+			return nil, fmt.Errorf("unable to marshal private key: %v", err)
+		}
+		if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+			return nil, fmt.Errorf("failed to write data to key.pem: %v", err)
+		}
+		if err := keyOut.Close(); err != nil {
+			return nil, fmt.Errorf("error closing key file: %v", err)
+		}
+		log.Print("wrote %s", privKeyPath)
+	}
+
+	// Now that we've ensured the private key is written to disk, read it! This
+	// ensures that loading it works even in the case where we've just created
+	// it.
+
+	// read the private key
+	keyBytes, err := ioutil.ReadFile(privKeyPath)
 	if err != nil {
-		log.Error().Err(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to read private key: %v", err)
+	}
+	// parse the private key
+	prvKey, err := x509.ParsePKCS8PrivateKey(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	}
+	// cast prvKey to a crypto.PrivKey
+	privKey, ok := prvKey.(crypto.PrivKey)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast private key to crypto.PrivKey")
 	}
 
 	// 0.0.0.0 will listen on any interface device.
@@ -51,7 +117,7 @@ func makeLibp2pHost(
 	// Other options can be added here.
 	return libp2p.New(
 		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(prvKey),
+		libp2p.Identity(privKey),
 	)
 }
 
