@@ -41,17 +41,23 @@ type Libp2pTransport struct {
 func getConfigPath() string {
 	suffix := "/.bacalhau"
 	env := os.Getenv("BACALHAU_PATH")
+	var d string
 	if env == "" {
 		// e.g. /home/francesca/.bacalhau
 		dirname, err := os.UserHomeDir()
 		if err != nil {
 			panic(err)
 		}
-		return dirname + suffix
+		d = dirname + suffix
 	} else {
 		// e.g. /data/.bacalhau
-		return env + suffix
+		d = env + suffix
 	}
+	// create dir if not exists
+	if err := os.MkdirAll(d, 0700); err != nil {
+		panic(err)
+	}
+	return d
 }
 
 func makeLibp2pHost(
