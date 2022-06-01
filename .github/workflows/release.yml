@@ -81,6 +81,23 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Build
+        run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
+
+      - name: Codesign executable
+        if: matrix.target_os == 'darwin'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          echo $MACOS_CERTIFICATE | base64 —decode > certificate.p12
+          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
+          security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
+          /usr/bin/codesign --force -s D0B183D168C77DFBC536D2D10573E8C06AED4FB1 ./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau -v
+
+      - name: Build
         run: |
           GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build-bacalhau-tgz
           echo ${{ github.sha }} > Release.txt

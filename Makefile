@@ -126,7 +126,7 @@ build-docker-images: build-ipfs-sidecar-image
 # Target: build-bacalhau-tgz                                                   #
 ################################################################################
 .PHONY: build-bacalhau-tgz
-build-bacalhau-tgz: build-bacalhau
+build-bacalhau-tgz: 
 	@echo "CWD: $(shell pwd)"
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
