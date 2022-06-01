@@ -112,7 +112,7 @@ jobs:
         if: matrix.target_os == 'darwin'
         run: |
           echo $macos_certificate > /tmp/macos_certificate
-          base64 —-decode -i /tmp/macos_certificate > /tmp/certificate.p12
+          base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
           security create-keychain -p $macos_certificate_pwd build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $macos_certificate_pwd build.keychain
