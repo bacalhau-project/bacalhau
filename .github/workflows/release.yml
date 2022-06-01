@@ -26,18 +26,11 @@ jobs:
       fail-fast: false
       matrix:
         go-version: [1.17.6]
-        os: [ubuntu-latest, macOS-latest]
-        target_arch: [arm, arm64, amd64]
+        os: [ubuntu-latest]
+        target_arch: [amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
-          - os: macOS-latest
-            target_os: darwin
-        exclude:
-          - os: macOS-latest
-            target_arch: arm
-          - os: ubuntu-latest
-            target_arch: arm64
 
     steps:
       - uses: actions/checkout@main
@@ -46,10 +39,23 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - run: go version
+      - run: 'echo "$PRIVATE_PEM" > /tmp/private.pem'
+        shell: bash
+        env:
+          PRIVATE_PEM: ${{secrets.PRIVATE_PEM}}
 
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+
+      #       - uses: evantorrie/mott-the-tidier@v1-beta
+      #         with:
+      #           gomods: |
+      #             **/go.mod
+      #             -tools/go.mod
+      #       - uses: stefanzweifel/git-auto-commit-action@v4
+      #         with:
+      #           commit_message: Auto-fix go.sum discrepancies
 
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
@@ -67,7 +73,10 @@ jobs:
 
       - name: Build
         run: |
-          make build-bacalhau-tgz
+          GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build-bacalhau-tgz
+          echo ${{ github.sha }} > Release.txt
+        env:
+          PRIVATE_KEY_PASSPHRASE: ${{secrets.PRIVATE_KEY_PASSPHRASE}}
       - name: Generate Changelog
         run: echo "# Release Notes" > CHANGELOG.txt
       - name: Release
@@ -76,6 +85,7 @@ jobs:
         with:
           files: |
             ${{ env.BINARY_TARBALL }}
+            ${{ env.BINARY_TARBALL_SIGNATURE }}
           body_path: CHANGELOG.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

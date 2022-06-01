@@ -49,7 +49,10 @@ BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2
 # Temp dirs
 TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
 TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_$(GO_OS)_$(GO_ARCH)")
+PACKAGE := $(shell echo "bacalhau_$(TAG)_$(GO_ARCH)")
+
+PRIVATE_KEY_FILE := /tmp/private.pem
+PUBLIC_KEY_FILE := /tmp/public.pem
 
 all: go-arch-alignment build
 .PHONY: all
@@ -104,7 +107,8 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_OS)_$(GO_ARCH)/bacalhau main.go
+	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_ARCH)/bacalhau main.go
+	cp bin/$(GO_ARCH)/bacalhau bin/bacalhau
 
 ################################################################################
 # Target: build-docker-images
@@ -128,12 +132,16 @@ build-bacalhau-tgz: build-bacalhau
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp bin/$(GO_OS)_$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
+	cp bin/$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
 	cd $(TMPRELEASEWORKINGDIR)
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
+	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
 	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
+	@echo "BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
+	@echo "BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
 
 ################################################################################
 # Target: clean					                               #
@@ -189,7 +197,7 @@ lint: build-bacalhau
 ################################################################################
 .PHONY: modtidy
 modtidy:
-	go mod tidy -compat=1.17
+	go mod tidy
 
 ################################################################################
 # Target: check-diff                                                           #
