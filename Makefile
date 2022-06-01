@@ -131,7 +131,7 @@ build-bacalhau-tgz: build-bacalhau
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp bin/$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
+	cp bin/$(GO_OS)_$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
 	cd $(TMPRELEASEWORKINGDIR)
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
