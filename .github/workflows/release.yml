@@ -22,6 +22,8 @@ jobs:
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
     strategy:
       fail-fast: false
       matrix:
@@ -85,11 +87,8 @@ jobs:
 
       - name: Codesign executable
         if: matrix.target_os == 'darwin'
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
         run: |
-          echo $MACOS_CERTIFICATE | base64 —-decode > certificate.p12
+          echo $MACOS_CERTIFICATE | base64 —D > certificate.p12
           security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
