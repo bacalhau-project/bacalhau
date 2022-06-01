@@ -123,26 +123,26 @@ cid=$( ipfs add -q $file_path)
 ```
 #Find the port number from the output of the ./bacalhau devstack command above or by running lsof
 sudo lsof -i -P -n | grep bacalhau | grep LISTEN | tail -n 1
-export JSON_RPC_PORT=#####
+export API_PORT=#####
 ```
 
 Submit the job to bacalhau
 ```
 # Counts the number of the letter 'W' in the file
-./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" --jsonrpc-port $JSON_RPC_PORT
+./bacalhau submit --cids=$cid --commands="grep -o 'W' /ipfs/$cid | wc -l" --api-port $API_PORT
 
 ```
 
 **Observe the job running**
 
 ```
-./bacalhau list --jsonrpc-port=$JSON_RPC_PORT
+./bacalhau list --api-port=$API_PORT
 ```
 
 **Fetch job results**
 ```
 echo JOB_ID=[the id from the ./bacalhau submit job above]
-./bacalhau results fetch $JOB_ID --jsonrpc-port=$JSON_RPC_PORT
+./bacalhau results fetch $JOB_ID --api-port=$API_PORT
 ````
 
 **Reminder: delete your instance when finished**

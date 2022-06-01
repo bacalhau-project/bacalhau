@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -36,7 +36,7 @@ func init() {
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&hostAddress, "host", "0.0.0.0",
-		`The host to listen on (for both jsonrpc and swarm connections).`,
+		`The host to listen on (for both api and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
 		&hostPort, "port", 1235,
@@ -79,20 +79,17 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		jsonRpcNode := jsonrpc.NewBacalhauJsonRpcServer(
-			cancelContext,
-			hostAddress,
-			jsonrpcPort,
+		apiServer := publicapi.NewServer(
 			requesterNode,
+			apiHost,
+			apiPort,
 		)
-		if err != nil {
-			return err
-		}
 
-		err = jsonrpc.StartBacalhauJsonRpcServer(jsonRpcNode)
-		if err != nil {
-			return err
-		}
+		go func() {
+			if err := apiServer.ListenAndServe(cancelContext); err != nil {
+				panic(err) // if api server can't run, bacalhau should stop
+			}
+		}()
 
 		err = transport.Start()
 		if err != nil {

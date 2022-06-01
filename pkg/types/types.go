@@ -6,18 +6,18 @@ package types
 type StorageSpec struct {
 	// e.g. ipfs, filecoin or s3
 	// this can be empty for output volumes
-	Engine string
+	Engine string `json:"engine"`
 	// we name input and output volumes so we can reference them
 	// (possibly in dags and pipelines)
 	// output volumes must have names
-	Name string
+	Name string `json:"name"`
 	// the id of the storage resource (e.g. cid in the case of ipfs)
 	// this is empty in the case of outputs
-	Cid string
+	Cid string `json:"cid"`
 	// for compute engines that "mount" the storage as filesystems (e.g. docker)
 	// what path should we mount the storage to
 	// this can be "stdout", "stderr" or "stdin"
-	Path string
+	Path string `json:"path"`
 }
 
 // a storage entity that is consumed are produced by a job
@@ -29,98 +29,98 @@ type StorageSpec struct {
 // put simply - the nature of a storage volume depends on it's use by the
 // executor engine
 type StorageVolume struct {
-	Type   string
-	Source string
-	Target string
+	Type   string `json:"type"`
+	Source string `json:"source"`
+	Target string `json:"target"`
 }
 
 // for VM style executors
 type JobSpecVm struct {
 	// this should be pullable by docker
-	Image string
+	Image string `json:"image"`
 	// optionally override the default entrypoint
-	Entrypoint []string
+	Entrypoint []string `json:"entrypoint"`
 	// a map of env to run the container with
-	Env []string
+	Env []string `json:"env"`
 	// https://github.com/BTBurke/k8sresource strings
-	Cpu    string
-	Memory string
-	Disk   string
+	Cpu    string `json:"cpu"`
+	Memory string `json:"memory"`
+	Disk   string `json:"disk"`
 }
 
 // for Wasm style executors
 type JobSpecWasm struct {
-	Bytecode StorageSpec
+	Bytecode StorageSpec `json:"bytecode"`
 }
 
 // what we pass off to the executor to "run" the job
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
-	Engine string
+	Engine string `json:"engine"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
-	Verifier string
+	Verifier string `json:"verifier"`
 
 	// for VM based executors
-	Vm   JobSpecVm
-	Wasm JobSpecWasm
+	Vm   JobSpecVm   `json:"job_spec_vm"`
+	Wasm JobSpecWasm `json:"job_spec_wasm"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	Inputs []StorageSpec
+	Inputs []StorageSpec `json:"inputs"`
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec
+	Outputs []StorageSpec `json:"outputs"`
 }
 
 // keep track of job states on a particular node
 type JobState struct {
-	State     string
-	Status    string
-	ResultsId string
+	State     string `json:"state"`
+	Status    string `json:"status"`
+	ResultsId string `json:"results_id"`
 }
 
 // omly the client can update this as it's the client that will
 // pay out based on the deal
 type JobDeal struct {
 	// how many nodes do we want to run this job?
-	Concurrency int
+	Concurrency int `json:"concurrency"`
 	// the nodes we have assigned (and will pay)
 	// other nodes are welcome to submit results without having been assigned
 	// this is how they can bootstrap their reputation
-	AssignedNodes []string
+	AssignedNodes []string `json:"assigned_nodes"`
 }
 
 // the view of a single job
 // multiple compute nodes will be running this job
 type Job struct {
-	Id string
+	Id string `json:"id"`
 	// the client node that "owns" this job (as in who submitted it)
-	Owner string
-	Spec  *JobSpec
-	Deal  *JobDeal
+	Owner string   `json:"owner"`
+	Spec  *JobSpec `json:"spec"`
+	Deal  *JobDeal `json:"deal"`
 	// a map of nodeId -> state of the job on that node
-	State map[string]*JobState
+	State map[string]*JobState `json:"state"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobId     string
-	NodeId    string
+	JobId     string `json:"job_id"`
+	NodeId    string `json:"node_id"`
 	EventName string
 	// this is only defined in "create" events
-	JobSpec *JobSpec
+	JobSpec *JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal *JobDeal
+	JobDeal *JobDeal `json:"job_deal"`
 	// most other events are a case of a client<->node state change
-	JobState *JobState
+	JobState *JobState `json:"job_state"`
 }
 
 type ResultsList struct {
-	Node   string
-	Cid    string
-	Folder string
+	Node   string `json:"node"`
+	Cid    string `json:"cid"`
+	Folder string `json:"folder"`
 }

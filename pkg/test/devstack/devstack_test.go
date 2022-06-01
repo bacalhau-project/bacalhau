@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
-	"github.com/filecoin-project/bacalhau/pkg/jsonrpc"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -78,8 +78,8 @@ func devStackDockerStorageTest(
 
 	defer TeardownTest(stack, cancelContext)
 
-	rpcHost := "127.0.0.1"
-	rpcPort := stack.Nodes[0].JSONRpcNode.Port
+	apiUri := stack.Nodes[0].ApiServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
 
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
@@ -96,7 +96,7 @@ func devStackDockerStorageTest(
 		Concurrency: nodeCount,
 	}
 
-	submittedJob, err := jsonrpc.SubmitJob(jobSpec, jobDeal, rpcHost, rpcPort)
+	submittedJob, err := apiClient.Submit(jobSpec, jobDeal)
 	assert.NoError(t, err)
 
 	if err != nil {
@@ -112,7 +112,7 @@ func devStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	loadedJob, err := jsonrpc.GetJobData(rpcHost, rpcPort, submittedJob.Id)
+	loadedJob, err := apiClient.Get(submittedJob.Id)
 	assert.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier

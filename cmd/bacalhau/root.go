@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var jsonrpcHost string
-var jsonrpcPort int
+var apiHost string
+var apiPort int
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
@@ -16,12 +16,12 @@ func init() {
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
-		&jsonrpcHost, "jsonrpc-host", "bootstrap.production.bacalhau.org",
-		`The host for the client and server to communicate on (via jsonrpc).`,
+		&apiHost, "api-host", "bootstrap.production.bacalhau.org",
+		`The host for the client and server to communicate on (via REST).`,
 	)
 	RootCmd.PersistentFlags().IntVar(
-		&jsonrpcPort, "jsonrpc-port", 1234,
-		`The port for the client and server to communicate on (via jsonrpc).`,
+		&apiPort, "api-port", 1234,
+		`The port for the client and server to communicate on (via REST).`,
 	)
 }
 
