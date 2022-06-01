@@ -85,7 +85,12 @@ jobs:
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
+      - name: Install gon
+        if: matrix.target_os == 'darwin'
+        run: brew install mitchellh/gon/gon
+
       - name: Generate .gon.json
+        if: matrix.target_os == 'darwin'
         run: |-
           sh -c '
           cat > /tmp/.gon.json << EOF
