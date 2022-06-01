@@ -112,14 +112,13 @@ jobs:
         if: matrix.target_os == 'darwin'
         run: |
           echo $macos_certificate > /tmp/macos_certificate
-          base64 —d -i /tmp/macos_certificate > /tmp/certificate.p12
+          base64 —-decode -i /tmp/macos_certificate > /tmp/certificate.p12
           security create-keychain -p $macos_certificate_pwd build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $macos_certificate_pwd build.keychain
           security import /tmp/certificate.p12 -k build.keychain -p $macos_certificate_pwd -t /usr/bin/codesign
           security set-key-partition-list -s apple-tool:,apple:,codesign: -s -k $macos_certificate_pwd build.keychain
           gon /tmp/.gon.json
-
 
       - name: Build tarball
         run: |
