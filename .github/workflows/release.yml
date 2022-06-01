@@ -111,12 +111,14 @@ jobs:
       - name: Codesign executable
         if: matrix.target_os == 'darwin'
         run: |
+          # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
+          # Doesn't seem like this would be an issue.
           echo $MACOS_CERTIFICATE > /tmp/macos_certificate
           base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
-          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
+          security create-keychain -P $MACOS_CERTIFICATE_PWD build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
-          security import /tmp/certificate.p12 -k build.keychain -p $MACOS_CERTIFICATE_PWD -t /usr/bin/codesign
+          security unlock-keychain -P $MACOS_CERTIFICATE_PWD build.keychain
+          security import /tmp/certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -t /usr/bin/codesign
           security set-key-partition-list -s apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
           gon /tmp/.gon.json
 
