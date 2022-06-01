@@ -49,7 +49,7 @@ BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2
 # Temp dirs
 TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
 TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_$(GO_ARCH)")
+PACKAGE := $(shell echo "bacalhau_$(TAG)_${GO_OS}_$(GO_ARCH)")
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -107,8 +107,7 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(GO_ARCH)/bacalhau main.go
-	cp bin/$(GO_ARCH)/bacalhau bin/bacalhau
+	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GO_OS}_$(GO_ARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images
