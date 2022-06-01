@@ -85,6 +85,29 @@ jobs:
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
+      - name: Generate .gon.json
+        post: |-
+          sh -c '
+          cat > /tmp/.gon.json << EOF
+          {
+              "notarize": [
+                  {
+                      "path": "./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau ",
+                      "bundle_id": "org.bacalhau"
+                  }
+              ],
+              "apple_id": {
+                  "username": "davidaronchick@hotmail.com",
+                  "password": "@env:APPLE_DEVELOPER_ID_PASSWORD"
+              },
+              "sign": {
+                  "application_identity": "Developer ID Application: Bacalhau Binary"
+              }
+          }         
+          EOF
+          gon /tmp/.gon.json
+          '
+
       - name: Codesign executable
         if: matrix.target_os == 'darwin'
         run: |
@@ -94,7 +117,7 @@ jobs:
           security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
-          /usr/bin/codesign --force -s D0B183D168C77DFBC536D2D10573E8C06AED4FB1 ./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau -v
+          gon /tmp/.gon.json
 
       - name: Build
         run: |
