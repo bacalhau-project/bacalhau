@@ -86,24 +86,20 @@ jobs:
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
       - name: Generate .gon.json
-        post: |-
+        run: |-
           sh -c '
           cat > /tmp/.gon.json << EOF
           {
-              "notarize": [
-                  {
-                      "path": "./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau ",
-                      "bundle_id": "org.bacalhau"
-                  }
-              ],
+              "source": ["./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau"],
+              "bundle_id": "org.bacalhau",
               "apple_id": {
                   "username": "davidaronchick@hotmail.com",
                   "password": "@env:APPLE_DEVELOPER_ID_PASSWORD"
               },
               "sign": {
-                  "application_identity": "Developer ID Application: Bacalhau Binary"
+                  "application_identity": "Developer ID Application: David Aronchick (A4J58RH62D)"
               }
-          }         
+          }          
           EOF
           gon /tmp/.gon.json
           '
