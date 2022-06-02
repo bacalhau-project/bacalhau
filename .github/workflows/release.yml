@@ -81,10 +81,6 @@ jobs:
         if: matrix.target_os == 'darwin'
         run: brew install mitchellh/gon/gon
 
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
-
       - name: Generate .gon.json
         if: matrix.target_os == 'darwin'
         run: |-
@@ -103,6 +99,11 @@ jobs:
           }          
           EOF
           '
+
+      # ONLY DEBUGS WITH DARWIN (for now)
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }} && matrix.target_os == 'darwin'
 
       - name: Codesign create keychain
         if: matrix.target_os == 'darwin'
