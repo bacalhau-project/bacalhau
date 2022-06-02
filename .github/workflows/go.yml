@@ -18,7 +18,7 @@ jobs:
     name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.runner }}
     env:
-      GOVER: ${{ matrix.go-version }}
+      GOVER: ${{ matrix.go_version }}
       GOLANGCILINT_VER: v1.45
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -30,6 +30,7 @@ jobs:
         # GitHub Actions does not yet support Arm or Arm64
         # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
         name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
+        go_version: [1.17.11]
         include:
           # - {
           #     name: ubuntu-arm,
@@ -70,7 +71,11 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - name: Install go@1.17
-        run: brew install go@1.17
+        run: |
+          curl -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          sudo rm -rf /usr/local/go 
+          sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
 
       - name: Print go version
         run: go version
