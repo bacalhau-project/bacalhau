@@ -108,13 +108,27 @@ jobs:
           EOF
           '
 
-      - name: "Notarize Release Build"
+      - name: Codesign create keychain
         if: matrix.target_os == 'darwin'
-        uses: devbotsxyz/xcode-notarize@v1
-        with:
-          product-path: "./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau"
-          appstore-connect-username: "davidaronchick@hotmail.com"
-          appstore-connect-password: ${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}
+        run: |
+          # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
+          # Doesn't seem like this would be an issue.
+          echo $MACOS_CERTIFICATE > /tmp/macos_certificate
+          base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
+          security create-keychain -P $MACOS_CERTIFICATE_PWD build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -P $MACOS_CERTIFICATE_PWD build.keychain
+
+      - name: Codesign set-key
+        if: matrix.target_os == 'darwin'
+        run: |
+          security import /tmp/certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -t /usr/bin/codesign
+          security set-key-partition-list -s apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
+
+      - name: Use gon to sign
+        if: matrix.target_os == 'darwin'
+        run: |
+          gon /tmp/.gon.json
 
       - name: Build tarball
         run: |
