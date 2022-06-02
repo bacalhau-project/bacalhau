@@ -45,6 +45,13 @@ jobs:
               target_arch: arm64,
             }
           - {
+              name: ubuntu-amd64,
+              os: ubuntu-latest,
+              target_os: linux,
+              runner: ubuntu-latest,
+              target_arch: amd64,
+            }
+          - {
               name: macOS-arm64,
               os: macOS-latest,
               target_os: darwin,
