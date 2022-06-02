@@ -55,10 +55,6 @@ jobs:
         env:
           PRIVATE_PEM: ${{secrets.PRIVATE_PEM}}
 
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
-
       #       - uses: evantorrie/mott-the-tidier@v1-beta
       #         with:
       #           gomods: |
@@ -78,16 +74,16 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make modtidy check-diff
 
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
-
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
       - name: Install gon
         if: matrix.target_os == 'darwin'
         run: brew install mitchellh/gon/gon
+
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Generate .gon.json
         if: matrix.target_os == 'darwin'
