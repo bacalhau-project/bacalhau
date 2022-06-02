@@ -27,22 +27,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
+        # GitHub Actions does not yet support Arm or Arm64
+        # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
+        name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
         include:
-          - {
-              name: ubuntu-arm,
-              os: ubuntu-latest,
-              target_os: linux,
-              runner: ubuntu-latest,
-              target_arch: arm,
-            }
-          - {
-              name: ubuntu-arm64,
-              os: ubuntu-latest,
-              target_os: linux,
-              runner: ubuntu-latest,
-              target_arch: arm64,
-            }
+          # - {
+          #     name: ubuntu-arm,
+          #     os: ubuntu-latest,
+          #     target_os: linux,
+          #     runner: ubuntu-latest,
+          #     target_arch: arm,
+          #   }
+          # - {
+          #     name: ubuntu-arm64,
+          #     os: ubuntu-latest,
+          #     target_os: linux,
+          #     runner: ubuntu-latest,
+          #     target_arch: arm64,
+          #   }
           - {
               name: ubuntu-amd64,
               os: ubuntu-latest,
