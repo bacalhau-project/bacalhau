@@ -27,32 +27,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macOS-latest, ubuntu-latest]
+        name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
         go-version: [1.17.6]
         include:
-          # Specify default runner for all ubuntu
-          - { os: ubuntu-latest, runner: ubuntu-latest }
-
-          # Specify default runner for all MacOS
-          - { os: macOS-latest, runner: macOS-latest }
-
-          # Specify target_os names for all systems
-          - { os: ubuntu-latest, target_os: linux }
-          - { os: macOS-latest, target_os: darwin }
-
-          # Specify target_arch for ubuntu
-          - { os: ubuntu-latest, target_arch: arm }
-          - { os: ubuntu-latest, target_arch: arm64 }
-
-          # Specify target_arch for MacOS amd64
-          - { os: macOS-latest, target_arch: amd64 }
-
-          # Add specific runner for MacOS arm64
           - {
-              os: macOS-latest,
-              runner: M1,
-              target_os: darwin,
+              name: ubuntu-arm,
+              os: ubuntu-latest,
+              target_os: linux,
+              runner: ubuntu-latest,
+              target_arch: arm,
+            }
+          - {
+              name: ubuntu-arm64,
+              os: ubuntu-latest,
+              target_os: linux,
+              runner: ubuntu-latest,
               target_arch: arm64,
+            }
+          - {
+              name: macOS-arm64,
+              os: macOS-latest,
+              target_os: darwin,
+              runner: M1,
+              target_arch: arm64,
+            }
+          - {
+              name: macOS-amd64,
+              os: macOS-latest,
+              target_os: darwin,
+              runner: macOS-latest,
+              target_arch: amd64,
             }
 
     steps:
