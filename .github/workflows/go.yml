@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [[M1, macOS-latest], ubuntu-latest, macOS-latest]
+        os: [M1, ubuntu-latest, macOS-latest]
         go-version: [1.17.6]
         include:
           - os: ubuntu-latest
