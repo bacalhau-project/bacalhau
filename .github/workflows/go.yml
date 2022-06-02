@@ -16,7 +16,7 @@ on:
 jobs:
   release:
     name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     env:
       GOVER: ${{ matrix.go-version }}
       GOLANGCILINT_VER: v1.45
@@ -27,12 +27,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [macOS-latest, ubuntu-latest]
         go-version: [1.17.6]
         include:
-          - { os: ubuntu-latest, target_os: linux, target_arch: arm }
-          - { os: ubuntu-latest, target_os: linux, target_arch: arm64 }
-          - { os: macOS-latest, target_os: darwin, target_arch: amd64 }
-          - { os: M1, target_os: darwin, target_arch: arm64 }
+          # Specify default runner for all ubuntu
+          - { os: ubuntu-latest, runner: ubuntu-latest }
+
+          # Specify default runner for all MacOS
+          - { os: macOS-latest, runner: macOS-latest }
+
+          # Specify target_os names for all systems
+          - { os: ubuntu-latest, target_os: linux }
+          - { os: macOS-latest, target_os: darwin }
+
+          # Specify target_arch for ubuntu
+          - { os: ubuntu-latest, target_arch: arm }
+          - { os: ubuntu-latest, target_arch: arm64 }
+
+          # Specify target_arch for MacOS amd64
+          - { os: macOS-latest, target_arch: amd64 }
+
+          # Add specific runner for MacOS arm64
+          - {
+              os: macOS-latest,
+              runner: M1,
+              target_os: darwin,
+              target_arch: arm64,
+            }
 
     steps:
       - uses: actions/checkout@main
@@ -94,7 +115,7 @@ jobs:
           curl -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           cd go-ipfs
-          bash install.sh
+          sudo bash install.sh
 
       - name: Test
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
