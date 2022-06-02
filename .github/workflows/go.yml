@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@main
       - name: Install go@1.17
         run: |
-          curl -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           sudo rm -rf /usr/local/go 
           sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           export PATH=$PATH:/usr/local/go/bin
@@ -129,7 +129,7 @@ jobs:
 
       - name: Install IPFS
         run: |
-          curl -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          curl -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           cd go-ipfs
           sudo bash install.sh
