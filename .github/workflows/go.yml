@@ -28,16 +28,16 @@ jobs:
       fail-fast: false
       matrix:
         go-version: [1.17.6]
-        os: [ubuntu-latest, macOS-latest]
-        target_arch: [arm, arm64, amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
+            target_arch: amd64
+          - os: [M1, macOS-latest]
+            target_os: darwin
+            target_arch: arm64
           - os: macOS-latest
             target_os: darwin
-        exclude:
-          - os: macOS-latest
-            target_arch: arm
+            target_arch: amd64
 
     steps:
       - uses: actions/checkout@main
