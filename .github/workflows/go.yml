@@ -27,12 +27,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [[M1, macOS-latest], ubuntu-latest, macOS-latest]
         go-version: [1.17.6]
         include:
           - os: ubuntu-latest
             target_os: linux
             target_arch: amd64
-          - os: [M1, macOS-latest]
+          - os: macOS-latest
             target_os: darwin
             target_arch: arm64
           - os: macOS-latest
