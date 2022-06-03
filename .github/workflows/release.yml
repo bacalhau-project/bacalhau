@@ -109,7 +109,7 @@ jobs:
 
       - name: Install gon
         if: matrix.target_os == 'darwin'
-        run: brew install mitchellh/gon/gon
+        run: arch -arm64 brew install mitchellh/gon/gon
 
       - name: Generate .gon.json
         if: matrix.target_os == 'darwin'
