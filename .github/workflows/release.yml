@@ -22,6 +22,8 @@ jobs:
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
     strategy:
       fail-fast: false
       matrix:
