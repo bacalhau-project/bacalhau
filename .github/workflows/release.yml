@@ -109,11 +109,11 @@ jobs:
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
-      - name: Install gon
+      - name: Install gon (arm64)
         if: matrix.target_os == 'darwin' && matrix.target_arch == 'arm64'
         run: arch -arm64 brew install mitchellh/gon/gon
 
-      - name: Install gon
+      - name: Install gon (amd64)
         if: matrix.target_os == 'darwin' && matrix.target_arch == 'amd64'
         run: brew install mitchellh/gon/gon
 
@@ -141,8 +141,10 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
 
+      # Skipping keychain creation on the self-hosted runner - if we change the cert, we should change this.
+      # Also, this isn't ideal - THEORETICALLY, we should still create the keychain, and cert (but the self hosted runner leaves to much stuff around)
       - name: Codesign create keychain
-        if: ${{ matrix.runner != 'M1' }}
+        if: ${{ matrix.runner != 'M1' && matrix.target_os == 'darwin' }}
         run: |
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
