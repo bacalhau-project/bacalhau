@@ -14,8 +14,8 @@ on:
         default: "false"
 
 jobs:
-  release:
-    name: Build and Release ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+  build:
+    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ${{ matrix.runner }}
     env:
       GOVER: ${{ matrix.go_version }}
