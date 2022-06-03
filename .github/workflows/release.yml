@@ -108,8 +108,12 @@ jobs:
         run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
 
       - name: Install gon
-        if: matrix.target_os == 'darwin'
+        if: matrix.target_os == 'darwin' && matrix.target_arch == 'arm64'
         run: arch -arm64 brew install mitchellh/gon/gon
+
+      - name: Install gon
+        if: matrix.target_os == 'darwin' && matrix.target_arch == 'amd64'
+        run: brew install mitchellh/gon/gon
 
       - name: Generate .gon.json
         if: matrix.target_os == 'darwin'
@@ -136,7 +140,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
 
       - name: Codesign create keychain
-        if: matrix.target_os == 'darwin'
+        if: ${{ matrix.runner != "M1" }}
         run: |
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
@@ -144,11 +148,11 @@ jobs:
           base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
           security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
 
       - name: Codesign set-key
         if: matrix.target_os == 'darwin'
         run: |
+          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security import /tmp/certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
 
