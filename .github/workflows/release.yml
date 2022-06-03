@@ -140,7 +140,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
 
       - name: Codesign create keychain
-        if: ${{ matrix.runner != "M1" }}
+        if: ${{ matrix.runner != 'M1' }}
         run: |
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
