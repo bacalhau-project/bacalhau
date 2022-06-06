@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/types"
-
-	"github.com/rs/zerolog/log"
 )
 
 // APIClient is a utility for interacting with a node's API server.
@@ -96,11 +94,6 @@ func (apiClient *APIClient) post(
 ) error {
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 
-	if strings.Contains(addr, "http:") {
-		log.Warn().Msgf("Address scheme is http and in clear text.")
-	}
-	log.Debug().Msgf(`Address to post to: %s`, addr)
-
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
 		return err
@@ -116,8 +109,6 @@ func (apiClient *APIClient) post(
 	if err != nil {
 		return err
 	}
-
-	log.Debug().Msgf("Response body: %s", res.Body)
 
 	return json.NewDecoder(res.Body).Decode(resData)
 }
