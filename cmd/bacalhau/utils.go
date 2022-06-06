@@ -31,5 +31,5 @@ func getJobResult(job *types.Job, state *types.JobState) string {
 }
 
 func getAPIClient() *publicapi.APIClient {
-	return publicapi.NewAPIClient(fmt.Sprintf("%s:%d", apiHost, apiPort))
+	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 }
