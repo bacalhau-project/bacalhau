@@ -24,8 +24,8 @@ sudo apt-get update && sudo apt-get install -y docker.io
 
 # TODO: move this into two systemd units!
 
-wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.6/bacalhau_v0.1.6_amd64.tar.gz
-tar xfv bacalhau_v0.1.6_amd64.tar.gz
+wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.7/bacalhau_v0.1.7_amd64.tar.gz
+tar xfv bacalhau_v0.1.7_amd64.tar.gz
 sudo mv ./bacalhau /usr/local/bin/bacalhau
 
 wget https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
