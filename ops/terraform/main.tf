@@ -44,7 +44,11 @@ done
 sudo mkdir -p /data
 sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data)
 
+sudo mkdir -p /data/ipfs
+export IPFS_PATH=/data/ipfs
+
 ipfs init
+
 (ipfs daemon \
     2>&1 >> /tmp/ipfs.log) &
 
