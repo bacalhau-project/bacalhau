@@ -81,7 +81,7 @@ var serveCmd = &cobra.Command{
 
 		apiServer := publicapi.NewServer(
 			requesterNode,
-			apiHost,
+			hostAddress,
 			apiPort,
 		)
 
