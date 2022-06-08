@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -38,7 +39,6 @@ func NewComputeNode(
 	}
 
 	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
-
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
@@ -57,6 +57,11 @@ func NewComputeNode(
 				return
 			}
 			if shouldRun {
+				logger.LogJobEvent(logger.JobEvent{
+					Node: nodeId,
+					Type: "compute_node:bid",
+					Job:  job.Id,
+				})
 				log.Debug().Msgf("We are bidding on a job: %+v", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
@@ -78,6 +83,13 @@ func NewComputeNode(
 			}
 
 			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
+
+			logger.LogJobEvent(logger.JobEvent{
+				Node: nodeId,
+				Type: "compute_node:run",
+				Job:  job.Id,
+				Data: job,
+			})
 
 			resultFolder, err := computeNode.RunJob(job)
 
@@ -102,6 +114,13 @@ func NewComputeNode(
 				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error verifying results: %s", err))
 				return
 			}
+
+			logger.LogJobEvent(logger.JobEvent{
+				Node: nodeId,
+				Type: "compute_node:result",
+				Job:  job.Id,
+				Data: resultValue,
+			})
 
 			err = transport.SubmitResult(
 				job.Id,
