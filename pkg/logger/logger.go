@@ -78,12 +78,10 @@ func init() {
 		return file + ":" + strconv.Itoa(line)
 	}
 
-	var useLogWriter io.Writer
-
 	// we default to text output
-	if logTypeString == "" {
-		useLogWriter = textWriter
-	} else if logTypeString == "json" {
+	var useLogWriter io.Writer = textWriter
+
+	if logTypeString == "json" {
 		useLogWriter = os.Stdout
 	} else if logTypeString == "combined" {
 		useLogWriter = zerolog.MultiLevelWriter(textWriter, os.Stdout)
