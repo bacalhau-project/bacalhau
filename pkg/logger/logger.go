@@ -21,6 +21,7 @@ func Initialize() {
 func init() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
+	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
 
 	switch {
 	case logLevelString == "trace":
@@ -39,7 +40,7 @@ func init() {
 
 	//file, _ := ioutil.TempFile("tmp", "logs")
 
-	output := zerolog.ConsoleWriter{Out: Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
+	textWriter := zerolog.ConsoleWriter{Out: Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,
@@ -48,13 +49,13 @@ func init() {
 	// output.FormatLevel = func(i interface{}) string {
 	// 	return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
 	// }
-	output.FormatMessage = func(i interface{}) string {
+	textWriter.FormatMessage = func(i interface{}) string {
 		return fmt.Sprintf("%s", i)
 	}
-	output.FormatFieldName = func(i interface{}) string {
+	textWriter.FormatFieldName = func(i interface{}) string {
 		return fmt.Sprintf("%s:", i)
 	}
-	output.FormatFieldValue = func(i interface{}) string {
+	textWriter.FormatFieldValue = func(i interface{}) string {
 		return strings.ToUpper(fmt.Sprintf("%s", i))
 	}
 
@@ -77,7 +78,18 @@ func init() {
 		return file + ":" + strconv.Itoa(line)
 	}
 
-	log.Logger = zerolog.New(output).With().Timestamp().Caller().Logger()
+	var useLogWriter io.Writer
+
+	// we default to text output
+	if logTypeString == "" {
+		useLogWriter = textWriter
+	} else if logTypeString == "json" {
+		useLogWriter = os.Stdout
+	} else if logTypeString == "combined" {
+		useLogWriter = zerolog.MultiLevelWriter(textWriter, os.Stdout)
+	}
+
+	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
 
 }
 
