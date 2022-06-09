@@ -29,7 +29,7 @@ type DevStackNode struct {
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
 	IpfsCli       *ipfs_cli.IPFSCli
-	Transport     *libp2p.Libp2pTransport
+	Transport     *libp2p.Transport
 
 	ApiServer *publicapi.APIServer
 }
@@ -89,7 +89,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			return nil, err
 		}
 
-		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
+		transport, err := libp2p.NewTransport(libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -141,10 +141,12 @@ func NewDevStack(ctx context.Context, count, badActors int,
 		//////////////////////////////////////
 		// intra-connections
 		//////////////////////////////////////
-		err = transport.Start()
-		if err != nil {
-			return nil, err
-		}
+
+		go func() {
+			if err = transport.Start(ctx); err != nil {
+				panic(err) // if transport can't run, devstack should stop
+			}
+		}()
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -153,7 +155,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostId, err := firstNode.Transport.HostId()
+			libp2pHostId, err := firstNode.Transport.HostID(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -161,7 +163,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			// connect this scheduler to the first
 			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Transport.Port, libp2pHostId)
 			log.Debug().Msgf("Connect to first libp2p scheduler node: %s", firstSchedulerAddress)
-			err = transport.Connect(firstSchedulerAddress)
+			err = transport.Connect(ctx, firstSchedulerAddress)
 			if err != nil {
 				return nil, err
 			}
@@ -244,7 +246,7 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 			continue
 		}
 
-		nodeId, err := node.ComputeNode.Transport.HostId()
+		nodeId, err := node.ComputeNode.Transport.HostID(context.TODO())
 
 		if err != nil {
 			return "", err
@@ -375,7 +377,7 @@ func (stack *DevStack) GetNode(
 	nodeId string,
 ) (*DevStackNode, error) {
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostId()
+		id, err := node.Transport.HostID(context.TODO())
 		if err != nil {
 			return nil, err
 		}

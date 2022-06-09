@@ -1,6 +1,7 @@
 package transport_test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -20,26 +21,33 @@ import (
 )
 
 func setupTest(t *testing.T) (
-	*inprocess.InProcessTransport,
+	*inprocess.Transport,
 	*executor_noop.NoopExecutor,
 	*verifier_noop.NoopVerifier,
 ) {
 	noopExecutor, err := executor_noop.NewNoopExecutor()
 	assert.NoError(t, err)
+
 	noopVerifier, err := verifier_noop.NewNoopVerifier()
 	assert.NoError(t, err)
+
 	executors := map[string]executor.Executor{
 		string(executor.EXECUTOR_NOOP): noopExecutor,
 	}
+
 	verifiers := map[string]verifier.Verifier{
 		string(verifier.VERIFIER_NOOP): noopVerifier,
 	}
+
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
+
 	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
 	assert.NoError(t, err)
+
 	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)
+
 	return transport, noopExecutor, noopVerifier
 }
 
@@ -55,7 +63,7 @@ func TestTransportSanity(t *testing.T) {
 }
 
 func TestSchedulerSubmitJob(t *testing.T) {
-
+	ctx := context.Background()
 	transport, noopExecutor, _ := setupTest(t)
 
 	// first let's test submitting a job with an engine we do not have
@@ -78,20 +86,23 @@ func TestSchedulerSubmitJob(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	_, err := transport.SubmitJob(spec, deal)
+	_, err := transport.SubmitJob(ctx, spec, deal)
 	assert.NoError(t, err)
+
 	time.Sleep(time.Second * 1)
 	assert.Equal(t, 0, len(noopExecutor.Jobs))
+
 	spec.Engine = string(executor.EXECUTOR_NOOP)
-	jobSelected, err := transport.SubmitJob(spec, deal)
+	jobSelected, err := transport.SubmitJob(ctx, spec, deal)
 	assert.NoError(t, err)
+
 	time.Sleep(time.Second * 1)
 	assert.Equal(t, 1, len(noopExecutor.Jobs))
 	assert.Equal(t, jobSelected.Id, noopExecutor.Jobs[0].Id)
 }
 
 func TestTransportEvents(t *testing.T) {
-
+	ctx := context.Background()
 	transport, _, _ := setupTest(t)
 
 	// first let's test submitting a job with an engine we do not have
@@ -114,7 +125,7 @@ func TestTransportEvents(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	_, err := transport.SubmitJob(spec, deal)
+	_, err := transport.SubmitJob(ctx, spec, deal)
 	assert.NoError(t, err)
 	time.Sleep(time.Second * 1)
 

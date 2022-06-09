@@ -56,7 +56,7 @@ var serveCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		transport, err := libp2p.NewLibp2pTransport(ctx, hostPort)
+		transport, err := libp2p.NewTransport(hostPort)
 		if err != nil {
 			return err
 		}
@@ -94,22 +94,23 @@ var serveCmd = &cobra.Command{
 			}
 		}()
 
-		err = transport.Start()
-		if err != nil {
-			return err
-		}
+		go func() {
+			if err = transport.Start(ctx); err != nil {
+				panic(err) // if transport can't run, bacalhau should stop
+			}
+		}()
 
 		log.Debug().Msgf("libp2p server started: %d", hostPort)
 
 		if peerConnect == "" {
 			for _, addr := range DefaultBootstrapAddresses {
-				err = transport.Connect(addr)
+				err = transport.Connect(ctx, addr)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			err = transport.Connect(peerConnect)
+			err = transport.Connect(ctx, peerConnect)
 			if err != nil {
 				return err
 			}

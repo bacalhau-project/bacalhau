@@ -1,6 +1,7 @@
 package inprocess
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -8,101 +9,116 @@ import (
 	"github.com/google/uuid"
 )
 
-type InProcessTransport struct {
-	Id     string
-	Events []*types.JobEvent
-	// the list of functions to call when we get an update about a job
-	SubscribeFuncs []func(jobEvent *types.JobEvent, job *types.Job)
+// Transport is a communication channel that operates entirely in-memory, for
+// testing purposes. Should not be used in production.
+type Transport struct {
+	id               string
+	subscribeFuncs   []func(jobEvent *types.JobEvent, job *types.Job)
+	genericTransport *transport.GenericTransport
 
-	// the writer we emit events through
-	GenericTransport *transport.GenericTransport
+	// Public for testing purposes:
+	Events []*types.JobEvent
 }
 
-func NewInprocessTransport() (*InProcessTransport, error) {
-	hostId, err := uuid.NewRandom()
+func NewInprocessTransport() (*Transport, error) {
+	hostID, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("Error in creating host id. %s", err)
+		return nil, fmt.Errorf("inprocess: error creating host.id: %w", err)
 	}
-	inprocessTransport := &InProcessTransport{
-		Id: hostId.String(),
+
+	res := &Transport{
+		id: hostID.String(),
 	}
-	inprocessTransport.GenericTransport = transport.NewGenericTransport(
-		hostId.String(),
+
+	res.genericTransport = transport.NewGenericTransport(
+		hostID.String(),
 		func(event *types.JobEvent) error {
-			return inprocessTransport.writeJobEvent(event)
+			return res.writeJobEvent(event)
 		},
 	)
-	return inprocessTransport, nil
+
+	return res, nil
 }
 
-/*
+/////////////////////////////////////////////////////////////
+/// LIFECYCLE
+/////////////////////////////////////////////////////////////
 
-  PUBLIC INTERFACE
-
-*/
-
-func (inProcessTransport *InProcessTransport) HostId() (string, error) {
-	return inProcessTransport.Id, nil
-}
-
-func (inProcessTransport *InProcessTransport) Start() error {
+func (t *Transport) Start(ctx context.Context) error {
+	<-ctx.Done() // TODO(guy): shouldn't we do something here?
 	return nil
+}
+
+func (t *Transport) HostID(ctx context.Context) (string, error) {
+	return t.id, nil
 }
 
 /////////////////////////////////////////////////////////////
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
-func (inProcessTransport *InProcessTransport) List() (types.ListResponse, error) {
-	return inProcessTransport.GenericTransport.List()
+func (t *Transport) List(ctx context.Context) (types.ListResponse, error) {
+	return t.genericTransport.List()
 }
 
-func (inProcessTransport *InProcessTransport) Get(id string) (*types.Job, error) {
-	return inProcessTransport.GenericTransport.Get(id)
+func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
+	return t.genericTransport.Get(id)
 }
 
-func (inProcessTransport *InProcessTransport) Subscribe(subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
-	inProcessTransport.GenericTransport.Subscribe(subscribeFunc)
+func (t *Transport) Subscribe(ctx context.Context, fn func(
+	jobEvent *types.JobEvent, job *types.Job)) {
+
+	t.genericTransport.Subscribe(fn)
 }
 
 /////////////////////////////////////////////////////////////
-/// WRITE OPERATIONS - "CLIENT" / REQUESTER
+/// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
 /////////////////////////////////////////////////////////////
 
-func (inProcessTransport *InProcessTransport) SubmitJob(spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
-	return inProcessTransport.GenericTransport.SubmitJob(spec, deal)
+func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
+	deal *types.JobDeal) (*types.Job, error) {
+
+	return t.genericTransport.SubmitJob(spec, deal)
 }
 
-func (inProcessTransport *InProcessTransport) UpdateDeal(jobId string, deal *types.JobDeal) error {
-	return inProcessTransport.GenericTransport.UpdateDeal(jobId, deal)
+func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
+	deal *types.JobDeal) error {
+
+	return t.genericTransport.UpdateDeal(jobID, deal)
 }
 
-func (inProcessTransport *InProcessTransport) CancelJob(jobId string) error {
+func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
-func (inProcessTransport *InProcessTransport) AcceptJobBid(jobId, nodeId string) error {
-	return inProcessTransport.GenericTransport.AcceptJobBid(jobId, nodeId)
+func (t *Transport) AcceptJobBid(ctx context.Context, jobID,
+	nodeID string) error {
+
+	return t.genericTransport.AcceptJobBid(jobID, nodeID)
 }
 
-func (inProcessTransport *InProcessTransport) RejectJobBid(jobId, nodeId, message string) error {
-	return inProcessTransport.GenericTransport.RejectJobBid(jobId, nodeId, message)
+func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
+	message string) error {
+
+	return t.genericTransport.RejectJobBid(jobID, nodeID, message)
 }
 
 /////////////////////////////////////////////////////////////
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (inProcessTransport *InProcessTransport) BidJob(jobId string) error {
-	return inProcessTransport.GenericTransport.BidJob(jobId)
+func (t *Transport) BidJob(ctx context.Context, jobID string) error {
+	return t.genericTransport.BidJob(jobID)
 }
 
-func (inProcessTransport *InProcessTransport) SubmitResult(jobId, status, resultsId string) error {
-	return inProcessTransport.GenericTransport.SubmitResult(jobId, status, resultsId)
+func (t *Transport) SubmitResult(ctx context.Context, jobID, status,
+	resultsID string) error {
+
+	return t.genericTransport.SubmitResult(jobID, status, resultsID)
 }
 
-func (inProcessTransport *InProcessTransport) ErrorJob(jobId, status string) error {
-	return inProcessTransport.GenericTransport.ErrorJob(jobId, status)
+func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
+	return t.genericTransport.ErrorJob(jobID, status)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -110,22 +126,28 @@ func (inProcessTransport *InProcessTransport) ErrorJob(jobId, status string) err
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (inProcessTransport *InProcessTransport) ErrorJobForNode(jobId, nodeId, status string) error {
-	return inProcessTransport.GenericTransport.ErrorJobForNode(jobId, nodeId, status)
+func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
+	status string) error {
+
+	return t.genericTransport.ErrorJobForNode(jobID, nodeID, status)
 }
 
 /////////////////////////////////////////////////////////////
 /// INTERNAL IMPLEMENTATION
 /////////////////////////////////////////////////////////////
 
-func (inProcessTransport *InProcessTransport) Connect(peerConnect string) error {
+func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	return nil
 }
 
 // loop over all inprocess schdulers and call readJobEvent for each of them
 // do this in a go-routine to simulate the network
-func (inProcessTransport *InProcessTransport) writeJobEvent(event *types.JobEvent) error {
-	inProcessTransport.Events = append(inProcessTransport.Events, event)
-	inProcessTransport.GenericTransport.ReadEvent(event)
+func (t *Transport) writeJobEvent(event *types.JobEvent) error {
+	t.Events = append(t.Events, event)
+	t.genericTransport.BroadcastEvent(event)
+
 	return nil
 }
+
+// Static check to ensure that Transport implements Transport:
+var _ transport.Transport = (*Transport)(nil)
