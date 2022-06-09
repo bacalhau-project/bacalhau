@@ -5,6 +5,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	// Please don't remove the below, it's for log initialization - https://go.dev/ref/spec#Import_declarations
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 )
 
 var apiHost string

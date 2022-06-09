@@ -20,6 +20,10 @@ func init() {
 		&tableOutputWide, "wide", false,
 		`Print full values in the table results`,
 	)
+	listCmd.PersistentFlags().StringVarP(
+		&listOutputFormat, "number", "n", "10",
+		`print the first NUM jobs instead of the first 10.`,
+	)
 }
 
 var listCmd = &cobra.Command{

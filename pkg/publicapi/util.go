@@ -6,9 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
+	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,4 +59,31 @@ func waitForHealthy(c *APIClient) error {
 	case <-time.After(10 * time.Second):
 		return fmt.Errorf("server did not reply after 10s")
 	}
+}
+
+
+func MakeGenericJob() (*types.JobSpec, *types.JobDeal) {
+	return MakeJob(executor.EXECUTOR_DOCKER, verifier.VERIFIER_IPFS)
+}
+
+func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.JobSpec, *types.JobDeal){
+	jobSpec := types.JobSpec{
+		Engine:   string(exec),
+		Verifier: string(verif),
+		Vm: types.JobSpecVm{
+			Image: "ubuntu:latest",
+			Entrypoint: []string{
+				"cat",
+				"/data/file.txt",
+			},
+		},
+		// Inputs:  inputStorageList,
+		// Outputs: testCase.Outputs,
+	}
+
+	jobDeal := types.JobDeal{
+		Concurrency: 1,
+	}
+
+	return &jobSpec, &jobDeal
 }
