@@ -46,12 +46,18 @@ type IGetJobSpec func() types.JobSpecVm
 	Storage Drivers
 
 */
-func FuseStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error) {
-	return fuse_docker.NewIpfsFuseDocker(stack.CancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
+func FuseStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
+	storage.StorageProvider, error) {
+
+	return fuse_docker.NewIpfsFuseDocker(
+		stack.Ctx, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
-func ApiCopyStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error) {
-	return api_copy.NewIpfsApiCopy(stack.CancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
+func ApiCopyStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
+	storage.StorageProvider, error) {
+
+	return api_copy.NewIpfsApiCopy(
+		stack.Ctx, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
 var FuseStorageDriverFactory = StorageDriverFactory{

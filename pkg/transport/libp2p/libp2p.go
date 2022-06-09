@@ -194,7 +194,6 @@ func (transport *Libp2pTransport) Start() error {
 	go transport.readLoopJobEvents()
 	log.Debug().Msg("Libp2p transport has started")
 
-	defer transport.cancel()
 	system.OnCancel(transport.ctx, func() {
 		transport.Host.Close()
 		log.Debug().Msg("Libp2p transport has stopped")

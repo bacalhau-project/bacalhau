@@ -125,7 +125,6 @@ func WaitForContainer(client *dockerclient.Client, id string, maxAttempts int, d
 		Name:        fmt.Sprintf("wait for container to be running: %s", id),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
-		Logging:     true,
 		Handler: func() (bool, error) {
 			container, err := GetContainer(client, id)
 			if err != nil {
@@ -146,7 +145,6 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 		Name:        fmt.Sprintf("wait for container to be running: %s", id),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
-		Logging:     true,
 		Handler: func() (bool, error) {
 			container, err := GetContainer(client, id)
 			if err != nil {

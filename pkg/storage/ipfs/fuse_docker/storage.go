@@ -170,7 +170,6 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 			Name:        "wait for ipfs fuse sidecar to start",
 			MaxAttempts: 3,
 			Delay:       time.Second * 1,
-			Logging:     true,
 			Handler: func() (bool, error) {
 
 				sidecar, err := dockerIpfs.getSidecar()
@@ -196,7 +195,6 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 					Name:        fmt.Sprintf("wait for ipfs fuse sidecar file to mount: %s", cid),
 					MaxAttempts: 10,
 					Delay:       time.Second * 1,
-					Logging:     true,
 					Handler: func() (bool, error) {
 						return dockerIpfs.canSeeFuseMount(cid), nil
 					},

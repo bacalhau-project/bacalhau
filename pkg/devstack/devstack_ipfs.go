@@ -22,7 +22,7 @@ type DevStackNode_IPFS struct {
 
 type DevStack_IPFS struct {
 	// Lifecycle context for stack:
-	ctx context.Context
+	Ctx context.Context
 
 	Nodes []*DevStackNode_IPFS
 }
@@ -65,7 +65,7 @@ func NewDevStack_IPFS(ctx context.Context, count int) (*DevStack_IPFS, error) {
 	}
 
 	stack := &DevStack_IPFS{
-		ctx:   ctx,
+		Ctx:   ctx,
 		Nodes: nodes,
 	}
 

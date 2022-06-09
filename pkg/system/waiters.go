@@ -12,7 +12,6 @@ func WaitForFile(path string, maxAttempts int, delay time.Duration) error {
 		Name:        fmt.Sprintf("wait for file to appear: %s", path),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
-		Logging:     true,
 		Handler: func() (bool, error) {
 			_, err := os.Stat(path)
 			if err != nil {
@@ -32,7 +31,6 @@ func WaitForFileSudo(path string, maxAttempts int, delay time.Duration) error {
 		Name:        fmt.Sprintf("wait for file to appear: %s", path),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
-		Logging:     true,
 		Handler: func() (bool, error) {
 			result, err := RunCommandGetResults("sudo", []string{
 				"ls", "-la",

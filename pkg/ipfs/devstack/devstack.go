@@ -3,8 +3,10 @@ package ipfs_devstack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"time"
@@ -263,11 +265,16 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		Name:        fmt.Sprintf("wait for ipfs server to be running: %s", server.ApiAddress()),
 		MaxAttempts: 100,
 		Delay:       time.Millisecond * 100,
-		Logging:     false,
 		Handler: func() (bool, error) {
 			if _, err := testConnectionClient.GetPeerId(); err != nil {
-				return false, err
+				var expectedErr *url.Error
+				if errors.As(err, &expectedErr) {
+					return false, nil // connection not found, so we wait
+				}
+
+				return false, err // unexpected error
 			}
+
 			return true, nil
 		},
 	}

@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/rs/zerolog/log"
 )
 
 // APIClient is a utility for interacting with a node's API server.
@@ -53,20 +56,20 @@ func (apiClient *APIClient) List() (map[string]*types.Job, error) {
 
 // Get returns job data for a particular job ID.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(jobID string) (*types.Job, error) {
+func (apiClient *APIClient) Get(jobID string) (*types.Job, bool, error) {
 	jobs, err := apiClient.List()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	for _, job := range jobs {
 		// TODO: could have multiple matches in jobs, right? is this bad?
 		if strings.HasPrefix(job.Id, jobID) {
-			return job, nil
+			return job, true, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find job with ID: %s", jobID)
+	return nil, false, nil
 }
 
 // Submit submits a new job to the node's transport.
@@ -96,19 +99,33 @@ func (apiClient *APIClient) post(
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
-		return err
+		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
 	req, err := http.NewRequest("POST", addr, &body)
 	if err != nil {
-		return err
+		return fmt.Errorf("publicapi: error creating post request: %v", err)
 	}
 	req.Header.Set("Content-type", "application/json")
 
 	res, err := apiClient.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("publicapi: error sending post request: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		body, err := ioutil.ReadAll(res.Body)
+		if err == nil { // not critical if this fails
+			log.Error().Msgf(
+				"publicapi: non-200 body returned from API server: %s", string(body))
+		}
+
+		return fmt.Errorf(
+			"publicapi: received non-200 status: %d", res.StatusCode)
 	}
 
-	return json.NewDecoder(res.Body).Decode(resData)
+	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {
+		return fmt.Errorf("publicapi: error decoding response body: %v", err)
+	}
+
+	return nil
 }
