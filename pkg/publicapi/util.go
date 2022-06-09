@@ -24,10 +24,11 @@ func SetupTests(t *testing.T) *APIClient {
 	rn, err := requestor_node.NewRequesterNode(ipt)
 	assert.NoError(t, err)
 
+	host := "0.0.0.0"
 	port, err := freeport.GetFreePort()
 	assert.NoError(t, err)
 
-	s := NewServer(rn, "0.0.0.0", port)
+	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
 	ctx, _ := system.WithSignalShutdown(context.Background())
 	go func() {
@@ -64,6 +65,10 @@ func waitForHealthy(c *APIClient) error {
 
 func MakeGenericJob() (*types.JobSpec, *types.JobDeal) {
 	return MakeJob(executor.EXECUTOR_DOCKER, verifier.VERIFIER_IPFS)
+}
+
+func MakeNoopJob() (*types.JobSpec, *types.JobDeal) {
+	return MakeJob(executor.EXECUTOR_NOOP, verifier.VERIFIER_IPFS)
 }
 
 func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.JobSpec, *types.JobDeal){

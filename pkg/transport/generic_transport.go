@@ -3,6 +3,7 @@ package transport
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -53,6 +54,7 @@ func (transport *GenericTransport) ReadEvent(event *types.JobEvent) {
 			Spec:  nil,
 			Deal:  nil,
 			State: make(map[string]*types.JobState),
+			CreatedAt: time.Now(),
 		}
 
 	}
@@ -111,6 +113,7 @@ func (transport *GenericTransport) SubmitJob(spec *types.JobSpec, deal *types.Jo
 		EventName: system.JOB_EVENT_CREATED,
 		JobSpec:   spec,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
 
 	if err != nil {
@@ -122,6 +125,7 @@ func (transport *GenericTransport) SubmitJob(spec *types.JobSpec, deal *types.Jo
 		Spec:  spec,
 		Deal:  deal,
 		State: make(map[string]*types.JobState),
+		CreatedAt: time.Now(),
 	}
 
 	return job, nil
@@ -132,6 +136,7 @@ func (transport *GenericTransport) UpdateDeal(jobId string, deal *types.JobDeal)
 		JobId:     jobId,
 		EventName: system.JOB_EVENT_DEAL_UPDATED,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
 }
 
@@ -149,6 +154,7 @@ func (transport *GenericTransport) AcceptJobBid(jobId, nodeId string) error {
 		JobState: &types.JobState{
 			State: system.JOB_STATE_RUNNING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -164,6 +170,7 @@ func (transport *GenericTransport) RejectJobBid(jobId, nodeId, message string) e
 			State:  system.JOB_STATE_BID_REJECTED,
 			Status: message,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -178,6 +185,7 @@ func (transport *GenericTransport) BidJob(jobId string) error {
 		JobState: &types.JobState{
 			State: system.JOB_STATE_BIDDING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -190,6 +198,7 @@ func (transport *GenericTransport) SubmitResult(jobId, status, resultsId string)
 			Status:    status,
 			ResultsId: resultsId,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -201,6 +210,7 @@ func (transport *GenericTransport) ErrorJob(jobId, status string) error {
 			State:  system.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -218,5 +228,6 @@ func (transport *GenericTransport) ErrorJobForNode(jobId, nodeId, status string)
 			State:  system.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
