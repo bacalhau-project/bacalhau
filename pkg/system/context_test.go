@@ -1,17 +1,24 @@
 package system
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCancelContext(t *testing.T) {
+func TestOnCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ch := make(chan struct{}, 1)
 	seenHandler := false
-	cancelContext := GetCancelContext()
-	cancelContext.AddShutdownHandler(func() {
+	OnCancel(ctx, func() {
 		seenHandler = true
+		ch <- struct{}{}
 	})
-	cancelContext.Stop()
-	assert.True(t, seenHandler, "cancel context handler not called")
+
+	cancel()
+	<-ch
+	assert.True(t, seenHandler, "OnCancel() callback not called")
 }

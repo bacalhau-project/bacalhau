@@ -1,6 +1,7 @@
 package libp2p
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -25,11 +26,12 @@ import (
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pTransport struct {
-	cancelContext *system.CancelContext
+	// Lifecycle context for the transport.
+	ctx    context.Context
+	cancel context.CancelFunc
 
-	// the writer we emit events through
+	// Writer we emit events through.
 	genericTransport     *transport.GenericTransport
-	GenericTransport     *transport.GenericTransport
 	Host                 host.Host
 	Port                 int
 	PubSub               *pubsub.PubSub
@@ -129,29 +131,33 @@ func makeLibp2pHost(
 	)
 }
 
-func NewLibp2pTransport(
-	cancelContext *system.CancelContext,
-	port int,
-) (*Libp2pTransport, error) {
+func NewLibp2pTransport(ctx context.Context, port int) (
+	*Libp2pTransport, error) {
+
 	host, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
 	}
-	pubsub, err := pubsub.NewGossipSub(cancelContext.Ctx, host)
+
+	ctx, cancel := context.WithCancel(ctx)
+	pubsub, err := pubsub.NewGossipSub(ctx, host)
 	if err != nil {
 		return nil, err
 	}
+
 	jobEventTopic, err := pubsub.Join(JOB_EVENT_CHANNEL)
 	if err != nil {
 		return nil, err
 	}
+
 	jobEventSubscription, err := jobEventTopic.Subscribe()
 	if err != nil {
 		return nil, err
 	}
 
 	libp2pTransport := &Libp2pTransport{
-		cancelContext:        cancelContext,
+		ctx:                  ctx,
+		cancel:               cancel,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,
@@ -184,12 +190,16 @@ func (transport *Libp2pTransport) Start() error {
 	if len(transport.genericTransport.SubscribeFuncs) <= 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
+
 	go transport.readLoopJobEvents()
 	log.Debug().Msg("Libp2p transport has started")
-	transport.cancelContext.AddShutdownHandler(func() {
+
+	defer transport.cancel()
+	system.OnCancel(transport.ctx, func() {
 		transport.Host.Close()
 		log.Debug().Msg("Libp2p transport has stopped")
 	})
+
 	return nil
 }
 
@@ -278,26 +288,26 @@ func (transport *Libp2pTransport) Connect(peerConnect string) error {
 		return err
 	}
 
-	transport.Host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-
-	//nolint
-	transport.Host.Connect(transport.cancelContext.Ctx, *info)
+	transport.Host.Peerstore().AddAddrs(
+		info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+	transport.Host.Connect(transport.ctx, *info)
 
 	return nil
 }
 
 func (transport *Libp2pTransport) writeJobEvent(event *types.JobEvent) error {
-	msgBytes, err := json.Marshal(event)
+	bs, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("Sending event: %s", string(msgBytes))
-	return transport.JobEventTopic.Publish(transport.cancelContext.Ctx, msgBytes)
+
+	log.Debug().Msgf("Sending event: %s", string(bs))
+	return transport.JobEventTopic.Publish(transport.ctx, bs)
 }
 
 func (transport *Libp2pTransport) readLoopJobEvents() {
 	for {
-		msg, err := transport.JobEventSubscription.Next(transport.cancelContext.Ctx)
+		msg, err := transport.JobEventSubscription.Next(transport.ctx)
 		if err != nil {
 			return
 		}

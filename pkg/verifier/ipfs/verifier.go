@@ -1,37 +1,43 @@
 package ipfs
 
 import (
+	"context"
+
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type IPFSVerifier struct {
-	cancelContext *system.CancelContext
-	IPFSClient    *ipfs_http.IPFSHttpClient
+	// Lifecycle context for verifier:
+	ctx context.Context
+
+	IPFSClient *ipfs_http.IPFSHttpClient
 }
 
-func NewIPFSVerifier(
-	cancelContext *system.CancelContext,
-	ipfsMultiAddress string,
-) (*IPFSVerifier, error) {
-	api, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, ipfsMultiAddress)
+func NewIPFSVerifier(ctx context.Context, ipfsMultiAddress string) (
+	*IPFSVerifier, error) {
+
+	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
+
 	_, err = api.GetPeerId()
 	if err != nil {
 		return nil, err
 	}
+
 	verifier := &IPFSVerifier{
-		cancelContext: cancelContext,
-		IPFSClient:    api,
+		ctx:        ctx,
+		IPFSClient: api,
 	}
+
 	url, err := api.GetUrl()
 	if err != nil {
 		return nil, err
 	}
+
 	log.Debug().Msgf("IPFS verifier initialized with address: %s", url)
 	return verifier, nil
 }

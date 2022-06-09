@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +22,9 @@ import (
 )
 
 type DevStackNode struct {
-	cancelContext *system.CancelContext
+	// Lifecycle context for node:
+	ctx context.Context
+
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
@@ -32,19 +35,23 @@ type DevStackNode struct {
 }
 
 type DevStack struct {
-	cancelContext *system.CancelContext
-	Nodes         []*DevStackNode
+	// Lifecycle context for stack:
+	ctx context.Context
+
+	Nodes []*DevStackNode
 }
 
-func NewDevStack(
-	cancelContext *system.CancelContext,
-	count, badActors int,
-	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
-	getVerifiers func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error),
-) (*DevStack, error) {
+type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
+	map[string]executor.Executor, error)
+
+type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
+	map[string]verifier.Verifier, error)
+
+func NewDevStack(ctx context.Context, count, badActors int,
+	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
+	*DevStack, error) {
 
 	nodes := []*DevStackNode{}
-
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
@@ -60,7 +67,7 @@ func NewDevStack(
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(cancelContext, true)
+		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +87,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		transport, err := libp2p.NewLibp2pTransport(cancelContext, libp2pPort)
+		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +133,7 @@ func NewDevStack(
 		)
 
 		go func() {
-			if err := apiServer.ListenAndServe(cancelContext); err != nil {
+			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
 		}()
@@ -163,7 +170,7 @@ func NewDevStack(
 		}
 
 		devStackNode := &DevStackNode{
-			cancelContext: cancelContext,
+			ctx:           ctx,
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
@@ -176,8 +183,8 @@ func NewDevStack(
 	}
 
 	stack := &DevStack{
-		cancelContext: cancelContext,
-		Nodes:         nodes,
+		ctx:   ctx,
+		Nodes: nodes,
 	}
 
 	return stack, nil

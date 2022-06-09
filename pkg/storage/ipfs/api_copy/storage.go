@@ -1,6 +1,7 @@
 package api_copy
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
@@ -17,27 +18,30 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type IpfsApiCopy struct {
-	cancelContext *system.CancelContext
-	IPFSClient    *ipfs_http.IPFSHttpClient
-	LocalDir      string
+	// Lifecycle context for storage driver:
+	ctx context.Context
+
+	LocalDir   string
+	IPFSClient *ipfs_http.IPFSHttpClient
 }
 
-func NewIpfsApiCopy(
-	cancelContext *system.CancelContext,
-	ipfsMultiAddress string,
-) (*IpfsApiCopy, error) {
-	api, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, ipfsMultiAddress)
+func NewIpfsApiCopy(ctx context.Context, ipfsMultiAddress string) (
+	*IpfsApiCopy, error) {
+
+	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
+
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
+
 	storageHandler := &IpfsApiCopy{
-		cancelContext: cancelContext,
-		IPFSClient:    api,
-		LocalDir:      dir,
+		ctx:        ctx,
+		IPFSClient: api,
+		LocalDir:   dir,
 	}
 
 	log.Debug().Msgf("IPFS API Copy driver created with address: %s", ipfsMultiAddress)
@@ -69,7 +73,7 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*t
 
 	err := dockerIpfs.IPFSClient.Api.
 		Request("files/stat", fmt.Sprintf("/ipfs/%s", storageSpec.Cid)).
-		Exec(dockerIpfs.cancelContext.Ctx, &statResult)
+		Exec(dockerIpfs.ctx, &statResult)
 
 	if err != nil {
 		return nil, err

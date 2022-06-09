@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,8 +19,9 @@ import (
 )
 
 type DockerExecutor struct {
-	// the global context for stopping any running jobs
-	cancelContext *system.CancelContext
+	// Lifecycle context for executor:
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// used to allow multiple docker executors to run against the same docker server
 	Id string
@@ -34,58 +36,64 @@ type DockerExecutor struct {
 }
 
 func NewDockerExecutor(
-	cancelContext *system.CancelContext,
+	ctx context.Context,
 	id string,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
+
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
+
 	dir, err := ioutil.TempDir("", "bacalhau-docker-executor")
 	if err != nil {
 		return nil, err
 	}
-	dockerExecutor := &DockerExecutor{
-		cancelContext:    cancelContext,
+
+	ctx, cancel := context.WithCancel(ctx)
+	de := &DockerExecutor{
+		ctx:              ctx,
+		cancel:           cancel,
 		Id:               id,
 		ResultsDir:       dir,
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
 	}
 
-	cancelContext.AddShutdownHandler(func() {
-		dockerExecutor.cleanupAll()
+	system.OnCancel(ctx, func() {
+		de.cleanupAll()
 	})
 
-	return dockerExecutor, nil
+	return de, nil
 }
 
-func (dockerExecutor *DockerExecutor) getStorageProvider(engine string) (storage.StorageProvider, error) {
+func (dockerExecutor *DockerExecutor) getStorageProvider(engine string) (
+	storage.StorageProvider, error) {
+
 	return storage.GetStorageProvider(engine, dockerExecutor.StorageProviders)
 }
 
-// check if docker itself is installed
+// IsInstalled checks if docker itself is installed.
 func (dockerExecutor *DockerExecutor) IsInstalled() (bool, error) {
-	isRunning := docker.IsInstalled(dockerExecutor.Client)
-	return isRunning, nil
+	return docker.IsInstalled(dockerExecutor.Client), nil
 }
 
-func (dockerExecutor *DockerExecutor) HasStorage(volume types.StorageSpec) (bool, error) {
+func (dockerExecutor *DockerExecutor) HasStorage(volume types.StorageSpec) (
+	bool, error) {
+
 	storage, err := dockerExecutor.getStorageProvider(volume.Engine)
 	if err != nil {
 		return false, err
 	}
+
 	return storage.HasStorage(volume)
 }
 
 func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
-
 	spec := job.Spec
-
 	if spec == nil {
-		return "", fmt.Errorf("No job spec")
-
+		return "", fmt.Errorf("no job spec provided to docker executor")
 	}
 
 	jobResultsDir, err := dockerExecutor.ensureJobResultsDir(job)
@@ -99,20 +107,25 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range job.Spec.Inputs {
-		storageProvider, err := dockerExecutor.getStorageProvider(inputStorage.Engine)
+		storageProvider, err := dockerExecutor.getStorageProvider(
+			inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
+
 		volumeMount, err := storageProvider.PrepareStorage(inputStorage)
 		if err != nil {
 			return "", err
 		}
+
 		if volumeMount == nil {
-			return "", fmt.Errorf("no volume mount was returned for input: %+v\n", inputStorage)
+			return "", fmt.Errorf(
+				"no volume mount was returned for input: %+v", inputStorage)
 		}
 
 		if volumeMount.Type == storage.STORAGE_VOLUME_TYPE_BIND {
 			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
+
 			mounts = append(mounts, mount.Mount{
 				Type: "bind",
 
@@ -122,7 +135,8 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 				Target:   volumeMount.Target,
 			})
 		} else {
-			return "", fmt.Errorf("unknown storage volume type: %s\n", volumeMount.Type)
+			return "", fmt.Errorf(
+				"unknown storage volume type: %s", volumeMount.Type)
 		}
 	}
 
@@ -132,16 +146,15 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	// if and when the deal is settled
 	for _, output := range job.Spec.Outputs {
 		if output.Name == "" {
-			return "", fmt.Errorf("output volume has no name: %+v\n", output)
+			return "", fmt.Errorf("output volume has no name: %+v", output)
 		}
 
 		if output.Path == "" {
-			return "", fmt.Errorf("output volume has no path: %+v\n", output)
+			return "", fmt.Errorf("output volume has no path: %+v", output)
 		}
 
-		sourceFolder := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
-		err = os.Mkdir(sourceFolder, 0755)
-
+		srcd := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
+		err = os.Mkdir(srcd, 0755)
 		if err != nil {
 			return "", err
 		}
@@ -150,18 +163,20 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
+
 			Type: "bind",
 			// this is an output volume so can be written to
 			ReadOnly: false,
+
 			// we create a named folder in the job results folder for this output
-			Source: sourceFolder,
+			Source: srcd,
+
 			// the path of the output volume is from the perspective of inside the container
 			Target: output.Path,
 		})
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-
 		// TODO: work out why this does not work in github actions
 		// err = docker.PullImage(dockerExecutor.Client, job.Spec.Vm.Image)
 
@@ -169,16 +184,15 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		// 	return "", err
 		// }
 
-		stdout, err := system.RunCommandGetResults("docker", []string{
-			"pull", job.Spec.Vm.Image,
-		})
-
-		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Vm.Image, stdout)
-
+		stdout, err := system.RunCommandGetResults(
+			"docker",
+			[]string{"pull", job.Spec.Vm.Image},
+		)
 		if err != nil {
 			return "", err
 		}
 
+		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Vm.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
@@ -193,7 +207,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
-		dockerExecutor.cancelContext.Ctx,
+		dockerExecutor.ctx,
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
@@ -202,44 +216,40 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 		nil,
 		dockerExecutor.jobContainerName(job),
 	)
-
 	if err != nil {
 		return "", err
 	}
 
 	defer dockerExecutor.cleanupJob(job)
-
 	err = dockerExecutor.Client.ContainerStart(
-		dockerExecutor.cancelContext.Ctx,
+		dockerExecutor.ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
-
 	if err != nil {
 		return "", err
 	}
 
-	statusChan, errChan := dockerExecutor.Client.ContainerWait(
-		dockerExecutor.cancelContext.Ctx,
-		jobContainer.ID,
-		container.WaitConditionNotRunning,
-	)
-
+	// TODO: we should record all logs and as much diagnostics as possible
+	// in the error case so a user can debug why their job failed
 	handleErrorLogs := func() {
 		stdout, stderr, _ := docker.GetLogs(dockerExecutor.Client, jobContainer.ID)
 		log.Error().Msgf("Container stdout: %s", stdout)
 		log.Error().Msgf("Container stderr: %s", stderr)
 	}
 
-	// TODO: we should record all logs and as much diagnostics as possible
-	// in the error case so a user can debug why their job failed
+	statusCh, errCh := dockerExecutor.Client.ContainerWait(
+		dockerExecutor.ctx,
+		jobContainer.ID,
+		container.WaitConditionNotRunning,
+	)
 	select {
-	case err := <-errChan:
+	case err := <-errCh:
 		if err != nil {
 			handleErrorLogs()
 			return "", err
 		}
-	case exitStatus := <-statusChan:
+	case exitStatus := <-statusCh:
 		if exitStatus.Error != nil {
 			handleErrorLogs()
 			return "", fmt.Errorf(exitStatus.Error.Message)

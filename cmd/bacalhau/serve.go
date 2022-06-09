@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
@@ -47,14 +48,15 @@ func init() {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the bacalhau compute node",
-	RunE: func(cmd *cobra.Command, args []string) error { // nolint
-
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if ipfsConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
 		}
 
-		cancelContext := system.GetCancelContext()
-		transport, err := libp2p.NewLibp2pTransport(cancelContext, hostPort)
+		ctx, cancel := system.WithSignalShutdown(context.Background())
+		defer cancel()
+
+		transport, err := libp2p.NewLibp2pTransport(ctx, hostPort)
 		if err != nil {
 			return err
 		}
@@ -64,12 +66,13 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := executor.NewDockerIPFSExecutors(cancelContext, ipfsConnect, fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
+		executors, err := executor.NewDockerIPFSExecutors(ctx, ipfsConnect,
+			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
 			return err
 		}
 
-		verifiers, err := verifier.NewIPFSVerifiers(cancelContext, ipfsConnect)
+		verifiers, err := verifier.NewIPFSVerifiers(ctx, ipfsConnect)
 		if err != nil {
 			return err
 		}
@@ -86,7 +89,7 @@ var serveCmd = &cobra.Command{
 		)
 
 		go func() {
-			if err := apiServer.ListenAndServe(cancelContext); err != nil {
+			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, bacalhau should stop
 			}
 		}()
@@ -115,6 +118,7 @@ var serveCmd = &cobra.Command{
 
 		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", transport.Host.ID().String())
 
-		select {}
+		<-ctx.Done() // blocks main goroutine so we don't exit
+		return nil
 	},
 }

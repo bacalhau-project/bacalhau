@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -28,37 +29,35 @@ func init() {
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error { // nolint
-
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if devStackBadActors > devStackNodes {
 			return fmt.Errorf("Cannot have more bad actors than there are nodes")
 		}
 
-		cancelContext := system.GetCancelContextWithSignals()
+		ctx, cancel := system.WithSignalShutdown(context.Background())
+		defer cancel()
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-			return executor.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			return executor.NewDockerIPFSExecutors(ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
-			return verifier.NewIPFSVerifiers(cancelContext, ipfsMultiAddress)
+			return verifier.NewIPFSVerifiers(ctx, ipfsMultiAddress)
 		}
 
 		stack, err := devstack.NewDevStack(
-			cancelContext,
+			ctx,
 			devStackNodes,
 			devStackBadActors,
 			getExecutors,
 			getVerifiers,
 		)
-
 		if err != nil {
-			cancelContext.Stop()
 			return err
 		}
 
 		stack.PrintNodeInfo()
-
-		select {}
+		<-ctx.Done() // blocks main goroutine so we don't exit
+		return nil
 	},
 }
