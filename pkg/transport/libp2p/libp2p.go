@@ -27,8 +27,7 @@ const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Libp2pTransport struct {
 	// Lifecycle context for the transport.
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx context.Context
 
 	// Writer we emit events through.
 	genericTransport     *transport.GenericTransport
@@ -139,7 +138,6 @@ func NewLibp2pTransport(ctx context.Context, port int) (
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
 	pubsub, err := pubsub.NewGossipSub(ctx, host)
 	if err != nil {
 		return nil, err
@@ -157,7 +155,6 @@ func NewLibp2pTransport(ctx context.Context, port int) (
 
 	libp2pTransport := &Libp2pTransport{
 		ctx:                  ctx,
-		cancel:               cancel,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,
@@ -289,9 +286,8 @@ func (transport *Libp2pTransport) Connect(peerConnect string) error {
 
 	transport.Host.Peerstore().AddAddrs(
 		info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-	transport.Host.Connect(transport.ctx, *info)
 
-	return nil
+	return transport.Host.Connect(transport.ctx, *info)
 }
 
 func (transport *Libp2pTransport) writeJobEvent(event *types.JobEvent) error {
