@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,42 +24,36 @@ var STORAGE_DRIVER_NAMES = []string{
 	storage.IPFS_API_COPY,
 }
 
-func SetupTest(
-	t *testing.T,
-	nodes int,
-	badActors int,
-) (*devstack.DevStack, *system.CancelContext) {
-	cancelContext := system.GetCancelContextWithSignals()
-	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-		return executor.NewDockerIPFSExecutors(cancelContext, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+func SetupTest(t *testing.T, nodes int, badActors int) (
+	*devstack.DevStack, context.Context, context.CancelFunc) {
+
+	ctx, cancel := system.WithSignalShutdown(context.Background())
+	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
+		map[string]executor.Executor, error) {
+
+		return executor.NewDockerIPFSExecutors(
+			ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
-	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
-		return verifier.NewIPFSVerifiers(cancelContext, ipfsMultiAddress)
+	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
+		map[string]verifier.Verifier, error) {
+
+		return verifier.NewIPFSVerifiers(ctx, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
-		cancelContext,
+		ctx,
 		nodes,
 		badActors,
 		getExecutors,
 		getVerifiers,
 	)
 	assert.NoError(t, err)
-	if err != nil {
-		log.Fatal().Msg(fmt.Sprintf("Unable to create devstack: %s", err))
-	}
-	return stack, cancelContext
+
+	return stack, ctx, cancel
 }
 
-// this might be called multiple times if KEEP_STACK is active
-// the first time - once the test has completed, this function will be called
-// it will reset the KEEP_STACK variable so the user can ctrl+c the running stack
-func TeardownTest(stack *devstack.DevStack, cancelContext *system.CancelContext) {
-	if !system.ShouldKeepStack() {
-		cancelContext.Stop()
-	} else {
-		stack.PrintNodeInfo()
-		select {}
-	}
+func TeardownTest(stack *devstack.DevStack, cancel context.CancelFunc) {
+	stack.PrintNodeInfo()
+	cancel()
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -69,17 +63,8 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-
-	stack, cancelContext := SetupTest(
-		t,
-		nodeCount,
-		0,
-	)
-
-	defer TeardownTest(stack, cancelContext)
-
-	apiUri := stack.Nodes[0].ApiServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	stack, ctx, cancel := SetupTest(t, nodeCount, 0)
+	defer TeardownTest(stack, cancel)
 
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
@@ -96,12 +81,10 @@ func devStackDockerStorageTest(
 		Concurrency: nodeCount,
 	}
 
+	apiUri := stack.Nodes[0].ApiServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(jobSpec, jobDeal)
 	assert.NoError(t, err)
-
-	if err != nil {
-		t.FailNow()
-	}
 
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(submittedJob.Id, map[string]int{
@@ -112,15 +95,22 @@ func devStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	loadedJob, err := apiClient.Get(submittedJob.Id)
+	loadedJob, ok, err := apiClient.Get(submittedJob.Id)
+	assert.True(t, ok)
 	assert.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
 	for nodeId, state := range loadedJob.State {
 		node, err := stack.GetNode(nodeId)
 		assert.NoError(t, err)
+
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-		ipfsClient, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, node.IpfsNode.ApiAddress())
+		assert.NoError(t, err)
+
+		ipfsClient, err := ipfs_http.NewIPFSHttpClient(
+			ctx, node.IpfsNode.ApiAddress())
+		assert.NoError(t, err)
+
 		ipfsClient.DownloadTar(outputDir, state.ResultsId)
 		testCase.ResultsChecker(outputDir + "/" + state.ResultsId)
 	}

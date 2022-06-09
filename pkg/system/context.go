@@ -4,56 +4,34 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"sync"
 )
 
-type CancelContext struct {
-	Ctx            context.Context
-	cancelFunction context.CancelFunc
-	wg             sync.WaitGroup
-}
+// WithSignalShutdown returns a copy of the parent context which cancels
+// itself if a "ctrl+c" interrupt signal is captured. The returned cancel
+// function cleans up the resources associated with this context and should
+// be called as soon as the operations in this context complete.
+func WithSignalShutdown(parent context.Context) (
+	context.Context, context.CancelFunc) {
 
-func GetCancelContext() *CancelContext {
-	ctxWithCancel, cancelFunction := context.WithCancel(context.Background())
-	return &CancelContext{
-		Ctx:            ctxWithCancel,
-		cancelFunction: cancelFunction,
-	}
-}
-
-func GetCancelContextWithSignals() *CancelContext {
-	cancelContext := GetCancelContext()
-	go cancelContext.HandleSignals()
-	return cancelContext
-}
-
-// used to trigger the stop method on ctrl+c
-func (cancelContext *CancelContext) HandleSignals() {
+	ch := make(chan os.Signal, 1)
 	signal.Reset(os.Interrupt)
-	osSignalChannel := make(chan os.Signal, 1)
-	signal.Notify(osSignalChannel, os.Interrupt)
-	<-osSignalChannel
-	cancelContext.Stop()
-	os.Exit(1)
+	signal.Notify(ch, os.Interrupt)
+
+	ctx, cancel := context.WithCancel(parent)
+	go func(ch chan os.Signal, cancel context.CancelFunc) {
+		<-ch
+		cancel()
+	}(ch, cancel)
+
+	return ctx, cancel
 }
 
-// add a function that will "shut down" something
-// it will wait for the cancel context to be called
-// then after the shutdown has been run - call done
-// on the wait group
-func (cancelContext *CancelContext) AddShutdownHandler(fn func()) {
-	cancelContext.wg.Add(1)
-	go func(cancelContext *CancelContext, fn func()) {
-		defer cancelContext.wg.Done()
-		<-cancelContext.Ctx.Done()
-		if !ShouldKeepStack() {
-			fn()
-		}
-	}(cancelContext, fn)
-}
-
-// this will block until all shutdown handlers are complete
-func (cancelContext *CancelContext) Stop() {
-	cancelContext.cancelFunction()
-	cancelContext.wg.Wait()
+// OnCancel calls the given callback function when the provided context is
+// cancelled. Can be used to register clean-up callbacks for long-running
+// system contexts.
+func OnCancel(ctx context.Context, fn func()) {
+	go func(ch <-chan struct{}, fn func()) {
+		<-ch
+		fn()
+	}(ctx.Done(), fn)
 }

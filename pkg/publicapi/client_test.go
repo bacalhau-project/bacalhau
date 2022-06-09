@@ -19,7 +19,8 @@ func TestGet(t *testing.T) {
 	}
 
 	// Should be able to look up one of them:
-	job2, err := c.Get(job.Id)
+	job2, ok, err := c.Get(job.Id)
 	assert.NoError(t, err)
+	assert.True(t, ok)
 	assert.Equal(t, job2.Id, job.Id)
 }

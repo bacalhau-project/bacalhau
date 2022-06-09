@@ -1,6 +1,7 @@
 package fuse_docker
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -34,7 +35,9 @@ const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:
 const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
 type IpfsFuseDocker struct {
-	cancelContext *system.CancelContext
+	// Lifecycle context for storage driver:
+	ctx context.Context
+
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
@@ -44,30 +47,32 @@ type IpfsFuseDocker struct {
 	DockerClient *dockerclient.Client
 }
 
-func NewIpfsFuseDocker(
-	cancelContext *system.CancelContext,
-	ipfsMultiAddress string,
-) (*IpfsFuseDocker, error) {
-	api, err := ipfs_http.NewIPFSHttpClient(cancelContext.Ctx, ipfsMultiAddress)
+func NewIpfsFuseDocker(ctx context.Context, ipfsMultiAddress string) (
+	*IpfsFuseDocker, error) {
+
+	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
+
 	peerId, err := api.GetPeerId()
 	if err != nil {
 		return nil, err
 	}
+
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
+
 	storageHandler := &IpfsFuseDocker{
-		cancelContext: cancelContext,
-		Id:            peerId,
-		IPFSClient:    api,
-		DockerClient:  dockerClient,
+		ctx:          ctx,
+		Id:           peerId,
+		IPFSClient:   api,
+		DockerClient: dockerClient,
 	}
 
-	cancelContext.AddShutdownHandler(func() {
+	system.OnCancel(ctx, func() {
 		err := cleanupStorageDriver(storageHandler)
 		if err != nil {
 			log.Error().Msg(err.Error())
@@ -75,7 +80,6 @@ func NewIpfsFuseDocker(
 	})
 
 	log.Debug().Msgf("Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
-
 	return storageHandler, nil
 }
 
@@ -166,7 +170,6 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 			Name:        "wait for ipfs fuse sidecar to start",
 			MaxAttempts: 3,
 			Delay:       time.Second * 1,
-			Logging:     true,
 			Handler: func() (bool, error) {
 
 				sidecar, err := dockerIpfs.getSidecar()
@@ -192,7 +195,6 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 					Name:        fmt.Sprintf("wait for ipfs fuse sidecar file to mount: %s", cid),
 					MaxAttempts: 10,
 					Delay:       time.Second * 1,
-					Logging:     true,
 					Handler: func() (bool, error) {
 						return dockerIpfs.canSeeFuseMount(cid), nil
 					},
@@ -246,7 +248,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	}
 
 	sidecarContainer, err := dockerIpfs.DockerClient.ContainerCreate(
-		dockerIpfs.cancelContext.Ctx,
+		dockerIpfs.ctx,
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
 			Tty:   false,
@@ -298,8 +300,8 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.cancelContext.Ctx, sidecarContainer.ID, dockertypes.ContainerStartOptions{})
-
+	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.ctx,
+		sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}

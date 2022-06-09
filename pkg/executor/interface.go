@@ -5,7 +5,6 @@ import (
 )
 
 type Executor interface {
-
 	// tells you if the required software is installed on this machine
 	// this is used in job selection
 	IsInstalled() (bool, error)

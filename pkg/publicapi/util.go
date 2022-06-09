@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -25,8 +26,7 @@ func SetupTests(t *testing.T) *APIClient {
 
 	s := NewServer(rn, "0.0.0.0", port)
 	c := NewAPIClient(s.GetURI())
-	ctx := system.GetCancelContextWithSignals()
-
+	ctx, _ := system.WithSignalShutdown(context.Background())
 	go func() {
 		err := s.ListenAndServe(ctx)
 		assert.NoError(t, err)

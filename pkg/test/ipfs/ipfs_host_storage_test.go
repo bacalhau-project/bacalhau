@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,24 +16,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func runFileTest(t *testing.T, engine string, getStorageDriver func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error)) {
-	EXAMPLE_TEXT := `hello world`
-	// get a single IPFS server
-	stack, cancelContext := SetupTest(
-		t,
-		1,
-	)
+type getStorageFunc func(ctx context.Context, api string) (
+	storage.StorageProvider, error)
 
-	defer TeardownTest(stack, cancelContext)
+func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
+	// get a single IPFS server
+	stack, ctx, cancel := SetupTest(t, 1)
+	defer TeardownTest(stack, cancel)
 
 	// add this file to the server
+	EXAMPLE_TEXT := `hello world`
 	fileCid, err := stack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	assert.NoError(t, err)
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-
-	storageDriver, err := getStorageDriver(stack.CancelContext, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, ipfsNodeAddress)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -66,22 +65,19 @@ func runFileTest(t *testing.T, engine string, getStorageDriver func(cancelContex
 	assert.NoError(t, err)
 }
 
-func runFolderTest(t *testing.T, engine string, getStorageDriver func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error)) {
-	EXAMPLE_TEXT := `hello world`
+func runFolderTest(t *testing.T, engine string,
+	getStorageDriver getStorageFunc) {
 
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
 	assert.NoError(t, err)
 
+	EXAMPLE_TEXT := `hello world`
 	err = os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
 	assert.NoError(t, err)
 
 	// get a single IPFS server
-	stack, cancelContext := SetupTest(
-		t,
-		1,
-	)
-
-	defer TeardownTest(stack, cancelContext)
+	stack, ctx, cancel := SetupTest(t, 1)
+	defer TeardownTest(stack, cancel)
 
 	// add this file to the server
 	folderCid, err := stack.AddFolderToNodes(1, dir)
@@ -89,8 +85,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver func(cancelCont
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-
-	storageDriver, err := getStorageDriver(stack.CancelContext, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, ipfsNodeAddress)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -130,8 +125,10 @@ func TestIpfsFuseDockerFile(t *testing.T) {
 	runFileTest(
 		t,
 		storage.IPFS_FUSE_DOCKER,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
+		func(ctx context.Context, api string) (
+			storage.StorageProvider, error) {
+
+			return fuse_docker.NewIpfsFuseDocker(ctx, api)
 		},
 	)
 }
@@ -142,8 +139,10 @@ func TestIpfsFuseDockerFolder(t *testing.T) {
 	runFolderTest(
 		t,
 		storage.IPFS_FUSE_DOCKER,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return fuse_docker.NewIpfsFuseDocker(cancelContext, api)
+		func(ctx context.Context, api string) (
+			storage.StorageProvider, error) {
+
+			return fuse_docker.NewIpfsFuseDocker(ctx, api)
 		},
 	)
 
@@ -154,8 +153,10 @@ func TestIpfsApiCopyFile(t *testing.T) {
 	runFileTest(
 		t,
 		storage.IPFS_API_COPY,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return api_copy.NewIpfsApiCopy(cancelContext, api)
+		func(ctx context.Context, api string) (
+			storage.StorageProvider, error) {
+
+			return api_copy.NewIpfsApiCopy(ctx, api)
 		},
 	)
 
@@ -166,8 +167,10 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 	runFolderTest(
 		t,
 		storage.IPFS_API_COPY,
-		func(cancelContext *system.CancelContext, api string) (storage.StorageProvider, error) {
-			return api_copy.NewIpfsApiCopy(cancelContext, api)
+		func(ctx context.Context, api string) (
+			storage.StorageProvider, error) {
+
+			return api_copy.NewIpfsApiCopy(ctx, api)
 		},
 	)
 }

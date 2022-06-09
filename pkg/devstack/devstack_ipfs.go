@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,28 +9,27 @@ import (
 
 	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
 type DevStackNode_IPFS struct {
-	CancelContext *system.CancelContext
-	IpfsNode      *ipfs_devstack.IPFSDevServer
-	IpfsCli       *ipfs_cli.IPFSCli
+	// Lifecycle context for node:
+	ctx context.Context
+
+	IpfsNode *ipfs_devstack.IPFSDevServer
+	IpfsCli  *ipfs_cli.IPFSCli
 }
 
 type DevStack_IPFS struct {
-	CancelContext *system.CancelContext
-	Nodes         []*DevStackNode_IPFS
+	// Lifecycle context for stack:
+	Ctx context.Context
+
+	Nodes []*DevStackNode_IPFS
 }
 
 // a devstack but with only IPFS servers connected to each other
-func NewDevStack_IPFS(
-	cancelContext *system.CancelContext,
-	count int,
-) (*DevStack_IPFS, error) {
+func NewDevStack_IPFS(ctx context.Context, count int) (*DevStack_IPFS, error) {
 	nodes := []*DevStackNode_IPFS{}
-
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
@@ -45,7 +45,7 @@ func NewDevStack_IPFS(
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(cancelContext, true)
+		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -56,17 +56,17 @@ func NewDevStack_IPFS(
 		}
 
 		devStackNode := &DevStackNode_IPFS{
-			CancelContext: cancelContext,
-			IpfsNode:      ipfsNode,
-			IpfsCli:       ipfs_cli.NewIPFSCli(ipfsNode.Repo),
+			ctx:      ctx,
+			IpfsNode: ipfsNode,
+			IpfsCli:  ipfs_cli.NewIPFSCli(ipfsNode.Repo),
 		}
 
 		nodes = append(nodes, devStackNode)
 	}
 
 	stack := &DevStack_IPFS{
-		CancelContext: cancelContext,
-		Nodes:         nodes,
+		Ctx:   ctx,
+		Nodes: nodes,
 	}
 
 	return stack, nil

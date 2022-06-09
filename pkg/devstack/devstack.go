@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +22,9 @@ import (
 )
 
 type DevStackNode struct {
-	cancelContext *system.CancelContext
+	// Lifecycle context for node:
+	ctx context.Context
+
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
@@ -32,19 +35,23 @@ type DevStackNode struct {
 }
 
 type DevStack struct {
-	cancelContext *system.CancelContext
-	Nodes         []*DevStackNode
+	// Lifecycle context for stack:
+	ctx context.Context
+
+	Nodes []*DevStackNode
 }
 
-func NewDevStack(
-	cancelContext *system.CancelContext,
-	count, badActors int,
-	getExecutors func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error),
-	getVerifiers func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error),
-) (*DevStack, error) {
+type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
+	map[string]executor.Executor, error)
+
+type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
+	map[string]verifier.Verifier, error)
+
+func NewDevStack(ctx context.Context, count, badActors int,
+	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
+	*DevStack, error) {
 
 	nodes := []*DevStackNode{}
-
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
@@ -60,14 +67,16 @@ func NewDevStack(
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(cancelContext, true)
+		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"devstack: failed to create ipfs node: %w", err)
 		}
 
 		err = ipfsNode.Start(ipfsConnectAddress)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"devstack: failed to start ipfs node: %w", err)
 		}
 
 		log.Debug().Msgf("IPFS dev server started: %s", ipfsNode.ApiAddress())
@@ -80,7 +89,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		transport, err := libp2p.NewLibp2pTransport(cancelContext, libp2pPort)
+		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +115,8 @@ func NewDevStack(
 			return nil, err
 		}
 
-		computeNode, err := compute_node.NewComputeNode(transport, executors, verifiers)
+		computeNode, err := compute_node.NewComputeNode(
+			transport, executors, verifiers)
 		if err != nil {
 			return nil, err
 		}
@@ -119,17 +129,12 @@ func NewDevStack(
 			return nil, err
 		}
 
-		apiServer := publicapi.NewServer(
-			requesterNode,
-			"0.0.0.0",
-			apiPort,
-		)
-
-		go func() {
-			if err := apiServer.ListenAndServe(cancelContext); err != nil {
+		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
+		go func(ctx context.Context) {
+			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}()
+		}(ctx)
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -163,7 +168,7 @@ func NewDevStack(
 		}
 
 		devStackNode := &DevStackNode{
-			cancelContext: cancelContext,
+			ctx:           ctx,
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
@@ -176,15 +181,14 @@ func NewDevStack(
 	}
 
 	stack := &DevStack{
-		cancelContext: cancelContext,
-		Nodes:         nodes,
+		ctx:   ctx,
+		Nodes: nodes,
 	}
 
 	return stack, nil
 }
 
 func (stack *DevStack) PrintNodeInfo() {
-
 	logString := ""
 
 	for nodeIndex, node := range stack.Nodes {
@@ -281,8 +285,12 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
 
-	job, err := apiClient.Get(jobId)
+	job, ok, err := apiClient.Get(jobId)
 	if err != nil {
+		return nil, fmt.Errorf(
+			"devstack: error fetching job %s: %v", jobId, err)
+	}
+	if !ok {
 		return nil, nil
 	}
 
@@ -306,9 +314,7 @@ func (stack *DevStack) WaitForJob(
 		Name:        "wait for job",
 		MaxAttempts: 100,
 		Delay:       time.Second * 1,
-		Logging:     true,
 		Handler: func() (bool, error) {
-
 			// load the current states of the job
 			states, err := stack.GetJobStates(jobId)
 			if err != nil {
@@ -335,8 +341,9 @@ func (stack *DevStack) WaitForJob(
 				if _, ok := foundStates[expectedState]; ok {
 					foundCount = foundStates[expectedState]
 				}
+
 				if foundCount != expectedCount {
-					return false, fmt.Errorf("job has %d %s states, expected %d", foundCount, expectedState, expectedCount)
+					return false, nil
 				}
 			}
 

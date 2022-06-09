@@ -66,15 +66,18 @@ func (ipfsHttp *IPFSHttpClient) GetSwarmAddresses() ([]string, error) {
 	addressStrings := []string{}
 	addresses, err := ipfsHttp.GetLocalAddrStrings()
 	if err != nil {
-		return addressStrings, nil
+		return nil, err
 	}
+
 	peerId, err := ipfsHttp.GetPeerId()
 	if err != nil {
-		return addressStrings, nil
+		return nil, err
 	}
+
 	for _, address := range addresses {
 		addressStrings = append(addressStrings, fmt.Sprintf("%s/p2p/%s", address, peerId))
 	}
+
 	return addressStrings, nil
 }
 

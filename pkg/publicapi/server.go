@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -40,7 +39,7 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
-func (apiServer *APIServer) ListenAndServe(ctx *system.CancelContext) error {
+func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	hostID, err := apiServer.Node.Transport.HostId()
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
@@ -56,7 +55,7 @@ func (apiServer *APIServer) ListenAndServe(ctx *system.CancelContext) error {
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 		Handler: sm,
 		BaseContext: func(_ net.Listener) context.Context {
-			return ctx.Ctx
+			return ctx
 		},
 	}
 

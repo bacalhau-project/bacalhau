@@ -12,24 +12,21 @@ import (
 )
 
 func TestIPFSVerifier(t *testing.T) {
-
-	fixtureContent := "hello world"
-	stack, cancelContext := SetupTest(
-		t,
-		1,
-	)
-
-	defer TeardownTest(stack, cancelContext)
+	stack, ctx, cancel := SetupTest(t, 1)
+	defer TeardownTest(stack, cancel)
 
 	inputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
 	assert.NoError(t, err)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
+	assert.NoError(t, err)
 
+	fixtureContent := "hello world"
 	err = os.WriteFile(inputDir+"/file.txt", []byte(fixtureContent), 0644)
 	assert.NoError(t, err)
 
-	verifier, err := ipfs_verifier.NewIPFSVerifier(cancelContext, stack.Nodes[0].IpfsNode.ApiAddress())
+	verifier, err := ipfs_verifier.NewIPFSVerifier(
+		ctx, stack.Nodes[0].IpfsNode.ApiAddress())
 	assert.NoError(t, err)
 
 	installed, err := verifier.IsInstalled()
