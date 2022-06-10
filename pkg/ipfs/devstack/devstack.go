@@ -249,14 +249,13 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 
 	cmd.Stderr = logfile
 	cmd.Stdout = logfile
-	if err = cmd.Start(); err != nil { // nolint
+	if err = cmd.Start(); err != nil {
 		return err
 	}
-
 	log.Debug().Msgf("IPFS daemon has started")
 
 	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(
-		context.TODO(), server.ApiAddress())
+		server.ApiAddress())
 	if err != nil {
 		return err
 	}
@@ -266,7 +265,8 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		MaxAttempts: 100,
 		Delay:       time.Millisecond * 100,
 		Handler: func() (bool, error) {
-			if _, err := testConnectionClient.GetPeerId(); err != nil {
+			_, err := testConnectionClient.GetPeerId(context.Background())
+			if err != nil {
 				var expectedErr *url.Error
 				if errors.As(err, &expectedErr) {
 					return false, nil // connection not found, so we wait

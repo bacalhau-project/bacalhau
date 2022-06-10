@@ -17,12 +17,13 @@ type Verifier struct {
 func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*Verifier, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = api.GetPeerId()
+	ctx := context.Background() // TODO: instrument
+	_, err = api.GetPeerId(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 }
 
 func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
-	_, err := verifier.IPFSClient.GetPeerId()
+	_, err := verifier.IPFSClient.GetPeerId(ctx)
 	return err == nil, err
 }
 
@@ -49,7 +50,7 @@ func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
 	job *types.Job, resultsFolder string) (string, error) {
 
 	log.Debug().Msgf("Uploading results folder to ipfs: %s %s", job.Id, resultsFolder)
-	return verifier.IPFSClient.UploadTar(resultsFolder)
+	return verifier.IPFSClient.UploadTar(ctx, resultsFolder)
 }
 
 // Compile-time check that Verifier implements the correct interface:

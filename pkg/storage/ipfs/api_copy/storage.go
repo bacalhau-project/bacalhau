@@ -25,7 +25,7 @@ type StorageProvider struct {
 func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*StorageProvider, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 }
 
 func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs()
+	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -59,7 +59,7 @@ func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 func (dockerIpfs *StorageProvider) HasStorage(ctx context.Context,
 	volume types.StorageSpec) (bool, error) {
 
-	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
+	return dockerIpfs.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
 func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
@@ -79,7 +79,7 @@ func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
 	}
 
 	if statResult.Type == storage.IPFS_TYPE_DIRECTORY || statResult.Type == storage.IPFS_TYPE_FILE {
-		return dockerIpfs.copyTarFile(storageSpec)
+		return dockerIpfs.copyTarFile(ctx, storageSpec)
 	} else {
 		return nil, fmt.Errorf("unknown ipfs type: %s", statResult.Type)
 	}
@@ -93,16 +93,21 @@ func (dockerIpfs *StorageProvider) CleanupStorage(ctx context.Context,
 	})
 }
 
-func (dockerIpfs *StorageProvider) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
-	err := dockerIpfs.IPFSClient.DownloadTar(dockerIpfs.LocalDir, storageSpec.Cid)
+func (dockerIpfs *StorageProvider) copyTarFile(ctx context.Context,
+	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+
+	err := dockerIpfs.IPFSClient.DownloadTar(ctx,
+		dockerIpfs.LocalDir, storageSpec.Cid)
 	if err != nil {
 		return nil, err
 	}
+
 	volume := &types.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
 		Target: storageSpec.Path,
 	}
+
 	return volume, nil
 }
 

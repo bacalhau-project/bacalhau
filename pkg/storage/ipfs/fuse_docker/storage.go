@@ -47,12 +47,12 @@ type StorageProvider struct {
 func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*StorageProvider, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	peerId, err := api.GetPeerId()
+	peerId, err := api.GetPeerId(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 }
 
 func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	addresses, err := sp.IPFSClient.GetLocalAddrs()
+	addresses, err := sp.IPFSClient.GetLocalAddrs(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -92,7 +92,7 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 func (sp *StorageProvider) HasStorage(ctx context.Context,
 	volume types.StorageSpec) (bool, error) {
 
-	return sp.IPFSClient.HasCidLocally(volume.Cid)
+	return sp.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
 // sometimes (for reasons we still need to work out) - the sidecar fuse mount container
@@ -185,7 +185,7 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 					}
 				}
 
-				err = sp.startSidecar()
+				err = sp.startSidecar(context.Background())
 				if err != nil {
 					return false, err
 				}
@@ -221,9 +221,8 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 	return nil
 }
 
-func (sp *StorageProvider) startSidecar() error {
-
-	addresses, err := sp.IPFSClient.GetSwarmAddresses()
+func (sp *StorageProvider) startSidecar(ctx context.Context) error {
+	addresses, err := sp.IPFSClient.GetSwarmAddresses(ctx)
 	if err != nil {
 		return err
 	}
@@ -249,7 +248,7 @@ func (sp *StorageProvider) startSidecar() error {
 	}
 
 	sidecarContainer, err := sp.DockerClient.ContainerCreate(
-		context.TODO(),
+		ctx,
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
 			Tty:   false,
