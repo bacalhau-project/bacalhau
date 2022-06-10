@@ -62,7 +62,6 @@ func waitForHealthy(c *APIClient) error {
 	}
 }
 
-
 func MakeGenericJob() (*types.JobSpec, *types.JobDeal) {
 	return MakeJob(executor.EXECUTOR_DOCKER, verifier.VERIFIER_IPFS)
 }
@@ -71,7 +70,7 @@ func MakeNoopJob() (*types.JobSpec, *types.JobDeal) {
 	return MakeJob(executor.EXECUTOR_NOOP, verifier.VERIFIER_IPFS)
 }
 
-func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.JobSpec, *types.JobDeal){
+func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.JobSpec, *types.JobDeal) {
 	jobSpec := types.JobSpec{
 		Engine:   string(exec),
 		Verifier: string(verif),
