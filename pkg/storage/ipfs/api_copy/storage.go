@@ -18,17 +18,14 @@ import (
 // a job to run - it will remove the folder/file once complete
 
 type IpfsApiCopy struct {
-	// Lifecycle context for storage driver:
-	ctx context.Context
-
 	LocalDir   string
 	IPFSClient *ipfs_http.IPFSHttpClient
 }
 
-func NewIpfsApiCopy(ctx context.Context, ipfsMultiAddress string) (
+func NewIpfsApiCopy(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*IpfsApiCopy, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +36,6 @@ func NewIpfsApiCopy(ctx context.Context, ipfsMultiAddress string) (
 	}
 
 	storageHandler := &IpfsApiCopy{
-		ctx:        ctx,
 		IPFSClient: api,
 		LocalDir:   dir,
 	}
@@ -73,7 +69,7 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*t
 
 	err := dockerIpfs.IPFSClient.Api.
 		Request("files/stat", fmt.Sprintf("/ipfs/%s", storageSpec.Cid)).
-		Exec(dockerIpfs.ctx, &statResult)
+		Exec(context.TODO(), &statResult)
 
 	if err != nil {
 		return nil, err

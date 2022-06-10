@@ -26,6 +26,9 @@ import (
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
 
 type Transport struct {
+	// Cleanup manager for resource teardown on exit:
+	cm *system.CleanupManager
+
 	// Writer we emit events through.
 	genericTransport     *transport.GenericTransport
 	Host                 host.Host
@@ -125,7 +128,7 @@ func makeLibp2pHost(port int) (host.Host, error) {
 	)
 }
 
-func NewTransport(port int) (
+func NewTransport(cm *system.CleanupManager, port int) (
 	*Transport, error) {
 
 	host, err := makeLibp2pHost(port)
@@ -149,6 +152,7 @@ func NewTransport(port int) (
 	}
 
 	libp2pTransport := &Transport{
+		cm:                   cm,
 		Host:                 host,
 		Port:                 port,
 		PubSub:               pubsub,
@@ -180,9 +184,13 @@ func (t *Transport) Start(ctx context.Context) error {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
 
-	system.OnCancel(ctx, func() {
+	go t.readLoopJobEvents(context.TODO())
+	log.Debug().Msg("Libp2p transport has started")
+
+	t.cm.RegisterCallback(func() error {
 		t.Host.Close()
-		log.Debug().Msg("libp2p transport has stopped")
+		log.Debug().Msg("Libp2p transport has stopped")
+		return nil
 	})
 
 	log.Debug().Msg("libp2p transport is starting...")
@@ -294,7 +302,7 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	t.Host.Peerstore().AddAddrs(
 		info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
-	return t.Host.Connect(ctx, *info)
+	return t.Host.Connect(context.TODO(), *info)
 }
 
 func (t *Transport) writeJobEvent(ctx context.Context, event *types.JobEvent) error {
@@ -304,12 +312,12 @@ func (t *Transport) writeJobEvent(ctx context.Context, event *types.JobEvent) er
 	}
 
 	log.Debug().Msgf("Sending event: %s", string(bs))
-	return t.JobEventTopic.Publish(ctx, bs)
+	return t.JobEventTopic.Publish(context.TODO(), bs)
 }
 
 func (t *Transport) readLoopJobEvents(ctx context.Context) {
 	for {
-		msg, err := t.JobEventSubscription.Next(ctx)
+		msg, err := t.JobEventSubscription.Next(context.TODO())
 		if err != nil {
 			return
 		}

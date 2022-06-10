@@ -19,8 +19,8 @@ import (
 )
 
 type IPFSDevServer struct {
-	// Lifecycle context for dev server:
-	ctx context.Context
+	// For cleaning up IPFS daemons when shutting down:
+	cm *system.CleanupManager
 
 	Id          string
 	Repo        string
@@ -32,7 +32,7 @@ type IPFSDevServer struct {
 	SwarmPort   int
 }
 
-func NewDevServer(ctx context.Context, isolated bool) (
+func NewDevServer(cm *system.CleanupManager, isolated bool) (
 	*IPFSDevServer, error) {
 
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
@@ -86,7 +86,7 @@ func NewDevServer(ctx context.Context, isolated bool) (
 	}
 
 	return &IPFSDevServer{
-		ctx:         ctx,
+		cm:          cm,
 		Id:          idResult.ID,
 		Repo:        repoDir,
 		LogFile:     logFile.Name(),
@@ -256,7 +256,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	log.Debug().Msgf("IPFS daemon has started")
 
 	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(
-		server.ctx, server.ApiAddress())
+		context.TODO(), server.ApiAddress())
 	if err != nil {
 		return err
 	}
@@ -284,21 +284,20 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
-	system.OnCancel(server.ctx, func() {
+	server.cm.RegisterCallback(func() error {
 		err = system.RunCommand("kill", []string{
 			"-9", fmt.Sprintf("%d", cmd.Process.Pid),
 		})
 		if err != nil {
-			log.Error().Msgf("Error closing IPFS daemon %s", err.Error())
-		} else {
-			err := cmd.Wait()
-			if err != nil {
-				// we call wait so we don't have zombie processes
-				// this is not a big deal as we are closing the process
-			} else {
-				log.Debug().Msgf("IPFS daemon has stopped")
-			}
+			return err
 		}
+
+		if err := cmd.Wait(); err != nil {
+			return err
+		}
+
+		log.Debug().Msgf("IPFS daemon has stopped.")
+		return nil
 	})
 
 	return nil

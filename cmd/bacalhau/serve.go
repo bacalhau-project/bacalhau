@@ -53,10 +53,15 @@ var serveCmd = &cobra.Command{
 			return fmt.Errorf("must specify ipfs-connect")
 		}
 
+		// Cleanup manager ensures that resources are freed before exiting:
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+
+		// Context ensures main goroutine waits until killed with ctrl+c:
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		transport, err := libp2p.NewTransport(hostPort)
+		transport, err := libp2p.NewTransport(cm, hostPort)
 		if err != nil {
 			return err
 		}
@@ -66,13 +71,13 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := executor.NewDockerIPFSExecutors(ctx, ipfsConnect,
+		executors, err := executor.NewDockerIPFSExecutors(cm, ipfsConnect,
 			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
 			return err
 		}
 
-		verifiers, err := verifier.NewIPFSVerifiers(ctx, ipfsConnect)
+		verifiers, err := verifier.NewIPFSVerifiers(cm, ipfsConnect)
 		if err != nil {
 			return err
 		}
@@ -119,7 +124,7 @@ var serveCmd = &cobra.Command{
 
 		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", transport.Host.ID().String())
 
-		<-ctx.Done() // blocks main goroutine so we don't exit
+		<-ctx.Done() // block until killed
 		return nil
 	},
 }

@@ -1,13 +1,12 @@
 package verifier
 
 import (
-	"context"
-
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 )
 
-func NewIPFSVerifiers(ctx context.Context, ipfsMultiAddress string) (
+func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (
 	map[string]Verifier, error) {
 
 	noopVerifier, err := noop.NewNoopVerifier()
@@ -15,7 +14,7 @@ func NewIPFSVerifiers(ctx context.Context, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	ipfsVerifier, err := ipfs.NewIPFSVerifier(ctx, ipfsMultiAddress)
+	ipfsVerifier, err := ipfs.NewIPFSVerifier(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
