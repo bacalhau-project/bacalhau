@@ -25,22 +25,22 @@ var STORAGE_DRIVER_NAMES = []string{
 }
 
 func SetupTest(t *testing.T, nodes int, badActors int) (
-	*devstack.DevStack, context.Context, context.CancelFunc) {
+	*devstack.DevStack, *system.CleanupManager) {
 
-	ctx, cancel := system.WithSignalShutdown(context.Background())
+	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]executor.Executor, error) {
 
 		return executor.NewDockerIPFSExecutors(
-			ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]verifier.Verifier, error) {
 
-		return verifier.NewIPFSVerifiers(ctx, ipfsMultiAddress)
+		return verifier.NewIPFSVerifiers(cm, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
-		ctx,
+		cm,
 		nodes,
 		badActors,
 		getExecutors,
@@ -48,12 +48,12 @@ func SetupTest(t *testing.T, nodes int, badActors int) (
 	)
 	assert.NoError(t, err)
 
-	return stack, ctx, cancel
+	return stack, cm
 }
 
-func TeardownTest(stack *devstack.DevStack, cancel context.CancelFunc) {
+func TeardownTest(stack *devstack.DevStack, cm *system.CleanupManager) {
 	stack.PrintNodeInfo()
-	cancel()
+	cm.Cleanup()
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -63,8 +63,8 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	stack, ctx, cancel := SetupTest(t, nodeCount, 0)
-	defer TeardownTest(stack, cancel)
+	stack, cm := SetupTest(t, nodeCount, 0)
+	defer TeardownTest(stack, cm)
 
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
@@ -108,7 +108,7 @@ func devStackDockerStorageTest(
 		assert.NoError(t, err)
 
 		ipfsClient, err := ipfs_http.NewIPFSHttpClient(
-			ctx, node.IpfsNode.ApiAddress())
+			context.TODO(), node.IpfsNode.ApiAddress())
 		assert.NoError(t, err)
 
 		ipfsClient.DownloadTar(outputDir, state.ResultsId)

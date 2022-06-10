@@ -1,7 +1,6 @@
 package devstack
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,10 +18,8 @@ type DevStackNode_IPFS struct {
 }
 
 type DevStack_IPFS struct {
-	// Lifecycle context for stack:
-	Ctx context.Context
-
-	Nodes []*DevStackNode_IPFS
+	Nodes          []*DevStackNode_IPFS
+	CleanupManager *system.CleanupManager
 }
 
 // a devstack but with only IPFS servers connected to each other
@@ -64,7 +61,8 @@ func NewDevStack_IPFS(cm *system.CleanupManager, count int) (
 	}
 
 	stack := &DevStack_IPFS{
-		Nodes: nodes,
+		Nodes:          nodes,
+		CleanupManager: cm,
 	}
 
 	return stack, nil

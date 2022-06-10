@@ -293,7 +293,12 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 
 		if err := cmd.Wait(); err != nil {
-			return err
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				// we expect a non-zero exit code as we killed the process
+			} else {
+				return err
+			}
 		}
 
 		log.Debug().Msgf("IPFS daemon has stopped.")
