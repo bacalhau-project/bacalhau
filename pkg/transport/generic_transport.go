@@ -41,8 +41,7 @@ func (transport *GenericTransport) writeEvent(event *types.JobEvent) error {
 	return transport.WriteEventHandler(event)
 }
 
-func (transport *GenericTransport) ReadEvent(event *types.JobEvent) {
-
+func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 	transport.Mutex.Lock()
 	defer transport.Mutex.Unlock()
 

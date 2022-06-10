@@ -40,7 +40,7 @@ func (apiServer *APIServer) GetURI() string {
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
-	hostID, err := apiServer.Node.Transport.HostId()
+	hostID, err := apiServer.Node.Transport.HostID(ctx)
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
 		return err
@@ -55,7 +55,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 		Handler: sm,
 		BaseContext: func(_ net.Listener) context.Context {
-			return ctx
+			return ctx // TODO: handle trace ID stuff here
 		},
 	}
 
@@ -81,7 +81,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.Node.Transport.List()
+	list, err := apiServer.Node.Transport.List(req.Context())
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -117,7 +117,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job, err := apiServer.Node.Transport.SubmitJob(submitReq.Spec, submitReq.Deal)
+	job, err := apiServer.Node.Transport.SubmitJob(req.Context(),
+		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

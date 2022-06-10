@@ -19,10 +19,6 @@ import (
 )
 
 type DockerExecutor struct {
-	// Lifecycle context for executor:
-	ctx    context.Context
-	cancel context.CancelFunc
-
 	// used to allow multiple docker executors to run against the same docker server
 	Id string
 
@@ -36,11 +32,10 @@ type DockerExecutor struct {
 }
 
 func NewDockerExecutor(
-	ctx context.Context,
+	cm *system.CleanupManager,
 	id string,
 	storageProviders map[string]storage.StorageProvider,
 ) (*DockerExecutor, error) {
-
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return nil, err
@@ -51,18 +46,16 @@ func NewDockerExecutor(
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
 	de := &DockerExecutor{
-		ctx:              ctx,
-		cancel:           cancel,
 		Id:               id,
 		ResultsDir:       dir,
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
 	}
 
-	system.OnCancel(ctx, func() {
+	cm.RegisterCallback(func() error {
 		de.cleanupAll()
+		return nil
 	})
 
 	return de, nil
@@ -207,7 +200,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	jobContainer, err := dockerExecutor.Client.ContainerCreate(
-		dockerExecutor.ctx,
+		context.TODO(),
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
@@ -222,7 +215,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 
 	defer dockerExecutor.cleanupJob(job)
 	err = dockerExecutor.Client.ContainerStart(
-		dockerExecutor.ctx,
+		context.TODO(),
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
@@ -239,7 +232,7 @@ func (dockerExecutor *DockerExecutor) RunJob(job *types.Job) (string, error) {
 	}
 
 	statusCh, errCh := dockerExecutor.Client.ContainerWait(
-		dockerExecutor.ctx,
+		context.TODO(),
 		jobContainer.ID,
 		container.WaitConditionNotRunning,
 	)
