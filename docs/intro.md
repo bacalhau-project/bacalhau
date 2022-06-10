@@ -18,6 +18,6 @@ On this website, you will find:
 - An introduction of the [main concepts](about-bacalhau/introduction.md) and its purpose.
 - The project and [architecture overview](about-bacalhau/architecture.md).
 - A [short guide](getting-started/installation.md) to help install and start using the CLI.
-- A [series of demos](demos/hello-bacalhau.md) of demos to illustrate Bacalhau's capabilities.
+- A [series of demos](demos/list.md) of demos to illustrate Bacalhau's capabilities.
 
 If you would like to know more, join our community on [Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY)!
