@@ -35,9 +35,6 @@ const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:
 const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
 type IpfsFuseDocker struct {
-	// Lifecycle context for storage driver:
-	ctx context.Context
-
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
@@ -47,10 +44,10 @@ type IpfsFuseDocker struct {
 	DockerClient *dockerclient.Client
 }
 
-func NewIpfsFuseDocker(ctx context.Context, ipfsMultiAddress string) (
+func NewIpfsFuseDocker(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*IpfsFuseDocker, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -66,17 +63,13 @@ func NewIpfsFuseDocker(ctx context.Context, ipfsMultiAddress string) (
 	}
 
 	storageHandler := &IpfsFuseDocker{
-		ctx:          ctx,
 		Id:           peerId,
 		IPFSClient:   api,
 		DockerClient: dockerClient,
 	}
 
-	system.OnCancel(ctx, func() {
-		err := cleanupStorageDriver(storageHandler)
-		if err != nil {
-			log.Error().Msg(err.Error())
-		}
+	cm.RegisterCallback(func() error {
+		return cleanupStorageDriver(storageHandler)
 	})
 
 	log.Debug().Msgf("Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
@@ -248,7 +241,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	}
 
 	sidecarContainer, err := dockerIpfs.DockerClient.ContainerCreate(
-		dockerIpfs.ctx,
+		context.TODO(),
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
 			Tty:   false,
@@ -300,7 +293,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	err = dockerIpfs.DockerClient.ContainerStart(dockerIpfs.ctx,
+	err = dockerIpfs.DockerClient.ContainerStart(context.TODO(),
 		sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 	if err != nil {
 		return err

@@ -1,6 +1,8 @@
 package requestor_node
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -14,8 +16,9 @@ type RequesterNode struct {
 func NewRequesterNode(
 	transport transport.Transport,
 ) (*RequesterNode, error) {
+	ctx := context.TODO()
 
-	nodeId, err := transport.HostId()
+	nodeId, err := transport.HostID(ctx)
 	threadLogger := logger.LoggerWithRuntimeInfo(nodeId)
 
 	if err != nil {
@@ -27,8 +30,7 @@ func NewRequesterNode(
 		Transport: transport,
 	}
 
-	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
-
+	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
 		// we only care about jobs that we own
 		if job.Owner != nodeId {
 			return
@@ -51,13 +53,13 @@ func NewRequesterNode(
 
 			if bidAccepted {
 				// TODO: Check result of accept job bid
-				err = transport.AcceptJobBid(jobEvent.JobId, jobEvent.NodeId)
+				err = transport.AcceptJobBid(ctx, jobEvent.JobId, jobEvent.NodeId)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
 			} else {
 				// TODO: Check result of reject job bid
-				err = transport.RejectJobBid(jobEvent.JobId, jobEvent.NodeId, message)
+				err = transport.RejectJobBid(ctx, jobEvent.JobId, jobEvent.NodeId, message)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}

@@ -22,22 +22,16 @@ import (
 )
 
 type DevStackNode struct {
-	// Lifecycle context for node:
-	ctx context.Context
-
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer
 	IpfsCli       *ipfs_cli.IPFSCli
-	Transport     *libp2p.Libp2pTransport
+	Transport     *libp2p.Transport
 
 	ApiServer *publicapi.APIServer
 }
 
 type DevStack struct {
-	// Lifecycle context for stack:
-	ctx context.Context
-
 	Nodes []*DevStackNode
 }
 
@@ -47,7 +41,7 @@ type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 	map[string]verifier.Verifier, error)
 
-func NewDevStack(ctx context.Context, count, badActors int,
+func NewDevStack(cm *system.CleanupManager, count, badActors int,
 	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
 	*DevStack, error) {
 
@@ -67,7 +61,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(ctx, true)
+		ipfsNode, err := ipfs_devstack.NewDevServer(cm, true)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"devstack: failed to create ipfs node: %w", err)
@@ -89,7 +83,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			return nil, err
 		}
 
-		transport, err := libp2p.NewLibp2pTransport(ctx, libp2pPort)
+		transport, err := libp2p.NewTransport(cm, libp2pPort)
 		if err != nil {
 			return nil, err
 		}
@@ -134,17 +128,19 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(ctx)
+		}(context.TODO())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
 		//////////////////////////////////////
 		// intra-connections
 		//////////////////////////////////////
-		err = transport.Start()
-		if err != nil {
-			return nil, err
-		}
+
+		go func() {
+			if err = transport.Start(context.TODO()); err != nil {
+				panic(err) // if transport can't run, devstack should stop
+			}
+		}()
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -153,7 +149,7 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostId, err := firstNode.Transport.HostId()
+			libp2pHostId, err := firstNode.Transport.HostID(context.TODO())
 			if err != nil {
 				return nil, err
 			}
@@ -161,14 +157,13 @@ func NewDevStack(ctx context.Context, count, badActors int,
 			// connect this scheduler to the first
 			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Transport.Port, libp2pHostId)
 			log.Debug().Msgf("Connect to first libp2p scheduler node: %s", firstSchedulerAddress)
-			err = transport.Connect(firstSchedulerAddress)
+			err = transport.Connect(context.TODO(), firstSchedulerAddress)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		devStackNode := &DevStackNode{
-			ctx:           ctx,
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
 			IpfsNode:      ipfsNode,
@@ -181,7 +176,6 @@ func NewDevStack(ctx context.Context, count, badActors int,
 	}
 
 	stack := &DevStack{
-		ctx:   ctx,
 		Nodes: nodes,
 	}
 
@@ -244,7 +238,7 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 			continue
 		}
 
-		nodeId, err := node.ComputeNode.Transport.HostId()
+		nodeId, err := node.ComputeNode.Transport.HostID(context.TODO())
 
 		if err != nil {
 			return "", err
@@ -375,7 +369,7 @@ func (stack *DevStack) GetNode(
 	nodeId string,
 ) (*DevStackNode, error) {
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostId()
+		id, err := node.Transport.HostID(context.TODO())
 		if err != nil {
 			return nil, err
 		}

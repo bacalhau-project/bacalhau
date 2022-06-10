@@ -1,7 +1,6 @@
 package ipfs
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,13 +15,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type getStorageFunc func(ctx context.Context, api string) (
+type getStorageFunc func(cm *system.CleanupManager, api string) (
 	storage.StorageProvider, error)
 
 func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
-	stack, ctx, cancel := SetupTest(t, 1)
-	defer TeardownTest(stack, cancel)
+	stack, cm := SetupTest(t, 1)
+	defer TeardownTest(stack, cm)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
@@ -31,7 +30,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-	storageDriver, err := getStorageDriver(ctx, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -76,8 +75,8 @@ func runFolderTest(t *testing.T, engine string,
 	assert.NoError(t, err)
 
 	// get a single IPFS server
-	stack, ctx, cancel := SetupTest(t, 1)
-	defer TeardownTest(stack, cancel)
+	stack, cm := SetupTest(t, 1)
+	defer TeardownTest(stack, cm)
 
 	// add this file to the server
 	folderCid, err := stack.AddFolderToNodes(1, dir)
@@ -85,7 +84,7 @@ func runFolderTest(t *testing.T, engine string,
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-	storageDriver, err := getStorageDriver(ctx, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -125,10 +124,10 @@ func TestIpfsFuseDockerFile(t *testing.T) {
 	runFileTest(
 		t,
 		storage.IPFS_FUSE_DOCKER,
-		func(ctx context.Context, api string) (
+		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return fuse_docker.NewIpfsFuseDocker(ctx, api)
+			return fuse_docker.NewIpfsFuseDocker(cm, api)
 		},
 	)
 }
@@ -139,10 +138,10 @@ func TestIpfsFuseDockerFolder(t *testing.T) {
 	runFolderTest(
 		t,
 		storage.IPFS_FUSE_DOCKER,
-		func(ctx context.Context, api string) (
+		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return fuse_docker.NewIpfsFuseDocker(ctx, api)
+			return fuse_docker.NewIpfsFuseDocker(cm, api)
 		},
 	)
 
@@ -153,10 +152,10 @@ func TestIpfsApiCopyFile(t *testing.T) {
 	runFileTest(
 		t,
 		storage.IPFS_API_COPY,
-		func(ctx context.Context, api string) (
+		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return api_copy.NewIpfsApiCopy(ctx, api)
+			return api_copy.NewIpfsApiCopy(cm, api)
 		},
 	)
 
@@ -167,10 +166,10 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 	runFolderTest(
 		t,
 		storage.IPFS_API_COPY,
-		func(ctx context.Context, api string) (
+		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return api_copy.NewIpfsApiCopy(ctx, api)
+			return api_copy.NewIpfsApiCopy(cm, api)
 		},
 	)
 }

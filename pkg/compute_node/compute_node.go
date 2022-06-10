@@ -1,6 +1,7 @@
 package compute_node
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -24,8 +25,8 @@ func NewComputeNode(
 	executors map[string]executor.Executor,
 	verifiers map[string]verifier.Verifier,
 ) (*ComputeNode, error) {
-
-	nodeId, err := transport.HostId()
+	ctx := context.TODO()
+	nodeId, err := transport.HostID(ctx)
 
 	if err != nil {
 		return nil, err
@@ -37,7 +38,7 @@ func NewComputeNode(
 		Executors: executors,
 	}
 
-	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
 
 		switch jobEvent.EventName {
 
@@ -60,7 +61,7 @@ func NewComputeNode(
 				log.Debug().Msgf("We are bidding on a job: %+v", jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = transport.BidJob(jobEvent.JobId)
+				err = transport.BidJob(ctx, jobEvent.JobId)
 				if err != nil {
 					log.Error().Msgf("Error bidding on job: %+v", err)
 				}
@@ -83,7 +84,7 @@ func NewComputeNode(
 
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
-				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
 				return
 			}
 
@@ -91,7 +92,7 @@ func NewComputeNode(
 
 			if err != nil {
 				log.Error().Msgf("Error geting the verifier for the job: %s %+v", err, job)
-				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
+				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
 				return
 			}
 
@@ -99,11 +100,12 @@ func NewComputeNode(
 
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
-				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error verifying results: %s", err))
+				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))
 				return
 			}
 
 			err = transport.SubmitResult(
+				ctx,
 				job.Id,
 				fmt.Sprintf("Got job result: %s", resultValue),
 				resultValue,
@@ -111,7 +113,7 @@ func NewComputeNode(
 
 			if err != nil {
 				log.Error().Msgf("Error submitting result: %s %+v", err, job)
-				_ = transport.ErrorJob(job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
 				return
 			}
 		}

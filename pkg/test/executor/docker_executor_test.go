@@ -29,14 +29,14 @@ func dockerExecutorStorageTest(
 		getStorageDriver scenario.IGetStorageDriver,
 	) {
 
-		stack, ctx, cancel := ipfs.SetupTest(t, TEST_NODE_COUNT)
-		defer ipfs.TeardownTest(stack, cancel)
+		stack, cm := ipfs.SetupTest(t, TEST_NODE_COUNT)
+		defer ipfs.TeardownTest(stack, cm)
 
 		storageDriver, err := getStorageDriver(stack)
 		assert.NoError(t, err)
 
 		dockerExecutor, err := docker.NewDockerExecutor(
-			ctx, "dockertest", map[string]storage.StorageProvider{
+			cm, "dockertest", map[string]storage.StorageProvider{
 				TEST_STORAGE_DRIVER_NAME: storageDriver,
 			})
 		assert.NoError(t, err)

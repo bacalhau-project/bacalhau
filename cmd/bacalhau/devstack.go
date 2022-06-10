@@ -34,19 +34,24 @@ var devstackCmd = &cobra.Command{
 			return fmt.Errorf("Cannot have more bad actors than there are nodes")
 		}
 
+		// Cleanup manager ensures that resources are freed before exiting:
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+
+		// Context ensures main goroutine waits until killed with ctrl+c:
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-			return executor.NewDockerIPFSExecutors(ctx, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			return executor.NewDockerIPFSExecutors(cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
-			return verifier.NewIPFSVerifiers(ctx, ipfsMultiAddress)
+			return verifier.NewIPFSVerifiers(cm, ipfsMultiAddress)
 		}
 
 		stack, err := devstack.NewDevStack(
-			ctx,
+			cm,
 			devStackNodes,
 			devStackBadActors,
 			getExecutors,
@@ -57,7 +62,7 @@ var devstackCmd = &cobra.Command{
 		}
 
 		stack.PrintNodeInfo()
-		<-ctx.Done() // blocks main goroutine so we don't exit
+		<-ctx.Done() // block until killed
 		return nil
 	},
 }

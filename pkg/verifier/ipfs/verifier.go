@@ -4,21 +4,19 @@ import (
 	"context"
 
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
 type IPFSVerifier struct {
-	// Lifecycle context for verifier:
-	ctx context.Context
-
 	IPFSClient *ipfs_http.IPFSHttpClient
 }
 
-func NewIPFSVerifier(ctx context.Context, ipfsMultiAddress string) (
+func NewIPFSVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*IPFSVerifier, error) {
 
-	api, err := ipfs_http.NewIPFSHttpClient(ctx, ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +27,6 @@ func NewIPFSVerifier(ctx context.Context, ipfsMultiAddress string) (
 	}
 
 	verifier := &IPFSVerifier{
-		ctx:        ctx,
 		IPFSClient: api,
 	}
 

@@ -1,7 +1,6 @@
 package ipfs
 
 import (
-	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -10,16 +9,16 @@ import (
 )
 
 func SetupTest(t *testing.T, nodes int) (
-	*devstack.DevStack_IPFS, context.Context, context.CancelFunc) {
+	*devstack.DevStack_IPFS, *system.CleanupManager) {
 
-	ctx, cancel := system.WithSignalShutdown(context.Background())
-	stack, err := devstack.NewDevStack_IPFS(ctx, nodes)
+	cm := system.NewCleanupManager()
+	stack, err := devstack.NewDevStack_IPFS(cm, nodes)
 	assert.NoError(t, err)
 
-	return stack, ctx, cancel
+	return stack, cm
 }
 
-func TeardownTest(stack *devstack.DevStack_IPFS, cancel context.CancelFunc) {
+func TeardownTest(stack *devstack.DevStack_IPFS, cm *system.CleanupManager) {
 	stack.PrintNodeInfo()
-	cancel()
+	cm.Cleanup()
 }

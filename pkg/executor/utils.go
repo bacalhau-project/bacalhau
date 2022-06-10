@@ -1,28 +1,27 @@
 package executor
 
 import (
-	"context"
-
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func NewDockerIPFSExecutors(ctx context.Context, ipfsMultiAddress string,
+func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 	dockerId string) (map[string]Executor, error) {
 
-	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(ctx, ipfsMultiAddress)
+	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(ctx, ipfsMultiAddress)
+	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewDockerExecutor(ctx, dockerId,
+	dockerExecutor, err := docker.NewDockerExecutor(cm, dockerId,
 		map[string]storage.StorageProvider{
 			storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 			storage.IPFS_API_COPY:    ipfsApiCopyStorage,
