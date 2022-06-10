@@ -72,7 +72,6 @@ func NewComputeNode(
 
 		// we have been given the goahead to run the job
 		case system.JOB_EVENT_BID_ACCEPTED:
-
 			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return
@@ -81,7 +80,6 @@ func NewComputeNode(
 			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
 			resultFolder, err := computeNode.RunJob(job)
-
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
@@ -89,15 +87,14 @@ func NewComputeNode(
 			}
 
 			verifier, err := computeNode.getVerifier(job.Spec.Verifier)
-
 			if err != nil {
 				log.Error().Msgf("Error geting the verifier for the job: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
 				return
 			}
 
-			resultValue, err := verifier.ProcessResultsFolder(job, resultFolder)
-
+			resultValue, err := verifier.ProcessResultsFolder(
+				context.TODO(), job, resultFolder)
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))
@@ -110,7 +107,6 @@ func NewComputeNode(
 				fmt.Sprintf("Got job result: %s", resultValue),
 				resultValue,
 			)
-
 			if err != nil {
 				log.Error().Msgf("Error submitting result: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
@@ -207,7 +203,7 @@ func (node *ComputeNode) getVerifier(name string) (verifier.Verifier, error) {
 		return nil, fmt.Errorf("No matching verifier found on this server: %s.", name)
 	}
 	verifier := node.Verifiers[name]
-	installed, err := verifier.IsInstalled()
+	installed, err := verifier.IsInstalled(context.TODO())
 	if err != nil {
 		return nil, err
 	}

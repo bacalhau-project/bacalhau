@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/util"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,13 +33,13 @@ func SetupTest(t *testing.T, nodes int, badActors int) (
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]executor.Executor, error) {
 
-		return util.NewDockerIPFSExecutors(
+		return executor_util.NewDockerIPFSExecutors(
 			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]verifier.Verifier, error) {
 
-		return verifier.NewIPFSVerifiers(cm, ipfsMultiAddress)
+		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
 		cm,

@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
-	"github.com/filecoin-project/bacalhau/pkg/executor/util"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -71,13 +71,13 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := util.NewDockerIPFSExecutors(cm, ipfsConnect,
+		executors, err := executor_util.NewDockerIPFSExecutors(cm, ipfsConnect,
 			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
 			return err
 		}
 
-		verifiers, err := verifier.NewIPFSVerifiers(cm, ipfsConnect)
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect)
 		if err != nil {
 			return err
 		}
