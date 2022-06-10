@@ -109,18 +109,19 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				job, err := c.Submit(publicapi.MakeNoopJob())
+				shortID := shortId(job.Id)
 				if sortFlags.sortFlag == string(ColumnID) {
 					if job.Id < firstJobId {
-						firstJobId = job.Id
+						firstJobId = shortID
 					}
 					if job.Id > lastJobId {
-						lastJobId = job.Id
+						lastJobId = shortID
 					}
 				} else {
 					if i == 0 {
-						firstJobId = job.Id
+						firstJobId = shortID
 					}
-					lastJobId = job.Id
+					lastJobId = shortID
 
 					// Need to sleep for at least one second between first and last jobs (otherwise we can't sort)
 					time.Sleep(1 * time.Second / time.Duration(tc.numberOfJobs))
@@ -149,9 +150,9 @@ func (suite *ListSuite) TestList_SortFlags() {
 					var idToCompare string
 
 					if sortFlags.reverseFlag {
-						idToCompare = shortId(lastJobId)
+						idToCompare = lastJobId
 					} else {
-						idToCompare = shortId(firstJobId)
+						idToCompare = firstJobId
 					}
 
 					errorMessage := fmt.Sprintf(`

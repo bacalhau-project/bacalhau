@@ -107,16 +107,17 @@ var listCmd = &cobra.Command{
 
 		for jobSpec, job := range jobs {
 			var k string
+			shortID := shortId(job.Id)
 
 			switch tableSortBy {
 			case ColumnID:
-				k = job.Id
+				k = shortID
 			case ColumnCreatedAt:
 				k = job.CreatedAt.Format(time.RFC3339)
 			default:
 				k = jobSpec // The existing sort
 			}
-			if tableIdFilter == "" || strings.Contains(shortId(job.Id), tableIdFilter) {
+			if tableIdFilter == "" || strings.Contains(shortID, tableIdFilter) {
 				keysToSort = append(keysToSort, k)
 			}
 			mappedJobs[k] = job
