@@ -10,7 +10,7 @@ sidebar_position: 3
 Often, you will need to process a number of images across an entire set hosted on IPFS. For example, the entire [Landsat data dataset is hosted on IPFS](http://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is many thousands of images, it would be very convenient to run a job against the data without having to download it!
 
 ## Getting Started
-In this example we will be working against a small [subset of the dataset]((http://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72)). We will go through a demo similar to what you may need to do at scale: resizing all the images down to 100x100px.
+In this example we will be working against a small [subset of the dataset](http://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). We will go through a demo similar to what you may need to do at scale: resizing all the images down to 100x100px.
 
 To get started with a new concept, `bacalhau run` takes a `-v` argument just like Docker, except the left hand side of the argument is a CID. This is a *data volume* and can mount in an entire directory (instead of a single file).
 
