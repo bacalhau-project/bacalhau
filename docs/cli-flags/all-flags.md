@@ -3,18 +3,26 @@ sidebar_label: 'CLI Flags' sidebar_position: 1
 ---
 
 # CLI Commands
+
+```bash
   devstack    Start a cluster of bacalhau nodes for testing and development
   help        Help about any command
   list        List jobs on the network
   run         Run a job on the network
   serve       Start the bacalhau compute node
+```
 
 ## Top level flags
+
+```bash
       --api-host string   The host for the client and server to communicate on (via REST). (default "bootstrap.production.bacalhau.org")
       --api-port int      The port for the client and server to communicate on (via REST). (default 1234)
   -h, --help              help for bacalhau
+```
 
-# List
+### List
+
+```bash
   -h, --help               help for list
       --hide-header        do not print the column headers.
       --id-filter string   filter by Job List to IDs matching substring.
@@ -24,3 +32,4 @@ sidebar_label: 'CLI Flags' sidebar_position: 1
       --reverse            reverse order of table - for time sorting, this will be newest first.
       --sort-by Column     sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
       --wide               Print full values in the table results
+```
