@@ -65,6 +65,7 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
+	ctx := context.Background()
 	stack, cm := SetupTest(t, nodeCount, 0)
 	defer TeardownTest(stack, cm)
 
@@ -110,10 +111,10 @@ func devStackDockerStorageTest(
 		assert.NoError(t, err)
 
 		ipfsClient, err := ipfs_http.NewIPFSHttpClient(
-			context.TODO(), node.IpfsNode.ApiAddress())
+			node.IpfsNode.ApiAddress())
 		assert.NoError(t, err)
 
-		ipfsClient.DownloadTar(outputDir, state.ResultsId)
+		ipfsClient.DownloadTar(ctx, outputDir, state.ResultsId)
 		testCase.ResultsChecker(outputDir + "/" + state.ResultsId)
 	}
 }
