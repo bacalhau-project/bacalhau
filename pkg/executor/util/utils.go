@@ -1,6 +1,7 @@
-package executor
+package util
 
 import (
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
@@ -9,19 +10,19 @@ import (
 )
 
 func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
-	dockerId string) (map[string]Executor, error) {
+	dockerId string) (map[string]executor.Executor, error) {
 
-	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(cm, ipfsMultiAddress)
+	ipfsFuseStorage, err := fuse_docker.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(cm, ipfsMultiAddress)
+	ipfsApiCopyStorage, err := api_copy.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewDockerExecutor(cm, dockerId,
+	ex, err := docker.NewExecutor(cm, dockerId,
 		map[string]storage.StorageProvider{
 			storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
 			storage.IPFS_API_COPY:    ipfsApiCopyStorage,
@@ -33,7 +34,7 @@ func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 		return nil, err
 	}
 
-	return map[string]Executor{
-		string(EXECUTOR_DOCKER): dockerExecutor,
+	return map[string]executor.Executor{
+		string(executor.EXECUTOR_DOCKER): ex,
 	}, nil
 }

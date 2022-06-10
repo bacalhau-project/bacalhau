@@ -49,14 +49,14 @@ type IGetJobSpec func() types.JobSpecVm
 func FuseStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
 	storage.StorageProvider, error) {
 
-	return fuse_docker.NewIpfsFuseDocker(
+	return fuse_docker.NewStorageProvider(
 		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
 func ApiCopyStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
 	storage.StorageProvider, error) {
 
-	return api_copy.NewIpfsApiCopy(
+	return api_copy.NewStorageProvider(
 		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
 }
 
