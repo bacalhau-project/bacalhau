@@ -22,9 +22,6 @@ import (
 )
 
 type DevStackNode struct {
-	// Lifecycle context for node:
-	ctx context.Context
-
 	ComputeNode   *compute_node.ComputeNode
 	RequesterNode *requestor_node.RequesterNode
 	IpfsNode      *ipfs_devstack.IPFSDevServer

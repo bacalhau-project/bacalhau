@@ -13,7 +13,6 @@ import (
 // testing purposes. Should not be used in production.
 type Transport struct {
 	id               string
-	subscribeFuncs   []func(jobEvent *types.JobEvent, job *types.Job)
 	genericTransport *transport.GenericTransport
 
 	// Public for testing purposes:
