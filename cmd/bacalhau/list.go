@@ -11,31 +11,31 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	listCmd.PersistentFlags().StringVar(
-		&listOutputFormat, "output", "text",
-		`The output format for the list of jobs (json or text)`,
-	)
-	listCmd.PersistentFlags().BoolVar(
-		&tableOutputWide, "wide", false,
-		`Print full values in the table results`,
-	)
+	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
+		`do not print the column headers.`)
+	listCmd.PersistentFlags().StringVar(&tableIdFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
+	listCmd.PersistentFlags().BoolVar(&tableNoStyle, "no-style", false, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
 		&tableMaxJobs, "number", "n", 10,
 		`print the first NUM jobs instead of the first 10.`,
 	)
-	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
-		`do not print the column headers.`)
-
-	listCmd.PersistentFlags().Var(&tableSortBy, "sort-by",
-		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
+	listCmd.PersistentFlags().StringVar(
+		&listOutputFormat, "output", "text",
+		`The output format for the list of jobs (json or text)`,
+	)
 	listCmd.PersistentFlags().BoolVar(&tableSortReverse, "reverse", false,
 		`reverse order of table - for time sorting, this will be newest first.`)
-	listCmd.PersistentFlags().StringVar(&tableIdFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
-	listCmd.PersistentFlags().BoolVar(&tableNoStyle, "no-style", false, `remove all styling from table output.`)
+	listCmd.PersistentFlags().Var(&tableSortBy, "sort-by",
+		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
+	listCmd.PersistentFlags().BoolVar(
+		&tableOutputWide, "wide", false,
+		`Print full values in the table results`,
+	)
 }
 
 // From: https://stackoverflow.com/questions/50824554/permitted-flag-values-for-cobra
@@ -101,8 +101,13 @@ var listCmd = &cobra.Command{
 		// Create an external structure to order the print out of the jobs map
 		keysToSort := make([]string, 0, len(jobs))
 		mappedJobs := make(map[string]*types.Job, len(jobs))
+
+		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
+		log.Debug().Msgf("Table filter flag set to: %s", tableIdFilter)
+
 		for jobSpec, job := range jobs {
 			var k string
+
 			switch tableSortBy {
 			case ColumnID:
 				k = job.Id
@@ -111,16 +116,20 @@ var listCmd = &cobra.Command{
 			default:
 				k = jobSpec // The existing sort
 			}
-			keysToSort = append(keysToSort, k)
+			if tableIdFilter == "" || strings.Contains(shortId(job.Id), tableIdFilter) {
+				keysToSort = append(keysToSort, k)
+			}
 			mappedJobs[k] = job
 		}
 		sort.Strings(keysToSort)
+		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
 		if tableSortReverse {
 			keysToSort = ReverseList(keysToSort)
 		}
 
 		numberInTable := Min(tableMaxJobs, len(keysToSort))
 
+		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 		for _, key := range keysToSort[0:numberInTable] {
 			job := mappedJobs[key]
 			jobDesc := []string{
