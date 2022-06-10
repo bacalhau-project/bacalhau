@@ -300,7 +300,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 		return err
 	}
 
-	err = sp.DockerClient.ContainerStart(context.TODO(),
+	err = sp.DockerClient.ContainerStart(ctx,
 		sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 	if err != nil {
 		return err

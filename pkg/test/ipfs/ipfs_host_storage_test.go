@@ -21,6 +21,7 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 
 func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
+	ctx := context.Background()
 	stack, cm := SetupTest(t, 1)
 	defer TeardownTest(stack, cm)
 
@@ -42,12 +43,12 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	}
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorage(context.TODO(), storage)
+	hasCid, err := storageDriver.HasStorage(ctx, storage)
 	assert.NoError(t, err)
 	assert.True(t, hasCid)
 
 	// this should start a sidecar container with a fuse mount
-	volume, err := storageDriver.PrepareStorage(context.TODO(), storage)
+	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	assert.NoError(t, err)
 
 	// we should now be able to read our file content
@@ -61,13 +62,14 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 
 	fmt.Printf("HERE IS RESULTS: %s\n", result)
 
-	err = storageDriver.CleanupStorage(context.TODO(), storage, volume)
+	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	assert.NoError(t, err)
 }
 
 func runFolderTest(t *testing.T, engine string,
 	getStorageDriver getStorageFunc) {
 
+	ctx := context.Background()
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
 	assert.NoError(t, err)
 
@@ -96,12 +98,12 @@ func runFolderTest(t *testing.T, engine string,
 	}
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorage(context.TODO(), storage)
+	hasCid, err := storageDriver.HasStorage(ctx, storage)
 	assert.NoError(t, err)
 	assert.True(t, hasCid)
 
 	// this should start a sidecar container with a fuse mount
-	volume, err := storageDriver.PrepareStorage(context.TODO(), storage)
+	volume, err := storageDriver.PrepareStorage(ctx, storage)
 	assert.NoError(t, err)
 
 	// we should now be able to read our file content
@@ -115,7 +117,7 @@ func runFolderTest(t *testing.T, engine string,
 
 	fmt.Printf("HERE IS RESULTS: %s\n", result)
 
-	err = storageDriver.CleanupStorage(context.TODO(), storage, volume)
+	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	assert.NoError(t, err)
 }
 

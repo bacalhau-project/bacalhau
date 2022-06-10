@@ -72,7 +72,7 @@ func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
 
 	err := dockerIpfs.IPFSClient.Api.
 		Request("files/stat", fmt.Sprintf("/ipfs/%s", storageSpec.Cid)).
-		Exec(context.TODO(), &statResult)
+		Exec(ctx, &statResult)
 
 	if err != nil {
 		return nil, err
