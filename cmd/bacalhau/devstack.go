@@ -6,8 +6,10 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 
 	"github.com/spf13/cobra"
 )
@@ -42,12 +44,17 @@ var devstackCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-			return executor.NewDockerIPFSExecutors(cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
+			map[string]executor.Executor, error) {
+
+			return executor_util.NewDockerIPFSExecutors(cm,
+				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {
-			return verifier.NewIPFSVerifiers(cm, ipfsMultiAddress)
+		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
+			map[string]verifier.Verifier, error) {
+
+			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 		}
 
 		stack, err := devstack.NewDevStack(

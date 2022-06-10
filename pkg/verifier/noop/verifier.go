@@ -1,20 +1,24 @@
 package noop
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
-type NoopVerifier struct {
+type Verifier struct {
 }
 
-func NewNoopVerifier() (*NoopVerifier, error) {
-	return &NoopVerifier{}, nil
+func NewVerifier() (*Verifier, error) {
+	return &Verifier{}, nil
 }
 
-func (verifier *NoopVerifier) IsInstalled() (bool, error) {
+func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (verifier *NoopVerifier) ProcessResultsFolder(job *types.Job, resultsFolder string) (string, error) {
+func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
+	job *types.Job, resultsFolder string) (string, error) {
+
 	return resultsFolder, nil
 }
