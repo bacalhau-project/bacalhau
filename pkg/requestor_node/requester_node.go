@@ -16,7 +16,7 @@ type RequesterNode struct {
 func NewRequesterNode(
 	transport transport.Transport,
 ) (*RequesterNode, error) {
-	ctx := context.TODO()
+	ctx := context.Background() // TODO: instrument with trace
 
 	nodeId, err := transport.HostID(ctx)
 	threadLogger := logger.LoggerWithRuntimeInfo(nodeId)
@@ -73,7 +73,6 @@ func NewRequesterNode(
 // a compute node has bid on the job
 // should we accept the bid or not?
 func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, string, error) {
-
 	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeId, job.Id)
 
 	concurrency := job.Deal.Concurrency

@@ -45,6 +45,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
 	*DevStack, error) {
 
+	ctx := context.Background() // TODO: instrument
 	nodes := []*DevStackNode{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -128,7 +129,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(context.TODO())
+		}(ctx)
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -137,7 +138,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		//////////////////////////////////////
 
 		go func() {
-			if err = transport.Start(context.TODO()); err != nil {
+			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, devstack should stop
 			}
 		}()
@@ -149,7 +150,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostId, err := firstNode.Transport.HostID(context.TODO())
+			libp2pHostId, err := firstNode.Transport.HostID(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -157,7 +158,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			// connect this scheduler to the first
 			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Transport.Port, libp2pHostId)
 			log.Debug().Msgf("Connect to first libp2p scheduler node: %s", firstSchedulerAddress)
-			err = transport.Connect(context.TODO(), firstSchedulerAddress)
+			err = transport.Connect(ctx, firstSchedulerAddress)
 			if err != nil {
 				return nil, err
 			}
@@ -228,7 +229,6 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 }
 
 func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {
-
 	returnFileCid := ""
 
 	// ipfs add the file to 2 nodes
@@ -238,7 +238,7 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 			continue
 		}
 
-		nodeId, err := node.ComputeNode.Transport.HostID(context.TODO())
+		nodeId, err := node.ComputeNode.Transport.HostID(context.Background())
 
 		if err != nil {
 			return "", err
@@ -369,13 +369,15 @@ func (stack *DevStack) GetNode(
 	nodeId string,
 ) (*DevStackNode, error) {
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(context.TODO())
+		id, err := node.Transport.HostID(context.Background())
 		if err != nil {
 			return nil, err
 		}
+
 		if id == nodeId {
 			return node, nil
 		}
 	}
+
 	return nil, fmt.Errorf("node not found: %s", nodeId)
 }

@@ -31,8 +31,8 @@ func NewInprocessTransport() (*Transport, error) {
 
 	res.genericTransport = transport.NewGenericTransport(
 		hostID.String(),
-		func(event *types.JobEvent) error {
-			return res.writeJobEvent(event)
+		func(ctx context.Context, event *types.JobEvent) error {
+			return res.writeJobEvent(ctx, event)
 		},
 	)
 
@@ -57,17 +57,17 @@ func (t *Transport) HostID(ctx context.Context) (string, error) {
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) List(ctx context.Context) (types.ListResponse, error) {
-	return t.genericTransport.List()
+	return t.genericTransport.List(ctx)
 }
 
 func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
-	return t.genericTransport.Get(id)
+	return t.genericTransport.Get(ctx, id)
 }
 
 func (t *Transport) Subscribe(ctx context.Context, fn func(
 	jobEvent *types.JobEvent, job *types.Job)) {
 
-	t.genericTransport.Subscribe(fn)
+	t.genericTransport.Subscribe(ctx, fn)
 }
 
 /////////////////////////////////////////////////////////////
@@ -77,13 +77,13 @@ func (t *Transport) Subscribe(ctx context.Context, fn func(
 func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
 	deal *types.JobDeal) (*types.Job, error) {
 
-	return t.genericTransport.SubmitJob(spec, deal)
+	return t.genericTransport.SubmitJob(ctx, spec, deal)
 }
 
 func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
 	deal *types.JobDeal) error {
 
-	return t.genericTransport.UpdateDeal(jobID, deal)
+	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
 }
 
 func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
@@ -93,13 +93,13 @@ func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 func (t *Transport) AcceptJobBid(ctx context.Context, jobID,
 	nodeID string) error {
 
-	return t.genericTransport.AcceptJobBid(jobID, nodeID)
+	return t.genericTransport.AcceptJobBid(ctx, jobID, nodeID)
 }
 
 func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 	message string) error {
 
-	return t.genericTransport.RejectJobBid(jobID, nodeID, message)
+	return t.genericTransport.RejectJobBid(ctx, jobID, nodeID, message)
 }
 
 /////////////////////////////////////////////////////////////
@@ -107,17 +107,17 @@ func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) BidJob(ctx context.Context, jobID string) error {
-	return t.genericTransport.BidJob(jobID)
+	return t.genericTransport.BidJob(ctx, jobID)
 }
 
 func (t *Transport) SubmitResult(ctx context.Context, jobID, status,
 	resultsID string) error {
 
-	return t.genericTransport.SubmitResult(jobID, status, resultsID)
+	return t.genericTransport.SubmitResult(ctx, jobID, status, resultsID)
 }
 
 func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
-	return t.genericTransport.ErrorJob(jobID, status)
+	return t.genericTransport.ErrorJob(ctx, jobID, status)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -128,7 +128,7 @@ func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
 func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
 	status string) error {
 
-	return t.genericTransport.ErrorJobForNode(jobID, nodeID, status)
+	return t.genericTransport.ErrorJobForNode(ctx, jobID, nodeID, status)
 }
 
 /////////////////////////////////////////////////////////////
@@ -141,7 +141,9 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 
 // loop over all inprocess schdulers and call readJobEvent for each of them
 // do this in a go-routine to simulate the network
-func (t *Transport) writeJobEvent(event *types.JobEvent) error {
+func (t *Transport) writeJobEvent(ctx context.Context,
+	event *types.JobEvent) error {
+
 	t.Events = append(t.Events, event)
 	t.genericTransport.BroadcastEvent(event)
 

@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
-func GetStorageProvider(engine string,
+func GetStorageProvider(ctx context.Context, engine string,
 	providers map[string]storage.StorageProvider) (
 	storage.StorageProvider, error) {
 
@@ -16,7 +16,7 @@ func GetStorageProvider(engine string,
 	}
 
 	storageProvider := providers[engine]
-	installed, err := storageProvider.IsInstalled(context.TODO())
+	installed, err := storageProvider.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}

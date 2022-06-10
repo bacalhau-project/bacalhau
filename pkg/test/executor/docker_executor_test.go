@@ -28,6 +28,7 @@ func dockerExecutorStorageTest(
 	// the inner test handler that is given the storage driver factory
 	// and output mode that we are looping over internally
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
+		ctx := context.Background()
 		stack, cm := ipfs.SetupTest(t, TEST_NODE_COUNT)
 		defer ipfs.TeardownTest(stack, cm)
 
@@ -44,13 +45,13 @@ func dockerExecutorStorageTest(
 			stack, TEST_STORAGE_DRIVER_NAME, TEST_NODE_COUNT)
 		assert.NoError(t, err)
 
-		isInstalled, err := dockerExecutor.IsInstalled(context.TODO())
+		isInstalled, err := dockerExecutor.IsInstalled(ctx)
 		assert.NoError(t, err)
 		assert.True(t, isInstalled)
 
 		for _, inputStorageSpec := range inputStorageList {
 			hasStorage, err := dockerExecutor.HasStorage(
-				context.TODO(), inputStorageSpec)
+				ctx, inputStorageSpec)
 			assert.NoError(t, err)
 			assert.True(t, hasStorage)
 		}
@@ -71,7 +72,7 @@ func dockerExecutorStorageTest(
 			CreatedAt: time.Now(),
 		}
 
-		resultsDirectory, err := dockerExecutor.RunJob(context.TODO(), job)
+		resultsDirectory, err := dockerExecutor.RunJob(ctx, job)
 		assert.NoError(t, err)
 
 		if err != nil {
