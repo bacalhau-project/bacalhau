@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	storage_util "github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
@@ -65,7 +66,7 @@ func NewExecutor(
 func (e *Executor) getStorageProvider(engine string) (
 	storage.StorageProvider, error) {
 
-	return storage.GetStorageProvider(engine, e.StorageProviders)
+	return storage_util.GetStorageProvider(engine, e.StorageProviders)
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -82,7 +83,7 @@ func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
 		return false, err
 	}
 
-	return storage.HasStorage(volume)
+	return storage.HasStorage(ctx, volume)
 }
 
 func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
@@ -110,7 +111,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 			return "", err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(inputStorage)
+		volumeMount, err := storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}

@@ -34,7 +34,7 @@ import (
 const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
 const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
 
-type IpfsFuseDocker struct {
+type StorageProvider struct {
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
@@ -44,8 +44,8 @@ type IpfsFuseDocker struct {
 	DockerClient *dockerclient.Client
 }
 
-func NewIpfsFuseDocker(cm *system.CleanupManager, ipfsMultiAddress string) (
-	*IpfsFuseDocker, error) {
+func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
+	*StorageProvider, error) {
 
 	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
 	if err != nil {
@@ -62,7 +62,7 @@ func NewIpfsFuseDocker(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	storageHandler := &IpfsFuseDocker{
+	storageHandler := &StorageProvider{
 		Id:           peerId,
 		IPFSClient:   api,
 		DockerClient: dockerClient,
@@ -72,23 +72,27 @@ func NewIpfsFuseDocker(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return cleanupStorageDriver(storageHandler)
 	})
 
-	log.Debug().Msgf("Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
+	log.Debug().Msgf(
+		"Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
 	return storageHandler, nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) IsInstalled() (bool, error) {
-	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs()
+func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+	addresses, err := sp.IPFSClient.GetLocalAddrs()
 	if err != nil {
 		return false, err
 	}
 	if len(addresses) == 0 {
-		return false, fmt.Errorf("No multi addresses loaded from remote ipfs server")
+		return false, fmt.Errorf(
+			"No multi addresses loaded from remote ipfs server")
 	}
 	return true, nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, error) {
-	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
+func (sp *StorageProvider) HasStorage(ctx context.Context,
+	volume types.StorageSpec) (bool, error) {
+
+	return sp.IPFSClient.HasCidLocally(volume.Cid)
 }
 
 // sometimes (for reasons we still need to work out) - the sidecar fuse mount container
@@ -96,13 +100,15 @@ func (dockerIpfs *IpfsFuseDocker) HasStorage(volume types.StorageSpec) (bool, er
 // and restarting the container usually means it works next time
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
-func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
-	err := dockerIpfs.ensureSidecar(storageSpec.Cid)
+func (sp *StorageProvider) PrepareStorage(ctx context.Context,
+	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+
+	err := sp.ensureSidecar(storageSpec.Cid)
 	if err != nil {
 		return nil, err
 	}
 
-	cidMountPath, err := dockerIpfs.getCidMountPath(storageSpec.Cid)
+	cidMountPath, err := sp.getCidMountPath(storageSpec.Cid)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +124,14 @@ func (dockerIpfs *IpfsFuseDocker) PrepareStorage(storageSpec types.StorageSpec) 
 
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
-func (dockerIpfs *IpfsFuseDocker) CleanupStorage(storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+func (sp *StorageProvider) CleanupStorage(ctx context.Context,
+	storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+
 	return nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) cleanSidecar() (*dockertypes.Container, error) {
-	sidecar, err := dockerIpfs.getSidecar()
+func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {
+	sidecar, err := sp.getSidecar()
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +139,7 @@ func (dockerIpfs *IpfsFuseDocker) cleanSidecar() (*dockertypes.Container, error)
 		// ahhh but it's not running
 		// so let's remove what is there
 		if sidecar.State != "running" {
-			err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
+			err = docker.RemoveContainer(sp.DockerClient, sidecar.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -141,13 +149,13 @@ func (dockerIpfs *IpfsFuseDocker) cleanSidecar() (*dockertypes.Container, error)
 	return sidecar, nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
-	dockerIpfs.Mutex.Lock()
-	defer dockerIpfs.Mutex.Unlock()
+func (sp *StorageProvider) ensureSidecar(cid string) error {
+	sp.Mutex.Lock()
+	defer sp.Mutex.Unlock()
 
 	// does the sidecar container already exist?
 	// we lookup by name
-	sidecar, err := dockerIpfs.cleanSidecar()
+	sidecar, err := sp.cleanSidecar()
 	if err != nil {
 		return err
 	}
@@ -165,19 +173,19 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 
-				sidecar, err := dockerIpfs.getSidecar()
+				sidecar, err := sp.getSidecar()
 				if err != nil {
 					return false, err
 				}
 
 				if sidecar != nil {
-					err = docker.RemoveContainer(dockerIpfs.DockerClient, sidecar.ID)
+					err = docker.RemoveContainer(sp.DockerClient, sidecar.ID)
 					if err != nil {
 						return false, err
 					}
 				}
 
-				err = dockerIpfs.startSidecar()
+				err = sp.startSidecar()
 				if err != nil {
 					return false, err
 				}
@@ -189,7 +197,7 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 					MaxAttempts: 10,
 					Delay:       time.Second * 1,
 					Handler: func() (bool, error) {
-						return dockerIpfs.canSeeFuseMount(cid), nil
+						return sp.canSeeFuseMount(cid), nil
 					},
 				}
 
@@ -213,9 +221,9 @@ func (dockerIpfs *IpfsFuseDocker) ensureSidecar(cid string) error {
 	return nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
+func (sp *StorageProvider) startSidecar() error {
 
-	addresses, err := dockerIpfs.IPFSClient.GetSwarmAddresses()
+	addresses, err := sp.IPFSClient.GetSwarmAddresses()
 	if err != nil {
 		return err
 	}
@@ -240,7 +248,7 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		return err
 	}
 
-	sidecarContainer, err := dockerIpfs.DockerClient.ContainerCreate(
+	sidecarContainer, err := sp.DockerClient.ContainerCreate(
 		context.TODO(),
 		&container.Config{
 			Image: BACALHAU_IPFS_FUSE_IMAGE,
@@ -286,24 +294,24 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 		},
 		&network.NetworkingConfig{},
 		nil,
-		dockerIpfs.sidecarContainerName(),
+		sp.sidecarContainerName(),
 	)
 
 	if err != nil {
 		return err
 	}
 
-	err = dockerIpfs.DockerClient.ContainerStart(context.TODO(),
+	err = sp.DockerClient.ContainerStart(context.TODO(),
 		sidecarContainer.ID, dockertypes.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}
 
-	logs, err := docker.WaitForContainerLogs(dockerIpfs.DockerClient, sidecarContainer.ID, 5, time.Second*2, "Daemon is ready")
+	logs, err := docker.WaitForContainerLogs(sp.DockerClient, sidecarContainer.ID, 5, time.Second*2, "Daemon is ready")
 
 	if err != nil {
 		log.Error().Msg(logs)
-		stopErr := cleanupStorageDriver(dockerIpfs)
+		stopErr := cleanupStorageDriver(sp)
 		if stopErr != nil {
 			err = fmt.Errorf("Original Error: %s\nStop Error: %s\n", err.Error(), stopErr.Error())
 		}
@@ -313,26 +321,26 @@ func (dockerIpfs *IpfsFuseDocker) startSidecar() error {
 	return nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) sidecarContainerName() string {
-	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", dockerIpfs.Id)
+func (sp *StorageProvider) sidecarContainerName() string {
+	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.Id)
 }
 
-func (dockerIpfs *IpfsFuseDocker) getSidecar() (*dockertypes.Container, error) {
-	return docker.GetContainer(dockerIpfs.DockerClient, dockerIpfs.sidecarContainerName())
+func (sp *StorageProvider) getSidecar() (*dockertypes.Container, error) {
+	return docker.GetContainer(sp.DockerClient, sp.sidecarContainerName())
 }
 
 // read from the running container what mount folder we have assigned
 // we then use this for job container mounts for CID -> filepath volumes
-func (dockerIpfs *IpfsFuseDocker) getMountDir() (string, error) {
-	sidecar, err := dockerIpfs.getSidecar()
+func (sp *StorageProvider) getMountDir() (string, error) {
+	sidecar, err := sp.getSidecar()
 	if err != nil {
 		return "", err
 	}
 	return getMountDirFromContainer(sidecar), nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) getCidMountPath(cid string) (string, error) {
-	mountDir, err := dockerIpfs.getMountDir()
+func (sp *StorageProvider) getCidMountPath(cid string) (string, error) {
+	mountDir, err := sp.getMountDir()
 	if err != nil {
 		return "", err
 	}
@@ -342,8 +350,8 @@ func (dockerIpfs *IpfsFuseDocker) getCidMountPath(cid string) (string, error) {
 	return fmt.Sprintf("%s/data/%s", mountDir, cid), nil
 }
 
-func (dockerIpfs *IpfsFuseDocker) canSeeFuseMount(cid string) bool {
-	testMountPath, err := dockerIpfs.getCidMountPath(cid)
+func (sp *StorageProvider) canSeeFuseMount(cid string) bool {
+	testMountPath, err := sp.getCidMountPath(cid)
 	if err != nil {
 		return false
 	}
@@ -354,7 +362,7 @@ func (dockerIpfs *IpfsFuseDocker) canSeeFuseMount(cid string) bool {
 	return err == nil
 }
 
-func cleanupStorageDriver(storageHandler *IpfsFuseDocker) error {
+func cleanupStorageDriver(storageHandler *StorageProvider) error {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
@@ -426,3 +434,6 @@ func getMountDirFromContainer(container *dockertypes.Container) string {
 	}
 	return ""
 }
+
+// Compile-time interface check:
+var _ storage.StorageProvider = (*StorageProvider)(nil)

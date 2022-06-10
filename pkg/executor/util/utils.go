@@ -12,12 +12,12 @@ import (
 func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 	dockerId string) (map[string]executor.Executor, error) {
 
-	ipfsFuseStorage, err := fuse_docker.NewIpfsFuseDocker(cm, ipfsMultiAddress)
+	ipfsFuseStorage, err := fuse_docker.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsApiCopyStorage, err := api_copy.NewIpfsApiCopy(cm, ipfsMultiAddress)
+	ipfsApiCopyStorage, err := api_copy.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}

@@ -17,13 +17,13 @@ import (
 // to a local directory in preparation for
 // a job to run - it will remove the folder/file once complete
 
-type IpfsApiCopy struct {
+type StorageProvider struct {
 	LocalDir   string
 	IPFSClient *ipfs_http.IPFSHttpClient
 }
 
-func NewIpfsApiCopy(cm *system.CleanupManager, ipfsMultiAddress string) (
-	*IpfsApiCopy, error) {
+func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
+	*StorageProvider, error) {
 
 	api, err := ipfs_http.NewIPFSHttpClient(context.TODO(), ipfsMultiAddress)
 	if err != nil {
@@ -35,7 +35,7 @@ func NewIpfsApiCopy(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	storageHandler := &IpfsApiCopy{
+	storageHandler := &StorageProvider{
 		IPFSClient: api,
 		LocalDir:   dir,
 	}
@@ -45,7 +45,7 @@ func NewIpfsApiCopy(cm *system.CleanupManager, ipfsMultiAddress string) (
 	return storageHandler, nil
 }
 
-func (dockerIpfs *IpfsApiCopy) IsInstalled() (bool, error) {
+func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs()
 	if err != nil {
 		return false, err
@@ -56,11 +56,14 @@ func (dockerIpfs *IpfsApiCopy) IsInstalled() (bool, error) {
 	return true, nil
 }
 
-func (dockerIpfs *IpfsApiCopy) HasStorage(volume types.StorageSpec) (bool, error) {
+func (dockerIpfs *StorageProvider) HasStorage(ctx context.Context,
+	volume types.StorageSpec) (bool, error) {
+
 	return dockerIpfs.IPFSClient.HasCidLocally(volume.Cid)
 }
 
-func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
+	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
 
 	var statResult struct {
 		Hash string
@@ -82,13 +85,15 @@ func (dockerIpfs *IpfsApiCopy) PrepareStorage(storageSpec types.StorageSpec) (*t
 	}
 }
 
-func (dockerIpfs *IpfsApiCopy) CleanupStorage(storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+func (dockerIpfs *StorageProvider) CleanupStorage(ctx context.Context,
+	storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+
 	return system.RunCommand("sudo", []string{
 		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
 	})
 }
 
-func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+func (dockerIpfs *StorageProvider) copyTarFile(storageSpec types.StorageSpec) (*types.StorageVolume, error) {
 	err := dockerIpfs.IPFSClient.DownloadTar(dockerIpfs.LocalDir, storageSpec.Cid)
 	if err != nil {
 		return nil, err
@@ -100,3 +105,6 @@ func (dockerIpfs *IpfsApiCopy) copyTarFile(storageSpec types.StorageSpec) (*type
 	}
 	return volume, nil
 }
+
+// Compile time interface check:
+var _ storage.StorageProvider = (*StorageProvider)(nil)
