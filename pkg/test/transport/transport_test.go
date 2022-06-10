@@ -22,10 +22,10 @@ import (
 
 func setupTest(t *testing.T) (
 	*inprocess.Transport,
-	*executor_noop.NoopExecutor,
+	*executor_noop.Executor,
 	*verifier_noop.NoopVerifier,
 ) {
-	noopExecutor, err := executor_noop.NewNoopExecutor()
+	noopExecutor, err := executor_noop.NewExecutor()
 	assert.NoError(t, err)
 
 	noopVerifier, err := verifier_noop.NewNoopVerifier()

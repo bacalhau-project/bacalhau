@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 
@@ -43,7 +44,7 @@ var devstackCmd = &cobra.Command{
 		defer cancel()
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[string]executor.Executor, error) {
-			return executor.NewDockerIPFSExecutors(cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			return util.NewDockerIPFSExecutors(cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[string]verifier.Verifier, error) {

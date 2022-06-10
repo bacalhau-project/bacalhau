@@ -153,7 +153,7 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	for _, input := range job.Inputs {
 
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := executor.HasStorage(input)
+		hasStorage, err := executor.HasStorage(context.TODO(), input)
 		if err != nil {
 			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err
@@ -178,7 +178,7 @@ func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return executor.RunJob(job)
+	return executor.RunJob(context.TODO(), job)
 }
 
 func (node *ComputeNode) getExecutor(name string) (executor.Executor, error) {
@@ -189,7 +189,7 @@ func (node *ComputeNode) getExecutor(name string) (executor.Executor, error) {
 		return nil, fmt.Errorf("No matching executor found on this server: %s.", name)
 	}
 	executorEngine := node.Executors[name]
-	installed, err := executorEngine.IsInstalled()
+	installed, err := executorEngine.IsInstalled(context.TODO())
 	if err != nil {
 		return nil, err
 	}

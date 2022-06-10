@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -71,7 +71,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := executor.NewDockerIPFSExecutors(cm, ipfsConnect,
+		executors, err := util.NewDockerIPFSExecutors(cm, ipfsConnect,
 			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
 			return err

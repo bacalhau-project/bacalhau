@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -31,7 +32,7 @@ func SetupTest(t *testing.T, nodes int, badActors int) (
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]executor.Executor, error) {
 
-		return executor.NewDockerIPFSExecutors(
+		return util.NewDockerIPFSExecutors(
 			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
