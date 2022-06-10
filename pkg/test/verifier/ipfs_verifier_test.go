@@ -13,6 +13,7 @@ import (
 )
 
 func TestIPFSVerifier(t *testing.T) {
+	ctx := context.Background()
 	stack, cm := SetupTest(t, 1)
 	defer TeardownTest(stack, cm)
 
@@ -30,15 +31,15 @@ func TestIPFSVerifier(t *testing.T) {
 		cm, stack.Nodes[0].IpfsNode.ApiAddress())
 	assert.NoError(t, err)
 
-	installed, err := verifier.IsInstalled(context.TODO())
+	installed, err := verifier.IsInstalled(ctx)
 	assert.NoError(t, err)
 	assert.True(t, installed)
 
-	resultHash, err := verifier.ProcessResultsFolder(context.TODO(),
+	resultHash, err := verifier.ProcessResultsFolder(ctx,
 		&types.Job{}, inputDir)
 	assert.NoError(t, err)
 
-	err = verifier.IPFSClient.DownloadTar(outputDir, resultHash)
+	err = verifier.IPFSClient.DownloadTar(ctx, outputDir, resultHash)
 	assert.NoError(t, err)
 
 	outputContent, err := os.ReadFile(outputDir + "/" + resultHash + "/file.txt")

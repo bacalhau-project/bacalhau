@@ -63,10 +63,10 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorageProvider(engine string) (
+func (e *Executor) getStorageProvider(ctx context.Context, engine string) (
 	storage.StorageProvider, error) {
 
-	return storage_util.GetStorageProvider(engine, e.StorageProviders)
+	return storage_util.GetStorageProvider(ctx, engine, e.StorageProviders)
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -78,7 +78,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
 	bool, error) {
 
-	storage, err := e.getStorageProvider(volume.Engine)
+	storage, err := e.getStorageProvider(ctx, volume.Engine)
 	if err != nil {
 		return false, err
 	}
@@ -105,8 +105,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range job.Spec.Inputs {
-		storageProvider, err := e.getStorageProvider(
-			inputStorage.Engine)
+		storageProvider, err := e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
@@ -205,7 +204,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	jobContainer, err := e.Client.ContainerCreate(
-		context.TODO(),
+		ctx,
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
@@ -220,7 +219,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 
 	defer e.cleanupJob(job)
 	err = e.Client.ContainerStart(
-		context.TODO(),
+		ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
@@ -237,7 +236,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 	}
 
 	statusCh, errCh := e.Client.ContainerWait(
-		context.TODO(),
+		ctx,
 		jobContainer.ID,
 		container.WaitConditionNotRunning,
 	)

@@ -25,7 +25,7 @@ func NewComputeNode(
 	executors map[string]executor.Executor,
 	verifiers map[string]verifier.Verifier,
 ) (*ComputeNode, error) {
-	ctx := context.TODO()
+	ctx := context.Background() // TODO: instrument
 	nodeId, err := transport.HostID(ctx)
 
 	if err != nil {
@@ -39,7 +39,6 @@ func NewComputeNode(
 	}
 
 	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
-
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
@@ -52,7 +51,7 @@ func NewComputeNode(
 			// 	return false, err
 			// }
 
-			shouldRun, err := computeNode.SelectJob(jobEvent.JobSpec)
+			shouldRun, err := computeNode.SelectJob(ctx, jobEvent.JobSpec)
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return
@@ -79,14 +78,14 @@ func NewComputeNode(
 
 			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
 
-			resultFolder, err := computeNode.RunJob(job)
+			resultFolder, err := computeNode.RunJob(ctx, job)
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
 				return
 			}
 
-			verifier, err := computeNode.getVerifier(job.Spec.Verifier)
+			verifier, err := computeNode.getVerifier(ctx, job.Spec.Verifier)
 			if err != nil {
 				log.Error().Msgf("Error geting the verifier for the job: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
@@ -94,7 +93,7 @@ func NewComputeNode(
 			}
 
 			resultValue, err := verifier.ProcessResultsFolder(
-				context.TODO(), job, resultFolder)
+				ctx, job, resultFolder)
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))
@@ -124,16 +123,17 @@ func NewComputeNode(
 // that will decide if it's worth doing the job or not
 // for now - the rule is "do we have all the input CIDS"
 // TODO: allow user probes (http / exec) to be used to decide if we should run the job
-func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
+func (node *ComputeNode) SelectJob(ctx context.Context,
+	job *types.JobSpec) (bool, error) {
 
 	// check that we have the executor and it's installed
-	executor, err := node.getExecutor(job.Engine)
+	executor, err := node.getExecutor(ctx, job.Engine)
 	if err != nil {
 		return false, err
 	}
 
 	// check that we have the verifier and it's installed
-	_, err = node.getVerifier(job.Verifier)
+	_, err = node.getVerifier(ctx, job.Verifier)
 	if err != nil {
 		return false, err
 	}
@@ -147,9 +147,8 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	foundInputs := 0
 
 	for _, input := range job.Inputs {
-
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := executor.HasStorage(context.TODO(), input)
+		hasStorage, err := executor.HasStorage(ctx, input)
 		if err != nil {
 			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err
@@ -168,47 +167,58 @@ func (node *ComputeNode) SelectJob(job *types.JobSpec) (bool, error) {
 	}
 }
 
-func (node *ComputeNode) RunJob(job *types.Job) (string, error) {
+func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (
+	string, error) {
+
 	// check that we have the executor to run this job
-	executor, err := node.getExecutor(job.Spec.Engine)
+	executor, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
 		return "", err
 	}
-	return executor.RunJob(context.TODO(), job)
+
+	return executor.RunJob(ctx, job)
 }
 
-func (node *ComputeNode) getExecutor(name string) (executor.Executor, error) {
+func (node *ComputeNode) getExecutor(ctx context.Context, name string) (
+	executor.Executor, error) {
+
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
 	if _, ok := node.Executors[name]; !ok {
 		return nil, fmt.Errorf("No matching executor found on this server: %s.", name)
 	}
+
 	executorEngine := node.Executors[name]
-	installed, err := executorEngine.IsInstalled(context.TODO())
+	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !installed {
 		return nil, fmt.Errorf("Executor is not installed: %s.", name)
 	}
+
 	return executorEngine, nil
 }
 
-func (node *ComputeNode) getVerifier(name string) (verifier.Verifier, error) {
+func (node *ComputeNode) getVerifier(ctx context.Context, name string) (
+	verifier.Verifier, error) {
+
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
 	if _, ok := node.Verifiers[name]; !ok {
 		return nil, fmt.Errorf("No matching verifier found on this server: %s.", name)
 	}
+
 	verifier := node.Verifiers[name]
-	installed, err := verifier.IsInstalled(context.TODO())
+	installed, err := verifier.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !installed {
 		return nil, fmt.Errorf("Verifier is not installed: %s.", name)
 	}
+
 	return verifier, nil
 }
