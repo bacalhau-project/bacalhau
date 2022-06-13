@@ -17,11 +17,29 @@ resource "google_compute_instance" "bacalhau_vm" {
     }
   }
 
+# sudo tee /var/www/health_checker/healthz.sh > /dev/null <<EOI
+# ${file("${path.module}/scripts/healthz.sh")}
+# EOI
+
   metadata_startup_script = <<-EOF
 #!/bin/bash -xe
 
-sudo apt-get update && sudo apt-get install -y docker.io
+# Lay down a very basic web server to report when the node is healthy
+sudo apt-get update && sudo apt-get install -y lighttpd nmap
+sudo mkdir -p /var/www/health_checker
 
+sudo rm /etc/lighttpd/lighttpd.conf
+sudo tee /etc/lighttpd/lighttpd.conf > /dev/null <<EOI
+${file("${path.module}/configs/lighttpd.conf")}
+EOI
+
+sudo tee /var/www/health_checker/livez.sh > /dev/null <<EOI
+${file("${path.module}/scripts/livez.sh")}
+EOI
+
+sudo chmod u+x /var/www/health_checker/*.sh
+
+sudo apt-get install -y docker.io
 # TODO: move this into two systemd units!
 
 wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.8/bacalhau_v0.1.8_linux_amd64.tar.gz
@@ -60,6 +78,15 @@ export BACALHAU_PATH=/data
 (while true; do bacalhau serve --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
+sudo service lighttpd restart
+sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
+${ google_compute_network.bacalhau_network.name }
+EOI
+
+sudo tee /var/www/health_checker/address.txt > /dev/null <<EOI
+${ google_compute_address.ipv4_address[count.index].address }
+EOI
+
 EOF
   network_interface {
     network = google_compute_network.bacalhau_network.name
@@ -82,6 +109,10 @@ EOF
 resource "google_compute_address" "ipv4_address" {
   name         = "bacalhau-ipv4-address-${count.index}"
   count        = var.instance_count
+}
+
+output "public_ip_address" {
+  value = google_compute_instance.bacalhau_vm.*.network_interface.0.access_config.0.nat_ip
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
@@ -149,6 +180,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
         "5001", // ipfs API
         "1234", // bacalhau API
         "1235", // bacalhau swarm
+        "44444", // lighttpd node health check server
     ]
   }
 
