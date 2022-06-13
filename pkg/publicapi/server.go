@@ -9,8 +9,10 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // APIServer configures a node's public REST API.
@@ -75,13 +77,16 @@ type listResponse struct {
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
+	ctx, span := newSpan(req, "list")
+	defer span.End()
+
 	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	list, err := apiServer.Node.Transport.List(req.Context())
+	list, err := apiServer.Node.Transport.List(ctx)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,6 +111,9 @@ type submitResponse struct {
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
+	ctx, span := newSpan(req, "submit")
+	defer span.End()
+
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -117,7 +125,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job, err := apiServer.Node.Transport.SubmitJob(req.Context(),
+	job, err := apiServer.Node.Transport.SubmitJob(ctx,
 		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -131,4 +139,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func newSpan(req *http.Request, apiName string) (context.Context, trace.Span) {
+	return system.Span(req.Context(), "publicapi", apiName)
 }

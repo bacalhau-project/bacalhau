@@ -38,8 +38,6 @@ func makeJob() (*types.JobSpec, *types.JobDeal) {
 				"/data/file.txt",
 			},
 		},
-		// Inputs:  inputStorageList,
-		// Outputs: testCase.Outputs,
 	}
 
 	jobDeal := types.JobDeal{
