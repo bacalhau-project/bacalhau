@@ -4,13 +4,18 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGet(t *testing.T) {
 	c := SetupTests(t)
-	ctx := context.Background()
+	defer system.CleanupTracer()
+
+	ctx, span := system.Span(context.Background(), "publicapi/client_test",
+		"TestGet")
+	defer span.End()
 
 	// Submit a few random jobs to the node:
 	var err error

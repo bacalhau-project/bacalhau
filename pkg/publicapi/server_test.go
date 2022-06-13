@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,11 @@ import (
 
 func TestList(t *testing.T) {
 	c := SetupTests(t)
-	ctx := context.Background()
+	defer system.CleanupTracer()
+
+	ctx, span := system.Span(context.Background(), "publicapi/server_test",
+		"TestList")
+	defer span.End()
 
 	// Should have no jobs initially:
 	jobs, err := c.List(ctx)

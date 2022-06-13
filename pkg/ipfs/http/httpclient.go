@@ -192,10 +192,6 @@ func (ipfsHttp *IPFSHttpClient) DownloadTar(ctx context.Context,
 	}
 	defer outFile.Close()
 
-	log.Debug().Msgf("%v", res)
-	log.Debug().Msgf("%v", outFile)
-	log.Debug().Msgf("%v", res.Output)
-
 	_, err = io.Copy(outFile, res.Output)
 	if err != nil {
 		return err

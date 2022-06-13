@@ -20,7 +20,7 @@ import (
 )
 
 // CleanupTracer should be called at the end of a node's execution to send all
-// remaining traces out the exporter before the process ends.
+// remaining traces to the exporter before the process ends.
 var CleanupTracer func() error
 
 func init() {

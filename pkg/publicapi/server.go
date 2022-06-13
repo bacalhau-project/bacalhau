@@ -47,12 +47,12 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	}
 
 	sm := http.NewServeMux()
-	sm.Handle("/list", instrument("/list", apiServer.list))
-	sm.Handle("/submit", instrument("/submit", apiServer.submit))
-	sm.Handle("/health", instrument("/health", apiServer.health))
+	sm.Handle("/list", instrument("list", apiServer.list))
+	sm.Handle("/submit", instrument("submit", apiServer.submit))
+	sm.Handle("/health", instrument("health", apiServer.health))
 
 	srv := http.Server{
-		Handler: otelhttp.NewHandler(sm, "publicapi"),
+		Handler: sm,
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 	}
 
@@ -130,6 +130,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func instrument(route string, fn http.HandlerFunc) http.Handler {
-	return otelhttp.WithRouteTag(route, fn)
+func instrument(name string, fn http.HandlerFunc) http.Handler {
+	return otelhttp.NewHandler(fn, fmt.Sprintf("publicapi/%s", name))
 }
