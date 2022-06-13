@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var STORAGE_DRIVER_NAMES = []string{
@@ -66,11 +67,14 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	ctx := context.Background()
+	ctx, span := newSpan(testCase.Name)
+	defer span.End()
+
 	stack, cm := SetupTest(t, nodeCount, 0)
 	defer TeardownTest(stack, cm)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack,
+		storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
 	jobSpec := &types.JobSpec{
@@ -158,4 +162,8 @@ func TestAwkFile(t *testing.T) {
 		scenario.AwkFile(t),
 		3,
 	)
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack_test", name)
 }

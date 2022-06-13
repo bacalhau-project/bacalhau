@@ -141,7 +141,7 @@ func NewTransport(cm *system.CleanupManager, port int) (
 	ctx, cancel := context.WithCancel(context.Background())
 	cm.RegisterCallback(func() error {
 		cancel()
-		return ctx.Err()
+		return nil
 	})
 
 	pubsub, err := pubsub.NewGossipSub(ctx, host)

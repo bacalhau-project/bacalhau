@@ -334,7 +334,7 @@ func (e *Executor) ensureJobResultsDir(job *types.Job) (string, error) {
 func newSpan(ctx context.Context, apiName string) (
 	context.Context, trace.Span) {
 
-	return system.Span(ctx, "docker/executor", apiName)
+	return system.Span(ctx, "executor/docker", apiName)
 }
 
 // Compile-time interface check:

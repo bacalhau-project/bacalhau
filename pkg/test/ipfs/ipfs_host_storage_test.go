@@ -22,7 +22,7 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 
 func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
-	ctx, span := newSpanForTesting(engine)
+	ctx, span := newSpan(engine)
 	defer span.End()
 
 	stack, cm := SetupTest(t, 1)
@@ -70,7 +70,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 }
 
 func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
-	ctx, span := newSpanForTesting(engine)
+	ctx, span := newSpan(engine)
 	defer span.End()
 
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
@@ -180,6 +180,6 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 	)
 }
 
-func newSpanForTesting(name string) (context.Context, trace.Span) {
+func newSpan(name string) (context.Context, trace.Span) {
 	return system.Span(context.Background(), "ipfs_host_storage_test", name)
 }

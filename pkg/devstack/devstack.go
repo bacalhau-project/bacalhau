@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackNode struct {
@@ -45,7 +46,9 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
 	*DevStack, error) {
 
-	ctx := context.Background()
+	ctx, span := newSpan("NewDevStack")
+	defer span.End()
+
 	nodes := []*DevStackNode{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -129,7 +132,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(ctx)
+		}(context.Background())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -137,11 +140,11 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		// intra-connections
 		//////////////////////////////////////
 
-		go func() {
+		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, devstack should stop
 			}
-		}()
+		}(context.Background())
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -376,4 +379,8 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeId string) (
 	}
 
 	return nil, fmt.Errorf("node not found: %s", nodeId)
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack", name)
 }

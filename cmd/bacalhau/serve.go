@@ -58,10 +58,6 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTracer)
 		defer cm.Cleanup()
 
-		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
-		defer cancel()
-
 		transport, err := libp2p.NewTransport(cm, hostPort)
 		if err != nil {
 			return err
@@ -94,17 +90,21 @@ var serveCmd = &cobra.Command{
 			apiPort,
 		)
 
-		go func() {
+		// Context ensures main goroutine waits until killed with ctrl+c:
+		ctx, cancel := system.WithSignalShutdown(context.Background())
+		defer cancel()
+
+		go func(ctx context.Context) {
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, bacalhau should stop
 			}
-		}()
+		}(ctx)
 
-		go func() {
+		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, bacalhau should stop
 			}
-		}()
+		}(ctx)
 
 		log.Debug().Msgf("libp2p server started: %d", hostPort)
 

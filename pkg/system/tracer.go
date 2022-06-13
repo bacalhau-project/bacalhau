@@ -46,10 +46,6 @@ func init() {
 	)
 
 	CleanupTracer = func() error {
-		if err := tp.ForceFlush(context.Background()); err != nil {
-			log.Error().Msgf("error flushing remaining spans: %v", err)
-		}
-
 		return tp.Shutdown(context.Background())
 	}
 }
@@ -103,7 +99,7 @@ func httpProvider() (*sdktrace.TracerProvider, error) {
 	}
 
 	return sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
+		sdktrace.WithSyncer(exp), // TODO: use WithBatcher at scale
 		sdktrace.WithResource(
 			resource.NewWithAttributes(
 				semconv.SchemaURL,
