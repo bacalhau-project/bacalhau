@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type WriteEventHandlerFn func(ctx context.Context, event *types.JobEvent) error
@@ -109,9 +108,6 @@ func (transport *GenericTransport) HostID(ctx context.Context) (
 func (transport *GenericTransport) List(ctx context.Context) (
 	types.ListResponse, error) {
 
-	_, span := newSpan(ctx, "list")
-	defer span.End()
-
 	return types.ListResponse{
 		Jobs: transport.Jobs,
 	}, nil
@@ -141,14 +137,10 @@ func (transport *GenericTransport) Subscribe(ctx context.Context,
 func (transport *GenericTransport) SubmitJob(ctx context.Context,
 	spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
 
-	ctx, span := newSpan(ctx, "submit")
-	defer span.End()
-
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("error creating job id: %w", err)
 	}
-
 	jobID := jobUuid.String()
 
 	err = transport.writeEvent(ctx, &types.JobEvent{
@@ -282,12 +274,6 @@ func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 			Status: status,
 		},
 	})
-}
-
-func newSpan(ctx context.Context, apiName string) (
-	context.Context, trace.Span) {
-
-	return system.Span(ctx, "tracer", apiName)
 }
 
 // Compile-time interface check:

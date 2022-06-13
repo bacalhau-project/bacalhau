@@ -2,6 +2,7 @@ package publicapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // APIClient is a utility for interacting with a node's API server.
@@ -27,14 +29,15 @@ func NewAPIClient(baseURI string) *APIClient {
 		BaseURI: baseURI,
 
 		client: &http.Client{
-			Timeout: 300 * time.Second,
+			Timeout:   300 * time.Second,
+			Transport: otelhttp.NewTransport(nil),
 		},
 	}
 }
 
 // Healthy calls the node's API server health check.
-func (apiClient *APIClient) Healthy() (bool, error) {
-	res, err := http.Get(apiClient.BaseURI + "/health")
+func (apiClient *APIClient) Healthy(ctx context.Context) (bool, error) {
+	res, err := otelhttp.Get(ctx, apiClient.BaseURI+"/health")
 	if err != nil {
 		return false, nil
 	}
@@ -43,11 +46,13 @@ func (apiClient *APIClient) Healthy() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List() (map[string]*types.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context) (
+	map[string]*types.Job, error) {
+
 	var req listRequest
 	var res listResponse
 
-	if err := apiClient.post("list", req, &res); err != nil {
+	if err := apiClient.post(ctx, "list", req, &res); err != nil {
 		return nil, err
 	}
 
@@ -56,8 +61,10 @@ func (apiClient *APIClient) List() (map[string]*types.Job, error) {
 
 // Get returns job data for a particular job ID.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(jobID string) (*types.Job, bool, error) {
-	jobs, err := apiClient.List()
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
+	*types.Job, bool, error) {
+
+	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err
 	}
@@ -73,36 +80,32 @@ func (apiClient *APIClient) Get(jobID string) (*types.Job, bool, error) {
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(
-	spec *types.JobSpec,
-	deal *types.JobDeal,
-) (*types.Job, error) {
+func (apiClient *APIClient) Submit(ctx context.Context, spec *types.JobSpec,
+	deal *types.JobDeal) (*types.Job, error) {
+
 	var res submitResponse
 	req := submitRequest{
 		Spec: spec,
 		Deal: deal,
 	}
 
-	if err := apiClient.post("submit", req, &res); err != nil {
+	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
 		return nil, err
 	}
 
 	return res.Job, nil
 }
 
-func (apiClient *APIClient) post(
-	api string,
-	reqData interface{},
-	resData interface{},
-) error {
-	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
+func (apiClient *APIClient) post(ctx context.Context, api string,
+	reqData interface{}, resData interface{}) error {
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", addr, &body)
+	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
+	req, err := http.NewRequestWithContext(ctx, "POST", addr, &body)
 	if err != nil {
 		return fmt.Errorf("publicapi: error creating post request: %v", err)
 	}

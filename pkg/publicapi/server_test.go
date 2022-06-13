@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -11,18 +12,20 @@ import (
 
 func TestList(t *testing.T) {
 	c := SetupTests(t)
+	ctx := context.Background()
 
 	// Should have no jobs initially:
-	jobs, err := c.List()
+	jobs, err := c.List(ctx)
 	assert.NoError(t, err)
 	assert.Empty(t, jobs)
 
 	// Submit a random job to the node:
-	_, err = c.Submit(makeJob())
+	spec, deal := makeJob()
+	_, err = c.Submit(ctx, spec, deal)
 	assert.NoError(t, err)
 
 	// Should now have one job:
-	jobs, err = c.List()
+	jobs, err = c.List(ctx)
 	assert.NoError(t, err)
 	assert.Len(t, jobs, 1)
 }

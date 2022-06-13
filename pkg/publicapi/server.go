@@ -4,15 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // APIServer configures a node's public REST API.
@@ -49,16 +47,13 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	}
 
 	sm := http.NewServeMux()
-	sm.Handle("/list", http.HandlerFunc(apiServer.list))
-	sm.Handle("/submit", http.HandlerFunc(apiServer.submit))
-	sm.Handle("/health", http.HandlerFunc(apiServer.health))
+	sm.Handle("/list", instrument("/list", apiServer.list))
+	sm.Handle("/submit", instrument("/submit", apiServer.submit))
+	sm.Handle("/health", instrument("/health", apiServer.health))
 
 	srv := http.Server{
+		Handler: otelhttp.NewHandler(sm, "publicapi"),
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
-		Handler: sm,
-		BaseContext: func(_ net.Listener) context.Context {
-			return ctx // TODO: handle trace ID stuff here
-		},
 	}
 
 	log.Info().Msgf(
@@ -77,16 +72,13 @@ type listResponse struct {
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
-	ctx, span := newSpan(req, "list")
-	defer span.End()
-
 	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	list, err := apiServer.Node.Transport.List(ctx)
+	list, err := apiServer.Node.Transport.List(req.Context())
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -111,9 +103,6 @@ type submitResponse struct {
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
-	ctx, span := newSpan(req, "submit")
-	defer span.End()
-
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -125,7 +114,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job, err := apiServer.Node.Transport.SubmitJob(ctx,
+	job, err := apiServer.Node.Transport.SubmitJob(req.Context(),
 		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -141,6 +130,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func newSpan(req *http.Request, apiName string) (context.Context, trace.Span) {
-	return system.Span(req.Context(), "publicapi", apiName)
+func instrument(route string, fn http.HandlerFunc) http.Handler {
+	return otelhttp.WithRouteTag(route, fn)
 }

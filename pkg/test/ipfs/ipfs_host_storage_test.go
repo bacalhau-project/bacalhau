@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type getStorageFunc func(cm *system.CleanupManager, api string) (
@@ -21,7 +22,9 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 
 func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
-	ctx := context.Background()
+	ctx, span := newSpanForTesting(engine)
+	defer span.End()
+
 	stack, cm := SetupTest(t, 1)
 	defer TeardownTest(stack, cm)
 
@@ -66,10 +69,10 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	assert.NoError(t, err)
 }
 
-func runFolderTest(t *testing.T, engine string,
-	getStorageDriver getStorageFunc) {
+func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
+	ctx, span := newSpanForTesting(engine)
+	defer span.End()
 
-	ctx := context.Background()
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
 	assert.NoError(t, err)
 
@@ -175,4 +178,8 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 			return api_copy.NewStorageProvider(cm, api)
 		},
 	)
+}
+
+func newSpanForTesting(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "ipfs_host_storage_test", name)
 }

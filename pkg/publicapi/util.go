@@ -40,7 +40,7 @@ func waitForHealthy(c *APIClient) error {
 	ch := make(chan bool)
 	go func() {
 		for {
-			healthy, err := c.Healthy()
+			healthy, err := c.Healthy(context.Background())
 			if err == nil && healthy {
 				ch <- true
 				return

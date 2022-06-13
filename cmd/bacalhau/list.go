@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,7 +27,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		jobs, err := getAPIClient().List()
+		jobs, err := getAPIClient().List(context.Background())
 		if err != nil {
 			return err
 		}

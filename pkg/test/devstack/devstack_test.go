@@ -30,6 +30,7 @@ func SetupTest(t *testing.T, nodes int, badActors int) (
 	*devstack.DevStack, *system.CleanupManager) {
 
 	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]executor.Executor, error) {
 
@@ -86,11 +87,11 @@ func devStackDockerStorageTest(
 
 	apiUri := stack.Nodes[0].ApiServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(jobSpec, jobDeal)
+	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(submittedJob.Id, map[string]int{
+	err = stack.WaitForJob(ctx, submittedJob.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,
 	}, []string{
 		system.JOB_STATE_BID_REJECTED,
@@ -98,13 +99,13 @@ func devStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	loadedJob, ok, err := apiClient.Get(submittedJob.Id)
+	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.Id)
 	assert.True(t, ok)
 	assert.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
 	for nodeId, state := range loadedJob.State {
-		node, err := stack.GetNode(nodeId)
+		node, err := stack.GetNode(ctx, nodeId)
 		assert.NoError(t, err)
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")

@@ -55,6 +55,7 @@ var serveCmd = &cobra.Command{
 
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
+		cm.RegisterCallback(system.CleanupTracer)
 		defer cm.Cleanup()
 
 		// Context ensures main goroutine waits until killed with ctrl+c:

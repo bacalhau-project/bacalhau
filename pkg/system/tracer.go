@@ -19,6 +19,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// CleanupTracer should be called at the end of a node's execution to send all
+// remaining traces out the exporter before the process ends.
+var CleanupTracer func() error
+
 func init() {
 	tp, err := httpProvider()
 	if err != nil {
@@ -40,6 +44,14 @@ func init() {
 			propagation.Baggage{},
 		),
 	)
+
+	CleanupTracer = func() error {
+		if err := tp.ForceFlush(context.Background()); err != nil {
+			log.Error().Msgf("error flushing remaining spans: %v", err)
+		}
+
+		return tp.Shutdown(context.Background())
+	}
 }
 
 // Span creates and starts a new span, and a context containing it.
@@ -58,7 +70,7 @@ func tracer(svcName string) trace.Tracer {
 }
 
 // debugProvider provides traces that are exported to a trace logger as JSON.
-func debugProvider() (trace.TracerProvider, error) {
+func debugProvider() (*sdktrace.TracerProvider, error) {
 	exp, err := stdouttrace.New(
 		stdouttrace.WithPrettyPrint(),
 		stdouttrace.WithWriter(jsonLogger()))
@@ -76,7 +88,7 @@ func debugProvider() (trace.TracerProvider, error) {
 //   export OTEL_EXPORTER_OTLP_ENDPOINT="https://api.honeycomb.io"
 //   export OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-dataset=bacalhau,x-honeycomb-team=your-api-key"
 //   export OTEL_SERVICE_NAME="your-honeycomb-service-name"
-func httpProvider() (trace.TracerProvider, error) {
+func httpProvider() (*sdktrace.TracerProvider, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" ||
 		os.Getenv("OTEL_EXPORTER_OTLP_HEADERS") == "" ||
 		os.Getenv("OTEL_SERVICE_NAME") == "" {
@@ -90,9 +102,8 @@ func httpProvider() (trace.TracerProvider, error) {
 		return nil, fmt.Errorf("error creating http trace exporter: %w", err)
 	}
 
-	// TODO: handle cleanup by calling tp.Shutdown(...)
 	return sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(exp),
+		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(
 			resource.NewWithAttributes(
 				semconv.SchemaURL,
