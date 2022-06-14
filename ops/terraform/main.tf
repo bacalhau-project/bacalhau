@@ -17,10 +17,6 @@ resource "google_compute_instance" "bacalhau_vm" {
     }
   }
 
-# sudo tee /var/www/health_checker/healthz.sh > /dev/null <<EOI
-# ${file("${path.module}/scripts/healthz.sh")}
-# EOI
-
   metadata_startup_script = <<-EOF
 #!/bin/bash -xe
 
@@ -29,13 +25,11 @@ sudo apt-get update && sudo apt-get install -y lighttpd nmap
 sudo mkdir -p /var/www/health_checker
 
 sudo rm /etc/lighttpd/lighttpd.conf
-sudo tee /etc/lighttpd/lighttpd.conf > /dev/null <<EOI
-${file("${path.module}/configs/lighttpd.conf")}
-EOI
+sudo curl https://raw.githubusercontent.com/filecoin-project/bacalhau/z/ops/terraform/configs/lighttpd.conf > /etc/lighttpd/lighttpd.conf
 
-sudo tee /var/www/health_checker/livez.sh > /dev/null <<EOI
-${file("${path.module}/scripts/livez.sh")}
-EOI
+sudo curl https://raw.githubusercontent.com/filecoin-project/bacalhau/z/ops/terraform/scripts/livez.sh > /var/www/health_checker/livez.sh
+
+sudo curl https://raw.githubusercontent.com/filecoin-project/bacalhau/z/ops/terraform/scripts/healthz.sh > /var/www/health_checker/healthz.sh
 
 sudo chmod u+x /var/www/health_checker/*.sh
 
