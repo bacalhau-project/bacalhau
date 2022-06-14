@@ -7,29 +7,34 @@ import (
 	"io"
 	"os"
 
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/credentials"
 )
+
+type cleanupFn func() error
 
 // CleanupTracer should be called at the end of a node's execution to send all
 // remaining traces to the exporter before the process ends.
-var CleanupTracer func() error
+var CleanupTracer cleanupFn
 
 func init() {
-	tp, err := httpProvider()
+	tp, cleanup, err := hcProvider()
 	if err != nil {
 		log.Error().Msgf("error initialising http tracer: %v", err)
 		log.Warn().Msg("failed to initialise http tracer, falling back to debug tracer")
 
-		tp, err = debugProvider()
+		tp, cleanup, err = loggerProvider()
 		if err != nil {
 			log.Error().Msgf("error initialising debug tracer: %v", err)
 			log.Warn().Msg("failed to initialise debug tracer, will proceed without trace instrumentation")
@@ -45,9 +50,7 @@ func init() {
 		),
 	)
 
-	CleanupTracer = func() error {
-		return tp.Shutdown(context.Background())
-	}
+	CleanupTracer = cleanup
 }
 
 // Span creates and starts a new span, and a context containing it.
@@ -65,50 +68,63 @@ func tracer(svcName string) trace.Tracer {
 	return otel.GetTracerProvider().Tracer(svcName)
 }
 
-// debugProvider provides traces that are exported to a trace logger as JSON.
-func debugProvider() (*sdktrace.TracerProvider, error) {
+// loggerProvider provides traces that are exported to a trace logger as JSON.
+func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	exp, err := stdouttrace.New(
 		stdouttrace.WithPrettyPrint(),
 		stdouttrace.WithWriter(jsonLogger()))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(exp),
-	), nil
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSyncer(exp))
+
+	return tp, cleanupFor("logger", tp, exp), nil
 }
 
-// httpProvider provides traces that are exported over HTTP to a server (such
-// as Honeycomb) configured using the following environment variables:
-//   export OTEL_EXPORTER_OTLP_ENDPOINT="https://api.honeycomb.io"
-//   export OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-dataset=bacalhau,x-honeycomb-team=your-api-key"
-//   export OTEL_SERVICE_NAME="your-honeycomb-service-name"
-func httpProvider() (*sdktrace.TracerProvider, error) {
-	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" ||
-		os.Getenv("OTEL_EXPORTER_OTLP_HEADERS") == "" ||
-		os.Getenv("OTEL_SERVICE_NAME") == "" {
-
-		return nil, fmt.Errorf("error creating http exporter: please ensure the \"OTEL_EXPORTER_OTLP_ENDPOINT\", \"OTEL_EXPORTER_OTLP_HEADERS\" and \"OTEL_SERVICE_NAME\" environment variables are set correctly")
+// httpProvider provides traces that are exported over GRPC to Honeycomb. It
+// should be configured by setting the following environment variable:
+//   export HONEYCOMB_KEY="<honeycomb api key>"
+func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
+	if os.Getenv("HONEYCOMB_KEY") == "" {
+		return nil, nil, fmt.Errorf(
+			"error creating honeycomb exporter: please ensure that \"HONEYCOMB_KEY\" has been set")
 	}
 
-	cl := otlptracehttp.NewClient()
-	exp, err := otlptrace.New(context.Background(), cl)
+	exp, err := hcExporter()
 	if err != nil {
-		return nil, fmt.Errorf("error creating http trace exporter: %w", err)
+		return nil, nil, fmt.Errorf("error creating honeycomb exporter: %w", err)
 	}
 
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(exp), // TODO: use WithBatcher at scale
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSyncer(exp), // TODO: use WithBatcher in prod
 		sdktrace.WithResource(
 			resource.NewWithAttributes(
 				semconv.SchemaURL,
-				semconv.ServiceNameKey.String("bacalhau.org"),
-				semconv.ServiceVersionKey.String("0.0.1"),
+				semconv.ServiceNameKey.String("bacalhau"),
 			),
 		),
-	), nil
+	)
 
+	return tp, cleanupFor("honeycomb", tp, exp), nil
+
+}
+
+// hcExporter returns a SpanExporter configured for Honeycomb.
+func hcExporter() (*otlptrace.Exporter, error) {
+	opts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
+		otlptracegrpc.WithTLSCredentials(
+			credentials.NewClientTLSFromCert(nil, "")),
+		otlptracegrpc.WithHeaders(map[string]string{
+			"x-honeycomb-team":    os.Getenv("HONEYCOMB_KEY"),
+			"x-honeycomb-dataset": "bacalhau",
+		}),
+	}
+
+	return otlptrace.New(context.Background(),
+		otlptracegrpc.NewClient(opts...))
 }
 
 // jsonLogger returns a writer than trace logs all JSON objects thrown at it.
@@ -139,4 +155,19 @@ func jsonLogger() io.Writer {
 	}(r)
 
 	return w
+}
+
+// cleanupFor returns a cleanup function that flushes remaining spans in
+// memory to the exporter and releases any tracing resources.
+func cleanupFor(name string, tp *sdktrace.TracerProvider,
+	exp sdktrace.SpanExporter) cleanupFn {
+
+	return func() error {
+		if err := tp.Shutdown(context.Background()); err != nil {
+			return fmt.Errorf(
+				"error shutting down %s provider: %w", name, err)
+		}
+
+		return nil
+	}
 }
