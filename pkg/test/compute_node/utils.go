@@ -1,14 +1,17 @@
-package devstack
+package compute_node
 
 import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
+	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 )
 
@@ -52,4 +55,29 @@ func SetupTest(
 	}
 
 	return computeNode, ipfsStack, cm
+}
+
+func GetJobSpec(cid string) *types.JobSpec {
+	inputs := []types.StorageSpec{}
+	if cid != "" {
+		inputs = []types.StorageSpec{
+			{
+				Engine: "ipfs",
+				Cid:    cid,
+				Path:   "/test_file.txt",
+			},
+		}
+	}
+	return &types.JobSpec{
+		Engine:   string(executor.EXECUTOR_DOCKER),
+		Verifier: string(verifier.VERIFIER_NOOP),
+		Vm: types.JobSpecVm{
+			Image: "ubuntu",
+			Entrypoint: []string{
+				"cat",
+				"/test_file.txt",
+			},
+		},
+		Inputs: inputs,
+	}
 }

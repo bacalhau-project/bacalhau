@@ -1,4 +1,4 @@
-package devstack
+package compute_node
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
@@ -17,34 +16,15 @@ import (
 func TestRunJob(t *testing.T) {
 
 	EXAMPLE_TEXT := "hello"
-	ctx := context.Background()
-
 	computeNode, ipfsStack, cm := SetupTest(t, compute_node.JobSelectionPolicy{})
 	defer cm.Cleanup()
 
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+	assert.NoError(t, err)
 
-	jobSpec := &types.JobSpec{
-		Engine: string(executor.EXECUTOR_DOCKER),
-		Vm: types.JobSpecVm{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"cat",
-				"/test_file.txt",
-			},
-		},
-		Inputs: []types.StorageSpec{
-			{
-				Engine: "ipfs",
-				Cid:    cid,
-				Path:   "/test_file.txt",
-			},
-		},
-	}
-
-	result, err := computeNode.RunJob(ctx, &types.Job{
+	result, err := computeNode.RunJob(context.Background(), &types.Job{
 		Id:   "test",
-		Spec: jobSpec,
+		Spec: GetJobSpec(cid),
 	})
 	assert.NoError(t, err)
 

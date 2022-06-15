@@ -15,7 +15,8 @@ const (
 	Anywhere                          = 1
 )
 
-type JobSelectionDataPolicy struct {
+// describe the rules for how a compute node selects an incoming job
+type JobSelectionPolicy struct {
 	// this describes if we should run a job based on
 	// where the data is located - i.e. if the data is "local"
 	// or if the data is "anywhere"
@@ -23,15 +24,6 @@ type JobSelectionDataPolicy struct {
 	// should we reject jobs that don't specify any data
 	// the default is "accept"
 	RejectStatelessJobs bool `json:"reject_stateless_jobs"`
-}
-
-// describe the rules for how a compute node selects an incoming job
-type JobSelectionPolicy struct {
-	// this describes if we should run a job based on
-	// where the data is located - i.e. if the data is "local"
-	// or if the data is "anywhere"
-	Data JobSelectionDataPolicy `json:"data"`
-
 	// external hooks that decide if we should take on the job or not
 	// if either of these are given they will override the data locality settings
 	ProbeHttp string `json:"probe_http,omitempty"`
@@ -46,9 +38,7 @@ type JobSelectionPolicyProbeData struct {
 
 // generate a default empty job selection policy
 func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
-	return JobSelectionPolicy{
-		Data: JobSelectionDataPolicy{},
-	}
+	return JobSelectionPolicy{}
 }
 
 func applyJobSelectionPolicyExecProbe(
@@ -71,7 +61,7 @@ func applyJobSelectionPolicyHttpProbe(
 
 func applyJobSelectionPolicyDataSettings(
 	ctx context.Context,
-	policy JobSelectionDataPolicy,
+	policy JobSelectionPolicy,
 	executor executor.Executor,
 	job *types.JobSpec,
 ) (bool, error) {
@@ -127,6 +117,6 @@ func ApplyJobSelectionPolicy(
 	} else if policy.ProbeHttp != "" {
 		return applyJobSelectionPolicyHttpProbe(ctx, policy.ProbeHttp, nodeId, job)
 	} else {
-		return applyJobSelectionPolicyDataSettings(ctx, policy.Data, executor, job)
+		return applyJobSelectionPolicyDataSettings(ctx, policy, executor, job)
 	}
 }
