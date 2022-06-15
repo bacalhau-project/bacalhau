@@ -18,12 +18,7 @@ echo -n "OOM errors since $start_log :" $oom
 echo ""
 echo "--------------------"
 echo "Utilization and most expensive processes:"
-top -b | head -10
-# echo
-# top -b | head -10 | tail -4
-# echo "--------------------"
-# echo "Open TCP ports:"
-# nmap -p -T4 127.0.0.1
+ps -Ao user,uid,comm,pid,pcpu,tty --sort=-pcpu | head -n 6
 echo "--------------------"
 echo "Current connections:"
 ss -s
@@ -33,3 +28,9 @@ ps auxf --width=200
 echo "--------------------"
 echo "vmstat:"
 vmstat 1 5
+echo "--------------------"
+echo "$(bacalhau --version)"
+echo "--------------------"
+echo "PATH: $PATH"
+echo "--------------------"
+echo "$(ps aux | grep -E 'ipfs|bacalhau'"
