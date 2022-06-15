@@ -91,7 +91,7 @@ func NewComputeNode(
 				Data: job,
 			})
 
-			resultFolder, err := computeNode.RunJob(job)
+			resultFolder, err := computeNode.RunJob(ctx, job)
 
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
