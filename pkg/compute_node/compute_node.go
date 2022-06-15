@@ -15,16 +15,18 @@ import (
 )
 
 type ComputeNode struct {
-	Mutex     sync.Mutex
-	Transport transport.Transport
-	Executors map[string]executor.Executor
-	Verifiers map[string]verifier.Verifier
+	Mutex              sync.Mutex
+	Transport          transport.Transport
+	Executors          map[string]executor.Executor
+	Verifiers          map[string]verifier.Verifier
+	JobSelectionPolicy types.JobSelectionPolicy
 }
 
 func NewComputeNode(
 	transport transport.Transport,
 	executors map[string]executor.Executor,
 	verifiers map[string]verifier.Verifier,
+	jobSelectionPolicy types.JobSelectionPolicy,
 ) (*ComputeNode, error) {
 	ctx := context.Background() // TODO: instrument
 	nodeId, err := transport.HostID(ctx)
@@ -34,9 +36,10 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		Transport: transport,
-		Verifiers: verifiers,
-		Executors: executors,
+		Transport:          transport,
+		Verifiers:          verifiers,
+		Executors:          executors,
+		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
 	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {

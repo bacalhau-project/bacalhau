@@ -111,7 +111,11 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		}
 
 		computeNode, err := compute_node.NewComputeNode(
-			transport, executors, verifiers)
+			transport,
+			executors,
+			verifiers,
+			compute_node.NewDefaultJobSelectionPolicy(),
+		)
 		if err != nil {
 			return nil, err
 		}

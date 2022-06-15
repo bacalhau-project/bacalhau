@@ -42,7 +42,12 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	_, err = compute_node.NewComputeNode(
+		transport,
+		executors,
+		verifiers,
+		compute_node.NewDefaultJobSelectionPolicy(),
+	)
 	assert.NoError(t, err)
 
 	_, err = requestor_node.NewRequesterNode(transport)
@@ -56,7 +61,12 @@ func TestTransportSanity(t *testing.T) {
 	verifiers := map[string]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	_, err = compute_node.NewComputeNode(
+		transport,
+		executors,
+		verifiers,
+		compute_node.NewDefaultJobSelectionPolicy(),
+	)
 	assert.NoError(t, err)
 	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)

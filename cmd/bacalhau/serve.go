@@ -82,7 +82,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+		_, err = compute_node.NewComputeNode(
+			transport,
+			executors,
+			verifiers,
+			compute_node.NewDefaultJobSelectionPolicy(),
+		)
 		if err != nil {
 			return err
 		}
