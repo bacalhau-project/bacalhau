@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ func TestJobSelectionNoVolumes(t *testing.T) {
 		})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), "requester_id", GetJobSpec(""))
+		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		assert.NoError(t, err)
 		assert.Equal(t, result, expectedResult)
 	}
@@ -55,7 +54,7 @@ func TestJobSelectionLocality(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		result, err := computeNode.SelectJob(context.Background(), "requester_id", GetJobSpec(cid))
+		result, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
 		assert.NoError(t, err)
 		assert.Equal(t, result, expectedResult)
 	}
@@ -74,18 +73,50 @@ func TestJobSelectionLocality(t *testing.T) {
 }
 
 func TestJobSelectionHttp(t *testing.T) {
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Method, "post")
-		spew.Dump(r.Body)
-	}))
-	defer svr.Close()
+	runTest := func(failMode, expectedResult bool) {
+		svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, r.Method, "POST")
+			if failMode {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("500 - Something bad happened!"))
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("200 - Everything is good!"))
+			}
 
-	computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
-		ProbeHttp: svr.URL,
-	})
-	defer cm.Cleanup()
+		}))
+		defer svr.Close()
 
-	result, err := computeNode.SelectJob(context.Background(), "requester_id", GetJobSpec(""))
-	assert.NoError(t, err)
-	assert.Equal(t, result, false)
+		computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+			ProbeHttp: svr.URL,
+		})
+		defer cm.Cleanup()
+
+		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		assert.NoError(t, err)
+		assert.Equal(t, result, expectedResult)
+	}
+
+	runTest(true, false)
+	runTest(false, true)
+}
+
+func TestJobSelectionExec(t *testing.T) {
+	runTest := func(failMode, expectedResult bool) {
+		command := "exit 0"
+		if failMode {
+			command = "exit 1"
+		}
+		computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+			ProbeExec: command,
+		})
+		defer cm.Cleanup()
+
+		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		assert.NoError(t, err)
+		assert.Equal(t, result, expectedResult)
+	}
+
+	runTest(true, false)
+	runTest(false, true)
 }

@@ -55,7 +55,11 @@ func NewComputeNode(
 			// 	return false, err
 			// }
 
-			shouldRun, err := computeNode.SelectJob(ctx, jobEvent.NodeId, jobEvent.JobSpec)
+			shouldRun, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
+				NodeId: nodeId,
+				JobId:  jobEvent.JobId,
+				Spec:   jobEvent.JobSpec,
+			})
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return
@@ -149,18 +153,17 @@ func NewComputeNode(
 // TODO: allow user probes (http / exec) to be used to decide if we should run the job
 func (node *ComputeNode) SelectJob(
 	ctx context.Context,
-	nodeId string,
-	job *types.JobSpec,
+	data JobSelectionPolicyProbeData,
 ) (bool, error) {
 
 	// check that we have the executor and it's installed
-	executor, err := node.getExecutor(ctx, job.Engine)
+	executor, err := node.getExecutor(ctx, data.Spec.Engine)
 	if err != nil {
 		return false, err
 	}
 
 	// check that we have the verifier and it's installed
-	_, err = node.getVerifier(ctx, job.Verifier)
+	_, err = node.getVerifier(ctx, data.Spec.Verifier)
 	if err != nil {
 		return false, err
 	}
@@ -169,8 +172,7 @@ func (node *ComputeNode) SelectJob(
 		ctx,
 		node.JobSelectionPolicy,
 		executor,
-		nodeId,
-		job,
+		data,
 	)
 }
 

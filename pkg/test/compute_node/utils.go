@@ -81,3 +81,11 @@ func GetJobSpec(cid string) *types.JobSpec {
 		Inputs: inputs,
 	}
 }
+
+func GetProbeData(cid string) compute_node.JobSelectionPolicyProbeData {
+	return compute_node.JobSelectionPolicyProbeData{
+		NodeId: "test",
+		JobId:  "test",
+		Spec:   GetJobSpec(cid),
+	}
+}
