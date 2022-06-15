@@ -1,8 +1,11 @@
 package compute_node
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/rs/zerolog/log"
 )
 
 type JobSelectionDataLocality int64
@@ -49,6 +52,7 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 }
 
 func applyJobSelectionPolicyExecProbe(
+	ctx context.Context,
 	command string,
 	nodeId string,
 	job *types.JobSpec,
@@ -57,6 +61,7 @@ func applyJobSelectionPolicyExecProbe(
 }
 
 func applyJobSelectionPolicyHttpProbe(
+	ctx context.Context,
 	url string,
 	nodeId string,
 	job *types.JobSpec,
@@ -65,27 +70,63 @@ func applyJobSelectionPolicyHttpProbe(
 }
 
 func applyJobSelectionPolicyDataSettings(
+	ctx context.Context,
 	policy JobSelectionDataPolicy,
 	executor executor.Executor,
 	job *types.JobSpec,
 ) (bool, error) {
-	return false, nil
+
+	// Accept jobs where there are no cids specified
+	// if policy.RejectStatelessJobs is set then we reject this job
+	if len(job.Inputs) == 0 {
+		return !policy.RejectStatelessJobs, nil
+	}
+
+	// if we have an "anywhere" policy for the data then we accept the job
+	if policy.Locality == Anywhere {
+		return true, nil
+	}
+
+	// otherwise we are checking that all of the named inputs in the job
+	// are local to us
+	foundInputs := 0
+
+	for _, input := range job.Inputs {
+		// see if the storage engine reports that we have the resource locally
+		hasStorage, err := executor.HasStorage(ctx, input)
+		if err != nil {
+			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
+			return false, err
+		}
+		if hasStorage {
+			foundInputs++
+		}
+	}
+
+	if foundInputs >= len(job.Inputs) {
+		log.Info().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
+		return true, nil
+	} else {
+		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
+		return false, nil
+	}
 }
 
 // the compute node "SelectJob" function will call out to this to handle
 // applying the policy to the incoming job
 // we are also given the executor so we can enquire about data locality
 func ApplyJobSelectionPolicy(
+	ctx context.Context,
 	policy JobSelectionPolicy,
 	executor executor.Executor,
 	nodeId string,
 	job *types.JobSpec,
 ) (bool, error) {
 	if policy.ProbeExec != "" {
-		return applyJobSelectionPolicyExecProbe(policy.ProbeExec, nodeId, job)
+		return applyJobSelectionPolicyExecProbe(ctx, policy.ProbeExec, nodeId, job)
 	} else if policy.ProbeHttp != "" {
-		return applyJobSelectionPolicyHttpProbe(policy.ProbeHttp, nodeId, job)
+		return applyJobSelectionPolicyHttpProbe(ctx, policy.ProbeHttp, nodeId, job)
 	} else {
-		return applyJobSelectionPolicyDataSettings(policy.Data, executor, job)
+		return applyJobSelectionPolicyDataSettings(ctx, policy.Data, executor, job)
 	}
 }

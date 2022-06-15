@@ -165,33 +165,13 @@ func (node *ComputeNode) SelectJob(
 		return false, err
 	}
 
-	// Accept jobs where there are no cids specified
-	if len(job.Inputs) == 0 {
-		return true, nil
-	}
-
-	// the inputs we have decided we have
-	foundInputs := 0
-
-	for _, input := range job.Inputs {
-		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := executor.HasStorage(ctx, input)
-		if err != nil {
-			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
-			return false, err
-		}
-		if hasStorage {
-			foundInputs++
-		}
-	}
-
-	if foundInputs >= len(job.Inputs) {
-		log.Info().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
-		return true, nil
-	} else {
-		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
-		return false, nil
-	}
+	return ApplyJobSelectionPolicy(
+		ctx,
+		node.JobSelectionPolicy,
+		executor,
+		nodeId,
+		job,
+	)
 }
 
 func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (
