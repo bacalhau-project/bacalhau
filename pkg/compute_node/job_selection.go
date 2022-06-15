@@ -17,7 +17,7 @@ type JobSelectionDataLocality int64
 
 const (
 	Local    JobSelectionDataLocality = 0
-	Anywhere                          = 1
+	Anywhere JobSelectionDataLocality = 1
 )
 
 // describe the rules for how a compute node selects an incoming job
@@ -65,7 +65,11 @@ func applyJobSelectionPolicyExecProbe(
 		"BACALHAU_JOB_SELECTION_PROBE_DATA=" + string(json_data),
 	}
 	cmd.Stdin = strings.NewReader(string(json_data))
-	cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		// we ignore this error because it might be the script exiting 1 on purpose
+		log.Debug().Msgf("We got an error back from a job selection probe exec: %s %s", command, err.Error())
+	}
 
 	return cmd.ProcessState.ExitCode() == 0, nil
 }
