@@ -1,8 +1,10 @@
 package logger
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -10,6 +12,13 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
+
+type JobEvent struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+	Node string      `json:"node"`
+	Job  string      `json:"job"`
+}
 
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
@@ -82,9 +91,14 @@ func init() {
 	var useLogWriter io.Writer = textWriter
 
 	if logTypeString == "json" {
+		// we just want json
 		useLogWriter = os.Stdout
 	} else if logTypeString == "combined" {
+		// we just want json and text and events
 		useLogWriter = zerolog.MultiLevelWriter(textWriter, os.Stdout)
+	} else if logTypeString == "event" {
+		// we just want events
+		useLogWriter = ioutil.Discard
 	}
 
 	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
@@ -97,4 +111,32 @@ func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 
 func LoggerWithNodeAndJobInfo(nodeId string, jobId string) zerolog.Logger {
 	return log.With().Str("N", nodeId).Str("J", jobId).Logger()
+}
+
+func LogJobEvent(event JobEvent) {
+	event.Node = event.Node[:8]
+	event.Job = event.Job[:8]
+	eventBytes, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	if os.Getenv("LOG_EVENT_FILE") != "" {
+		f, err := os.OpenFile(os.Getenv("LOG_EVENT_FILE"),
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		if _, err := f.WriteString(fmt.Sprintf("%s\n", string(eventBytes))); err != nil {
+			return
+		}
+	}
+
+	logType := strings.ToLower(os.Getenv("LOG_TYPE"))
+	if logType != "event" && logType != "combined" {
+		return
+	}
+
+	fmt.Println(string(eventBytes))
 }
