@@ -39,11 +39,7 @@ func NewComputeNode(
 		Executors: executors,
 	}
 
-<<<<<<< HEAD
 	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
-=======
-	transport.Subscribe(func(jobEvent *types.JobEvent, job *types.Job) {
->>>>>>> 16f2624 (add events log type with optional file output)
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
