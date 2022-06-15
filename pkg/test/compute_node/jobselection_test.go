@@ -2,8 +2,11 @@ package compute_node
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
@@ -68,4 +71,21 @@ func TestJobSelectionLocality(t *testing.T) {
 
 	// we are anywhere - we don't have the file - we should accept
 	runTest(compute_node.Anywhere, false, true)
+}
+
+func TestJobSelectionHttp(t *testing.T) {
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Method, "post")
+		spew.Dump(r.Body)
+	}))
+	defer svr.Close()
+
+	computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+		ProbeHttp: svr.URL,
+	})
+	defer cm.Cleanup()
+
+	result, err := computeNode.SelectJob(context.Background(), "requester_id", GetJobSpec(""))
+	assert.NoError(t, err)
+	assert.Equal(t, result, false)
 }

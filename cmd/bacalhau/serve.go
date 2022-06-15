@@ -114,12 +114,10 @@ var serveCmd = &cobra.Command{
 		}
 
 		jobSelectionPolicy := compute_node.JobSelectionPolicy{
-			Data: compute_node.JobSelectionDataPolicy{
-				Locality:            typedJobSelectionDataLocality,
-				RejectStatelessJobs: jobSelectionDataRejectStateless,
-			},
-			ProbeHttp: jobSelectionProbeHttp,
-			ProbeExec: jobSelectionProbeExec,
+			Locality:            typedJobSelectionDataLocality,
+			RejectStatelessJobs: jobSelectionDataRejectStateless,
+			ProbeHttp:           jobSelectionProbeHttp,
+			ProbeExec:           jobSelectionProbeExec,
 		}
 
 		_, err = compute_node.NewComputeNode(
