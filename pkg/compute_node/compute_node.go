@@ -19,14 +19,14 @@ type ComputeNode struct {
 	Transport          transport.Transport
 	Executors          map[string]executor.Executor
 	Verifiers          map[string]verifier.Verifier
-	JobSelectionPolicy types.JobSelectionPolicy
+	JobSelectionPolicy JobSelectionPolicy
 }
 
 func NewComputeNode(
 	transport transport.Transport,
 	executors map[string]executor.Executor,
 	verifiers map[string]verifier.Verifier,
-	jobSelectionPolicy types.JobSelectionPolicy,
+	jobSelectionPolicy JobSelectionPolicy,
 ) (*ComputeNode, error) {
 	ctx := context.Background() // TODO: instrument
 	nodeId, err := transport.HostID(ctx)
@@ -55,7 +55,7 @@ func NewComputeNode(
 			// 	return false, err
 			// }
 
-			shouldRun, err := computeNode.SelectJob(ctx, jobEvent.JobSpec)
+			shouldRun, err := computeNode.SelectJob(ctx, jobEvent.NodeId, jobEvent.JobSpec)
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return
@@ -147,8 +147,11 @@ func NewComputeNode(
 // that will decide if it's worth doing the job or not
 // for now - the rule is "do we have all the input CIDS"
 // TODO: allow user probes (http / exec) to be used to decide if we should run the job
-func (node *ComputeNode) SelectJob(ctx context.Context,
-	job *types.JobSpec) (bool, error) {
+func (node *ComputeNode) SelectJob(
+	ctx context.Context,
+	nodeId string,
+	job *types.JobSpec,
+) (bool, error) {
 
 	// check that we have the executor and it's installed
 	executor, err := node.getExecutor(ctx, job.Engine)
