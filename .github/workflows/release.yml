@@ -140,6 +140,8 @@ jobs:
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
+        with:
+          install-dependencies: false
 
       - name: Codesign create keychain
         if: ${{ matrix.target_os == 'darwin' }}
@@ -189,4 +191,5 @@ jobs:
       - name: Codesign delete-keychain
         if: matrix.target_os == 'darwin'
         run: |
-          security delete-keychain build.keychain
+          build_keychain_exists=$(security list-keychains | grep "build.keychain")
+          [ -z "$build_keychain_exists" ] && security delete-keychain build.keychain
