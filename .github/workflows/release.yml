@@ -191,5 +191,7 @@ jobs:
       - name: Codesign delete-keychain
         if: matrix.target_os == 'darwin'
         run: |
-          build_keychain_exists=$(security list-keychains | grep "build.keychain")
-          [ -z "$build_keychain_exists" ] && security delete-keychain build.keychain
+          build_keychain_exists=$(security list-keychains | grep "build.keychain" | tr -d '\n' )
+
+          # Delete keychain if it exists (swallow errors)
+          [ ! -z "$build_keychain_exists" ] && security delete-keychain build.keychain
