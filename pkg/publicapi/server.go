@@ -38,6 +38,20 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
 }
 
+func GenerateHealthData() types.HealthInfo {
+
+	var healthInfo types.HealthInfo
+
+	// Generating all, free, used amounts for each - in case these are different mounts, they'll have different
+	// All and Free values, if they're all on the same machine, then those values should be the same
+	// If "All" is 0, that means the directory does not exist
+	healthInfo.DiskFreeSpace.IPFSMount = MountUsage("/data/ipfs")
+	healthInfo.DiskFreeSpace.ROOT = MountUsage("/")
+	healthInfo.DiskFreeSpace.TMP = MountUsage("/tmp")
+
+	return healthInfo
+}
+
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	hostID, err := apiServer.Node.Transport.HostID(ctx)
@@ -115,21 +129,6 @@ func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 		log.Warn().Msg("Error writing body for readyz request.")
 	}
 
-}
-
-
-func GenerateHealthData() types.HealthInfo {
-
-	var healthInfo types.HealthInfo
-
-	// Generating all, free, used amounts for each - in case these are different mounts, they'll have different
-	// All and Free values, if they're all on the same machine, then those values should be the same
-	// If "All" is 0, that means the directory does not exist
-	healthInfo.DiskFreeSpace.IPFSMount = MountUsage("/data/ipfs")
-	healthInfo.DiskFreeSpace.ROOT = MountUsage("/")
-	healthInfo.DiskFreeSpace.TMP = MountUsage("/tmp")
-
-	return healthInfo
 }
 
 func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) {
