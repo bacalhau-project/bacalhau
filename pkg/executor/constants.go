@@ -1,10 +1,10 @@
 package executor
 
-type executorType string
+type ExecutorType string
 
-const EXECUTOR_DOCKER executorType = "docker"
-const EXECUTOR_NOOP executorType = "noop"
-const EXECUTOR_WASM executorType = "wasm"
+const EXECUTOR_DOCKER ExecutorType = "docker"
+const EXECUTOR_NOOP ExecutorType = "noop"
+const EXECUTOR_WASM ExecutorType = "wasm"
 
 var EXECUTORS = []string{
 	string(EXECUTOR_DOCKER),

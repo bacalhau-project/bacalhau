@@ -63,7 +63,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 		},
 	}
 
-	log.Info().Msgf(
+	log.Debug().Msgf(
 		"API server listening for host %s on %s...", hostID, srv.Addr)
 	return srv.ListenAndServe()
 }

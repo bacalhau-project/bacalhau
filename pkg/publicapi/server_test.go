@@ -45,7 +45,7 @@ func (suite *ServerSuite) TestList() {
 	assert.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
-	_, err = c.Submit(makeJob())
+	_, err = c.Submit(MakeGenericJob())
 	assert.NoError(suite.T(), err)
 
 	// Should now have one job:
