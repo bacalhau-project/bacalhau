@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // a representation of some data on a storage engine
 // this opens up jobs that could operate on different types
 // of storage at once
@@ -103,6 +105,7 @@ type Job struct {
 	Deal  *JobDeal `json:"deal"`
 	// a map of nodeId -> state of the job on that node
 	State map[string]*JobState `json:"state"`
+	CreatedAt	time.Time	`json:"created_at"`
 }
 
 // we emit these to other nodes so they update their
@@ -117,6 +120,7 @@ type JobEvent struct {
 	JobDeal *JobDeal `json:"job_deal"`
 	// most other events are a case of a client<->node state change
 	JobState *JobState `json:"job_state"`
+	EventTime	time.Time	`json:"event_time"`
 }
 
 type ResultsList struct {

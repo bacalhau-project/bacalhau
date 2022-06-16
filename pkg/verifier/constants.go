@@ -1,9 +1,9 @@
 package verifier
 
-type verifierType string
+type VerifierType string
 
-const VERIFIER_IPFS verifierType = "ipfs"
-const VERIFIER_NOOP verifierType = "noop"
+const VERIFIER_IPFS VerifierType = "ipfs"
+const VERIFIER_NOOP VerifierType = "noop"
 
 var VERIFIERS = []string{
 	string(VERIFIER_IPFS),

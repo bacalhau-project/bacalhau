@@ -14,7 +14,7 @@ func TestGet(t *testing.T) {
 	var err error
 	var job *types.Job
 	for i := 0; i < 5; i++ {
-		job, err = c.Submit(makeJob())
+		job, err = c.Submit(MakeGenericJob())
 		assert.NoError(t, err)
 	}
 
