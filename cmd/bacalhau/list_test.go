@@ -42,6 +42,10 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
+
+	tableIdFilter = ""
+	tableSortReverse = false
+
 	tests := []struct {
 		numberOfJobs       int
 		numberOfJobsOutput int
@@ -114,6 +118,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 func (suite *ListSuite) TestList_SortFlags() {
 	var badSortFlag = "BADSORTFLAG"
 	var createdAtSortFlag = "created_at"
+	tableIdFilter = ""
+	tableSortReverse = false
 
 	combinationOfJobSizes := []struct {
 		numberOfJobs       int

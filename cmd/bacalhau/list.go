@@ -123,7 +123,13 @@ var listCmd = &cobra.Command{
 
 		jobArray := []*types.Job{}
 		for _, job := range jobs {
-			jobArray = append(jobArray, job)
+			if tableIdFilter != "" {
+				if job.Id == tableIdFilter || shortId(job.Id) == tableIdFilter {
+					jobArray = append(jobArray, job)
+				}
+			} else {
+				jobArray = append(jobArray, job)
+			}
 		}
 
 		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
