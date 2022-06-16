@@ -146,9 +146,9 @@ jobs:
       - name: Codesign create keychain
         if: ${{ matrix.target_os == 'darwin' }}
         run: |
-          build_keychain_exists=$(security list-keychains | grep "build.keychain")
+          build_keychain_exists=$(security list-keychains | grep "build.keychain" | tr -d '\n' )
           # Delete keychain if it exists (swallow errors)
-          [ -z "$build_keychain_exists" ] && security delete-keychain build.keychain
+          [ ! -z "$build_keychain_exists" ] && security delete-keychain build.keychain
 
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
