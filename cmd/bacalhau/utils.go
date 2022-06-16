@@ -20,6 +20,7 @@ var tableSortBy ColumnEnum
 var tableSortReverse bool
 var tableIdFilter string
 var tableNoStyle bool
+var tableMergeValues bool
 
 func shortenString(st string) string {
 	if tableOutputWide {
