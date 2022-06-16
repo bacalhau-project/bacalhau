@@ -144,8 +144,8 @@ jobs:
       - name: Codesign create keychain & set-key
         if: matrix.target_os == 'darwin'
         run: |
-          ls -la /Library/Keychains
-          ls -la ~/Library/Keychains
+          rm -f ~/Library/Keychains/build.keychain-db || true
+          rm -f ~/Library/Keychains/build.keychain || true
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
           echo $MACOS_CERTIFICATE > /tmp/macos_certificate
