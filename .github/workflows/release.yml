@@ -146,13 +146,13 @@ jobs:
         run: |
           # rm -f ~/Library/Keychains/build.keychain-db || true
           # rm -f ~/Library/Keychains/build.keychain || true
+          ls -la ~/Library/Keychains
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
           echo $MACOS_CERTIFICATE > /tmp/macos_certificate
           base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
           # create the keychain
-          # security delete-keychain build.keychain || true
-          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
+          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain || true
           security default-keychain -s build.keychain
           security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           # import the keychain
