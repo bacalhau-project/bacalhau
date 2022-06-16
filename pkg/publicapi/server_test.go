@@ -1,25 +1,133 @@
 package publicapi
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestList(t *testing.T) {
-	c := SetupTests(t)
+// Define the suite, and absorb the built-in basic suite
+// functionality from testify - including a T() method which
+// returns the current testing context
+type ServerSuite struct {
+	suite.Suite
+}
+
+// Before all suite
+func (suite *ServerSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *ServerSuite) SetupTest() {
+}
+
+func (suite *ServerSuite) TearDownTest() {
+}
+
+func (suite *ServerSuite) TearDownAllSuite() {
+
+}
+
+func (suite *ServerSuite) TestList() {
+	c := SetupTests(suite.T())
 
 	// Should have no jobs initially:
 	jobs, err := c.List()
-	assert.NoError(t, err)
-	assert.Empty(t, jobs)
+	assert.NoError(suite.T(), err)
+	assert.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
 	_, err = c.Submit(MakeGenericJob())
-	assert.NoError(t, err)
+	assert.NoError(suite.T(), err)
 
 	// Should now have one job:
 	jobs, err = c.List()
-	assert.NoError(t, err)
-	assert.Len(t, jobs, 1)
+	assert.NoError(suite.T(), err)
+	assert.Len(suite.T(), jobs, 1)
+}
+
+func (suite *ServerSuite) TestHealthz() {
+	rawHealthData := testEndpoint(suite.T(), "/healthz", "FreeSpace")
+
+	var healthData types.HealthInfo
+	err := json.Unmarshal(rawHealthData, &healthData)
+	assert.NoError(suite.T(), err, "Error unmarshalling /healthz data.")
+
+	// Checks that it's a number, and bigger than zero
+	assert.Greater(suite.T(), int(healthData.DiskFreeSpace.ROOT.All), 0)
+
+	// "all" should be bigger than "free" always
+	assert.Greater(suite.T(), healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
+}
+
+func (suite *ServerSuite) TestLivez() {
+	_ = testEndpoint(suite.T(), "/livez", "OK")
+}
+
+// TODO: #240 Should we test for /tmp/ipfs.log in tests?
+// func (suite *ServerSuite) TestLogz() {
+// 	_ = testEndpoint(suite.T(), "/logz", "OK")
+// }
+
+func (suite *ServerSuite) TestReadyz() {
+	_ = testEndpoint(suite.T(), "/readyz", "READY")
+}
+
+func (suite *ServerSuite) TestVarz() {
+	rawVarZBody := testEndpoint(suite.T(), "/varz", "{")
+
+	var varZ types.VarZ
+	err := json.Unmarshal(rawVarZBody, &varZ)
+	assert.NoError(suite.T(), err, "Error unmarshalling /varz data.")
+
+}
+
+func makeJob() (*types.JobSpec, *types.JobDeal) {
+	jobSpec := types.JobSpec{
+		Engine:   string(executor.EXECUTOR_DOCKER),
+		Verifier: string(verifier.VERIFIER_IPFS),
+		Vm: types.JobSpecVm{
+			Image: "ubuntu:latest",
+			Entrypoint: []string{
+				"cat",
+				"/data/file.txt",
+			},
+		},
+		// Inputs:  inputStorageList,
+		// Outputs: testCase.Outputs,
+	}
+
+	jobDeal := types.JobDeal{
+		Concurrency: 1,
+	}
+
+	return &jobSpec, &jobDeal
+}
+
+func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
+	c := SetupTests(t)
+
+	res, err := http.Get(c.BaseURI + endpoint)
+	assert.NoError(t, err, "Could not get %s endpoint.", endpoint)
+	defer res.Body.Close()
+
+	assert.Equal(t, res.StatusCode, http.StatusOK)
+	body, err := ioutil.ReadAll(res.Body)
+	assert.NoError(t, err, "Could not read %s response body", endpoint)
+	assert.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
+	return body
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestServerSuite(t *testing.T) {
+	suite.Run(t, new(ServerSuite))
 }

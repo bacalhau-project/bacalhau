@@ -27,5 +27,4 @@ __debug_bin
 ops/terraform/.terraform.lock.hcl
 ops/terraform/.terraform/*
 terraform.tfstate*
-trace.out
-trace_otel.out
+.terraform.lock.hcl

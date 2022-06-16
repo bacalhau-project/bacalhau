@@ -49,7 +49,11 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	sm := http.NewServeMux()
 	sm.Handle("/list", http.HandlerFunc(apiServer.list))
 	sm.Handle("/submit", http.HandlerFunc(apiServer.submit))
-	sm.Handle("/health", http.HandlerFunc(apiServer.health))
+	sm.Handle("/healthz", http.HandlerFunc(apiServer.healthz))
+	sm.Handle("/logz", http.HandlerFunc(apiServer.logz))
+	sm.Handle("/varz", http.HandlerFunc(apiServer.varz))
+	sm.Handle("/livez", http.HandlerFunc(apiServer.livez))
+	sm.Handle("/readyz", http.HandlerFunc(apiServer.readyz))
 
 	srv := http.Server{
 		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
@@ -62,10 +66,6 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	log.Debug().Msgf(
 		"API server listening for host %s on %s...", hostID, srv.Addr)
 	return srv.ListenAndServe()
-}
-
-func (apiServer *APIServer) health(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(http.StatusOK)
 }
 
 type listRequest struct{}

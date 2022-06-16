@@ -128,3 +128,26 @@ type ResultsList struct {
 	Cid    string `json:"cid"`
 	Folder string `json:"folder"`
 }
+
+// Struct to report from the healthz endpoint
+type HealthInfo struct {
+	DiskFreeSpace FreeSpace `json:"FreeSpace"`
+}
+
+type FreeSpace struct {
+	IPFSMount MountStatus `json:"IPFSMount"`
+	TMP       MountStatus `json:"tmp"`
+	ROOT      MountStatus `json:"root"`
+}
+
+// Creating structure for DiskStatus
+type MountStatus struct {
+	All  uint64 `json:"All"`
+	Used uint64 `json:"Used"`
+	Free uint64 `json:"Free"`
+}
+
+// Struct to report for VarZ
+type VarZ struct {
+	// TODO: #241 Fill in with varz to report
+}
