@@ -139,7 +139,8 @@ jobs:
       # ONLY DEBUGS WITH DARWIN (for now)
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
+        #if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
+        if: matrix.target_os == 'darwin'
 
       - name: Codesign create keychain & set-key
         if: matrix.target_os == 'darwin'
@@ -158,6 +159,7 @@ jobs:
           # import the keychain
           security import /tmp/certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
+          security list-keychains
           
       - name: Use gon to sign
         if: matrix.target_os == 'darwin'
