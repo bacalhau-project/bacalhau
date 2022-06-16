@@ -136,12 +136,17 @@ jobs:
           EOF
           '
 
-      # ONLY DEBUGS WITH DARWIN (for now)
+      # ONLY DEBUGS WITH DARWIN (for now) - does not install on M1
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' && matrix.runner != 'M1'}}
         with:
           install-dependencies: false
+
+      # ONLY DEBUGS WITH DARWIN (for now) - installs on non-M1
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin'}}
 
       - name: Codesign create keychain
         if: ${{ matrix.target_os == 'darwin' }}
