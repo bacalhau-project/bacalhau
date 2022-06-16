@@ -70,15 +70,6 @@ func (c *ColumnEnum) Set(v string) error {
 	}
 }
 
-func getIds(arr []*types.Job) []string {
-	ids := []string{}
-
-	for _, job := range arr {
-		ids = append(ids, shortId(job.Id))
-	}
-	return ids
-}
-
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
