@@ -36,6 +36,10 @@ func init() {
 		&tableOutputWide, "wide", false,
 		`Print full values in the table results`,
 	)
+	listCmd.PersistentFlags().BoolVar(
+		&tableMergeValues, "merge-identical", false,
+		`Merge identical values`,
+	)
 }
 
 // From: https://stackoverflow.com/questions/50824554/permitted-flag-values-for-cobra
@@ -90,13 +94,24 @@ var listCmd = &cobra.Command{
 		if !tableHideHeader {
 			t.AppendHeader(table.Row{"id", "job", "creation_time", "inputs", "outputs", "concurrency", "node", "state", "result"})
 		}
-		t.SetColumnConfigs([]table.ColumnConfig{
-			{Number: 1, AutoMerge: true},
-			{Number: 2, AutoMerge: true},
-			{Number: 3, AutoMerge: true},
-			{Number: 4, AutoMerge: true},
-			{Number: 5, AutoMerge: true},
-		})
+
+		columnConfig := []table.ColumnConfig{}
+
+		if tableMergeValues {
+
+			// don't merge node, state and result
+			// because they should differentiate even for the same job
+			columnConfig = []table.ColumnConfig{
+				{Number: 1, AutoMerge: true},
+				{Number: 2, AutoMerge: true},
+				{Number: 3, AutoMerge: true},
+				{Number: 4, AutoMerge: true},
+				{Number: 5, AutoMerge: true},
+				{Number: 6, AutoMerge: true},
+			}
+		}
+
+		t.SetColumnConfigs(columnConfig)
 
 		// Create an external structure to order the print out of the jobs map
 		keysToSort := make([]string, 0, len(jobs))
