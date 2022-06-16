@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +49,8 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 		{numberOfJobs: 0, numberOfJobsOutput: 0},   // Test for zero
 		{numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
+		{numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
+
 	}
 
 	for _, tc := range tests {
@@ -62,23 +66,63 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 		parsedBasedURI, _ := url.Parse(c.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list", "--api-host", host, "--api-port", port, "--hide-header")
+		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+			"--hide-header",
+			"--api-host", host,
+			"--api-port", port,
+			"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
+		)
 
 		assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 	}
 }
 
+func (suite *ListSuite) TestList_IdFilter() {
+
+	c := publicapi.SetupTests(suite.T())
+	jobIds := []string{}
+
+	for i := 0; i < 10; i++ {
+		job, err := c.Submit(publicapi.MakeNoopJob())
+		jobIds = append(jobIds, shortId(job.Id))
+		assert.NoError(suite.T(), err)
+	}
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+		"--hide-header",
+		"--api-host", host,
+		"--api-port", port,
+		"--id-filter", jobIds[0],
+	)
+	assert.NoError(suite.T(), err)
+
+	seenIds := []string{}
+	for _, line := range strings.Split(out, "\n") {
+		parts := strings.Split(line, " ")
+		if len(parts) > 2 {
+			seenIds = append(seenIds, strings.Split(line, " ")[1])
+		}
+	}
+
+	assert.Equal(suite.T(), 1, len(seenIds), "We didn't get only one result")
+	assert.Equal(suite.T(), seenIds[0], jobIds[0], "The returned job id was not what we asked for")
+}
+
 func (suite *ListSuite) TestList_SortFlags() {
 	var badSortFlag = "BADSORTFLAG"
+	var createdAtSortFlag = "created_at"
 
 	combinationOfJobSizes := []struct {
 		numberOfJobs       int
 		numberOfJobsOutput int
 	}{
-		// {numberOfJobs: 0, numberOfJobsOutput: 0},   // Test for zero
+		{numberOfJobs: 0, numberOfJobsOutput: 0},   // Test for zero
 		{numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		{numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
+		{numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
 	}
 
 	sortFlagsToTest := []struct {
@@ -88,12 +132,12 @@ func (suite *ListSuite) TestList_SortFlags() {
 	}{
 		{sortFlag: string(ColumnID), reverseFlag: false},
 		{sortFlag: string(ColumnID), reverseFlag: true},
-		// {sortFlag: "created_at", reverseFlag: false},
-		// {sortFlag: "created_at", reverseFlag: true},
-		// {sortFlag: badSortFlag, reverseFlag: false, badSortFlag: true},
-		// {sortFlag: badSortFlag, reverseFlag: true, badSortFlag: true},
-		// {sortFlag: "", reverseFlag: false, badSortFlag: true},
-		// {sortFlag: "", reverseFlag: true, badSortFlag: true},
+		{sortFlag: createdAtSortFlag, reverseFlag: false},
+		{sortFlag: createdAtSortFlag, reverseFlag: true},
+		{sortFlag: badSortFlag, reverseFlag: false, badSortFlag: true},
+		{sortFlag: badSortFlag, reverseFlag: true, badSortFlag: true},
+		{sortFlag: "", reverseFlag: false, badSortFlag: true},
+		{sortFlag: "", reverseFlag: true, badSortFlag: true},
 	}
 
 	for _, tc := range combinationOfJobSizes {
@@ -103,30 +147,21 @@ func (suite *ListSuite) TestList_SortFlags() {
 			// Submit a few random jobs to the node:
 			var err error
 
-			// Collect the first and last job ids for time stamped sorting comparison
-			var firstJobId = "ffffffff"
-			var lastJobId = "00000000"
+			jobIds := []string{}
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				job, err := c.Submit(publicapi.MakeNoopJob())
-				shortID := shortId(job.Id)
-				if sortFlags.sortFlag == string(ColumnID) {
-					if job.Id < firstJobId {
-						firstJobId = shortID
-					}
-					if job.Id > lastJobId {
-						lastJobId = shortID
-					}
-				} else {
-					if i == 0 {
-						firstJobId = shortID
-					}
-					lastJobId = shortID
-
-					// Need to sleep for at least one second between first and last jobs (otherwise we can't sort)
-					time.Sleep(1 * time.Second / time.Duration(tc.numberOfJobs))
-				}
 				assert.NoError(suite.T(), err)
+				jobIds = append(jobIds, shortId(job.Id))
+
+				// all the middle jobs can have the same timestamp
+				// but we need the first and last to differ
+				// so we can test sorting on time stamp
+				if (i == 0 || i == tc.numberOfJobs-2) && sortFlags.sortFlag == createdAtSortFlag {
+					time.Sleep(1 * time.Second)
+				} else {
+					time.Sleep(1 * time.Millisecond)
+				}
 			}
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -136,7 +171,21 @@ func (suite *ListSuite) TestList_SortFlags() {
 			if sortFlags.reverseFlag {
 				reverseString = "--reverse"
 			}
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list", "--api-host", host, "--api-port", port, "--hide-header", "--no-style", "--sort-by", sortFlags.sortFlag, reverseString)
+
+			// IMPORTANT: reset this to the default value because otherwise strange things happen
+			// between tests because the value is held on from the last CLI invocation
+			tableSortReverse = false
+
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				"list",
+				"--hide-header",
+				"--no-style",
+				"--api-host", host,
+				"--api-port", port,
+				"--sort-by", sortFlags.sortFlag,
+				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
+				reverseString,
+			)
 
 			if sortFlags.badSortFlag {
 				assert.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
@@ -146,19 +195,28 @@ func (suite *ListSuite) TestList_SortFlags() {
 				assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 				if tc.numberOfJobsOutput > 0 {
-					firstLine := strings.Split(out, "\n")[0]
-					var idToCompare string
+
+					// jobIds are already sorted by created ASC
+					if sortFlags.sortFlag == string(ColumnID) {
+						sort.Strings(jobIds)
+					}
 
 					if sortFlags.reverseFlag {
-						idToCompare = lastJobId
-					} else {
-						idToCompare = firstJobId
+						jobIds = ReverseList(jobIds)
+					}
+
+					compareIds := jobIds[0:tc.numberOfJobsOutput]
+					seenIds := []string{}
+
+					for _, line := range strings.Split(out, "\n") {
+						parts := strings.Split(line, " ")
+						if len(parts) > 2 {
+							seenIds = append(seenIds, strings.Split(line, " ")[1])
+						}
 					}
 
 					errorMessage := fmt.Sprintf(`
-First line of the return table does not contain the expected ID.
-First line: %s
-ID: %s
+Table lines do not match
 Number of Jobs: %d
 Number of Max: %d
 Sort Flag: %s
@@ -166,9 +224,22 @@ Reverse Flag: %t
 
 Out:
 %s
-`, firstLine, idToCompare, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out)
 
-					assert.Contains(suite.T(), firstLine, idToCompare, errorMessage)
+Seen Ids:
+%s
+
+Compare Ids:
+%s
+
+					`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))
+
+					if sortFlags.sortFlag == string(ColumnID) {
+						assert.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
+					} else if sortFlags.sortFlag == createdAtSortFlag {
+						// check the first and last are correct
+						// the middles all have the same created time so we ignore those
+						assert.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
+					}
 				}
 			}
 		}

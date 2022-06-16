@@ -70,6 +70,15 @@ func (c *ColumnEnum) Set(v string) error {
 	}
 }
 
+func getIds(arr []*types.Job) []string {
+	ids := []string{}
+
+	for _, job := range arr {
+		ids = append(ids, shortId(job.Id))
+	}
+	return ids
+}
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
@@ -78,7 +87,6 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
 		if listOutputFormat == "json" {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
@@ -113,41 +121,42 @@ var listCmd = &cobra.Command{
 
 		t.SetColumnConfigs(columnConfig)
 
-		// Create an external structure to order the print out of the jobs map
-		keysToSort := make([]string, 0, len(jobs))
-		mappedJobs := make(map[string]*types.Job, len(jobs))
+		jobArray := []*types.Job{}
+		for _, job := range jobs {
+			jobArray = append(jobArray, job)
+		}
 
 		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
 		log.Debug().Msgf("Table filter flag set to: %s", tableIdFilter)
+		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
 
-		for jobSpec, job := range jobs {
-			var k string
-			shortID := shortId(job.Id)
-
+		sort.Slice(jobArray, func(i, j int) bool {
 			switch tableSortBy {
 			case ColumnID:
-				k = shortID
+				return shortId(jobArray[i].Id) < shortId(jobArray[j].Id)
 			case ColumnCreatedAt:
-				k = job.CreatedAt.Format(time.RFC3339)
+				return jobArray[i].CreatedAt.Format(time.RFC3339) < jobArray[j].CreatedAt.Format(time.RFC3339)
 			default:
-				k = jobSpec // The existing sort
+				return false
 			}
-			if tableIdFilter == "" || strings.Contains(shortID, tableIdFilter) {
-				keysToSort = append(keysToSort, k)
-			}
-			mappedJobs[k] = job
-		}
-		sort.Strings(keysToSort)
-		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
+		})
+
 		if tableSortReverse {
-			keysToSort = ReverseList(keysToSort)
+			jobIds := []string{}
+			for _, job := range jobArray {
+				jobIds = append(jobIds, job.Id)
+			}
+			jobIds = ReverseList(jobIds)
+			jobArray = []*types.Job{}
+			for _, id := range jobIds {
+				jobArray = append(jobArray, jobs[id])
+			}
 		}
 
-		numberInTable := Min(tableMaxJobs, len(keysToSort))
-
+		numberInTable := Min(tableMaxJobs, len(jobArray))
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
-		for _, key := range keysToSort[0:numberInTable] {
-			job := mappedJobs[key]
+
+		for _, job := range jobArray[0:numberInTable] {
 			jobDesc := []string{
 				job.Spec.Engine,
 			}
