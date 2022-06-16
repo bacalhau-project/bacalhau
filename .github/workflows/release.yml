@@ -149,7 +149,7 @@ jobs:
           echo $MACOS_CERTIFICATE > /tmp/macos_certificate
           base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
           # create the keychain
-          security delete-keychain build.keychain || true
+          # security delete-keychain build.keychain || true
           security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
@@ -158,11 +158,6 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
           
       - name: Use gon to sign
-        if: matrix.target_os == 'darwin'
-        run: |
-          gon /tmp/.gon.json
-
-      - name: Cleanup keychain
         if: matrix.target_os == 'darwin'
         run: |
           gon /tmp/.gon.json
@@ -185,10 +180,11 @@ jobs:
           body_path: CHANGELOG.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Cleanup Keychain
-        run: |
-          rm -f /tmp/macos_certificate
-          rm -f /tmp/certificate.p12
-          security delete-keychain build.keychain
+
+      # - name: Cleanup Keychain
+      #   run: |
+      #     rm -f /tmp/macos_certificate
+      #     rm -f /tmp/certificate.p12
+      #     security delete-keychain build.keychain
 
 
