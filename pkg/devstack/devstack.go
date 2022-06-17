@@ -41,8 +41,13 @@ type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 	map[string]verifier.Verifier, error)
 
-func NewDevStack(cm *system.CleanupManager, count, badActors int,
-	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
+func NewDevStack(
+	cm *system.CleanupManager,
+	count, badActors int,
+	getExecutors GetExecutorsFunc,
+	getVerifiers GetVerifiersFunc,
+	jobSelectionPolicy compute_node.JobSelectionPolicy,
+) (
 	*DevStack, error) {
 
 	ctx := context.Background() // TODO: instrument
@@ -114,7 +119,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			transport,
 			executors,
 			verifiers,
-			compute_node.NewDefaultJobSelectionPolicy(),
+			jobSelectionPolicy,
 		)
 		if err != nil {
 			return nil, err
@@ -332,6 +337,8 @@ func (stack *DevStack) WaitForJob(
 				}
 				foundStates[state] = foundStates[state] + 1
 			}
+
+			log.Trace().Msgf("job %s states: %+v", jobId, states)
 
 			// now compare the found states to the expected states
 			for expectedState, expectedCount := range expectedStates {

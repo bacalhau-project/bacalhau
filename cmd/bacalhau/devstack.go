@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -63,6 +64,7 @@ var devstackCmd = &cobra.Command{
 			devStackBadActors,
 			getExecutors,
 			getVerifiers,
+			compute_node.NewDefaultJobSelectionPolicy(),
 		)
 		if err != nil {
 			return err

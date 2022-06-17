@@ -50,7 +50,8 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 	defer transport.Mutex.Unlock()
 
 	// let's initialise the state for this job because it was just created
-	if event.EventName == system.JOB_EVENT_CREATED {
+
+	if _, ok := transport.Jobs[event.JobId]; !ok {
 		transport.Jobs[event.JobId] = &types.Job{
 			Id:    event.JobId,
 			Owner: event.NodeId,
@@ -58,7 +59,6 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 			Deal:  nil,
 			State: make(map[string]*types.JobState),
 		}
-
 	}
 
 	// for "create" and "update" events - this will be filled in
