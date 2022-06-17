@@ -12,7 +12,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -139,16 +138,16 @@ func TestTransportEvents(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(time.Second * 1)
 
-	expectedEventNames := []string{
-		system.JOB_EVENT_CREATED,
-		system.JOB_EVENT_BID,
-		system.JOB_EVENT_BID_ACCEPTED,
-		system.JOB_EVENT_RESULTS,
+	expectedEventNames := []types.JobEventType{
+		types.JOB_EVENT_CREATED,
+		types.JOB_EVENT_BID,
+		types.JOB_EVENT_BID_ACCEPTED,
+		types.JOB_EVENT_RESULTS,
 	}
 	actualEventNames := []string{}
 
 	for _, event := range transport.Events {
-		actualEventNames = append(actualEventNames, event.EventName)
+		actualEventNames = append(actualEventNames, string(event.EventName))
 	}
 
 	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")

@@ -77,9 +77,9 @@ type JobSpec struct {
 
 // keep track of job states on a particular node
 type JobState struct {
-	State     string `json:"state"`
-	Status    string `json:"status"`
-	ResultsId string `json:"results_id"`
+	State     JobStateType `json:"state"`
+	Status    string       `json:"status"`
+	ResultsId string       `json:"results_id"`
 }
 
 // omly the client can update this as it's the client that will
@@ -108,9 +108,9 @@ type Job struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobId     string `json:"job_id"`
-	NodeId    string `json:"node_id"`
-	EventName string
+	JobId     string       `json:"job_id"`
+	NodeId    string       `json:"node_id"`
+	EventName JobEventType `json:"event_name"`
 	// this is only defined in "create" events
 	JobSpec *JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events

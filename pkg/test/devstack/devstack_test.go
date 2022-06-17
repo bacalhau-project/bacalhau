@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -34,6 +34,9 @@ func devStackDockerStorageTest(
 	)
 	defer TeardownTest(stack, cm)
 
+	nodeIds, err := stack.GetNodeIds()
+	assert.NoError(t, err)
+
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
@@ -55,12 +58,14 @@ func devStackDockerStorageTest(
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(submittedJob.Id, map[string]int{
-		system.JOB_STATE_COMPLETE: nodeCount,
-	}, []string{
-		system.JOB_STATE_BID_REJECTED,
-		system.JOB_STATE_ERROR,
-	})
+	err = stack.WaitForJob(submittedJob.Id, 
+		devstack.WaitForJobThrowErrors([]types.JobStateType{
+			types.JOB_STATE_BID_REJECTED,
+			types.JOB_STATE_ERROR,
+		}),
+		devstack.WaitForJobAllHaveState(nodeIds, types.JOB_STATE_COMPLETE),
+	)
+		
 	assert.NoError(t, err)
 
 	loadedJob, ok, err := apiClient.Get(submittedJob.Id)

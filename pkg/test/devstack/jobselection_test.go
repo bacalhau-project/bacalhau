@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -24,13 +24,15 @@ func TestSelectAllJobs(t *testing.T) {
 		nodeCount       int
 		addFilesCount   int
 		expectedAccepts int
-		expectedRejects int
 	}
 
 	runTest := func(testCase TestCase) {
 		scenario := scenario.CatFileToStdout(t)
 		stack, cm := SetupTest(t, testCase.nodeCount, 0, testCase.policy)
 		defer TeardownTest(stack, cm)
+
+		nodeIds, err := stack.GetNodeIds()
+		assert.NoError(t, err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFS_API_COPY, testCase.addFilesCount)
 		assert.NoError(t, err)
@@ -53,11 +55,19 @@ func TestSelectAllJobs(t *testing.T) {
 		assert.NoError(t, err)
 
 		// wait for the job to complete across all nodes
-		err = stack.WaitForJob(submittedJob.Id, map[string]int{
-			system.JOB_STATE_COMPLETE: testCase.expectedAccepts,
-		}, []string{
-			system.JOB_STATE_ERROR,
-		})
+		err = stack.WaitForJob(submittedJob.Id,
+			devstack.WaitForJobThrowErrors([]types.JobStateType{
+				types.JOB_STATE_BID_REJECTED,
+				types.JOB_STATE_ERROR,
+			}),
+			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], types.JOB_STATE_COMPLETE),
+		)
+
+		// map[string]int{
+		// 	system.JOB_STATE_COMPLETE: testCase.expectedAccepts,
+		// }, []string{
+		// 	system.JOB_STATE_ERROR,
+		// })
 		assert.NoError(t, err)
 	}
 
@@ -69,15 +79,24 @@ func TestSelectAllJobs(t *testing.T) {
 		// 	nodeCount:       3,
 		// 	addFilesCount:   3,
 		// 	expectedAccepts: 3,
-		// 	expectedRejects: 0,
 		// },
 
+		// // check we get only 2 when we've only added data to 2
+		// {
+		// 	policy:          compute_node.NewDefaultJobSelectionPolicy(),
+		// 	nodeCount:       3,
+		// 	addFilesCount:   2,
+		// 	expectedAccepts: 2,
+		// },
+
+		// check we run on all 3 nodes even though we only added data to 1
 		{
-			policy:          compute_node.NewDefaultJobSelectionPolicy(),
+			policy: compute_node.JobSelectionPolicy{
+				Locality: compute_node.Anywhere,
+			},
 			nodeCount:       3,
-			addFilesCount:   2,
-			expectedAccepts: 2,
-			expectedRejects: 0,
+			addFilesCount:   1,
+			expectedAccepts: 3,
 		},
 	} {
 		runTest(testCase)

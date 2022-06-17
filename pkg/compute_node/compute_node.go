@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -46,7 +45,7 @@ func NewComputeNode(
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
-		case system.JOB_EVENT_CREATED:
+		case types.JOB_EVENT_CREATED:
 
 			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
 			// if job.Engine == "docker" && !system.IsDockerRunning() {
@@ -83,7 +82,7 @@ func NewComputeNode(
 			}
 
 		// we have been given the goahead to run the job
-		case system.JOB_EVENT_BID_ACCEPTED:
+		case types.JOB_EVENT_BID_ACCEPTED:
 			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return

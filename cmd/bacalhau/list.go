@@ -85,7 +85,7 @@ var listCmd = &cobra.Command{
 							len(job.Spec.Outputs),
 							job.Deal.Concurrency,
 							shortId(node),
-							shortenString(jobState.State),
+							shortenString(string(jobState.State)),
 							shortenString(getJobResult(job, jobState)),
 						},
 					})
