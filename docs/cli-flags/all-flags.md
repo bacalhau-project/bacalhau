@@ -34,3 +34,17 @@ sidebar_position: 1
       --sort-by Column     sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
       --wide               Print full values in the table results
 ```
+
+### Serve
+
+```bash
+  -h, --help                                 help for serve
+      --host string                          The host to listen on (for both api and swarm connections). (default "0.0.0.0")
+      --ipfs-connect string                  The ipfs host multiaddress to connect to.
+      --job-selection-data-locality string   Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere"). (default "local")
+      --job-selection-probe-exec string      Use the result of a exec an external program to decide if we should take on the job.
+      --job-selection-probe-http string      Use the result of a HTTP POST to decide if we should take on the job.
+      --job-selection-reject-stateless       Reject jobs that don't specify any data.
+      --peer string                          The libp2p multiaddress to connect to.
+      --port int                             The port to listen on for swarm connections. (default 1235)
+```
