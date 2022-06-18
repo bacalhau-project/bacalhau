@@ -1,4 +1,7 @@
-variable "version" {
+variable "bacalhau_version" {
+    type = string
+}
+variable "ipfs_version" {
     type = string
 }
 variable "gcp_project" {
