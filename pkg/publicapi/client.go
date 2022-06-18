@@ -35,9 +35,9 @@ func NewAPIClient(baseURI string) *APIClient {
 	}
 }
 
-// Healthy calls the node's API server health check.
-func (apiClient *APIClient) Healthy(ctx context.Context) (bool, error) {
-	res, err := otelhttp.Get(ctx, apiClient.BaseURI+"/health")
+// Alive calls the node's API server health check.
+func (apiClient *APIClient) Alive() (bool, error) {
+	res, err := http.Get(apiClient.BaseURI + "/livez")
 	if err != nil {
 		return false, nil
 	}

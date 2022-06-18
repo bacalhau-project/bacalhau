@@ -52,12 +52,22 @@ func NewRequesterNode(
 			}
 
 			if bidAccepted {
+				logger.LogJobEvent(logger.JobEvent{
+					Node: nodeId,
+					Type: "requestor_node:bid_accepted",
+					Job:  job.Id,
+				})
 				// TODO: Check result of accept job bid
 				err = transport.AcceptJobBid(ctx, jobEvent.JobId, jobEvent.NodeId)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
 			} else {
+				logger.LogJobEvent(logger.JobEvent{
+					Node: nodeId,
+					Type: "requestor_node:bid_rejected",
+					Job:  job.Id,
+				})
 				// TODO: Check result of reject job bid
 				err = transport.RejectJobBid(ctx, jobEvent.JobId, jobEvent.NodeId, message)
 				if err != nil {

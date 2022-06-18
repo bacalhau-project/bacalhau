@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -52,11 +53,12 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 	// let's initialise the state for this job because it was just created
 	if event.EventName == system.JOB_EVENT_CREATED {
 		transport.Jobs[event.JobId] = &types.Job{
-			Id:    event.JobId,
-			Owner: event.NodeId,
-			Spec:  nil,
-			Deal:  nil,
-			State: make(map[string]*types.JobState),
+			Id:        event.JobId,
+			Owner:     event.NodeId,
+			Spec:      nil,
+			Deal:      nil,
+			State:     make(map[string]*types.JobState),
+			CreatedAt: time.Now(),
 		}
 
 	}
@@ -148,16 +150,18 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 		EventName: system.JOB_EVENT_CREATED,
 		JobSpec:   spec,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
 	return &types.Job{
-		Id:    jobID,
-		Spec:  spec,
-		Deal:  deal,
-		State: make(map[string]*types.JobState),
+		Id:        jobID,
+		Spec:      spec,
+		Deal:      deal,
+		State:     make(map[string]*types.JobState),
+		CreatedAt: time.Now(),
 	}, nil
 }
 
@@ -168,6 +172,7 @@ func (transport *GenericTransport) UpdateDeal(ctx context.Context,
 		JobId:     jobID,
 		EventName: system.JOB_EVENT_DEAL_UPDATED,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
 }
 
@@ -193,6 +198,7 @@ func (transport *GenericTransport) AcceptJobBid(ctx context.Context,
 		JobState: &types.JobState{
 			State: system.JOB_STATE_RUNNING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -211,6 +217,7 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 			State:  system.JOB_STATE_BID_REJECTED,
 			Status: message,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -227,6 +234,7 @@ func (transport *GenericTransport) BidJob(ctx context.Context,
 		JobState: &types.JobState{
 			State: system.JOB_STATE_BIDDING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -241,6 +249,7 @@ func (transport *GenericTransport) SubmitResult(ctx context.Context,
 			Status:    status,
 			ResultsId: resultsID,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -254,6 +263,7 @@ func (transport *GenericTransport) ErrorJob(ctx context.Context,
 			State:  system.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -273,6 +283,7 @@ func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 			State:  system.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
 

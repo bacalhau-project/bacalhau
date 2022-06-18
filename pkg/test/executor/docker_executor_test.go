@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
@@ -68,6 +69,7 @@ func dockerExecutorStorageTest(
 				Concurrency:   TEST_NODE_COUNT,
 				AssignedNodes: []string{},
 			},
+			CreatedAt: time.Now(),
 		}
 
 		resultsDirectory, err := dockerExecutor.RunJob(ctx, job)

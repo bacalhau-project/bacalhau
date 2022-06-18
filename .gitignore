@@ -24,6 +24,7 @@ temperature_sensor_data.csv.bz2
 .ipynb_checkpoints
 __debug_bin
 .terraform/*
+ops/terraform/.terraform.lock.hcl
+ops/terraform/.terraform/*
 terraform.tfstate*
-trace.out
-trace_otel.out
+.terraform.lock.hcl

@@ -21,8 +21,7 @@ func TestGet(t *testing.T) {
 	var err error
 	var job *types.Job
 	for i := 0; i < 5; i++ {
-		spec, deal := makeJob()
-		job, err = c.Submit(ctx, spec, deal)
+		job, err = c.Submit(ctx, MakeGenericJob())
 		assert.NoError(t, err)
 	}
 
