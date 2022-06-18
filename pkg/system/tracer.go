@@ -33,8 +33,8 @@ func init() {
 	if err != nil {
 
 		// don't error here because for CLI users they get a red message
-		log.Info().Msgf("error initialising http tracer: %v", err)
-		log.Info().Msg("failed to initialise http tracer, falling back to debug tracer")
+		log.Debug().Msgf("error initialising http tracer: %v", err)
+		log.Debug().Msg("failed to initialise http tracer, falling back to debug tracer")
 
 		tp, cleanup, err = loggerProvider()
 		if err != nil {
