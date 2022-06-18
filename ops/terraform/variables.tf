@@ -1,3 +1,6 @@
+variable "version" {
+    type = string
+}
 variable "gcp_project" {
     type = string
 }

@@ -3,6 +3,7 @@ package transport_test
 import (
 	"context"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -138,17 +139,20 @@ func TestTransportEvents(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(time.Second * 1)
 
-	expectedEventNames := []types.JobEventType{
-		types.JOB_EVENT_CREATED,
-		types.JOB_EVENT_BID,
-		types.JOB_EVENT_BID_ACCEPTED,
-		types.JOB_EVENT_RESULTS,
+	expectedEventNames := []string{
+		string(types.JOB_EVENT_CREATED),
+		string(types.JOB_EVENT_BID),
+		string(types.JOB_EVENT_BID_ACCEPTED),
+		string(types.JOB_EVENT_RESULTS),
 	}
 	actualEventNames := []string{}
 
 	for _, event := range transport.Events {
 		actualEventNames = append(actualEventNames, string(event.EventName))
 	}
+
+	sort.Strings(expectedEventNames)
+	sort.Strings(actualEventNames)
 
 	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }
