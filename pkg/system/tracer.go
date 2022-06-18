@@ -31,8 +31,10 @@ var CleanupTracer cleanupFn
 func init() {
 	tp, cleanup, err := hcProvider()
 	if err != nil {
-		log.Error().Msgf("error initialising http tracer: %v", err)
-		log.Warn().Msg("failed to initialise http tracer, falling back to debug tracer")
+
+		// don't error here because for CLI users they get a red message
+		log.Info().Msgf("error initialising http tracer: %v", err)
+		log.Info().Msg("failed to initialise http tracer, falling back to debug tracer")
 
 		tp, cleanup, err = loggerProvider()
 		if err != nil {
