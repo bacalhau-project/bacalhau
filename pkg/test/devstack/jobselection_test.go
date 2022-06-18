@@ -20,6 +20,7 @@ import (
 func TestSelectAllJobs(t *testing.T) {
 
 	type TestCase struct {
+		name            string
 		policy          compute_node.JobSelectionPolicy
 		nodeCount       int
 		addFilesCount   int
@@ -27,6 +28,8 @@ func TestSelectAllJobs(t *testing.T) {
 	}
 
 	runTest := func(testCase TestCase) {
+		ctx, span := newSpan(testCase.name)
+		defer span.End()
 		scenario := scenario.CatFileToStdout(t)
 		stack, cm := SetupTest(t, testCase.nodeCount, 0, testCase.policy)
 		defer TeardownTest(stack, cm)
@@ -51,11 +54,11 @@ func TestSelectAllJobs(t *testing.T) {
 
 		apiUri := stack.Nodes[0].ApiServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
-		submittedJob, err := apiClient.Submit(jobSpec, jobDeal)
+		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
 		assert.NoError(t, err)
 
 		// wait for the job to complete across all nodes
-		err = stack.WaitForJob(submittedJob.Id,
+		err = stack.WaitForJob(ctx, submittedJob.Id,
 			devstack.WaitForJobThrowErrors([]types.JobStateType{
 				types.JOB_STATE_BID_REJECTED,
 				types.JOB_STATE_ERROR,
@@ -75,6 +78,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		// the default policy with all files added should end up with all jobs accepted
 		// {
+		//  name: "all nodes added files, all nodes ran job",
 		// 	policy:          compute_node.NewDefaultJobSelectionPolicy(),
 		// 	nodeCount:       3,
 		// 	addFilesCount:   3,
@@ -83,6 +87,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		// // check we get only 2 when we've only added data to 2
 		// {
+		//  name: "only nodes we added data to ran the job",
 		// 	policy:          compute_node.NewDefaultJobSelectionPolicy(),
 		// 	nodeCount:       3,
 		// 	addFilesCount:   2,
@@ -91,6 +96,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		// check we run on all 3 nodes even though we only added data to 1
 		{
+			name: "only added files to 1 node but all 3 run it",
 			policy: compute_node.JobSelectionPolicy{
 				Locality: compute_node.Anywhere,
 			},

@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var STORAGE_DRIVER_NAMES = []string{
@@ -55,4 +57,8 @@ func SetupTest(
 func TeardownTest(stack *devstack.DevStack, cm *system.CleanupManager) {
 	stack.PrintNodeInfo()
 	cm.Cleanup()
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack_test", name)
 }

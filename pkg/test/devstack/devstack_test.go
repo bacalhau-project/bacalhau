@@ -1,7 +1,6 @@
 package devstack
 
 import (
-	"context"
 	"io/ioutil"
 	"testing"
 
@@ -12,12 +11,10 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -130,8 +127,4 @@ func TestAwkFile(t *testing.T) {
 		scenario.AwkFile(t),
 		3,
 	)
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "devstack_test", name)
 }
