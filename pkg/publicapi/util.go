@@ -21,7 +21,7 @@ import (
 )
 
 // SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) *APIClient {
+func SetupTests(t *testing.T) (context.Context, *APIClient) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
@@ -41,7 +41,7 @@ func SetupTests(t *testing.T) *APIClient {
 	}()
 	assert.NoError(t, waitForHealthy(c))
 
-	return NewAPIClient(s.GetURI())
+	return ctx, NewAPIClient(s.GetURI())
 }
 
 func waitForHealthy(c *APIClient) error {

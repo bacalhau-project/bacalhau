@@ -1,7 +1,6 @@
 package publicapi
 
 import (
-	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -10,18 +9,18 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	c := SetupTests(t)
+	ctx, c := SetupTests(t)
 	defer system.CleanupTracer()
 
-	ctx, span := system.Span(context.Background(), "publicapi/client_test",
-		"TestGet")
+	ctx, span := system.Span(ctx, "publicapi/client_test", "TestGet")
 	defer span.End()
 
 	// Submit a few random jobs to the node:
 	var err error
 	var job *types.Job
 	for i := 0; i < 5; i++ {
-		job, err = c.Submit(ctx, MakeGenericJob())
+		spec, deal := MakeGenericJob()
+		job, err = c.Submit(ctx, spec, deal)
 		assert.NoError(t, err)
 	}
 

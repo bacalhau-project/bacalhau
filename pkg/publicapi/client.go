@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -37,7 +36,7 @@ func NewAPIClient(baseURI string) *APIClient {
 
 // Alive calls the node's API server health check.
 func (apiClient *APIClient) Alive() (bool, error) {
-	res, err := http.Get(apiClient.BaseURI + "/livez")
+	res, err := apiClient.client.Get(apiClient.BaseURI + "/livez")
 	if err != nil {
 		return false, nil
 	}
