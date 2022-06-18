@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/google/uuid"
@@ -52,11 +53,12 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 
 	if _, ok := transport.Jobs[event.JobId]; !ok {
 		transport.Jobs[event.JobId] = &types.Job{
-			Id:    event.JobId,
-			Owner: event.NodeId,
-			Spec:  nil,
-			Deal:  nil,
-			State: make(map[string]*types.JobState),
+			Id:        event.JobId,
+			Owner:     event.NodeId,
+			Spec:      nil,
+			Deal:      nil,
+			State:     make(map[string]*types.JobState),
+			CreatedAt: time.Now(),
 		}
 	}
 
@@ -138,9 +140,8 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
+		return nil, fmt.Errorf("error creating job id: %w", err)
 	}
-
 	jobID := jobUuid.String()
 
 	err = transport.writeEvent(ctx, &types.JobEvent{
@@ -148,20 +149,19 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 		EventName: types.JOB_EVENT_CREATED,
 		JobSpec:   spec,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
-	job := &types.Job{
-		Id:    jobID,
-		Spec:  spec,
-		Deal:  deal,
-		State: make(map[string]*types.JobState),
-	}
-
-	return job, nil
+	return &types.Job{
+		Id:        jobID,
+		Spec:      spec,
+		Deal:      deal,
+		State:     make(map[string]*types.JobState),
+		CreatedAt: time.Now(),
+	}, nil
 }
 
 func (transport *GenericTransport) UpdateDeal(ctx context.Context,
@@ -171,6 +171,7 @@ func (transport *GenericTransport) UpdateDeal(ctx context.Context,
 		JobId:     jobID,
 		EventName: types.JOB_EVENT_DEAL_UPDATED,
 		JobDeal:   deal,
+		EventTime: time.Now(),
 	})
 }
 
@@ -196,6 +197,7 @@ func (transport *GenericTransport) AcceptJobBid(ctx context.Context,
 		JobState: &types.JobState{
 			State: types.JOB_STATE_RUNNING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -214,6 +216,7 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 			State:  types.JOB_STATE_BID_REJECTED,
 			Status: message,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -230,6 +233,7 @@ func (transport *GenericTransport) BidJob(ctx context.Context,
 		JobState: &types.JobState{
 			State: types.JOB_STATE_BIDDING,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -244,6 +248,7 @@ func (transport *GenericTransport) SubmitResult(ctx context.Context,
 			Status:    status,
 			ResultsId: resultsID,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -257,6 +262,7 @@ func (transport *GenericTransport) ErrorJob(ctx context.Context,
 			State:  types.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
 
@@ -276,6 +282,7 @@ func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 			State:  types.JOB_STATE_ERROR,
 			Status: status,
 		},
+		EventTime: time.Now(),
 	})
 }
 

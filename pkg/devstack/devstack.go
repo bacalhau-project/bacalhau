@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackNode struct {
@@ -51,7 +52,9 @@ func NewDevStack(
 ) (
 	*DevStack, error) {
 
-	ctx := context.Background() // TODO: instrument
+	ctx, span := newSpan("NewDevStack")
+	defer span.End()
+
 	nodes := []*DevStackNode{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -139,7 +142,7 @@ func NewDevStack(
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(ctx)
+		}(context.Background())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -147,11 +150,11 @@ func NewDevStack(
 		// intra-connections
 		//////////////////////////////////////
 
-		go func() {
+		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, devstack should stop
 			}
-		}()
+		}(context.Background())
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -286,10 +289,10 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }
 
-func (stack *DevStack) GetJobStates(jobId string) (map[string]types.JobStateType, error) {
+func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[string]types.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
 
-	job, ok, err := apiClient.Get(jobId)
+	job, ok, err := apiClient.Get(ctx, jobId)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"devstack: error fetching job %s: %v", jobId, err)
@@ -347,21 +350,17 @@ func WaitForJobAllHaveState(nodeIds []string, state types.JobStateType) CheckJob
 }
 
 func (stack *DevStack) WaitForJob(
+	ctx context.Context,
 	jobId string,
 	checkJobStateFunctions ...CheckJobStatesFunction,
-	// // a map of job states onto the number of those states we expect to see
-	// expectedStates map[string]int,
-	// // a list of states that if any job gets into is an immediate error
-	// errorStates []string,
 ) error {
-
 	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
 		MaxAttempts: 100,
 		Delay:       time.Second * 1,
 		Handler: func() (bool, error) {
 			// load the current states of the job
-			states, err := stack.GetJobStates(jobId)
+			states, err := stack.GetJobStates(ctx, jobId)
 			if err != nil {
 				return false, err
 			}
@@ -382,11 +381,11 @@ func (stack *DevStack) WaitForJob(
 	return waiter.Wait()
 }
 
-func (stack *DevStack) GetNode(
-	nodeId string,
-) (*DevStackNode, error) {
+func (stack *DevStack) GetNode(ctx context.Context, nodeId string) (
+	*DevStackNode, error) {
+
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(context.Background())
+		id, err := node.Transport.HostID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -422,4 +421,8 @@ func (stack *DevStack) GetShortIds() ([]string, error) {
 		shortids = append(shortids, system.ShortId(id))
 	}
 	return shortids, nil
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack", name)
 }

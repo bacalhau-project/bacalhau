@@ -121,7 +121,7 @@ jobs:
         if: matrix.target_os == 'darwin'
         run: |-
           sh -c '
-          cat > /tmp/.gon.json << EOF
+          cat > $RUNNER_TEMP/.gon.json << EOF
           {
               "source": ["./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau"],
               "bundle_id": "org.bacalhau",
@@ -136,34 +136,44 @@ jobs:
           EOF
           '
 
-      # ONLY DEBUGS WITH DARWIN (for now)
+      # ONLY DEBUGS WITH DARWIN (for now) - does not install on M1
       - name: Debugging with tmate
         uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' && matrix.runner != 'M1'}}
+        with:
+          install-dependencies: false
 
-      # Skipping keychain creation on the self-hosted runner - if we change the cert, we should change this.
-      # Also, this isn't ideal - THEORETICALLY, we should still create the keychain, and cert (but the self hosted runner leaves to much stuff around)
+      # ONLY DEBUGS WITH DARWIN (for now) - installs on non-M1
+      - name: Debugging with tmate
+        uses: mxschmitt/action-tmate@v3.11
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin'}}
+
       - name: Codesign create keychain
-        if: ${{ matrix.runner != 'M1' && matrix.target_os == 'darwin' }}
+        if: ${{ matrix.target_os == 'darwin' }}
         run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+
+          [ -f "$RUNNER_TEMP/app-signing.keychain-db"] && security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 
+
           # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
           # Doesn't seem like this would be an issue.
-          echo $MACOS_CERTIFICATE > /tmp/macos_certificate
-          base64 -i /tmp/macos_certificate --decode > /tmp/certificate.p12
-          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
-          security default-keychain -s build.keychain
+          echo -n "$MACOS_CERTIFICATE" | base64 --decode --output $CERTIFICATE_PATH
 
-      - name: Codesign set-key
-        if: matrix.target_os == 'darwin'
-        run: |
-          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
-          security import /tmp/certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
+          # create temporary keychain
+          security create-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
+
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD $KEYCHAIN_PATH
 
       - name: Use gon to sign
         if: matrix.target_os == 'darwin'
         run: |
-          gon /tmp/.gon.json
+          gon $RUNNER_TEMP/.gon.json
 
       - name: Build tarball
         run: |
@@ -183,3 +193,8 @@ jobs:
           body_path: CHANGELOG.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up keychain and provisioning profile
+        if: matrix.target_os == 'darwin'
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db

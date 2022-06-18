@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs ipfs in a container
@@ -78,6 +79,9 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 }
 
 func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+	ctx, span := newSpan(ctx, "IsInstalled")
+	defer span.End()
+
 	addresses, err := sp.IPFSClient.GetLocalAddrs(ctx)
 	if err != nil {
 		return false, err
@@ -92,6 +96,9 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 func (sp *StorageProvider) HasStorage(ctx context.Context,
 	volume types.StorageSpec) (bool, error) {
 
+	ctx, span := newSpan(ctx, "HasStorage")
+	defer span.End()
+
 	return sp.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
@@ -102,6 +109,9 @@ func (sp *StorageProvider) HasStorage(ctx context.Context,
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+
+	_, span := newSpan(ctx, "PrepareStorage")
+	defer span.End()
 
 	err := sp.ensureSidecar(storageSpec.Cid)
 	if err != nil {
@@ -126,6 +136,9 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
 	storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+
+	_, span := newSpan(ctx, "CleanupStorage")
+	defer span.End()
 
 	return nil
 }
@@ -432,6 +445,12 @@ func getMountDirFromContainer(container *dockertypes.Container) string {
 		}
 	}
 	return ""
+}
+
+func newSpan(ctx context.Context, apiName string) (
+	context.Context, trace.Span) {
+
+	return system.Span(ctx, "storage/ipfs/fuse_docker", apiName)
 }
 
 // Compile-time interface check:

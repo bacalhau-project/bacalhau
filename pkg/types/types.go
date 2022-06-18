@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // a representation of some data on a storage engine
 // this opens up jobs that could operate on different types
 // of storage at once
@@ -103,6 +105,7 @@ type Job struct {
 	Deal  *JobDeal `json:"deal"`
 	// a map of nodeId -> state of the job on that node
 	State map[string]*JobState `json:"state"`
+	CreatedAt	time.Time	`json:"created_at"`
 }
 
 // we emit these to other nodes so they update their
@@ -117,10 +120,34 @@ type JobEvent struct {
 	JobDeal *JobDeal `json:"job_deal"`
 	// most other events are a case of a client<->node state change
 	JobState *JobState `json:"job_state"`
+	EventTime	time.Time	`json:"event_time"`
 }
 
 type ResultsList struct {
 	Node   string `json:"node"`
 	Cid    string `json:"cid"`
 	Folder string `json:"folder"`
+}
+
+// Struct to report from the healthz endpoint
+type HealthInfo struct {
+	DiskFreeSpace FreeSpace `json:"FreeSpace"`
+}
+
+type FreeSpace struct {
+	IPFSMount MountStatus `json:"IPFSMount"`
+	TMP       MountStatus `json:"tmp"`
+	ROOT      MountStatus `json:"root"`
+}
+
+// Creating structure for DiskStatus
+type MountStatus struct {
+	All  uint64 `json:"All"`
+	Used uint64 `json:"Used"`
+	Free uint64 `json:"Free"`
+}
+
+// Struct to report for VarZ
+type VarZ struct {
+	// TODO: #241 Fill in with varz to report
 }

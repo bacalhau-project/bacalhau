@@ -11,13 +11,11 @@ import (
 var wg sync.WaitGroup
 
 func Logger_Exp() {
-	logger.Initialize()
-
-	num_of_threads := 3
+	numOfThreads := 3
 	fmt.Println("Running for loop…")
 
-	wg.Add(num_of_threads)
-	for i := 0; i < num_of_threads; i++ {
+	wg.Add(numOfThreads)
+	for i := 0; i < numOfThreads; i++ {
 		fmt.Printf("Inside for loop... %d\n", i)
 		go func(i int) {
 			defer wg.Done()
