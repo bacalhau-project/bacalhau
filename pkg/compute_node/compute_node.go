@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -15,16 +14,18 @@ import (
 )
 
 type ComputeNode struct {
-	Mutex     sync.Mutex
-	Transport transport.Transport
-	Executors map[string]executor.Executor
-	Verifiers map[string]verifier.Verifier
+	Mutex              sync.Mutex
+	Transport          transport.Transport
+	Executors          map[string]executor.Executor
+	Verifiers          map[string]verifier.Verifier
+	JobSelectionPolicy JobSelectionPolicy
 }
 
 func NewComputeNode(
 	transport transport.Transport,
 	executors map[string]executor.Executor,
 	verifiers map[string]verifier.Verifier,
+	jobSelectionPolicy JobSelectionPolicy,
 ) (*ComputeNode, error) {
 	ctx := context.Background() // TODO: instrument
 	nodeId, err := transport.HostID(ctx)
@@ -34,16 +35,18 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		Transport: transport,
-		Verifiers: verifiers,
-		Executors: executors,
+		Transport:          transport,
+		Verifiers:          verifiers,
+		Executors:          executors,
+		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
 	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
+
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
-		case system.JOB_EVENT_CREATED:
+		case types.JOB_EVENT_CREATED:
 
 			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
 			// if job.Engine == "docker" && !system.IsDockerRunning() {
@@ -52,7 +55,12 @@ func NewComputeNode(
 			// 	return false, err
 			// }
 
-			shouldRun, err := computeNode.SelectJob(ctx, jobEvent.JobSpec)
+			shouldRun, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
+				NodeId: nodeId,
+				JobId:  jobEvent.JobId,
+				Spec:   jobEvent.JobSpec,
+			})
+
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return
@@ -76,7 +84,7 @@ func NewComputeNode(
 			}
 
 		// we have been given the goahead to run the job
-		case system.JOB_EVENT_BID_ACCEPTED:
+		case types.JOB_EVENT_BID_ACCEPTED:
 			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return
@@ -144,48 +152,29 @@ func NewComputeNode(
 // that will decide if it's worth doing the job or not
 // for now - the rule is "do we have all the input CIDS"
 // TODO: allow user probes (http / exec) to be used to decide if we should run the job
-func (node *ComputeNode) SelectJob(ctx context.Context,
-	job *types.JobSpec) (bool, error) {
+func (node *ComputeNode) SelectJob(
+	ctx context.Context,
+	data JobSelectionPolicyProbeData,
+) (bool, error) {
 
 	// check that we have the executor and it's installed
-	executor, err := node.getExecutor(ctx, job.Engine)
+	executor, err := node.getExecutor(ctx, data.Spec.Engine)
 	if err != nil {
 		return false, err
 	}
 
 	// check that we have the verifier and it's installed
-	_, err = node.getVerifier(ctx, job.Verifier)
+	_, err = node.getVerifier(ctx, data.Spec.Verifier)
 	if err != nil {
 		return false, err
 	}
 
-	// Accept jobs where there are no cids specified
-	if len(job.Inputs) == 0 {
-		return true, nil
-	}
-
-	// the inputs we have decided we have
-	foundInputs := 0
-
-	for _, input := range job.Inputs {
-		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := executor.HasStorage(ctx, input)
-		if err != nil {
-			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
-			return false, err
-		}
-		if hasStorage {
-			foundInputs++
-		}
-	}
-
-	if foundInputs >= len(job.Inputs) {
-		log.Info().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
-		return true, nil
-	} else {
-		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
-		return false, nil
-	}
+	return ApplyJobSelectionPolicy(
+		ctx,
+		node.JobSelectionPolicy,
+		executor,
+		data,
+	)
 }
 
 func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (

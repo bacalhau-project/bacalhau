@@ -33,7 +33,9 @@ func (cm *CleanupManager) Cleanup() {
 			defer cm.wg.Done()
 
 			if err := fn(); err != nil {
-				log.Error().Msgf("Error during clean-up callback: %v", err)
+				if err.Error() != "context canceled" {
+					log.Error().Msgf("Error during clean-up callback: %v", err)
+				}
 			}
 		}(cm.fns[i])
 	}

@@ -19,6 +19,10 @@ var peerConnect string
 var ipfsConnect string
 var hostAddress string
 var hostPort int
+var jobSelectionDataLocality string
+var jobSelectionDataRejectStateless bool
+var jobSelectionProbeHttp string
+var jobSelectionProbeExec string
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -43,6 +47,22 @@ func init() {
 		&hostPort, "port", 1235,
 		`The port to listen on for swarm connections.`,
 	)
+	serveCmd.PersistentFlags().StringVar(
+		&jobSelectionDataLocality, "job-selection-data-locality", "local",
+		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
+	)
+	serveCmd.PersistentFlags().BoolVar(
+		&jobSelectionDataRejectStateless, "job-selection-reject-stateless", false,
+		`Reject jobs that don't specify any data.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&jobSelectionProbeHttp, "job-selection-probe-http", "",
+		`Use the result of a HTTP POST to decide if we should take on the job.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&jobSelectionProbeExec, "job-selection-probe-exec", "",
+		`Use the result of a exec an external program to decide if we should take on the job.`,
+	)
 }
 
 var serveCmd = &cobra.Command{
@@ -51,6 +71,10 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if ipfsConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
+		}
+
+		if jobSelectionDataLocality != "local" && jobSelectionDataLocality != "anywhere" {
+			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
 
 		// Cleanup manager ensures that resources are freed before exiting:
@@ -79,7 +103,26 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+		// construct the job selection policy from the CLI args
+		typedJobSelectionDataLocality := compute_node.Local
+
+		if jobSelectionDataLocality == "anywhere" {
+			typedJobSelectionDataLocality = compute_node.Anywhere
+		}
+
+		jobSelectionPolicy := compute_node.JobSelectionPolicy{
+			Locality:            typedJobSelectionDataLocality,
+			RejectStatelessJobs: jobSelectionDataRejectStateless,
+			ProbeHttp:           jobSelectionProbeHttp,
+			ProbeExec:           jobSelectionProbeExec,
+		}
+
+		_, err = compute_node.NewComputeNode(
+			transport,
+			executors,
+			verifiers,
+			jobSelectionPolicy,
+		)
 		if err != nil {
 			return err
 		}

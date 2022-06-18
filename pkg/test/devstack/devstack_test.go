@@ -2,13 +2,12 @@ package devstack
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -17,47 +16,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/trace"
 )
 
-var STORAGE_DRIVER_NAMES = []string{
-	storage.IPFS_FUSE_DOCKER,
-	storage.IPFS_API_COPY,
-}
-
-func SetupTest(t *testing.T, nodes int, badActors int) (
-	*devstack.DevStack, *system.CleanupManager) {
-
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
-	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
-		map[string]executor.Executor, error) {
-
-		return executor_util.NewDockerIPFSExecutors(
-			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
-	}
-	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
-		map[string]verifier.Verifier, error) {
-
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
-	}
-	stack, err := devstack.NewDevStack(
-		cm,
-		nodes,
-		badActors,
-		getExecutors,
-		getVerifiers,
-	)
-	assert.NoError(t, err)
-
-	return stack, cm
-}
-
-func TeardownTest(stack *devstack.DevStack, cm *system.CleanupManager) {
-	stack.PrintNodeInfo()
-	cm.Cleanup()
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack_test", name)
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -69,12 +33,18 @@ func devStackDockerStorageTest(
 ) {
 	ctx, span := newSpan(testCase.Name)
 	defer span.End()
-
-	stack, cm := SetupTest(t, nodeCount, 0)
+	stack, cm := SetupTest(
+		t,
+		nodeCount,
+		0,
+		compute_node.NewDefaultJobSelectionPolicy(),
+	)
 	defer TeardownTest(stack, cm)
 
-	inputStorageList, err := testCase.SetupStorage(stack,
-		storage.IPFS_API_COPY, nodeCount)
+	nodeIds, err := stack.GetNodeIds()
+	assert.NoError(t, err)
+
+	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
 	jobSpec := &types.JobSpec{
@@ -95,12 +65,14 @@ func devStackDockerStorageTest(
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, submittedJob.Id, map[string]int{
-		system.JOB_STATE_COMPLETE: nodeCount,
-	}, []string{
-		system.JOB_STATE_BID_REJECTED,
-		system.JOB_STATE_ERROR,
-	})
+	err = stack.WaitForJob(ctx, submittedJob.Id,
+		devstack.WaitForJobThrowErrors([]types.JobStateType{
+			types.JOB_STATE_BID_REJECTED,
+			types.JOB_STATE_ERROR,
+		}),
+		devstack.WaitForJobAllHaveState(nodeIds, types.JOB_STATE_COMPLETE),
+	)
+
 	assert.NoError(t, err)
 
 	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.Id)
@@ -162,8 +134,4 @@ func TestAwkFile(t *testing.T) {
 		scenario.AwkFile(t),
 		3,
 	)
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "devstack_test", name)
 }

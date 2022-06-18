@@ -1,3 +1,4 @@
+version = "v0.1.8"
 gcp_project = "bacalhau-production"
 instance_count = 3
 region = "us-east4"

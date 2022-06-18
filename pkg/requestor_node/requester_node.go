@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 )
@@ -42,7 +41,7 @@ func NewRequesterNode(
 		// let's decide if we want to accept it or not
 		// we would call out to the reputation system
 		// we also pay attention to the job deal concurrency setting
-		case system.JOB_EVENT_BID:
+		case types.JOB_EVENT_BID:
 
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 
