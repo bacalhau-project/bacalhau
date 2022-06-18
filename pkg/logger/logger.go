@@ -23,10 +23,6 @@ type JobEvent struct {
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
-func Initialize() {
-	// Needs no functionality, but need some function to create
-}
-
 func init() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))

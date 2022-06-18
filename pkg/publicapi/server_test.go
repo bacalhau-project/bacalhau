@@ -37,19 +37,20 @@ func (suite *ServerSuite) TearDownAllSuite() {
 }
 
 func (suite *ServerSuite) TestList() {
-	c := SetupTests(suite.T())
+	ctx, c := SetupTests(suite.T())
 
 	// Should have no jobs initially:
-	jobs, err := c.List()
+	jobs, err := c.List(ctx)
 	assert.NoError(suite.T(), err)
 	assert.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
-	_, err = c.Submit(MakeGenericJob())
+	spec, deal := MakeGenericJob()
+	_, err = c.Submit(ctx, spec, deal)
 	assert.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List()
+	jobs, err = c.List(ctx)
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), jobs, 1)
 }
@@ -101,8 +102,6 @@ func makeJob() (*types.JobSpec, *types.JobDeal) {
 				"/data/file.txt",
 			},
 		},
-		// Inputs:  inputStorageList,
-		// Outputs: testCase.Outputs,
 	}
 
 	jobDeal := types.JobDeal{
@@ -113,7 +112,7 @@ func makeJob() (*types.JobSpec, *types.JobDeal) {
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-	c := SetupTests(t)
+	_, c := SetupTests(t)
 
 	res, err := http.Get(c.BaseURI + endpoint)
 	assert.NoError(t, err, "Could not get %s endpoint.", endpoint)

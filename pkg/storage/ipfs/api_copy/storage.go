@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -46,6 +47,9 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 }
 
 func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+	ctx, span := newSpan(ctx, "IsInstalled")
+	defer span.End()
+
 	addresses, err := dockerIpfs.IPFSClient.GetLocalAddrs(ctx)
 	if err != nil {
 		return false, err
@@ -59,11 +63,17 @@ func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 func (dockerIpfs *StorageProvider) HasStorage(ctx context.Context,
 	volume types.StorageSpec) (bool, error) {
 
+	ctx, span := newSpan(ctx, "HasStorage")
+	defer span.End()
+
 	return dockerIpfs.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
 func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
 	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+
+	ctx, span := newSpan(ctx, "PrepareStorage")
+	defer span.End()
 
 	var statResult struct {
 		Hash string
@@ -109,6 +119,12 @@ func (dockerIpfs *StorageProvider) copyTarFile(ctx context.Context,
 	}
 
 	return volume, nil
+}
+
+func newSpan(ctx context.Context, apiName string) (
+	context.Context, trace.Span) {
+
+	return system.Span(ctx, "storage/ipfs/api_copy", apiName)
 }
 
 // Compile time interface check:

@@ -3,23 +3,29 @@ package publicapi
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGet(t *testing.T) {
-	c := SetupTests(t)
+	ctx, c := SetupTests(t)
+	defer system.CleanupTracer()
+
+	ctx, span := system.Span(ctx, "publicapi/client_test", "TestGet")
+	defer span.End()
 
 	// Submit a few random jobs to the node:
 	var err error
 	var job *types.Job
 	for i := 0; i < 5; i++ {
-		job, err = c.Submit(MakeGenericJob())
+		spec, deal := MakeGenericJob()
+		job, err = c.Submit(ctx, spec, deal)
 		assert.NoError(t, err)
 	}
 
 	// Should be able to look up one of them:
-	job2, ok, err := c.Get(job.Id)
+	job2, ok, err := c.Get(ctx, job.Id)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, job2.Id, job.Id)

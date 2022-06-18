@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Executor struct {
@@ -78,6 +79,9 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
 	bool, error) {
 
+	ctx, span := newSpan(ctx, "HasStorage")
+	defer span.End()
+
 	storage, err := e.getStorageProvider(ctx, volume.Engine)
 	if err != nil {
 		return false, err
@@ -88,6 +92,9 @@ func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
 
 func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 	string, error) {
+
+	ctx, span := newSpan(ctx, "RunJob")
+	defer span.End()
 
 	spec := job.Spec
 	if spec == nil {
@@ -324,5 +331,11 @@ func (e *Executor) ensureJobResultsDir(job *types.Job) (string, error) {
 	return dir, err
 }
 
-// Compile-time check that Executor implements the Executor interface.
+func newSpan(ctx context.Context, apiName string) (
+	context.Context, trace.Span) {
+
+	return system.Span(ctx, "executor/docker", apiName)
+}
+
+// Compile-time interface check:
 var _ executor.Executor = (*Executor)(nil)

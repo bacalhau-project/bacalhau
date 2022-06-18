@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackNode struct {
@@ -45,7 +46,9 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
 	*DevStack, error) {
 
-	ctx := context.Background() // TODO: instrument
+	ctx, span := newSpan("NewDevStack")
+	defer span.End()
+
 	nodes := []*DevStackNode{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -129,7 +132,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(ctx)
+		}(context.Background())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -137,11 +140,11 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		// intra-connections
 		//////////////////////////////////////
 
-		go func() {
+		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, devstack should stop
 			}
-		}()
+		}(context.Background())
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -276,10 +279,12 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }
 
-func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
+func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (
+	[]string, error) {
+
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
 
-	job, ok, err := apiClient.Get(jobId)
+	job, ok, err := apiClient.Get(ctx, jobId)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"devstack: error fetching job %s: %v", jobId, err)
@@ -296,13 +301,8 @@ func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
 	return states, nil
 }
 
-func (stack *DevStack) WaitForJob(
-	jobId string,
-	// a map of job states onto the number of those states we expect to see
-	expectedStates map[string]int,
-	// a list of states that if any job gets into is an immediate error
-	errorStates []string,
-) error {
+func (stack *DevStack) WaitForJob(ctx context.Context, jobId string,
+	expectedStates map[string]int, errorStates []string) error {
 
 	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
@@ -310,7 +310,7 @@ func (stack *DevStack) WaitForJob(
 		Delay:       time.Second * 1,
 		Handler: func() (bool, error) {
 			// load the current states of the job
-			states, err := stack.GetJobStates(jobId)
+			states, err := stack.GetJobStates(ctx, jobId)
 			if err != nil {
 				return false, err
 			}
@@ -349,27 +349,26 @@ func (stack *DevStack) WaitForJob(
 	return waiter.Wait()
 }
 
-func (stack *DevStack) WaitForJobWithError(
-	jobId string,
-	expectedStates map[string]int,
-) error {
-	return stack.WaitForJob(jobId, expectedStates, []string{system.JOB_STATE_ERROR})
+func (stack *DevStack) WaitForJobWithError(ctx context.Context, jobId string,
+	expectedStates map[string]int) error {
+
+	return stack.WaitForJob(ctx, jobId, expectedStates,
+		[]string{system.JOB_STATE_ERROR})
 }
 
-func (stack *DevStack) WaitForJobWithConcurrency(
-	jobId string,
-	concurrency int,
-) error {
+func (stack *DevStack) WaitForJobWithConcurrency(ctx context.Context,
+	jobId string, concurrency int) error {
+
 	expectedStates := map[string]int{}
 	expectedStates[system.JOB_STATE_COMPLETE] = concurrency
-	return stack.WaitForJobWithError(jobId, expectedStates)
+	return stack.WaitForJobWithError(ctx, jobId, expectedStates)
 }
 
-func (stack *DevStack) GetNode(
-	nodeId string,
-) (*DevStackNode, error) {
+func (stack *DevStack) GetNode(ctx context.Context, nodeId string) (
+	*DevStackNode, error) {
+
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(context.Background())
+		id, err := node.Transport.HostID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -380,4 +379,8 @@ func (stack *DevStack) GetNode(
 	}
 
 	return nil, fmt.Errorf("node not found: %s", nodeId)
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack", name)
 }

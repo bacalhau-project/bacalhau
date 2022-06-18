@@ -53,11 +53,11 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 	// let's initialise the state for this job because it was just created
 	if event.EventName == system.JOB_EVENT_CREATED {
 		transport.Jobs[event.JobId] = &types.Job{
-			Id:    event.JobId,
-			Owner: event.NodeId,
-			Spec:  nil,
-			Deal:  nil,
-			State: make(map[string]*types.JobState),
+			Id:        event.JobId,
+			Owner:     event.NodeId,
+			Spec:      nil,
+			Deal:      nil,
+			State:     make(map[string]*types.JobState),
 			CreatedAt: time.Now(),
 		}
 
@@ -141,9 +141,8 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
+		return nil, fmt.Errorf("error creating job id: %w", err)
 	}
-
 	jobID := jobUuid.String()
 
 	err = transport.writeEvent(ctx, &types.JobEvent{
@@ -153,20 +152,17 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
-	job := &types.Job{
-		Id:    jobID,
-		Spec:  spec,
-		Deal:  deal,
-		State: make(map[string]*types.JobState),
+	return &types.Job{
+		Id:        jobID,
+		Spec:      spec,
+		Deal:      deal,
+		State:     make(map[string]*types.JobState),
 		CreatedAt: time.Now(),
-	}
-
-	return job, nil
+	}, nil
 }
 
 func (transport *GenericTransport) UpdateDeal(ctx context.Context,

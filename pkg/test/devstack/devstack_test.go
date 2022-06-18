@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var STORAGE_DRIVER_NAMES = []string{
@@ -30,6 +31,7 @@ func SetupTest(t *testing.T, nodes int, badActors int) (
 	*devstack.DevStack, *system.CleanupManager) {
 
 	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[string]executor.Executor, error) {
 
@@ -65,11 +67,14 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	ctx := context.Background()
+	ctx, span := newSpan(testCase.Name)
+	defer span.End()
+
 	stack, cm := SetupTest(t, nodeCount, 0)
 	defer TeardownTest(stack, cm)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack,
+		storage.IPFS_API_COPY, nodeCount)
 	assert.NoError(t, err)
 
 	jobSpec := &types.JobSpec{
@@ -86,11 +91,11 @@ func devStackDockerStorageTest(
 
 	apiUri := stack.Nodes[0].ApiServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(jobSpec, jobDeal)
+	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(submittedJob.Id, map[string]int{
+	err = stack.WaitForJob(ctx, submittedJob.Id, map[string]int{
 		system.JOB_STATE_COMPLETE: nodeCount,
 	}, []string{
 		system.JOB_STATE_BID_REJECTED,
@@ -98,13 +103,13 @@ func devStackDockerStorageTest(
 	})
 	assert.NoError(t, err)
 
-	loadedJob, ok, err := apiClient.Get(submittedJob.Id)
+	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.Id)
 	assert.True(t, ok)
 	assert.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
 	for nodeId, state := range loadedJob.State {
-		node, err := stack.GetNode(nodeId)
+		node, err := stack.GetNode(ctx, nodeId)
 		assert.NoError(t, err)
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
@@ -157,4 +162,8 @@ func TestAwkFile(t *testing.T) {
 		scenario.AwkFile(t),
 		3,
 	)
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack_test", name)
 }
