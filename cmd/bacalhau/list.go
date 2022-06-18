@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -28,18 +29,20 @@ func init() {
 		&listOutputFormat, "output", "text",
 		`The output format for the list of jobs (json or text)`,
 	)
-	listCmd.PersistentFlags().BoolVar(&tableSortReverse, "reverse", false,
+	listCmd.PersistentFlags().BoolVar(&tableSortReverse, "reverse", true,
 		`reverse order of table - for time sorting, this will be newest first.`)
 	listCmd.PersistentFlags().Var(&tableSortBy, "sort-by",
 		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
+	listCmd.PersistentFlags().Lookup("sort-by").DefValue = string(ColumnCreatedAt)
+
 	listCmd.PersistentFlags().BoolVar(
 		&tableOutputWide, "wide", false,
 		`Print full values in the table results`,
 	)
-	listCmd.PersistentFlags().BoolVar(
-		&tableMergeValues, "merge-identical", false,
-		`Merge identical values`,
-	)
+	// listCmd.PersistentFlags().BoolVar(
+	// 	&tableMergeValues, "merge-identical", false,
+	// 	`Merge identical values`,
+	// )
 }
 
 // From: https://stackoverflow.com/questions/50824554/permitted-flag-values-for-cobra
@@ -78,6 +81,7 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		if listOutputFormat == "json" {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
@@ -91,24 +95,24 @@ var listCmd = &cobra.Command{
 		t := table.NewWriter()
 		t.SetOutputMirror(cmd.OutOrStderr())
 		if !tableHideHeader {
-			t.AppendHeader(table.Row{"id", "job", "creation_time", "inputs", "outputs", "concurrency", "node", "state", "result"})
+			t.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
 		}
 
 		columnConfig := []table.ColumnConfig{}
 
-		if tableMergeValues {
+		// if tableMergeValues {
 
-			// don't merge node, state and result
-			// because they should differentiate even for the same job
-			columnConfig = []table.ColumnConfig{
-				{Number: 1, AutoMerge: true},
-				{Number: 2, AutoMerge: true},
-				{Number: 3, AutoMerge: true},
-				{Number: 4, AutoMerge: true},
-				{Number: 5, AutoMerge: true},
-				{Number: 6, AutoMerge: true},
-			}
-		}
+		// 	// don't merge node, state and result
+		// 	// because they should differentiate even for the same job
+		// 	columnConfig = []table.ColumnConfig{
+		// 		{Number: 1, AutoMerge: true},
+		// 		{Number: 2, AutoMerge: true},
+		// 		{Number: 3, AutoMerge: true},
+		// 		{Number: 4, AutoMerge: true},
+		// 		{Number: 5, AutoMerge: true},
+		// 		{Number: 6, AutoMerge: true},
+		// 	}
+		// }
 
 		t.SetColumnConfigs(columnConfig)
 
@@ -151,48 +155,41 @@ var listCmd = &cobra.Command{
 		}
 
 		numberInTable := Min(tableMaxJobs, len(jobArray))
+
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
-		for _, job := range jobArray[0:numberInTable] {
+		for _, jobInRow := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				job.Spec.Engine,
+				jobInRow.Spec.Engine,
 			}
 
-			if job.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
-				jobDesc = append(jobDesc, job.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
+			if jobInRow.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
+				jobDesc = append(jobDesc, jobInRow.Spec.Vm.Image)
+				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.Vm.Entrypoint, " "))
 			}
 
-			if len(job.State) == 0 {
+			if len(jobInRow.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
-						shortId(job.Id),
+						jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
+						shortId(jobInRow.Id),
 						shortenString(strings.Join(jobDesc, " ")),
-						job.CreatedAt.Format("06-01-02-15:04:05"),
-						len(job.Spec.Inputs),
-						len(job.Spec.Outputs),
-						job.Deal.Concurrency,
-						"",
 						"waiting",
 						"",
 					},
 				})
 			} else {
-				for node, jobState := range job.State {
-					t.AppendRows([]table.Row{
-						{
-							shortId(job.Id),
-							shortenString(strings.Join(jobDesc, " ")),
-							job.CreatedAt.Format("06-01-02-15:04:05"),
-							len(job.Spec.Inputs),
-							len(job.Spec.Outputs),
-							job.Deal.Concurrency,
-							shortId(node),
-							shortenString(jobState.State),
-							shortenString(getJobResult(job, jobState)),
-						},
-					})
-				}
+				_, furthestNodeState := job.GetCurrentJobState(jobInRow)
+
+				t.AppendRows([]table.Row{
+					{
+						jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
+						shortId(jobInRow.Id),
+						shortenString(strings.Join(jobDesc, " ")),
+						shortenString(furthestNodeState.State),
+						shortenString(getJobResult(jobInRow, furthestNodeState)),
+					},
+				})
 			}
 
 		}

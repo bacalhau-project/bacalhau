@@ -75,6 +75,9 @@ type JobSpec struct {
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
 	Outputs []StorageSpec `json:"outputs"`
+
+	// Labels for the job
+	Labels []string `json:"labels"`
 }
 
 // keep track of job states on a particular node
@@ -104,8 +107,9 @@ type Job struct {
 	Spec  *JobSpec `json:"spec"`
 	Deal  *JobDeal `json:"deal"`
 	// a map of nodeId -> state of the job on that node
-	State map[string]*JobState `json:"state"`
-	CreatedAt	time.Time	`json:"created_at"`
+	State     map[string]*JobState `json:"state"`
+	CreatedAt time.Time            `json:"created_at"`
+	Labels    []string             `json:"labels"`
 }
 
 // we emit these to other nodes so they update their
@@ -119,8 +123,8 @@ type JobEvent struct {
 	// this is only defined in "update_deal" events
 	JobDeal *JobDeal `json:"job_deal"`
 	// most other events are a case of a client<->node state change
-	JobState *JobState `json:"job_state"`
-	EventTime	time.Time	`json:"event_time"`
+	JobState  *JobState `json:"job_state"`
+	EventTime time.Time `json:"event_time"`
 }
 
 type ResultsList struct {

@@ -14,6 +14,7 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
+var jobLabels []string
 var skipSyntaxChecking bool
 
 func init() {
@@ -45,6 +46,10 @@ func init() {
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
+	runCmd.PersistentFlags().StringSliceVarP(&jobLabels,
+		"labels", "l", []string{},
+		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
+	)
 }
 
 var runCmd = &cobra.Command{
@@ -65,6 +70,7 @@ var runCmd = &cobra.Command{
 			jobEntrypoint,
 			jobImage,
 			jobConcurrency,
+			jobLabels,
 		)
 
 		if err != nil {

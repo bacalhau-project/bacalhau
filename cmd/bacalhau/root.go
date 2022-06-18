@@ -14,6 +14,7 @@ func init() {
 	RootCmd.AddCommand(serveCmd)
 	RootCmd.AddCommand(runCmd)
 	RootCmd.AddCommand(listCmd)
+	RootCmd.AddCommand(describeCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
 		&apiHost, "api-host", "bootstrap.production.bacalhau.org",

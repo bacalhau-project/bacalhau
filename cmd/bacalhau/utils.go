@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -20,7 +22,8 @@ var tableSortBy ColumnEnum
 var tableSortReverse bool
 var tableIdFilter string
 var tableNoStyle bool
-var tableMergeValues bool
+
+// var tableMergeValues bool
 
 func shortenString(st string) string {
 	if tableOutputWide {
@@ -78,4 +81,47 @@ func ReverseList(s []string) []string {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
+}
+
+func LoadBadStringsFull() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_labels.txt")
+	return loadBadStrings(file)
+}
+
+func LoadBadStringsLabels() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_labels.txt")
+	return loadBadStrings(file)
+}
+
+func loadBadStrings(file []byte) []string {
+	badStringsRaw := strings.Split(string(file), "\n")
+	return FilterStringArray(badStringsRaw, func(s string) bool {
+		return !(strings.HasPrefix(s, "#") || strings.HasPrefix(s, "\n"))
+	})
+}
+
+func FilterStringArray(data []string, f func(string) bool) []string {
+	fltd := make([]string, 0)
+	for _, e := range data {
+		if f(e) {
+			fltd = append(fltd, e)
+		}
+	}
+	return fltd
+}
+
+func SafeStringStripper(s string) string {
+	rChars := SafeCharsRegex()
+	return rChars.ReplaceAllString(s, "")
+}
+
+func SafeCharsRegex() *regexp.Regexp {
+	regexString := "A-Za-z0-9._~!:@,;+-"
+
+	file, _ := os.ReadFile("../../pkg/config/all_emojis.txt")
+	emojiArray := strings.Split(string(file), "\n")
+	emojiString := strings.Join(emojiArray, "|")
+
+	r := regexp.MustCompile(fmt.Sprintf("[^%s|^%s]", emojiString, regexString))
+	return r
 }
