@@ -42,6 +42,7 @@ func NewComputeNode(
 	}
 
 	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
+
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
@@ -59,6 +60,7 @@ func NewComputeNode(
 				JobId:  jobEvent.JobId,
 				Spec:   jobEvent.JobSpec,
 			})
+
 			if err != nil {
 				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
 				return

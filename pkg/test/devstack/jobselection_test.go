@@ -66,35 +66,30 @@ func TestSelectAllJobs(t *testing.T) {
 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], types.JOB_STATE_COMPLETE),
 		)
 
-		// map[string]int{
-		// 	system.JOB_STATE_COMPLETE: testCase.expectedAccepts,
-		// }, []string{
-		// 	system.JOB_STATE_ERROR,
-		// })
 		assert.NoError(t, err)
 	}
 
 	for _, testCase := range []TestCase{
 
 		// the default policy with all files added should end up with all jobs accepted
-		// {
-		//  name: "all nodes added files, all nodes ran job",
-		// 	policy:          compute_node.NewDefaultJobSelectionPolicy(),
-		// 	nodeCount:       3,
-		// 	addFilesCount:   3,
-		// 	expectedAccepts: 3,
-		// },
+		{
+			name:            "all nodes added files, all nodes ran job",
+			policy:          compute_node.NewDefaultJobSelectionPolicy(),
+			nodeCount:       3,
+			addFilesCount:   3,
+			expectedAccepts: 3,
+		},
 
 		// // check we get only 2 when we've only added data to 2
-		// {
-		//  name: "only nodes we added data to ran the job",
-		// 	policy:          compute_node.NewDefaultJobSelectionPolicy(),
-		// 	nodeCount:       3,
-		// 	addFilesCount:   2,
-		// 	expectedAccepts: 2,
-		// },
+		{
+			name:            "only nodes we added data to ran the job",
+			policy:          compute_node.NewDefaultJobSelectionPolicy(),
+			nodeCount:       3,
+			addFilesCount:   2,
+			expectedAccepts: 2,
+		},
 
-		// check we run on all 3 nodes even though we only added data to 1
+		// // check we run on all 3 nodes even though we only added data to 1
 		{
 			name: "only added files to 1 node but all 3 run it",
 			policy: compute_node.JobSelectionPolicy{

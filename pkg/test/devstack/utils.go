@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -50,6 +51,9 @@ func SetupTest(
 		jobSelectionPolicy,
 	)
 	assert.NoError(t, err)
+
+	// important to give the pubsub network time to connect
+	time.Sleep(time.Millisecond * 100)
 
 	return stack, cm
 }
