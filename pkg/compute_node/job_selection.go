@@ -108,8 +108,12 @@ func applyJobSelectionPolicyDataSettings(
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job
 	if len(job.Inputs) == 0 {
-		log.Info().Msgf("Found policy of rejecting stateless jobs - passing on job")
-		return !policy.RejectStatelessJobs, nil
+		if policy.RejectStatelessJobs {
+			log.Info().Msgf("Found policy of RejectStatelessJobs - rejecting job")
+			return false, nil
+		} else {
+			return true, nil
+		}
 	}
 
 	// if we have an "anywhere" policy for the data then we accept the job
