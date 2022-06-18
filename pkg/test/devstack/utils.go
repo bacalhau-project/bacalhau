@@ -51,7 +51,7 @@ func SetupTest(
 	assert.NoError(t, err)
 
 	// important to give the pubsub network time to connect
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 1000)
 
 	return stack, cm
 }
