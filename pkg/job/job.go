@@ -77,6 +77,14 @@ func ConstructJob(
 		})
 	}
 
+	var jobLabels []string
+
+	for _, label := range labels {
+		if label != "" {
+			jobLabels = append(jobLabels, label)
+		}
+	}
+
 	spec := &types.JobSpec{
 		Engine:   engine,
 		Verifier: verifier,
@@ -88,7 +96,7 @@ func ConstructJob(
 
 		Inputs:  jobInputs,
 		Outputs: jobOutputs,
-		Labels:  labels,
+		Labels:  jobLabels,
 	}
 
 	deal := &types.JobDeal{

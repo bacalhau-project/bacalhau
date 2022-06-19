@@ -109,7 +109,6 @@ type Job struct {
 	// a map of nodeId -> state of the job on that node
 	State     map[string]*JobState `json:"state"`
 	CreatedAt time.Time            `json:"created_at"`
-	Labels    []string             `json:"labels"`
 }
 
 // we emit these to other nodes so they update their

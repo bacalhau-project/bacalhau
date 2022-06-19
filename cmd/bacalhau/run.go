@@ -17,6 +17,9 @@ var jobConcurrency int
 var jobLabels []string
 var skipSyntaxChecking bool
 
+// For testing
+var flagClearLabels bool
+
 func init() {
 	runCmd.PersistentFlags().StringVar(
 		&jobEngine, "engine", "docker",
@@ -50,6 +53,13 @@ func init() {
 		"labels", "l", []string{},
 		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
+
+	// For testing
+	runCmd.PersistentFlags().BoolVar(&flagClearLabels,
+		"clear-labels", false,
+		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
+	)
+	runCmd.PersistentFlags().MarkHidden("clear-labels")
 }
 
 var runCmd = &cobra.Command{
@@ -89,7 +99,16 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
+		if flagClearLabels {
+			clearLabels()
+		}
+
 		fmt.Printf("%s\n", job.Id)
 		return nil
 	},
+}
+
+func clearLabels() {
+	// For testing purposes - just clear the labels before we execute
+	jobLabels = []string{}
 }
