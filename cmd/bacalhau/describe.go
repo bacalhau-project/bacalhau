@@ -3,7 +3,9 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -13,11 +15,15 @@ var id string
 
 func init() {
 	describeCmd.PersistentFlags().StringVarP(&id, "id", "i", "", `show all information related to a job.`)
-	_ = describeCmd.MarkFlagRequired("id")
 }
 
 type jobDescription struct {
-	ID string
+	ID        string                    `yaml:"Id"`
+	Owner     string                    `yaml:"Owner"`
+	Spec      types.JobSpec             `yaml:"Spec"`
+	Deal      types.JobDeal             `yaml:"Deal"`
+	State     map[string]types.JobState `yaml:"State"`
+	CreatedAt time.Time                 `yaml:"Start Time"`
 }
 
 var describeCmd = &cobra.Command{
@@ -38,6 +44,10 @@ var describeCmd = &cobra.Command{
 
 		jobDesc := &jobDescription{}
 		jobDesc.ID = job.Id
+		jobDesc.Owner = job.Owner
+		jobDesc.Spec = *job.Spec
+		jobDesc.Deal = *job.Deal
+		jobDesc.State = job.State
 
 		bytes, _ := yaml.Marshal(jobDesc)
 		fmt.Println(string(bytes))
