@@ -68,6 +68,11 @@ func (apiClient *APIClient) List(ctx context.Context) (
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 	*types.Job, bool, error) {
 
+	if jobID == "" {
+		return nil, false, fmt.Errorf(
+			"publicapi: called Get(...) with an empty job ID")
+	}
+
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err
@@ -80,7 +85,8 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 		}
 	}
 
-	return nil, false, nil
+	return nil, false, fmt.Errorf(
+		"publicapi: no job with ID '%s' found", jobID)
 }
 
 // Submit submits a new job to the node's transport.

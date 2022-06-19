@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,8 +108,6 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 
 // TODO: #261 Hate to bring this up again, but this is looking like leaking again - non-deterministically failing test in this test.
 func (suite *RunSuite) TestRun_Labels() {
-	suite.T().Skip("Need to skip due to non-deterministically failing.")
-
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -149,7 +148,9 @@ func (suite *RunSuite) TestRun_Labels() {
 			defer cm.Cleanup()
 
 			for _, labelTest := range labelsToTest {
-				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				parsedBasedURI, err := url.Parse(c.BaseURI)
+				assert.NoError(suite.T(), err)
+
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
 				assert.NoError(suite.T(), err)
 
@@ -164,7 +165,7 @@ func (suite *RunSuite) TestRun_Labels() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				testJob, _, err := c.Get(ctx, out)
+				testJob, _, err := c.Get(ctx, strings.TrimSpace(out))
 				assert.NoError(suite.T(), err)
 
 				if labelTest.BadCase {
@@ -173,17 +174,15 @@ func (suite *RunSuite) TestRun_Labels() {
 					assert.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
 					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Labels)
 					msg := fmt.Sprintf(`
-Number o    f labels stored not equal to expected length.
-Expected     length: %d
-Actual l    ength: %d
+Number of labels stored not equal to expected length.
+Expected length: %d
+Actual length: %d
 
-Expected     labels: %+v
-Actual l    abels: %+v
+Expected labels: %+v
+Actual labels: %+v
 `, len(labelTest.Labels), len(testJob.Spec.Labels), labelTest.Labels, testJob.Spec.Labels)
-
 					assert.Equal(suite.T(), len(labelTest.Labels), len(testJob.Spec.Labels), msg)
 				}
-
 			}
 		}()
 	}

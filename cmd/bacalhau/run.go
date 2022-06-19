@@ -106,12 +106,13 @@ var runCmd = &cobra.Command{
 			clearLabels()
 		}
 
-		fmt.Printf("%s\n", job.Id)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", job.Id)
 		return nil
 	},
 }
 
 func clearLabels() {
 	// For testing purposes - just clear the labels before we execute
+	// TODO(guy): is this necessary?
 	jobLabels = []string{}
 }
