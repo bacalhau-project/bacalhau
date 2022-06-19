@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -58,8 +59,9 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 	for _, tc := range tests {
 		func() {
-			ctx, cancel, c := publicapi.SetupTests(suite.T())
-			defer cancel()
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				spec, deal := publicapi.MakeNoopJob()
@@ -83,8 +85,9 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 }
 
 func (suite *ListSuite) TestList_IdFilter() {
-	ctx, cancel, c := publicapi.SetupTests(suite.T())
-	defer cancel()
+	ctx := context.Background()
+	c, cm := publicapi.SetupTests(suite.T())
+	defer cm.Cleanup()
 
 	jobIds := []string{}
 	for i := 0; i < 10; i++ {
@@ -150,8 +153,9 @@ func (suite *ListSuite) TestList_SortFlags() {
 	for _, tc := range combinationOfJobSizes {
 		for _, sortFlags := range sortFlagsToTest {
 			func() {
-				ctx, cancel, c := publicapi.SetupTests(suite.T())
-				defer cancel()
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
 
 				jobIds := []string{}
 				for i := 0; i < tc.numberOfJobs; i++ {

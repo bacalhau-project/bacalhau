@@ -21,9 +21,7 @@ import (
 )
 
 // SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) (context.Context, context.CancelFunc,
-	*APIClient) {
-
+func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
@@ -34,15 +32,17 @@ func SetupTests(t *testing.T) (context.Context, context.CancelFunc,
 	port, err := freeport.GetFreePort()
 	assert.NoError(t, err)
 
+	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
+
 	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
-	ctx, cancel := system.WithSignalShutdown(context.Background())
 	go func() {
-		assert.NoError(t, s.ListenAndServe(ctx))
+		assert.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
 	assert.NoError(t, waitForHealthy(c))
 
-	return ctx, cancel, NewAPIClient(s.GetURI())
+	return NewAPIClient(s.GetURI()), cm
 }
 
 func waitForHealthy(c *APIClient) error {

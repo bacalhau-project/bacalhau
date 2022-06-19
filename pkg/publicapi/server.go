@@ -40,9 +40,9 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
-// If the provided context is cancelled, the server will gracefully shutdown
-// without closing any existing connections.
-func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
+func (apiServer *APIServer) ListenAndServe(ctx context.Context,
+	cm *system.CleanupManager) error {
+
 	hostID, err := apiServer.Node.Transport.HostID(ctx)
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
@@ -65,10 +65,10 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 
 	log.Debug().Msgf(
 		"API server listening for host %s on %s...", hostID, srv.Addr)
-	system.OnCancel(ctx, func() {
-		if err := srv.Shutdown(context.Background()); err != nil {
-			log.Debug().Msgf("error shutting down API server: %v", err)
-		}
+
+	// Cleanup resources when system is done:
+	cm.RegisterCallback(func() error {
+		return srv.Shutdown(ctx)
 	})
 
 	err = srv.ListenAndServe()

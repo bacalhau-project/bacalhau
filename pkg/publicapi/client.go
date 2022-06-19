@@ -40,6 +40,11 @@ func (apiClient *APIClient) Alive() (bool, error) {
 	if err != nil {
 		return false, nil
 	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Error().Msgf("error closing response body: %v", err)
+		}
+	}()
 
 	return res.StatusCode == http.StatusOK, nil
 }
@@ -109,11 +114,18 @@ func (apiClient *APIClient) post(ctx context.Context, api string,
 		return fmt.Errorf("publicapi: error creating post request: %v", err)
 	}
 	req.Header.Set("Content-type", "application/json")
+	req.Close = true // don't keep connections lying around
 
 	res, err := apiClient.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Error().Msgf("error closing response body: %v", err)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(res.Body)
 		if err == nil { // not critical if this fails

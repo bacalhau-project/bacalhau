@@ -30,13 +30,3 @@ func WithSignalShutdown(parent context.Context) (
 
 	return ctx, cancel
 }
-
-// OnCancel calls the given callback function when the provided context is
-// cancelled. Can be used to register clean-up callbacks for long-running
-// system contexts.
-func OnCancel(ctx context.Context, fn func()) {
-	go func(ch <-chan struct{}, fn func()) {
-		<-ch
-		fn()
-	}(ctx.Done(), fn)
-}

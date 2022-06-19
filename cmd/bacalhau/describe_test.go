@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -53,8 +54,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 	for _, tc := range tests {
 		func() {
-			ctx, cancel, c := publicapi.SetupTests(suite.T())
-			defer cancel()
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
 			for i := 0; i < tc.numberOfAcceptNodes; i++ {
 				spec, deal := publicapi.MakeNoopJob()

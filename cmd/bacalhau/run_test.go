@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -48,8 +49,9 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 
 	for i, tc := range tests {
 		func() {
-			ctx, cancel, c := publicapi.SetupTests(suite.T())
-			defer cancel()
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -78,8 +80,9 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 
 	for i, tc := range tests {
 		func() {
-			ctx, cancel, c := publicapi.SetupTests(suite.T())
-			defer cancel()
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -141,8 +144,9 @@ func (suite *RunSuite) TestRun_Labels() {
 
 	for i, tc := range tests {
 		func() {
-			ctx, cancel, c := publicapi.SetupTests(suite.T())
-			defer cancel()
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
 			for _, labelTest := range labelsToTest {
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
