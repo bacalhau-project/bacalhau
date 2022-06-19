@@ -165,8 +165,8 @@ var listCmd = &cobra.Command{
 			}
 
 			if jobInRow.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
-				jobDesc = append(jobDesc, jobInRow.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.Vm.Entrypoint, " "))
+				jobDesc = append(jobDesc, jobInRow.Spec.VM.Image)
+				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.VM.Entrypoint, " "))
 			}
 
 			if len(jobInRow.State) == 0 {

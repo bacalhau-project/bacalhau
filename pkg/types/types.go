@@ -58,44 +58,44 @@ type JobSpecWasm struct {
 // what we pass off to the executor to "run" the job
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
-	Engine string `json:"engine"`
+	Engine string `json:"Executor"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
-	Verifier string `json:"verifier"`
+	Verifier string `json:"Verifier"`
 
 	// for VM based executors
-	Vm   JobSpecVm   `json:"job_spec_vm"`
-	Wasm JobSpecWasm `json:"job_spec_wasm"`
+	VM   JobSpecVm   `json:"Job Spec VM"`
+	Wasm JobSpecWasm `json:"Job Spec WASM"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	Inputs []StorageSpec `json:"inputs"`
+	Inputs []StorageSpec `json:"Inputs"`
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs"`
+	Outputs []StorageSpec `json:"Outputs"`
 
 	// Labels for the job
-	Labels []string `json:"labels"`
+	Labels []string `json:"Labels"`
 }
 
 // keep track of job states on a particular node
 type JobState struct {
-	State     JobStateType `json:"state"`
-	Status    string       `json:"status"`
-	ResultsId string       `json:"results_id"`
+	State     JobStateType `json:"State"`
+	Status    string       `json:"Status"`
+	ResultsId string       `json:"Results Id"`
 }
 
 // omly the client can update this as it's the client that will
 // pay out based on the deal
 type JobDeal struct {
 	// how many nodes do we want to run this job?
-	Concurrency int `json:"concurrency"`
+	Concurrency int `json:"Concurrency"`
 	// the nodes we have assigned (and will pay)
 	// other nodes are welcome to submit results without having been assigned
 	// this is how they can bootstrap their reputation
-	AssignedNodes []string `json:"assigned_nodes"`
+	AssignedNodes []string `json:"Assigned Nodes"`
 }
 
 // the view of a single job
@@ -103,12 +103,12 @@ type JobDeal struct {
 type Job struct {
 	Id string `json:"id"`
 	// the client node that "owns" this job (as in who submitted it)
-	Owner string   `json:"owner"`
-	Spec  *JobSpec `json:"spec"`
-	Deal  *JobDeal `json:"deal"`
+	Owner string   `json:"Owner"`
+	Spec  *JobSpec `json:"Spec"`
+	Deal  *JobDeal `json:"Deal"`
 	// a map of nodeId -> state of the job on that node
-	State     map[string]*JobState `json:"state"`
-	CreatedAt time.Time            `json:"created_at"`
+	State     map[string]*JobState `json:"State"`
+	CreatedAt time.Time            `json:"Start Time"`
 }
 
 // we emit these to other nodes so they update their

@@ -80,7 +80,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	spec := &types.JobSpec{
 		Engine:   "apples",
 		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
@@ -119,7 +119,7 @@ func TestTransportEvents(t *testing.T) {
 	spec := &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_NOOP),
 		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},

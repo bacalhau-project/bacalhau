@@ -227,11 +227,11 @@ func (suite *ListSuite) TestList_SortFlags() {
 						}
 
 						errorMessage := fmt.Sprintf(`
-Table lines     do not match
-Number of Jo    bs: %d
-Number of Ma    x: %d
-Sort Flag: %    s
-Reverse Flag    : %t
+Table lines do not match
+Number of Jobs: %d
+Number of Max Jobs: %d
+Sort Flag: %s
+Reverse Flag: %t
 
 Out:
 %s

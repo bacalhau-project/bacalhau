@@ -98,7 +98,7 @@ func makeJob() (*types.JobSpec, *types.JobDeal) {
 	jobSpec := types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
 		Verifier: string(verifier.VERIFIER_IPFS),
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

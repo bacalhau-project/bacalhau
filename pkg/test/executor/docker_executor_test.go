@@ -61,7 +61,7 @@ func dockerExecutorStorageTest(
 			Owner: "test-owner",
 			Spec: &types.JobSpec{
 				Engine:  string(executor.EXECUTOR_DOCKER),
-				Vm:      testCase.GetJobSpec(),
+				VM:      testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},

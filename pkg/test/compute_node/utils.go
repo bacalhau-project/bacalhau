@@ -71,7 +71,7 @@ func GetJobSpec(cid string) *types.JobSpec {
 	return &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
 		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"cat",

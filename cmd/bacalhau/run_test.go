@@ -63,7 +63,7 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, out)
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			assert.NoError(suite.T(), err)
 			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
@@ -94,7 +94,7 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, out)
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			assert.NoError(suite.T(), err)
 			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 			assert.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
@@ -105,8 +105,6 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 
 	}
 }
-
-// TODO: #261 Hate to bring this up again, but this is looking like leaking again - non-deterministically failing test in this test.
 func (suite *RunSuite) TestRun_Labels() {
 	tests := []struct {
 		numberOfJobs int
@@ -116,18 +114,20 @@ func (suite *RunSuite) TestRun_Labels() {
 	}
 
 	labelsToTest := []struct {
+		Name          string
 		Labels        []string
 		CorrectLength int
 		BadCase       bool
 	}{
-		// {Labels: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
-		// {Labels: []string{"a"}, CorrectLength: 1, BadCase: false},              // Labels, string
-		// {Labels: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Labels, string and int
-		{Labels: []string{`'`, ` `}, CorrectLength: 0, BadCase: false},       // Labels, some edge case characters
-		{Labels: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false}, // Emojis
-		{Labels: []string{"ايطاليا"}, CorrectLength: 1, BadCase: false},      // Right to left
-		// {Labels: []string{"‫test‫"}, CorrectLength: 3, BadCase: false},         // Control charactel
-		// {Labels: []string{"사회과학원", "어학연구소"}, CorrectLength: 3, BadCase: false}, // Two-byte characters
+		{Name: "1", Labels: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
+		{Name: "1.1", Labels: []string{`""`}, CorrectLength: 0, BadCase: false},           // Label flag, no value, but correctly quoted
+		{Name: "2", Labels: []string{"a"}, CorrectLength: 1, BadCase: false},              // Labels, string
+		{Name: "3", Labels: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Labels, string and int
+		{Name: "4", Labels: []string{`''`, `" "`}, CorrectLength: 2, BadCase: false},      // Labels, some edge case characters
+		{Name: "5", Labels: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},   // Emojis
+		{Name: "6", Labels: []string{"ايطاليا"}, CorrectLength: 1, BadCase: false},        // Right to left
+		{Name: "7", Labels: []string{"‫test‫"}, CorrectLength: 1, BadCase: false},         // Control charactel
+		{Name: "8", Labels: []string{"사회과학원", "어학연구소"}, CorrectLength: 2, BadCase: false}, // Two-byte characters
 	}
 
 	// allBadStrings := LoadBadStringsLabels()
@@ -175,13 +175,14 @@ func (suite *RunSuite) TestRun_Labels() {
 					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Labels)
 					msg := fmt.Sprintf(`
 Number of labels stored not equal to expected length.
+Name: %s
 Expected length: %d
 Actual length: %d
 
 Expected labels: %+v
 Actual labels: %+v
-`, len(labelTest.Labels), len(testJob.Spec.Labels), labelTest.Labels, testJob.Spec.Labels)
-					assert.Equal(suite.T(), len(labelTest.Labels), len(testJob.Spec.Labels), msg)
+`, labelTest.Name, len(labelTest.Labels), len(testJob.Spec.Labels), labelTest.Labels, testJob.Spec.Labels)
+					assert.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Labels), msg)
 				}
 			}
 		}()

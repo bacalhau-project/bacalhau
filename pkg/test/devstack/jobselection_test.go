@@ -43,7 +43,7 @@ func TestSelectAllJobs(t *testing.T) {
 		jobSpec := &types.JobSpec{
 			Engine:   string(executor.EXECUTOR_DOCKER),
 			Verifier: string(verifier.VERIFIER_IPFS),
-			Vm:       scenario.GetJobSpec(),
+			VM:       scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,
 		}

@@ -18,12 +18,12 @@ func init() {
 }
 
 type jobDescription struct {
-	ID        string                    `yaml:"Id"`
-	Owner     string                    `yaml:"Owner"`
-	Spec      types.JobSpec             `yaml:"Spec"`
-	Deal      types.JobDeal             `yaml:"Deal"`
-	State     map[string]types.JobState `yaml:"State"`
-	CreatedAt time.Time                 `yaml:"Start Time"`
+	ID        string                     `yaml:"Id"`
+	Owner     string                     `yaml:"Owner"`
+	Spec      types.JobSpec              `yaml:"Spec"`
+	Deal      types.JobDeal              `yaml:"Deal"`
+	State     map[string]*types.JobState `yaml:"State"`
+	CreatedAt time.Time                  `yaml:"Start Time"`
 }
 
 var describeCmd = &cobra.Command{

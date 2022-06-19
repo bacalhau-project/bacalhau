@@ -88,7 +88,7 @@ func ConstructJob(
 	spec := &types.JobSpec{
 		Engine:   engine,
 		Verifier: verifier,
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,

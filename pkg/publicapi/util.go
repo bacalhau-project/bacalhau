@@ -111,7 +111,7 @@ func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.Jo
 	jobSpec := types.JobSpec{
 		Engine:   string(exec),
 		Verifier: string(verif),
-		Vm: types.JobSpecVm{
+		VM: types.JobSpecVm{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

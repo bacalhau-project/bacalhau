@@ -50,7 +50,7 @@ func devStackDockerStorageTest(
 	jobSpec := &types.JobSpec{
 		Engine:   string(executor.EXECUTOR_DOCKER),
 		Verifier: string(verifier.VERIFIER_IPFS),
-		Vm:       testCase.GetJobSpec(),
+		VM:       testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  testCase.Outputs,
 	}
