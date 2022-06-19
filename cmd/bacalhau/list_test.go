@@ -42,7 +42,6 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
-
 	tableIdFilter = ""
 	tableSortReverse = false
 
@@ -58,13 +57,14 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	}
 
 	for _, tc := range tests {
-		c := publicapi.SetupTests(suite.T())
+		ctx, c := publicapi.SetupTests(suite.T())
 
 		// Submit a few random jobs to the node:
 		var err error
 
 		for i := 0; i < tc.numberOfJobs; i++ {
-			_, err = c.Submit(publicapi.MakeNoopJob())
+			spec, deal := publicapi.MakeNoopJob()
+			_, err = c.Submit(ctx, spec, deal)
 			assert.NoError(suite.T(), err)
 		}
 
@@ -83,12 +83,12 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 }
 
 func (suite *ListSuite) TestList_IdFilter() {
+	ctx, c := publicapi.SetupTests(suite.T())
 
-	c := publicapi.SetupTests(suite.T())
 	jobIds := []string{}
-
 	for i := 0; i < 10; i++ {
-		job, err := c.Submit(publicapi.MakeNoopJob())
+		spec, deal := publicapi.MakeNoopJob()
+		job, err := c.Submit(ctx, spec, deal)
 		jobIds = append(jobIds, shortId(job.Id))
 		assert.NoError(suite.T(), err)
 	}
@@ -148,7 +148,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 	for _, tc := range combinationOfJobSizes {
 		for _, sortFlags := range sortFlagsToTest {
-			c := publicapi.SetupTests(suite.T())
+			ctx, c := publicapi.SetupTests(suite.T())
 
 			// Submit a few random jobs to the node:
 			var err error
@@ -156,7 +156,8 @@ func (suite *ListSuite) TestList_SortFlags() {
 			jobIds := []string{}
 
 			for i := 0; i < tc.numberOfJobs; i++ {
-				job, err := c.Submit(publicapi.MakeNoopJob())
+				spec, deal := publicapi.MakeNoopJob()
+				job, err := c.Submit(ctx, spec, deal)
 				assert.NoError(suite.T(), err)
 				jobIds = append(jobIds, shortId(job.Id))
 

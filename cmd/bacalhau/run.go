@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -67,7 +68,7 @@ var runCmd = &cobra.Command{
 	Short: "Run a job on the network",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
-
+		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
 
@@ -82,7 +83,6 @@ var runCmd = &cobra.Command{
 			jobConcurrency,
 			jobLabels,
 		)
-
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(spec, deal)
+		job, err := getAPIClient().Submit(ctx, spec, deal)
 		if err != nil {
 			return err
 		}

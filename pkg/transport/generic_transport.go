@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/google/uuid"
 )
@@ -51,16 +50,16 @@ func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
 	defer transport.Mutex.Unlock()
 
 	// let's initialise the state for this job because it was just created
-	if event.EventName == system.JOB_EVENT_CREATED {
+
+	if _, ok := transport.Jobs[event.JobId]; !ok {
 		transport.Jobs[event.JobId] = &types.Job{
-			Id:    event.JobId,
-			Owner: event.NodeId,
-			Spec:  nil,
-			Deal:  nil,
-			State: make(map[string]*types.JobState),
+			Id:        event.JobId,
+			Owner:     event.NodeId,
+			Spec:      nil,
+			Deal:      nil,
+			State:     make(map[string]*types.JobState),
 			CreatedAt: time.Now(),
 		}
-
 	}
 
 	// for "create" and "update" events - this will be filled in
@@ -141,32 +140,28 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("Error in creating job id. %s", err)
+		return nil, fmt.Errorf("error creating job id: %w", err)
 	}
-
 	jobID := jobUuid.String()
 
 	err = transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
-		EventName: system.JOB_EVENT_CREATED,
+		EventName: types.JOB_EVENT_CREATED,
 		JobSpec:   spec,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
-	job := &types.Job{
-		Id:    jobID,
-		Spec:  spec,
-		Deal:  deal,
-		State: make(map[string]*types.JobState),
+	return &types.Job{
+		Id:        jobID,
+		Spec:      spec,
+		Deal:      deal,
+		State:     make(map[string]*types.JobState),
 		CreatedAt: time.Now(),
-	}
-
-	return job, nil
+	}, nil
 }
 
 func (transport *GenericTransport) UpdateDeal(ctx context.Context,
@@ -174,7 +169,7 @@ func (transport *GenericTransport) UpdateDeal(ctx context.Context,
 
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
-		EventName: system.JOB_EVENT_DEAL_UPDATED,
+		EventName: types.JOB_EVENT_DEAL_UPDATED,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	})
@@ -197,10 +192,10 @@ func (transport *GenericTransport) AcceptJobBid(ctx context.Context,
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: system.JOB_EVENT_BID_ACCEPTED,
+		EventName: types.JOB_EVENT_BID_ACCEPTED,
 		JobDeal:   job.Deal,
 		JobState: &types.JobState{
-			State: system.JOB_STATE_RUNNING,
+			State: types.JOB_STATE_RUNNING,
 		},
 		EventTime: time.Now(),
 	})
@@ -216,9 +211,9 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: system.JOB_EVENT_BID_REJECTED,
+		EventName: types.JOB_EVENT_BID_REJECTED,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_BID_REJECTED,
+			State:  types.JOB_STATE_BID_REJECTED,
 			Status: message,
 		},
 		EventTime: time.Now(),
@@ -234,9 +229,9 @@ func (transport *GenericTransport) BidJob(ctx context.Context,
 
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
-		EventName: system.JOB_EVENT_BID,
+		EventName: types.JOB_EVENT_BID,
 		JobState: &types.JobState{
-			State: system.JOB_STATE_BIDDING,
+			State: types.JOB_STATE_BIDDING,
 		},
 		EventTime: time.Now(),
 	})
@@ -247,9 +242,9 @@ func (transport *GenericTransport) SubmitResult(ctx context.Context,
 
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
-		EventName: system.JOB_EVENT_RESULTS,
+		EventName: types.JOB_EVENT_RESULTS,
 		JobState: &types.JobState{
-			State:     system.JOB_STATE_COMPLETE,
+			State:     types.JOB_STATE_COMPLETE,
 			Status:    status,
 			ResultsId: resultsID,
 		},
@@ -262,9 +257,9 @@ func (transport *GenericTransport) ErrorJob(ctx context.Context,
 
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
-		EventName: system.JOB_EVENT_ERROR,
+		EventName: types.JOB_EVENT_ERROR,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
+			State:  types.JOB_STATE_ERROR,
 			Status: status,
 		},
 		EventTime: time.Now(),
@@ -282,9 +277,9 @@ func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 	return transport.writeEvent(ctx, &types.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: system.JOB_EVENT_ERROR,
+		EventName: types.JOB_EVENT_ERROR,
 		JobState: &types.JobState{
-			State:  system.JOB_STATE_ERROR,
+			State:  types.JOB_STATE_ERROR,
 			Status: status,
 		},
 		EventTime: time.Now(),

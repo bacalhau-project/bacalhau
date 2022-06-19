@@ -16,9 +16,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackNode struct {
@@ -41,11 +43,18 @@ type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 	map[string]verifier.Verifier, error)
 
-func NewDevStack(cm *system.CleanupManager, count, badActors int,
-	getExecutors GetExecutorsFunc, getVerifiers GetVerifiersFunc) (
+func NewDevStack(
+	cm *system.CleanupManager,
+	count, badActors int,
+	getExecutors GetExecutorsFunc,
+	getVerifiers GetVerifiersFunc,
+	jobSelectionPolicy compute_node.JobSelectionPolicy,
+) (
 	*DevStack, error) {
 
-	ctx := context.Background() // TODO: instrument
+	ctx, span := newSpan("NewDevStack")
+	defer span.End()
+
 	nodes := []*DevStackNode{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -111,7 +120,11 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		}
 
 		computeNode, err := compute_node.NewComputeNode(
-			transport, executors, verifiers)
+			transport,
+			executors,
+			verifiers,
+			jobSelectionPolicy,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +142,7 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 			if err := apiServer.ListenAndServe(ctx); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
-		}(ctx)
+		}(context.Background())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -137,11 +150,11 @@ func NewDevStack(cm *system.CleanupManager, count, badActors int,
 		// intra-connections
 		//////////////////////////////////////
 
-		go func() {
+		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				panic(err) // if transport can't run, devstack should stop
 			}
-		}()
+		}(context.Background())
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
@@ -276,10 +289,10 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }
 
-func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
+func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[string]types.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
 
-	job, ok, err := apiClient.Get(jobId)
+	job, ok, err := apiClient.Get(ctx, jobId)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"devstack: error fetching job %s: %v", jobId, err)
@@ -288,88 +301,91 @@ func (stack *DevStack) GetJobStates(jobId string) ([]string, error) {
 		return nil, nil
 	}
 
-	states := []string{}
-	for _, state := range job.State {
-		states = append(states, state.State)
+	states := map[string]types.JobStateType{}
+	for id, state := range job.State {
+		states[id] = state.State
 	}
 
 	return states, nil
 }
 
-func (stack *DevStack) WaitForJob(
-	jobId string,
-	// a map of job states onto the number of those states we expect to see
-	expectedStates map[string]int,
-	// a list of states that if any job gets into is an immediate error
-	errorStates []string,
-) error {
+// a function that is given a map of nodeid -> job states
+// and will throw an error if anything about that is wrong
+type CheckJobStatesFunction func(map[string]types.JobStateType) (bool, error)
 
+// there should be zero errors with any job
+func WaitForJobThrowErrors(errorStates []types.JobStateType) CheckJobStatesFunction {
+	return func(jobStates map[string]types.JobStateType) (bool, error) {
+		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
+		for id, state := range jobStates {
+			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), string(state)) {
+				return false, fmt.Errorf("job %s has error state: %s", id, string(state))
+			}
+		}
+		return true, nil
+	}
+}
+
+// there must be exactly len(nodeIds)
+// each state must be the given type
+// each seen node id must be present in the presented array
+// this is useful for testing (did only the nodes that should have completed the job run it)
+func WaitForJobAllHaveState(nodeIds []string, state types.JobStateType) CheckJobStatesFunction {
+	return func(jobStates map[string]types.JobStateType) (bool, error) {
+		log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIds, state, jobStates)
+		if len(jobStates) != len(nodeIds) {
+			return false, nil
+		}
+		seenAll := true
+		for _, nodeId := range nodeIds {
+			seenState, ok := jobStates[nodeId]
+			if !ok {
+				seenAll = false
+			} else if seenState != state {
+				seenAll = false
+			}
+		}
+		return seenAll, nil
+	}
+}
+
+func (stack *DevStack) WaitForJob(
+	ctx context.Context,
+	jobId string,
+	checkJobStateFunctions ...CheckJobStatesFunction,
+) error {
 	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
 		MaxAttempts: 100,
 		Delay:       time.Second * 1,
 		Handler: func() (bool, error) {
 			// load the current states of the job
-			states, err := stack.GetJobStates(jobId)
+			states, err := stack.GetJobStates(ctx, jobId)
 			if err != nil {
 				return false, err
 			}
-
-			// collect a count of the states we saw
-			foundStates := map[string]int{}
-			for _, state := range states {
-				for _, errorState := range errorStates {
-					if state == errorState {
-						return true, fmt.Errorf("job has error state: %s", state)
-					}
+			allOk := true
+			for _, checkFunction := range checkJobStateFunctions {
+				stepOk, err := checkFunction(states)
+				if err != nil {
+					return false, err
 				}
-				if _, ok := foundStates[state]; !ok {
-					foundStates[state] = 0
-				}
-				foundStates[state] = foundStates[state] + 1
-			}
-
-			// now compare the found states to the expected states
-			for expectedState, expectedCount := range expectedStates {
-				foundCount := 0
-				if _, ok := foundStates[expectedState]; ok {
-					foundCount = foundStates[expectedState]
-				}
-
-				if foundCount != expectedCount {
-					return false, nil
+				if !stepOk {
+					allOk = false
 				}
 			}
-
-			// if we got to here - then the expected states line up with the actual ones
-			return true, nil
+			return allOk, nil
 		},
 	}
 
 	return waiter.Wait()
 }
 
-func (stack *DevStack) WaitForJobWithError(
-	jobId string,
-	expectedStates map[string]int,
-) error {
-	return stack.WaitForJob(jobId, expectedStates, []string{system.JOB_STATE_ERROR})
-}
+func (stack *DevStack) GetNode(ctx context.Context, nodeId string) (
+	*DevStackNode, error) {
 
-func (stack *DevStack) WaitForJobWithConcurrency(
-	jobId string,
-	concurrency int,
-) error {
-	expectedStates := map[string]int{}
-	expectedStates[system.JOB_STATE_COMPLETE] = concurrency
-	return stack.WaitForJobWithError(jobId, expectedStates)
-}
-
-func (stack *DevStack) GetNode(
-	nodeId string,
-) (*DevStackNode, error) {
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(context.Background())
+		id, err := node.Transport.HostID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -380,4 +396,33 @@ func (stack *DevStack) GetNode(
 	}
 
 	return nil, fmt.Errorf("node not found: %s", nodeId)
+}
+
+func (stack *DevStack) GetNodeIds() ([]string, error) {
+	ids := []string{}
+	for _, node := range stack.Nodes {
+		id, err := node.Transport.HostID(context.Background())
+		if err != nil {
+			return ids, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+func (stack *DevStack) GetShortIds() ([]string, error) {
+	ids, err := stack.GetNodeIds()
+	if err != nil {
+		return ids, err
+	}
+	shortids := []string{}
+	for _, id := range ids {
+		shortids = append(shortids, system.ShortId(id))
+	}
+	return shortids, nil
+}
+
+func newSpan(name string) (context.Context, trace.Span) {
+	return system.Span(context.Background(), "devstack", name)
 }

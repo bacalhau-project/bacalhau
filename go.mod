@@ -18,8 +18,14 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.2
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.32.0
 	go.opentelemetry.io/otel v1.7.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.3.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.3.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.7.0
+	go.opentelemetry.io/otel/sdk v1.7.0
 	go.opentelemetry.io/otel/trace v1.7.0
+	google.golang.org/grpc v1.47.0
 	gopkg.in/yaml.v3 v3.0.1
 	mvdan.cc/sh/v3 v3.4.3
 )
@@ -29,6 +35,7 @@ require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
@@ -41,6 +48,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/gosigar v0.12.0 // indirect
+	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/frankban/quicktest v1.14.0 // indirect
@@ -56,6 +64,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20220104163920-15ed2e8cf2bd // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
@@ -86,7 +95,6 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/koron/go-ssdp v0.0.2 // indirect
@@ -179,6 +187,9 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.3.0 // indirect
+	go.opentelemetry.io/otel/metric v0.30.0 // indirect
+	go.opentelemetry.io/proto/otlp v0.11.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
@@ -192,7 +203,6 @@ require (
 	golang.org/x/tools v0.1.11 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20220608133413-ed9918b62aac // indirect
-	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

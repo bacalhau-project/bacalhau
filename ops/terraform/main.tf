@@ -42,12 +42,12 @@ sudo chmod u+x /var/www/health_checker/*.sh
 sudo apt-get install -y docker.io
 # TODO: move this into two systemd units!
 
-wget https://github.com/filecoin-project/bacalhau/releases/download/v0.1.8/bacalhau_v0.1.8_linux_amd64.tar.gz
-tar xfv bacalhau_v0.1.8_linux_amd64.tar.gz
+wget https://github.com/filecoin-project/bacalhau/releases/download/${ var.bacalhau_version }/bacalhau_${ var.bacalhau_version }_linux_amd64.tar.gz
+tar xfv bacalhau_${ var.bacalhau_version }_linux_amd64.tar.gz
 sudo mv ./bacalhau /usr/local/bin/bacalhau
 
-wget https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
-tar -xvzf go-ipfs_v0.12.2_linux-amd64.tar.gz
+wget https://dist.ipfs.io/go-ipfs/${ var.ipfs_version }/go-ipfs_${ var.ipfs_version }_linux-amd64.tar.gz
+tar -xvzf go-ipfs_${ var.ipfs_version }_linux-amd64.tar.gz
 cd go-ipfs
 sudo bash install.sh
 ipfs --version

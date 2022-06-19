@@ -21,6 +21,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const JOB_EVENT_CHANNEL = "bacalhau-job-event"
@@ -140,7 +141,7 @@ func NewTransport(cm *system.CleanupManager, port int) (
 	ctx, cancel := context.WithCancel(context.Background())
 	cm.RegisterCallback(func() error {
 		cancel()
-		return ctx.Err()
+		return nil
 	})
 
 	pubsub, err := pubsub.NewGossipSub(ctx, host)
@@ -213,15 +214,24 @@ func (t *Transport) Start(ctx context.Context) error {
 func (t *Transport) List(ctx context.Context) (
 	types.ListResponse, error) {
 
+	ctx, span := newSpan(ctx, "List")
+	defer span.End()
+
 	return t.genericTransport.List(ctx)
 }
 
 func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
+	ctx, span := newSpan(ctx, "Get")
+	defer span.End()
+
 	return t.genericTransport.Get(ctx, id)
 }
 
 func (t *Transport) Subscribe(ctx context.Context, fn func(
 	jobEvent *types.JobEvent, job *types.Job)) {
+
+	ctx, span := newSpan(ctx, "Subscribe")
+	defer span.End()
 
 	t.genericTransport.Subscribe(ctx, fn)
 }
@@ -233,11 +243,17 @@ func (t *Transport) Subscribe(ctx context.Context, fn func(
 func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
 	deal *types.JobDeal) (*types.Job, error) {
 
+	ctx, span := newSpan(ctx, "SubmitJob")
+	defer span.End()
+
 	return t.genericTransport.SubmitJob(ctx, spec, deal)
 }
 
 func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
 	deal *types.JobDeal) error {
+
+	ctx, span := newSpan(ctx, "UpdateDeal")
+	defer span.End()
 
 	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
 }
@@ -249,11 +265,17 @@ func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 func (t *Transport) AcceptJobBid(ctx context.Context, jobID,
 	nodeID string) error {
 
+	ctx, span := newSpan(ctx, "AcceptJobBid")
+	defer span.End()
+
 	return t.genericTransport.AcceptJobBid(ctx, jobID, nodeID)
 }
 
 func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 	message string) error {
+
+	ctx, span := newSpan(ctx, "RejectJobBid")
+	defer span.End()
 
 	return t.genericTransport.RejectJobBid(ctx, jobID, nodeID, message)
 }
@@ -263,16 +285,25 @@ func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) BidJob(ctx context.Context, jobID string) error {
+	ctx, span := newSpan(ctx, "BidJob")
+	defer span.End()
+
 	return t.genericTransport.BidJob(ctx, jobID)
 }
 
 func (t *Transport) SubmitResult(ctx context.Context, jobID, status,
 	resultsID string) error {
 
+	ctx, span := newSpan(ctx, "SubmitResult")
+	defer span.End()
+
 	return t.genericTransport.SubmitResult(ctx, jobID, status, resultsID)
 }
 
 func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
+	ctx, span := newSpan(ctx, "ErrorJob")
+	defer span.End()
+
 	return t.genericTransport.ErrorJob(ctx, jobID, status)
 }
 
@@ -284,6 +315,9 @@ func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
 func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
 	status string) error {
 
+	ctx, span := newSpan(ctx, "ErrorJobForNode")
+	defer span.End()
+
 	return t.genericTransport.ErrorJobForNode(ctx, jobID, nodeID, status)
 }
 
@@ -292,9 +326,13 @@ func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
+	ctx, span := newSpan(ctx, "Connect")
+	defer span.End()
+
 	if peerConnect == "" {
 		return nil
 	}
+
 	maddr, err := multiaddr.NewMultiaddr(peerConnect)
 	if err != nil {
 		return err
@@ -339,5 +377,11 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 	}
 }
 
-// Static check to ensure that Transport implements Transport:
+func newSpan(ctx context.Context, apiName string) (
+	context.Context, trace.Span) {
+
+	return system.Span(ctx, "transport/libp2p", apiName)
+}
+
+// Compile-time interface check:
 var _ transport.Transport = (*Transport)(nil)

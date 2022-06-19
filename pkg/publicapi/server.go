@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // APIServer configures a node's public REST API.
@@ -47,20 +47,17 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	}
 
 	sm := http.NewServeMux()
-	sm.Handle("/list", http.HandlerFunc(apiServer.list))
-	sm.Handle("/submit", http.HandlerFunc(apiServer.submit))
-	sm.Handle("/healthz", http.HandlerFunc(apiServer.healthz))
-	sm.Handle("/logz", http.HandlerFunc(apiServer.logz))
-	sm.Handle("/varz", http.HandlerFunc(apiServer.varz))
-	sm.Handle("/livez", http.HandlerFunc(apiServer.livez))
-	sm.Handle("/readyz", http.HandlerFunc(apiServer.readyz))
+	sm.Handle("/list", instrument("list", apiServer.list))
+	sm.Handle("/submit", instrument("submit", apiServer.submit))
+	sm.Handle("/healthz", instrument("healthz", apiServer.healthz))
+	sm.Handle("/logz", instrument("logz", apiServer.logz))
+	sm.Handle("/varz", instrument("varz", apiServer.varz))
+	sm.Handle("/livez", instrument("livez", apiServer.livez))
+	sm.Handle("/readyz", instrument("readyz", apiServer.readyz))
 
 	srv := http.Server{
-		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 		Handler: sm,
-		BaseContext: func(_ net.Listener) context.Context {
-			return ctx // TODO: handle trace ID stuff here
-		},
+		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
 	}
 
 	log.Debug().Msgf(
@@ -131,4 +128,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func instrument(name string, fn http.HandlerFunc) http.Handler {
+	return otelhttp.NewHandler(fn, fmt.Sprintf("publicapi/%s", name))
 }

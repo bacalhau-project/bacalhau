@@ -3,6 +3,7 @@ package transport_test
 import (
 	"context"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -42,7 +42,12 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	_, err = compute_node.NewComputeNode(
+		transport,
+		executors,
+		verifiers,
+		compute_node.NewDefaultJobSelectionPolicy(),
+	)
 	assert.NoError(t, err)
 
 	_, err = requestor_node.NewRequesterNode(transport)
@@ -56,7 +61,12 @@ func TestTransportSanity(t *testing.T) {
 	verifiers := map[string]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(transport, executors, verifiers)
+	_, err = compute_node.NewComputeNode(
+		transport,
+		executors,
+		verifiers,
+		compute_node.NewDefaultJobSelectionPolicy(),
+	)
 	assert.NoError(t, err)
 	_, err = requestor_node.NewRequesterNode(transport)
 	assert.NoError(t, err)
@@ -130,16 +140,19 @@ func TestTransportEvents(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{
-		system.JOB_EVENT_CREATED,
-		system.JOB_EVENT_BID,
-		system.JOB_EVENT_BID_ACCEPTED,
-		system.JOB_EVENT_RESULTS,
+		string(types.JOB_EVENT_CREATED),
+		string(types.JOB_EVENT_BID),
+		string(types.JOB_EVENT_BID_ACCEPTED),
+		string(types.JOB_EVENT_RESULTS),
 	}
 	actualEventNames := []string{}
 
 	for _, event := range transport.Events {
-		actualEventNames = append(actualEventNames, event.EventName)
+		actualEventNames = append(actualEventNames, string(event.EventName))
 	}
+
+	sort.Strings(expectedEventNames)
+	sort.Strings(actualEventNames)
 
 	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }

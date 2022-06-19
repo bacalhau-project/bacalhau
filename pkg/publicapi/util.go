@@ -21,7 +21,7 @@ import (
 )
 
 // SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) *APIClient {
+func SetupTests(t *testing.T) (context.Context, *APIClient) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
@@ -41,7 +41,7 @@ func SetupTests(t *testing.T) *APIClient {
 	}()
 	assert.NoError(t, waitForHealthy(c))
 
-	return NewAPIClient(s.GetURI())
+	return ctx, NewAPIClient(s.GetURI())
 }
 
 func waitForHealthy(c *APIClient) error {
@@ -66,8 +66,7 @@ func waitForHealthy(c *APIClient) error {
 	}
 }
 
-// Function to get
-// disk usage of path/disk
+// Function to get disk usage of path/disk
 func MountUsage(path string) (disk types.MountStatus) {
 	fs := syscall.Statfs_t{}
 	err := syscall.Statfs(path, &fs)

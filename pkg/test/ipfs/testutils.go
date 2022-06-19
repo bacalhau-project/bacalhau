@@ -12,6 +12,7 @@ func SetupTest(t *testing.T, nodes int) (
 	*devstack.DevStack_IPFS, *system.CleanupManager) {
 
 	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
 	stack, err := devstack.NewDevStack_IPFS(cm, nodes)
 	assert.NoError(t, err)
 
