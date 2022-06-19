@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +61,9 @@ func init() {
 		"clear-labels", false,
 		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
 	)
-	runCmd.PersistentFlags().MarkHidden("clear-labels")
+	if err := runCmd.PersistentFlags().MarkHidden("clear-labels"); err != nil {
+		log.Debug().Msgf("error hiding test flags: %v", err)
+	}
 }
 
 var runCmd = &cobra.Command{

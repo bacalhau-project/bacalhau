@@ -145,15 +145,15 @@ func GetCurrentJobState(job *types.Job) (string, *types.JobState) {
 
 func JobStateValue(jobState *types.JobState) int {
 	switch jobState.State {
-	case system.JOB_STATE_RUNNING:
+	case types.JOB_STATE_RUNNING:
 		return 100
-	case system.JOB_STATE_COMPLETE:
+	case types.JOB_STATE_COMPLETE:
 		return 90
-	case system.JOB_STATE_ERROR:
+	case types.JOB_STATE_ERROR:
 		return 80
-	case system.JOB_STATE_BIDDING:
+	case types.JOB_STATE_BIDDING:
 		return 70
-	case system.JOB_STATE_BID_REJECTED:
+	case types.JOB_STATE_BID_REJECTED:
 		return 60
 	default:
 		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State)

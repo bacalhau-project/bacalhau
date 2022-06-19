@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -29,9 +30,7 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		// TODO: Create a span when Otel library comes in
-		job, _, err := getAPIClient().Get(id)
-
+		job, _, err := getAPIClient().Get(context.Background(), id)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", id, err)
 			return err

@@ -187,7 +187,7 @@ var listCmd = &cobra.Command{
 						jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
 						shortId(jobInRow.Id),
 						shortenString(strings.Join(jobDesc, " ")),
-						shortenString(furthestNodeState.State),
+						shortenString(string(furthestNodeState.State)),
 						shortenString(getJobResult(jobInRow, furthestNodeState)),
 					},
 				})

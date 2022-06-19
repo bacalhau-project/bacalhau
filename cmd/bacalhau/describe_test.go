@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -35,13 +35,7 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 
 }
 
-// const JOB_STATE_BIDDING = "bidding"
-// const JOB_STATE_BID_REJECTED = "bid_rejected"
-// const JOB_STATE_RUNNING = "running"
-// const JOB_STATE_ERROR = "error"
-// const JOB_STATE_COMPLETE = "complete"
 func (suite *DescribeSuite) TestDescribeJob() {
-
 	tableIdFilter = ""
 	tableSortReverse = false
 
@@ -50,7 +44,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 		numberOfRejectNodes int
 		jobState            string
 	}{
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: system.JOB_STATE_COMPLETE}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: string(types.JOB_STATE_COMPLETE)}, // Run and accept
 		// {numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		// {numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
 		// {numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
@@ -58,15 +52,16 @@ func (suite *DescribeSuite) TestDescribeJob() {
 	}
 
 	for _, tc := range tests {
-		c := publicapi.SetupTests(suite.T())
+		func() {
+			ctx, cancel, c := publicapi.SetupTests(suite.T())
+			defer cancel()
 
-		// Submit a few random jobs to the node:
-		var err error
-
-		for i := 0; i < tc.numberOfAcceptNodes; i++ {
-			_, err = c.Submit(publicapi.MakeNoopJob())
-			assert.NoError(suite.T(), err)
-		}
+			for i := 0; i < tc.numberOfAcceptNodes; i++ {
+				spec, deal := publicapi.MakeNoopJob()
+				_, err := c.Submit(ctx, spec, deal)
+				assert.NoError(suite.T(), err)
+			}
+		}()
 
 		// parsedBasedURI, _ := url.Parse(c.BaseURI)
 		// host, port, _ := net.SplitHostPort(parsedBasedURI.Host)

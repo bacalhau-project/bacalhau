@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -39,6 +40,8 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
+// If the provided context is cancelled, the server will gracefully shutdown
+// without closing any existing connections.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 	hostID, err := apiServer.Node.Transport.HostID(ctx)
 	if err != nil {
@@ -62,7 +65,20 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 
 	log.Debug().Msgf(
 		"API server listening for host %s on %s...", hostID, srv.Addr)
-	return srv.ListenAndServe()
+	system.OnCancel(ctx, func() {
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Debug().Msgf("error shutting down API server: %v", err)
+		}
+	})
+
+	err = srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		log.Debug().Msgf(
+			"API server closed for host %s on %s.", hostID, srv.Addr)
+		return nil // expected error if the server is shut down
+	}
+
+	return err
 }
 
 type listRequest struct{}

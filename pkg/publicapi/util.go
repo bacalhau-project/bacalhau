@@ -21,7 +21,9 @@ import (
 )
 
 // SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) (context.Context, *APIClient) {
+func SetupTests(t *testing.T) (context.Context, context.CancelFunc,
+	*APIClient) {
+
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
@@ -34,14 +36,13 @@ func SetupTests(t *testing.T) (context.Context, *APIClient) {
 
 	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
-	ctx, _ := system.WithSignalShutdown(context.Background())
+	ctx, cancel := system.WithSignalShutdown(context.Background())
 	go func() {
-		err := s.ListenAndServe(ctx)
-		assert.NoError(t, err)
+		assert.NoError(t, s.ListenAndServe(ctx))
 	}()
 	assert.NoError(t, waitForHealthy(c))
 
-	return ctx, NewAPIClient(s.GetURI())
+	return ctx, cancel, NewAPIClient(s.GetURI())
 }
 
 func waitForHealthy(c *APIClient) error {
@@ -61,8 +62,8 @@ func waitForHealthy(c *APIClient) error {
 	select {
 	case <-ch:
 		return nil
-	case <-time.After(10 * time.Second):
-		return fmt.Errorf("server did not reply after 10s")
+	case <-time.After(1 * time.Second):
+		return fmt.Errorf("server did not reply after 1s")
 	}
 }
 
