@@ -158,7 +158,7 @@ var serveCmd = &cobra.Command{
 					return err
 				}
 			}
-		} else {
+		} else if peerConnect != "none" {
 			err = transport.Connect(ctx, peerConnect)
 			if err != nil {
 				return err
