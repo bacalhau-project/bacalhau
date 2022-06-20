@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
 // Executor represents an execution provider, which can execute jobs on some
@@ -38,12 +39,12 @@ type Job struct {
 // execution provider.
 type JobSpec struct {
 	// e.g. firecracker, docker or wasm
-	Engine string `json:"engine"`
+	Engine EngineType `json:"engine"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
-	Verifier string `json:"verifier"`
+	Verifier verifier.VerifierType `json:"verifier"`
 
 	// for VM based executors
 	Vm   JobSpecVm   `json:"job_spec_vm"`

@@ -21,7 +21,7 @@ func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (
 	}
 
 	return map[string]verifier.Verifier{
-		string(verifier.VERIFIER_NOOP): noopVerifier,
-		string(verifier.VERIFIER_IPFS): ipfsVerifier,
+		string(verifier.VerifierNoop): noopVerifier,
+		string(verifier.VerifierIpfs): ipfsVerifier,
 	}, nil
 }

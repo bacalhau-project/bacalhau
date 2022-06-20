@@ -35,6 +35,6 @@ func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 	}
 
 	return map[string]executor.Executor{
-		string(executor.EXECUTOR_DOCKER): ex,
+		string(executor.EngineDocker): ex,
 	}, nil
 }

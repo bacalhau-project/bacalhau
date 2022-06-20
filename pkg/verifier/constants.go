@@ -5,29 +5,29 @@ import (
 	"strings"
 )
 
-//go:generate stringer -type=Type --trimprefix=Type
-type Type int
+//go:generate stringer -type=VerifierType --trimprefix=Verifier
+type VerifierType int
 
 const (
-	typeUnknown Type = iota // must be first
-	TypeNoop
-	TypeIpfs
-	typeDone // must be last
+	verifierUnknown VerifierType = iota // must be first
+	VerifierNoop
+	VerifierIpfs
+	verifierDone // must be last
 )
 
-func ParseType(str string) (Type, error) {
-	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+func ParseVerifierType(str string) (VerifierType, error) {
+	for typ := verifierUnknown + 1; typ < verifierDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil
 		}
 	}
 
-	return typeUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
+	return verifierUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
-func Types() []Type {
-	var res []Type
-	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+func VerifierTypes() []VerifierType {
+	var res []VerifierType
+	for typ := verifierUnknown + 1; typ < verifierDone; typ++ {
 		res = append(res, typ)
 	}
 

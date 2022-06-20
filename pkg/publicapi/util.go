@@ -98,19 +98,21 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeGenericJob() (*types.JobSpec, *types.JobDeal) {
-	return MakeJob(executor.EXECUTOR_DOCKER, verifier.VERIFIER_IPFS)
+func MakeGenericJob() (*executor.JobSpec, *executor.JobDeal) {
+	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs)
 }
 
-func MakeNoopJob() (*types.JobSpec, *types.JobDeal) {
-	return MakeJob(executor.EXECUTOR_NOOP, verifier.VERIFIER_IPFS)
+func MakeNoopJob() (*executor.JobSpec, *executor.JobDeal) {
+	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
 }
 
-func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.JobSpec, *types.JobDeal) {
-	jobSpec := types.JobSpec{
+func MakeJob(exec executor.EngineType, verif verifier.VerifierType) (
+	*executor.JobSpec, *executor.JobDeal) {
+
+	jobSpec := executor.JobSpec{
 		Engine:   string(exec),
 		Verifier: string(verif),
-		Vm: types.JobSpecVm{
+		Vm: executor.JobSpecVm{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",
@@ -121,7 +123,7 @@ func MakeJob(exec executor.ExecutorType, verif verifier.VerifierType) (*types.Jo
 		// Outputs: testCase.Outputs,
 	}
 
-	jobDeal := types.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: 1,
 	}
 

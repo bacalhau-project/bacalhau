@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -46,7 +46,7 @@ func (apiClient *APIClient) Alive() (bool, error) {
 
 // List returns the list of jobs in the node's transport.
 func (apiClient *APIClient) List(ctx context.Context) (
-	map[string]*types.Job, error) {
+	map[string]*executor.Job, error) {
 
 	var req listRequest
 	var res listResponse
@@ -61,7 +61,7 @@ func (apiClient *APIClient) List(ctx context.Context) (
 // Get returns job data for a particular job ID.
 // TODO(optimisation): implement with separate API call, don't filter list
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
-	*types.Job, bool, error) {
+	*executor.Job, bool, error) {
 
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
@@ -79,8 +79,8 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(ctx context.Context, spec *types.JobSpec,
-	deal *types.JobDeal) (*types.Job, error) {
+func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
+	deal *executor.JobDeal) (*executor.Job, error) {
 
 	var res submitResponse
 	req := submitRequest{

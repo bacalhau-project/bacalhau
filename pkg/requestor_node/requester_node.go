@@ -41,7 +41,7 @@ func NewRequesterNode(
 		// let's decide if we want to accept it or not
 		// we would call out to the reputation system
 		// we also pay attention to the job deal concurrency setting
-		case executor.JOB_EVENT_BID:
+		case executor.JobEventBid:
 
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 

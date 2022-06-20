@@ -5,30 +5,101 @@ import (
 	"strings"
 )
 
-//go:generate stringer -type=Type --trimprefix=Type
-type Type int
+//go:generate stringer -type=EngineType --trimprefix=Engine
+type EngineType int
 
 const (
-	typeUnknown Type = iota // must be first
-	TypeNoop
-	TypeDocker
-	TypeWasm
-	typeDone // must be last
+	engineUnknown EngineType = iota // must be first
+	EngineNoop
+	EngineDocker
+	EngineWasm
+	engineDone // must be last
 )
 
-func ParseType(str string) (Type, error) {
-	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+func ParseEngineType(str string) (EngineType, error) {
+	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil
 		}
 	}
 
-	return typeUnknown, fmt.Errorf("executor: unknown type '%s'", str)
+	return engineUnknown, fmt.Errorf(
+		"executor: unknown engine type '%s'", str)
 }
 
-func Types() []Type {
-	var res []Type
-	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+func EngineTypes() []EngineType {
+	var res []EngineType
+	for typ := engineUnknown + 1; typ < engineDone; typ++ {
+		res = append(res, typ)
+	}
+
+	return res
+}
+
+//go:generate stringer -type=JobEventType --trimprefix=JobEvent
+type JobEventType int
+
+const (
+	jobEventUnknown JobEventType = iota // must be first
+	JobEventCreated
+	JobEventDealUpdated
+	JobEventBid
+	JobEventBidAccepted
+	JobEventBidRejected
+	JobEventResults
+	JobEventResultsAccepted
+	JobEventResultsRejected
+	JobEventError
+	jobEventDone // must be last
+)
+
+func ParseJobEventType(str string) (JobEventType, error) {
+	for typ := jobEventUnknown + 1; typ < jobEventDone; typ++ {
+		if equal(typ.String(), str) {
+			return typ, nil
+		}
+	}
+
+	return jobEventUnknown, fmt.Errorf(
+		"executor: unknown job event type '%s'", str)
+}
+
+func JobEventTypes() []JobEventType {
+	var res []JobEventType
+	for typ := jobEventUnknown + 1; typ < jobEventDone; typ++ {
+		res = append(res, typ)
+	}
+
+	return res
+}
+
+//go:generate stringer -type=JobStateType --trimprefix=JobState
+type JobStateType int
+
+const (
+	jobStateUnknown JobStateType = iota // must be first
+	JobStateBidding
+	JobStateBidRejected
+	JobStateRunning
+	JobStateError
+	JobStateComplete
+	jobStateDone // must be last
+)
+
+func ParseJobStateType(str string) (JobStateType, error) {
+	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
+		if equal(typ.String(), str) {
+			return typ, nil
+		}
+	}
+
+	return jobStateUnknown, fmt.Errorf(
+		"executor: unknown job event type '%s'", str)
+}
+
+func JobStateTypes() []JobStateType {
+	var res []JobStateType
+	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
 		res = append(res, typ)
 	}
 
@@ -40,29 +111,3 @@ func equal(a, b string) bool {
 	b = strings.TrimSpace(b)
 	return strings.EqualFold(a, b)
 }
-
-type JobEventType string
-
-// event names - i.e. "this just happened"
-const (
-	JOB_EVENT_CREATED          JobEventType = "job_created"
-	JOB_EVENT_DEAL_UPDATED     JobEventType = "deal_updated"
-	JOB_EVENT_BID              JobEventType = "bid"
-	JOB_EVENT_BID_ACCEPTED     JobEventType = "bid_accepted"
-	JOB_EVENT_BID_REJECTED     JobEventType = "bid_rejected"
-	JOB_EVENT_RESULTS          JobEventType = "results"
-	JOB_EVENT_RESULTS_ACCEPTED JobEventType = "results_accepted"
-	JOB_EVENT_RESULTS_REJECTED JobEventType = "results_rejected"
-	JOB_EVENT_ERROR            JobEventType = "error"
-)
-
-type JobStateType string
-
-// job states - these will be collected per host against a job
-const (
-	JOB_STATE_BIDDING      JobStateType = "bidding"
-	JOB_STATE_BID_REJECTED JobStateType = "bid_rejected"
-	JOB_STATE_RUNNING      JobStateType = "running"
-	JOB_STATE_ERROR        JobStateType = "error"
-	JOB_STATE_COMPLETE     JobStateType = "complete"
-)

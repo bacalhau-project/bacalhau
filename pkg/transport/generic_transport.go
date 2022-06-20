@@ -146,7 +146,7 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 
 	err = transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: executor.JOB_EVENT_CREATED,
+		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
 		EventTime: time.Now(),
@@ -169,7 +169,7 @@ func (transport *GenericTransport) UpdateDeal(ctx context.Context,
 
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: executor.JOB_EVENT_DEAL_UPDATED,
+		EventName: executor.JobEventDealUpdated,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	})
@@ -192,10 +192,10 @@ func (transport *GenericTransport) AcceptJobBid(ctx context.Context,
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: executor.JOB_EVENT_BID_ACCEPTED,
+		EventName: executor.JobEventBidAccepted,
 		JobDeal:   job.Deal,
 		JobState: &executor.JobState{
-			State: executor.JOB_STATE_RUNNING,
+			State: executor.JobStateRunning,
 		},
 		EventTime: time.Now(),
 	})
@@ -211,9 +211,9 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: executor.JOB_EVENT_BID_REJECTED,
+		EventName: executor.JobEventBidRejected,
 		JobState: &executor.JobState{
-			State:  executor.JOB_STATE_BID_REJECTED,
+			State:  executor.JobStateBidRejected,
 			Status: message,
 		},
 		EventTime: time.Now(),
@@ -229,9 +229,9 @@ func (transport *GenericTransport) BidJob(ctx context.Context,
 
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: executor.JOB_EVENT_BID,
+		EventName: executor.JobEventBid,
 		JobState: &executor.JobState{
-			State: executor.JOB_STATE_BIDDING,
+			State: executor.JobStateBidding,
 		},
 		EventTime: time.Now(),
 	})
@@ -242,9 +242,9 @@ func (transport *GenericTransport) SubmitResult(ctx context.Context,
 
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: executor.JOB_EVENT_RESULTS,
+		EventName: executor.JobEventResults,
 		JobState: &executor.JobState{
-			State:     executor.JOB_STATE_COMPLETE,
+			State:     executor.JobStateComplete,
 			Status:    status,
 			ResultsId: resultsID,
 		},
@@ -257,9 +257,9 @@ func (transport *GenericTransport) ErrorJob(ctx context.Context,
 
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: executor.JOB_EVENT_ERROR,
+		EventName: executor.JobEventError,
 		JobState: &executor.JobState{
-			State:  executor.JOB_STATE_ERROR,
+			State:  executor.JobStateError,
 			Status: status,
 		},
 		EventTime: time.Now(),
@@ -277,9 +277,9 @@ func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: executor.JOB_EVENT_ERROR,
+		EventName: executor.JobEventError,
 		JobState: &executor.JobState{
-			State:  executor.JOB_STATE_ERROR,
+			State:  executor.JobStateError,
 			Status: status,
 		},
 		EventTime: time.Now(),

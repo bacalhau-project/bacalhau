@@ -98,11 +98,13 @@ func ConstructJob(
 }
 
 func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
-	if !system.StringArrayContains(executor.EXECUTORS, spec.Engine) {
-		return fmt.Errorf("Invalid executor: %s", spec.Engine)
+	if _, err := executor.ParseEngineType(spec.Engine); err != nil {
+		return fmt.Errorf("invalid job: %v", err)
 	}
-	if !system.StringArrayContains(verifier.VERIFIERS, spec.Verifier) {
-		return fmt.Errorf("Invalid verifier: %s", spec.Verifier)
+
+	if _, err := verifier.ParseVerifierType(spec.Verifier); err != nil {
+		return fmt.Errorf("invalid job: %v", err)
 	}
+
 	return nil
 }
