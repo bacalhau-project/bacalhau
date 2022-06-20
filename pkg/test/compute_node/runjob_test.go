@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +22,7 @@ func TestRunJob(t *testing.T) {
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	assert.NoError(t, err)
 
-	result, err := computeNode.RunJob(context.Background(), &types.Job{
+	result, err := computeNode.RunJob(context.Background(), &executor.Job{
 		Id:   "test",
 		Spec: GetJobSpec(cid),
 	})

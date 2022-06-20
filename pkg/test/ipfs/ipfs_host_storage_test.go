@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -39,7 +38,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
-	storage := types.StorageSpec{
+	storage := storage.StorageSpec{
 		Engine: engine,
 		Cid:    fileCid,
 		Path:   "/data/file.txt",
@@ -94,7 +93,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 	assert.NoError(t, err)
 
 	// the storage spec for the cid we added
-	storage := types.StorageSpec{
+	storage := storage.StorageSpec{
 		Engine: engine,
 		Cid:    folderCid,
 		Path:   "/data/folder",

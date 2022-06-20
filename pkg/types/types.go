@@ -1,5 +1,7 @@
 package types
 
+// TODO: migrate all of these API types to publicapi
+
 type ResultsList struct {
 	Node   string `json:"node"`
 	Cid    string `json:"cid"`

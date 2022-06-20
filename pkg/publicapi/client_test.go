@@ -3,8 +3,8 @@ package publicapi
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,7 @@ func TestGet(t *testing.T) {
 
 	// Submit a few random jobs to the node:
 	var err error
-	var job *types.Job
+	var job *executor.Job
 	for i := 0; i < 5; i++ {
 		spec, deal := MakeGenericJob()
 		job, err = c.Submit(ctx, spec, deal)

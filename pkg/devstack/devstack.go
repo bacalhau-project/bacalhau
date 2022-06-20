@@ -317,8 +317,8 @@ func WaitForJobThrowErrors(errorStates []executor.JobStateType) CheckJobStatesFu
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
 		for id, state := range jobStates {
-			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), string(state)) {
-				return false, fmt.Errorf("job %s has error state: %s", id, string(state))
+			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), state.String()) {
+				return false, fmt.Errorf("job %s has error state: %s", id, state.String())
 			}
 		}
 		return true, nil

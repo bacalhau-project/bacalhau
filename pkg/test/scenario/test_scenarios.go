@@ -3,8 +3,9 @@ package scenario
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 const HELLO_WORLD = "hello world"
@@ -28,8 +29,8 @@ func CatFileToStdout(t *testing.T) TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		GetJobSpec: func() types.JobSpecVm {
-			return types.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVm {
+			return executor.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"cat",
@@ -55,14 +56,14 @@ func CatFileToVolume(t *testing.T) TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		Outputs: []types.StorageSpec{
+		Outputs: []storage.StorageSpec{
 			{
 				Name: "test",
 				Path: "/output_data",
 			},
 		},
-		GetJobSpec: func() types.JobSpecVm {
-			return types.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVm {
+			return executor.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"bash",
@@ -88,8 +89,8 @@ func GrepFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			2,
 		),
-		GetJobSpec: func() types.JobSpecVm {
-			return types.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVm {
+			return executor.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"grep",
@@ -116,8 +117,8 @@ func SedFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			5,
 		),
-		GetJobSpec: func() types.JobSpecVm {
-			return types.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVm {
+			return executor.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"sed",
@@ -145,8 +146,8 @@ func AwkFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			501,
 		),
-		GetJobSpec: func() types.JobSpecVm {
-			return types.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVm {
+			return executor.JobSpecVm{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"awk",

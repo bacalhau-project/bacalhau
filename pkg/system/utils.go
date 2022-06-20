@@ -141,7 +141,7 @@ func ShouldKeepStack() bool {
 func GetJobStateStringArray(states []executor.JobStateType) []string {
 	ret := []string{}
 	for _, state := range states {
-		ret = append(ret, string(state))
+		ret = append(ret, state.String())
 	}
 	return ret
 }

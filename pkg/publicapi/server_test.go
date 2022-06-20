@@ -91,11 +91,11 @@ func (suite *ServerSuite) TestVarz() {
 
 }
 
-func makeJob() (*types.JobSpec, *types.JobDeal) {
-	jobSpec := types.JobSpec{
-		Engine:   string(executor.EXECUTOR_DOCKER),
-		Verifier: string(verifier.VERIFIER_IPFS),
-		Vm: types.JobSpecVm{
+func makeJob() (*executor.JobSpec, *executor.JobDeal) {
+	jobSpec := executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierIpfs,
+		Vm: executor.JobSpecVm{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",
@@ -104,7 +104,7 @@ func makeJob() (*types.JobSpec, *types.JobDeal) {
 		},
 	}
 
-	jobDeal := types.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: 1,
 	}
 

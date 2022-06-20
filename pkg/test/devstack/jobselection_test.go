@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,15 +39,15 @@ func TestSelectAllJobs(t *testing.T) {
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFS_API_COPY, testCase.addFilesCount)
 		assert.NoError(t, err)
 
-		jobSpec := &types.JobSpec{
-			Engine:   string(executor.EXECUTOR_DOCKER),
-			Verifier: string(verifier.VERIFIER_IPFS),
+		jobSpec := &executor.JobSpec{
+			Engine:   executor.EngineDocker,
+			Verifier: verifier.VerifierIpfs,
 			Vm:       scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,
 		}
 
-		jobDeal := &types.JobDeal{
+		jobDeal := &executor.JobDeal{
 			Concurrency: testCase.nodeCount,
 		}
 
@@ -59,11 +58,11 @@ func TestSelectAllJobs(t *testing.T) {
 
 		// wait for the job to complete across all nodes
 		err = stack.WaitForJob(ctx, submittedJob.Id,
-			devstack.WaitForJobThrowErrors([]types.JobStateType{
-				types.JOB_STATE_BID_REJECTED,
-				types.JOB_STATE_ERROR,
+			devstack.WaitForJobThrowErrors([]executor.JobStateType{
+				executor.JobStateBidRejected,
+				executor.JobStateError,
 			}),
-			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], types.JOB_STATE_COMPLETE),
+			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),
 		)
 
 		assert.NoError(t, err)
