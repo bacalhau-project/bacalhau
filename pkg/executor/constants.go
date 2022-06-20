@@ -1,13 +1,42 @@
 package executor
 
-type ExecutorType string
+import (
+	"fmt"
+	"strings"
+)
 
-const EXECUTOR_DOCKER ExecutorType = "docker"
-const EXECUTOR_NOOP ExecutorType = "noop"
-const EXECUTOR_WASM ExecutorType = "wasm"
+//go:generate stringer -type=Type --trimprefix=Type
+type Type int
 
-var EXECUTORS = []string{
-	string(EXECUTOR_DOCKER),
-	string(EXECUTOR_NOOP),
-	string(EXECUTOR_WASM),
+const (
+	typeUnknown Type = iota // must be first
+	TypeNoop
+	TypeDocker
+	TypeWasm
+	typeDone // must be last
+)
+
+func ParseType(str string) (Type, error) {
+	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+		if equal(typ.String(), str) {
+			return typ, nil
+		}
+	}
+
+	return typeUnknown, fmt.Errorf("executor: unknown type '%s'", str)
+}
+
+func Types() []Type {
+	var res []Type
+	for typ := typeUnknown + 1; typ < typeDone; typ++ {
+		res = append(res, typ)
+	}
+
+	return res
+}
+
+func equal(a, b string) bool {
+	a = strings.TrimSpace(a)
+	b = strings.TrimSpace(b)
+	return strings.EqualFold(a, b)
 }
