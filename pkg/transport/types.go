@@ -42,7 +42,8 @@ type Transport interface {
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
-	Subscribe(ctx context.Context, fn SubscribeFn)
+	Subscribe(ctx context.Context, fn func(
+		jobEvent *executor.JobEvent, job *executor.Job))
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE

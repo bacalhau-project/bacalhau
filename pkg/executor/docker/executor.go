@@ -89,7 +89,7 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 	return storage.HasStorage(ctx, volume)
 }
 
-func (e *Executor) RunJob(ctx context.Context, executingJob *executor.Job) (
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	ctx, span := newSpan(ctx, "RunJob")
@@ -314,7 +314,7 @@ func (e *Executor) jobContainerName(job *executor.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", e.Id, job.Id)
 }
 
-func (e *Executor) jobContainerAnnotations(job *executor.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.Id,
 	}

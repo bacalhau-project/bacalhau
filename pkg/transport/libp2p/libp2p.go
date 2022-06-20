@@ -234,7 +234,9 @@ func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	return t.genericTransport.Get(ctx, id)
 }
 
-func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
+func (t *Transport) Subscribe(ctx context.Context, fn func(
+	jobEvent *executor.JobEvent, job *executor.Job)) {
+
 	ctx, span := newSpan(ctx, "Subscribe")
 	defer span.End()
 
@@ -355,19 +357,8 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	return t.Host.Connect(ctx, *info)
 }
 
-type jobEventData struct {
-	JobEvent  *executor.JobEvent     `json:"job_event"`
-	TraceData propagation.MapCarrier `json:"trace_data"`
-}
-
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
-	traceData := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, &traceData)
-
-	bs, err := json.Marshal(jobEventData{
-		JobEvent:  event,
-		TraceData: traceData,
-	})
+	bs, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
@@ -390,9 +381,9 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 			return
 		}
 
-		jed := jobEventData{}
-		if err = json.Unmarshal(msg.Data, &jed); err != nil {
-			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+		jobEvent := new(executor.JobEvent)
+		err = json.Unmarshal(msg.Data, jobEvent)
+		if err != nil {
 			continue
 		}
 		log.Debug().Msgf("Received event: %+v", jed)
