@@ -23,5 +23,5 @@ terraform apply -var-file production.tfvars
 TODO:
 * [ ] State file in GCS
 * [ ] Increase disk quota
-* [ ] Actually use the attached disks for ipfs
+* [x] Actually use the attached disks for ipfs
 * [x] Write bacalhau keypair to attached disk
