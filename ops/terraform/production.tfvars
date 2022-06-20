@@ -1,4 +1,4 @@
-bacalhau_version = "v0.1.11"
+bacalhau_version = "v0.1.13"
 ipfs_version = "v0.12.2"
 gcp_project = "bacalhau-production"
 instance_count = 3
