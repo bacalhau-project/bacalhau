@@ -3,9 +3,9 @@ package requestor_node
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 )
 
 type RequesterNode struct {
@@ -29,7 +29,7 @@ func NewRequesterNode(
 		Transport: transport,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
 		// we only care about jobs that we own
 		if job.Owner != nodeId {
 			return
@@ -41,7 +41,7 @@ func NewRequesterNode(
 		// let's decide if we want to accept it or not
 		// we would call out to the reputation system
 		// we also pay attention to the job deal concurrency setting
-		case types.JOB_EVENT_BID:
+		case executor.JOB_EVENT_BID:
 
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 
@@ -81,7 +81,7 @@ func NewRequesterNode(
 
 // a compute node has bid on the job
 // should we accept the bid or not?
-func (node *RequesterNode) ConsiderBid(job *types.Job, nodeId string) (bool, string, error) {
+func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeId string) (bool, string, error) {
 	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeId, job.Id)
 
 	concurrency := job.Deal.Concurrency

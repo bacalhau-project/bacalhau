@@ -3,7 +3,7 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
 type Verifier struct {
@@ -18,7 +18,7 @@ func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
-	job *types.Job, resultsFolder string) (string, error) {
+	job *executor.Job, resultsFolder string) (string, error) {
 
 	return resultsFolder, nil
 }

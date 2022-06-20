@@ -3,9 +3,9 @@ package ipfs
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -51,7 +51,7 @@ func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
-	job *types.Job, resultsFolder string) (string, error) {
+	job *executor.Job, resultsFolder string) (string, error) {
 
 	ctx, span := newSpan(ctx, "ProcessResultsFolder")
 	defer span.End()

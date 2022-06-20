@@ -8,7 +8,6 @@ import (
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -61,7 +60,7 @@ func (dockerIpfs *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 }
 
 func (dockerIpfs *StorageProvider) HasStorage(ctx context.Context,
-	volume types.StorageSpec) (bool, error) {
+	volume storage.StorageSpec) (bool, error) {
 
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
@@ -70,7 +69,7 @@ func (dockerIpfs *StorageProvider) HasStorage(ctx context.Context,
 }
 
 func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
-	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+	storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
 
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
@@ -96,7 +95,7 @@ func (dockerIpfs *StorageProvider) PrepareStorage(ctx context.Context,
 }
 
 func (dockerIpfs *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+	storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
 
 	return system.RunCommand("sudo", []string{
 		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
@@ -104,7 +103,7 @@ func (dockerIpfs *StorageProvider) CleanupStorage(ctx context.Context,
 }
 
 func (dockerIpfs *StorageProvider) copyTarFile(ctx context.Context,
-	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+	storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
 
 	err := dockerIpfs.IPFSClient.DownloadTar(ctx,
 		dockerIpfs.LocalDir, storageSpec.Cid)
@@ -112,7 +111,7 @@ func (dockerIpfs *StorageProvider) copyTarFile(ctx context.Context,
 		return nil, err
 	}
 
-	volume := &types.StorageVolume{
+	volume := &storage.StorageVolume{
 		Type:   "bind",
 		Source: fmt.Sprintf("%s/%s", dockerIpfs.LocalDir, storageSpec.Cid),
 		Target: storageSpec.Path,

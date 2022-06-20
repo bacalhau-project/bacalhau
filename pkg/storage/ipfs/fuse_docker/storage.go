@@ -18,7 +18,6 @@ import (
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -94,7 +93,7 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (sp *StorageProvider) HasStorage(ctx context.Context,
-	volume types.StorageSpec) (bool, error) {
+	volume storage.StorageSpec) (bool, error) {
 
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
@@ -108,7 +107,7 @@ func (sp *StorageProvider) HasStorage(ctx context.Context,
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
-	storageSpec types.StorageSpec) (*types.StorageVolume, error) {
+	storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
 
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
@@ -123,7 +122,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 		return nil, err
 	}
 
-	volume := &types.StorageVolume{
+	volume := &storage.StorageVolume{
 		Type:   storage.STORAGE_VOLUME_TYPE_BIND,
 		Source: cidMountPath,
 		Target: storageSpec.Path,
@@ -135,7 +134,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec types.StorageSpec, volume *types.StorageVolume) error {
+	storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
 
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()

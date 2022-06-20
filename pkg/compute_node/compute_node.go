@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
@@ -41,12 +40,12 @@ func NewComputeNode(
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
 
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
-		case types.JOB_EVENT_CREATED:
+		case executor.JOB_EVENT_CREATED:
 
 			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
 			// if job.Engine == "docker" && !system.IsDockerRunning() {
@@ -84,7 +83,7 @@ func NewComputeNode(
 			}
 
 		// we have been given the goahead to run the job
-		case types.JOB_EVENT_BID_ACCEPTED:
+		case executor.JOB_EVENT_BID_ACCEPTED:
 			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return
@@ -177,7 +176,7 @@ func (node *ComputeNode) SelectJob(
 	)
 }
 
-func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (
+func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	// check that we have the executor to run this job
