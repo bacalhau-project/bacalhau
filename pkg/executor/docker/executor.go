@@ -89,7 +89,7 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 	return storage.HasStorage(ctx, volume)
 }
 
-func (e *Executor) RunJob(ctx context.Context, runningJob *executor.Job) (
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	ctx, span := newSpan(ctx, "RunJob")
