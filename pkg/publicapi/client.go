@@ -68,11 +68,6 @@ func (apiClient *APIClient) List(ctx context.Context) (
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 	*executor.Job, bool, error) {
 
-	if jobID == "" {
-		return nil, false, fmt.Errorf(
-			"publicapi: called Get(...) with an empty job ID")
-	}
-
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err

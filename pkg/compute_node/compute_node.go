@@ -44,15 +44,24 @@ func NewComputeNode(
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(ctx context.Context,
-		jobEvent *executor.JobEvent, job *executor.Job) {
+	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
 
 		switch jobEvent.EventName {
 		// a new job has arrived - decide if we want to bid on it
 		case executor.JobEventCreated:
-			ctx, span := computeNode.newSpanForJob(ctx,
-				job.Id, "JobEventCreated")
-			defer span.End()
+
+			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
+			// if job.Engine == "docker" && !system.IsDockerRunning() {
+			// 	err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
+			// 	log.Warn().Msgf(err.Error())
+			// 	return false, err
+			// }
+
+			shouldRun, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
+				NodeId: nodeId,
+				JobId:  jobEvent.JobId,
+				Spec:   jobEvent.JobSpec,
+			})
 
 			shouldRun, err := computeNode.SelectJob(ctx,
 				JobSelectionPolicyProbeData{
