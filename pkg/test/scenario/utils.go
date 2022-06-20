@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +21,7 @@ type TestCase struct {
 	SetupStorage   ISetupStorage
 	ResultsChecker ICheckResults
 	GetJobSpec     IGetJobSpec
-	Outputs        []types.StorageSpec
+	Outputs        []storage.StorageSpec
 }
 
 type StorageDriverFactory struct {
@@ -37,9 +37,9 @@ const (
 )
 
 type IGetStorageDriver func(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error)
-type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error)
+type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error)
 type ICheckResults func(resultsDir string)
-type IGetJobSpec func() types.JobSpecVm
+type IGetJobSpec func() executor.JobSpecVm
 
 /*
 
@@ -94,10 +94,10 @@ func singleFileSetupStorageWithData(
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
 		assert.NoError(t, err)
-		inputStorageSpecs := []types.StorageSpec{
+		inputStorageSpecs := []storage.StorageSpec{
 			{
 				Engine: driverName,
 				Cid:    fileCid,
@@ -113,10 +113,10 @@ func singleFileSetupStorageWithFile(
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]types.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddFileToNodes(nodeCount, filePath)
 		assert.NoError(t, err)
-		inputStorageSpecs := []types.StorageSpec{
+		inputStorageSpecs := []storage.StorageSpec{
 			{
 				Engine: driverName,
 				Cid:    fileCid,

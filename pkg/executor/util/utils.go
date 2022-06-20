@@ -10,7 +10,7 @@ import (
 )
 
 func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
-	dockerId string) (map[string]executor.Executor, error) {
+	dockerId string) (map[executor.EngineType]executor.Executor, error) {
 
 	ipfsFuseStorage, err := fuse_docker.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
@@ -34,7 +34,7 @@ func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 		return nil, err
 	}
 
-	return map[string]executor.Executor{
-		string(executor.EXECUTOR_DOCKER): ex,
+	return map[executor.EngineType]executor.Executor{
+		executor.EngineDocker: ex,
 	}, nil
 }

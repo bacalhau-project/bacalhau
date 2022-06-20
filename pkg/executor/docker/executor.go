@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	storage_util "github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -76,7 +75,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return docker.IsInstalled(e.Client), nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
+func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 	bool, error) {
 
 	ctx, span := newSpan(ctx, "HasStorage")
@@ -90,7 +89,7 @@ func (e *Executor) HasStorage(ctx context.Context, volume types.StorageSpec) (
 	return storage.HasStorage(ctx, volume)
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	ctx, span := newSpan(ctx, "RunJob")
@@ -284,7 +283,7 @@ func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
 	return jobResultsDir, nil
 }
 
-func (e *Executor) cleanupJob(job *types.Job) {
+func (e *Executor) cleanupJob(job *executor.Job) {
 	if system.ShouldKeepStack() {
 		return
 	}
@@ -311,21 +310,21 @@ func (e *Executor) cleanupAll() {
 	}
 }
 
-func (e *Executor) jobContainerName(job *types.Job) string {
+func (e *Executor) jobContainerName(job *executor.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", e.Id, job.Id)
 }
 
-func (e *Executor) jobContainerLabels(job *types.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.Id,
 	}
 }
 
-func (e *Executor) jobResultsDir(job *types.Job) string {
+func (e *Executor) jobResultsDir(job *executor.Job) string {
 	return fmt.Sprintf("%s/%s", e.ResultsDir, job.Id)
 }
 
-func (e *Executor) ensureJobResultsDir(job *types.Job) (string, error) {
+func (e *Executor) ensureJobResultsDir(job *executor.Job) (string, error) {
 	dir := e.jobResultsDir(job)
 	err := os.MkdirAll(dir, 0777)
 	return dir, err

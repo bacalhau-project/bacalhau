@@ -3,7 +3,7 @@ package transport
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
 // Transport is an interface representing a communication channel between
@@ -28,16 +28,16 @@ type Transport interface {
 	// List returns a list of of known jobs (smart contract will have
 	// persistence; libp2p will be lossy).  JobSpec contains everything
 	// to do with a job including state, results.
-	List(ctx context.Context) (types.ListResponse, error)
+	List(ctx context.Context) (ListResponse, error)
 
 	// Get returns information about the given job.
-	Get(ctx context.Context, jobID string) (*types.Job, error)
+	Get(ctx context.Context, jobID string) (*executor.Job, error)
 
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
 	Subscribe(ctx context.Context, fn func(
-		jobEvent *types.JobEvent, job *types.Job))
+		jobEvent *executor.JobEvent, job *executor.Job))
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
@@ -45,11 +45,11 @@ type Transport interface {
 
 	// Executed by the client (Connie) requesting the work, puts the job into a
 	// mempool of work that is available to be done.
-	SubmitJob(ctx context.Context, spec *types.JobSpec,
-		deal *types.JobDeal) (*types.Job, error)
+	SubmitJob(ctx context.Context, spec *executor.JobSpec,
+		deal *executor.JobDeal) (*executor.Job, error)
 
 	// Update the job deal - for example updating concurrency
-	UpdateDeal(ctx context.Context, jobID string, deal *types.JobDeal) error
+	UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error
 
 	// Client has decided they no longer want the work done. Can only happen
 	// when no runs of the job are in progress.
@@ -82,4 +82,10 @@ type Transport interface {
 	// something has gone wrong is checking the job from the requester node
 	// called by the requester node and so we need to be given the nodeID.
 	ErrorJobForNode(ctx context.Context, jobID, nodeID, status string) error
+}
+
+// the data structure a client can use to render a view of the state of the world
+// e.g. this is used to render the CLI table and results list
+type ListResponse struct {
+	Jobs map[string]*executor.Job
 }

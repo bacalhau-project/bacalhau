@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +35,7 @@ func TestIPFSVerifier(t *testing.T) {
 	assert.True(t, installed)
 
 	resultHash, err := verifier.ProcessResultsFolder(ctx,
-		&types.Job{}, inputDir)
+		"fake-job-id", inputDir)
 	assert.NoError(t, err)
 
 	err = verifier.IPFSClient.DownloadTar(ctx, outputDir, resultHash)

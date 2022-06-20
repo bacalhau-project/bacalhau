@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
 )
 
@@ -57,9 +59,19 @@ var runCmd = &cobra.Command{
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
 
+		engineType, err := executor.ParseEngineType(jobEngine)
+		if err != nil {
+			return err
+		}
+
+		verifierType, err := verifier.ParseVerifierType(jobVerifier)
+		if err != nil {
+			return err
+		}
+
 		spec, deal, err := job.ConstructJob(
-			jobEngine,
-			jobVerifier,
+			engineType,
+			verifierType,
 			jobInputVolumes,
 			jobOutputVolumes,
 			jobEnv,

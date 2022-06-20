@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -113,7 +112,7 @@ var listCmd = &cobra.Command{
 
 		t.SetColumnConfigs(columnConfig)
 
-		jobArray := []*types.Job{}
+		jobArray := []*executor.Job{}
 		for _, job := range jobs {
 			if tableIdFilter != "" {
 				if job.Id == tableIdFilter || shortId(job.Id) == tableIdFilter {
@@ -145,7 +144,7 @@ var listCmd = &cobra.Command{
 				jobIds = append(jobIds, job.Id)
 			}
 			jobIds = ReverseList(jobIds)
-			jobArray = []*types.Job{}
+			jobArray = []*executor.Job{}
 			for _, id := range jobIds {
 				jobArray = append(jobArray, jobs[id])
 			}
@@ -156,10 +155,10 @@ var listCmd = &cobra.Command{
 
 		for _, job := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				job.Spec.Engine,
+				job.Spec.Engine.String(),
 			}
 
-			if job.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
+			if job.Spec.Engine == executor.EngineDocker {
 				jobDesc = append(jobDesc, job.Spec.Vm.Image)
 				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
 			}
@@ -189,7 +188,7 @@ var listCmd = &cobra.Command{
 							len(job.Spec.Outputs),
 							job.Deal.Concurrency,
 							shortId(node),
-							shortenString(string(jobState.State)),
+							shortenString(jobState.State.String()),
 							shortenString(getJobResult(job, jobState)),
 						},
 					})

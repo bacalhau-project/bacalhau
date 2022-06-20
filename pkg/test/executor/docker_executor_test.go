@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,16 +55,16 @@ func dockerExecutorStorageTest(
 			assert.True(t, hasStorage)
 		}
 
-		job := &types.Job{
+		job := &executor.Job{
 			Id:    "test-job",
 			Owner: "test-owner",
-			Spec: &types.JobSpec{
-				Engine:  string(executor.EXECUTOR_DOCKER),
+			Spec: &executor.JobSpec{
+				Engine:  executor.EngineDocker,
 				Vm:      testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: &types.JobDeal{
+			Deal: &executor.JobDeal{
 				Concurrency:   TEST_NODE_COUNT,
 				AssignedNodes: []string{},
 			},

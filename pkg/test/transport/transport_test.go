@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 	"github.com/stretchr/testify/assert"
@@ -31,12 +30,12 @@ func setupTest(t *testing.T) (
 	noopVerifier, err := verifier_noop.NewVerifier()
 	assert.NoError(t, err)
 
-	executors := map[string]executor.Executor{
-		string(executor.EXECUTOR_NOOP): noopExecutor,
+	executors := map[executor.EngineType]executor.Executor{
+		executor.EngineNoop: noopExecutor,
 	}
 
-	verifiers := map[string]verifier.Verifier{
-		string(verifier.VERIFIER_NOOP): noopVerifier,
+	verifiers := map[verifier.VerifierType]verifier.Verifier{
+		verifier.VerifierNoop: noopVerifier,
 	}
 
 	transport, err := inprocess.NewInprocessTransport()
@@ -57,8 +56,8 @@ func setupTest(t *testing.T) (
 }
 
 func TestTransportSanity(t *testing.T) {
-	executors := map[string]executor.Executor{}
-	verifiers := map[string]verifier.Verifier{}
+	executors := map[executor.EngineType]executor.Executor{}
+	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 	_, err = compute_node.NewComputeNode(
@@ -76,33 +75,25 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	ctx := context.Background()
 	transport, noopExecutor, _ := setupTest(t)
 
-	// first let's test submitting a job with an engine we do not have
-	spec := &types.JobSpec{
-		Engine:   "apples",
-		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm: types.JobSpecVm{
+	spec := &executor.JobSpec{
+		Engine:   executor.EngineNoop,
+		Verifier: verifier.VerifierNoop,
+		Vm: executor.JobSpecVm{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
-		Inputs: []types.StorageSpec{
+		Inputs: []storage.StorageSpec{
 			{
 				Engine: storage.IPFS_DEFAULT,
 			},
 		},
 	}
 
-	deal := &types.JobDeal{
+	deal := &executor.JobDeal{
 		Concurrency: 1,
 	}
 
-	_, err := transport.SubmitJob(ctx, spec, deal)
-	assert.NoError(t, err)
-
-	time.Sleep(time.Second * 1)
-	assert.Equal(t, 0, len(noopExecutor.Jobs))
-
-	spec.Engine = string(executor.EXECUTOR_NOOP)
 	jobSelected, err := transport.SubmitJob(ctx, spec, deal)
 	assert.NoError(t, err)
 
@@ -115,23 +106,22 @@ func TestTransportEvents(t *testing.T) {
 	ctx := context.Background()
 	transport, _, _ := setupTest(t)
 
-	// first let's test submitting a job with an engine we do not have
-	spec := &types.JobSpec{
-		Engine:   string(executor.EXECUTOR_NOOP),
-		Verifier: string(verifier.VERIFIER_NOOP),
-		Vm: types.JobSpecVm{
+	spec := &executor.JobSpec{
+		Engine:   executor.EngineNoop,
+		Verifier: verifier.VerifierNoop,
+		Vm: executor.JobSpecVm{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
-		Inputs: []types.StorageSpec{
+		Inputs: []storage.StorageSpec{
 			{
 				Engine: storage.IPFS_DEFAULT,
 			},
 		},
 	}
 
-	deal := &types.JobDeal{
+	deal := &executor.JobDeal{
 		Concurrency: 1,
 	}
 
@@ -140,15 +130,15 @@ func TestTransportEvents(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{
-		string(types.JOB_EVENT_CREATED),
-		string(types.JOB_EVENT_BID),
-		string(types.JOB_EVENT_BID_ACCEPTED),
-		string(types.JOB_EVENT_RESULTS),
+		executor.JobEventCreated.String(),
+		executor.JobEventBid.String(),
+		executor.JobEventBidAccepted.String(),
+		executor.JobEventResults.String(),
 	}
 	actualEventNames := []string{}
 
 	for _, event := range transport.Events {
-		actualEventNames = append(actualEventNames, string(event.EventName))
+		actualEventNames = append(actualEventNames, event.EventName.String())
 	}
 
 	sort.Strings(expectedEventNames)

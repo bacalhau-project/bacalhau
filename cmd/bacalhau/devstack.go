@@ -47,14 +47,14 @@ var devstackCmd = &cobra.Command{
 		defer cancel()
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
-			map[string]executor.Executor, error) {
+			map[executor.EngineType]executor.Executor, error) {
 
 			return executor_util.NewDockerIPFSExecutors(cm,
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
-			map[string]verifier.Verifier, error) {
+			map[verifier.VerifierType]verifier.Verifier, error) {
 
 			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 		}

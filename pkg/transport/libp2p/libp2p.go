@@ -10,9 +10,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -171,7 +171,7 @@ func NewTransport(cm *system.CleanupManager, port int) (
 	// setup the event writer
 	libp2pTransport.genericTransport = transport.NewGenericTransport(
 		host.ID().String(),
-		func(ctx context.Context, event *types.JobEvent) error {
+		func(ctx context.Context, event *executor.JobEvent) error {
 			return libp2pTransport.writeJobEvent(ctx, event)
 		},
 	)
@@ -212,7 +212,7 @@ func (t *Transport) Start(ctx context.Context) error {
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) List(ctx context.Context) (
-	types.ListResponse, error) {
+	transport.ListResponse, error) {
 
 	ctx, span := newSpan(ctx, "List")
 	defer span.End()
@@ -220,7 +220,7 @@ func (t *Transport) List(ctx context.Context) (
 	return t.genericTransport.List(ctx)
 }
 
-func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
+func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	ctx, span := newSpan(ctx, "Get")
 	defer span.End()
 
@@ -228,7 +228,7 @@ func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
 }
 
 func (t *Transport) Subscribe(ctx context.Context, fn func(
-	jobEvent *types.JobEvent, job *types.Job)) {
+	jobEvent *executor.JobEvent, job *executor.Job)) {
 
 	ctx, span := newSpan(ctx, "Subscribe")
 	defer span.End()
@@ -240,8 +240,8 @@ func (t *Transport) Subscribe(ctx context.Context, fn func(
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
-	deal *types.JobDeal) (*types.Job, error) {
+func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec,
+	deal *executor.JobDeal) (*executor.Job, error) {
 
 	ctx, span := newSpan(ctx, "SubmitJob")
 	defer span.End()
@@ -250,7 +250,7 @@ func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
 }
 
 func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
-	deal *types.JobDeal) error {
+	deal *executor.JobDeal) error {
 
 	ctx, span := newSpan(ctx, "UpdateDeal")
 	defer span.End()
@@ -350,7 +350,7 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	return t.Host.Connect(ctx, *info)
 }
 
-func (t *Transport) writeJobEvent(ctx context.Context, event *types.JobEvent) error {
+func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
 	bs, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -367,7 +367,7 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 			return
 		}
 
-		jobEvent := new(types.JobEvent)
+		jobEvent := new(executor.JobEvent)
 		err = json.Unmarshal(msg.Data, jobEvent)
 		if err != nil {
 			continue

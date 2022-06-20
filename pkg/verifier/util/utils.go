@@ -8,7 +8,7 @@ import (
 )
 
 func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (
-	map[string]verifier.Verifier, error) {
+	map[verifier.VerifierType]verifier.Verifier, error) {
 
 	noopVerifier, err := noop.NewVerifier()
 	if err != nil {
@@ -20,8 +20,8 @@ func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	return map[string]verifier.Verifier{
-		string(verifier.VERIFIER_NOOP): noopVerifier,
-		string(verifier.VERIFIER_IPFS): ipfsVerifier,
+	return map[verifier.VerifierType]verifier.Verifier{
+		verifier.VerifierNoop: noopVerifier,
+		verifier.VerifierIpfs: ipfsVerifier,
 	}, nil
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/rs/zerolog/log"
 )
 
@@ -138,10 +138,10 @@ func ShouldKeepStack() bool {
 	return os.Getenv("KEEP_STACK") != ""
 }
 
-func GetJobStateStringArray(states []types.JobStateType) []string {
+func GetJobStateStringArray(states []executor.JobStateType) []string {
 	ret := []string{}
 	for _, state := range states {
-		ret = append(ret, string(state))
+		ret = append(ret, state.String())
 	}
 	return ret
 }

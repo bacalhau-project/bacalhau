@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +16,7 @@ type Transport struct {
 	genericTransport *transport.GenericTransport
 
 	// Public for testing purposes:
-	Events []*types.JobEvent
+	Events []*executor.JobEvent
 }
 
 func NewInprocessTransport() (*Transport, error) {
@@ -31,7 +31,7 @@ func NewInprocessTransport() (*Transport, error) {
 
 	res.genericTransport = transport.NewGenericTransport(
 		hostID.String(),
-		func(ctx context.Context, event *types.JobEvent) error {
+		func(ctx context.Context, event *executor.JobEvent) error {
 			return res.writeJobEvent(ctx, event)
 		},
 	)
@@ -56,16 +56,16 @@ func (t *Transport) HostID(ctx context.Context) (string, error) {
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) List(ctx context.Context) (types.ListResponse, error) {
+func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
 	return t.genericTransport.List(ctx)
 }
 
-func (t *Transport) Get(ctx context.Context, id string) (*types.Job, error) {
+func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	return t.genericTransport.Get(ctx, id)
 }
 
 func (t *Transport) Subscribe(ctx context.Context, fn func(
-	jobEvent *types.JobEvent, job *types.Job)) {
+	jobEvent *executor.JobEvent, job *executor.Job)) {
 
 	t.genericTransport.Subscribe(ctx, fn)
 }
@@ -74,14 +74,14 @@ func (t *Transport) Subscribe(ctx context.Context, fn func(
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec *types.JobSpec,
-	deal *types.JobDeal) (*types.Job, error) {
+func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec,
+	deal *executor.JobDeal) (*executor.Job, error) {
 
 	return t.genericTransport.SubmitJob(ctx, spec, deal)
 }
 
 func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
-	deal *types.JobDeal) error {
+	deal *executor.JobDeal) error {
 
 	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
 }
@@ -142,7 +142,7 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 // loop over all inprocess schdulers and call readJobEvent for each of them
 // do this in a go-routine to simulate the network
 func (t *Transport) writeJobEvent(ctx context.Context,
-	event *types.JobEvent) error {
+	event *executor.JobEvent) error {
 
 	t.Events = append(t.Events, event)
 	t.genericTransport.BroadcastEvent(event)
