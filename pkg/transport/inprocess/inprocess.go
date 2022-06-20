@@ -15,7 +15,7 @@ type Transport struct {
 	id string
 	gt *transport.GenericTransport
 
-	// Exported so that tests can inspect:
+	// Public for testing purposes:
 	Events []*executor.JobEvent
 }
 
@@ -61,15 +61,17 @@ func (t *Transport) Shutdown(ctx context.Context) error {
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
-	return t.gt.List(ctx)
+	return t.genericTransport.List(ctx)
 }
 
 func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
-	return t.gt.Get(ctx, id)
+	return t.genericTransport.Get(ctx, id)
 }
 
-func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	t.gt.Subscribe(ctx, fn)
+func (t *Transport) Subscribe(ctx context.Context, fn func(
+	jobEvent *executor.JobEvent, job *executor.Job)) {
+
+	t.genericTransport.Subscribe(ctx, fn)
 }
 
 /////////////////////////////////////////////////////////////

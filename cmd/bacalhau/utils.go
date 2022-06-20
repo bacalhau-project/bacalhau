@@ -52,9 +52,6 @@ func shortId(id string) string {
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
-	if state.ResultsId == "" {
-		return ""
-	}
 	return "/" + job.Spec.Verifier.String() + "/" + state.ResultsId
 }
 
