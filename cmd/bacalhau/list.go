@@ -155,7 +155,7 @@ var listCmd = &cobra.Command{
 
 		for _, job := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				job.Spec.Engine,
+				job.Spec.Engine.String(),
 			}
 
 			if job.Spec.Engine == executor.EngineDocker {

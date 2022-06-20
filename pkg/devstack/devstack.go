@@ -37,10 +37,10 @@ type DevStack struct {
 }
 
 type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[string]executor.Executor, error)
+	map[executor.EngineType]executor.Executor, error)
 
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[string]verifier.Verifier, error)
+	map[verifier.VerifierType]verifier.Verifier, error)
 
 func NewDevStack(
 	cm *system.CleanupManager,

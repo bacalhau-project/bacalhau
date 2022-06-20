@@ -114,7 +114,7 @@ func NewComputeNode(
 			}
 
 			resultValue, err := verifier.ProcessResultsFolder(
-				ctx, job, resultFolder)
+				ctx, job.Id, resultFolder)
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))

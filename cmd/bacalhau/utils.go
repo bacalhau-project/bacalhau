@@ -39,7 +39,7 @@ func shortId(id string) string {
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
-	return "/" + job.Spec.Verifier + "/" + state.ResultsId
+	return "/" + job.Spec.Verifier.String() + "/" + state.ResultsId
 }
 
 func getAPIClient() *publicapi.APIClient {

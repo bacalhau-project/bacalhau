@@ -2,8 +2,6 @@ package verifier
 
 import (
 	"context"
-
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
 // Verifier is an interface representing something that can verify the results
@@ -15,5 +13,6 @@ type Verifier interface {
 	// the executor has completed the job and produced a local folder of results
 	// the verifier will now "process" this local folder into the result
 	// that will be broadcast back to the network
-	ProcessResultsFolder(context.Context, *executor.Job, string) (string, error)
+	ProcessResultsFolder(ctx context.Context, jobID string,
+		resultsPath string) (string, error)
 }

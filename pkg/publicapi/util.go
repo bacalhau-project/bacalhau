@@ -106,12 +106,13 @@ func MakeNoopJob() (*executor.JobSpec, *executor.JobDeal) {
 	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
 }
 
-func MakeJob(exec executor.EngineType, verif verifier.VerifierType) (
-	*executor.JobSpec, *executor.JobDeal) {
+func MakeJob(engineType executor.EngineType,
+	verifierType verifier.VerifierType) (*executor.JobSpec,
+	*executor.JobDeal) {
 
 	jobSpec := executor.JobSpec{
-		Engine:   string(exec),
-		Verifier: string(verif),
+		Engine:   engineType,
+		Verifier: verifierType,
 		Vm: executor.JobSpecVm{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{

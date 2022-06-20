@@ -33,8 +33,8 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 }
 
 func ConstructJob(
-	engine string,
-	verifier string,
+	engine executor.EngineType,
+	verifier verifier.VerifierType,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -98,13 +98,6 @@ func ConstructJob(
 }
 
 func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
-	if _, err := executor.ParseEngineType(spec.Engine); err != nil {
-		return fmt.Errorf("invalid job: %v", err)
-	}
-
-	if _, err := verifier.ParseVerifierType(spec.Verifier); err != nil {
-		return fmt.Errorf("invalid job: %v", err)
-	}
-
+	// TODO: do something useful here
 	return nil
 }

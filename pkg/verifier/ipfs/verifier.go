@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -51,12 +50,12 @@ func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
-	job *executor.Job, resultsFolder string) (string, error) {
+	jobID, resultsFolder string) (string, error) {
 
 	ctx, span := newSpan(ctx, "ProcessResultsFolder")
 	defer span.End()
 
-	log.Debug().Msgf("Uploading results folder to ipfs: %s %s", job.Id, resultsFolder)
+	log.Debug().Msgf("Uploading results folder to ipfs: %s %s", jobID, resultsFolder)
 	return verifier.IPFSClient.UploadTar(ctx, resultsFolder)
 }
 
