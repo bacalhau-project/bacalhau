@@ -99,7 +99,7 @@ fi
 export LOG_LEVEL=debug
 export BACALHAU_PATH=/data
 
-(while true; do bacalhau serve --peer ${ count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL" } --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
+(while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${ count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL" } --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
 sudo service openresty restart  
