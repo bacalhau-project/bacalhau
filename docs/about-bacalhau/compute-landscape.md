@@ -24,7 +24,7 @@ This landscape analysis reviewed a selection of these tools in order to summariz
 
 
 <p align="center">
-<img src="../../static/img/landscape.png" alt="Compute Framework Analysis" width="500" />
+<img src="/img/landscape.png" alt="Compute Framework Analysis" width="600" />
 </p>
 
 The Python data stack includes tools like Pandas and Dask that offer a very convenient data structure named "dataframe", particularly suitable for handling tabular data.
@@ -47,7 +47,7 @@ Moreover, there's often a significant setup burden even to running a getting sta
 The table below summarizes their score in terms of different requirements, find more details in the slide deck linked at the bottom of this page.
 
 <p align="center">
-<img src="../../static/img/landscape-table.png" alt="Compute Framework Analysis" width="600" />
+<img src="/img/landscape-table.png" alt="Compute Framework Analysis" width="700" />
 </p>
 
 Why is Bachalau not on this list?
@@ -70,7 +70,7 @@ Instructions on how to spawn a multi-node cluster are provided for each framewor
 The plot below reports the benchmark running time for each framework, missing bars imply that the tool doesn't support a fully-fledged multi-node set-up (i.e can only scale vertically).
 
 <p align="center">
-<img src="../../static/img/landscape-benchmarks.png" alt="Compute Framework Analysis" width="500" />
+<img src="/img/landscape-benchmarks.png" alt="Compute Framework Analysis" width="600" />
 </p>
 
 > Do you want to learn more about the benchmark results? 
