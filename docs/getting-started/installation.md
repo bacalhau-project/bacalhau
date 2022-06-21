@@ -7,7 +7,7 @@ sidebar_label: 'Installation' sidebar_position: 2
 ## Install the CLI
 
 ```
-curl -sL https://bacalhau.org/install.sh | bash
+curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
 ## Run a "hello world" job
