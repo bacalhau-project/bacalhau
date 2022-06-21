@@ -1,7 +1,7 @@
 **MAY**
 
 1. *(basic)* Build a system for unreliably running a single deterministic program where a single 10MB piece of data is on IPFS, assuming everyone participating is trustworthy, assuming only 10 nodes in the network.*Example:* Run cloud detection on a single Landsat image file. Get the result back. Verify it by eye.
-  1. **STATUS** Complete.
+    1. **STATUS** Complete.
 
 
 **JUNE**
