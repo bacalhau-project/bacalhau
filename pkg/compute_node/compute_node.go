@@ -40,10 +40,10 @@ func NewComputeNode(
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
+	transport.Subscribe(ctx, func(ctx context.Context,
+		jobEvent *executor.JobEvent, job *executor.Job) {
 
 		switch jobEvent.EventName {
-
 		// a new job has arrived - decide if we want to bid on it
 		case executor.JobEventCreated:
 

@@ -29,7 +29,9 @@ func NewRequesterNode(
 		Transport: transport,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
+	transport.Subscribe(ctx, func(ctx context.Context,
+		jobEvent *executor.JobEvent, job *executor.Job) {
+
 		// we only care about jobs that we own
 		if job.Owner != nodeId {
 			return

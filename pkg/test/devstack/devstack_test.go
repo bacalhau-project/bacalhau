@@ -32,6 +32,7 @@ func devStackDockerStorageTest(
 ) {
 	ctx, span := newSpan(testCase.Name)
 	defer span.End()
+
 	stack, cm := SetupTest(
 		t,
 		nodeCount,

@@ -227,9 +227,7 @@ func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	return t.genericTransport.Get(ctx, id)
 }
 
-func (t *Transport) Subscribe(ctx context.Context, fn func(
-	jobEvent *executor.JobEvent, job *executor.Job)) {
-
+func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 	ctx, span := newSpan(ctx, "Subscribe")
 	defer span.End()
 
@@ -350,8 +348,16 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	return t.Host.Connect(ctx, *info)
 }
 
+type jobEventData struct {
+	JobEvent    *executor.JobEvent `json:"job_event"`
+	SpanContext trace.SpanContext  `json:"span_context"`
+}
+
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
-	bs, err := json.Marshal(event)
+	bs, err := json.Marshal(jobEventData{
+		JobEvent:    event,
+		SpanContext: trace.SpanContextFromContext(ctx),
+	})
 	if err != nil {
 		return err
 	}
@@ -364,16 +370,24 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 	for {
 		msg, err := t.JobEventSubscription.Next(ctx)
 		if err != nil {
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				log.Info().Msgf("libp2p transport shutting down: %v", err)
+			} else {
+				log.Error().Msgf(
+					"libp2p encountered an unexpected error, shutting down: %v", err)
+			}
+
 			return
 		}
 
-		jobEvent := new(executor.JobEvent)
-		err = json.Unmarshal(msg.Data, jobEvent)
-		if err != nil {
-			continue
+		jed := jobEventData{}
+		if err = json.Unmarshal(msg.Data, &jed); err != nil {
+			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 		}
 
-		t.genericTransport.BroadcastEvent(jobEvent)
+		// Notify all the listeners in this process of the event:
+		ctx = trace.ContextWithSpanContext(ctx, jed.SpanContext)
+		t.genericTransport.BroadcastEvent(ctx, jed.JobEvent)
 	}
 }
 
