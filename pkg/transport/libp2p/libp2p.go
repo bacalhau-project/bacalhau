@@ -21,6 +21,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -198,13 +200,18 @@ func (t *Transport) Start(ctx context.Context) error {
 	t.cm.RegisterCallback(func() error {
 		t.Host.Close()
 		log.Debug().Msg("Libp2p transport has stopped")
-		return nil
+
+		return t.Shutdown(ctx)
 	})
 
 	log.Debug().Msg("libp2p transport is starting...")
 	t.readLoopJobEvents(ctx) // blocking
 
 	return nil
+}
+
+func (t *Transport) Shutdown(ctx context.Context) error {
+	return t.genericTransport.Shutdown(ctx)
 }
 
 /////////////////////////////////////////////////////////////
@@ -349,14 +356,17 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 }
 
 type jobEventData struct {
-	JobEvent    *executor.JobEvent `json:"job_event"`
-	SpanContext trace.SpanContext  `json:"span_context"`
+	JobEvent  *executor.JobEvent     `json:"job_event"`
+	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
+	traceData := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &traceData)
+
 	bs, err := json.Marshal(jobEventData{
-		JobEvent:    event,
-		SpanContext: trace.SpanContextFromContext(ctx),
+		JobEvent:  event,
+		TraceData: traceData,
 	})
 	if err != nil {
 		return err
@@ -383,10 +393,12 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 		jed := jobEventData{}
 		if err = json.Unmarshal(msg.Data, &jed); err != nil {
 			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+			continue
 		}
+		log.Debug().Msgf("Received event: %+v", jed)
 
 		// Notify all the listeners in this process of the event:
-		ctx = trace.ContextWithSpanContext(ctx, jed.SpanContext)
+		ctx = otel.GetTextMapPropagator().Extract(ctx, jed.TraceData)
 		t.genericTransport.BroadcastEvent(ctx, jed.JobEvent)
 	}
 }

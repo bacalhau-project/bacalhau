@@ -52,6 +52,10 @@ func (t *Transport) HostID(ctx context.Context) (string, error) {
 	return t.id, nil
 }
 
+func (t *Transport) Shutdown(ctx context.Context) error {
+	return t.gt.Shutdown(ctx)
+}
+
 /////////////////////////////////////////////////////////////
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////

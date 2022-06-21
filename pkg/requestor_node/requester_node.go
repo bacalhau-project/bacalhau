@@ -5,10 +5,14 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type RequesterNode struct {
+	NodeID    string
 	Transport transport.Transport
 }
 
@@ -26,6 +30,7 @@ func NewRequesterNode(
 	}
 
 	requesterNode := &RequesterNode{
+		NodeID:    nodeId,
 		Transport: transport,
 	}
 
@@ -44,9 +49,11 @@ func NewRequesterNode(
 		// we would call out to the reputation system
 		// we also pay attention to the job deal concurrency setting
 		case executor.JobEventBid:
+			ctx, span := requesterNode.newSpanForJob(ctx,
+				job.Id, "JobEventBid")
+			defer span.End()
 
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
-
 			if err != nil {
 				threadLogger.Warn().Msgf("There was an error considering bid: %s", err)
 				return
@@ -109,4 +116,16 @@ func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeId string) (bool, 
 	}
 
 	return true, "", nil
+}
+
+func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID,
+	name string) (context.Context, trace.Span) {
+
+	return system.Span(ctx, "requestor_node/requester_node", name,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("nodeID", node.NodeID),
+			attribute.String("jobID", jobID),
+		),
+	)
 }

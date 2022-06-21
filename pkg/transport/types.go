@@ -20,6 +20,9 @@ type Transport interface {
 	// via the context parameter. You must call Subscribe _before_ starting.
 	Start(ctx context.Context) error
 
+	// Shuts down the transport layer and performs resource cleanup.
+	Shutdown(ctx context.Context) error
+
 	// HostID returns a unique string per host in whatever network the
 	// scheduler is connecting to. Must be unique per instance.
 	HostID(ctx context.Context) (string, error)
