@@ -7,5 +7,5 @@ sidebar_position: 1
 
 
 <p align="center">
-<img src="../../static/img/bacalhau-architecture-old.png" alt="Bacalhau Logo" width="400" />
+<img src="/img/bacalhau-architecture-old.png" alt="Bacalhau Architecture Diagram" width="400" />
 </p>
