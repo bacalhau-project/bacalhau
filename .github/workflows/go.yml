@@ -141,6 +141,7 @@ jobs:
         run: make test
 
       - uses: actions-hub/gcloud@master
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           PROJECT_ID: bacalhau-development-cluster
           APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS }}
@@ -148,6 +149,7 @@ jobs:
           args: info
 
       - name: Deploy test cluster
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           cd ops/terraform
           terraform apply -auto-approve --var-file=development.tfvars
