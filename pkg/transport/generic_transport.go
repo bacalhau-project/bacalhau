@@ -198,10 +198,10 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	}, nil
 }
 
-func (gt *GenericTransport) UpdateDeal(_ context.Context,
+func (gt *GenericTransport) UpdateDeal(ctx context.Context,
 	jobID string, deal *executor.JobDeal) error {
 
-	ctx := gt.getJobContext(jobID)
+	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "UpdateDeal")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
@@ -218,10 +218,10 @@ func (gt *GenericTransport) CancelJob(ctx context.Context,
 	panic("should be implemented by parent transport")
 }
 
-func (gt *GenericTransport) AcceptJobBid(_ context.Context,
+func (gt *GenericTransport) AcceptJobBid(ctx context.Context,
 	jobID, nodeID string) error {
 
-	ctx := gt.getJobContext(jobID)
+	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "AcceptJobBid")
 
 	job, err := gt.Get(ctx, jobID)
@@ -242,10 +242,10 @@ func (gt *GenericTransport) AcceptJobBid(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) RejectJobBid(_ context.Context,
+func (gt *GenericTransport) RejectJobBid(ctx context.Context,
 	jobID, nodeID, message string) error {
 
-	ctx := gt.getJobContext(jobID)
+	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "RejectJobBid") // TODO: add msg
 
 	if message == "" {
@@ -268,10 +268,10 @@ func (gt *GenericTransport) RejectJobBid(_ context.Context,
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (gt *GenericTransport) BidJob(_ context.Context,
+func (gt *GenericTransport) BidJob(ctx context.Context,
 	jobID string) error {
 
-	ctx := gt.getJobContext(jobID)
+	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "BidJob")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
@@ -376,7 +376,7 @@ func (gt *GenericTransport) getJobNodeContext(ctx context.Context,
 	jobCtx, ok := gt.jobNodeContexts[jobID]
 	if !ok {
 		jobCtx, _ = system.Span(ctx, "transport/generic_transport",
-			"JobNodeLifecycle",
+			"JobLifecycle-"+gt.NodeID[:8],
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
 				attribute.String("job_id", jobID),
