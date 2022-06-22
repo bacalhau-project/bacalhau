@@ -41,6 +41,7 @@ func ConstructJob(
 	entrypoint []string,
 	image string,
 	concurrency int,
+	jobLabels []string,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
 		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
@@ -104,7 +105,7 @@ func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
 }
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
-func GetCurrentJobState(job *types.Job) (string, *types.JobState) {
+func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	// Combine the list of jobs down to just those that matter
 	// Strategy here is assuming the following:
 	// - All created times are the same (we'll choose the biggest, but it shouldn't matter)
@@ -115,7 +116,7 @@ func GetCurrentJobState(job *types.Job) (string, *types.JobState) {
 	// 	 one that has the non-bid-rejected result.
 
 	finalNodeId := ""
-	finalJobState := &types.JobState{}
+	finalJobState := &executor.JobState{}
 
 	for nodeId, jobState := range job.State {
 		if finalNodeId == "" {
@@ -130,20 +131,20 @@ func GetCurrentJobState(job *types.Job) (string, *types.JobState) {
 	return finalNodeId, finalJobState
 }
 
-func JobStateValue(jobState *types.JobState) int {
+func JobStateValue(jobState *executor.JobState) int {
 	switch jobState.State {
-	case types.JOB_STATE_RUNNING:
+	case executor.JobStateRunning:
 		return 100
-	case types.JOB_STATE_COMPLETE:
+	case executor.JobStateComplete:
 		return 90
-	case types.JOB_STATE_ERROR:
+	case executor.JobStateError:
 		return 80
-	case types.JOB_STATE_BIDDING:
+	case executor.JobStateBidding:
 		return 70
-	case types.JOB_STATE_BID_REJECTED:
+	case executor.JobStateBidRejected:
 		return 60
 	default:
-		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State)
+		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
 		return 0
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -20,9 +20,9 @@ func init() {
 type jobDescription struct {
 	ID        string                     `yaml:"Id"`
 	Owner     string                     `yaml:"Owner"`
-	Spec      types.JobSpec              `yaml:"Spec"`
-	Deal      types.JobDeal              `yaml:"Deal"`
-	State     map[string]*types.JobState `yaml:"State"`
+	Spec      executor.JobSpec              `yaml:"Spec"`
+	Deal 	  executor.JobDeal                   `yaml:"Deal"`
+	State     map[string]*executor.JobState `yaml:"State"`
 	CreatedAt time.Time                  `yaml:"Start Time"`
 }
 

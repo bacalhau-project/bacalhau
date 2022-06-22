@@ -159,12 +159,12 @@ var listCmd = &cobra.Command{
 
 		for _, jobInRow := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				job.Spec.Engine.String(),
+				jobInRow.Spec.Engine.String(),
 			}
 
-			if job.Spec.Engine == executor.EngineDocker {
-				jobDesc = append(jobDesc, job.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
+			if jobInRow.Spec.Engine == executor.EngineDocker {
+				jobDesc = append(jobDesc, jobInRow.Spec.Vm.Image)
+				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.Vm.Entrypoint, " "))
 			}
 
 			if len(jobInRow.State) == 0 {
@@ -178,18 +178,18 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-				for node, jobState := range job.State {
+				for node, jobState := range jobInRow.State {
 					t.AppendRows([]table.Row{
 						{
-							shortId(job.Id),
+							shortId(jobInRow.Id),
 							shortenString(strings.Join(jobDesc, " ")),
-							job.CreatedAt.Format("06-01-02-15:04:05"),
-							len(job.Spec.Inputs),
-							len(job.Spec.Outputs),
-							job.Deal.Concurrency,
+							jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
+							len(jobInRow.Spec.Inputs),
+							len(jobInRow.Spec.Outputs),
+							jobInRow.Deal.Concurrency,
 							shortId(node),
 							shortenString(jobState.State.String()),
-							shortenString(getJobResult(job, jobState)),
+							shortenString(getJobResult(jobInRow, jobState)),
 						},
 					})
 				}

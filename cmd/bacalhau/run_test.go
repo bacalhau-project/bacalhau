@@ -120,7 +120,7 @@ func (suite *RunSuite) TestRun_Labels() {
 		BadCase       bool
 	}{
 		{Name: "1", Labels: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
-		{Name: "1.1", Labels: []string{`""`}, CorrectLength: 0, BadCase: false},           // Label flag, no value, but correctly quoted
+		{Name: "1.1", Labels: []string{`""`}, CorrectLength: 1, BadCase: false},           // Label flag, no value, but correctly quoted
 		{Name: "2", Labels: []string{"a"}, CorrectLength: 1, BadCase: false},              // Labels, string
 		{Name: "3", Labels: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Labels, string and int
 		{Name: "4", Labels: []string{`''`, `" "`}, CorrectLength: 2, BadCase: false},      // Labels, some edge case characters

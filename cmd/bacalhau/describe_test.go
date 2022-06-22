@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +45,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 		numberOfRejectNodes int
 		jobState            string
 	}{
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: string(types.JOB_STATE_COMPLETE)}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobStateComplete.String()}, // Run and accept
 		// {numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
 		// {numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
 		// {numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default

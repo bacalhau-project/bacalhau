@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 

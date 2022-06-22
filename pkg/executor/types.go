@@ -56,6 +56,9 @@ type JobSpec struct {
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
 	Outputs []storage.StorageSpec `json:"outputs"`
+
+	// Labels for the job
+	Labels	[]string		`json:"labels"`
 }
 
 // for VM style executors
