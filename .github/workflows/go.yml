@@ -152,4 +152,5 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           cd ops/terraform
+          terraform init
           terraform apply -auto-approve --var-file=development.tfvars
