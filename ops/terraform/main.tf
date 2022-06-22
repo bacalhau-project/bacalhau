@@ -4,6 +4,13 @@ provider "google" {
   zone    = var.zone
 }
 
+terraform {
+  backend "gcs" {
+    bucket  = "bacalhau-cluster-tfstate"
+    prefix  = "terraform/state"
+  }
+}
+
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${count.index}"

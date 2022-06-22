@@ -151,15 +151,10 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
 
-      - name: terraform init
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: |
-          cd ops/terraform && terraform init
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
       - name: terraform apply
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
+          cd ops/terraform && terraform workspace select development
           cd ops/terraform && terraform apply -auto-approve --var-file=development.tfvars
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
