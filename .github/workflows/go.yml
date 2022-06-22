@@ -153,11 +153,15 @@ jobs:
 
       - name: terraform init
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: cd ops/terraform && terraform init
+        run: |
+          gcloud auth application-default login
+          cd ops/terraform && terraform init
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
       - name: terraform apply
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: cd ops/terraform && terraform apply -auto-approve --var-file=development.tfvars
+        run: |
+          gcloud auth application-default login
+          cd ops/terraform && terraform apply -auto-approve --var-file=development.tfvars
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
