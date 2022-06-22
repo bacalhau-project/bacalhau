@@ -143,10 +143,13 @@ jobs:
       - name: setup gcloud
         uses: google-github-actions/setup-gcloud@v0
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0"
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
-          service_account_email: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_EMAIL }}
-          service_account_key: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_KEYI }}
-          PROJECT_ID: bacalhau-development-cluster
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
 
       - name: terraform init
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
