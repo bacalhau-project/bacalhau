@@ -25,31 +25,34 @@ var skipSyntaxChecking bool
 var flagClearAnnotations bool
 
 func init() {
-	runCmd.PersistentFlags().StringVar(
+	dockerCmd.AddCommand(dockerRunCmd)
+
+	// TODO: don't make jobEngine specifiable in the docker subcommand
+	dockerRunCmd.PersistentFlags().StringVar(
 		&jobEngine, "engine", "docker",
 		`What executor engine to use to run the job`,
 	)
-	runCmd.PersistentFlags().StringVar(
+	dockerRunCmd.PersistentFlags().StringVar(
 		&jobVerifier, "verifier", "ipfs",
 		`What verification engine to use to run the job`,
 	)
-	runCmd.PersistentFlags().StringSliceVarP(
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
 		`cid:path of the input data volumes`,
 	)
-	runCmd.PersistentFlags().StringSliceVarP(
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobOutputVolumes, "output-volumes", "o", []string{},
 		`name:path of the output data volumes`,
 	)
-	runCmd.PersistentFlags().StringSliceVarP(
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
-	runCmd.PersistentFlags().IntVarP(
+	dockerRunCmd.PersistentFlags().IntVarP(
 		&jobConcurrency, "concurrency", "c", 1,
 		`How many nodes should run the job`,
 	)
-	runCmd.PersistentFlags().BoolVar(
+	dockerRunCmd.PersistentFlags().BoolVar(
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
@@ -68,9 +71,14 @@ func init() {
 	}
 }
 
-var runCmd = &cobra.Command{
+var dockerCmd = &cobra.Command{
+	Use:   "docker",
+	Short: "Run a docker job on the network (see run subcommand)",
+}
+
+var dockerRunCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Run a job on the network",
+	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
 		ctx := context.Background()
