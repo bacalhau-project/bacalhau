@@ -141,7 +141,7 @@ jobs:
         run: make test
 
       - name: setup gcloud
-        uses: google-github-actions/setup-gcloud@master
+        uses: google-github-actions/setup-gcloud@main
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
           service_account_email: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_EMAIL }}
