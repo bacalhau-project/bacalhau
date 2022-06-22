@@ -20,8 +20,21 @@ resource "google_compute_instance" "bacalhau_vm" {
   metadata_startup_script = <<-EOF
 #!/bin/bash -xe
 
-sudo apt-get install -y docker.io
+sudo apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update -y
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 # TODO: move this into two systemd units!
+
+sudo mkdir -p /var/www/health_checker
 
 # Lay down a very basic web server to report when the node is healthy
 sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
@@ -32,10 +45,8 @@ sudo apt-get update
 sudo apt-get -y install openresty
 sudo apt-get -y install --no-install-recommends openresty
 
-sudo mkdir -p /var/www/health_checker
-
-sudo tee /var/www/health_checker/livez.sh > /dev/null <<'EOI'
-${file("${path.module}/scripts/livez.sh")}
+sudo tee /usr/local/openresty/nginx/conf/nginx.conf > /dev/null <<'EOI'
+${file("${path.module}/configs/nginx.conf")}
 EOI
 
 sudo tee /var/www/health_checker/livez.sh > /dev/null <<'EOI'
@@ -84,7 +95,7 @@ export BACALHAU_PATH=/data
 (while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"} --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
-sudo service lighttpd restart
+sudo service openresty restart  
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
 ${google_compute_network.bacalhau_network.name}
 EOI
@@ -186,7 +197,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "5001",  // ipfs API
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
-      "44444", // lighttpd node health check server
+      "44444", // nginx node health check server
     ]
   }
 
