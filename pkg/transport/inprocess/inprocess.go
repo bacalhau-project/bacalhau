@@ -9,13 +9,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// Transport is a communication channel that operates entirely in-memory, for
+// Transport is a transport layer that operates entirely in-memory, for
 // testing purposes. Should not be used in production.
 type Transport struct {
-	id               string
-	genericTransport *transport.GenericTransport
+	id string
+	gt *transport.GenericTransport
 
-	// Public for testing purposes:
+	// Exported so that tests can inspect:
 	Events []*executor.JobEvent
 }
 
@@ -29,7 +29,7 @@ func NewInprocessTransport() (*Transport, error) {
 		id: hostID.String(),
 	}
 
-	res.genericTransport = transport.NewGenericTransport(
+	res.gt = transport.NewGenericTransport(
 		hostID.String(),
 		func(ctx context.Context, event *executor.JobEvent) error {
 			return res.writeJobEvent(ctx, event)
@@ -52,22 +52,24 @@ func (t *Transport) HostID(ctx context.Context) (string, error) {
 	return t.id, nil
 }
 
+func (t *Transport) Shutdown(ctx context.Context) error {
+	return t.gt.Shutdown(ctx)
+}
+
 /////////////////////////////////////////////////////////////
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
-	return t.genericTransport.List(ctx)
+	return t.gt.List(ctx)
 }
 
 func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
-	return t.genericTransport.Get(ctx, id)
+	return t.gt.Get(ctx, id)
 }
 
-func (t *Transport) Subscribe(ctx context.Context, fn func(
-	jobEvent *executor.JobEvent, job *executor.Job)) {
-
-	t.genericTransport.Subscribe(ctx, fn)
+func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
+	t.gt.Subscribe(ctx, fn)
 }
 
 /////////////////////////////////////////////////////////////
@@ -77,13 +79,13 @@ func (t *Transport) Subscribe(ctx context.Context, fn func(
 func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec,
 	deal *executor.JobDeal) (*executor.Job, error) {
 
-	return t.genericTransport.SubmitJob(ctx, spec, deal)
+	return t.gt.SubmitJob(ctx, spec, deal)
 }
 
 func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
 	deal *executor.JobDeal) error {
 
-	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
+	return t.gt.UpdateDeal(ctx, jobID, deal)
 }
 
 func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
@@ -93,13 +95,13 @@ func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 func (t *Transport) AcceptJobBid(ctx context.Context, jobID,
 	nodeID string) error {
 
-	return t.genericTransport.AcceptJobBid(ctx, jobID, nodeID)
+	return t.gt.AcceptJobBid(ctx, jobID, nodeID)
 }
 
 func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 	message string) error {
 
-	return t.genericTransport.RejectJobBid(ctx, jobID, nodeID, message)
+	return t.gt.RejectJobBid(ctx, jobID, nodeID, message)
 }
 
 /////////////////////////////////////////////////////////////
@@ -107,17 +109,17 @@ func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
 /////////////////////////////////////////////////////////////
 
 func (t *Transport) BidJob(ctx context.Context, jobID string) error {
-	return t.genericTransport.BidJob(ctx, jobID)
+	return t.gt.BidJob(ctx, jobID)
 }
 
 func (t *Transport) SubmitResult(ctx context.Context, jobID, status,
 	resultsID string) error {
 
-	return t.genericTransport.SubmitResult(ctx, jobID, status, resultsID)
+	return t.gt.SubmitResult(ctx, jobID, status, resultsID)
 }
 
 func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
-	return t.genericTransport.ErrorJob(ctx, jobID, status)
+	return t.gt.ErrorJob(ctx, jobID, status)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -128,7 +130,7 @@ func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
 func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
 	status string) error {
 
-	return t.genericTransport.ErrorJobForNode(ctx, jobID, nodeID, status)
+	return t.gt.ErrorJobForNode(ctx, jobID, nodeID, status)
 }
 
 /////////////////////////////////////////////////////////////
@@ -145,7 +147,7 @@ func (t *Transport) writeJobEvent(ctx context.Context,
 	event *executor.JobEvent) error {
 
 	t.Events = append(t.Events, event)
-	t.genericTransport.BroadcastEvent(event)
+	t.gt.BroadcastEvent(ctx, event)
 
 	return nil
 }
