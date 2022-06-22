@@ -140,22 +140,14 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make test
 
-      - name: setup gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-
-      - id: "auth"
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
-
-      - name: terraform apply
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: |
-          cd ops/terraform && terraform init && \
-             terraform workspace select development && \
-             terraform apply -auto-approve --var-file=development.tfvars
+      - uses: actions-hub/gcloud@master
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
+          PROJECT_ID: bacalhau-development-cluster
+          APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS }}
+        with:
+          args: info
+
+      - name: Deploy test cluster
+        run: |
+          cd ops/terraform
+          terraform apply -auto-approve --var-file=development.tfvars
