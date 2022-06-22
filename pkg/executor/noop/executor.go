@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 type Executor struct {
-	Jobs []*types.Job
+	Jobs []*executor.Job
 }
 
 func NewExecutor() (*Executor, error) {
 	Executor := &Executor{
-		Jobs: []*types.Job{},
+		Jobs: []*executor.Job{},
 	}
 	return Executor, nil
 }
@@ -23,12 +23,12 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (e *Executor) HasStorage(ctx context.Context,
-	volume types.StorageSpec) (bool, error) {
+	volume storage.StorageSpec) (bool, error) {
 
 	return true, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *types.Job) (
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	e.Jobs = append(e.Jobs, job)

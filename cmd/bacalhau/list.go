@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -117,7 +115,7 @@ var listCmd = &cobra.Command{
 
 		t.SetColumnConfigs(columnConfig)
 
-		jobArray := []*types.Job{}
+		jobArray := []*executor.Job{}
 		for _, job := range jobs {
 			if tableIdFilter != "" {
 				if job.Id == tableIdFilter || shortId(job.Id) == tableIdFilter {
@@ -149,7 +147,7 @@ var listCmd = &cobra.Command{
 				jobIds = append(jobIds, job.Id)
 			}
 			jobIds = ReverseList(jobIds)
-			jobArray = []*types.Job{}
+			jobArray = []*executor.Job{}
 			for _, id := range jobIds {
 				jobArray = append(jobArray, jobs[id])
 			}
@@ -161,12 +159,12 @@ var listCmd = &cobra.Command{
 
 		for _, jobInRow := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				jobInRow.Spec.Engine,
+				job.Spec.Engine.String(),
 			}
 
-			if jobInRow.Spec.Engine == string(executor.EXECUTOR_DOCKER) {
-				jobDesc = append(jobDesc, jobInRow.Spec.VM.Image)
-				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.VM.Entrypoint, " "))
+			if job.Spec.Engine == executor.EngineDocker {
+				jobDesc = append(jobDesc, job.Spec.Vm.Image)
+				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
 			}
 
 			if len(jobInRow.State) == 0 {
@@ -180,17 +178,21 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-				_, furthestNodeState := job.GetCurrentJobState(jobInRow)
-
-				t.AppendRows([]table.Row{
-					{
-						jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
-						shortId(jobInRow.Id),
-						shortenString(strings.Join(jobDesc, " ")),
-						shortenString(string(furthestNodeState.State)),
-						shortenString(getJobResult(jobInRow, furthestNodeState)),
-					},
-				})
+				for node, jobState := range job.State {
+					t.AppendRows([]table.Row{
+						{
+							shortId(job.Id),
+							shortenString(strings.Join(jobDesc, " ")),
+							job.CreatedAt.Format("06-01-02-15:04:05"),
+							len(job.Spec.Inputs),
+							len(job.Spec.Outputs),
+							job.Deal.Concurrency,
+							shortId(node),
+							shortenString(jobState.State.String()),
+							shortenString(getJobResult(job, jobState)),
+						},
+					})
+				}
 			}
 
 		}

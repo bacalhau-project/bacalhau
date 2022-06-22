@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -38,10 +37,10 @@ type DevStack struct {
 }
 
 type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[string]executor.Executor, error)
+	map[executor.EngineType]executor.Executor, error)
 
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[string]verifier.Verifier, error)
+	map[verifier.VerifierType]verifier.Verifier, error)
 
 func NewDevStack(
 	cm *system.CleanupManager,
@@ -289,7 +288,7 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }
 
-func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[string]types.JobStateType, error) {
+func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[string]executor.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].ApiServer.GetURI())
 
 	job, ok, err := apiClient.Get(ctx, jobId)
@@ -301,7 +300,7 @@ func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[stri
 		return nil, nil
 	}
 
-	states := map[string]types.JobStateType{}
+	states := map[string]executor.JobStateType{}
 	for id, state := range job.State {
 		states[id] = state.State
 	}
@@ -311,15 +310,15 @@ func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[stri
 
 // a function that is given a map of nodeid -> job states
 // and will throw an error if anything about that is wrong
-type CheckJobStatesFunction func(map[string]types.JobStateType) (bool, error)
+type CheckJobStatesFunction func(map[string]executor.JobStateType) (bool, error)
 
 // there should be zero errors with any job
-func WaitForJobThrowErrors(errorStates []types.JobStateType) CheckJobStatesFunction {
-	return func(jobStates map[string]types.JobStateType) (bool, error) {
+func WaitForJobThrowErrors(errorStates []executor.JobStateType) CheckJobStatesFunction {
+	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
 		for id, state := range jobStates {
-			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), string(state)) {
-				return false, fmt.Errorf("job %s has error state: %s", id, string(state))
+			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), state.String()) {
+				return false, fmt.Errorf("job %s has error state: %s", id, state.String())
 			}
 		}
 		return true, nil
@@ -330,8 +329,8 @@ func WaitForJobThrowErrors(errorStates []types.JobStateType) CheckJobStatesFunct
 // each state must be the given type
 // each seen node id must be present in the presented array
 // this is useful for testing (did only the nodes that should have completed the job run it)
-func WaitForJobAllHaveState(nodeIds []string, state types.JobStateType) CheckJobStatesFunction {
-	return func(jobStates map[string]types.JobStateType) (bool, error) {
+func WaitForJobAllHaveState(nodeIds []string, state executor.JobStateType) CheckJobStatesFunction {
+	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIds, state, jobStates)
 		if len(jobStates) != len(nodeIds) {
 			return false, nil

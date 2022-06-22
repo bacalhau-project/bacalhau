@@ -6,20 +6,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/google/uuid"
 )
 
-type WriteEventHandlerFn func(ctx context.Context, event *types.JobEvent) error
+type WriteEventHandlerFn func(ctx context.Context, event *executor.JobEvent) error
 
 // a useful generic scheduler that given a function to write a job event
 // will look after a lot of the boilerplate on behalf on a scheduler implementation
 type GenericTransport struct {
 	NodeId string
-	Jobs   map[string]*types.Job
+	Jobs   map[string]*executor.Job
 	Mutex  sync.Mutex
 	// the list of functions to call when we get an update about a job
-	SubscribeFuncs    []func(jobEvent *types.JobEvent, job *types.Job)
+	SubscribeFuncs    []func(jobEvent *executor.JobEvent, job *executor.Job)
 	WriteEventHandler WriteEventHandlerFn
 }
 
@@ -29,14 +29,14 @@ func NewGenericTransport(
 ) *GenericTransport {
 	return &GenericTransport{
 		NodeId:            nodeID,
-		Jobs:              make(map[string]*types.Job),
-		SubscribeFuncs:    []func(jobEvent *types.JobEvent, job *types.Job){},
+		Jobs:              make(map[string]*executor.Job),
+		SubscribeFuncs:    []func(jobEvent *executor.JobEvent, job *executor.Job){},
 		WriteEventHandler: writeEventHandler,
 	}
 }
 
 func (transport *GenericTransport) writeEvent(ctx context.Context,
-	event *types.JobEvent) error {
+	event *executor.JobEvent) error {
 
 	if event.NodeId == "" {
 		event.NodeId = transport.NodeId
@@ -45,19 +45,19 @@ func (transport *GenericTransport) writeEvent(ctx context.Context,
 	return transport.WriteEventHandler(ctx, event)
 }
 
-func (transport *GenericTransport) BroadcastEvent(event *types.JobEvent) {
+func (transport *GenericTransport) BroadcastEvent(event *executor.JobEvent) {
 	transport.Mutex.Lock()
 	defer transport.Mutex.Unlock()
 
 	// let's initialise the state for this job because it was just created
 
 	if _, ok := transport.Jobs[event.JobId]; !ok {
-		transport.Jobs[event.JobId] = &types.Job{
+		transport.Jobs[event.JobId] = &executor.Job{
 			Id:        event.JobId,
 			Owner:     event.NodeId,
 			Spec:      nil,
 			Deal:      nil,
-			State:     make(map[string]*types.JobState),
+			State:     make(map[string]*executor.JobState),
 			CreatedAt: time.Now(),
 		}
 	}
@@ -107,15 +107,15 @@ func (transport *GenericTransport) HostID(ctx context.Context) (
 /////////////////////////////////////////////////////////////
 
 func (transport *GenericTransport) List(ctx context.Context) (
-	types.ListResponse, error) {
+	ListResponse, error) {
 
-	return types.ListResponse{
+	return ListResponse{
 		Jobs: transport.Jobs,
 	}, nil
 }
 
 func (transport *GenericTransport) Get(ctx context.Context, id string) (
-	*types.Job, error) {
+	*executor.Job, error) {
 
 	job, ok := transport.Jobs[id]
 	if !ok {
@@ -126,7 +126,7 @@ func (transport *GenericTransport) Get(ctx context.Context, id string) (
 }
 
 func (transport *GenericTransport) Subscribe(ctx context.Context,
-	subscribeFunc func(jobEvent *types.JobEvent, job *types.Job)) {
+	subscribeFunc func(jobEvent *executor.JobEvent, job *executor.Job)) {
 
 	transport.SubscribeFuncs = append(transport.SubscribeFuncs, subscribeFunc)
 }
@@ -136,7 +136,7 @@ func (transport *GenericTransport) Subscribe(ctx context.Context,
 /////////////////////////////////////////////////////////////
 
 func (transport *GenericTransport) SubmitJob(ctx context.Context,
-	spec *types.JobSpec, deal *types.JobDeal) (*types.Job, error) {
+	spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 
 	jobUuid, err := uuid.NewRandom()
 	if err != nil {
@@ -144,9 +144,9 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 	}
 	jobID := jobUuid.String()
 
-	err = transport.writeEvent(ctx, &types.JobEvent{
+	err = transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: types.JOB_EVENT_CREATED,
+		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
 		EventTime: time.Now(),
@@ -155,21 +155,21 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
-	return &types.Job{
+	return &executor.Job{
 		Id:        jobID,
 		Spec:      spec,
 		Deal:      deal,
-		State:     make(map[string]*types.JobState),
+		State:     make(map[string]*executor.JobState),
 		CreatedAt: time.Now(),
 	}, nil
 }
 
 func (transport *GenericTransport) UpdateDeal(ctx context.Context,
-	jobID string, deal *types.JobDeal) error {
+	jobID string, deal *executor.JobDeal) error {
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: types.JOB_EVENT_DEAL_UPDATED,
+		EventName: executor.JobEventDealUpdated,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	})
@@ -189,13 +189,13 @@ func (transport *GenericTransport) AcceptJobBid(ctx context.Context,
 		return err
 	}
 	job.Deal.AssignedNodes = append(job.Deal.AssignedNodes, nodeID)
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: types.JOB_EVENT_BID_ACCEPTED,
+		EventName: executor.JobEventBidAccepted,
 		JobDeal:   job.Deal,
-		JobState: &types.JobState{
-			State: types.JOB_STATE_RUNNING,
+		JobState: &executor.JobState{
+			State: executor.JobStateRunning,
 		},
 		EventTime: time.Now(),
 	})
@@ -208,12 +208,12 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 		message = "Job bid rejected by client."
 	}
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: types.JOB_EVENT_BID_REJECTED,
-		JobState: &types.JobState{
-			State:  types.JOB_STATE_BID_REJECTED,
+		EventName: executor.JobEventBidRejected,
+		JobState: &executor.JobState{
+			State:  executor.JobStateBidRejected,
 			Status: message,
 		},
 		EventTime: time.Now(),
@@ -227,11 +227,11 @@ func (transport *GenericTransport) RejectJobBid(ctx context.Context,
 func (transport *GenericTransport) BidJob(ctx context.Context,
 	jobID string) error {
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: types.JOB_EVENT_BID,
-		JobState: &types.JobState{
-			State: types.JOB_STATE_BIDDING,
+		EventName: executor.JobEventBid,
+		JobState: &executor.JobState{
+			State: executor.JobStateBidding,
 		},
 		EventTime: time.Now(),
 	})
@@ -240,11 +240,11 @@ func (transport *GenericTransport) BidJob(ctx context.Context,
 func (transport *GenericTransport) SubmitResult(ctx context.Context,
 	jobID, status, resultsID string) error {
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: types.JOB_EVENT_RESULTS,
-		JobState: &types.JobState{
-			State:     types.JOB_STATE_COMPLETE,
+		EventName: executor.JobEventResults,
+		JobState: &executor.JobState{
+			State:     executor.JobStateComplete,
 			Status:    status,
 			ResultsId: resultsID,
 		},
@@ -255,11 +255,11 @@ func (transport *GenericTransport) SubmitResult(ctx context.Context,
 func (transport *GenericTransport) ErrorJob(ctx context.Context,
 	jobID, status string) error {
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
-		EventName: types.JOB_EVENT_ERROR,
-		JobState: &types.JobState{
-			State:  types.JOB_STATE_ERROR,
+		EventName: executor.JobEventError,
+		JobState: &executor.JobState{
+			State:  executor.JobStateError,
 			Status: status,
 		},
 		EventTime: time.Now(),
@@ -274,12 +274,12 @@ func (transport *GenericTransport) ErrorJob(ctx context.Context,
 func (transport *GenericTransport) ErrorJobForNode(ctx context.Context,
 	jobID, nodeID, status string) error {
 
-	return transport.writeEvent(ctx, &types.JobEvent{
+	return transport.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
-		EventName: types.JOB_EVENT_ERROR,
-		JobState: &types.JobState{
-			State:  types.JOB_STATE_ERROR,
+		EventName: executor.JobEventError,
+		JobState: &executor.JobState{
+			State:  executor.JobStateError,
 			Status: status,
 		},
 		EventTime: time.Now(),

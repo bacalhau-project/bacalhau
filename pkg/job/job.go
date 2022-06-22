@@ -5,13 +5,14 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
-func ProcessJobIntoResults(job *types.Job) (*[]types.ResultsList, error) {
+func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 	results := []types.ResultsList{}
 
 	log.Debug().Msgf("All job states: %+v", job)
@@ -32,29 +33,28 @@ func ProcessJobIntoResults(job *types.Job) (*[]types.ResultsList, error) {
 }
 
 func ConstructJob(
-	engine string,
-	verifier string,
+	engine executor.EngineType,
+	verifier verifier.VerifierType,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
 	entrypoint []string,
 	image string,
 	concurrency int,
-	labels []string,
-) (*types.JobSpec, *types.JobDeal, error) {
+) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
 		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
 	}
 
-	jobInputs := []types.StorageSpec{}
-	jobOutputs := []types.StorageSpec{}
+	jobInputs := []storage.StorageSpec{}
+	jobOutputs := []storage.StorageSpec{}
 
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
 			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
 		}
-		jobInputs = append(jobInputs, types.StorageSpec{
+		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: "ipfs",
@@ -68,7 +68,7 @@ func ConstructJob(
 		if len(slices) != 2 {
 			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
 		}
-		jobOutputs = append(jobOutputs, types.StorageSpec{
+		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: "ipfs",
@@ -77,18 +77,10 @@ func ConstructJob(
 		})
 	}
 
-	var jobLabels []string
-
-	for _, label := range labels {
-		if label != "" {
-			jobLabels = append(jobLabels, label)
-		}
-	}
-
-	spec := &types.JobSpec{
+	spec := &executor.JobSpec{
 		Engine:   engine,
 		Verifier: verifier,
-		VM: types.JobSpecVm{
+		Vm: executor.JobSpecVm{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,
@@ -99,20 +91,15 @@ func ConstructJob(
 		Labels:  jobLabels,
 	}
 
-	deal := &types.JobDeal{
+	deal := &executor.JobDeal{
 		Concurrency: concurrency,
 	}
 
 	return spec, deal, nil
 }
 
-func VerifyJob(spec *types.JobSpec, Deal *types.JobDeal) error {
-	if !system.StringArrayContains(executor.EXECUTORS, spec.Engine) {
-		return fmt.Errorf("Invalid executor: %s", spec.Engine)
-	}
-	if !system.StringArrayContains(verifier.VERIFIERS, spec.Verifier) {
-		return fmt.Errorf("Invalid verifier: %s", spec.Verifier)
-	}
+func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
+	// TODO: do something useful here
 	return nil
 }
 

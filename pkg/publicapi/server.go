@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -84,7 +83,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context,
 type listRequest struct{}
 
 type listResponse struct {
-	Jobs map[string]*types.Job `json:"jobs"`
+	Jobs map[string]*executor.Job `json:"jobs"`
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
@@ -110,12 +109,12 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 }
 
 type submitRequest struct {
-	Spec *types.JobSpec `json:"spec"`
-	Deal *types.JobDeal `json:"deal"`
+	Spec *executor.JobSpec `json:"spec"`
+	Deal *executor.JobDeal `json:"deal"`
 }
 
 type submitResponse struct {
-	Job *types.Job `json:"job"`
+	Job *executor.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {

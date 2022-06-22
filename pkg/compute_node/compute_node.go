@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
@@ -16,15 +15,15 @@ import (
 type ComputeNode struct {
 	Mutex              sync.Mutex
 	Transport          transport.Transport
-	Executors          map[string]executor.Executor
-	Verifiers          map[string]verifier.Verifier
+	Executors          map[executor.EngineType]executor.Executor
+	Verifiers          map[verifier.VerifierType]verifier.Verifier
 	JobSelectionPolicy JobSelectionPolicy
 }
 
 func NewComputeNode(
 	transport transport.Transport,
-	executors map[string]executor.Executor,
-	verifiers map[string]verifier.Verifier,
+	executors map[executor.EngineType]executor.Executor,
+	verifiers map[verifier.VerifierType]verifier.Verifier,
 	jobSelectionPolicy JobSelectionPolicy,
 ) (*ComputeNode, error) {
 	ctx := context.Background() // TODO: instrument
@@ -41,12 +40,12 @@ func NewComputeNode(
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *types.JobEvent, job *types.Job) {
+	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
 
 		switch jobEvent.EventName {
 
 		// a new job has arrived - decide if we want to bid on it
-		case types.JOB_EVENT_CREATED:
+		case executor.JobEventCreated:
 
 			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
 			// if job.Engine == "docker" && !system.IsDockerRunning() {
@@ -84,7 +83,7 @@ func NewComputeNode(
 			}
 
 		// we have been given the goahead to run the job
-		case types.JOB_EVENT_BID_ACCEPTED:
+		case executor.JobEventBidAccepted:
 			// we only care if the accepted bid is for us
 			if jobEvent.NodeId != nodeId {
 				return
@@ -115,7 +114,7 @@ func NewComputeNode(
 			}
 
 			resultValue, err := verifier.ProcessResultsFolder(
-				ctx, job, resultFolder)
+				ctx, job.Id, resultFolder)
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))
@@ -177,7 +176,7 @@ func (node *ComputeNode) SelectJob(
 	)
 }
 
-func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (
+func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 
 	// check that we have the executor to run this job
@@ -189,45 +188,47 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *types.Job) (
 	return executor.RunJob(ctx, job)
 }
 
-func (node *ComputeNode) getExecutor(ctx context.Context, name string) (
-	executor.Executor, error) {
+func (node *ComputeNode) getExecutor(ctx context.Context,
+	typ executor.EngineType) (executor.Executor, error) {
 
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
-	if _, ok := node.Executors[name]; !ok {
-		return nil, fmt.Errorf("No matching executor found on this server: %s.", name)
+	if _, ok := node.Executors[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching executor found on this server: %s", typ.String())
 	}
 
-	executorEngine := node.Executors[name]
+	executorEngine := node.Executors[typ]
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !installed {
-		return nil, fmt.Errorf("Executor is not installed: %s.", name)
+		return nil, fmt.Errorf("executor is not installed: %s", typ.String())
 	}
 
 	return executorEngine, nil
 }
 
-func (node *ComputeNode) getVerifier(ctx context.Context, name string) (
-	verifier.Verifier, error) {
+func (node *ComputeNode) getVerifier(ctx context.Context,
+	typ verifier.VerifierType) (verifier.Verifier, error) {
 
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
-	if _, ok := node.Verifiers[name]; !ok {
-		return nil, fmt.Errorf("No matching verifier found on this server: %s.", name)
+	if _, ok := node.Verifiers[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching verifier found on this server: %s", typ.String())
 	}
 
-	verifier := node.Verifiers[name]
+	verifier := node.Verifiers[typ]
 	installed, err := verifier.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if !installed {
-		return nil, fmt.Errorf("Verifier is not installed: %s.", name)
+		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
 	}
 
 	return verifier, nil

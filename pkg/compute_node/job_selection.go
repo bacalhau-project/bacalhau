@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,9 +36,9 @@ type JobSelectionPolicy struct {
 
 // the JSON data we send to http or exec probes
 type JobSelectionPolicyProbeData struct {
-	NodeId string         `json:"node_id"`
-	JobId  string         `json:"job_id"`
-	Spec   *types.JobSpec `json:"spec"`
+	NodeId string            `json:"node_id"`
+	JobId  string            `json:"job_id"`
+	Spec   *executor.JobSpec `json:"spec"`
 }
 
 // generate a default empty job selection policy
@@ -102,7 +101,7 @@ func applyJobSelectionPolicyDataSettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
 	executor executor.Executor,
-	job *types.JobSpec,
+	job *executor.JobSpec,
 ) (bool, error) {
 
 	// Accept jobs where there are no cids specified

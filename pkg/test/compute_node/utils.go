@@ -8,9 +8,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 )
@@ -57,10 +57,10 @@ func SetupTest(
 	return computeNode, ipfsStack, cm
 }
 
-func GetJobSpec(cid string) *types.JobSpec {
-	inputs := []types.StorageSpec{}
+func GetJobSpec(cid string) *executor.JobSpec {
+	inputs := []storage.StorageSpec{}
 	if cid != "" {
-		inputs = []types.StorageSpec{
+		inputs = []storage.StorageSpec{
 			{
 				Engine: "ipfs",
 				Cid:    cid,
@@ -68,10 +68,10 @@ func GetJobSpec(cid string) *types.JobSpec {
 			},
 		}
 	}
-	return &types.JobSpec{
-		Engine:   string(executor.EXECUTOR_DOCKER),
-		Verifier: string(verifier.VERIFIER_NOOP),
-		VM: types.JobSpecVm{
+	return &executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierNoop,
+		Vm: executor.JobSpecVm{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"cat",

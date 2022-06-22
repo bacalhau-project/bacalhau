@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -41,8 +41,8 @@ func shortId(id string) string {
 	return id[:8]
 }
 
-func getJobResult(job *types.Job, state *types.JobState) string {
-	return "/" + job.Spec.Verifier + "/" + state.ResultsId
+func getJobResult(job *executor.Job, state *executor.JobState) string {
+	return "/" + job.Spec.Verifier.String() + "/" + state.ResultsId
 }
 
 func getAPIClient() *publicapi.APIClient {
