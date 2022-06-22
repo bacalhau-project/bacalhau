@@ -20,13 +20,33 @@ resource "google_compute_instance" "bacalhau_vm" {
   metadata_startup_script = <<-EOF
 #!/bin/bash -xe
 
-# Lay down a very basic web server to report when the node is healthy
-sudo apt-get update && sudo apt-get install -y lighttpd nmap
+sudo apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update -y
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+# TODO: move this into two systemd units!
+
 sudo mkdir -p /var/www/health_checker
 
-sudo rm /etc/lighttpd/lighttpd.conf
-sudo tee /etc/lighttpd/lighttpd.conf > /dev/null <<'EOI'
-${file("${path.module}/configs/lighttpd.conf")}
+# Lay down a very basic web server to report when the node is healthy
+sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
+wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
+    | sudo tee /etc/apt/sources.list.d/openresty.list
+sudo apt-get update
+sudo apt-get -y install openresty
+sudo apt-get -y install --no-install-recommends openresty
+
+sudo tee /usr/local/openresty/nginx/conf/nginx.conf > /dev/null <<'EOI'
+${file("${path.module}/configs/nginx.conf")}
 EOI
 
 sudo tee /var/www/health_checker/livez.sh > /dev/null <<'EOI'
@@ -39,15 +59,12 @@ EOI
 
 sudo chmod u+x /var/www/health_checker/*.sh
 
-sudo apt-get install -y docker.io
-# TODO: move this into two systemd units!
-
-wget https://github.com/filecoin-project/bacalhau/releases/download/${ var.bacalhau_version }/bacalhau_${ var.bacalhau_version }_linux_amd64.tar.gz
-tar xfv bacalhau_${ var.bacalhau_version }_linux_amd64.tar.gz
+wget https://github.com/filecoin-project/bacalhau/releases/download/${var.bacalhau_version}/bacalhau_${var.bacalhau_version}_linux_amd64.tar.gz
+tar xfv bacalhau_${var.bacalhau_version}_linux_amd64.tar.gz
 sudo mv ./bacalhau /usr/local/bin/bacalhau
 
-wget https://dist.ipfs.io/go-ipfs/${ var.ipfs_version }/go-ipfs_${ var.ipfs_version }_linux-amd64.tar.gz
-tar -xvzf go-ipfs_${ var.ipfs_version }_linux-amd64.tar.gz
+wget https://dist.ipfs.io/go-ipfs/${var.ipfs_version}/go-ipfs_${var.ipfs_version}_linux-amd64.tar.gz
+tar -xvzf go-ipfs_${var.ipfs_version}_linux-amd64.tar.gz
 cd go-ipfs
 sudo bash install.sh
 ipfs --version
@@ -75,16 +92,16 @@ fi
 export LOG_LEVEL=debug
 export BACALHAU_PATH=/data
 
-(while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${ count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL" } --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
+(while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"} --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
-sudo service lighttpd restart
+sudo service openresty restart  
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
-${ google_compute_network.bacalhau_network.name }
+${google_compute_network.bacalhau_network.name}
 EOI
 
 sudo tee /var/www/health_checker/address.txt > /dev/null <<EOI
-${ google_compute_address.ipv4_address[count.index].address }
+${google_compute_address.ipv4_address[count.index].address}
 EOI
 
 EOF
@@ -99,16 +116,16 @@ EOF
   lifecycle {
     ignore_changes = [attached_disk]
   }
-#   service_account {
-#     scopes = ["cloud-platform"]
-#   }
+  #   service_account {
+  #     scopes = ["cloud-platform"]
+  #   }
   allow_stopping_for_update = true
 
 }
 
 resource "google_compute_address" "ipv4_address" {
-  name         = "bacalhau-ipv4-address-${count.index}"
-  count        = var.instance_count
+  name  = "bacalhau-ipv4-address-${count.index}"
+  count = var.instance_count
 }
 
 output "public_ip_address" {
@@ -130,9 +147,9 @@ resource "google_compute_disk" "bacalhau_disk" {
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
-  name = google_compute_resource_policy.bacalhau_disk_backups.name
-  disk = google_compute_disk.bacalhau_disk[count.index].name
-  zone = var.zone
+  name  = google_compute_resource_policy.bacalhau_disk_backups.name
+  disk  = google_compute_disk.bacalhau_disk[count.index].name
+  zone  = var.zone
   count = var.instance_count
 }
 
@@ -176,11 +193,11 @@ resource "google_compute_firewall" "bacalhau_firewall" {
   allow {
     protocol = "tcp"
     ports = [
-        "4001", // ipfs swarm
-        "5001", // ipfs API
-        "1234", // bacalhau API
-        "1235", // bacalhau swarm
-        "44444", // lighttpd node health check server
+      "4001",  // ipfs swarm
+      "5001",  // ipfs API
+      "1234",  // bacalhau API
+      "1235",  // bacalhau swarm
+      "44444", // nginx node health check server
     ]
   }
 

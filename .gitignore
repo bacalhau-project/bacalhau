@@ -28,3 +28,4 @@ ops/terraform/.terraform.lock.hcl
 ops/terraform/.terraform/*
 terraform.tfstate*
 .terraform.lock.hcl
+production.tfvars

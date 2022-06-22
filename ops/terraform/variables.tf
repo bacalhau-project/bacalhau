@@ -9,15 +9,12 @@ variable "gcp_project" {
 }
 variable "machine_type" {
     type = string
-    default = "e2-standard-4"
 }
 variable "instance_count" {
     type = string
-    default = "2"
 }
 variable "volume_size_gb" {
     type = number
-    default = "10"
 }
 variable "restore_from_backup" {
     type = string
@@ -25,11 +22,9 @@ variable "restore_from_backup" {
 }
 variable "region" {
     type = string
-    default = "europe-north1"
 }
 variable "zone" {
     type = string
-    default = "europe-north1-c"
 }
 
 variable "ingress_cidrs" {
