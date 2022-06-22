@@ -7,6 +7,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type RequesterNode struct {
@@ -32,7 +34,9 @@ func NewRequesterNode(
 		Transport: transport,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
+	transport.Subscribe(ctx, func(ctx context.Context,
+		jobEvent *executor.JobEvent, job *executor.Job) {
+
 		// we only care about jobs that we own
 		if job.Owner != nodeId {
 			return
@@ -45,6 +49,9 @@ func NewRequesterNode(
 		// we would call out to the reputation system
 		// we also pay attention to the job deal concurrency setting
 		case executor.JobEventBid:
+			ctx, span := requesterNode.newSpanForJob(ctx,
+				job.Id, "JobEventBid")
+			defer span.End()
 
 			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeId)
 			if err != nil {
