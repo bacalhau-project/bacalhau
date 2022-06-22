@@ -46,6 +46,7 @@ func NewGenericTransport(nodeID string,
 
 		jobs:              make(map[string]*executor.Job),
 		jobContexts:       make(map[string]context.Context),
+		jobNodeContexts:   make(map[string]context.Context),
 		writeEventHandler: writeEventHandler,
 	}
 }
@@ -375,7 +376,7 @@ func (gt *GenericTransport) getJobNodeContext(ctx context.Context,
 	jobCtx, ok := gt.jobNodeContexts[jobID]
 	if !ok {
 		jobCtx, _ = system.Span(ctx, "transport/generic_transport",
-			"JobLocalLifecycle",
+			"JobNodeLifecycle",
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
 				attribute.String("job_id", jobID),
@@ -394,8 +395,8 @@ func (gt *GenericTransport) addJobLifecycleEvent(
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent(eventName,
 		trace.WithAttributes(
-			attribute.String("nodeID", gt.NodeID),
 			attribute.String("jobID", jobID),
+			attribute.String("nodeID", gt.NodeID),
 		),
 	)
 }
@@ -403,12 +404,15 @@ func (gt *GenericTransport) addJobLifecycleEvent(
 func (gt *GenericTransport) newRootSpanForJob(ctx context.Context,
 	jobID string) (context.Context, trace.Span) {
 
-	return system.Span(ctx, "transport/generic_transport", "JobTotalLifecycle",
-		trace.WithNewRoot(), // job lifecycle spans go in dedicated trace
+	return system.Span(ctx, "transport/generic_transport", "JobLifecycle",
+		// job lifecycle spans go in their own, dedicated trace
+		trace.WithNewRoot(),
+
+		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("nodeID", gt.NodeID),
 			attribute.String("jobID", jobID),
+			attribute.String("nodeID", gt.NodeID),
 		),
 	)
 }
