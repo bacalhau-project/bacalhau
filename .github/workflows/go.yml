@@ -141,7 +141,7 @@ jobs:
         run: make test
 
       - name: setup gcloud
-        uses: google-github-actions/setup-gcloud@main
+        uses: google-github-actions/setup-gcloud@v0
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
           service_account_email: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_EMAIL }}
@@ -152,9 +152,9 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: cd ops/terraform && terraform init
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.TERRAFORM_GCLOUD_CREDENTIALS_PATH}}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
       - name: terraform apply
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: cd ops/terraform && terraform apply -auto-approve --var-file=development.tfvars
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.TERRAFORM_GCLOUD_CREDENTIALS_PATH}}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
