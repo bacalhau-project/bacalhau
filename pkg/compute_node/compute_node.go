@@ -7,12 +7,16 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ComputeNode struct {
+	NodeID             string
 	Mutex              sync.Mutex
 	Transport          transport.Transport
 	Executors          map[executor.EngineType]executor.Executor
@@ -26,80 +30,84 @@ func NewComputeNode(
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	jobSelectionPolicy JobSelectionPolicy,
 ) (*ComputeNode, error) {
-	ctx := context.Background() // TODO: instrument
-	nodeId, err := transport.HostID(ctx)
-
+	ctx := context.Background()
+	nodeID, err := transport.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	computeNode := &ComputeNode{
+		NodeID:             nodeID,
 		Transport:          transport,
 		Verifiers:          verifiers,
 		Executors:          executors,
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(jobEvent *executor.JobEvent, job *executor.Job) {
+	transport.Subscribe(ctx, func(ctx context.Context,
+		jobEvent *executor.JobEvent, job *executor.Job) {
 
 		switch jobEvent.EventName {
-
 		// a new job has arrived - decide if we want to bid on it
 		case executor.JobEventCreated:
+			ctx, span := computeNode.newSpanForJob(ctx,
+				job.Id, "JobEventCreated")
+			defer span.End()
 
-			// TODO: #63 We should bail out if we do not fit the execution profile of this machine. E.g., the below:
-			// if job.Engine == "docker" && !system.IsDockerRunning() {
-			// 	err := fmt.Errorf("Could not execute job - execution engine is 'docker' and the Docker daemon does not appear to be running.")
-			// 	log.Warn().Msgf(err.Error())
-			// 	return false, err
-			// }
-
-			shouldRun, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
-				NodeId: nodeId,
-				JobId:  jobEvent.JobId,
-				Spec:   jobEvent.JobSpec,
-			})
-
+			shouldRun, err := computeNode.SelectJob(ctx,
+				JobSelectionPolicyProbeData{
+					NodeId: nodeID,
+					JobId:  jobEvent.JobId,
+					Spec:   jobEvent.JobSpec,
+				})
 			if err != nil {
-				log.Error().Msgf("There was an error self selecting: %s %+v", err, jobEvent.JobSpec)
+				log.Error().Msgf("error checking job policy: %v", err)
 				return
 			}
+
 			if shouldRun {
+				// TODO: Why do we have two different kinds of loggers?
 				logger.LogJobEvent(logger.JobEvent{
-					Node: nodeId,
+					Node: nodeID,
 					Type: "compute_node:bid",
 					Job:  job.Id,
 				})
-				log.Debug().Msgf("We are bidding on a job: %+v", jobEvent.JobSpec)
+
+				log.Debug().Msgf("compute node %s bidding on: %+v", nodeID,
+					jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
 				err = transport.BidJob(ctx, jobEvent.JobId)
 				if err != nil {
-					log.Error().Msgf("Error bidding on job: %+v", err)
+					log.Error().Msgf("error bidding on job: %v", err)
 				}
 				return
 			} else {
-				log.Debug().Msgf("We ignored a job: %+v", jobEvent.JobSpec)
+				log.Debug().Msgf("compute node %s skipped bidding on: %+v",
+					nodeID, jobEvent.JobSpec)
 			}
 
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
 			// we only care if the accepted bid is for us
-			if jobEvent.NodeId != nodeId {
+			if jobEvent.NodeId != nodeID {
 				return
 			}
 
-			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
+			ctx, span := computeNode.newSpanForJob(ctx,
+				job.Id, "JobEventBidAccepted")
+			defer span.End()
+
+			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.Id)
 
 			logger.LogJobEvent(logger.JobEvent{
-				Node: nodeId,
+				Node: nodeID,
 				Type: "compute_node:run",
 				Job:  job.Id,
 				Data: job,
 			})
 
 			resultFolder, err := computeNode.RunJob(ctx, job)
-
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
@@ -122,19 +130,18 @@ func NewComputeNode(
 			}
 
 			logger.LogJobEvent(logger.JobEvent{
-				Node: nodeId,
+				Node: nodeID,
 				Type: "compute_node:result",
 				Job:  job.Id,
 				Data: resultValue,
 			})
 
-			err = transport.SubmitResult(
+			if err = transport.SubmitResult(
 				ctx,
 				job.Id,
 				fmt.Sprintf("Got job result: %s", resultValue),
 				resultValue,
-			)
-			if err != nil {
+			); err != nil {
 				log.Error().Msgf("Error submitting result: %s %+v", err, job)
 				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
 				return
@@ -232,4 +239,16 @@ func (node *ComputeNode) getVerifier(ctx context.Context,
 	}
 
 	return verifier, nil
+}
+
+func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID,
+	name string) (context.Context, trace.Span) {
+
+	return system.Span(ctx, "compute_node/compute_node", name,
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("nodeID", node.NodeID),
+			attribute.String("jobID", jobID),
+		),
+	)
 }

@@ -21,6 +21,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -198,13 +200,18 @@ func (t *Transport) Start(ctx context.Context) error {
 	t.cm.RegisterCallback(func() error {
 		t.Host.Close()
 		log.Debug().Msg("Libp2p transport has stopped")
-		return nil
+
+		return t.Shutdown(ctx)
 	})
 
 	log.Debug().Msg("libp2p transport is starting...")
 	t.readLoopJobEvents(ctx) // blocking
 
 	return nil
+}
+
+func (t *Transport) Shutdown(ctx context.Context) error {
+	return t.genericTransport.Shutdown(ctx)
 }
 
 /////////////////////////////////////////////////////////////
@@ -227,9 +234,7 @@ func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	return t.genericTransport.Get(ctx, id)
 }
 
-func (t *Transport) Subscribe(ctx context.Context, fn func(
-	jobEvent *executor.JobEvent, job *executor.Job)) {
-
+func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 	ctx, span := newSpan(ctx, "Subscribe")
 	defer span.End()
 
@@ -350,8 +355,19 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	return t.Host.Connect(ctx, *info)
 }
 
+type jobEventData struct {
+	JobEvent  *executor.JobEvent     `json:"job_event"`
+	TraceData propagation.MapCarrier `json:"trace_data"`
+}
+
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
-	bs, err := json.Marshal(event)
+	traceData := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &traceData)
+
+	bs, err := json.Marshal(jobEventData{
+		JobEvent:  event,
+		TraceData: traceData,
+	})
 	if err != nil {
 		return err
 	}
@@ -364,16 +380,26 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 	for {
 		msg, err := t.JobEventSubscription.Next(ctx)
 		if err != nil {
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				log.Info().Msgf("libp2p transport shutting down: %v", err)
+			} else {
+				log.Error().Msgf(
+					"libp2p encountered an unexpected error, shutting down: %v", err)
+			}
+
 			return
 		}
 
-		jobEvent := new(executor.JobEvent)
-		err = json.Unmarshal(msg.Data, jobEvent)
-		if err != nil {
+		jed := jobEventData{}
+		if err = json.Unmarshal(msg.Data, &jed); err != nil {
+			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 			continue
 		}
+		log.Debug().Msgf("Received event: %+v", jed)
 
-		t.genericTransport.BroadcastEvent(jobEvent)
+		// Notify all the listeners in this process of the event:
+		ctx = otel.GetTextMapPropagator().Extract(ctx, jed.TraceData)
+		t.genericTransport.BroadcastEvent(ctx, jed.JobEvent)
 	}
 }
 

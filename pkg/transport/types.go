@@ -6,6 +6,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
+// SubscribeFn is provided by an in-process listener as an event callback.
+type SubscribeFn func(context.Context, *executor.JobEvent, *executor.Job)
+
 // Transport is an interface representing a communication channel between
 // nodes, through which they can submit, bid on and complete jobs.
 type Transport interface {
@@ -16,6 +19,9 @@ type Transport interface {
 	// Start the job scheduler. Not that this is blocking and can be managed
 	// via the context parameter. You must call Subscribe _before_ starting.
 	Start(ctx context.Context) error
+
+	// Shuts down the transport layer and performs resource cleanup.
+	Shutdown(ctx context.Context) error
 
 	// HostID returns a unique string per host in whatever network the
 	// scheduler is connecting to. Must be unique per instance.
@@ -36,8 +42,7 @@ type Transport interface {
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
-	Subscribe(ctx context.Context, fn func(
-		jobEvent *executor.JobEvent, job *executor.Job))
+	Subscribe(ctx context.Context, fn SubscribeFn)
 
 	/////////////////////////////////////////////////////////////
 	/// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
