@@ -153,4 +153,5 @@ jobs:
         run: |
           cd ops/terraform
           terraform init
+          gcloud auth application-default login
           terraform apply -auto-approve --var-file=development.tfvars
