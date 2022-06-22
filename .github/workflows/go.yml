@@ -30,7 +30,7 @@ jobs:
         # GitHub Actions does not yet support Arm or Arm64
         # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
         name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
-        go_version: [1.17.11]
+        go_version: [1.18.3]
         include:
           # - {
           #     name: ubuntu-arm,
@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - name: Install go@1.17
+      - name: Install go@1.18
         run: |
           curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           sudo rm -rf /usr/local/go 
@@ -140,18 +140,21 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make test
 
-      - uses: actions-hub/gcloud@master
+      - name: setup gcloud
+        uses: google-github-actions/setup-gcloud@master
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        env:
-          PROJECT_ID: bacalhau-development-cluster
-          APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS }}
         with:
-          args: info
+          service_account_email: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_EMAIL }}
+          service_account_key: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_SA_KEYI }}
+          PROJECT_ID: bacalhau-development-cluster
 
-      - name: Deploy test cluster
+      - name: terraform init
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: |
-          cd ops/terraform
-          terraform init
-          gcloud auth application-default login
-          terraform apply -auto-approve --var-file=development.tfvars
+        run: cd ops/terraform && terraform init
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.TERRAFORM_GCLOUD_CREDENTIALS_PATH}}
+      - name: terraform apply
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: cd ops/terraform && terraform apply -auto-approve --var-file=development.tfvars
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.TERRAFORM_GCLOUD_CREDENTIALS_PATH}}
