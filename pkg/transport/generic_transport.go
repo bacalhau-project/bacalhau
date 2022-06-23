@@ -33,8 +33,8 @@ type GenericTransport struct {
 	jobs              map[string]*executor.Job   // list of known jobs
 	jobContexts       map[string]context.Context // total job lifecycle
 	jobNodeContexts   map[string]context.Context // per-node job lifecycle
-	mutex             sync.Mutex                 // thread-safety for maps
 	writeEventHandler WriteEventHandlerFn        // parent transport callback
+	mutex             sync.Mutex                 // thread-safety for maps
 }
 
 func NewGenericTransport(nodeID string,
@@ -99,10 +99,14 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context,
 		gt.jobs[event.JobId].State[event.NodeId] = event.JobState
 	}
 
-	// Actually notify in-process listeners:
+	// Attach metadata to local job lifecycle context:
 	jobCtx := gt.getJobNodeContext(ctx, event.JobId)
-	for _, subscribeFunc := range gt.SubscribeFuncs {
-		go subscribeFunc(jobCtx, event, gt.jobs[event.JobId])
+	gt.addJobLifecycleEvent(jobCtx, event.JobId,
+		fmt.Sprintf("receive_%s", event.EventName))
+
+	// If the event is known to be terminal, end the lifecycle context:
+	if event.EventName.IsTerminal() {
+		gt.endJobContext(event.JobId)
 	}
 
 	// Actually notify in-process listeners:
@@ -206,7 +210,7 @@ func (gt *GenericTransport) UpdateDeal(ctx context.Context,
 	jobID string, deal *executor.JobDeal) error {
 
 	ctx = gt.getJobNodeContext(ctx, jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "UpdateDeal")
+	gt.addJobLifecycleEvent(ctx, jobID, "write_UpdateDeal")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -226,7 +230,7 @@ func (gt *GenericTransport) AcceptJobBid(ctx context.Context,
 	jobID, nodeID string) error {
 
 	ctx = gt.getJobNodeContext(ctx, jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "AcceptJobBid")
+	gt.addJobLifecycleEvent(ctx, jobID, "write_AcceptJobBid")
 
 	job, err := gt.Get(ctx, jobID)
 	if err != nil {
@@ -249,12 +253,14 @@ func (gt *GenericTransport) AcceptJobBid(ctx context.Context,
 func (gt *GenericTransport) RejectJobBid(ctx context.Context,
 	jobID, nodeID, message string) error {
 
-	ctx = gt.getJobNodeContext(ctx, jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "RejectJobBid") // TODO: add msg
-
 	if message == "" {
 		message = "Job bid rejected by client."
 	}
+
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_RejectJobBid",
+		attribute.String("message", message),
+	)
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -276,7 +282,7 @@ func (gt *GenericTransport) BidJob(ctx context.Context,
 	jobID string) error {
 
 	ctx = gt.getJobNodeContext(ctx, jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "BidJob")
+	gt.addJobLifecycleEvent(ctx, jobID, "write_BidJob")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -288,11 +294,11 @@ func (gt *GenericTransport) BidJob(ctx context.Context,
 	})
 }
 
-func (gt *GenericTransport) SubmitResult(_ context.Context,
+func (gt *GenericTransport) SubmitResult(ctx context.Context,
 	jobID, status, resultsID string) error {
 
-	// TODO: is this really terminal?
-	ctx := gt.endJobContext(jobID, "SubmitResult")
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_SubmitResult")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -306,11 +312,11 @@ func (gt *GenericTransport) SubmitResult(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) ErrorJob(_ context.Context,
+func (gt *GenericTransport) ErrorJob(ctx context.Context,
 	jobID, status string) error {
 
-	// TODO: is this really terminal?
-	ctx := gt.endJobContext(jobID, "ErrorJob")
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJob")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -328,11 +334,11 @@ func (gt *GenericTransport) ErrorJob(_ context.Context,
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (gt *GenericTransport) ErrorJobForNode(_ context.Context,
+func (gt *GenericTransport) ErrorJobForNode(ctx context.Context,
 	jobID, nodeID, status string) error {
 
-	// TODO: is this really terminal?
-	ctx := gt.endJobContext(jobID, "ErrorJobForNode")
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
@@ -347,17 +353,12 @@ func (gt *GenericTransport) ErrorJobForNode(_ context.Context,
 }
 
 // endJobContext ends the local and global lifecycle contexts for a job.
-func (gt *GenericTransport) endJobContext(
-	jobID, eventName string) context.Context {
-
+func (gt *GenericTransport) endJobContext(jobID string) {
 	ctx := gt.getJobNodeContext(context.Background(), jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, eventName)
-	trace.SpanFromContext(ctx).End() // end the local lifecycle context
+	trace.SpanFromContext(ctx).End()
 
 	ctx = gt.getJobContext(jobID)
-	trace.SpanFromContext(ctx).End() // end the global lifecycle context
-
-	return ctx
+	trace.SpanFromContext(ctx).End()
 }
 
 // getJobContext returns a context that tracks the global lifecycle of a job
@@ -393,14 +394,16 @@ func (gt *GenericTransport) getJobNodeContext(ctx context.Context,
 	return jobCtx
 }
 
-func (gt *GenericTransport) addJobLifecycleEvent(
-	ctx context.Context, jobID string, eventName string) {
+func (gt *GenericTransport) addJobLifecycleEvent(ctx context.Context,
+	jobID, eventName string, attrs ...attribute.KeyValue) {
 
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent(eventName,
 		trace.WithAttributes(
-			attribute.String("jobID", jobID),
-			attribute.String("nodeID", gt.NodeID),
+			append(attrs,
+				attribute.String("jobID", jobID),
+				attribute.String("nodeID", gt.NodeID),
+			)...,
 		),
 	)
 }
