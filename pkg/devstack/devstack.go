@@ -329,9 +329,9 @@ func WaitForJobThrowErrors(errorStates []executor.JobStateType) CheckJobStatesFu
 // each state must be the given type
 // each seen node id must be present in the presented array
 // this is useful for testing (did only the nodes that should have completed the job run it)
-func WaitForJobAllHaveState(nodeIds []string, state executor.JobStateType) CheckJobStatesFunction {
+func WaitForJobAllHaveState(nodeIds []string, states ...executor.JobStateType) CheckJobStatesFunction {
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
-		log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIds, state, jobStates)
+		log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIds, states, jobStates)
 		if len(jobStates) != len(nodeIds) {
 			return false, nil
 		}
@@ -340,7 +340,9 @@ func WaitForJobAllHaveState(nodeIds []string, state executor.JobStateType) Check
 			seenState, ok := jobStates[nodeId]
 			if !ok {
 				seenAll = false
-			} else if seenState != state {
+			} else if !system.StringArrayContains(
+				system.GetJobStateStringArray(states), seenState.String()) {
+
 				seenAll = false
 			}
 		}

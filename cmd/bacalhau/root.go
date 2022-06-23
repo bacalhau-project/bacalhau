@@ -20,6 +20,7 @@ func init() {
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)
 
+	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(

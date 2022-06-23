@@ -395,7 +395,7 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 			continue
 		}
-		log.Debug().Msgf("Received event: %+v", jed)
+		log.Trace().Msgf("Received event: %+v", jed)
 
 		// Notify all the listeners in this process of the event:
 		ctx = otel.GetTextMapPropagator().Extract(ctx, jed.TraceData)
