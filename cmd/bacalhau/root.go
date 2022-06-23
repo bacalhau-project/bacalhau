@@ -12,7 +12,14 @@ var apiPort int
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
-	RootCmd.AddCommand(runCmd)
+
+	// Porcelain commands (language specific easy to use commands)
+	// TODO: RootCmd.AddCommand(runCmd)
+
+	// Plumbing commands (advanced usage)
+	RootCmd.AddCommand(dockerCmd)
+	// TODO: RootCmd.AddCommand(wasmCmd)
+
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(devstackCmd)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -39,7 +40,10 @@ func shortId(id string) string {
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
-	return "/" + job.Spec.Verifier.String() + "/" + state.ResultsId
+	if state.ResultsId == "" {
+		return "-"
+	}
+	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsId
 }
 
 func getAPIClient() *publicapi.APIClient {
