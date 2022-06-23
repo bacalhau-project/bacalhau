@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -30,9 +31,13 @@ func init() {
 	)
 	listCmd.PersistentFlags().BoolVar(&tableSortReverse, "reverse", true,
 		`reverse order of table - for time sorting, this will be newest first.`)
+
 	listCmd.PersistentFlags().Var(&tableSortBy, "sort-by",
 		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
 	listCmd.PersistentFlags().Lookup("sort-by").DefValue = string(ColumnCreatedAt)
+	if tableSortBy == "" {
+		tableSortBy = ColumnCreatedAt
+	}
 
 	listCmd.PersistentFlags().BoolVar(
 		&tableOutputWide, "wide", false,
@@ -81,16 +86,6 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		if listOutputFormat == "json" {
-			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("%s\n", msgBytes)
-			return nil
-		}
-
 		t := table.NewWriter()
 		t.SetOutputMirror(cmd.OutOrStderr())
 		if !tableHideHeader {
@@ -99,30 +94,16 @@ var listCmd = &cobra.Command{
 
 		columnConfig := []table.ColumnConfig{}
 
-		// if tableMergeValues {
-
-		// 	// don't merge node, state and result
-		// 	// because they should differentiate even for the same job
-		// 	columnConfig = []table.ColumnConfig{
-		// 		{Number: 1, AutoMerge: true},
-		// 		{Number: 2, AutoMerge: true},
-		// 		{Number: 3, AutoMerge: true},
-		// 		{Number: 4, AutoMerge: true},
-		// 		{Number: 5, AutoMerge: true},
-		// 		{Number: 6, AutoMerge: true},
-		// 	}
-		// }
-
 		t.SetColumnConfigs(columnConfig)
 
 		jobArray := []*executor.Job{}
-		for _, job := range jobs {
+		for _, thisJob := range jobs {
 			if tableIdFilter != "" {
-				if job.Id == tableIdFilter || shortId(job.Id) == tableIdFilter {
-					jobArray = append(jobArray, job)
+				if thisJob.Id == tableIdFilter || shortId(thisJob.Id) == tableIdFilter {
+					jobArray = append(jobArray, thisJob)
 				}
 			} else {
-				jobArray = append(jobArray, job)
+				jobArray = append(jobArray, thisJob)
 			}
 		}
 
@@ -178,21 +159,16 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-				for node, jobState := range jobInRow.State {
+					_, currentJobState := job.GetCurrentJobState(jobInRow)
 					t.AppendRows([]table.Row{
 						{
+							shortenTime(jobInRow.CreatedAt),
 							shortId(jobInRow.Id),
 							shortenString(strings.Join(jobDesc, " ")),
-							jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
-							len(jobInRow.Spec.Inputs),
-							len(jobInRow.Spec.Outputs),
-							jobInRow.Deal.Concurrency,
-							shortId(node),
-							shortenString(jobState.State.String()),
-							shortenString(getJobResult(jobInRow, jobState)),
+							shortenString(currentJobState.State.String()),
+							shortenString(getJobResult(jobInRow, currentJobState)),
 						},
 					})
-				}
 			}
 
 		}
@@ -215,7 +191,18 @@ var listCmd = &cobra.Command{
 		} else {
 			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
-		t.Render()
+
+		if listOutputFormat == "json" {
+			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%s\n", msgBytes)
+			return nil
+		} else {
+			t.Render()
+		}
 
 		return nil
 	},

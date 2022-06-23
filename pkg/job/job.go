@@ -106,6 +106,8 @@ func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
 func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
+	// Returns Node Id, JobState
+
 	// Combine the list of jobs down to just those that matter
 	// Strategy here is assuming the following:
 	// - All created times are the same (we'll choose the biggest, but it shouldn't matter)

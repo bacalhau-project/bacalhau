@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -25,6 +26,15 @@ var tableNoStyle bool
 
 // var tableMergeValues bool
 
+func shortenTime(t time.Time) string {
+	if tableOutputWide {
+		return t.Format("06-01-02-15:04:05")
+	}
+
+	return t.Format("15:04:05")
+
+}
+
 func shortenString(st string) string {
 	if tableOutputWide {
 		return st
@@ -42,6 +52,9 @@ func shortId(id string) string {
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
+	if state.ResultsId == "" {
+		return ""
+	}
 	return "/" + job.Spec.Verifier.String() + "/" + state.ResultsId
 }
 
