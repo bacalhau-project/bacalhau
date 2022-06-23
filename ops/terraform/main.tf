@@ -6,8 +6,8 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    bucket  = "bacalhau-cluster-tfstate"
-    prefix  = "terraform/state"
+    bucket = "bacalhau-cluster-tfstate"
+    prefix = "terraform/state"
   }
 }
 
@@ -102,7 +102,8 @@ export BACALHAU_PATH=/data
 (while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"} --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
-sudo service openresty restart  
+sudo chmod ugo+rwx /usr/local/openresty/nginx/logs
+sudo service openresty start  &
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
 ${google_compute_network.bacalhau_network.name}
 EOI
