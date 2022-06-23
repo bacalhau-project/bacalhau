@@ -13,6 +13,7 @@ var apiPort int
 func init() {
 	RootCmd.AddCommand(serveCmd)
 	RootCmd.AddCommand(runCmd)
+	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
