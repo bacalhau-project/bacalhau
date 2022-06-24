@@ -2,9 +2,7 @@ package job
 
 import (
 	"fmt"
-	"os"
 	"regexp"
-	"strings"
 )
 
 
@@ -21,11 +19,7 @@ func IsSafeAnnotation(s string) bool {
 func SafeAnnotationRegex() *regexp.Regexp {
 	regexString := "A-Za-z0-9._~!:@,;+-"
 
-	file, _ := os.ReadFile("../../pkg/config/all_emojis.txt")
-	emojiArray := strings.Split(string(file), "\n")
-	emojiString := strings.Join(emojiArray, "|")
-
-	r := regexp.MustCompile(fmt.Sprintf("[^%s|^%s]", emojiString, regexString))
+	r := regexp.MustCompile(fmt.Sprintf("[^%s|^%s]", returnAllEmojiString(), regexString))
 	return r
 }
 
