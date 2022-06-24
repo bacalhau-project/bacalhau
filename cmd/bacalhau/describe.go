@@ -90,7 +90,7 @@ var describeCmd = &cobra.Command{
 		jobDealDesc.AssignedNodes = job.Deal.AssignedNodes
 
 		// TODO: Ugh, do we have to special case this?
-		jobSpecDesc.Verifier = verifier.VerifierTypes()[job.Spec.Verifier-1].String()
+		jobSpecDesc.Verifier = verifier.VerifierTypes()[job.Spec.Verifier-2].String()
 		jobSpecDesc.VM = *jobVMDesc
 
 		jobDesc := &jobDescription{}

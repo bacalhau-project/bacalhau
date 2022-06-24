@@ -56,17 +56,17 @@ func init() {
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	runCmd.PersistentFlags().StringSliceVarP(&jobAnnotations,
+	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobAnnotations,
 		"Annotations", "l", []string{},
 		`List of Annotations for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
 
 	// For testing
-	runCmd.PersistentFlags().BoolVar(&flagClearAnnotations,
-		"clear-Annotations", false,
+	dockerRunCmd.PersistentFlags().BoolVar(&flagClearAnnotations,
+		"clear-annotations", false,
 		`Clear all Annotations before executing. For testing purposes only, should never be necessary in the real world.`,
 	)
-	if err := runCmd.PersistentFlags().MarkHidden("clear-Annotations"); err != nil {
+	if err := dockerRunCmd.PersistentFlags().MarkHidden("clear-annotations"); err != nil {
 		log.Debug().Msgf("error hiding test flags: %v", err)
 	}
 }

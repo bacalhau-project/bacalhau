@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -96,23 +95,6 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-func LoadBadStringsFull() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_Annotations.txt")
-	return loadBadStrings(file)
-}
-
-func LoadBadStringsAnnotations() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_Annotations.txt")
-	return loadBadStrings(file)
-}
-
-func loadBadStrings(file []byte) []string {
-	badStringsRaw := strings.Split(string(file), "\n")
-	return FilterStringArray(badStringsRaw, func(s string) bool {
-		return !(strings.HasPrefix(s, "#") || strings.HasPrefix(s, "\n"))
-	})
-}
-
 func FilterStringArray(data []string, f func(string) bool) []string {
 	fltd := make([]string, 0)
 	for _, e := range data {
@@ -123,18 +105,22 @@ func FilterStringArray(data []string, f func(string) bool) []string {
 	return fltd
 }
 
-func SafeStringStripper(s string) string {
-	rChars := SafeCharsRegex()
-	return rChars.ReplaceAllString(s, "")
+// Below are utilities for testing
+// TODO: #276 Evaluate if this is the right place for this stuff and delete this comment or move
+
+func LoadBadStringsFull() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_full.txt")
+	return loadBadStrings(file)
 }
 
-func SafeCharsRegex() *regexp.Regexp {
-	regexString := "A-Za-z0-9._~!:@,;+-"
+func LoadBadStringsAnnotations() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_annotations.txt")
+	return loadBadStrings(file)
+}
 
-	file, _ := os.ReadFile("../../pkg/config/all_emojis.txt")
-	emojiArray := strings.Split(string(file), "\n")
-	emojiString := strings.Join(emojiArray, "|")
-
-	r := regexp.MustCompile(fmt.Sprintf("[^%s|^%s]", emojiString, regexString))
-	return r
+func loadBadStrings(file []byte) []string {
+	badStringsRaw := strings.Split(string(file), "\n")
+	return FilterStringArray(badStringsRaw, func(s string) bool {
+		return !(strings.HasPrefix(s, "#") || strings.HasPrefix(s, "\n"))
+	})
 }

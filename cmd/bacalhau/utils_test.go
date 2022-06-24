@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -54,7 +55,7 @@ func (suite *UtilsSuite) TestSafeRegex() {
 	}
 
 	for _, tc := range tests {
-		strippedString := SafeStringStripper(tc.stringToTest)
+		strippedString := job.SafeStringStripper(tc.stringToTest)
 		assert.LessOrEqual(suite.T(), len(strippedString), len(tc.stringToTest))
 		if tc.predictedLength >= 0 {
 			assert.Equal(suite.T(), tc.predictedLength, len(strippedString))

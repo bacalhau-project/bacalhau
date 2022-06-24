@@ -12,7 +12,7 @@ var apiPort int
 
 func init() {
 	RootCmd.AddCommand(serveCmd)
-	RootCmd.AddCommand(runCmd)
+	RootCmd.AddCommand(dockerRunCmd)
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(describeCmd)
