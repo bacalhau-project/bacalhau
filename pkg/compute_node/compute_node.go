@@ -58,7 +58,7 @@ func NewComputeNode(
 			// }
 
 			shouldRun, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
-				NodeId: nodeId,
+				NodeId: jobEvent.NodeId,
 				JobId:  jobEvent.JobId,
 				Spec:   jobEvent.JobSpec,
 			})

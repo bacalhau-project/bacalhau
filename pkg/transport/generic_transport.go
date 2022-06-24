@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
-type WriteEventHandlerFn func(ctx context.Context, event *executor.JobEvent) error
+// WriteEventHandlerFn is provided by a parent transport layer for broadcasting
+// messages to other bacalhau nodes.
+type WriteEventHandlerFn func(context.Context, *executor.JobEvent) error
 
 // GenericTransport is a generic base transport layer that handles a bunch of
 // boilerplate for a parent transport. The parent transport just has to provide
@@ -20,26 +23,37 @@ type WriteEventHandlerFn func(ctx context.Context, event *executor.JobEvent) err
 // call the appropriate GenericTransport functions when messages are received
 // from other bacalhau nodes.
 type GenericTransport struct {
-	NodeId string
-	Jobs   map[string]*executor.Job
-	Mutex  sync.Mutex
-	// the list of functions to call when we get an update about a job
-	SubscribeFuncs    []func(jobEvent *executor.JobEvent, job *executor.Job)
-	WriteEventHandler WriteEventHandlerFn
+	// NodeID is the ID of the compute node running this transport.
+	NodeID string
+
+	// SubscribeFuncs contains callbacks for in-process event listeners.
+	SubscribeFuncs []SubscribeFn
+
+	// Internal state:
+	jobs              map[string]*executor.Job   // list of known jobs
+	jobContexts       map[string]context.Context // total job lifecycle
+	jobNodeContexts   map[string]context.Context // per-node job lifecycle
+	writeEventHandler WriteEventHandlerFn        // parent transport callback
+	mutex             sync.Mutex                 // thread-safety for maps
 }
 
 func NewGenericTransport(nodeID string,
 	writeEventHandler WriteEventHandlerFn) *GenericTransport {
 
 	return &GenericTransport{
-		NodeId:            nodeID,
-		Jobs:              make(map[string]*executor.Job),
-		SubscribeFuncs:    []func(jobEvent *executor.JobEvent, job *executor.Job){},
-		WriteEventHandler: writeEventHandler,
+		NodeID:         nodeID,
+		SubscribeFuncs: []SubscribeFn{},
+
+		jobs:              make(map[string]*executor.Job),
+		jobContexts:       make(map[string]context.Context),
+		jobNodeContexts:   make(map[string]context.Context),
+		writeEventHandler: writeEventHandler,
 	}
 }
 
-func (transport *GenericTransport) writeEvent(ctx context.Context,
+// writeEvent calls the parent transport's WriteEventHandler, which should
+// broadcast the event to its distributed network of bacalhau nodes.
+func (gt *GenericTransport) writeEvent(ctx context.Context,
 	event *executor.JobEvent) error {
 
 	if event.NodeId == "" {
@@ -49,15 +63,18 @@ func (transport *GenericTransport) writeEvent(ctx context.Context,
 	return gt.writeEventHandler(ctx, event)
 }
 
-func (transport *GenericTransport) BroadcastEvent(event *executor.JobEvent) {
-	transport.Mutex.Lock()
-	defer transport.Mutex.Unlock()
+// BroadcastEvent notifies every listener in the transport's process of a
+// new event. Note that this is purely local, and doesn't broadcast the
+// event to the parent transport's network of bacalhau nodes.
+func (gt *GenericTransport) BroadcastEvent(ctx context.Context,
+	event *executor.JobEvent) {
 
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
 
-	if _, ok := transport.Jobs[event.JobId]; !ok {
-		transport.Jobs[event.JobId] = &executor.Job{
+	// Keep track of the state of jobs we hear about:
+	if _, ok := gt.jobs[event.JobId]; !ok {
+		gt.jobs[event.JobId] = &executor.Job{
 			Id:        event.JobId,
 			Owner:     event.NodeId,
 			Spec:      nil,
@@ -82,11 +99,20 @@ func (transport *GenericTransport) BroadcastEvent(event *executor.JobEvent) {
 		gt.jobs[event.JobId].State[event.NodeId] = event.JobState
 	}
 
-	// Actually notify in-process listeners:
-	for _, subscribeFunc := range gt.SubscribeFuncs {
-		go subscribeFunc(ctx, event, gt.jobs[event.JobId])
+	// Attach metadata to local job lifecycle context:
+	jobCtx := gt.getJobNodeContext(ctx, event.JobId)
+	gt.addJobLifecycleEvent(jobCtx, event.JobId,
+		fmt.Sprintf("receive_%s", event.EventName))
+
+	// If the event is known to be terminal, end the lifecycle context:
+	if event.EventName.IsTerminal() {
+		gt.endJobContext(event.JobId)
 	}
 
+	// Actually notify in-process listeners:
+	for _, subscribeFunc := range gt.SubscribeFuncs {
+		go subscribeFunc(jobCtx, event, gt.jobs[event.JobId])
+	}
 }
 
 /////////////////////////////////////////////////////////////
@@ -100,6 +126,9 @@ func (gt *GenericTransport) Start(ctx context.Context) error {
 func (gt *GenericTransport) Shutdown(ctx context.Context) error {
 	// End all job lifecycle spans so we don't lose any tracing data:
 	for _, ctx := range gt.jobContexts {
+		trace.SpanFromContext(ctx).End()
+	}
+	for _, ctx := range gt.jobNodeContexts {
 		trace.SpanFromContext(ctx).End()
 	}
 
@@ -116,15 +145,15 @@ func (gt *GenericTransport) HostID(ctx context.Context) (
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
-func (transport *GenericTransport) List(ctx context.Context) (
+func (gt *GenericTransport) List(ctx context.Context) (
 	ListResponse, error) {
 
 	return ListResponse{
-		Jobs: transport.Jobs,
+		Jobs: gt.jobs,
 	}, nil
 }
 
-func (transport *GenericTransport) Get(ctx context.Context, id string) (
+func (gt *GenericTransport) Get(ctx context.Context, id string) (
 	*executor.Job, error) {
 
 	job, ok := gt.jobs[id]
@@ -132,8 +161,8 @@ func (transport *GenericTransport) Get(ctx context.Context, id string) (
 		return nil, fmt.Errorf("job not found in transport: %s", id)
 	}
 
-func (transport *GenericTransport) Subscribe(ctx context.Context,
-	subscribeFunc func(jobEvent *executor.JobEvent, job *executor.Job)) {
+	return job, nil
+}
 
 func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 	gt.SubscribeFuncs = append(gt.SubscribeFuncs, fn)
@@ -143,7 +172,7 @@ func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
 /////////////////////////////////////////////////////////////
 
-func (transport *GenericTransport) SubmitJob(ctx context.Context,
+func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 
 	jobUuid, err := uuid.NewRandom()
@@ -152,7 +181,13 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 	}
 	jobID := jobUuid.String()
 
-	err = transport.writeEvent(ctx, &executor.JobEvent{
+	// Creates a new root context to track a job's lifecycle for tracing. This
+	// should be fine as only one node will call SubmitJob(...) - the other
+	// nodes will hear about the job via events on the transport.
+	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
+	gt.jobContexts[jobID] = jobCtx
+
+	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
 		JobId:     jobID,
 		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
@@ -171,10 +206,13 @@ func (transport *GenericTransport) SubmitJob(ctx context.Context,
 	}, nil
 }
 
-func (transport *GenericTransport) UpdateDeal(ctx context.Context,
+func (gt *GenericTransport) UpdateDeal(ctx context.Context,
 	jobID string, deal *executor.JobDeal) error {
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_UpdateDeal")
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		EventName: executor.JobEventDealUpdated,
 		JobDeal:   deal,
@@ -188,11 +226,11 @@ func (gt *GenericTransport) CancelJob(ctx context.Context,
 	panic("should be implemented by parent transport")
 }
 
-func (gt *GenericTransport) AcceptJobBid(_ context.Context,
+func (gt *GenericTransport) AcceptJobBid(ctx context.Context,
 	jobID, nodeID string) error {
 
-	ctx := gt.getJobLifecycleContext(jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "AcceptJobBid")
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_AcceptJobBid")
 
 	job, err := gt.Get(ctx, jobID)
 	if err != nil {
@@ -200,7 +238,7 @@ func (gt *GenericTransport) AcceptJobBid(_ context.Context,
 	}
 
 	job.Deal.AssignedNodes = append(job.Deal.AssignedNodes, nodeID)
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
 		EventName: executor.JobEventBidAccepted,
@@ -212,17 +250,19 @@ func (gt *GenericTransport) AcceptJobBid(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) RejectJobBid(_ context.Context,
+func (gt *GenericTransport) RejectJobBid(ctx context.Context,
 	jobID, nodeID, message string) error {
-
-	ctx := gt.getJobLifecycleContext(jobID)
-	gt.addJobLifecycleEvent(ctx, jobID, "RejectJobBid") // TODO: add msg
 
 	if message == "" {
 		message = "Job bid rejected by client."
 	}
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_RejectJobBid",
+		attribute.String("message", message),
+	)
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
 		EventName: executor.JobEventBidRejected,
@@ -238,10 +278,13 @@ func (gt *GenericTransport) RejectJobBid(_ context.Context,
 /// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
 /////////////////////////////////////////////////////////////
 
-func (gt *GenericTransport) BidJob(_ context.Context,
+func (gt *GenericTransport) BidJob(ctx context.Context,
 	jobID string) error {
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_BidJob")
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		EventName: executor.JobEventBid,
 		JobState: &executor.JobState{
@@ -251,10 +294,13 @@ func (gt *GenericTransport) BidJob(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) SubmitResult(_ context.Context,
+func (gt *GenericTransport) SubmitResult(ctx context.Context,
 	jobID, status, resultsID string) error {
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_SubmitResult")
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		EventName: executor.JobEventResults,
 		JobState: &executor.JobState{
@@ -266,10 +312,13 @@ func (gt *GenericTransport) SubmitResult(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) ErrorJob(_ context.Context,
+func (gt *GenericTransport) ErrorJob(ctx context.Context,
 	jobID, status string) error {
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJob")
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		EventName: executor.JobEventError,
 		JobState: &executor.JobState{
@@ -285,10 +334,13 @@ func (gt *GenericTransport) ErrorJob(_ context.Context,
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (gt *GenericTransport) ErrorJobForNode(_ context.Context,
+func (gt *GenericTransport) ErrorJobForNode(ctx context.Context,
 	jobID, nodeID, status string) error {
 
-	return transport.writeEvent(ctx, &executor.JobEvent{
+	ctx = gt.getJobNodeContext(ctx, jobID)
+	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
+
+	return gt.writeEvent(ctx, &executor.JobEvent{
 		JobId:     jobID,
 		NodeId:    nodeID,
 		EventName: executor.JobEventError,
@@ -300,7 +352,18 @@ func (gt *GenericTransport) ErrorJobForNode(_ context.Context,
 	})
 }
 
-func (gt *GenericTransport) getJobLifecycleContext(
+// endJobContext ends the local and global lifecycle contexts for a job.
+func (gt *GenericTransport) endJobContext(jobID string) {
+	ctx := gt.getJobNodeContext(context.Background(), jobID)
+	trace.SpanFromContext(ctx).End()
+
+	ctx = gt.getJobContext(jobID)
+	trace.SpanFromContext(ctx).End()
+}
+
+// getJobContext returns a context that tracks the global lifecycle of a job
+// as it is processed by this and other nodes in the bacalhau network.
+func (gt *GenericTransport) getJobContext(
 	jobID string) context.Context {
 
 	jobCtx, ok := gt.jobContexts[jobID]
@@ -310,14 +373,37 @@ func (gt *GenericTransport) getJobLifecycleContext(
 	return jobCtx
 }
 
-func (gt *GenericTransport) addJobLifecycleEvent(
-	ctx context.Context, jobID string, eventName string) {
+// getJobNodeContext returns a context that tracks the local lifecycle of a
+// job as it has been processed by this node.
+func (gt *GenericTransport) getJobNodeContext(ctx context.Context,
+	jobID string) context.Context {
+
+	jobCtx, ok := gt.jobNodeContexts[jobID]
+	if !ok {
+		jobCtx, _ = system.Span(ctx, "transport/generic_transport",
+			"JobLifecycle-"+gt.NodeID[:8],
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String("job_id", jobID),
+				attribute.String("node_id", gt.NodeID),
+			),
+		)
+
+		gt.jobNodeContexts[jobID] = jobCtx
+	}
+	return jobCtx
+}
+
+func (gt *GenericTransport) addJobLifecycleEvent(ctx context.Context,
+	jobID, eventName string, attrs ...attribute.KeyValue) {
 
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent(eventName,
 		trace.WithAttributes(
-			attribute.String("nodeID", gt.NodeID),
-			attribute.String("jobID", jobID),
+			append(attrs,
+				attribute.String("jobID", jobID),
+				attribute.String("nodeID", gt.NodeID),
+			)...,
 		),
 	)
 }
@@ -326,11 +412,14 @@ func (gt *GenericTransport) newRootSpanForJob(ctx context.Context,
 	jobID string) (context.Context, trace.Span) {
 
 	return system.Span(ctx, "transport/generic_transport", "JobLifecycle",
-		trace.WithNewRoot(), // job lifecycle spans go in dedicated trace
+		// job lifecycle spans go in their own, dedicated trace
+		trace.WithNewRoot(),
+
+		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("nodeID", gt.NodeID),
 			attribute.String("jobID", jobID),
+			attribute.String("nodeID", gt.NodeID),
 		),
 	)
 }

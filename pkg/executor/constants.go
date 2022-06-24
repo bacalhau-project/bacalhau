@@ -53,6 +53,10 @@ const (
 	jobEventDone // must be last
 )
 
+func (event JobEventType) IsTerminal() bool {
+	return event == JobEventError || event == JobEventResults
+}
+
 func ParseJobEventType(str string) (JobEventType, error) {
 	for typ := jobEventUnknown + 1; typ < jobEventDone; typ++ {
 		if equal(typ.String(), str) {
