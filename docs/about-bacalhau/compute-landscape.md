@@ -15,7 +15,7 @@ More content is available on the [full slide deck](https://docs.google.com/prese
 * A collection of code samples to showcase and compare their APIs
 * A performance benchmark to compare how they behave in processing a large  dataset
 
-*Placeholder for introductory video*
+[![](./images/summary_video.png)](https://Winder.AI/comparison-computational-frameworks-spark-dask-snowflake/#video)
 
 > The past can hurt. But the way I see it, you can either run from it, or learn from it. - *Walt Disney*
 
