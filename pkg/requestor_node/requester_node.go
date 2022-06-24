@@ -118,6 +118,10 @@ func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeId string) (bool, 
 	return true, "", nil
 }
 
+func (node *RequesterNode) PinContext(jobId string, context string) error {
+	return nil
+}
+
 func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID,
 	name string) (context.Context, trace.Span) {
 

@@ -96,6 +96,10 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 type submitRequest struct {
 	Spec *executor.JobSpec `json:"spec"`
 	Deal *executor.JobDeal `json:"deal"`
+	// optional base64 encoded tar file that the api server will pin to ipfs for
+	// you (the client), NOT part of the spec so we don't flood libp2p with
+	// these files, max 10mb
+	Context string `json:"context,omitempty"`
 }
 
 type submitResponse struct {
@@ -119,6 +123,15 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if submitReq.Context != "" {
+		// TODO: gc pinned contexts
+		err = apiServer.Node.PinContext(job.Id, submitReq.Context)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	res.WriteHeader(http.StatusOK)

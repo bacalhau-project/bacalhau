@@ -1,4 +1,10 @@
-package noop
+package python_wasm
+
+/*
+The python_wasm executor wraps the docker executor, automatically uploading the
+execution context (python files, requirements.txt) to ipfs so that it can be
+mounted into the wasm runtime container.
+*/
 
 import (
 	"context"

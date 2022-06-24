@@ -173,6 +173,10 @@ test-commands:
 test-badactors:
 	TEST=TestCatchBadActors make test-one
 
+.PHONY: test-pythonwasm
+test-pythonwasm:
+	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+
 ################################################################################
 # Target: devstack
 ################################################################################

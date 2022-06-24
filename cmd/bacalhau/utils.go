@@ -63,7 +63,7 @@ func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) 
 		os.Args[2] = ""
 	}
 
-	log.Trace().Msgf("Command to execute: same %v", root.CalledAs())
+	log.Trace().Msgf("Command to execute: %v", root.CalledAs())
 
 	c, err = root.ExecuteC()
 	return c, buf.String(), err

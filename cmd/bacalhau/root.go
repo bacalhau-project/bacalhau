@@ -14,7 +14,7 @@ func init() {
 	RootCmd.AddCommand(serveCmd)
 
 	// Porcelain commands (language specific easy to use commands)
-	// TODO: RootCmd.AddCommand(runCmd)
+	RootCmd.AddCommand(runCmd)
 
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
