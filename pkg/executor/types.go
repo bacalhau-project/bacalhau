@@ -46,9 +46,8 @@ type JobSpec struct {
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier"`
 
-	// for VM based executors
-	Vm   JobSpecVm   `json:"job_spec_vm"`
-	Wasm JobSpecWasm `json:"job_spec_wasm"`
+	Docker   JobSpecDocker   `json:"job_spec_docker"`
+	Language JobSpecLanguage `json:"job_spec_language"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
@@ -59,7 +58,7 @@ type JobSpec struct {
 }
 
 // for VM style executors
-type JobSpecVm struct {
+type JobSpecDocker struct {
 	// this should be pullable by docker
 	Image string `json:"image"`
 	// optionally override the default entrypoint
@@ -72,9 +71,18 @@ type JobSpecVm struct {
 	Disk   string `json:"disk"`
 }
 
-// for Wasm style executors
-type JobSpecWasm struct {
-	Bytecode storage.StorageSpec `json:"bytecode"`
+// for language style executors (can target docker or wasm)
+type JobSpecLanguage struct {
+	// must this job be run in a deterministic context?
+	Deterministic bool `json:"deterministic"`
+	// context is a tar file stored in ipfs, containing e.g. source code and requirements
+	Context storage.StorageSpec `json:"context"`
+	// optional program specified on commandline, like python -c "print(1+1)"
+	Command string `json:"command"`
+	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
+	ProgramPath string `json:"program_path"`
+	// optional requirements.txt (or equivalent) path relative to the context dir
+	RequirementsPath string `json:"requirements_path"`
 }
 
 // keep track of job states on a particular node

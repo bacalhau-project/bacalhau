@@ -29,8 +29,8 @@ func CatFileToStdout(t *testing.T) TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecDocker {
+			return executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"cat",
@@ -62,8 +62,8 @@ func CatFileToVolume(t *testing.T) TestCase {
 				Path: "/output_data",
 			},
 		},
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecDocker {
+			return executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"bash",
@@ -89,8 +89,8 @@ func GrepFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			2,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecDocker {
+			return executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"grep",
@@ -117,8 +117,8 @@ func SedFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			5,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecDocker {
+			return executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"sed",
@@ -146,8 +146,8 @@ func AwkFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			501,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecDocker {
+			return executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"awk",

@@ -159,8 +159,8 @@ var listCmd = &cobra.Command{
 			}
 
 			if job.Spec.Engine == executor.EngineDocker {
-				jobDesc = append(jobDesc, job.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
+				jobDesc = append(jobDesc, job.Spec.Docker.Image)
+				jobDesc = append(jobDesc, strings.Join(job.Spec.Docker.Entrypoint, " "))
 			}
 
 			if len(job.State) == 0 {

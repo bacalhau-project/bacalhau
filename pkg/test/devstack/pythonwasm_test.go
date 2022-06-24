@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -21,21 +22,25 @@ import (
 //   context mounted in
 
 func TestSimplestPythonWasmDashC(t *testing.T) {
-	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
-		"run",
-		"python",
-		"--deterministic",
-		"-c",
-		"print(1+1)",
-	)
-	assert.NoError(t, err)
-
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, compute_node.NewDefaultJobSelectionPolicy())
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()
+	assert.NoError(t, err)
+
+	// TODO: see also list_test.go, maybe factor out a common way to do this cli
+	// setup
+	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
+		fmt.Sprintf("--api-port=%d", stack.Nodes[0].ApiServer.Port),
+		"--api-host=localhost",
+		"run",
+		"python",
+		"--deterministic",
+		"-c",
+		"print(1+1)",
+	)
 	assert.NoError(t, err)
 
 	// XXX This might not work because run_python.go just uses fmt.Printf of the
@@ -57,6 +62,8 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 	// assert.Equal(t, "2", result)
 
 }
+
+// TODO: test that > 10MB context is rejected
 
 // func TestSimplePythonWasm(t *testing.T) {
 // 	tmpDir, err := ioutil.TempDir("", "devstack_test")

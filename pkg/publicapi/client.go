@@ -103,6 +103,12 @@ func (apiClient *APIClient) post(ctx context.Context, api string,
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
+	bs, err := json.Marshal(reqData)
+	if err != nil {
+		panic(err)
+	}
+	log.Debug().Msgf("request body: %s", string(bs))
+
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 	req, err := http.NewRequestWithContext(ctx, "POST", addr, &body)
 	if err != nil {
@@ -114,11 +120,14 @@ func (apiClient *APIClient) post(ctx context.Context, api string,
 	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
+
+	log.Debug().Msgf("http request --> %+v", req)
+
 	if res.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(res.Body)
 		if err == nil { // not critical if this fails
 			log.Error().Msgf(
-				"publicapi: non-200 body returned from API server: %s", string(body))
+				"publicapi: %d body returned from API server: %s", res.StatusCode, string(body))
 		}
 
 		return fmt.Errorf(

@@ -45,7 +45,6 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context) error {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
 		return err
 	}
-
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
@@ -109,11 +108,13 @@ type submitResponse struct {
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
+		log.Debug().Msgf("====> Decode submitReq error: %s", err)
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := job.VerifyJob(submitReq.Spec, submitReq.Deal); err != nil {
+		log.Debug().Msgf("====> VerifyJob error: %s", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

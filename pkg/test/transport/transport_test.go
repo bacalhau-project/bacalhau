@@ -78,7 +78,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
-		Vm: executor.JobSpecVm{
+		Docker: executor.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
@@ -109,7 +109,7 @@ func TestTransportEvents(t *testing.T) {
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
-		Vm: executor.JobSpecVm{
+		Docker: executor.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},

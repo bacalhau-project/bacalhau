@@ -189,20 +189,20 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 
 		stdout, err := system.RunCommandGetResults(
 			"docker",
-			[]string{"pull", job.Spec.Vm.Image},
+			[]string{"pull", job.Spec.Docker.Image},
 		)
 		if err != nil {
 			return "", err
 		}
 
-		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Vm.Image, stdout)
+		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Docker.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
-		Image:           job.Spec.Vm.Image,
+		Image:           job.Spec.Docker.Image,
 		Tty:             false,
-		Env:             job.Spec.Vm.Env,
-		Entrypoint:      job.Spec.Vm.Entrypoint,
+		Env:             job.Spec.Docker.Env,
+		Entrypoint:      job.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(job),
 		NetworkDisabled: true,
 	}

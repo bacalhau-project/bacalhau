@@ -91,7 +91,7 @@ func newJob() (*executor.JobSpec, *executor.JobDeal) {
 	return &executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
-			Vm: executor.JobSpecVm{
+			Docker: executor.JobSpecDocker{
 				Image:      "ubuntu:latest",
 				Entrypoint: []string{"echo", "Hello, world!"},
 			},

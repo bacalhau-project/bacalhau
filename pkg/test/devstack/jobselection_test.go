@@ -42,7 +42,7 @@ func TestSelectAllJobs(t *testing.T) {
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
-			Vm:       scenario.GetJobSpec(),
+			Docker:   scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,
 		}

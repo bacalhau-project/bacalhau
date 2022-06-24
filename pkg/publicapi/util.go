@@ -113,7 +113,7 @@ func MakeJob(engineType executor.EngineType,
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
-		Vm: executor.JobSpecVm{
+		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

@@ -71,7 +71,7 @@ func GetJobSpec(cid string) *executor.JobSpec {
 	return &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		Vm: executor.JobSpecVm{
+		Docker: executor.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"cat",

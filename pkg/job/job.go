@@ -80,7 +80,7 @@ func ConstructJob(
 	spec := &executor.JobSpec{
 		Engine:   engine,
 		Verifier: verifier,
-		Vm: executor.JobSpecVm{
+		Docker: executor.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,
