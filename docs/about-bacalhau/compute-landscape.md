@@ -15,7 +15,7 @@ More content is available on the [full slide deck](https://docs.google.com/prese
 * A collection of code samples to showcase and compare their APIs
 * A performance benchmark to compare how they behave in processing a large  dataset
 
-[![](./images/summary_video.png)](https://Winder.AI/comparison-computational-frameworks-spark-dask-snowflake/#video)
+[![](images/summary_video.png)](https://Winder.AI/comparison-computational-frameworks-spark-dask-snowflake/#video)
 
 > The past can hurt. But the way I see it, you can either run from it, or learn from it. - *Walt Disney*
 
@@ -29,10 +29,7 @@ This landscape analysis reviewed a selection of these tools in order to summariz
 
 > The [full slide deck](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit?usp=sharing) contains a detailed overview of the compute frameworks and include sample code snippets. 
 
-
-<p align="center">
-<img src="/img/landscape.png" alt="Compute Framework Analysis" width="600" />
-</p>
+![Compute Framework Analysis](images/landscape.png)
 
 The Python data stack includes tools like Pandas and Dask that offer a very convenient data structure named [Dataframe](https://en.wikipedia.org/wiki/Dataframe), particularly suitable for handling tabular data.
 
@@ -55,11 +52,7 @@ Moreover, there's often a significant setup burden even to running a getting sta
 The table below summarizes their score in terms of different requirements.
 That rating is based on the experience of setting up and running the code described in the next section, find more details on the [slides](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit#slide=id.g11f8b483676_0_87).
 
-<p align="center">
-<img src="/img/landscape-table.png" alt="Compute Framework Analysis" width="700" />
-</p>
-
-
+![Compute Framework Analysis](images/landscape-table.png)
 
 Why is Bachalau not on this list?
 
@@ -93,9 +86,7 @@ The plot below reports the benchmark running time for each framework, a missing 
 Performance across the landscape can vary 10x, that's expected because Pandas is not a big-data tool, and Hadoop was not really designed to perform well on a single-node setup.
 However, it's surprising that only Spark and Snowflake provide a quite easy setup combined with quick processing and very low resource usage.
 
-<p align="center">
-<img src="/img/landscape-benchmarks.png" alt="Compute Framework Analysis" width="600" />
-</p>
+![Compute Framework Benchmarks](images/landscape-benchmarks.png)
 
 Check out [the slides for a complete report on the benchmark results](https://docs.google.com/presentation/d/1wOh-ASGshgc1Ivkoyaz9zGpVGTxX9LDMZQB4-eXOBP4/edit#slide=id.g11c07429d0d_0_1091) or dive into the [code repository](https://github.com/winderai/bacalhau-landscape-analysis-benchmarks) to spin up a cluster and run the benchmarks yourself.
 
