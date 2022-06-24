@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -57,33 +58,36 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	}
 
 	for _, tc := range tests {
-		ctx, c := publicapi.SetupTests(suite.T())
+		func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
-		// Submit a few random jobs to the node:
-		var err error
+			for i := 0; i < tc.numberOfJobs; i++ {
+				spec, deal := publicapi.MakeNoopJob()
+				_, err := c.Submit(ctx, spec, deal)
+				assert.NoError(suite.T(), err)
+			}
 
-		for i := 0; i < tc.numberOfJobs; i++ {
-			spec, deal := publicapi.MakeNoopJob()
-			_, err = c.Submit(ctx, spec, deal)
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+				"--hide-header",
+				"--api-host", host,
+				"--api-port", port,
+				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
+			)
 			assert.NoError(suite.T(), err)
-		}
 
-		parsedBasedURI, _ := url.Parse(c.BaseURI)
-		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
-			"--hide-header",
-			"--api-host", host,
-			"--api-port", port,
-			"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
-		)
-
-		assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
-
+			assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+		}()
 	}
 }
 
 func (suite *ListSuite) TestList_IdFilter() {
-	ctx, c := publicapi.SetupTests(suite.T())
+	ctx := context.Background()
+	c, cm := publicapi.SetupTests(suite.T())
+	defer cm.Cleanup()
 
 	jobIds := []string{}
 	for i := 0; i < 10; i++ {
@@ -107,7 +111,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for _, line := range strings.Split(out, "\n") {
 		parts := strings.Split(line, " ")
 		if len(parts) > 2 {
-			seenIds = append(seenIds, strings.Split(line, " ")[1])
+			seenIds = append(seenIds, strings.Split(line, " ")[3])
 		}
 	}
 
@@ -148,84 +152,84 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 	for _, tc := range combinationOfJobSizes {
 		for _, sortFlags := range sortFlagsToTest {
-			ctx, c := publicapi.SetupTests(suite.T())
+			func() {
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
 
-			// Submit a few random jobs to the node:
-			var err error
+				jobIds := []string{}
+				for i := 0; i < tc.numberOfJobs; i++ {
+					spec, deal := publicapi.MakeNoopJob()
+					job, err := c.Submit(ctx, spec, deal)
+					assert.NoError(suite.T(), err)
+					jobIds = append(jobIds, shortId(job.Id))
 
-			jobIds := []string{}
-
-			for i := 0; i < tc.numberOfJobs; i++ {
-				spec, deal := publicapi.MakeNoopJob()
-				job, err := c.Submit(ctx, spec, deal)
-				assert.NoError(suite.T(), err)
-				jobIds = append(jobIds, shortId(job.Id))
-
-				// all the middle jobs can have the same timestamp
-				// but we need the first and last to differ
-				// so we can test sorting on time stamp
-				if (i == 0 || i == tc.numberOfJobs-2) && sortFlags.sortFlag == createdAtSortFlag {
-					time.Sleep(1 * time.Second)
-				} else {
-					time.Sleep(1 * time.Millisecond)
+					// all the middle jobs can have the same timestamp
+					// but we need the first and last to differ
+					// so we can test sorting on time stamp
+					if (i == 0 || i == tc.numberOfJobs-2) && sortFlags.sortFlag == createdAtSortFlag {
+						time.Sleep(1 * time.Second)
+					} else {
+						time.Sleep(1 * time.Millisecond)
+					}
 				}
-			}
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-
-			reverseString := ""
-			if sortFlags.reverseFlag {
-				reverseString = "--reverse"
-			}
-
-			// IMPORTANT: reset this to the default value because otherwise strange things happen
-			// between tests because the value is held on from the last CLI invocation
-			tableSortReverse = false
-
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
-				"list",
-				"--hide-header",
-				"--no-style",
-				"--api-host", host,
-				"--api-port", port,
-				"--sort-by", sortFlags.sortFlag,
-				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
-				reverseString,
-			)
-
-			if sortFlags.badSortFlag {
-				assert.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
-				assert.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
-			} else {
+				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
 				assert.NoError(suite.T(), err)
-				assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
-				if tc.numberOfJobsOutput > 0 {
+				reverseString := ""
+				if sortFlags.reverseFlag {
+					reverseString = "--reverse"
+				}
 
-					// jobIds are already sorted by created ASC
-					if sortFlags.sortFlag == string(ColumnID) {
-						sort.Strings(jobIds)
-					}
+				// IMPORTANT: reset this to the default value because otherwise strange things happen
+				// between tests because the value is held on from the last CLI invocation
+				tableSortReverse = false
 
-					if sortFlags.reverseFlag {
-						jobIds = ReverseList(jobIds)
-					}
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+					"list",
+					"--hide-header",
+					"--no-style",
+					"--api-host", host,
+					"--api-port", port,
+					"--sort-by", sortFlags.sortFlag,
+					"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
+					reverseString,
+				)
 
-					compareIds := jobIds[0:tc.numberOfJobsOutput]
-					seenIds := []string{}
+				if sortFlags.badSortFlag {
+					assert.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
+					assert.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
+				} else {
+					assert.NoError(suite.T(), err)
+					assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
-					for _, line := range strings.Split(out, "\n") {
-						parts := strings.Split(line, " ")
-						if len(parts) > 2 {
-							seenIds = append(seenIds, strings.Split(line, " ")[1])
+					if tc.numberOfJobsOutput > 0 {
+
+						// jobIds are already sorted by created ASC
+						if sortFlags.sortFlag == string(ColumnID) {
+							sort.Strings(jobIds)
 						}
-					}
 
-					errorMessage := fmt.Sprintf(`
+						if sortFlags.reverseFlag {
+							jobIds = ReverseList(jobIds)
+						}
+
+						compareIds := jobIds[0:tc.numberOfJobsOutput]
+						seenIds := []string{}
+
+						for _, line := range strings.Split(out, "\n") {
+							parts := strings.Split(line, " ")
+							if len(parts) > 2 {
+								seenIds = append(seenIds, strings.Split(line, " ")[3])
+							}
+						}
+
+						errorMessage := fmt.Sprintf(`
 Table lines do not match
 Number of Jobs: %d
-Number of Max: %d
+Number of Max Jobs: %d
 Sort Flag: %s
 Reverse Flag: %t
 
@@ -235,20 +239,21 @@ Out:
 Seen Ids:
 %s
 
-Compare Ids:
+Compare Ids:    
 %s
 
-					`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))
+			    		`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))
 
-					if sortFlags.sortFlag == string(ColumnID) {
-						assert.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
-					} else if sortFlags.sortFlag == createdAtSortFlag {
-						// check the first and last are correct
-						// the middles all have the same created time so we ignore those
-						assert.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
+						if sortFlags.sortFlag == string(ColumnID) {
+							assert.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
+						} else if sortFlags.sortFlag == createdAtSortFlag {
+							// check the first and last are correct
+							// the middles all have the same created time so we ignore those
+							assert.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
+						}
 					}
 				}
-			}
+			}()
 		}
 	}
 }

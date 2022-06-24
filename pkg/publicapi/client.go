@@ -40,6 +40,11 @@ func (apiClient *APIClient) Alive() (bool, error) {
 	if err != nil {
 		return false, nil
 	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Error().Msgf("error closing response body: %v", err)
+		}
+	}()
 
 	return res.StatusCode == http.StatusOK, nil
 }
@@ -75,7 +80,8 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 		}
 	}
 
-	return nil, false, nil
+	return nil, false, fmt.Errorf(
+		"publicapi: no job with ID '%s' found", jobID)
 }
 
 // Submit submits a new job to the node's transport.
@@ -109,11 +115,18 @@ func (apiClient *APIClient) post(ctx context.Context, api string,
 		return fmt.Errorf("publicapi: error creating post request: %v", err)
 	}
 	req.Header.Set("Content-type", "application/json")
+	req.Close = true // don't keep connections lying around
 
 	res, err := apiClient.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Error().Msgf("error closing response body: %v", err)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(res.Body)
 		if err == nil { // not critical if this fails

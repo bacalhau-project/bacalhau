@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -21,7 +22,17 @@ var tableSortBy ColumnEnum
 var tableSortReverse bool
 var tableIdFilter string
 var tableNoStyle bool
-var tableMergeValues bool
+
+// var tableMergeValues bool
+
+func shortenTime(t time.Time) string {
+	if tableOutputWide {
+		return t.Format("06-01-02-15:04:05")
+	}
+
+	return t.Format("15:04:05")
+
+}
 
 func shortenString(st string) string {
 	if tableOutputWide {
@@ -82,4 +93,34 @@ func ReverseList(s []string) []string {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
+}
+
+func FilterStringArray(data []string, f func(string) bool) []string {
+	fltd := make([]string, 0)
+	for _, e := range data {
+		if f(e) {
+			fltd = append(fltd, e)
+		}
+	}
+	return fltd
+}
+
+// Below are utilities for testing
+// TODO: #276 Evaluate if this is the right place for this stuff and delete this comment or move
+
+func LoadBadStringsFull() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_full.txt")
+	return loadBadStrings(file)
+}
+
+func LoadBadStringsAnnotations() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_annotations.txt")
+	return loadBadStrings(file)
+}
+
+func loadBadStrings(file []byte) []string {
+	badStringsRaw := strings.Split(string(file), "\n")
+	return FilterStringArray(badStringsRaw, func(s string) bool {
+		return !(strings.HasPrefix(s, "#") || strings.HasPrefix(s, "\n"))
+	})
 }

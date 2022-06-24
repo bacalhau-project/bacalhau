@@ -1,0 +1,9 @@
+bacalhau_version = "v0.1.14"
+ipfs_version     = "v0.12.2"
+gcp_project      = "bacalhau-staging"
+instance_count   = 3
+region           = "southamerica-east1"
+zone             = "southamerica-east1-b"
+volume_size_gb   = 10
+machine_type     = "e2-standard-4"
+rollout_phase    = "staging"

@@ -138,7 +138,7 @@ var serveCmd = &cobra.Command{
 		defer cancel()
 
 		go func(ctx context.Context) {
-			if err := apiServer.ListenAndServe(ctx); err != nil {
+			if err := apiServer.ListenAndServe(ctx, cm); err != nil {
 				panic(err) // if api server can't run, bacalhau should stop
 			}
 		}(ctx)
