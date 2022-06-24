@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +17,7 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
-var jobAnnotations []string
 var skipSyntaxChecking bool
-
-// For testing
-var flagClearAnnotations bool
 
 func init() {
 	dockerCmd.AddCommand(dockerRunCmd)
@@ -56,19 +51,6 @@ func init() {
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobAnnotations,
-		"Annotations", "l", []string{},
-		`List of Annotations for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
-	)
-
-	// For testing
-	dockerRunCmd.PersistentFlags().BoolVar(&flagClearAnnotations,
-		"clear-annotations", false,
-		`Clear all Annotations before executing. For testing purposes only, should never be necessary in the real world.`,
-	)
-	if err := dockerRunCmd.PersistentFlags().MarkHidden("clear-annotations"); err != nil {
-		log.Debug().Msgf("error hiding test flags: %v", err)
-	}
 }
 
 var dockerCmd = &cobra.Command{
@@ -104,7 +86,6 @@ var dockerRunCmd = &cobra.Command{
 			jobEntrypoint,
 			jobImage,
 			jobConcurrency,
-			jobAnnotations,
 		)
 		if err != nil {
 			return err
@@ -122,17 +103,7 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		if flagClearAnnotations {
-			clearAnnotations()
-		}
-
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", job.Id)
+		fmt.Printf("%s\n", job.Id)
 		return nil
 	},
-}
-
-func clearAnnotations() {
-	// For testing purposes - just clear the Annotations before we execute
-	// TODO(guy): is this necessary?
-	jobAnnotations = []string{}
 }
