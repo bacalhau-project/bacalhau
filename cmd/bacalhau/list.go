@@ -159,16 +159,16 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-					_, currentJobState := job.GetCurrentJobState(jobInRow)
-					t.AppendRows([]table.Row{
-						{
-							shortenTime(jobInRow.CreatedAt),
-							shortId(jobInRow.Id),
-							shortenString(strings.Join(jobDesc, " ")),
-							shortenString(currentJobState.State.String()),
-							shortenString(getJobResult(jobInRow, currentJobState)),
-						},
-					})
+				_, currentJobState := job.GetCurrentJobState(jobInRow)
+				t.AppendRows([]table.Row{
+					{
+						shortenTime(jobInRow.CreatedAt),
+						shortId(jobInRow.Id),
+						shortenString(strings.Join(jobDesc, " ")),
+						shortenString(currentJobState.State.String()),
+						shortenString(getJobResult(jobInRow, currentJobState)),
+					},
+				})
 			}
 
 		}

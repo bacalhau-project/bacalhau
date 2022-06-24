@@ -2,6 +2,8 @@ package bacalhau
 
 import (
 	"context"
+	"net"
+	"net/url"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -9,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v2"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -54,27 +57,36 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 	for _, tc := range tests {
 		func() {
+			var submittedJob *executor.Job
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
 			for i := 0; i < tc.numberOfAcceptNodes; i++ {
 				spec, deal := publicapi.MakeNoopJob()
-				_, err := c.Submit(ctx, spec, deal)
+				s, err := c.Submit(ctx, spec, deal)
 				assert.NoError(suite.T(), err)
+				submittedJob = s
 			}
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+				"--api-host", host,
+				"--api-port", port,
+				"-i", submittedJob.Id,
+			)
+
+			assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+
+			var returnedJobDescription = &jobDescription{}
+			err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+
+			assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+
+			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+
 		}()
-
-		// parsedBasedURI, _ := url.Parse(c.BaseURI)
-		// host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-		// _, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
-		// 	"--hide-header",
-		// 	"--api-host", host,
-		// 	"--api-port", port,
-		// 	"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
-		// )
-
-		// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 	}
 }

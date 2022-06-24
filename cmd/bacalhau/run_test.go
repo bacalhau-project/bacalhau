@@ -105,7 +105,7 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 
 	}
 }
-func (suite *RunSuite) TestRun_Labels() {
+func (suite *RunSuite) TestRun_Annotations() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -113,32 +113,32 @@ func (suite *RunSuite) TestRun_Labels() {
 		// {numberOfJobs: 5}, // Test for five
 	}
 
-	labelsToTest := []struct {
+	AnnotationsToTest := []struct {
 		Name          string
-		Labels        []string
+		Annotations   []string
 		CorrectLength int
 		BadCase       bool
 	}{
-		{Name: "1", Labels: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
-		{Name: "1.1", Labels: []string{`""`}, CorrectLength: 1, BadCase: false},           // Label flag, no value, but correctly quoted
-		{Name: "2", Labels: []string{"a"}, CorrectLength: 1, BadCase: false},              // Labels, string
-		{Name: "3", Labels: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Labels, string and int
-		{Name: "4", Labels: []string{`''`, `" "`}, CorrectLength: 2, BadCase: false},      // Labels, some edge case characters
-		{Name: "5", Labels: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},   // Emojis
-		{Name: "6", Labels: []string{"ايطاليا"}, CorrectLength: 1, BadCase: false},        // Right to left
-		{Name: "7", Labels: []string{"‫test‫"}, CorrectLength: 1, BadCase: false},         // Control charactel
-		{Name: "8", Labels: []string{"사회과학원", "어학연구소"}, CorrectLength: 2, BadCase: false}, // Two-byte characters
+		{Name: "1", Annotations: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
+		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 1, BadCase: false},           // Label flag, no value, but correctly quoted
+		{Name: "2", Annotations: []string{"a"}, CorrectLength: 1, BadCase: false},              // Annotations, string
+		{Name: "3", Annotations: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Annotations, string and int
+		{Name: "4", Annotations: []string{`''`, `" "`}, CorrectLength: 2, BadCase: false},      // Annotations, some edge case characters
+		{Name: "5", Annotations: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},   // Emojis
+		{Name: "6", Annotations: []string{"ايطاليا"}, CorrectLength: 1, BadCase: false},        // Right to left
+		{Name: "7", Annotations: []string{"‫test‫"}, CorrectLength: 1, BadCase: false},         // Control charactel
+		{Name: "8", Annotations: []string{"사회과학원", "어학연구소"}, CorrectLength: 2, BadCase: false}, // Two-byte characters
 	}
 
-	// allBadStrings := LoadBadStringsLabels()
+	// allBadStrings := LoadBadStringsAnnotations()
 	// for _, s := range allBadStrings {
 	// 	strippedString := SafeStringStripper(s)
 	// 	l := struct {
-	// 		Labels        []string
+	// 		Annotations        []string
 	// 		CorrectLength int
 	// 		BadCase       bool
-	// 	}{Labels: []string{s}, CorrectLength: len(strippedString), BadCase: false}
-	// 	labelsToTest = append(labelsToTest, l)
+	// 	}{Annotations: []string{s}, CorrectLength: len(strippedString), BadCase: false}
+	// 	AnnotationsToTest = append(AnnotationsToTest, l)
 	// }
 
 	for i, tc := range tests {
@@ -147,7 +147,7 @@ func (suite *RunSuite) TestRun_Labels() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			for _, labelTest := range labelsToTest {
+			for _, labelTest := range AnnotationsToTest {
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				assert.NoError(suite.T(), err)
 
@@ -156,10 +156,10 @@ func (suite *RunSuite) TestRun_Labels() {
 
 				var args []string
 				args = append(args, "run", "--api-host", host, "--api-port", port)
-				for _, label := range labelTest.Labels {
-					args = append(args, "--labels", label)
+				for _, label := range labelTest.Annotations {
+					args = append(args, "--Annotations", label)
 				}
-				args = append(args, "--clear-labels")
+				args = append(args, "--clear-Annotations")
 				args = append(args, "ubuntu echo 'hello world'")
 
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
@@ -172,17 +172,17 @@ func (suite *RunSuite) TestRun_Labels() {
 					assert.Contains(suite.T(), out, "rror")
 				} else {
 					assert.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
-					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Labels)
+					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
 					msg := fmt.Sprintf(`
-Number of labels stored not equal to expected length.
+Number of Annotations stored not equal to expected length.
 Name: %s
 Expected length: %d
 Actual length: %d
 
-Expected labels: %+v
-Actual labels: %+v
-`, labelTest.Name, len(labelTest.Labels), len(testJob.Spec.Labels), labelTest.Labels, testJob.Spec.Labels)
-					assert.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Labels), msg)
+Expected Annotations: %+v
+Actual Annotations: %+v
+`, labelTest.Name, len(labelTest.Annotations), len(testJob.Spec.Annotations), labelTest.Annotations, testJob.Spec.Annotations)
+					assert.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
 				}
 			}
 		}()

@@ -97,12 +97,12 @@ func ReverseList(s []string) []string {
 }
 
 func LoadBadStringsFull() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_labels.txt")
+	file, _ := os.ReadFile("../../testdata/bad_strings_Annotations.txt")
 	return loadBadStrings(file)
 }
 
-func LoadBadStringsLabels() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_labels.txt")
+func LoadBadStringsAnnotations() []string {
+	file, _ := os.ReadFile("../../testdata/bad_strings_Annotations.txt")
 	return loadBadStrings(file)
 }
 

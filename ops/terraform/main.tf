@@ -6,7 +6,7 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    bucket = "bacalhau-cluster-tfstate"
+    bucket = "bacalhau-global-storage"
     prefix = "terraform/state"
   }
 }
@@ -160,7 +160,7 @@ resource "google_compute_disk_resource_policy_attachment" "attachment" {
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
-  name   = "bacalhau-disk-backups"
+  name   = "bacalhau-disk-backups-${var.rollout_phase}"
   region = var.region
   snapshot_schedule_policy {
     schedule {
@@ -189,7 +189,7 @@ resource "google_compute_attached_disk" "default" {
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {
-  name    = "bacalhau-ingress-firewall"
+  name    = "bacalhau-ingress-firewall-${var.rollout_phase}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -212,7 +212,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
-  name    = "bacalhau-ssh-firewall"
+  name    = "bacalhau-ssh-firewall-${var.rollout_phase}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -229,5 +229,5 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 }
 
 resource "google_compute_network" "bacalhau_network" {
-  name = "bacalhau-network"
+  name = "bacalhau-network-${var.rollout_phase}"
 }

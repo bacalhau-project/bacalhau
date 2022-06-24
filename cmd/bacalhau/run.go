@@ -18,11 +18,11 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
-var jobLabels []string
+var jobAnnotations []string
 var skipSyntaxChecking bool
 
 // For testing
-var flagClearLabels bool
+var flagClearAnnotations bool
 
 func init() {
 	runCmd.PersistentFlags().StringVar(
@@ -53,17 +53,17 @@ func init() {
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	runCmd.PersistentFlags().StringSliceVarP(&jobLabels,
-		"labels", "l", []string{},
-		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
+	runCmd.PersistentFlags().StringSliceVarP(&jobAnnotations,
+		"Annotations", "l", []string{},
+		`List of Annotations for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
 
 	// For testing
-	runCmd.PersistentFlags().BoolVar(&flagClearLabels,
-		"clear-labels", false,
-		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
+	runCmd.PersistentFlags().BoolVar(&flagClearAnnotations,
+		"clear-Annotations", false,
+		`Clear all Annotations before executing. For testing purposes only, should never be necessary in the real world.`,
 	)
-	if err := runCmd.PersistentFlags().MarkHidden("clear-labels"); err != nil {
+	if err := runCmd.PersistentFlags().MarkHidden("clear-Annotations"); err != nil {
 		log.Debug().Msgf("error hiding test flags: %v", err)
 	}
 }
@@ -96,7 +96,7 @@ var runCmd = &cobra.Command{
 			jobEntrypoint,
 			jobImage,
 			jobConcurrency,
-			jobLabels,
+			jobAnnotations,
 		)
 		if err != nil {
 			return err
@@ -114,8 +114,8 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if flagClearLabels {
-			clearLabels()
+		if flagClearAnnotations {
+			clearAnnotations()
 		}
 
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", job.Id)
@@ -123,8 +123,8 @@ var runCmd = &cobra.Command{
 	},
 }
 
-func clearLabels() {
-	// For testing purposes - just clear the labels before we execute
+func clearAnnotations() {
+	// For testing purposes - just clear the Annotations before we execute
 	// TODO(guy): is this necessary?
-	jobLabels = []string{}
+	jobAnnotations = []string{}
 }

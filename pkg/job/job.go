@@ -41,7 +41,7 @@ func ConstructJob(
 	entrypoint []string,
 	image string,
 	concurrency int,
-	jobLabels []string,
+	jobAnnotations []string,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
 		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
@@ -89,7 +89,7 @@ func ConstructJob(
 
 		Inputs:  jobInputs,
 		Outputs: jobOutputs,
-		Labels:  jobLabels,
+		Annotations:  jobAnnotations,
 	}
 
 	deal := &executor.JobDeal{

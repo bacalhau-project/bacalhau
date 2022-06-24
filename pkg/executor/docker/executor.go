@@ -203,7 +203,7 @@ func (e *Executor) RunJob(ctx context.Context, executingJob *executor.Job) (
 		Tty:             false,
 		Env:             executingJob.Spec.Vm.Env,
 		Entrypoint:      executingJob.Spec.Vm.Entrypoint,
-		Labels:          e.jobContainerLabels(executingJob),
+		Labels:          e.jobContainerAnnotations(executingJob),
 		NetworkDisabled: true,
 	}
 
@@ -314,7 +314,7 @@ func (e *Executor) jobContainerName(job *executor.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", e.Id, job.Id)
 }
 
-func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
+func (e *Executor) jobContainerAnnotations(job *executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.Id,
 	}
