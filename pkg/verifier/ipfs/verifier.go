@@ -23,7 +23,7 @@ func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 	}
 
 	ctx := context.Background() // TODO: instrument
-	_, err = api.GetPeerId(ctx)
+	_, err = api.GetPeerID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 		IPFSClient: api,
 	}
 
-	url, err := api.GetUrl()
+	url, err := api.GetURL()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	ctx, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 
-	_, err := verifier.IPFSClient.GetPeerId(ctx)
+	_, err := verifier.IPFSClient.GetPeerID(ctx)
 	return err == nil, err
 }
 

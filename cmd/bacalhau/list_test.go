@@ -42,7 +42,7 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
-	tableIdFilter = ""
+	tableIDFilter = ""
 	tableSortReverse = false
 
 	tests := []struct {
@@ -89,7 +89,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for i := 0; i < 10; i++ {
 		spec, deal := publicapi.MakeNoopJob()
 		job, err := c.Submit(ctx, spec, deal)
-		jobIds = append(jobIds, shortId(job.Id))
+		jobIds = append(jobIds, shortID(job.ID))
 		assert.NoError(suite.T(), err)
 	}
 
@@ -118,7 +118,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 func (suite *ListSuite) TestList_SortFlags() {
 	var badSortFlag = "BADSORTFLAG"
 	var createdAtSortFlag = "created_at"
-	tableIdFilter = ""
+	tableIDFilter = ""
 	tableSortReverse = false
 
 	combinationOfJobSizes := []struct {
@@ -159,7 +159,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				spec, deal := publicapi.MakeNoopJob()
 				job, err := c.Submit(ctx, spec, deal)
 				assert.NoError(suite.T(), err)
-				jobIds = append(jobIds, shortId(job.Id))
+				jobIds = append(jobIds, shortID(job.ID))
 
 				// all the middle jobs can have the same timestamp
 				// but we need the first and last to differ

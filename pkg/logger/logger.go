@@ -105,8 +105,8 @@ func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
 }
 
-func LoggerWithNodeAndJobInfo(nodeId string, jobId string) zerolog.Logger {
-	return log.With().Str("N", nodeId).Str("J", jobId).Logger()
+func LoggerWithNodeAndJobInfo(nodeID string, jobId string) zerolog.Logger {
+	return log.With().Str("N", nodeID).Str("J", jobId).Logger()
 }
 
 func LogJobEvent(event JobEvent) {

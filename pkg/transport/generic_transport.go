@@ -56,8 +56,8 @@ func NewGenericTransport(nodeID string,
 func (gt *GenericTransport) writeEvent(ctx context.Context,
 	event *executor.JobEvent) error {
 
-	if event.NodeId == "" {
-		event.NodeId = gt.NodeID
+	if event.NodeID == "" {
+		event.NodeID = gt.NodeID
 	}
 
 	return gt.writeEventHandler(ctx, event)
@@ -73,10 +73,10 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context,
 	defer gt.mutex.Unlock()
 
 	// Keep track of the state of jobs we hear about:
-	if _, ok := gt.jobs[event.JobId]; !ok {
-		gt.jobs[event.JobId] = &executor.Job{
-			Id:        event.JobId,
-			Owner:     event.NodeId,
+	if _, ok := gt.jobs[event.JobID]; !ok {
+		gt.jobs[event.JobID] = &executor.Job{
+			ID:        event.JobID,
+			Owner:     event.NodeID,
 			Spec:      nil,
 			Deal:      nil,
 			State:     make(map[string]*executor.JobState),
@@ -86,32 +86,32 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context,
 
 	// Passed in for create and update events:
 	if event.JobSpec != nil {
-		gt.jobs[event.JobId].Spec = event.JobSpec
+		gt.jobs[event.JobID].Spec = event.JobSpec
 	}
 
 	// Keep track of job owner so we know who can edit a job:
 	if event.JobDeal != nil {
-		gt.jobs[event.JobId].Deal = event.JobDeal
+		gt.jobs[event.JobID].Deal = event.JobDeal
 	}
 
 	// Jobs have different states on different nodes:
-	if event.JobState != nil && event.NodeId != "" {
-		gt.jobs[event.JobId].State[event.NodeId] = event.JobState
+	if event.JobState != nil && event.NodeID != "" {
+		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
 	}
 
 	// Attach metadata to local job lifecycle context:
-	jobCtx := gt.getJobNodeContext(ctx, event.JobId)
-	gt.addJobLifecycleEvent(jobCtx, event.JobId,
+	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
+	gt.addJobLifecycleEvent(jobCtx, event.JobID,
 		fmt.Sprintf("receive_%s", event.EventName))
 
 	// If the event is known to be terminal, end the lifecycle context:
 	if event.EventName.IsTerminal() {
-		gt.endJobContext(event.JobId)
+		gt.endJobContext(event.JobID)
 	}
 
 	// Actually notify in-process listeners:
 	for _, subscribeFunc := range gt.SubscribeFuncs {
-		go subscribeFunc(jobCtx, event, gt.jobs[event.JobId])
+		go subscribeFunc(jobCtx, event, gt.jobs[event.JobID])
 	}
 }
 
@@ -175,11 +175,11 @@ func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 
-	jobUuid, err := uuid.NewRandom()
+	jobUUID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("error creating job id: %w", err)
 	}
-	jobID := jobUuid.String()
+	jobID := jobUUID.String()
 
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
@@ -188,7 +188,7 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	gt.jobContexts[jobID] = jobCtx
 
 	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
-		JobId:     jobID,
+		JobID:     jobID,
 		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
@@ -198,7 +198,7 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	}
 
 	return &executor.Job{
-		Id:        jobID,
+		ID:        jobID,
 		Spec:      spec,
 		Deal:      deal,
 		State:     make(map[string]*executor.JobState),
@@ -213,7 +213,7 @@ func (gt *GenericTransport) UpdateDeal(ctx context.Context,
 	gt.addJobLifecycleEvent(ctx, jobID, "write_UpdateDeal")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
+		JobID:     jobID,
 		EventName: executor.JobEventDealUpdated,
 		JobDeal:   deal,
 		EventTime: time.Now(),
@@ -239,8 +239,8 @@ func (gt *GenericTransport) AcceptJobBid(ctx context.Context,
 
 	job.Deal.AssignedNodes = append(job.Deal.AssignedNodes, nodeID)
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
-		NodeId:    nodeID,
+		JobID:     jobID,
+		NodeID:    nodeID,
 		EventName: executor.JobEventBidAccepted,
 		JobDeal:   job.Deal,
 		JobState: &executor.JobState{
@@ -263,8 +263,8 @@ func (gt *GenericTransport) RejectJobBid(ctx context.Context,
 	)
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
-		NodeId:    nodeID,
+		JobID:     jobID,
+		NodeID:    nodeID,
 		EventName: executor.JobEventBidRejected,
 		JobState: &executor.JobState{
 			State:  executor.JobStateBidRejected,
@@ -285,7 +285,7 @@ func (gt *GenericTransport) BidJob(ctx context.Context,
 	gt.addJobLifecycleEvent(ctx, jobID, "write_BidJob")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
+		JobID:     jobID,
 		EventName: executor.JobEventBid,
 		JobState: &executor.JobState{
 			State: executor.JobStateBidding,
@@ -301,12 +301,12 @@ func (gt *GenericTransport) SubmitResult(ctx context.Context,
 	gt.addJobLifecycleEvent(ctx, jobID, "write_SubmitResult")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
+		JobID:     jobID,
 		EventName: executor.JobEventResults,
 		JobState: &executor.JobState{
 			State:     executor.JobStateComplete,
 			Status:    status,
-			ResultsId: resultsID,
+			ResultsID: resultsID,
 		},
 		EventTime: time.Now(),
 	})
@@ -319,7 +319,7 @@ func (gt *GenericTransport) ErrorJob(ctx context.Context,
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJob")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
+		JobID:     jobID,
 		EventName: executor.JobEventError,
 		JobState: &executor.JobState{
 			State:  executor.JobStateError,
@@ -341,8 +341,8 @@ func (gt *GenericTransport) ErrorJobForNode(ctx context.Context,
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
 
 	return gt.writeEvent(ctx, &executor.JobEvent{
-		JobId:     jobID,
-		NodeId:    nodeID,
+		JobID:     jobID,
+		NodeID:    nodeID,
 		EventName: executor.JobEventError,
 		JobState: &executor.JobState{
 			State:  executor.JobStateError,

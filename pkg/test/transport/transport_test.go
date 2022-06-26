@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_noop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -41,15 +41,15 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	_, err = compute_node.NewComputeNode(
+	_, err = computenode.NewComputeNode(
 		transport,
 		executors,
 		verifiers,
-		compute_node.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultJobSelectionPolicy(),
 	)
 	assert.NoError(t, err)
 
-	_, err = requestor_node.NewRequesterNode(transport)
+	_, err = requestornode.NewRequesterNode(transport)
 	assert.NoError(t, err)
 
 	return transport, noopExecutor, noopVerifier
@@ -60,14 +60,14 @@ func TestTransportSanity(t *testing.T) {
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
-	_, err = compute_node.NewComputeNode(
+	_, err = computenode.NewComputeNode(
 		transport,
 		executors,
 		verifiers,
-		compute_node.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultJobSelectionPolicy(),
 	)
 	assert.NoError(t, err)
-	_, err = requestor_node.NewRequesterNode(transport)
+	_, err = requestornode.NewRequesterNode(transport)
 	assert.NoError(t, err)
 }
 
@@ -78,7 +78,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
@@ -99,7 +99,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 
 	time.Sleep(time.Second * 1)
 	assert.Equal(t, 1, len(noopExecutor.Jobs))
-	assert.Equal(t, jobSelected.Id, noopExecutor.Jobs[0].Id)
+	assert.Equal(t, jobSelected.ID, noopExecutor.Jobs[0].ID)
 }
 
 func TestTransportEvents(t *testing.T) {
@@ -109,7 +109,7 @@ func TestTransportEvents(t *testing.T) {
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},

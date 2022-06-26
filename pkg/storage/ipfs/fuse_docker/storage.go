@@ -39,7 +39,7 @@ type StorageProvider struct {
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
 	Mutex        sync.Mutex
-	Id           string
+	ID           string
 	IPFSClient   *ipfs_http.IPFSHttpClient
 	DockerClient *dockerclient.Client
 }
@@ -52,7 +52,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	peerId, err := api.GetPeerId(context.Background())
+	peerID, err := api.GetPeerID(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	}
 
 	storageHandler := &StorageProvider{
-		Id:           peerId,
+		ID:           peerID,
 		IPFSClient:   api,
 		DockerClient: dockerClient,
 	}
@@ -185,7 +185,7 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 
-				sidecar, err := sp.getSidecar()
+				sidecar, err = sp.getSidecar()
 				if err != nil {
 					return false, err
 				}
@@ -324,7 +324,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 		log.Error().Msg(logs)
 		stopErr := cleanupStorageDriver(sp)
 		if stopErr != nil {
-			err = fmt.Errorf("Original Error: %s\nStop Error: %s\n", err.Error(), stopErr.Error())
+			err = fmt.Errorf("original error: %s\nstop error: %s", err.Error(), stopErr.Error())
 		}
 		return err
 	}
@@ -333,7 +333,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 }
 
 func (sp *StorageProvider) sidecarContainerName() string {
-	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.Id)
+	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.ID)
 }
 
 func (sp *StorageProvider) getSidecar() (*dockertypes.Container, error) {

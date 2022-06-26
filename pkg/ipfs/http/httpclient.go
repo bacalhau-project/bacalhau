@@ -19,7 +19,7 @@ import (
 
 type IPFSHttpClient struct {
 	Address string
-	Api     *httpapi.HttpApi
+	API     *httpapi.HttpApi
 }
 
 func NewIPFSHttpClient(address string) (*IPFSHttpClient, error) {
@@ -33,7 +33,7 @@ func NewIPFSHttpClient(address string) (*IPFSHttpClient, error) {
 	}
 	return &IPFSHttpClient{
 		Address: address,
-		Api:     api,
+		API:     api,
 	}, nil
 }
 
@@ -43,7 +43,7 @@ func (ipfsHttp *IPFSHttpClient) GetLocalAddrs(ctx context.Context) (
 	ctx, span := newSpan(ctx, "GetLocalAddrs")
 	defer span.End()
 
-	return ipfsHttp.Api.Swarm().LocalAddrs(ctx)
+	return ipfsHttp.API.Swarm().LocalAddrs(ctx)
 }
 
 func (ipfsHttp *IPFSHttpClient) GetPeers(ctx context.Context) (
@@ -52,7 +52,7 @@ func (ipfsHttp *IPFSHttpClient) GetPeers(ctx context.Context) (
 	ctx, span := newSpan(ctx, "GetPeers")
 	defer span.End()
 
-	return ipfsHttp.Api.Swarm().Peers(ctx)
+	return ipfsHttp.API.Swarm().Peers(ctx)
 }
 
 func (ipfsHttp *IPFSHttpClient) GetLocalAddrStrings(ctx context.Context) (
@@ -87,23 +87,23 @@ func (ipfsHttp *IPFSHttpClient) GetSwarmAddresses(ctx context.Context) (
 		return nil, err
 	}
 
-	peerId, err := ipfsHttp.GetPeerId(ctx)
+	peerID, err := ipfsHttp.GetPeerID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, address := range addresses {
-		addressStrings = append(addressStrings, fmt.Sprintf("%s/p2p/%s", address, peerId))
+		addressStrings = append(addressStrings, fmt.Sprintf("%s/p2p/%s", address, peerID))
 	}
 
 	return addressStrings, nil
 }
 
-func (ipfsHttp *IPFSHttpClient) GetPeerId(ctx context.Context) (string, error) {
+func (ipfsHttp *IPFSHttpClient) GetPeerID(ctx context.Context) (string, error) {
 	ctx, span := newSpan(ctx, "GetPeerId")
 	defer span.End()
 
-	key, err := ipfsHttp.Api.Key().Self(ctx)
+	key, err := ipfsHttp.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -118,7 +118,7 @@ func (ipfsHttp *IPFSHttpClient) GetCidProviders(ctx context.Context,
 	ctx, span := newSpan(ctx, "GetCidProviders")
 	defer span.End()
 
-	peerChan, err := ipfsHttp.Api.Dht().FindProviders(ctx, path.New(cid))
+	peerChan, err := ipfsHttp.API.Dht().FindProviders(ctx, path.New(cid))
 	if err != nil {
 		return []string{}, err
 	}
@@ -131,26 +131,26 @@ func (ipfsHttp *IPFSHttpClient) GetCidProviders(ctx context.Context,
 	return providers, nil
 }
 
-func (ipfsHttp *IPFSHttpClient) HasCidLocally(ctx context.Context,
+func (ipfsHTTP *IPFSHttpClient) HasCidLocally(ctx context.Context,
 	cid string) (bool, error) {
 
 	ctx, span := newSpan(ctx, "HasCidLocally")
 	defer span.End()
 
-	peerId, err := ipfsHttp.GetPeerId(ctx)
+	peerID, err := ipfsHTTP.GetPeerID(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	providers, err := ipfsHttp.GetCidProviders(ctx, cid)
+	providers, err := ipfsHTTP.GetCidProviders(ctx, cid)
 	if err != nil {
 		return false, err
 	}
 
-	return system.StringArrayContains(providers, peerId), nil
+	return system.StringArrayContains(providers, peerID), nil
 }
 
-func (ipfsHttp *IPFSHttpClient) GetUrl() (string, error) {
+func (ipfsHttp *IPFSHttpClient) GetURL() (string, error) {
 	addr, err := ma.NewMultiaddr(ipfsHttp.Address)
 	if err != nil {
 		return "", err
@@ -177,7 +177,7 @@ func (ipfsHttp *IPFSHttpClient) DownloadTar(ctx context.Context,
 	ctx, span := newSpan(ctx, "DownloadTar")
 	defer span.End()
 
-	res, err := ipfsHttp.Api.Request("get", cid).Send(ctx)
+	res, err := ipfsHttp.API.Request("get", cid).Send(ctx)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (ipfsHttp *IPFSHttpClient) UploadTar(ctx context.Context,
 
 	parts := strings.Split(result, "\n")
 	if len(parts) <= 1 {
-		return "", fmt.Errorf("No parts returned from ipfs add")
+		return "", fmt.Errorf("no parts returned from ipfs add")
 	}
 
 	return parts[len(parts)-2], nil

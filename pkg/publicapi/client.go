@@ -70,7 +70,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 
 	for _, job := range jobs {
 		// TODO: could have multiple matches in jobs, right? is this bad?
-		if strings.HasPrefix(job.Id, jobID) {
+		if strings.HasPrefix(job.ID, jobID) {
 			return job, true, nil
 		}
 	}

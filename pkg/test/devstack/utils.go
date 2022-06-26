@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -25,7 +25,7 @@ var STORAGE_DRIVER_NAMES = []string{
 func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
-	jobSelectionPolicy compute_node.JobSelectionPolicy,
+	jobSelectionPolicy computenode.JobSelectionPolicy,
 ) (*devstack.DevStack, *system.CleanupManager) {
 
 	cm := system.NewCleanupManager()
@@ -51,7 +51,7 @@ func SetupTest(
 	assert.NoError(t, err)
 
 	// important to give the pubsub network time to connect
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second)
 
 	return stack, cm
 }

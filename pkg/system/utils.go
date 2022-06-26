@@ -13,8 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// we need these to avoid stream based deadlocks
+// TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
+
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
@@ -96,11 +97,11 @@ func EnsureSystemDirectory(path string) (string, error) {
 	return path, err
 }
 
-func GetResultsDirectory(jobId, hostId string) string {
-	return fmt.Sprintf("results/%s/%s", ShortId(jobId), hostId)
+func GetResultsDirectory(jobID, hostID string) string {
+	return fmt.Sprintf("results/%s/%s", ShortID(jobID), hostID)
 }
 
-func ShortId(id string) string {
+func ShortID(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
 }

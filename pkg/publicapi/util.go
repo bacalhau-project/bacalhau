@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -25,7 +25,7 @@ func SetupTests(t *testing.T) (context.Context, *APIClient) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	rn, err := requestor_node.NewRequesterNode(ipt)
+	rn, err := requestornode.NewRequesterNode(ipt)
 	assert.NoError(t, err)
 
 	host := "0.0.0.0"
@@ -113,7 +113,7 @@ func MakeJob(engineType executor.EngineType,
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

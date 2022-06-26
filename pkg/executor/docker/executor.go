@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,7 +23,7 @@ import (
 
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
-	Id string
+	ID string
 
 	// where do we copy the results from jobs temporarily?
 	ResultsDir string
@@ -49,7 +50,7 @@ func NewExecutor(
 	}
 
 	de := &Executor{
-		Id:               id,
+		ID:               id,
 		ResultsDir:       dir,
 		StorageProviders: storageProviders,
 		Client:           dockerClient,
@@ -180,29 +181,29 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		// TODO: work out why this does not work in github actions
+		// TODO: #283 work out why this does not work in github actions
 		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
 
-		// if err != nil {
+		// if err != nil { // nolint:gocritic // future use
 		// 	return "", err
 		// }
 
-		stdout, err := system.RunCommandGetResults(
+		stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
 			"docker",
-			[]string{"pull", job.Spec.Vm.Image},
+			[]string{"pull", job.Spec.VM.Image},
 		)
 		if err != nil {
 			return "", err
 		}
 
-		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Vm.Image, stdout)
+		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.VM.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
-		Image:           job.Spec.Vm.Image,
+		Image:           job.Spec.VM.Image,
 		Tty:             false,
-		Env:             job.Spec.Vm.Env,
-		Entrypoint:      job.Spec.Vm.Entrypoint,
+		Env:             job.Spec.VM.Env,
+		Entrypoint:      job.Spec.VM.Entrypoint,
 		Labels:          e.jobContainerLabels(job),
 		NetworkDisabled: true,
 	}
@@ -247,7 +248,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 		container.WaitConditionNotRunning,
 	)
 	select {
-	case err := <-errCh:
+	case err = <-errCh:
 		if err != nil {
 			handleErrorLogs()
 			return "", err
@@ -255,7 +256,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	case exitStatus := <-statusCh:
 		if exitStatus.Error != nil {
 			handleErrorLogs()
-			return "", fmt.Errorf(exitStatus.Error.Message)
+			return "", errors.New(exitStatus.Error.Message)
 		}
 		if exitStatus.StatusCode != 0 {
 			handleErrorLogs()
@@ -297,7 +298,7 @@ func (e *Executor) cleanupAll() {
 	if system.ShouldKeepStack() {
 		return
 	}
-	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.Id)
+	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
@@ -311,17 +312,17 @@ func (e *Executor) cleanupAll() {
 }
 
 func (e *Executor) jobContainerName(job *executor.Job) string {
-	return fmt.Sprintf("bacalhau-%s-%s", e.Id, job.Id)
+	return fmt.Sprintf("bacalhau-%s-%s", e.ID, job.ID)
 }
 
 func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
 	return map[string]string{
-		"bacalhau-executor": e.Id,
+		"bacalhau-executor": e.ID,
 	}
 }
 
 func (e *Executor) jobResultsDir(job *executor.Job) string {
-	return fmt.Sprintf("%s/%s", e.ResultsDir, job.Id)
+	return fmt.Sprintf("%s/%s", e.ResultsDir, job.ID)
 }
 
 func (e *Executor) ensureJobResultsDir(job *executor.Job) (string, error) {

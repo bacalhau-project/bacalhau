@@ -22,16 +22,16 @@ func NewIPFSCli(repo string) *IPFSCli {
 
 func (cli *IPFSCli) getBinaryFullPath() (string, error) {
 	// TODO: We should have a struct that allows us to set the ipfs binary, rather than relying on system paths, etc
-	ipfs_binary, err := exec.LookPath("ipfs")
+	ipfsBinary, err := exec.LookPath("ipfs")
 
 	if err != nil {
-		return "", fmt.Errorf("Could not find 'ipfs' binary on your path.")
+		return "", fmt.Errorf("could not find 'ipfs' binary on your path")
 	}
 
-	ipfsBinaryFullPath, _ := filepath.Abs(ipfs_binary)
+	ipfsBinaryFullPath, _ := filepath.Abs(ipfsBinary)
 
 	if strings.Contains(ipfsBinaryFullPath, "/snap/") {
-		return "", fmt.Errorf("You installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider.")
+		return "", fmt.Errorf("you installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider") // nolint
 	}
 
 	return ipfsBinaryFullPath, nil

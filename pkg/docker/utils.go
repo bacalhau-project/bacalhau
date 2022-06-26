@@ -79,7 +79,7 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string
 		return "", "", err
 	}
 	if container == nil {
-		return "", "", fmt.Errorf("No container found: %s", nameOrId)
+		return "", "", fmt.Errorf("no container found: %s", nameOrId)
 	}
 	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
@@ -97,10 +97,10 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string
 	return stdout.String(), stderr.String(), nil
 }
 
-func RemoveContainer(dockerClient *dockerclient.Client, nameOrId string) error {
+func RemoveContainer(dockerClient *dockerclient.Client, nameOrID string) error {
 	ctx := context.Background()
 
-	container, err := GetContainer(dockerClient, nameOrId)
+	container, err := GetContainer(dockerClient, nameOrID)
 	if err != nil {
 		return err
 	}

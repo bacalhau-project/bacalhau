@@ -19,31 +19,33 @@ var tableHideHeader bool
 var tableMaxJobs int
 var tableSortBy ColumnEnum
 var tableSortReverse bool
-var tableIdFilter string
+var tableIDFilter string
 var tableNoStyle bool
 var tableMergeValues bool
+
+var DefaultShortenStringLength = 20
 
 func shortenString(st string) string {
 	if tableOutputWide {
 		return st
 	}
 
-	if len(st) < 20 {
+	if len(st) < DefaultShortenStringLength {
 		return st
 	}
 
 	return st[:20] + "..."
 }
 
-func shortId(id string) string {
+func shortID(id string) string {
 	return id[:8]
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
-	if state.ResultsId == "" {
+	if state.ResultsID == "" {
 		return "-"
 	}
-	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsId
+	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsID
 }
 
 func getAPIClient() *publicapi.APIClient {
@@ -69,7 +71,8 @@ func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) 
 	return c, buf.String(), err
 }
 
-// TODO: #233 Replace when we move to go1.18 https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
+// TODO: #233 Replace when we move to go1.18
+// https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
 func Min(a, b int) int {
 	if a < b {
 		return a
@@ -83,3 +86,12 @@ func ReverseList(s []string) []string {
 	}
 	return s
 }
+
+// func RandInt(i int) int {
+// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
+// 	if err != nil {
+// 		log.Fatal().Msg("could not generate random number")
+// 	}
+
+// 	return int(n.Int64())
+// }

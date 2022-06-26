@@ -15,13 +15,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+var DefaultNumberOfJobsToPrint = 10
+
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
 		`do not print the column headers.`)
-	listCmd.PersistentFlags().StringVar(&tableIdFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
+	listCmd.PersistentFlags().StringVar(&tableIDFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
 	listCmd.PersistentFlags().BoolVar(&tableNoStyle, "no-style", false, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
-		&tableMaxJobs, "number", "n", 10,
+		&tableMaxJobs, "number", "n", DefaultNumberOfJobsToPrint,
 		`print the first NUM jobs instead of the first 10.`,
 	)
 	listCmd.PersistentFlags().StringVar(
@@ -114,8 +116,8 @@ var listCmd = &cobra.Command{
 
 		jobArray := []*executor.Job{}
 		for _, job := range jobs {
-			if tableIdFilter != "" {
-				if job.Id == tableIdFilter || shortId(job.Id) == tableIdFilter {
+			if tableIDFilter != "" {
+				if job.ID == tableIDFilter || shortID(job.ID) == tableIDFilter {
 					jobArray = append(jobArray, job)
 				}
 			} else {
@@ -124,13 +126,13 @@ var listCmd = &cobra.Command{
 		}
 
 		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
-		log.Debug().Msgf("Table filter flag set to: %s", tableIdFilter)
+		log.Debug().Msgf("Table filter flag set to: %s", tableIDFilter)
 		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
 
 		sort.Slice(jobArray, func(i, j int) bool {
 			switch tableSortBy {
 			case ColumnID:
-				return shortId(jobArray[i].Id) < shortId(jobArray[j].Id)
+				return shortID(jobArray[i].ID) < shortID(jobArray[j].ID)
 			case ColumnCreatedAt:
 				return jobArray[i].CreatedAt.Format(time.RFC3339) < jobArray[j].CreatedAt.Format(time.RFC3339)
 			default:
@@ -141,7 +143,7 @@ var listCmd = &cobra.Command{
 		if tableSortReverse {
 			jobIds := []string{}
 			for _, job := range jobArray {
-				jobIds = append(jobIds, job.Id)
+				jobIds = append(jobIds, job.ID)
 			}
 			jobIds = ReverseList(jobIds)
 			jobArray = []*executor.Job{}
@@ -159,14 +161,14 @@ var listCmd = &cobra.Command{
 			}
 
 			if job.Spec.Engine == executor.EngineDocker {
-				jobDesc = append(jobDesc, job.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(job.Spec.Vm.Entrypoint, " "))
+				jobDesc = append(jobDesc, job.Spec.VM.Image)
+				jobDesc = append(jobDesc, strings.Join(job.Spec.VM.Entrypoint, " "))
 			}
 
 			if len(job.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
-						shortId(job.Id),
+						shortID(job.ID),
 						shortenString(strings.Join(jobDesc, " ")),
 						job.CreatedAt.Format("06-01-02-15:04:05"),
 						len(job.Spec.Inputs),
@@ -181,13 +183,13 @@ var listCmd = &cobra.Command{
 				for node, jobState := range job.State {
 					t.AppendRows([]table.Row{
 						{
-							shortId(job.Id),
+							shortID(job.ID),
 							shortenString(strings.Join(jobDesc, " ")),
 							job.CreatedAt.Format("06-01-02-15:04:05"),
 							len(job.Spec.Inputs),
 							len(job.Spec.Outputs),
 							job.Deal.Concurrency,
-							shortId(node),
+							shortID(node),
 							shortenString(jobState.State.String()),
 							shortenString(getJobResult(job, jobState)),
 						},

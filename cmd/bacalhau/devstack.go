@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -18,7 +18,7 @@ import (
 var devStackNodes int
 var devStackBadActors int
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
 		&devStackNodes, "nodes", 3,
 		`How many nodes should be started in the cluster`,
@@ -32,9 +32,9 @@ func init() {
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { // nolint:unusedparams // incorrect lint that is not used
 		if devStackBadActors > devStackNodes {
-			return fmt.Errorf("Cannot have more bad actors than there are nodes")
+			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}
 
 		// Cleanup manager ensures that resources are freed before exiting:
@@ -65,7 +65,7 @@ var devstackCmd = &cobra.Command{
 			devStackBadActors,
 			getExecutors,
 			getVerifiers,
-			compute_node.NewDefaultJobSelectionPolicy(),
+			computenode.NewDefaultJobSelectionPolicy(),
 		)
 		if err != nil {
 			return err

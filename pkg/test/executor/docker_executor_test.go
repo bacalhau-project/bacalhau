@@ -56,11 +56,11 @@ func dockerExecutorStorageTest(
 		}
 
 		job := &executor.Job{
-			Id:    "test-job",
+			ID:    "test-job",
 			Owner: "test-owner",
 			Spec: &executor.JobSpec{
 				Engine:  executor.EngineDocker,
-				Vm:      testCase.GetJobSpec(),
+				VM:      testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},

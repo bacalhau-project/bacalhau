@@ -8,21 +8,21 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Node *requestor_node.RequesterNode
+	Node *requestornode.RequesterNode
 	Host string
 	Port int
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
-	node *requestor_node.RequesterNode,
+	node *requestornode.RequesterNode,
 	host string,
 	port int,
 ) *APIServer {

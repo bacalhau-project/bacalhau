@@ -81,9 +81,9 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 	// CPU usage
 
 	healthInfo := GenerateHealthData()
-	healthJsonBlob, _ := json.Marshal(healthInfo)
+	healthJSONBlob, _ := json.Marshal(healthInfo)
 
-	_, err := res.Write([]byte(healthJsonBlob))
+	_, err := res.Write(healthJSONBlob)
 	if err != nil {
 		log.Warn().Msg("Error writing body for healthz request.")
 	}

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,8 +23,8 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 	for node := range job.State {
 		results = append(results, types.ResultsList{
 			Node:   node,
-			Cid:    job.State[node].ResultsId,
-			Folder: system.GetResultsDirectory(job.Id, node),
+			Cid:    job.State[node].ResultsID,
+			Folder: system.GetResultsDirectory(job.ID, node),
 		})
 	}
 
@@ -52,7 +53,7 @@ func ConstructJob(
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
+			return nil, nil, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
@@ -66,7 +67,9 @@ func ConstructJob(
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
+			msg := fmt.Sprintf("invalid output volume: %s", outputVolume)
+			log.Error().Msgf(msg)
+			return nil, nil, errors.New(msg)
 		}
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
@@ -80,7 +83,7 @@ func ConstructJob(
 	spec := &executor.JobSpec{
 		Engine:   engine,
 		Verifier: verifier,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,

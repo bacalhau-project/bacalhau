@@ -22,19 +22,17 @@ type IPFSDevServer struct {
 	// For cleaning up IPFS daemons when shutting down:
 	cm *system.CleanupManager
 
-	Id          string
+	ID          string
 	Repo        string
 	LogFile     string
 	Isolated    bool
-	Cli         *ipfs_cli.IPFSCli
+	CLI         *ipfs_cli.IPFSCli
 	GatewayPort int
-	ApiPort     int
+	APIPort     int
 	SwarmPort   int
 }
 
-func NewDevServer(cm *system.CleanupManager, isolated bool) (
-	*IPFSDevServer, error) {
-
+func NewDevServer(cm *system.CleanupManager, isolated bool) (*IPFSDevServer, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
 	if err != nil {
 		return nil, fmt.Errorf("could not create temporary directory for ipfs repo: %s", err.Error())
@@ -87,27 +85,27 @@ func NewDevServer(cm *system.CleanupManager, isolated bool) (
 
 	return &IPFSDevServer{
 		cm:          cm,
-		Id:          idResult.ID,
+		ID:          idResult.ID,
 		Repo:        repoDir,
 		LogFile:     logFile.Name(),
-		Cli:         cli,
+		CLI:         cli,
 		Isolated:    isolated,
 		GatewayPort: gatewayPort,
-		ApiPort:     apiPort,
+		APIPort:     apiPort,
 		SwarmPort:   swarmPort,
 	}, nil
 }
 
 func (server *IPFSDevServer) Start(connectToAddress string) error {
 	if server.Isolated {
-		_, err := server.Cli.Run([]string{
+		_, err := server.CLI.Run([]string{
 			"bootstrap", "rm", "--all",
 		})
 		if err != nil {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"AutoNAT.ServiceMode",
 			"disabled",
@@ -116,7 +114,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.EnableHolePunching",
 			"--bool",
@@ -126,7 +124,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.DisableNatPortMap",
 			"--bool",
@@ -136,7 +134,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.RelayClient.Enabled",
 			"--bool",
@@ -146,7 +144,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.RelayService.Enabled",
 			"--bool",
@@ -156,7 +154,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.Transports.Network.Relay",
 			"--bool",
@@ -166,7 +164,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Swarm.Transports.Network.Relay",
 			"--json",
@@ -176,7 +174,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Discovery.MDNS.Enabled",
 			"--json",
@@ -186,7 +184,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 			return err
 		}
 
-		_, err = server.Cli.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"config",
 			"Addresses.Announce",
 			"--json",
@@ -197,7 +195,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		}
 	}
 
-	_, err := server.Cli.Run([]string{
+	_, err := server.CLI.Run([]string{
 		"config",
 		"Addresses.Gateway",
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", server.GatewayPort),
@@ -206,16 +204,16 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		return err
 	}
 
-	_, err = server.Cli.Run([]string{
+	_, err = server.CLI.Run([]string{
 		"config",
 		"Addresses.API",
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", server.ApiPort),
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", server.APIPort),
 	})
 	if err != nil {
 		return err
 	}
 
-	_, err = server.Cli.Run([]string{
+	_, err = server.CLI.Run([]string{
 		"config",
 		"Addresses.Swarm",
 		"--json",
@@ -226,7 +224,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	}
 
 	if connectToAddress != "" {
-		_, err := server.Cli.Run([]string{
+		_, err := server.CLI.Run([]string{
 			"bootstrap", "add", connectToAddress,
 		})
 		if err != nil {
@@ -265,7 +263,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		MaxAttempts: 100,
 		Delay:       time.Millisecond * 100,
 		Handler: func() (bool, error) {
-			_, err := testConnectionClient.GetPeerId(context.Background())
+			_, err := testConnectionClient.GetPeerID(context.Background())
 			if err != nil {
 				var expectedErr *url.Error
 				if errors.As(err, &expectedErr) {
@@ -309,7 +307,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 }
 
 func (server *IPFSDevServer) Address(port int) string {
-	return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", port, server.Id)
+	return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", port, server.ID)
 }
 
 func (server *IPFSDevServer) SwarmAddress() string {
@@ -317,5 +315,5 @@ func (server *IPFSDevServer) SwarmAddress() string {
 }
 
 func (server *IPFSDevServer) ApiAddress() string {
-	return server.Address(server.ApiPort)
+	return server.Address(server.APIPort)
 }

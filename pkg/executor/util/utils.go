@@ -17,7 +17,7 @@ func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 		return nil, err
 	}
 
-	ipfsApiCopyStorage, err := api_copy.NewStorageProvider(cm, ipfsMultiAddress)
+	ipfsAPICopyStorage, err := api_copy.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -25,10 +25,10 @@ func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 	ex, err := docker.NewExecutor(cm, dockerId,
 		map[string]storage.StorageProvider{
 			storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
-			storage.IPFS_API_COPY:    ipfsApiCopyStorage,
+			storage.IPFS_API_COPY:    ipfsAPICopyStorage,
 			// we make the copy driver the "default" storage driver for docker
 			// users have to specify the fuse driver explicitly
-			storage.IPFS_DEFAULT: ipfsApiCopyStorage,
+			storage.IPFS_DEFAULT: ipfsAPICopyStorage,
 		})
 	if err != nil {
 		return nil, err
