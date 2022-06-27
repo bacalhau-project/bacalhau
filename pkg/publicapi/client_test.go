@@ -20,7 +20,7 @@ func TestGet(t *testing.T) {
 	var job *executor.Job
 	for i := 0; i < 5; i++ {
 		spec, deal := MakeGenericJob()
-		job, err = c.Submit(ctx, spec, deal)
+		job, err = c.Submit(ctx, spec, deal, nil)
 		assert.NoError(t, err)
 	}
 

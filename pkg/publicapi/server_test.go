@@ -46,7 +46,7 @@ func (suite *ServerSuite) TestList() {
 
 	// Submit a random job to the node:
 	spec, deal := MakeGenericJob()
-	_, err = c.Submit(ctx, spec, deal)
+	_, err = c.Submit(ctx, spec, deal, nil)
 	assert.NoError(suite.T(), err)
 
 	// Should now have one job:

@@ -64,7 +64,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 		for i := 0; i < tc.numberOfJobs; i++ {
 			spec, deal := publicapi.MakeNoopJob()
-			_, err = c.Submit(ctx, spec, deal)
+			_, err = c.Submit(ctx, spec, deal, nil)
 			assert.NoError(suite.T(), err)
 		}
 
@@ -88,7 +88,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	jobIds := []string{}
 	for i := 0; i < 10; i++ {
 		spec, deal := publicapi.MakeNoopJob()
-		job, err := c.Submit(ctx, spec, deal)
+		job, err := c.Submit(ctx, spec, deal, nil)
 		jobIds = append(jobIds, shortId(job.Id))
 		assert.NoError(suite.T(), err)
 	}
@@ -157,7 +157,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				spec, deal := publicapi.MakeNoopJob()
-				job, err := c.Submit(ctx, spec, deal)
+				job, err := c.Submit(ctx, spec, deal, nil)
 				assert.NoError(suite.T(), err)
 				jobIds = append(jobIds, shortId(job.Id))
 

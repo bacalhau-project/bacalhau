@@ -92,7 +92,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := executor_util.NewDockerIPFSExecutors(cm, ipfsConnect,
+		executors, err := executor_util.NewStandardExecutors(cm, ipfsConnect,
 			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
 			return err

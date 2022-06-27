@@ -77,7 +77,7 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		spec, deal, err := job.ConstructJob(
+		spec, deal, err := job.ConstructDockerJob(
 			engineType,
 			verifierType,
 			jobInputVolumes,
@@ -98,7 +98,7 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal)
+		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
 		if err != nil {
 			return err
 		}

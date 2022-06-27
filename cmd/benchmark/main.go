@@ -31,7 +31,7 @@ func main() {
 	getExecutors := func(addr string, node int) (
 		map[executor.EngineType]executor.Executor, error) {
 
-		return executor_util.NewDockerIPFSExecutors(
+		return executor_util.NewStandardExecutors(
 			cm, addr, fmt.Sprintf("devstack-node-%d", node))
 	}
 	getVerifiers := func(addr string, node int) (
@@ -59,7 +59,7 @@ func main() {
 		apiClient := publicapi.NewAPIClient(apiUri)
 
 		spec, deal := newJob()
-		job, err := apiClient.Submit(context.Background(), spec, deal)
+		job, err := apiClient.Submit(context.Background(), spec, deal, nil)
 		if err != nil {
 			panic(fmt.Errorf("fatal error while submitting job: %w", err))
 		}

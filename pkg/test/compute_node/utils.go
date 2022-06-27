@@ -33,7 +33,7 @@ func SetupTest(
 		t.Fatal(err)
 	}
 
-	executors, err := executor_util.NewDockerIPFSExecutors(
+	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, "devstacknode0")
 	if err != nil {
 		t.Fatal(err)

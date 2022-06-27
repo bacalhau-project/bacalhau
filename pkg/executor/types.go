@@ -38,7 +38,7 @@ type Job struct {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	// e.g. firecracker, docker or wasm
+	// e.g. docker or language
 	Engine EngineType `json:"engine"`
 
 	// e.g. ipfs or localfs
@@ -46,6 +46,7 @@ type JobSpec struct {
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier"`
 
+	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker"`
 	Language JobSpecLanguage `json:"job_spec_language"`
 
@@ -73,6 +74,8 @@ type JobSpecDocker struct {
 
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
+	Language        string `json:"language"`         // e.g. python
+	LanguageVersion string `json:"language_version"` // e.g. 3.8
 	// must this job be run in a deterministic context?
 	Deterministic bool `json:"deterministic"`
 	// context is a tar file stored in ipfs, containing e.g. source code and requirements

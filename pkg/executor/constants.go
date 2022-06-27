@@ -12,8 +12,10 @@ const (
 	engineUnknown EngineType = iota // must be first
 	EngineNoop
 	EngineDocker
-	EngineWasm
-	engineDone // must be last
+	EngineWasm       // raw wasm executor not implemented yet
+	EngineLanguage   // wraps python_wasm
+	EnginePythonWasm // wraps docker
+	engineDone       // must be last
 )
 
 func ParseEngineType(str string) (EngineType, error) {

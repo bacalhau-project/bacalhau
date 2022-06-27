@@ -32,7 +32,7 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 	return &results, nil
 }
 
-func ConstructJob(
+func ConstructDockerJob(
 	engine executor.EngineType,
 	verifier verifier.VerifierType,
 	inputVolumes []string,
@@ -84,6 +84,83 @@ func ConstructJob(
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,
+		},
+
+		Inputs:  jobInputs,
+		Outputs: jobOutputs,
+	}
+
+	deal := &executor.JobDeal{
+		Concurrency: concurrency,
+	}
+
+	return spec, deal, nil
+}
+
+func ConstructLanguageJob(
+	inputVolumes []string,
+	outputVolumes []string,
+	env []string,
+	concurrency int,
+	// See JobSpecLanguage
+	language string,
+	languageVersion string,
+	command string,
+	programPath string,
+	requirementsPath string,
+	contextPath string, // we have to tar this up and POST it to the requestor node
+	deterministic bool,
+) (*executor.JobSpec, *executor.JobDeal, error) {
+
+	// TODO refactor this wrt ConstructDockerJob
+
+	if concurrency <= 0 {
+		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
+	}
+
+	jobInputs := []storage.StorageSpec{}
+	jobOutputs := []storage.StorageSpec{}
+
+	for _, inputVolume := range inputVolumes {
+		slices := strings.Split(inputVolume, ":")
+		if len(slices) != 2 {
+			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
+		}
+		jobInputs = append(jobInputs, storage.StorageSpec{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Cid:    slices[0],
+			Path:   slices[1],
+		})
+	}
+
+	for _, outputVolume := range outputVolumes {
+		slices := strings.Split(outputVolume, ":")
+		if len(slices) != 2 {
+			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
+		}
+		jobOutputs = append(jobOutputs, storage.StorageSpec{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Name:   slices[0],
+			Path:   slices[1],
+		})
+	}
+
+	spec := &executor.JobSpec{
+		Engine: executor.EngineLanguage,
+		// TODO: should this always be ipfs?
+		Verifier: verifier.VerifierIpfs,
+		Language: executor.JobSpecLanguage{
+			Language:         language,
+			LanguageVersion:  languageVersion,
+			Deterministic:    deterministic,
+			Context:          storage.StorageSpec{},
+			Command:          command,
+			ProgramPath:      programPath,
+			RequirementsPath: requirementsPath,
 		},
 
 		Inputs:  jobInputs,

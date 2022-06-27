@@ -53,7 +53,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		apiUri := stack.Nodes[0].ApiServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
-		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
+		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		assert.NoError(t, err)
 
 		// wait for the job to complete across all nodes
