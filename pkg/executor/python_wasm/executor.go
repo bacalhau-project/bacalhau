@@ -9,19 +9,27 @@ ipfs so that it can be mounted into the wasm runtime container.
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type Executor struct {
 	Jobs []*executor.Job
+
+	executors map[executor.EngineType]executor.Executor
 }
 
-func NewExecutor() (*Executor, error) {
-	Executor := &Executor{
-		Jobs: []*executor.Job{},
+func NewExecutor(
+	cm *system.CleanupManager,
+	executors map[executor.EngineType]executor.Executor,
+) (*Executor, error) {
+	e := &Executor{
+		executors: executors,
 	}
-	return Executor, nil
+	return e, nil
 }
 
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
@@ -36,9 +44,8 @@ func (e *Executor) HasStorage(ctx context.Context,
 
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
-
-	e.Jobs = append(e.Jobs, job)
-	return "", nil
+	log.Debug().Msgf("in python_wasm executor!")
+	return e.executors[executor.EngineDocker].RunJob(ctx, job)
 }
 
 // Compile-time check that Executor implements the Executor interface.

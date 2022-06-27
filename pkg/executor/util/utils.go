@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor/language"
+	"github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -36,18 +37,21 @@ func NewStandardExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
 		return nil, err
 	}
 
-	// language executors are just wrappers around docker at the end of the day,
-	// so thread the dockerId param all the way down
-	exLang, err := language.NewExecutor(cm, dockerId,
-		map[string]storage.StorageProvider{
-			storage.IPFS_API_COPY: ipfsApiCopyStorage,
-			storage.IPFS_DEFAULT:  ipfsApiCopyStorage,
-		})
+	executors := map[executor.EngineType]executor.Executor{
+		executor.EngineDocker: exDocker,
+	}
+
+	// language executors wrap other executors, so pass them a reference to all
+	// the executors so they can look up the ones they need
+	exLang, err := language.NewExecutor(cm, executors)
+	executors[executor.EngineLanguage] = exLang
 	if err != nil {
 		return nil, err
 	}
-	return map[executor.EngineType]executor.Executor{
-		executor.EngineDocker:   exDocker,
-		executor.EngineLanguage: exLang,
-	}, nil
+	exPythonWasm, err := python_wasm.NewExecutor(cm, executors)
+	executors[executor.EnginePythonWasm] = exPythonWasm
+	if err != nil {
+		return nil, err
+	}
+	return executors, nil
 }

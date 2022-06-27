@@ -19,20 +19,15 @@ import (
 type Executor struct {
 	Jobs []*executor.Job
 
-	cm               *system.CleanupManager
-	id               string
-	storageProviders map[string]storage.StorageProvider
+	executors map[executor.EngineType]executor.Executor
 }
 
 func NewExecutor(
 	cm *system.CleanupManager,
-	id string,
-	storageProviders map[string]storage.StorageProvider,
+	executors map[executor.EngineType]executor.Executor,
 ) (*Executor, error) {
 	e := &Executor{
-		cm:               cm,
-		id:               id,
-		storageProviders: storageProviders,
+		executors: executors,
 	}
 	return e, nil
 }
@@ -56,14 +51,14 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 
 	if job.Spec.Language.Deterministic {
 		log.Debug().Msgf("running deterministic python 3.10")
-		// TODO: Instantiate a python_wasm
+		// Instantiate a python_wasm
+		// TODO: mutate job as needed?
+		return e.executors[executor.EnginePythonWasm].RunJob(ctx, job)
 	} else {
 		log.Debug().Msgf("running arbitrary python 3.10")
 		// TODO: Instantiate a docker with python:3.10 image
+		return "", fmt.Errorf("arbitrary python not supported yet")
 	}
-
-	e.Jobs = append(e.Jobs, job)
-	return "", nil
 }
 
 // Compile-time check that Executor implements the Executor interface.
