@@ -130,7 +130,7 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  name  = "bacalhau-ipv4-address-${count.index}"
+  name  = "bacalhau-ipv4-address-${var.rollout_phase}-${count.index}"
   count = var.instance_count
 }
 
@@ -139,7 +139,7 @@ output "public_ip_address" {
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
-  name     = "bacalhau-disk-${count.index}"
+  name     = "bacalhau-disk-${var.rollout_phase}-${count.index}"
   count    = var.instance_count
   type     = "pd-ssd"
   zone     = var.zone
