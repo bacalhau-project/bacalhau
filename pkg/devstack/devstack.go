@@ -46,7 +46,7 @@ type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, // nolint:unusedparams // Incorrectly assumed as unused
+	count, badActors int, // nolintunparam // Incorrectly assumed as unused
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
 	jobSelectionPolicy computenode.JobSelectionPolicy,

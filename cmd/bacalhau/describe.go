@@ -52,11 +52,11 @@ type jobDealDescription struct {
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 
-// nolint:unusedparams // incorrectly suggesting unused
+// nolintunparam // incorrectly suggesting unused
 var describeCmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Describe a job on the network",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {  // nolint:unusedparams // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		if id == "" {
 			err := fmt.Errorf("please submit an id with the --id flag")
 			log.Error().Msgf(err.Error())

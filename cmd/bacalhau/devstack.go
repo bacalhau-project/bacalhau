@@ -32,7 +32,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error { // nolint:unusedparams // incorrect lint that is not used
+	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
 		if devStackBadActors > devStackNodes {
 			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}

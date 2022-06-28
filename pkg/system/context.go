@@ -21,7 +21,7 @@ func WithSignalShutdown(parent context.Context) (context.Context, context.Cancel
 		case <-ch:
 			cancel()
 
-		// Clean-up goroutine if the context is cancelled:
+		// Clean-up goroutine if the context is canceled:
 		case <-ctx.Done():
 		}
 	}(ch, cancel)

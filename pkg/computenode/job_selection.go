@@ -46,7 +46,7 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 	return JobSelectionPolicy{}
 }
 
-// nolint:unparam // will fix
+// nolintunparam // will fix
 func applyJobSelectionPolicyExecProbe(
 	ctx context.Context,
 	command string,

@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	 "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
-	 "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 

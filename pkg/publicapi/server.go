@@ -40,7 +40,7 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
-func (apiServer *APIServer) ListenAndServe(ctx context.Context,cm *system.CleanupManager) error {
+func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID, err := apiServer.Node.Transport.HostID(ctx)
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)

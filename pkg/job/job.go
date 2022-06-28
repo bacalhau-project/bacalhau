@@ -97,9 +97,9 @@ func ConstructJob(
 			Env:        env,
 		},
 
-		Inputs:  jobInputs,
-		Outputs: jobOutputs,
-		Annotations:  jobAnnotations,
+		Inputs:      jobInputs,
+		Outputs:     jobOutputs,
+		Annotations: jobAnnotations,
 	}
 
 	deal := &executor.JobDeal{
@@ -114,7 +114,6 @@ func VerifyJob(spec *executor.JobSpec, deal *executor.JobDeal) error {
 	return nil
 }
 
-
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
 func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	// Returns Node Id, JobState
@@ -128,34 +127,34 @@ func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	// - Everything else SHOULD be equivalent, but doesn't matter (really), so we'll just show the
 	// 	 one that has the non-bid-rejected result.
 
-	finalNodeId := ""
+	finalNodeID := ""
 	finalJobState := &executor.JobState{}
 
-	for nodeId, jobState := range job.State {
-		if finalNodeId == "" {
-			finalNodeId = nodeId
+	for nodeID, jobState := range job.State {
+		if finalNodeID == "" {
+			finalNodeID = nodeID
 			finalJobState = jobState
 		} else if JobStateValue(jobState) > JobStateValue(finalJobState) {
 			// Overwrite any states that are there with a new state - so we only have one
-			finalNodeId = nodeId
+			finalNodeID = nodeID
 			finalJobState = jobState
 		}
 	}
-	return finalNodeId, finalJobState
+	return finalNodeID, finalJobState
 }
 
 func JobStateValue(jobState *executor.JobState) int {
 	switch jobState.State {
 	case executor.JobStateRunning:
-		return 100
+		return 100 // nolint:gomnd // magic number appropriate
 	case executor.JobStateComplete:
-		return 90
+		return 90 // nolint:gomnd // magic number appropriate
 	case executor.JobStateError:
-		return 80
+		return 80 // nolint:gomnd // magic number appropriate
 	case executor.JobStateBidding:
-		return 70
+		return 70 // nolint:gomnd // magic number appropriate
 	case executor.JobStateBidRejected:
-		return 60
+		return 60 // nolint:gomnd // magic number appropriate
 	default:
 		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
 		return 0

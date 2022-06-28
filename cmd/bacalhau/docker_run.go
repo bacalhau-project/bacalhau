@@ -78,7 +78,7 @@ var dockerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint:unusedparams // incorrect that cmd is unused.
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]

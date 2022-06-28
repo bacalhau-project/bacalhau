@@ -159,7 +159,7 @@ func jsonLogger() io.Writer {
 // cleanupFor returns a cleanup function that flushes remaining spans in
 // memory to the exporter and releases any tracing resources.
 // TODO: #288 Use trace to close out span
-// nolint:unparam // will add tracing
+// nolintunparam // will add tracing
 func cleanupFor(name string, tp *sdktrace.TracerProvider, exp sdktrace.SpanExporter) cleanupFn {
 	return func() error {
 		if err := tp.Shutdown(context.Background()); err != nil {
