@@ -6,6 +6,8 @@ provider "google" {
 
 terraform {
   backend "gcs" {
+    # this bucket lives in the bacalhau-cicd google projecty
+    # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
     bucket = "bacalhau-global-storage"
     prefix = "terraform/state"
   }
@@ -13,7 +15,7 @@ terraform {
 
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
-  name         = "bacalhau-vm-${var.rollout_phase}-${count.index}"
+  name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
   machine_type = var.machine_type
   zone         = var.zone
@@ -50,6 +52,8 @@ echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
     | sudo tee /etc/apt/sources.list.d/openresty.list
 sudo apt-get update -y
 sudo apt-get -y install --no-install-recommends openresty
+
+sudo mkdir -p /var/www/health_checker
 
 sudo tee /usr/local/openresty/nginx/conf/nginx.conf > /dev/null <<'EOI'
 ${file("${path.module}/configs/nginx.conf")}
@@ -92,14 +96,40 @@ if [ ! -e /data/ipfs/version ]; then
   ipfs init
 fi
 
-(ipfs daemon \
-    2>&1 >> /tmp/ipfs.log) &
+sudo tee /etc/systemd/system/multi-user.target.wants/ipfs-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/configs/ipfs-daemon.service")}
+EOI
 
-export LOG_LEVEL=debug
-export BACALHAU_PATH=/data
+sudo tee /etc/systemd/system/multi-user.target.wants/bacalhau-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/configs/bacalhau-daemon.service")}
+EOI
 
-(while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"} --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
-        >> /tmp/bacalhau.log) &
+# write the unsafe private key to node0 if we are in auto connect mode
+sudo mkdir -p /data/.bacalhau
+if [ ! -f /data/.bacalhau/private_key.${var.bacalhau_port} ]; then
+  
+fi
+
+# we need this as a script so we can write some terraform variables
+# into the startup script that is then called by systemd
+sudo tee /start-bacalhau.sh > /dev/null <<'EOI'
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+export BACALHAU_NODE0_IP="${google_compute_address.ipv4_address[0].address}"
+export BACALHAU_NODE0_ID="${var.bacalhau_node0_id != "" ? var.bacalhau_node0_id : "QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"}"
+export BACALHAU_NODE0_MULTIADDRESS="/ip4/$BACALHAU_NODE0_IP/tcp/${var.bacalhau_port}/p2p/$BACALHAU_NODE0_ID"
+export BACALHAU_CONNECT_PEER="${count.index > 0 && var.bacalhau_connect ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
+bacalhau serve \
+  --job-selection-data-locality anywhere \
+  --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
+  --port ${var.bacalhau_port} \
+  --peer $BACALHAU_CONNECT_PEER
+EOI
+
+sudo systemctl daemon-reload
+sudo systemctl start ipfs-daemon
+sudo systemctl start bacalhau-daemon
 
 sudo service openresty reload
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
@@ -130,7 +160,8 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  name  = "bacalhau-ipv4-address-${var.rollout_phase}-${count.index}"
+  # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
+  name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.instance_count
 }
 
@@ -139,7 +170,8 @@ output "public_ip_address" {
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
-  name     = "bacalhau-disk-${var.rollout_phase}-${count.index}"
+  # keep the same disk names if we are production because the libp2p ids are in the auto connect serve codebase
+  name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.instance_count
   type     = "pd-ssd"
   zone     = var.zone
@@ -160,7 +192,7 @@ resource "google_compute_disk_resource_policy_attachment" "attachment" {
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
-  name   = "bacalhau-disk-backups-${var.rollout_phase}"
+  name   = "bacalhau-disk-backups-${terraform.workspace}"
   region = var.region
   snapshot_schedule_policy {
     schedule {
@@ -189,7 +221,7 @@ resource "google_compute_attached_disk" "default" {
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {
-  name    = "bacalhau-ingress-firewall-${var.rollout_phase}"
+  name    = "bacalhau-ingress-firewall-${terraform.workspace}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -212,7 +244,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
-  name    = "bacalhau-ssh-firewall-${var.rollout_phase}"
+  name    = "bacalhau-ssh-firewall-${terraform.workspace}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -229,5 +261,5 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 }
 
 resource "google_compute_network" "bacalhau_network" {
-  name = "bacalhau-network-${var.rollout_phase}"
+  name = "bacalhau-network-${terraform.workspace}"
 }
