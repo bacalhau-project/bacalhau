@@ -34,7 +34,7 @@ type GenericTransport struct {
 	jobContexts       map[string]context.Context // total job lifecycle
 	jobNodeContexts   map[string]context.Context // per-node job lifecycle
 	writeEventHandler WriteEventHandlerFn        // parent transport callback
-	mutex             sync.Mutex                 // thread-safety for maps
+	mutex             sync.RWMutex               // thread-safety for maps
 }
 
 func NewGenericTransport(nodeID string,
@@ -185,7 +185,12 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context,
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
-	gt.jobContexts[jobID] = jobCtx
+
+	func() {
+		gt.mutex.Lock()
+		defer gt.mutex.Unlock()
+		gt.jobContexts[jobID] = jobCtx
+	}()
 
 	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
 		JobId:     jobID,
