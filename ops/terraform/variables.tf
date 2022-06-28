@@ -16,6 +16,10 @@ variable "instance_count" {
 variable "volume_size_gb" {
   type = number
 }
+variable "boot_disk_size_gb" {
+  type = number
+  default = 10
+}
 variable "restore_from_backup" {
   type    = string
   default = ""
