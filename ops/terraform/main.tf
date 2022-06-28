@@ -13,7 +13,7 @@ terraform {
 
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
-  name         = "bacalhau-vm-${count.index}"
+  name         = "bacalhau-vm-${var.rollout_phase}-${count.index}"
   count        = var.instance_count
   machine_type = var.machine_type
   zone         = var.zone
