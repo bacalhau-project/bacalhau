@@ -1,4 +1,4 @@
-bacalhau_version      = "v0.1.14"
+bacalhau_version      = "v0.1.16"
 bacalhau_port         = "1235"
 bacalhau_node0_id     = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
 bacalhau_connect      = true
@@ -7,7 +7,8 @@ gcp_project           = "bacalhau-production"
 instance_count        = 3
 region                = "us-east4"
 zone                  = "us-east4-c"
-volume_size_gb        = 10
+volume_size_gb        = 500
+boot_disk_size_gb     = 500
 keep_disks            = true
-machine_type          = "e2-standard-4"
+machine_type          = "e2-standard-16"
 rollout_phase         = "production"

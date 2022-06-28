@@ -23,6 +23,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size = var.boot_disk_size_gb
     }
   }
 
@@ -163,6 +164,9 @@ resource "google_compute_address" "ipv4_address" {
   # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
   name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.instance_count
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 output "public_ip_address" {
@@ -177,7 +181,6 @@ resource "google_compute_disk" "bacalhau_disk" {
   zone     = var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
-
   lifecycle {
     prevent_destroy = true
   }
