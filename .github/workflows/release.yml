@@ -30,7 +30,7 @@ jobs:
         # GitHub Actions does not yet support Arm or Arm64
         # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
         name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
-        go_version: [1.17.11]
+        go_version: [1.18.3]
         include:
           # - {
           #     name: ubuntu-arm,
@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - name: Install go@1.17
+      - name: Install go@1.18
         run: |
           curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           sudo rm -rf /usr/local/go 
