@@ -25,3 +25,4 @@ function get_variable() {
 
 gcloud config set project $(get_variable gcp_project)
 gcloud config set compute/zone $(get_variable zone)
+terraform workspace select $WORKSPACE
