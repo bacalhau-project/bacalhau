@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -37,7 +38,9 @@ func (suite *ServerSuite) TearDownAllSuite() {
 }
 
 func (suite *ServerSuite) TestList() {
-	ctx, c := SetupTests(suite.T())
+	ctx := context.Background()
+	c, cm := SetupTests(suite.T())
+	defer cm.Cleanup()
 
 	// Should have no jobs initially:
 	jobs, err := c.List(ctx)
@@ -112,7 +115,8 @@ func makeJob() (*executor.JobSpec, *executor.JobDeal) {
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-	_, c := SetupTests(t)
+	c, cm := SetupTests(t)
+	defer cm.Cleanup()
 
 	res, err := http.Get(c.BaseURI + endpoint)
 	assert.NoError(t, err, "Could not get %s endpoint.", endpoint)

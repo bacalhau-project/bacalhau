@@ -46,7 +46,7 @@ type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int,
+	count, badActors int, // nolint:unusedparams // Incorrectly assumed as unused
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
 	jobSelectionPolicy computenode.JobSelectionPolicy,
@@ -138,7 +138,7 @@ func NewDevStack(
 
 		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
 		go func(ctx context.Context) {
-			if err = apiServer.ListenAndServe(ctx); err != nil {
+			if err = apiServer.ListenAndServe(ctx, cm); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
 		}(context.Background())

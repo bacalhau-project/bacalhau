@@ -36,7 +36,7 @@ type GenericTransport struct {
 	jobContexts       map[string]context.Context // total job lifecycle
 	jobNodeContexts   map[string]context.Context // per-node job lifecycle
 	writeEventHandler WriteEventHandlerFn        // parent transport callback
-	mutex             sync.Mutex                 // thread-safety for maps
+	mutex             sync.RWMutex               // thread-safety for maps
 }
 
 func NewGenericTransport(nodeID string, writeEventHandler WriteEventHandlerFn) *GenericTransport {
@@ -142,12 +142,22 @@ func (gt *GenericTransport) HostID(ctx context.Context) (string, error) {
 /////////////////////////////////////////////////////////////
 
 func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
+	response := map[string]*executor.Job{}
+
+	gt.mutex.RLock()
+	defer gt.mutex.RUnlock()
+	for k, v := range gt.jobs {
+		response[k] = v
+	}
+
 	return ListResponse{
-		Jobs: gt.jobs,
+		Jobs: response,
 	}, nil
 }
 
 func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, error) {
+	gt.mutex.RLock()
+	defer gt.mutex.RUnlock()
 	job, ok := gt.jobs[id]
 	if !ok {
 		return nil, fmt.Errorf("job not found in transport: %s", id)
@@ -175,7 +185,12 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
-	gt.jobContexts[jobID] = jobCtx
+
+	func() {
+		gt.mutex.Lock()
+		defer gt.mutex.Unlock()
+		gt.jobContexts[jobID] = jobCtx
+	}()
 
 	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
 		JobID:     jobID,

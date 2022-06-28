@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -21,7 +22,14 @@ var tableSortBy ColumnEnum
 var tableSortReverse bool
 var tableIDFilter string
 var tableNoStyle bool
-var tableMergeValues bool
+
+func shortenTime(t time.Time) string { // nolint:deadcode,unused // Useful function, holding here
+	if tableOutputWide {
+		return t.Format("06-01-02-15:04:05")
+	}
+
+	return t.Format("15:04:05")
+}
 
 var DefaultShortenStringLength = 20
 

@@ -24,7 +24,7 @@ var TimeToWaitForServerReply = 10 // nolint:mnd // magic number appropriate here
 var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
 
 // SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) (context.Context, *APIClient) {
+func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
@@ -35,16 +35,17 @@ func SetupTests(t *testing.T) (context.Context, *APIClient) {
 	port, err := freeport.GetFreePort()
 	assert.NoError(t, err)
 
+	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
+
 	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
-	ctx, _ := system.WithSignalShutdown(context.Background())
 	go func() {
-		err := s.ListenAndServe(ctx)
-		assert.NoError(t, err)
+		assert.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
 	assert.NoError(t, waitForHealthy(c))
 
-	return ctx, NewAPIClient(s.GetURI())
+	return NewAPIClient(s.GetURI()), cm
 }
 
 func waitForHealthy(c *APIClient) error {

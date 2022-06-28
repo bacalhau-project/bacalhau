@@ -443,7 +443,7 @@ func getMountDirFromContainer(c *dockertypes.Container) string {
 
 func newSpan(ctx context.Context, apiName string) (
 	context.Context, trace.Span) {
-	return system.Span(ctx, "storage/ipfs/fuse_docker", apiName)
+	return system.Span(ctx, "storage/ipfs/fusedocker", apiName)
 }
 
 // Compile-time interface check:

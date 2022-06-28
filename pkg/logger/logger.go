@@ -104,6 +104,12 @@ func LoggerWithNodeAndJobInfo(nodeID, jobID string) zerolog.Logger {
 }
 
 func LogJobEvent(event JobEvent) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in LogJobEvent. Error:\n", r)
+		}
+	}()
+
 	event.Node = event.Node[:8]
 	event.Job = event.Job[:8]
 	eventBytes, err := json.Marshal(event)

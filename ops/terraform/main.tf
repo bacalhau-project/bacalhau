@@ -6,14 +6,14 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    bucket  = "bacalhau-cluster-tfstate"
-    prefix  = "terraform/state"
+    bucket = "bacalhau-global-storage"
+    prefix = "terraform/state"
   }
 }
 
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
-  name         = "bacalhau-vm-${count.index}"
+  name         = "bacalhau-vm-${var.rollout_phase}-${count.index}"
   count        = var.instance_count
   machine_type = var.machine_type
   zone         = var.zone
@@ -21,6 +21,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size = var.boot_disk_size_gb
     }
   }
 
@@ -48,8 +49,7 @@ sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
 wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
 echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
     | sudo tee /etc/apt/sources.list.d/openresty.list
-sudo apt-get update
-sudo apt-get -y install openresty
+sudo apt-get update -y
 sudo apt-get -y install --no-install-recommends openresty
 
 sudo tee /usr/local/openresty/nginx/conf/nginx.conf > /dev/null <<'EOI'
@@ -102,7 +102,7 @@ export BACALHAU_PATH=/data
 (while true; do bacalhau serve --job-selection-data-locality anywhere --peer ${count.index == 0 ? "none" : "/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"} --ipfs-connect /ip4/127.0.0.1/tcp/5001 --port 1235 2>&1 || true; sleep 1; done \
         >> /tmp/bacalhau.log) &
 
-sudo service openresty restart  
+sudo service openresty reload
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
 ${google_compute_network.bacalhau_network.name}
 EOI
@@ -131,8 +131,11 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  name  = "bacalhau-ipv4-address-${count.index}"
+  name  = var.rollout_phase == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${var.rollout_phase}-${count.index}"
   count = var.instance_count
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 output "public_ip_address" {
@@ -140,13 +143,12 @@ output "public_ip_address" {
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
-  name     = "bacalhau-disk-${count.index}"
+  name     = var.rollout_phase == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${var.rollout_phase}-${count.index}"
   count    = var.instance_count
   type     = "pd-ssd"
   zone     = var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
-
   lifecycle {
     prevent_destroy = true
   }
@@ -161,7 +163,7 @@ resource "google_compute_disk_resource_policy_attachment" "attachment" {
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
-  name   = "bacalhau-disk-backups"
+  name   = "bacalhau-disk-backups-${var.rollout_phase}"
   region = var.region
   snapshot_schedule_policy {
     schedule {
@@ -190,7 +192,7 @@ resource "google_compute_attached_disk" "default" {
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {
-  name    = "bacalhau-ingress-firewall"
+  name    = "bacalhau-ingress-firewall-${var.rollout_phase}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -204,7 +206,8 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "5001",  // ipfs API
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
-      "44444", // nginx node health check server
+      "44443", // nginx is healthy - for running health check scripts
+      "44444", // nginx node health check scripts
     ]
   }
 
@@ -212,7 +215,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
 }
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
-  name    = "bacalhau-ssh-firewall"
+  name    = "bacalhau-ssh-firewall-${var.rollout_phase}"
   network = google_compute_network.bacalhau_network.name
 
   allow {
@@ -229,5 +232,5 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 }
 
 resource "google_compute_network" "bacalhau_network" {
-  name = "bacalhau-network"
+  name = "bacalhau-network-${var.rollout_phase}"
 }

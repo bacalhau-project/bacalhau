@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	 "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
+	 "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )

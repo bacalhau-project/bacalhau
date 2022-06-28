@@ -87,16 +87,16 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
-	spec := job.Spec
+	spec := j.Spec
 	if spec == nil {
 		return "", fmt.Errorf("no job spec provided to docker executor")
 	}
 
-	jobResultsDir, err := e.ensureJobResultsDir(job)
+	jobResultsDir, err := e.ensureJobResultsDir(j)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +106,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error
 	mounts := []mount.Mount{}
 
 	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range job.Spec.Inputs {
+	for _, inputStorage := range j.Spec.Inputs {
 		var storageProvider storage.StorageProvider
 		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
@@ -145,7 +145,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range job.Spec.Outputs {
+	for _, output := range j.Spec.Outputs {
 		if output.Name == "" {
 			return "", fmt.Errorf("output volume has no name: %+v", output)
 		}
@@ -183,21 +183,21 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error
 
 		stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
 			"docker",
-			[]string{"pull", job.Spec.VM.Image},
+			[]string{"pull", j.Spec.VM.Image},
 		)
 		if err != nil {
 			return "", err
 		}
 
-		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.VM.Image, stdout)
+		log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.VM.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
-		Image:           job.Spec.VM.Image,
+		Image:           j.Spec.VM.Image,
 		Tty:             false,
-		Env:             job.Spec.VM.Env,
-		Entrypoint:      job.Spec.VM.Entrypoint,
-		Labels:          e.jobContainerLabels(job),
+		Env:             j.Spec.VM.Env,
+		Entrypoint:      j.Spec.VM.Entrypoint,
+		Labels:          e.jobContainerLabels(j),
 		NetworkDisabled: true,
 	}
 
@@ -211,13 +211,13 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error
 		},
 		&network.NetworkingConfig{},
 		nil,
-		e.jobContainerName(job),
+		e.jobContainerName(j),
 	)
 	if err != nil {
 		return "", err
 	}
 
-	defer e.cleanupJob(job)
+	defer e.cleanupJob(j)
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,

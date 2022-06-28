@@ -30,7 +30,7 @@ var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { 	// nolint:unusedparams // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
