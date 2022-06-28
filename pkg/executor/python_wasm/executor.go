@@ -45,6 +45,7 @@ func (e *Executor) HasStorage(ctx context.Context,
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
+	// TODO: translate language jobspec into a docker run command
 	return e.executors[executor.EngineDocker].RunJob(ctx, job)
 }
 

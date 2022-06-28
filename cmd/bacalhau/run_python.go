@@ -57,7 +57,7 @@ func init() {
 		`Install from the given requirements file. (like pip)`, // TODO: This option can be used multiple times.
 	)
 	runPythonCmd.PersistentFlags().StringVar(
-		&contextPath, "context-path", ".", // TODO: consider replacing this with context-glob, default to "./**/*.py|./requirements.txt"
+		&contextPath, "context-path", ".", // TODO: consider replacing this with context-glob, default to "./**/*.py|./requirements.txt", OR .bacalhau_ignore
 		"Path to context (e.g. python code) to send to server (via public IPFS network) for execution (max 10MiB). Set to empty string to disable",
 	)
 	runPythonCmd.PersistentFlags().StringVar(
