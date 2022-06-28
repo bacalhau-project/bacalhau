@@ -13,7 +13,7 @@ terraform {
 
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
-  name         = "bacalhau-vm-${count.index}"
+  name         = "bacalhau-vm-${var.rollout_phase}-${count.index}"
   count        = var.instance_count
   machine_type = var.machine_type
   zone         = var.zone
@@ -130,7 +130,7 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  name  = "bacalhau-ipv4-address-${count.index}"
+  name  = var.rollout_phase == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${var.rollout_phase}-${count.index}"
   count = var.instance_count
 }
 
@@ -139,7 +139,7 @@ output "public_ip_address" {
 }
 
 resource "google_compute_disk" "bacalhau_disk" {
-  name     = "bacalhau-disk-${count.index}"
+  name     = var.rollout_phase == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${var.rollout_phase}-${count.index}"
   count    = var.instance_count
   type     = "pd-ssd"
   zone     = var.zone
