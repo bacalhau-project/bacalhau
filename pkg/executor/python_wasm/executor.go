@@ -45,7 +45,10 @@ func (e *Executor) HasStorage(ctx context.Context,
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
-	// TODO: translate language jobspec into a docker run command
+	// translate language jobspec into a docker run command
+	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:0.0.1"
+	job.Spec.Engine = executor.EngineDocker
+	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
 	return e.executors[executor.EngineDocker].RunJob(ctx, job)
 }
 
