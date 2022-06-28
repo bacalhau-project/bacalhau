@@ -36,7 +36,7 @@ func TestSelectAllJobs(t *testing.T) {
 		nodeIds, err := stack.GetNodeIds()
 		assert.NoError(t, err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFS_API_COPY, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
 		assert.NoError(t, err)
 
 		jobSpec := &executor.JobSpec{

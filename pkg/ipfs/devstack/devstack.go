@@ -1,10 +1,11 @@
-package ipfs_devstack
+package ipfsdevstack
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -31,6 +32,8 @@ type IPFSDevServer struct {
 	APIPort     int
 	SwarmPort   int
 }
+
+var OWNERONLYRW = 0600
 
 func NewDevServer(cm *system.CleanupManager, isolated bool) (*IPFSDevServer, error) {
 	repoDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack")
@@ -79,7 +82,8 @@ func NewDevServer(cm *system.CleanupManager, isolated bool) (*IPFSDevServer, err
 	idResult := struct {
 		ID string
 	}{}
-	if err = json.Unmarshal([]byte(jsonBlob), &idResult); err != nil {
+	err = json.Unmarshal([]byte(jsonBlob), &idResult)
+	if err != nil {
 		return nil, err
 	}
 
@@ -96,7 +100,8 @@ func NewDevServer(cm *system.CleanupManager, isolated bool) (*IPFSDevServer, err
 	}, nil
 }
 
-func (server *IPFSDevServer) Start(connectToAddress string) error {
+// TODO: #286 Break this down - method is very large
+func (server *IPFSDevServer) Start(connectToAddress string) error { // nolint:funlen,gocyclo // will fix
 	if server.Isolated {
 		_, err := server.CLI.Run([]string{
 			"bootstrap", "rm", "--all",
@@ -224,7 +229,7 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 	}
 
 	if connectToAddress != "" {
-		_, err := server.CLI.Run([]string{
+		_, err = server.CLI.Run([]string{
 			"bootstrap", "add", connectToAddress,
 		})
 		if err != nil {
@@ -239,31 +244,34 @@ func (server *IPFSDevServer) Start(connectToAddress string) error {
 		"IPFS_PROFILE=server",
 	}
 
-	logfile, err := os.OpenFile(
-		server.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	var logfile *os.File
+	logfile, err = os.OpenFile(
+		server.LogFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, fs.FileMode(OWNERONLYRW))
 	if err != nil {
 		return err
 	}
 
 	cmd.Stderr = logfile
 	cmd.Stdout = logfile
-	if err = cmd.Start(); err != nil {
+
+	err = cmd.Start()
+	if err != nil {
 		return err
 	}
 	log.Debug().Msgf("IPFS daemon has started")
 
-	testConnectionClient, err := ipfs_http.NewIPFSHttpClient(
-		server.ApiAddress())
+	testConnectionClient, err := ipfs_http.NewIPFSHTTPClient(
+		server.APIAddress())
 	if err != nil {
 		return err
 	}
 
 	ipfsReadyWaiter := &system.FunctionWaiter{
-		Name:        fmt.Sprintf("wait for ipfs server to be running: %s", server.ApiAddress()),
+		Name:        fmt.Sprintf("wait for ipfs server to be running: %s", server.APIAddress()),
 		MaxAttempts: 100,
 		Delay:       time.Millisecond * 100,
 		Handler: func() (bool, error) {
-			_, err := testConnectionClient.GetPeerID(context.Background())
+			_, err = testConnectionClient.GetPeerID(context.Background())
 			if err != nil {
 				var expectedErr *url.Error
 				if errors.As(err, &expectedErr) {
@@ -314,6 +322,6 @@ func (server *IPFSDevServer) SwarmAddress() string {
 	return server.Address(server.SwarmPort)
 }
 
-func (server *IPFSDevServer) ApiAddress() string {
+func (server *IPFSDevServer) APIAddress() string {
 	return server.Address(server.APIPort)
 }

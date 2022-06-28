@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
+	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -47,13 +47,13 @@ type IGetJobSpec func() executor.JobSpecVM
 
 */
 func FuseStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
-	return fuse_docker.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
+	return fusedocker.NewStorageProvider(
+		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
 }
 
 func APICopyStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
-	return api_copy.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
+	return apicopy.NewStorageProvider(
+		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
 }
 
 var FuseStorageDriverFactory = StorageDriverFactory{
@@ -66,16 +66,16 @@ var APICopyStorageDriverFactory = StorageDriverFactory{
 	DriverFactory: APICopyStorageDriverFactoryHandler,
 }
 
-var STORAGE_DRIVER_FACTORIES = []StorageDriverFactory{
+var StorageDriverFactories = []StorageDriverFactory{
 	//	FuseStorageDriverFactory,
 	APICopyStorageDriverFactory,
 }
 
-var STORAGE_DRIVER_FACTORIES_FUSE = []StorageDriverFactory{
+var StorageDriverFactoriesFuse = []StorageDriverFactory{
 	FuseStorageDriverFactory,
 }
 
-var STORAGE_DRIVER_FACTORIES_API_COPY = []StorageDriverFactory{
+var StorageDriverFactoriesAPICopy = []StorageDriverFactory{
 	APICopyStorageDriverFactory,
 }
 
@@ -145,7 +145,6 @@ func singleFileResultsChecker(
 	expectedLines int,
 ) ICheckResults {
 	return func(resultsDir string) {
-
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
 		assert.NoError(t, err)
 

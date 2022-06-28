@@ -25,8 +25,7 @@ func IsInstalled(dockerClient *dockerclient.Client) bool {
 	return err == nil
 }
 
-func GetContainer(dockerClient *dockerclient.Client, nameOrId string) (*types.Container, error) {
-
+func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Container, error) {
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
 		All: true,
 	})
@@ -34,17 +33,19 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrId string) (*types.Co
 	if err != nil {
 		return nil, err
 	}
+	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
+	// nolint:gocritic // will fix when we care
 	for _, container := range containers {
-		if container.ID == nameOrId {
+		if container.ID == nameOrID {
 			return &container, nil
 		}
 
-		if container.ID[0:11] == nameOrId {
+		if container.ID[0:11] == nameOrID {
 			return &container, nil
 		}
 
 		for _, containerName := range container.Names {
-			if containerName == fmt.Sprintf("/%s", nameOrId) {
+			if containerName == fmt.Sprintf("/%s", nameOrID) {
 				return &container, nil
 			}
 		}
@@ -61,6 +62,8 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 	if err != nil {
 		return nil, err
 	}
+	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
+	// nolint:gocritic // will fix when we care
 	for _, container := range containers {
 		value, ok := container.Labels[labelName]
 		if !ok {
@@ -73,13 +76,13 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 	return results, nil
 }
 
-func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string, error) {
-	container, err := GetContainer(dockerClient, nameOrId)
+func GetLogs(dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
+	container, err := GetContainer(dockerClient, nameOrID)
 	if err != nil {
 		return "", "", err
 	}
 	if container == nil {
-		return "", "", fmt.Errorf("no container found: %s", nameOrId)
+		return "", "", fmt.Errorf("no container found: %s", nameOrID)
 	}
 	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
@@ -88,13 +91,13 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrId string) (string, string
 	if err != nil {
 		return "", "", err
 	}
-	stdout := bytes.NewBuffer([]byte{})
-	stderr := bytes.NewBuffer([]byte{})
-	_, err = stdcopy.StdCopy(stdout, stderr, logsReader)
+	stdoutBuffer := bytes.NewBuffer([]byte{})
+	stderrBuffer := bytes.NewBuffer([]byte{})
+	_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
 	if err != nil {
 		return "", "", err
 	}
-	return stdout.String(), stderr.String(), nil
+	return stdoutBuffer.String(), stderrBuffer.String(), nil
 }
 
 func RemoveContainer(dockerClient *dockerclient.Client, nameOrID string) error {
@@ -171,11 +174,7 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 	return lastLogs, err
 }
 
-func PullImage(
-	dockerClient *dockerclient.Client,
-	image string,
-) error {
-
+func PullImage(dockerClient *dockerclient.Client, image string) error {
 	imagePullStream, err := dockerClient.ImagePull(
 		context.Background(),
 		image,

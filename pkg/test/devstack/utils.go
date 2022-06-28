@@ -17,9 +17,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var STORAGE_DRIVER_NAMES = []string{
-	storage.IPFS_FUSE_DOCKER,
-	storage.IPFS_API_COPY,
+var StorageDriverNames = []string{
+	storage.IPFSFuseDocker,
+	storage.IPFSAPICopy,
 }
 
 func SetupTest(
@@ -27,17 +27,14 @@ func SetupTest(
 	nodes int, badActors int,
 	jobSelectionPolicy computenode.JobSelectionPolicy,
 ) (*devstack.DevStack, *system.CleanupManager) {
-
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
-
 		return executor_util.NewDockerIPFSExecutors(
 			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 		map[verifier.VerifierType]verifier.Verifier, error) {
-
 		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(

@@ -28,16 +28,16 @@ func RunCommand(command string, args []string) error {
 }
 
 // same as run command but also returns buffers for stdout and stdin
-func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
-	stdoutBuf := new(bytes.Buffer)
-	stderrBuf := new(bytes.Buffer)
+func RunTeeCommand(command string, args []string) (stdoutBuf, stderrBuf *bytes.Buffer, err error) {
+	stdoutBuf = new(bytes.Buffer)
+	stderrBuf = new(bytes.Buffer)
 
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 
 	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(Stderr, stderrBuf)
-	return cmd.Run(), stdoutBuf, stderrBuf
+	return stdoutBuf, stderrBuf, cmd.Run()
 }
 
 func TryUntilSucceedsN(f func() error, desc string, retries int) error {
@@ -65,7 +65,7 @@ func RunCommandGetResults(command string, args []string) (string, error) {
 	return string(result), err
 }
 
-func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
+func RunCommandGetResultsEnv(command string, args, env []string) (string, error) {
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env

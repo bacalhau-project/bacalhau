@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	executor_noop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -21,10 +21,10 @@ import (
 
 func setupTest(t *testing.T) (
 	*inprocess.Transport,
-	*executor_noop.Executor,
+	*executorNoop.Executor,
 	*verifier_noop.Verifier,
 ) {
-	noopExecutor, err := executor_noop.NewExecutor()
+	noopExecutor, err := executorNoop.NewExecutor()
 	assert.NoError(t, err)
 
 	noopVerifier, err := verifier_noop.NewVerifier()
@@ -85,7 +85,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFS_DEFAULT,
+				Engine: storage.IPFSDefault,
 			},
 		},
 	}
@@ -116,7 +116,7 @@ func TestTransportEvents(t *testing.T) {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFS_DEFAULT,
+				Engine: storage.IPFSDefault,
 			},
 		},
 	}

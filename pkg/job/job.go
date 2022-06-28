@@ -35,7 +35,7 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 
 func ConstructJob(
 	engine executor.EngineType,
-	verifier verifier.VerifierType,
+	v verifier.VerifierType,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -44,7 +44,7 @@ func ConstructJob(
 	concurrency int,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
-		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
+		return nil, nil, fmt.Errorf("concurrency must be >= 1")
 	}
 
 	jobInputs := []storage.StorageSpec{}
@@ -82,7 +82,7 @@ func ConstructJob(
 
 	spec := &executor.JobSpec{
 		Engine:   engine,
-		Verifier: verifier,
+		Verifier: v,
 		VM: executor.JobSpecVM{
 			Image:      image,
 			Entrypoint: entrypoint,
@@ -100,7 +100,7 @@ func ConstructJob(
 	return spec, deal, nil
 }
 
-func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
+func VerifyJob(spec *executor.JobSpec, deal *executor.JobDeal) error {
 	// TODO: do something useful here
 	return nil
 }

@@ -11,13 +11,11 @@ import (
 )
 
 type Verifier struct {
-	IPFSClient *ipfs_http.IPFSHttpClient
+	IPFSClient *ipfs_http.IPFSHTTPClient
 }
 
-func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
-	*Verifier, error) {
-
-	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
+func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (*Verifier, error) {
+	api, err := ipfs_http.NewIPFSHTTPClient(ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +26,7 @@ func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 		return nil, err
 	}
 
-	verifier := &Verifier{
+	v := &Verifier{
 		IPFSClient: api,
 	}
 
@@ -38,30 +36,27 @@ func NewVerifier(cm *system.CleanupManager, ipfsMultiAddress string) (
 	}
 
 	log.Debug().Msgf("IPFS verifier initialized with address: %s", url)
-	return verifier, nil
+	return v, nil
 }
 
-func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
+func (v *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	ctx, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 
-	_, err := verifier.IPFSClient.GetPeerID(ctx)
+	_, err := v.IPFSClient.GetPeerID(ctx)
 	return err == nil, err
 }
 
-func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
+func (v *Verifier) ProcessResultsFolder(ctx context.Context,
 	jobID, resultsFolder string) (string, error) {
-
 	ctx, span := newSpan(ctx, "ProcessResultsFolder")
 	defer span.End()
 
 	log.Debug().Msgf("Uploading results folder to ipfs: %s %s", jobID, resultsFolder)
-	return verifier.IPFSClient.UploadTar(ctx, resultsFolder)
+	return v.IPFSClient.UploadTar(ctx, resultsFolder)
 }
 
-func newSpan(ctx context.Context, apiName string) (
-	context.Context, trace.Span) {
-
+func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
 	return system.Span(ctx, "verifier/ipfs", apiName)
 }
 

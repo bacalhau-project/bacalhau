@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -36,18 +36,22 @@ func NewAPIClient(baseURI string) *APIClient {
 
 // Alive calls the node's API server health check.
 func (apiClient *APIClient) Alive() (bool, error) {
-	res, err := apiClient.client.Get(apiClient.BaseURI + "/livez")
+	var body io.Reader
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiClient.BaseURI+"/livez", body)
 	if err != nil {
 		return false, nil
 	}
+	res, err := apiClient.client.Do(req)
+	if err != nil {
+		return false, nil
+	}
+	defer res.Body.Close()
 
 	return res.StatusCode == http.StatusOK, nil
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List(ctx context.Context) (
-	map[string]*executor.Job, error) {
-
+func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job, error) {
 	var req listRequest
 	var res listResponse
 
@@ -60,9 +64,7 @@ func (apiClient *APIClient) List(ctx context.Context) (
 
 // Get returns job data for a particular job ID.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
-	*executor.Job, bool, error) {
-
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Job, bool, error) {
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err
@@ -79,9 +81,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
-	deal *executor.JobDeal) (*executor.Job, error) {
-
+func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 	var res submitResponse
 	req := submitRequest{
 		Spec: spec,
@@ -95,16 +95,14 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 	return res.Job, nil
 }
 
-func (apiClient *APIClient) post(ctx context.Context, api string,
-	reqData interface{}, resData interface{}) error {
-
+func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resData interface{}) error {
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
-	req, err := http.NewRequestWithContext(ctx, "POST", addr, &body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
 		return fmt.Errorf("publicapi: error creating post request: %v", err)
 	}
@@ -112,10 +110,16 @@ func (apiClient *APIClient) post(ctx context.Context, api string,
 
 	res, err := apiClient.client.Do(req)
 	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
 	if res.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err == nil { // not critical if this fails
 			log.Error().Msgf(
 				"publicapi: non-200 body returned from API server: %s", string(body))

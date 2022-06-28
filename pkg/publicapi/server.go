@@ -90,6 +90,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -114,7 +115,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job, err := apiServer.Node.Transport.SubmitJob(req.Context(),
+	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
 		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -123,10 +124,11 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(submitResponse{
-		Job: job,
+		Job: j,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 

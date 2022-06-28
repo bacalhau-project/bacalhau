@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	storage_util "github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -64,35 +64,30 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorageProvider(ctx context.Context, engine string) (
-	storage.StorageProvider, error) {
-
-	return storage_util.GetStorageProvider(ctx, engine, e.StorageProviders)
+func (e *Executor) getStorageProvider(ctx context.Context, engine string) (storage.StorageProvider, error) {
+	return util.GetStorageProvider(ctx, engine, e.StorageProviders)
 }
 
 // IsInstalled checks if docker itself is installed.
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
-
 	return docker.IsInstalled(e.Client), nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
-	bool, error) {
-
+func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
 
-	storage, err := e.getStorageProvider(ctx, volume.Engine)
+	s, err := e.getStorageProvider(ctx, volume.Engine)
 	if err != nil {
 		return false, err
 	}
 
-	return storage.HasStorage(ctx, volume)
+	return s.HasStorage(ctx, volume)
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
-	string, error) {
-
+// TODO: #289 Clean up RunJob
+// nolint:funlen,gocyclo // will clean up
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
@@ -112,12 +107,14 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range job.Spec.Inputs {
-		storageProvider, err := e.getStorageProvider(ctx, inputStorage.Engine)
+		var storageProvider storage.StorageProvider
+		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(ctx, inputStorage)
+		var volumeMount *storage.StorageVolume
+		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}
@@ -127,7 +124,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 				"no volume mount was returned for input: %+v", inputStorage)
 		}
 
-		if volumeMount.Type == storage.STORAGE_VOLUME_TYPE_BIND {
+		if volumeMount.Type == storage.StorageVolumeTypeBind {
 			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
 
 			mounts = append(mounts, mount.Mount{
@@ -158,7 +155,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 		}
 
 		srcd := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
-		err = os.Mkdir(srcd, 0755)
+		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return "", err
 		}
@@ -183,10 +180,6 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
 		// TODO: #283 work out why this does not work in github actions
 		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
-
-		// if err != nil { // nolint:gocritic // future use
-		// 	return "", err
-		// }
 
 		stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
 			"docker",
@@ -271,14 +264,18 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 		return "", err
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), 0644)
+	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), util.OS_ALL_R|util.OS_USER_RW)
 	if err != nil {
-		return "", err
+		msg := fmt.Sprintf("could not write results to stdout: %s", err)
+		log.Error().Msg(msg)
+		return "", errors.New(msg)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stderr", jobResultsDir), []byte(stderr), 0644)
+	err = os.WriteFile(fmt.Sprintf("%s/stderr", jobResultsDir), []byte(stderr), util.OS_ALL_R|util.OS_USER_RW)
 	if err != nil {
-		return "", err
+		msg := fmt.Sprintf("could not write results to stderr: %s", err)
+		log.Error().Msg(msg)
+		return "", errors.New(msg)
 	}
 
 	return jobResultsDir, nil
@@ -303,6 +300,8 @@ func (e *Executor) cleanupAll() {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
 	}
+	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
+	// nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
 		err = docker.RemoveContainer(e.Client, container.ID)
 		if err != nil {
@@ -318,6 +317,7 @@ func (e *Executor) jobContainerName(job *executor.Job) string {
 func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
+		"bacalhau-jobID":    job.ID,
 	}
 }
 
@@ -327,13 +327,13 @@ func (e *Executor) jobResultsDir(job *executor.Job) string {
 
 func (e *Executor) ensureJobResultsDir(job *executor.Job) (string, error) {
 	dir := e.jobResultsDir(job)
-	err := os.MkdirAll(dir, 0777)
+	err := os.MkdirAll(dir, util.OS_ALL_RWX)
+	info, _ := os.Stat(dir)
+	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
 	return dir, err
 }
 
-func newSpan(ctx context.Context, apiName string) (
-	context.Context, trace.Span) {
-
+func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
 	return system.Span(ctx, "executor/docker", apiName)
 }
 

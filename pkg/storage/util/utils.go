@@ -18,7 +18,7 @@ func GetStorageProvider(ctx context.Context, engine string, providers map[string
 		return nil, err
 	}
 	if !installed {
-		return nil, fmt.Errorf("Storage provider is not installed: %s.", engine)
+		return nil, fmt.Errorf("storage provider is not installed: %s", engine)
 	}
 
 	return storageProvider, nil

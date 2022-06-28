@@ -1,4 +1,4 @@
-package ipfs_cli
+package ipfscli
 
 import (
 	"fmt"
@@ -38,7 +38,6 @@ func (cli *IPFSCli) getBinaryFullPath() (string, error) {
 }
 
 func (cli *IPFSCli) Run(args []string) (string, error) {
-
 	ipfsBinaryFullPath, err := cli.getBinaryFullPath()
 
 	if err != nil {

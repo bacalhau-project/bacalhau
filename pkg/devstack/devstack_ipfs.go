@@ -8,6 +8,7 @@ import (
 
 	ipfsCLI "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
 	ipfsDevstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -23,9 +24,7 @@ type DevStackIPFS struct {
 }
 
 // a devstack but with only IPFS servers connected to each other
-func NewDevStackIPFS(cm *system.CleanupManager, count int) (
-	*DevStackIPFS, error) {
-
+func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
 	nodes := []*DevStackNodeIPFS{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -69,7 +68,6 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (
 }
 
 func (stack *DevStackIPFS) PrintNodeInfo() {
-
 	logString := `
 -------------------------------
 ipfs
@@ -78,11 +76,9 @@ ipfs
 command="add -q testdata/grep_file.txt"
 	`
 	for _, node := range stack.Nodes {
-
-		logString = logString + fmt.Sprintf(`
+		logString += fmt.Sprintf(`
 cid=$(IPFS_PATH=%s ipfs $command)
 curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.APIPort)
-
 	}
 
 	log.Info().Msg(logString + "\n")
@@ -136,7 +132,7 @@ func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (st
 	}
 
 	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-	err = os.WriteFile(testFilePath, fileContent, 0644)
+	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW|util.OS_ALL_R)
 
 	if err != nil {
 		return "", err

@@ -8,9 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func SetupTest(t *testing.T, nodes int) (
-	*devstack.DevStackIPFS, *system.CleanupManager) {
-
+func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	cm.RegisterCallback(system.CleanupTracer)
 	stack, err := devstack.NewDevStackIPFS(cm, nodes)

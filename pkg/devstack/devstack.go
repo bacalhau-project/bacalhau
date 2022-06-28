@@ -1,3 +1,4 @@
+// nolint:funlen,gocyclo // dev function, poor coding practice acceptable
 package devstack
 
 import (
@@ -14,6 +15,7 @@ import (
 	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -48,9 +50,7 @@ func NewDevStack(
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
 	jobSelectionPolicy computenode.JobSelectionPolicy,
-) (
-	*DevStack, error) {
-
+) (*DevStack, error) {
 	ctx, span := newSpan("NewDevStack")
 	defer span.End()
 
@@ -82,7 +82,7 @@ func NewDevStack(
 				"devstack: failed to start ipfs node: %w", err)
 		}
 
-		log.Debug().Msgf("IPFS dev server started: %s", ipfsNode.ApiAddress())
+		log.Debug().Msgf("IPFS dev server started: %s", ipfsNode.APIAddress())
 
 		//////////////////////////////////////
 		// Scheduler
@@ -108,12 +108,12 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Compute node
 		//////////////////////////////////////
-		executors, err := getExecutors(ipfsNode.ApiAddress(), i)
+		executors, err := getExecutors(ipfsNode.APIAddress(), i)
 		if err != nil {
 			return nil, err
 		}
 
-		verifiers, err := getVerifiers(ipfsNode.ApiAddress(), i)
+		verifiers, err := getVerifiers(ipfsNode.APIAddress(), i)
 		if err != nil {
 			return nil, err
 		}
@@ -199,8 +199,7 @@ func (stack *DevStack) PrintNodeInfo() {
 	logString := ""
 
 	for nodeIndex, node := range stack.Nodes {
-
-		logString = logString + fmt.Sprintf(`
+		logString += fmt.Sprintf(`
 export IPFS_PATH_%d=%s
 export API_PORT_%d=%d`,
 			nodeIndex,
@@ -208,12 +207,10 @@ export API_PORT_%d=%d`,
 			nodeIndex,
 			stack.Nodes[0].APIServer.Port,
 		)
-
 	}
 
 	for nodeIndex, node := range stack.Nodes {
-
-		logString = logString + fmt.Sprintf(`
+		logString += fmt.Sprintf(`
 -------------------------------
 node %d
 -------------------------------
@@ -234,7 +231,6 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			node.IpfsNode.Repo,
 			node.IpfsNode.APIPort,
 		)
-
 	}
 
 	log.Info().Msg(logString)
@@ -280,7 +276,7 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	}
 
 	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-	err = os.WriteFile(testFilePath, fileContent, 0644)
+	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW)
 	if err != nil {
 		return "", err
 	}
@@ -288,13 +284,13 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	return stack.AddFileToNodes(nodeCount, testFilePath)
 }
 
-func (stack *DevStack) GetJobStates(ctx context.Context, jobId string) (map[string]executor.JobStateType, error) {
+func (stack *DevStack) GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
 
-	job, ok, err := apiClient.Get(ctx, jobId)
+	job, ok, err := apiClient.Get(ctx, jobID)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"devstack: error fetching job %s: %v", jobId, err)
+			"devstack: error fetching job %s: %v", jobID, err)
 	}
 	if !ok {
 		return nil, nil
@@ -342,7 +338,6 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 				seenAll = false
 			} else if !system.StringArrayContains(
 				system.GetJobStateStringArray(states), seenState.String()) {
-
 				seenAll = false
 			}
 		}
@@ -384,7 +379,6 @@ func (stack *DevStack) WaitForJob(
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 	*DevStackNode, error) {
-
 	for _, node := range stack.Nodes {
 		id, err := node.Transport.HostID(ctx)
 		if err != nil {

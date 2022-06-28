@@ -4,31 +4,33 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
+	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func NewDockerIPFSExecutors(cm *system.CleanupManager, ipfsMultiAddress string,
-	dockerId string) (map[executor.EngineType]executor.Executor, error) {
-
-	ipfsFuseStorage, err := fuse_docker.NewStorageProvider(cm, ipfsMultiAddress)
+func NewDockerIPFSExecutors(
+	cm *system.CleanupManager,
+	ipfsMultiAddress,
+	dockerID string,
+) (map[executor.EngineType]executor.Executor, error) {
+	ipfsFuseStorage, err := fusedocker.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsAPICopyStorage, err := api_copy.NewStorageProvider(cm, ipfsMultiAddress)
+	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ex, err := docker.NewExecutor(cm, dockerId,
+	ex, err := docker.NewExecutor(cm, dockerID,
 		map[string]storage.StorageProvider{
-			storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
-			storage.IPFS_API_COPY:    ipfsAPICopyStorage,
+			storage.IPFSFuseDocker: ipfsFuseStorage,
+			storage.IPFSAPICopy:    ipfsAPICopyStorage,
 			// we make the copy driver the "default" storage driver for docker
 			// users have to specify the fuse driver explicitly
-			storage.IPFS_DEFAULT: ipfsAPICopyStorage,
+			storage.IPFSDefault: ipfsAPICopyStorage,
 		})
 	if err != nil {
 		return nil, err

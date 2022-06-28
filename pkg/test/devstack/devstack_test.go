@@ -41,10 +41,10 @@ func devStackDockerStorageTest(
 	)
 	defer TeardownTest(stack, cm)
 
-	nodeIds, err := stack.GetNodeIds()
+	nodeIDs, err := stack.GetNodeIds()
 	assert.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
 	assert.NoError(t, err)
 
 	jobSpec := &executor.JobSpec{
@@ -70,7 +70,7 @@ func devStackDockerStorageTest(
 			executor.JobStateBidRejected,
 			executor.JobStateError,
 		}),
-		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
 	)
 
 	assert.NoError(t, err)
@@ -87,8 +87,8 @@ func devStackDockerStorageTest(
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		assert.NoError(t, err)
 
-		ipfsClient, err := ipfs_http.NewIPFSHttpClient(
-			node.IpfsNode.ApiAddress())
+		ipfsClient, err := ipfs_http.NewIPFSHTTPClient(
+			node.IpfsNode.APIAddress())
 		assert.NoError(t, err)
 
 		ipfsClient.DownloadTar(ctx, outputDir, state.ResultsID)

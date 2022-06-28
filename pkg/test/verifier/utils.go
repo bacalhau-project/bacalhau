@@ -8,9 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func SetupTest(t *testing.T, nodes int) (
-	*devstack.DevStackIPFS, *system.CleanupManager) {
-
+func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	stack, err := devstack.NewDevStackIPFS(cm, nodes)
 	assert.NoError(t, err, "unable to create devstack")

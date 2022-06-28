@@ -31,15 +31,10 @@ func main() {
 
 	numNodes := 3
 	numBadNodes := 0
-	getExecutors := func(addr string, node int) (
-		map[executor.EngineType]executor.Executor, error) {
-
-		return executor_util.NewDockerIPFSExecutors(
-			cm, addr, fmt.Sprintf("devstack-node-%d", node))
+	getExecutors := func(addr string, node int) (map[executor.EngineType]executor.Executor, error) {
+		return executor_util.NewDockerIPFSExecutors(cm, addr, fmt.Sprintf("devstack-node-%d", node))
 	}
-	getVerifiers := func(addr string, node int) (
-		map[verifier.VerifierType]verifier.Verifier, error) {
-
+	getVerifiers := func(addr string, node int) (map[verifier.VerifierType]verifier.Verifier, error) {
 		return verifier_util.NewIPFSVerifiers(cm, addr)
 	}
 	stack, err := devstack.NewDevStack(cm, numNodes, numBadNodes,
