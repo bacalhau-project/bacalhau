@@ -105,10 +105,22 @@ sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/configs/bacalhau-daemon.service")}
 EOI
 
-# write the unsafe private key to node0 if we are in auto connect mode
-# sudo mkdir -p /data/.bacalhau
-# if [ ! -f /data/.bacalhau/private_key.${var.bacalhau_port} ]; then
-# fi
+# the path to the private key on the node
+export BACALHAU_NODE_PRIVATE_KEY_PATH="/data/.bacalhau/private_key.${var.bacalhau_port}"
+
+# should we write the unsafe private key to node0 if we are in auto connect mode
+export BACALHAU_SHOULD_WRITE_NODE0_UNSAFE_KEY="${var.bacalhau_unsafe_cluster && count.index == 0 ? "yes" : ""}"
+sudo mkdir -p /data/.bacalhau
+
+if [ -n "$BACALHAU_SHOULD_WRITE_NODE0_UNSAFE_KEY" ]; then
+  # only write the unsafe key if there is not already one
+  if [ ! -f "$BACALHAU_NODE_PRIVATE_KEY_PATH" ]; then
+    sudo tee "$BACALHAU_NODE_PRIVATE_KEY_PATH" > /dev/null <<'EOI'
+${file("${path.module}/configs/unsafe-private-key")}
+EOI
+    sudo chmod 0600 "$BACALHAU_NODE_PRIVATE_KEY_PATH"
+  fi
+fi
 
 # we need this as a script so we can write some terraform variables
 # into the startup script that is then called by systemd
@@ -116,10 +128,17 @@ sudo tee /start-bacalhau.sh > /dev/null <<'EOI'
 #!/bin/bash
 set -euo pipefail
 IFS=$'\n\t'
+# the ip of node0
 export BACALHAU_NODE0_IP="${google_compute_address.ipv4_address[0].address}"
-export BACALHAU_NODE0_ID="${var.bacalhau_node0_id != "" ? var.bacalhau_node0_id : "QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"}"
+# calculate what the unsafe id would be - either the fixed unsafe id or empty string
+# this just avoids nested terraform ternary expressions
+export BACALHAU_NODE0_UNSAFE_ID="${var.bacalhau_unsafe_cluster ? "QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD" : ""}"
+export BACALHAU_NODE0_ID="${var.bacalhau_connect_node0 != "" ? var.bacalhau_connect_node0 : "$BACALHAU_NODE0_UNSAFE_ID"}"
+# the fully exploded multiaddress for node0
 export BACALHAU_NODE0_MULTIADDRESS="/ip4/$BACALHAU_NODE0_IP/tcp/${var.bacalhau_port}/p2p/$BACALHAU_NODE0_ID"
-export BACALHAU_CONNECT_PEER="${count.index > 0 && var.bacalhau_connect ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
+# work out if we actually want to connect to that multiaddress
+# if we are > node0 and have either an explicit node0 id or are in unsafe mode - then we do want to connect
+export BACALHAU_CONNECT_PEER="${count.index > 0 && (var.bacalhau_connect_node0 || var.bacalhau_short_lived_cluster) ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
 bacalhau serve \
   --job-selection-data-locality anywhere \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
@@ -127,6 +146,7 @@ bacalhau serve \
   --peer $BACALHAU_CONNECT_PEER
 EOI
 
+# activate the systemd units now
 sudo systemctl daemon-reload
 sudo systemctl enable ipfs-daemon.service
 sudo systemctl enable bacalhau-daemon.service

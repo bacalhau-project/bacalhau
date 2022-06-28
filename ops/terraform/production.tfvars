@@ -1,7 +1,6 @@
 bacalhau_version      = "v0.1.16"
 bacalhau_port         = "1235"
 bacalhau_node0_id     = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
-bacalhau_connect      = true
 ipfs_version          = "v0.12.2"
 gcp_project           = "bacalhau-production"
 instance_count        = 3

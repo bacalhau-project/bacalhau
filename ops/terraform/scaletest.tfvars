@@ -1,12 +1,9 @@
 bacalhau_version      = "v0.1.16"
 bacalhau_port         = "1235"
-bacalhau_node0_id     = "QmRP3qxo8zNowyouqe5r3mhCvCeeYrZwtFFQWtAZTeFTi2"
-bacalhau_connect      = true
 ipfs_version          = "v0.12.2"
 gcp_project           = "bacalhau-development"
 instance_count        = 3
 region                = "europe-north1"
 zone                  = "europe-north1-c"
 volume_size_gb        = 10
-keep_disks            = true
 machine_type          = "e2-standard-4"

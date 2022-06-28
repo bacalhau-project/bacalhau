@@ -89,8 +89,7 @@ bash scripts/connect_workspace.sh $WORKSPACE
 # get the first node up and running
 terraform apply \
   -var-file $WORKSPACE.tfvars \
-  -var="bacalhau_node0_id=" \
-  -var="bacalhau_connect=false" \
+  -var="bacalhau_connect_node0=" \
   -var="instance_count=1"
 # now we need to get the libp2p id of the first node
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- cat /tmp/bacalhau.log | grep "peer id is" | awk -F': ' '{print $2}'
