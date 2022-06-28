@@ -13,7 +13,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 ## Run a "hello world" job
 
 ```
-bacalhau run ubuntu echo hello
+bacalhau docker run ubuntu echo hello
 ```
 
 ```
@@ -29,7 +29,7 @@ bacalhau list --wide --sort-by=id --id-filter=<JOB_ID>
 
 Replace `JOB_ID` with the job id you copied in the last step.
 
-Only one of the production servers accepted the job, because you only requested a concurrency setting of 1 (the default in `bacalhau run`).
+Only one of the production servers accepted the job, because you only requested a concurrency setting of 1 (the default in `bacalhau docker run`).
 
 You should see something like
 ```
