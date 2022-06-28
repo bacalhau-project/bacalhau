@@ -21,6 +21,36 @@ Projects you will need access to:
  * [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production)
    * long lived cluster
 
+## gcloud config
+
+It's important that when you are working on a particular bacalhau cluster - that your `gcloud` CLI is connected to the correct project and compute zone.
+
+The `scripts/connect_project.sh` script is for this - it will connect to the gcloud project and zone mentioned in a `.tfvars` file
+
+For example - `production.tfvars`:
+
+```
+gcp_project           = "bacalhau-production"
+instance_count        = 3
+region                = "us-east4"
+zone                  = "us-east4-c"
+```
+
+If we run:
+
+```bash
+bash scripts/connect_project.sh production
+```
+
+It will do the following for us automatically:
+
+```bash
+gcloud config set project $(get_variable gcp_project)
+gcloud config set compute/zone $(get_variable zone)
+```
+
+Make sure that when you start to work with a 
+
 ## terraform
 
 Requires:
