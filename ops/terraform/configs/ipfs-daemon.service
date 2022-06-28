@@ -5,8 +5,8 @@ Wants=network-online.target systemd-networkd-wait-online.service
 
 [Service]
 Environment="IPFS_PATH=/data/ipfs"
-Restart=on-failure
-RestartSec=5s
+Restart=always
+RestartSec=1s
 ExecStart=/usr/bin/sh -c "ipfs daemon 2>&1 | tee -a /tmp/ipfs.log"
 
 [Install]

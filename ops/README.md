@@ -91,13 +91,61 @@ terraform apply \
   -var-file $WORKSPACE.tfvars \
   -var="bacalhau_connect_node0=" \
   -var="instance_count=1"
+# wait a bit of time so the bacalhau server is up and running
+sleep 10
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
 # now we need to get the libp2p id of the first node
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- cat /tmp/bacalhau.log | grep "peer id is" | awk -F': ' '{print $2}'
 # copy this id and paste it into the variables file
 # edit variables
-#   * bacalhau_node0_id = <id copied from SSH command above>
+#   * bacalhau_connect_node0 = <id copied from SSH command above>
 vi $WORKSPACE.tfvars
 # now we re-apply the terraform command
 terraform apply \
   -var-file $WORKSPACE.tfvars
+```
+
+# Stand up a new short lived cluster
+
+This is for scale tests or short lived tests on a live network.
+
+```bash
+# make sure you are logged into the google user that has access to our gcloud projects
+gcloud auth application-default login
+# the name of the cluster (and workspace)
+export WORKSPACE=oranges
+cp staging.tfvars $WORKSPACE.tfvars
+# edit variables
+#   * gcp_project = bacalhau-development
+#   * region = XXX
+#   * zone = XXX
+#   * bacalhau_unsafe_cluster = true
+# IMPORTANT - make sure you set bacalhau_unsafe_cluster = true
+vi $WORKSPACE.tfvars
+# create a new workspace state file for this cluster
+terraform workspace new $WORKSPACE
+# make sure gcloud is connected to the correct project and compute zone for our workspace
+bash scripts/connect_workspace.sh $WORKSPACE
+# get the first node up and running
+terraform apply \
+  -var-file $WORKSPACE.tfvars
+```
+
+# Deleting clusters
+
+For the moment - we have `prevent_destroy = true` on both the disks and ip addresses.
+
+This will prevent a `terraform destroy -var-file $WORKSPACE.tfvars` command from working.
+
+Until we have a better solution - edit `main.tf` and update to `prevent_destroy = false`
+
+**IMPORTANT:** remember to set `prevent_destroy = false` and don't commit `main.tf` with `prevent_destroy = true`
+
+TODO: find a way to to this better and avoid commits that set `prevent_destroy = false`
+
+Once you have deleted a cluster - don't forget to:
+
+```bash
+terraform workspace delete $WORKSPACE
+rm -f $WORKSPACE.tfvars
 ```

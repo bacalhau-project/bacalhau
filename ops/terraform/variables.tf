@@ -9,12 +9,14 @@ variable "bacalhau_port" {
 # it will result in node0 having an unsafe private key
 variable "bacalhau_unsafe_cluster" {
   type = bool
+  default = false
 }
 # connect to a known node0 id
 # this is used for long lived clusters that have already been bootstrapped
 # and the node0 id is derived from a persisted known private key
 variable "bacalhau_connect_node0" {
   type = string
+  default = ""
 }
 variable "ipfs_version" {
   type = string

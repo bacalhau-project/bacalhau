@@ -122,6 +122,7 @@ EOI
   fi
 fi
 
+# TODO: refactor this out into a script so it's easier to read
 # we need this as a script so we can write some terraform variables
 # into the startup script that is then called by systemd
 sudo tee /start-bacalhau.sh > /dev/null <<'EOI'
@@ -138,7 +139,7 @@ export BACALHAU_NODE0_ID="${var.bacalhau_connect_node0 != "" ? var.bacalhau_conn
 export BACALHAU_NODE0_MULTIADDRESS="/ip4/$BACALHAU_NODE0_IP/tcp/${var.bacalhau_port}/p2p/$BACALHAU_NODE0_ID"
 # work out if we actually want to connect to that multiaddress
 # if we are > node0 and have either an explicit node0 id or are in unsafe mode - then we do want to connect
-export BACALHAU_CONNECT_PEER="${count.index > 0 && (var.bacalhau_connect_node0 || var.bacalhau_short_lived_cluster) ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
+export BACALHAU_CONNECT_PEER="${count.index > 0 && (var.bacalhau_connect_node0 != "" || var.bacalhau_unsafe_cluster) ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
 bacalhau serve \
   --job-selection-data-locality anywhere \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
