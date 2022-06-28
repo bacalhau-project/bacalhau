@@ -148,14 +148,24 @@ func (gt *GenericTransport) HostID(ctx context.Context) (
 func (gt *GenericTransport) List(ctx context.Context) (
 	ListResponse, error) {
 
+	response := map[string]*executor.Job{}
+
+	gt.mutex.RLock()
+	defer gt.mutex.RUnlock()
+	for k, v := range gt.jobs {
+		response[k] = v
+	}
+
 	return ListResponse{
-		Jobs: gt.jobs,
+		Jobs: response,
 	}, nil
 }
 
 func (gt *GenericTransport) Get(ctx context.Context, id string) (
 	*executor.Job, error) {
 
+	gt.mutex.RLock()
+	defer gt.mutex.RUnlock()
 	job, ok := gt.jobs[id]
 	if !ok {
 		return nil, fmt.Errorf("job not found in transport: %s", id)
