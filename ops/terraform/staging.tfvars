@@ -10,4 +10,3 @@ zone                  = "southamerica-east1-b"
 volume_size_gb        = 10
 keep_disks            = true
 machine_type          = "e2-standard-4"
-rollout_phase         = "staging"

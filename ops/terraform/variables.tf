@@ -59,7 +59,3 @@ variable "ssh_access_cidrs" {
   type    = set(string)
   default = []
 }
-
-variable "rollout_phase" {
-  type = string
-}

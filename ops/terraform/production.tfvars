@@ -11,4 +11,3 @@ volume_size_gb        = 500
 boot_disk_size_gb     = 500
 keep_disks            = true
 machine_type          = "e2-standard-16"
-rollout_phase         = "production"

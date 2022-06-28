@@ -97,19 +97,18 @@ if [ ! -e /data/ipfs/version ]; then
   ipfs init
 fi
 
-sudo tee /etc/systemd/system/multi-user.target.wants/ipfs-daemon.service > /dev/null <<'EOI'
+sudo tee /etc/systemd/system/ipfs-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/configs/ipfs-daemon.service")}
 EOI
 
-sudo tee /etc/systemd/system/multi-user.target.wants/bacalhau-daemon.service > /dev/null <<'EOI'
+sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/configs/bacalhau-daemon.service")}
 EOI
 
 # write the unsafe private key to node0 if we are in auto connect mode
-sudo mkdir -p /data/.bacalhau
-if [ ! -f /data/.bacalhau/private_key.${var.bacalhau_port} ]; then
-  
-fi
+# sudo mkdir -p /data/.bacalhau
+# if [ ! -f /data/.bacalhau/private_key.${var.bacalhau_port} ]; then
+# fi
 
 # we need this as a script so we can write some terraform variables
 # into the startup script that is then called by systemd
@@ -129,6 +128,8 @@ bacalhau serve \
 EOI
 
 sudo systemctl daemon-reload
+sudo systemctl enable ipfs-daemon.service
+sudo systemctl enable bacalhau-daemon.service
 sudo systemctl start ipfs-daemon
 sudo systemctl start bacalhau-daemon
 
@@ -144,6 +145,7 @@ EOI
 EOF
   network_interface {
     network = google_compute_network.bacalhau_network.name
+    subnetwork = google_compute_subnetwork.bacalhau_subnetwork.name
 
     access_config {
       nat_ip = google_compute_address.ipv4_address[count.index].address
@@ -263,6 +265,14 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
   source_ranges = var.ssh_access_cidrs
 }
 
+resource "google_compute_subnetwork" "bacalhau_subnetwork" {
+  name          = "bacalhau-subnetwork-${terraform.workspace}"
+  ip_cidr_range = "192.168.0.0/16"
+  region        = var.region
+  network       = google_compute_network.bacalhau_network.id
+}
+
 resource "google_compute_network" "bacalhau_network" {
   name = "bacalhau-network-${terraform.workspace}"
+  auto_create_subnetworks = false
 }
