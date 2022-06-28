@@ -56,7 +56,7 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "run",
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
@@ -87,7 +87,7 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "run",
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
@@ -158,7 +158,7 @@ func (suite *RunSuite) TestRun_Annotations() {
 				assert.NoError(suite.T(), err)
 
 				var args []string
-				args = append(args, "run", "--api-host", host, "--api-port", port)
+				args = append(args, "docker", "run", "--api-host", host, "--api-port", port)
 				for _, label := range labelTest.Annotations {
 					args = append(args, "annotations", label)
 				}
