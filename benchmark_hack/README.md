@@ -16,6 +16,7 @@ export API_PORT_0=35601
 test one job
 
 ```
+cd benchmark_hack
 ./submit.sh
 ```
 
