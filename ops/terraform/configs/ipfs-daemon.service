@@ -1,0 +1,9 @@
+[Unit]
+Description=IPFS Daemon
+
+[Service]
+Environment="IPFS_PATH=/data/ipfs"
+ExecStart=/usr/bin/sh -c "ipfs daemon 2>&1 | tee -a /tmp/ipfs.log"
+
+[Install]
+WantedBy=multi-user.target

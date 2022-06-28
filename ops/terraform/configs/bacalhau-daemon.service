@@ -1,0 +1,10 @@
+[Unit]
+Description=Bacalhau Daemon
+
+[Service]
+Environment="LOG_LEVEL=debug"
+Environment="BACALHAU_PATH=/data"
+ExecStart=/usr/bin/sh -c "bash /start-bacalhau.sh 2>&1 | tee -a /tmp/bacalhau.log"
+
+[Install]
+WantedBy=multi-user.target
