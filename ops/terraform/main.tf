@@ -133,6 +133,9 @@ EOF
 resource "google_compute_address" "ipv4_address" {
   name  = var.rollout_phase == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${var.rollout_phase}-${count.index}"
   count = var.instance_count
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 output "public_ip_address" {
@@ -146,7 +149,6 @@ resource "google_compute_disk" "bacalhau_disk" {
   zone     = var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
-
   lifecycle {
     prevent_destroy = true
   }
