@@ -89,18 +89,18 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 	return storage.HasStorage(ctx, volume)
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
+func (e *Executor) RunJob(ctx context.Context, runningJob *executor.Job) (
 	string, error) {
 
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
-	spec := job.Spec
+	spec := runningJob.Spec
 	if spec == nil {
 		return "", fmt.Errorf("no job spec provided to docker executor")
 	}
 
-	jobResultsDir, err := e.ensureJobResultsDir(job)
+	jobResultsDir, err := e.ensureJobResultsDir(runningJob)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +110,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	mounts := []mount.Mount{}
 
 	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range job.Spec.Inputs {
+	for _, inputStorage := range runningJob.Spec.Inputs {
 		storageProvider, err := e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
 			return "", err
@@ -147,7 +147,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range job.Spec.Outputs {
+	for _, output := range runningJob.Spec.Outputs {
 		if output.Name == "" {
 			return "", fmt.Errorf("output volume has no name: %+v", output)
 		}
@@ -189,21 +189,21 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 
 		stdout, err := system.RunCommandGetResults(
 			"docker",
-			[]string{"pull", job.Spec.Docker.Image},
+			[]string{"pull", runningJob.Spec.Docker.Image},
 		)
 		if err != nil {
 			return "", err
 		}
 
-		log.Trace().Msgf("Pull image output: %s\n%s", job.Spec.Docker.Image, stdout)
+		log.Trace().Msgf("Pull image output: %s\n%s", runningJob.Spec.Docker.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
-		Image:           job.Spec.Docker.Image,
+		Image:           runningJob.Spec.Docker.Image,
 		Tty:             false,
-		Env:             job.Spec.Docker.Env,
-		Entrypoint:      job.Spec.Docker.Entrypoint,
-		Labels:          e.jobContainerLabels(job),
+		Env:             runningJob.Spec.Docker.Env,
+		Entrypoint:      runningJob.Spec.Docker.Entrypoint,
+		Labels:          e.jobContainerLabels(runningJob),
 		NetworkDisabled: true,
 	}
 
@@ -217,13 +217,13 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 		},
 		&network.NetworkingConfig{},
 		nil,
-		e.jobContainerName(job),
+		e.jobContainerName(runningJob),
 	)
 	if err != nil {
 		return "", err
 	}
 
-	defer e.cleanupJob(job)
+	defer e.cleanupJob(runningJob)
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,

@@ -17,11 +17,12 @@ terraform init
 ```
 
 ```
+terraform workspace select production
 terraform apply -var-file production.tfvars
 ```
 
 TODO:
-* [ ] State file in GCS
-* [ ] Increase disk quota
+* [x] State file in GCS
+* [x] Increase disk quota
 * [x] Actually use the attached disks for ipfs
 * [x] Write bacalhau keypair to attached disk

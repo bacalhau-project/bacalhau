@@ -138,7 +138,7 @@ func NewDevStack(
 
 		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
 		go func(ctx context.Context) {
-			if err := apiServer.ListenAndServe(ctx); err != nil {
+			if err := apiServer.ListenAndServe(ctx, cm); err != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
 		}(context.Background())

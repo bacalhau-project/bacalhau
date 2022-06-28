@@ -155,11 +155,15 @@ clean:
 ################################################################################
 .PHONY: test
 test: build-ipfs-sidecar-image
+	go test ./... -v
+
+.PHONY: test-debug
+test-debug: build-ipfs-sidecar-image
 	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: test-one
 test-one:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
 test-devstack:
@@ -182,11 +186,11 @@ test-pythonwasm:
 ################################################################################
 .PHONY: devstack
 devstack:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack
+	BACALHAU_RUNTIME=docker go run . devstack
 
 .PHONY: devstack-badactor
 devstack-badactor:
-	LOG_LEVEL=debug BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1
+	BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1
 
 ################################################################################
 # Target: lint					                               #
