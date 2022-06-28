@@ -58,11 +58,9 @@ terraform plan -var-file production.tfvars
 
 # Deploying Bacalhau mainnet!
 
+The normal operation is to edit `production.tfvars` and then:
+
 ```bash
-cd ops/terraform
-# make sure you are logged into the google user that has access to our gcloud projects
-gcloud auth application-default login
-terraform init
 # make sure gcloud is connected to the correct project and compute zone for our workspace
 bash scripts/connect_workspace.sh production
 # apply the latest varibales

@@ -23,6 +23,6 @@ function get_variable() {
   cat $VARIABLES_FILE | grep "$1" | awk '{print $3}'
 }
 
-gcloud config set project $(get_variable gcp_project)
-gcloud config set compute/zone $(get_variable zone)
-terraform workspace select $WORKSPACE
+eval "gcloud config set project $(get_variable gcp_project)"
+eval "gcloud config set compute/zone $(get_variable zone)"
+eval "terraform workspace select $WORKSPACE"
