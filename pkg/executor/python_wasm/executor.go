@@ -46,7 +46,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
-	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:0.0.1"
+	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:4f60e3d7c52b1bf210b0def2076fdc01ec7c67ad"
 	job.Spec.Engine = executor.EngineDocker
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
 	return e.executors[executor.EngineDocker].RunJob(ctx, job)

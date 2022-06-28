@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/rs/zerolog/log"
@@ -134,9 +135,17 @@ var runPythonCmd = &cobra.Command{
 		}
 
 		var buf bytes.Buffer
+
+		if contextPath == "." && requirementsPath == "" && programPath == "" {
+			log.Info().Msgf("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+			contextPath = ""
+		}
+
 		if contextPath != "" {
 			// construct a tar file from the contextPath directory
 			// tar + gzip
+			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel")
+			time.Sleep(1 * time.Second)
 			err = compress(contextPath, &buf)
 			if err != nil {
 				return err
@@ -196,7 +205,7 @@ func compress(src string, buf io.Writer) error {
 	} else if mode.IsDir() { // folder
 
 		// walk through every file in the folder
-		filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+		filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, file)
 			if err != nil {
