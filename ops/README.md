@@ -34,7 +34,6 @@ terraform init
 terraform workspace list
 ```
 
-<<<<<<< HEAD
 Terraform state is managed using workspaces - there is a GCS bucket called `bacalhau-global-storage` the lives in the `bacalhau-cicd` project that keeps the tfstate for each workspace.
 
 Combined with a `<workspace-name>.tfvars` variables file that controls which google project we deploy to - we can manage multiple bacalhau clusters into the same gcloud project.
@@ -49,14 +48,10 @@ bash scripts/gcloud_connect.sh production
 cd terraform
 terraform init
 # switch to the correct terraform workspace state file
-=======
-```
->>>>>>> main
 terraform workspace select production
 terraform apply -var-file production.tfvars
 ```
 
-<<<<<<< HEAD
 # Stand up a new long lived cluster
 
 To start a new long lived cluster - we need to first standup the first node and get it's libp2p id and then re-apply the cluster
@@ -92,10 +87,3 @@ vi $WORKSPACE.tfvars
 terraform apply \
   -var-file $WORKSPACE.tfvars
 ```
-=======
-TODO:
-* [x] State file in GCS
-* [x] Increase disk quota
-* [x] Actually use the attached disks for ipfs
-* [x] Write bacalhau keypair to attached disk
->>>>>>> main
