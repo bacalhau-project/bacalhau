@@ -127,12 +127,14 @@ The outcome of this lifecycle is that a requestor node is able to list the resul
 
 A job includes the concept of input and output volumes and the docker executor implements support for these. This means you can specific ipfs CIDs and input paths and also write results to an output volume - this can be seen by the following example:
 
+```
 cid=$(ipfs add file.txt)
 bacalhau docker run \
   -v $cid:/file.txt \
   -o apples:/output_folder \
   ubuntu \
   bash -c 'cat /file.txt > /output_folder/file.txt'
+```
 
 The above example demonstrates an input volume flag “-v $cid:/file.txt”, which mounts the contents of $cid within the docker container at location /file.txt (root).
 
