@@ -1,9 +1,9 @@
 #!/bin/bash
-set -xeuo pipefail
+set -euo pipefail
 
 export iterationid="$1"
 
-sudo tee ./results/parameters-${RUN_ID}.json > /dev/null <<"EOI"
+sudo tee ./results/parameters-${RUN_ID}.json > /dev/null <<EOI
 {
 "TOTAL_JOBS": $TOTAL_JOBS,
 "BATCH_SIZE": $BATCH_SIZE,
