@@ -68,42 +68,6 @@ terraform plan -var-file production.tfvars
 terraform apply -var-file production.tfvars
 ```
 
-# Stand up a new short lived cluster
-
-This is for scale tests or short lived tests on a live network.
-
-We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other.
-
-We set `protect_resources=false` so we can easily delete the cluster when we are done.
-
-```bash
-export WORKSPACE=oranges
-cp shortlived_example.tfvars $WORKSPACE.tfvars
-# edit variables
-#   * gcp_project = bacalhau-development
-#   * region = XXX
-#   * zone = XXX
-vi $WORKSPACE.tfvars
-# create a new workspace state file for this cluster
-terraform workspace new $WORKSPACE
-# make sure gcloud is connected to the correct project and compute zone for our workspace
-bash scripts/connect_workspace.sh $WORKSPACE
-# get the first node up and running
-terraform apply \
-  -var-file $WORKSPACE.tfvars
-sleep 10
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
-```
-
-# Deleting short lived cluster
-
-```bash
-export WORKSPACE=oranges
-bash scripts/connect_workspace.sh $WORKSPACE
-terraform destroy \
-  -var-file $WORKSPACE.tfvars
-```
-
 # Stand up a new long lived cluster
 
 To start a new long lived cluster - we need to first standup the first node and get it's libp2p id and then re-apply the cluster
@@ -161,6 +125,44 @@ Once you have deleted a cluster - don't forget to:
 ```bash
 terraform workspace delete $WORKSPACE
 rm -f $WORKSPACE.tfvars
+```
+
+# Stand up a new short lived cluster
+
+**NOTE** for the moment - use the long lived cluster method until [this issue](https://github.com/filecoin-project/bacalhau/issues/300) is resolved.
+
+This is for scale tests or short lived tests on a live network.
+
+We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other.
+
+We set `protect_resources=false` so we can easily delete the cluster when we are done.
+
+```bash
+export WORKSPACE=oranges
+cp shortlived_example.tfvars $WORKSPACE.tfvars
+# edit variables
+#   * gcp_project = bacalhau-development
+#   * region = XXX
+#   * zone = XXX
+vi $WORKSPACE.tfvars
+# create a new workspace state file for this cluster
+terraform workspace new $WORKSPACE
+# make sure gcloud is connected to the correct project and compute zone for our workspace
+bash scripts/connect_workspace.sh $WORKSPACE
+# get the first node up and running
+terraform apply \
+  -var-file $WORKSPACE.tfvars
+sleep 10
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
+```
+
+# Deleting short lived cluster
+
+```bash
+export WORKSPACE=oranges
+bash scripts/connect_workspace.sh $WORKSPACE
+terraform destroy \
+  -var-file $WORKSPACE.tfvars
 ```
 
 
