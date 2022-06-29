@@ -37,6 +37,10 @@ variable "boot_disk_size_gb" {
   type = number
   default = 10
 }
+variable "protect_resources" {
+  type    = bool
+  default = true
+}
 variable "restore_from_backup" {
   type    = string
   default = ""

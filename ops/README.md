@@ -64,6 +64,7 @@ The normal operation is to edit `production.tfvars` and then:
 # make sure gcloud is connected to the correct project and compute zone for our workspace
 bash scripts/connect_workspace.sh production
 # apply the latest varibales
+terraform plan -var-file production.tfvars
 terraform apply -var-file production.tfvars
 ```
 
@@ -105,22 +106,42 @@ terraform apply \
   -var-file $WORKSPACE.tfvars
 ```
 
+# Deleting long lived cluster
+
+There is `prevent_destroy = true` on long lived clusters.
+
+This is controlled by the `protect_resources = true` variable.
+
+The only way to delete a long lived cluster (because you've thought hard about it and have decided it is actually what you want to do) is to edit the `main.tf` file and set `prevent_destroy = false` on the ip address and the disk before doing:
+
+```bash
+terraform destroy -var-file $WORKSPACE.tfvars
+```
+
+**IMPORTANT:** remember to reset `prevent_destroy = true` in `main.tf` (please don't commit it with `prevent_destroy = false`)
+
+Once you have deleted a cluster - don't forget to:
+
+```bash
+terraform workspace delete $WORKSPACE
+rm -f $WORKSPACE.tfvars
+```
+
 # Stand up a new short lived cluster
 
 This is for scale tests or short lived tests on a live network.
 
+We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other.
+
+We set `protect_resources=false` so we can easily delete the cluster when we are done.
+
 ```bash
-# make sure you are logged into the google user that has access to our gcloud projects
-gcloud auth application-default login
-# the name of the cluster (and workspace)
 export WORKSPACE=oranges
-cp staging.tfvars $WORKSPACE.tfvars
+cp shortlived_example.tfvars $WORKSPACE.tfvars
 # edit variables
 #   * gcp_project = bacalhau-development
 #   * region = XXX
 #   * zone = XXX
-#   * bacalhau_unsafe_cluster = true
-# IMPORTANT - make sure you set bacalhau_unsafe_cluster = true
 vi $WORKSPACE.tfvars
 # create a new workspace state file for this cluster
 terraform workspace new $WORKSPACE
@@ -131,23 +152,13 @@ terraform apply \
   -var-file $WORKSPACE.tfvars
 ```
 
-# Deleting clusters
-
-For the moment - we have `prevent_destroy = true` on both the disks and ip addresses.
-
-This will prevent a `terraform destroy -var-file $WORKSPACE.tfvars` command from working.
-
-Until we have a better solution - edit `main.tf` and update to `prevent_destroy = false`
-
-**IMPORTANT:** remember to set `prevent_destroy = false` and don't commit `main.tf` with `prevent_destroy = true`
-
-TODO: find a way to to this better and avoid commits that set `prevent_destroy = false`
-
-Once you have deleted a cluster - don't forget to:
+# Deleting short lived cluster
 
 ```bash
-terraform workspace delete $WORKSPACE
-rm -f $WORKSPACE.tfvars
+export WORKSPACE=oranges
+bash scripts/connect_workspace.sh $WORKSPACE
+terraform destroy \
+  -var-file $WORKSPACE.tfvars
 ```
 
 # Debugging startup issues
@@ -159,3 +170,24 @@ export WORKSPACE=apples
 bash scripts/connect_workspace.sh $WORKSPACE
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo journalctl -u google-startup-scripts.service
 ```
+
+# Backwards compatible naming
+
+In some resources, the `name` property of a resource is calculated like this:
+
+```
+name  = terraform.workspace == "production" ? 
+  "bacalhau-ipv4-address-${count.index}" :
+  "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
+```
+
+This is a backwards compatible mode to preserve the production disks and ip addresses by avoiding renaming them.
+
+# Protected resources
+
+The disks and ip addresses are in one of two modes:
+
+ * `protected`
+ * `unprotected`
+
+To control which type is used - you set the `protect_resources` variable to true when creating a cluster.

@@ -8,3 +8,4 @@ region                 = "southamerica-east1"
 zone                   = "southamerica-east1-b"
 volume_size_gb         = 10
 machine_type           = "e2-standard-4"
+protect_resources      = true

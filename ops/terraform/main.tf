@@ -42,8 +42,8 @@ sudo mkdir -p /terraform_node
 
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
 export TERRAFORM_NODE_INDEX="${count.index}"
-export TERRAFORM_NODE_IP="${google_compute_address.ipv4_address[count.index].address}"
-export TERRAFORM_NODE0_IP="${google_compute_address.ipv4_address[0].address}"
+export TERRAFORM_NODE_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
+export TERRAFORM_NODE0_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
 export IPFS_VERSION="${var.ipfs_version}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
 export BACALHAU_PORT="${var.bacalhau_port}"
@@ -99,7 +99,7 @@ ${google_compute_network.bacalhau_network.name}
 EOI
 
 sudo tee /var/www/health_checker/address.txt > /dev/null <<EOI
-${google_compute_address.ipv4_address[count.index].address}
+${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}
 EOI
 
 sudo chmod u+x /var/www/health_checker/*.sh
@@ -127,7 +127,7 @@ EOF
     subnetwork = google_compute_subnetwork.bacalhau_subnetwork.name
 
     access_config {
-      nat_ip = google_compute_address.ipv4_address[count.index].address
+      nat_ip = var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address
     }
   }
 
@@ -144,10 +144,16 @@ EOF
 resource "google_compute_address" "ipv4_address" {
   # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
   name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
-  count = var.instance_count
+  count = var.protect_resources ? var.instance_count : 0
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
+}
+
+resource "google_compute_address" "ipv4_address_unprotected" {
+  # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
+  name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
+  count = var.protect_resources ? 0 : var.instance_count
 }
 
 output "public_ip_address" {
@@ -157,20 +163,29 @@ output "public_ip_address" {
 resource "google_compute_disk" "bacalhau_disk" {
   # keep the same disk names if we are production because the libp2p ids are in the auto connect serve codebase
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
-  count    = var.instance_count
+  count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
   zone     = var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
+}
 
+resource "google_compute_disk" "bacalhau_disk_unprotected" {
+  # keep the same disk names if we are production because the libp2p ids are in the auto connect serve codebase
+  name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
+  count    = var.protect_resources ? 0 : var.instance_count
+  type     = "pd-ssd"
+  zone     = var.zone
+  size     = var.volume_size_gb
+  snapshot = var.restore_from_backup
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
   name  = google_compute_resource_policy.bacalhau_disk_backups.name
-  disk  = google_compute_disk.bacalhau_disk[count.index].name
+  disk  = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].name : google_compute_disk.bacalhau_disk_unprotected[count.index].name
   zone  = var.zone
   count = var.instance_count
 }
@@ -199,7 +214,7 @@ resource "google_compute_resource_policy" "bacalhau_disk_backups" {
 }
 
 resource "google_compute_attached_disk" "default" {
-  disk     = google_compute_disk.bacalhau_disk[count.index].self_link
+  disk     = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].self_link : google_compute_disk.bacalhau_disk_unprotected[count.index].self_link
   instance = google_compute_instance.bacalhau_vm[count.index].self_link
   count    = var.instance_count
 }
