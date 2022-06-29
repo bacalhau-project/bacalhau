@@ -17,7 +17,7 @@ import (
 
 var devStackNodes int
 var devStackBadActors int
-var devStackNoopExecutor bool
+var devStackNoop bool
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
@@ -29,8 +29,8 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`How many nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
-		&devStackNoopExecutor, "noop-executor", false,
-		`Use the noop executor for all jobs`,
+		&devStackNoop, "noop", false,
+		`Use the noop executor and verifier for all jobs`,
 	)
 }
 
@@ -54,7 +54,7 @@ var devstackCmd = &cobra.Command{
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 			map[executor.EngineType]executor.Executor, error) {
 
-			if devStackNoopExecutor {
+			if devStackNoop {
 				return executor_util.NewNoopExecutors(cm)
 			}
 
@@ -64,6 +64,10 @@ var devstackCmd = &cobra.Command{
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 			map[verifier.VerifierType]verifier.Verifier, error) {
+
+			if devStackNoop {
+				return verifier_util.NewNoopVerifiers(cm)
+			}
 
 			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 		}

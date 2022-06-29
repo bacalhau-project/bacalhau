@@ -186,7 +186,7 @@ devstack:
 
 .PHONY: devstack-noop
 devstack-noop:
-	go run . devstack --noop-executor
+	go run . devstack --noop
 
 .PHONY: devstack-race
 devstack-race:
