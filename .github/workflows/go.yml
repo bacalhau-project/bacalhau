@@ -75,6 +75,7 @@ jobs:
           curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           sudo rm -rf /usr/local/go 
           sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          echo "/usr/local/go:$GITHUB_PATH" > $GITHUB_PATH
 
       - name: echo PATH
         run: echo $PATH
