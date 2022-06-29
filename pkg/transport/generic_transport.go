@@ -111,7 +111,8 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context,
 
 	// Actually notify in-process listeners:
 	for _, subscribeFunc := range gt.SubscribeFuncs {
-		go subscribeFunc(jobCtx, event, gt.jobs[event.JobId])
+		j := gt.jobs[event.JobId]
+		go subscribeFunc(jobCtx, event, j)
 	}
 }
 
