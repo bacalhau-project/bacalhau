@@ -1,6 +1,6 @@
 module github.com/filecoin-project/bacalhau
 
-go 1.17
+go 1.18
 
 require (
 	github.com/docker/docker v20.10.14+incompatible
@@ -17,7 +17,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rs/zerolog v1.26.1
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.7.2
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.32.0

@@ -43,7 +43,7 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
-	tableIdFilter = ""
+	tableIDFilter = ""
 	tableSortReverse = false
 
 	tests := []struct {
@@ -93,7 +93,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for i := 0; i < 10; i++ {
 		spec, deal := publicapi.MakeNoopJob()
 		job, err := c.Submit(ctx, spec, deal)
-		jobIds = append(jobIds, shortId(job.Id))
+		jobIds = append(jobIds, shortID(job.ID))
 		assert.NoError(suite.T(), err)
 	}
 
@@ -111,7 +111,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for _, line := range strings.Split(out, "\n") {
 		parts := strings.Split(line, " ")
 		if len(parts) > 2 {
-			seenIds = append(seenIds, strings.Split(line, " ")[3])
+			seenIds = append(seenIds, strings.Split(line, " ")[1])
 		}
 	}
 
@@ -122,7 +122,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 func (suite *ListSuite) TestList_SortFlags() {
 	var badSortFlag = "BADSORTFLAG"
 	var createdAtSortFlag = "created_at"
-	tableIdFilter = ""
+	tableIDFilter = ""
 	tableSortReverse = false
 
 	combinationOfJobSizes := []struct {
@@ -157,12 +157,12 @@ func (suite *ListSuite) TestList_SortFlags() {
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
 
-				jobIds := []string{}
+				jobIDs := []string{}
 				for i := 0; i < tc.numberOfJobs; i++ {
 					spec, deal := publicapi.MakeNoopJob()
-					job, err := c.Submit(ctx, spec, deal)
+					j, err := c.Submit(ctx, spec, deal)
 					assert.NoError(suite.T(), err)
-					jobIds = append(jobIds, shortId(job.Id))
+					jobIDs = append(jobIDs, shortID(j.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ
@@ -207,22 +207,22 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 					if tc.numberOfJobsOutput > 0 {
 
-						// jobIds are already sorted by created ASC
+						// jobIDs are already sorted by created ASC
 						if sortFlags.sortFlag == string(ColumnID) {
-							sort.Strings(jobIds)
+							sort.Strings(jobIDs)
 						}
 
 						if sortFlags.reverseFlag {
-							jobIds = ReverseList(jobIds)
+							jobIDs = ReverseList(jobIDs)
 						}
 
-						compareIds := jobIds[0:tc.numberOfJobsOutput]
+						compareIds := jobIDs[0:tc.numberOfJobsOutput]
 						seenIds := []string{}
 
 						for _, line := range strings.Split(out, "\n") {
 							parts := strings.Split(line, " ")
 							if len(parts) > 2 {
-								seenIds = append(seenIds, strings.Split(line, " ")[3])
+								seenIds = append(seenIds, strings.Split(line, " ")[1])
 							}
 						}
 

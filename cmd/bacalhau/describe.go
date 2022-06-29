@@ -15,7 +15,7 @@ import (
 
 var id string
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 	describeCmd.PersistentFlags().StringVarP(&id, "id", "i", "", `show all information related to a job.`)
 }
 
@@ -52,12 +52,13 @@ type jobDealDescription struct {
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 
+// nolintunparam // incorrectly suggesting unused
 var describeCmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Describe a job on the network",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		if len(id) == 0 {
-			err := fmt.Errorf("Please submit an id with the --id flag.")
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
+		if id == "" {
+			err := fmt.Errorf("please submit an id with the --id flag")
 			log.Error().Msgf(err.Error())
 			return err
 		}
@@ -69,17 +70,17 @@ var describeCmd = &cobra.Command{
 		}
 
 		jobVMDesc := &jobSpecVMDescription{}
-		jobVMDesc.Image = job.Spec.Vm.Image
-		jobVMDesc.Entrypoint = job.Spec.Vm.Entrypoint
-		jobVMDesc.Env = job.Spec.Vm.Env
+		jobVMDesc.Image = job.Spec.VM.Image
+		jobVMDesc.Entrypoint = job.Spec.VM.Entrypoint
+		jobVMDesc.Env = job.Spec.VM.Env
 
-		cpuVal, _ := strconv.Atoi(job.Spec.Vm.Cpu)
+		cpuVal, _ := strconv.Atoi(job.Spec.VM.CPU)
 		jobVMDesc.CPU = cpuVal
 
-		memoryVal, _ := strconv.Atoi(job.Spec.Vm.Memory)
+		memoryVal, _ := strconv.Atoi(job.Spec.VM.Memory)
 		jobVMDesc.Memory = memoryVal
 
-		diskVal, _ := strconv.Atoi(job.Spec.Vm.Disk)
+		diskVal, _ := strconv.Atoi(job.Spec.VM.Disk)
 		jobVMDesc.Disk = diskVal
 
 		jobSpecDesc := &jobSpecDescription{}
@@ -94,7 +95,7 @@ var describeCmd = &cobra.Command{
 		jobSpecDesc.VM = *jobVMDesc
 
 		jobDesc := &jobDescription{}
-		jobDesc.ID = job.Id
+		jobDesc.ID = job.ID
 		jobDesc.Owner = job.Owner
 		jobDesc.Spec = *jobSpecDesc
 		jobDesc.Deal = *job.Deal

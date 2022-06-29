@@ -22,7 +22,7 @@ var skipSyntaxChecking bool
 var jobLabels []string
 var flagClearLabels bool
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
@@ -78,7 +78,7 @@ var dockerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
@@ -109,7 +109,7 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		if !skipSyntaxChecking {
-			err := system.CheckBashSyntax(jobEntrypoint)
+			err = system.CheckBashSyntax(jobEntrypoint)
 			if err != nil {
 				return err
 			}
@@ -120,7 +120,7 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", job.Id)
+		fmt.Printf("%s\n", job.ID)
 		return nil
 	},
 }

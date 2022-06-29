@@ -27,7 +27,7 @@ func TestIPFSVerifier(t *testing.T) {
 	assert.NoError(t, err)
 
 	verifier, err := ipfs.NewVerifier(
-		cm, stack.Nodes[0].IpfsNode.ApiAddress())
+		cm, stack.Nodes[0].IpfsNode.APIAddress())
 	assert.NoError(t, err)
 
 	installed, err := verifier.IsInstalled(ctx)

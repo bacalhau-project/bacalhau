@@ -11,12 +11,10 @@ func NewVerifier() (*Verifier, error) {
 	return &Verifier{}, nil
 }
 
-func (verifier *Verifier) IsInstalled(ctx context.Context) (bool, error) {
+func (v *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (verifier *Verifier) ProcessResultsFolder(ctx context.Context,
-	jobID, resultsFolder string) (string, error) {
-
+func (v *Verifier) ProcessResultsFolder(ctx context.Context, jobID, resultsFolder string) (string, error) {
 	return resultsFolder, nil
 }

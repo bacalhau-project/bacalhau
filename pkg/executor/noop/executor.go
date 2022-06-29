@@ -22,15 +22,11 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context,
-	volume storage.StorageSpec) (bool, error) {
-
+func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
-	string, error) {
-
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	e.Jobs = append(e.Jobs, job)
 	return "", nil
 }

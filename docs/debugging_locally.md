@@ -15,7 +15,7 @@ LOG_LEVEL=debug go run . devstack
 An example of printing a log at a certain level (this is literally just using the zero log library):
 
 ```go
-log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeId, job.Id)
+log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.Id)
 ```
 
 We also have the `LOG_TYPE` variable which controls what format the log messages are printed in:
@@ -48,7 +48,7 @@ An example of calling the event log library:
 
 ```go
 logger.LogJobEvent(logger.JobEvent{
-  Node: nodeId,
+  Node: nodeID,
   Type: "compute_node:run",
   Job:  job.Id,
   Data: job,

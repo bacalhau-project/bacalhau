@@ -1,4 +1,4 @@
-package fuse_docker
+package fusedocker
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -31,28 +32,28 @@ import (
 // host folders e.g. -v /tmp/ipfs_mnt/123:/file.txt
 
 // TODO: this should come from a CI build
-const BACALHAU_IPFS_FUSE_IMAGE string = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
-const BACALHAU_IPFS_FUSE_MOUNT = "/ipfs_mount"
+const BacalhauIPFSFuseImage string = "binocarlos/bacalhau-ipfs-sidecar-image:v1"
+const BacalhauIPFSFuseMount = "/ipfs_mount"
+const MaxAttemptsForDocker = 5
 
 type StorageProvider struct {
 	// we have a single mutex per storage driver
 	// (multuple of these might exist per docker server in the case of devstack)
 	// the job of this mutex is to stop a race condition starting two sidecars
 	Mutex        sync.Mutex
-	Id           string
-	IPFSClient   *ipfs_http.IPFSHttpClient
+	ID           string
+	IPFSClient   *ipfs_http.IPFSHTTPClient
 	DockerClient *dockerclient.Client
 }
 
 func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	*StorageProvider, error) {
-
-	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
+	api, err := ipfs_http.NewIPFSHTTPClient(ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	peerId, err := api.GetPeerId(context.Background())
+	peerID, err := api.GetPeerID(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	}
 
 	storageHandler := &StorageProvider{
-		Id:           peerId,
+		ID:           peerID,
 		IPFSClient:   api,
 		DockerClient: dockerClient,
 	}
@@ -87,14 +88,13 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	}
 	if len(addresses) == 0 {
 		return false, fmt.Errorf(
-			"No multi addresses loaded from remote ipfs server")
+			"no multi addresses loaded from remote ipfs server")
 	}
 	return true, nil
 }
 
 func (sp *StorageProvider) HasStorage(ctx context.Context,
 	volume storage.StorageSpec) (bool, error) {
-
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
 
@@ -108,7 +108,6 @@ func (sp *StorageProvider) HasStorage(ctx context.Context,
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 	storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
-
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
@@ -123,7 +122,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 	}
 
 	volume := &storage.StorageVolume{
-		Type:   storage.STORAGE_VOLUME_TYPE_BIND,
+		Type:   storage.StorageVolumeTypeBind,
 		Source: cidMountPath,
 		Target: storageSpec.Path,
 	}
@@ -135,7 +134,6 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
 	storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
-
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 
@@ -173,7 +171,6 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 	}
 
 	if sidecar == nil {
-
 		// at this point - we know we are "starting" the container
 		// and so we want to loop over:
 		//  * start
@@ -184,8 +181,7 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 			MaxAttempts: 3,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
-
-				sidecar, err := sp.getSidecar()
+				sidecar, err = sp.getSidecar()
 				if err != nil {
 					return false, err
 				}
@@ -227,7 +223,6 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil
@@ -262,7 +257,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 	sidecarContainer, err := sp.DockerClient.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image: BACALHAU_IPFS_FUSE_IMAGE,
+			Image: BacalhauIPFSFuseImage,
 			Tty:   false,
 			Env: []string{
 				// TODO: allow this to be configured - it's the bacalhau host ip
@@ -270,7 +265,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 				// if the upstream ipfs server is on the same host as bacalhau
 				// then we can use 127.0.0.1 because the sidecar uses --net=host
 				fmt.Sprintf("BACALHAU_IPFS_SWARM_ANNOUNCE_IP=%s", "127.0.0.1"),
-				fmt.Sprintf("BACALHAU_IPFS_FUSE_MOUNT=%s", BACALHAU_IPFS_FUSE_MOUNT),
+				fmt.Sprintf("BACALHAU_IPFS_FUSE_MOUNT=%s", BacalhauIPFSFuseMount),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_GATEWAY=%d", gatewayPort),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_API=%d", apiPort),
 				fmt.Sprintf("BACALHAU_IPFS_PORT_SWARM=%d", swarmPort),
@@ -285,7 +280,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 				{
 					Type:   mount.TypeBind,
 					Source: mountDir,
-					Target: BACALHAU_IPFS_FUSE_MOUNT,
+					Target: BacalhauIPFSFuseMount,
 					BindOptions: &mount.BindOptions{
 						Propagation: mount.PropagationRShared,
 					},
@@ -318,13 +313,13 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 		return err
 	}
 
-	logs, err := docker.WaitForContainerLogs(sp.DockerClient, sidecarContainer.ID, 5, time.Second*2, "Daemon is ready")
+	logs, err := docker.WaitForContainerLogs(sp.DockerClient, sidecarContainer.ID, MaxAttemptsForDocker, time.Second*2, "Daemon is ready")
 
 	if err != nil {
 		log.Error().Msg(logs)
 		stopErr := cleanupStorageDriver(sp)
 		if stopErr != nil {
-			err = fmt.Errorf("Original Error: %s\nStop Error: %s\n", err.Error(), stopErr.Error())
+			err = fmt.Errorf("original error: %s\nstop error: %s", err.Error(), stopErr.Error())
 		}
 		return err
 	}
@@ -333,7 +328,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 }
 
 func (sp *StorageProvider) sidecarContainerName() string {
-	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.Id)
+	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.ID)
 }
 
 func (sp *StorageProvider) getSidecar() (*dockertypes.Container, error) {
@@ -356,7 +351,7 @@ func (sp *StorageProvider) getCidMountPath(cid string) (string, error) {
 		return "", err
 	}
 	if mountDir == "" {
-		return "", fmt.Errorf("Mount dir not found")
+		return "", fmt.Errorf("mount dir not found")
 	}
 	return fmt.Sprintf("%s/data/%s", mountDir, cid), nil
 }
@@ -376,23 +371,23 @@ func (sp *StorageProvider) canSeeFuseMount(cid string) bool {
 func cleanupStorageDriver(storageHandler *StorageProvider) error {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
-		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
-	container, err := docker.GetContainer(dockerClient, storageHandler.sidecarContainerName())
+	c, err := docker.GetContainer(dockerClient, storageHandler.sidecarContainerName())
 	if err != nil {
-		return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
-	if container != nil {
-		err = docker.RemoveContainer(dockerClient, container.ID)
+	if c != nil {
+		err = docker.RemoveContainer(dockerClient, c.ID)
 		if err != nil {
-			return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}
 	}
-	mountDir := getMountDirFromContainer(container)
+	mountDir := getMountDirFromContainer(c)
 	if mountDir != "" {
 		err = cleanupMountDir(mountDir)
 		if err != nil {
-			return fmt.Errorf("Docker IPFS sidecar stop error: %s", err.Error())
+			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}
 	}
 	log.Debug().Msgf("Docker IPFS sidecar has stopped")
@@ -405,11 +400,11 @@ func createMountDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = os.MkdirAll(fmt.Sprintf("%s/data", dir), 0777)
+	err = os.MkdirAll(fmt.Sprintf("%s/data", dir), util.OS_ALL_RWX)
 	if err != nil {
 		return "", err
 	}
-	err = os.MkdirAll(fmt.Sprintf("%s/ipns", dir), 0777)
+	err = os.MkdirAll(fmt.Sprintf("%s/ipns", dir), util.OS_ALL_RWX)
 	if err != nil {
 		return "", err
 	}
@@ -434,12 +429,12 @@ func cleanupMountDir(mountDir string) error {
 	return nil
 }
 
-func getMountDirFromContainer(container *dockertypes.Container) string {
-	if container == nil {
+func getMountDirFromContainer(c *dockertypes.Container) string {
+	if c == nil {
 		return ""
 	}
-	for _, mount := range container.Mounts {
-		if mount.Destination == BACALHAU_IPFS_FUSE_MOUNT {
+	for _, mount := range c.Mounts {
+		if mount.Destination == BacalhauIPFSFuseMount {
 			return mount.Source
 		}
 	}
@@ -448,8 +443,7 @@ func getMountDirFromContainer(container *dockertypes.Container) string {
 
 func newSpan(ctx context.Context, apiName string) (
 	context.Context, trace.Span) {
-
-	return system.Span(ctx, "storage/ipfs/fuse_docker", apiName)
+	return system.Span(ctx, "storage/ipfs/fusedocker", apiName)
 }
 
 // Compile-time interface check:

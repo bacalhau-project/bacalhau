@@ -25,12 +25,12 @@ type Executor interface {
 
 // Job contains data about a job running on some execution provider.
 type Job struct {
-	Id string `json:"id"`
+	ID string `json:"id"`
 	// the client node that "owns" this job (as in who submitted it)
 	Owner string   `json:"owner"`
 	Spec  *JobSpec `json:"spec"`
 	Deal  *JobDeal `json:"deal"`
-	// a map of nodeId -> state of the job on that node
+	// a map of nodeID -> state of the job on that node
 	State     map[string]*JobState `json:"state"`
 	CreatedAt time.Time            `json:"created_at"`
 }
@@ -47,7 +47,7 @@ type JobSpec struct {
 	Verifier verifier.VerifierType `json:"verifier"`
 
 	// for VM based executors
-	Vm   JobSpecVm   `json:"job_spec_vm"`
+	VM   JobSpecVM   `json:"job_spec_vm"`
 	Wasm JobSpecWasm `json:"job_spec_wasm"`
 
 	// the data volumes we will read in the job
@@ -62,7 +62,7 @@ type JobSpec struct {
 }
 
 // for VM style executors
-type JobSpecVm struct {
+type JobSpecVM struct {
 	// this should be pullable by docker
 	Image string `json:"image"`
 	// optionally override the default entrypoint
@@ -70,7 +70,7 @@ type JobSpecVm struct {
 	// a map of env to run the container with
 	Env []string `json:"env"`
 	// https://github.com/BTBurke/k8sresource strings
-	Cpu    string `json:"cpu"`
+	CPU    string `json:"cpu"`
 	Memory string `json:"memory"`
 	Disk   string `json:"disk"`
 }
@@ -84,7 +84,7 @@ type JobSpecWasm struct {
 type JobState struct {
 	State     JobStateType `json:"state"`
 	Status    string       `json:"status"`
-	ResultsId string       `json:"results_id"`
+	ResultsID string       `json:"results_id"`
 }
 
 // omly the client can update this as it's the client that will
@@ -101,8 +101,8 @@ type JobDeal struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobId     string       `json:"job_id"`
-	NodeId    string       `json:"node_id"`
+	JobID     string       `json:"job_id"`
+	NodeID    string       `json:"node_id"`
 	EventName JobEventType `json:"event_name"`
 	// this is only defined in "create" events
 	JobSpec *JobSpec `json:"job_spec"`

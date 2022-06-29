@@ -1,4 +1,4 @@
-package compute_node
+package computenode
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
@@ -16,14 +16,14 @@ import (
 func TestRunJob(t *testing.T) {
 
 	EXAMPLE_TEXT := "hello"
-	computeNode, ipfsStack, cm := SetupTest(t, compute_node.JobSelectionPolicy{})
+	computeNode, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{})
 	defer cm.Cleanup()
 
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	assert.NoError(t, err)
 
 	result, err := computeNode.RunJob(context.Background(), &executor.Job{
-		Id:   "test",
+		ID:   "test",
 		Spec: GetJobSpec(cid),
 	})
 	assert.NoError(t, err)

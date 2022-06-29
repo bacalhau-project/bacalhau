@@ -28,18 +28,17 @@ type cleanupFn func() error
 // remaining traces to the exporter before the process ends.
 var CleanupTracer cleanupFn
 
-func init() {
+func init() { // nolint:gochecknoinits // use of init here is idomatic
 	tp, cleanup, err := hcProvider()
 	if err != nil {
-
 		// don't error here because for CLI users they get a red message
-		log.Debug().Msgf("error initialising http tracer: %v", err)
-		log.Debug().Msg("failed to initialise http tracer, falling back to debug tracer")
+		log.Debug().Msgf("error initializing http tracer: %v", err)
+		log.Debug().Msg("failed to initialize http tracer, falling back to debug tracer")
 
 		tp, cleanup, err = loggerProvider()
 		if err != nil {
-			log.Error().Msgf("error initialising debug tracer: %v", err)
-			log.Warn().Msg("failed to initialise debug tracer, will proceed without trace instrumentation")
+			log.Error().Msgf("error initializing debug tracer: %v", err)
+			log.Warn().Msg("failed to initialize debug tracer, will proceed without trace instrumentation")
 			return // not fatal
 		}
 	}
@@ -60,7 +59,6 @@ func init() {
 //   https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
 func Span(ctx context.Context, svcName, spanName string,
 	opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-
 	svc := fmt.Sprintf("bacalhau.org/%s", svcName)
 	spn := fmt.Sprintf("%s/%s", svcName, spanName)
 	return tracer(svc).Start(ctx, spn, opts...)
@@ -110,7 +108,6 @@ func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	)
 
 	return tp, cleanupFor("honeycomb", tp, exp), nil
-
 }
 
 // hcExporter returns a SpanExporter configured for Honeycomb.
@@ -148,7 +145,7 @@ func jsonLogger() io.Writer {
 
 			bs, err := json.Marshal(data)
 			if err != nil {
-				log.Trace().Msgf("error marshalling json span: %v", err)
+				log.Trace().Msgf("error marshaling json span: %v", err)
 				continue
 			}
 
@@ -161,9 +158,9 @@ func jsonLogger() io.Writer {
 
 // cleanupFor returns a cleanup function that flushes remaining spans in
 // memory to the exporter and releases any tracing resources.
-func cleanupFor(name string, tp *sdktrace.TracerProvider,
-	exp sdktrace.SpanExporter) cleanupFn {
-
+// TODO: #288 Use trace to close out span
+// nolintunparam // will add tracing
+func cleanupFor(name string, tp *sdktrace.TracerProvider, exp sdktrace.SpanExporter) cleanupFn {
 	return func() error {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf(

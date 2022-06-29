@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -16,14 +16,14 @@ import (
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Node *requestor_node.RequesterNode
+	Node *requestornode.RequesterNode
 	Host string
 	Port int
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
-	node *requestor_node.RequesterNode,
+	node *requestornode.RequesterNode,
 	host string,
 	port int,
 ) *APIServer {
@@ -40,9 +40,7 @@ func (apiServer *APIServer) GetURI() string {
 }
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
-func (apiServer *APIServer) ListenAndServe(ctx context.Context,
-	cm *system.CleanupManager) error {
-
+func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID, err := apiServer.Node.Transport.HostID(ctx)
 	if err != nil {
 		log.Error().Msgf("Error fetching node's host ID: %s", err)
@@ -106,6 +104,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -130,7 +129,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job, err := apiServer.Node.Transport.SubmitJob(req.Context(),
+	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
 		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -139,10 +138,11 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(submitResponse{
-		Job: job,
+		Job: j,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
