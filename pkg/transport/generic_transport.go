@@ -37,6 +37,7 @@ type GenericTransport struct {
 	jobNodeContexts   map[string]context.Context // per-node job lifecycle
 	writeEventHandler WriteEventHandlerFn        // parent transport callback
 	mutex             sync.RWMutex               // thread-safety for maps
+	jncMutex          sync.RWMutex               // thread-safety for maps
 }
 
 func NewGenericTransport(nodeID string, writeEventHandler WriteEventHandlerFn) *GenericTransport {
@@ -142,6 +143,8 @@ func (gt *GenericTransport) Start(ctx context.Context) error {
 }
 
 func (gt *GenericTransport) Shutdown(ctx context.Context) error {
+	gt.mutex.RLock()
+	defer gt.mutex.RUnlock()
 	// End all job lifecycle spans so we don't lose any tracing data:
 	for _, ctx := range gt.jobContexts {
 		trace.SpanFromContext(ctx).End()
@@ -164,10 +167,11 @@ func (gt *GenericTransport) HostID(ctx context.Context) (string, error) {
 /////////////////////////////////////////////////////////////
 
 func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
-	response := map[string]*executor.Job{}
-
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
+
+	response := map[string]*executor.Job{}
+
 	for k, v := range gt.jobs {
 		response[k] = jobCopy(v)
 	}
@@ -180,6 +184,7 @@ func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
 func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, error) {
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
+
 	job, ok := gt.jobs[id]
 	if !ok {
 		return nil, fmt.Errorf("job not found in transport: %s", id)
@@ -191,6 +196,7 @@ func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, 
 func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
+
 	gt.SubscribeFuncs = append(gt.SubscribeFuncs, fn)
 }
 
@@ -380,6 +386,8 @@ func (gt *GenericTransport) endJobContext(jobID string) {
 // getJobContext returns a context that tracks the global lifecycle of a job
 // as it is processed by this and other nodes in the bacalhau network.
 func (gt *GenericTransport) getJobContext(jobID string) context.Context {
+	gt.jncMutex.RLock()
+	defer gt.jncMutex.RUnlock()
 	jobCtx, ok := gt.jobContexts[jobID]
 	if !ok {
 		return context.Background() // no lifecycle context yet
@@ -390,6 +398,8 @@ func (gt *GenericTransport) getJobContext(jobID string) context.Context {
 // getJobNodeContext returns a context that tracks the local lifecycle of a
 // job as it has been processed by this node.
 func (gt *GenericTransport) getJobNodeContext(ctx context.Context, jobID string) context.Context {
+	gt.jncMutex.Lock()
+	defer gt.jncMutex.Unlock()
 	jobCtx, ok := gt.jobNodeContexts[jobID]
 	if !ok {
 		jobCtx, _ = system.Span(ctx, "transport/generic_transport",
