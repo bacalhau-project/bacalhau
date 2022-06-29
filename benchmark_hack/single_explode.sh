@@ -14,4 +14,4 @@ EOI
 hyperfine \
   --export-json=results/run-$runid-$iterationid.json \
   --runs $BATCH_SIZE \
-  ./submit.sh
+  "timeout 30s ./submit.sh"
