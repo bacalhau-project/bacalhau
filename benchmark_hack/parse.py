@@ -23,6 +23,13 @@ for run in sorted(runs):
 
     print(f"Run {run}:")
     print(f"    files: {len(runMap[run])}")
+
+    try:
+        ps = json.load(open(f"results/parameters-{run}.json"))
+        print(f"    params: {ps}")
+    except Exception as e:
+        print(e)
+
     for f in runMap[run]:
         try:
             js = json.load(open(f))
