@@ -108,7 +108,18 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.
 	// Actually notify in-process listeners:
 	for _, subscribeFunc := range gt.SubscribeFuncs {
 		j := gt.jobs[event.JobID]
-		go subscribeFunc(jobCtx, event, j)
+		// deepcopy j to avoid future mutations to the original causing
+		// data races
+		jCopy := *j
+		jCopy.State = make(map[string]*executor.JobState)
+		for k, v := range j.State {
+			jCopy.State[k] = v
+		}
+		jSpecCopy := *j.Spec
+		jCopy.Spec = &jSpecCopy
+		jDealCopy := *j.Deal
+		jCopy.Deal = &jDealCopy
+		go subscribeFunc(jobCtx, event, &jCopy)
 	}
 }
 
