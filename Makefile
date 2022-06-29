@@ -184,6 +184,10 @@ test-badactors:
 devstack:
 	BACALHAU_RUNTIME=docker go run . devstack
 
+.PHONY: devstack-race
+devstack-race:
+	BACALHAU_RUNTIME=docker go run -race . devstack
+
 .PHONY: devstack-badactor
 devstack-badactor:
 	BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1

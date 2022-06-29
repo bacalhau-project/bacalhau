@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -23,7 +23,7 @@ type JobEvent struct {
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
-func init() {
+func init() { // nolint:gochecknoinits // init with zerolog is idiomatic
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
@@ -43,17 +43,12 @@ func init() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	//file, _ := ioutil.TempFile("tmp", "logs")
-
 	textWriter := zerolog.ConsoleWriter{Out: Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,
 		zerolog.MessageFieldName}}
 
-	// output.FormatLevel = func(i interface{}) string {
-	// 	return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-	// }
 	textWriter.FormatMessage = func(i interface{}) string {
 		return fmt.Sprintf("%s", i)
 	}
@@ -67,13 +62,13 @@ func init() {
 	zerolog.CallerMarshalFunc = func(file string, line int) string {
 		short := file
 
-		seperator_count := 2
-		counted_separators := 0
+		separatorCount := 2
+		countedSeparators := 0
 
 		for i := len(file) - 1; i > 0; i-- {
 			if file[i] == '/' {
-				counted_separators += 1
-				if counted_separators >= seperator_count {
+				countedSeparators += 1
+				if countedSeparators >= separatorCount {
 					short = file[i+1:]
 					break
 				}
@@ -94,22 +89,27 @@ func init() {
 		useLogWriter = zerolog.MultiLevelWriter(textWriter, os.Stdout)
 	} else if logTypeString == "event" {
 		// we just want events
-		useLogWriter = ioutil.Discard
+		useLogWriter = io.Discard
 	}
 
 	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
-
 }
 
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
 }
 
-func LoggerWithNodeAndJobInfo(nodeId string, jobId string) zerolog.Logger {
-	return log.With().Str("N", nodeId).Str("J", jobId).Logger()
+func LoggerWithNodeAndJobInfo(nodeID, jobID string) zerolog.Logger {
+	return log.With().Str("N", nodeID).Str("J", jobID).Logger()
 }
 
 func LogJobEvent(event JobEvent) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in LogJobEvent. Error:\n", r)
+		}
+	}()
+
 	event.Node = event.Node[:8]
 	event.Job = event.Job[:8]
 	eventBytes, err := json.Marshal(event)
@@ -119,7 +119,7 @@ func LogJobEvent(event JobEvent) {
 
 	if os.Getenv("LOG_EVENT_FILE") != "" {
 		f, err := os.OpenFile(os.Getenv("LOG_EVENT_FILE"),
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, util.OS_ALL_R|util.OS_USER_RW)
 		if err != nil {
 			return
 		}

@@ -43,6 +43,8 @@ type Client struct {
 	cancel context.CancelFunc
 }
 
+var nBitsForKeypair = 2048
+
 // NewClient creates a new IPFS client.
 func NewClient(cm *system.CleanupManager) (*Client, error) {
 	var err error
@@ -126,9 +128,7 @@ func connectToPeers(ctx context.Context, ipfs icore.CoreAPI) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context) (icore.CoreAPI,
-	*core.IpfsNode, error) {
-
+func createNode(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 	repoPath, err := createTempRepo()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create temp repo: %w", err)
@@ -161,7 +161,7 @@ func createTempRepo() (string, error) {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	cfg, err := config.Init(io.Discard, 2048)
+	cfg, err := config.Init(io.Discard, nBitsForKeypair)
 	if err != nil {
 		return "", err
 	}
@@ -174,12 +174,11 @@ func createTempRepo() (string, error) {
 	return repoPath, nil
 }
 
-// loadPlugins initialises and injects the standard set of ipfs plugins.
+// loadPlugins initializes and injects the standard set of ipfs plugins.
 func loadPlugins() error {
 	plugins, err := loader.NewPluginLoader("")
 	if err != nil {
 		return fmt.Errorf("error loading plugins: %s", err)
-
 	}
 
 	if err := plugins.Initialize(); err != nil {

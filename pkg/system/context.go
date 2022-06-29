@@ -10,9 +10,7 @@ import (
 // itself if a "ctrl+c" interrupt signal is captured. The returned cancel
 // function cleans up the resources associated with this context and should
 // be called as soon as the operations in this context complete.
-func WithSignalShutdown(parent context.Context) (
-	context.Context, context.CancelFunc) {
-
+func WithSignalShutdown(parent context.Context) (context.Context, context.CancelFunc) {
 	ch := make(chan os.Signal, 1)
 	signal.Reset(os.Interrupt)
 	signal.Notify(ch, os.Interrupt)
@@ -23,7 +21,7 @@ func WithSignalShutdown(parent context.Context) (
 		case <-ch:
 			cancel()
 
-		// Clean-up goroutine if the context is cancelled:
+		// Clean-up goroutine if the context is canceled:
 		case <-ctx.Done():
 		}
 	}(ch, cancel)
@@ -32,7 +30,7 @@ func WithSignalShutdown(parent context.Context) (
 }
 
 // OnCancel calls the given callback function when the provided context is
-// cancelled. Can be used to register clean-up callbacks for long-running
+// canceled. Can be used to register clean-up callbacks for long-running
 // system contexts.
 func OnCancel(ctx context.Context, fn func()) {
 	go func(ch <-chan struct{}, fn func()) {

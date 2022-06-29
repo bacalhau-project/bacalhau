@@ -23,7 +23,6 @@ func dockerExecutorStorageTest(
 	testCase scenario.TestCase,
 	storageDriverFactories []scenario.StorageDriverFactory,
 ) {
-
 	// the inner test handler that is given the storage driver factory
 	// and output mode that we are looping over internally
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
@@ -56,11 +55,11 @@ func dockerExecutorStorageTest(
 		}
 
 		job := &executor.Job{
-			Id:    "test-job",
+			ID:    "test-job",
 			Owner: "test-owner",
 			Spec: &executor.JobSpec{
 				Engine:  executor.EngineDocker,
-				Vm:      testCase.GetJobSpec(),
+				VM:      testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
@@ -92,7 +91,7 @@ func TestCatFileStdout(t *testing.T) {
 	dockerExecutorStorageTest(
 		t,
 		scenario.CatFileToStdout(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		scenario.StorageDriverFactories,
 	)
 }
 
@@ -100,7 +99,7 @@ func TestCatFileOutputVolume(t *testing.T) {
 	dockerExecutorStorageTest(
 		t,
 		scenario.CatFileToVolume(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		scenario.StorageDriverFactories,
 	)
 }
 
@@ -108,7 +107,7 @@ func TestGrepFile(t *testing.T) {
 	dockerExecutorStorageTest(
 		t,
 		scenario.GrepFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		scenario.StorageDriverFactories,
 	)
 }
 
@@ -116,7 +115,7 @@ func TestSedFile(t *testing.T) {
 	dockerExecutorStorageTest(
 		t,
 		scenario.SedFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		scenario.StorageDriverFactories,
 	)
 }
 
@@ -124,6 +123,6 @@ func TestAwkFile(t *testing.T) {
 	dockerExecutorStorageTest(
 		t,
 		scenario.AwkFile(t),
-		scenario.STORAGE_DRIVER_FACTORIES,
+		scenario.StorageDriverFactories,
 	)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIpfsHttpClient(t *testing.T) {
+func TestIpfsHTTPClient(t *testing.T) {
 	ctx := context.Background()
 	stack, cm := SetupTest(t, 2)
 	defer TeardownTest(stack, cm)
@@ -18,8 +18,8 @@ func TestIpfsHttpClient(t *testing.T) {
 	assert.NoError(t, err)
 
 	// test the basic connection and that we can list the IPFS node addresses
-	ipfsMultiAddress := stack.Nodes[0].IpfsNode.ApiAddress()
-	api, err := ipfs_http.NewIPFSHttpClient(ipfsMultiAddress)
+	ipfsMultiAddress := stack.Nodes[0].IpfsNode.APIAddress()
+	api, err := ipfs_http.NewIPFSHTTPClient(ipfsMultiAddress)
 	assert.NoError(t, err)
 
 	addrs, err := api.GetLocalAddrs(ctx)
@@ -27,8 +27,8 @@ func TestIpfsHttpClient(t *testing.T) {
 	assert.GreaterOrEqual(t, len(addrs), 1)
 
 	assertNodeHasCid := func(cid string, nodeIndex int, expectedResult bool) {
-		api, err := ipfs_http.NewIPFSHttpClient(
-			stack.Nodes[nodeIndex].IpfsNode.ApiAddress())
+		api, err := ipfs_http.NewIPFSHTTPClient(
+			stack.Nodes[nodeIndex].IpfsNode.APIAddress())
 		assert.NoError(t, err)
 
 		result, err := api.HasCidLocally(ctx, cid)

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
@@ -37,20 +37,20 @@ func devStackDockerStorageTest(
 		t,
 		nodeCount,
 		0,
-		compute_node.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultJobSelectionPolicy(),
 	)
 	defer TeardownTest(stack, cm)
 
-	nodeIds, err := stack.GetNodeIds()
+	nodeIDs, err := stack.GetNodeIds()
 	assert.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFS_API_COPY, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
 	assert.NoError(t, err)
 
 	jobSpec := &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
-		Vm:       testCase.GetJobSpec(),
+		VM:       testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  testCase.Outputs,
 	}
@@ -59,40 +59,40 @@ func devStackDockerStorageTest(
 		Concurrency: nodeCount,
 	}
 
-	apiUri := stack.Nodes[0].ApiServer.GetURI()
+	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, submittedJob.Id,
+	err = stack.WaitForJob(ctx, submittedJob.ID,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
 			executor.JobStateBidRejected,
 			executor.JobStateError,
 		}),
-		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
 	)
 
 	assert.NoError(t, err)
 
-	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.Id)
+	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
 	assert.True(t, ok)
 	assert.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
-	for nodeId, state := range loadedJob.State {
-		node, err := stack.GetNode(ctx, nodeId)
+	for nodeID, state := range loadedJob.State {
+		node, err := stack.GetNode(ctx, nodeID)
 		assert.NoError(t, err)
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		assert.NoError(t, err)
 
-		ipfsClient, err := ipfs_http.NewIPFSHttpClient(
-			node.IpfsNode.ApiAddress())
+		ipfsClient, err := ipfs_http.NewIPFSHTTPClient(
+			node.IpfsNode.APIAddress())
 		assert.NoError(t, err)
 
-		ipfsClient.DownloadTar(ctx, outputDir, state.ResultsId)
-		testCase.ResultsChecker(outputDir + "/" + state.ResultsId)
+		ipfsClient.DownloadTar(ctx, outputDir, state.ResultsID)
+		testCase.ResultsChecker(outputDir + "/" + state.ResultsID)
 	}
 }
 

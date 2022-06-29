@@ -9,8 +9,8 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/trace"
@@ -33,7 +33,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	assert.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
+	ipfsNodeAddress := stack.Nodes[0].IpfsNode.APIAddress()
 	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
@@ -88,7 +88,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 	assert.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsNode.ApiAddress()
+	ipfsNodeAddress := stack.Nodes[0].IpfsNode.APIAddress()
 	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
@@ -128,11 +128,11 @@ func TestIpfsFuseDockerFile(t *testing.T) {
 
 	runFileTest(
 		t,
-		storage.IPFS_FUSE_DOCKER,
+		storage.IPFSFuseDocker,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return fuse_docker.NewStorageProvider(cm, api)
+			return fusedocker.NewStorageProvider(cm, api)
 		},
 	)
 }
@@ -142,11 +142,11 @@ func TestIpfsFuseDockerFolder(t *testing.T) {
 
 	runFolderTest(
 		t,
-		storage.IPFS_FUSE_DOCKER,
+		storage.IPFSFuseDocker,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return fuse_docker.NewStorageProvider(cm, api)
+			return fusedocker.NewStorageProvider(cm, api)
 		},
 	)
 
@@ -156,11 +156,11 @@ func TestIpfsApiCopyFile(t *testing.T) {
 
 	runFileTest(
 		t,
-		storage.IPFS_API_COPY,
+		storage.IPFSAPICopy,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return api_copy.NewStorageProvider(cm, api)
+			return apicopy.NewStorageProvider(cm, api)
 		},
 	)
 
@@ -170,11 +170,11 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 
 	runFolderTest(
 		t,
-		storage.IPFS_API_COPY,
+		storage.IPFSAPICopy,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return api_copy.NewStorageProvider(cm, api)
+			return apicopy.NewStorageProvider(cm, api)
 		},
 	)
 }
