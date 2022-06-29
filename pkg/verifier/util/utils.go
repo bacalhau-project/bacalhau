@@ -7,9 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 )
 
-func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (
-	map[verifier.VerifierType]verifier.Verifier, error) {
-
+func NewIPFSVerifiers(cm *system.CleanupManager, ipfsMultiAddress string) (map[verifier.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewVerifier()
 	if err != nil {
 		return nil, err

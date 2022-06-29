@@ -98,7 +98,7 @@ func makeJob() (*executor.JobSpec, *executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

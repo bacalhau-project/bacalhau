@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -20,12 +20,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var TimeToWaitForServerReply = 10 // nolint:mnd // magic number appropriate here
+var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
+
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	rn, err := requestor_node.NewRequesterNode(ipt)
+	rn, err := requestornode.NewRequesterNode(ipt)
 	assert.NoError(t, err)
 
 	host := "0.0.0.0"
@@ -55,15 +58,15 @@ func waitForHealthy(c *APIClient) error {
 				return
 			}
 
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(time.Duration(TimeToWaitForHealthy) * time.Millisecond)
 		}
 	}()
 
 	select {
 	case <-ch:
 		return nil
-	case <-time.After(1 * time.Second):
-		return fmt.Errorf("server did not reply after 1s")
+	case <-time.After(time.Duration(TimeToWaitForServerReply) * time.Second):
+		return fmt.Errorf("server did not reply after %ss", time.Duration(TimeToWaitForServerReply)*time.Second)
 	}
 }
 
@@ -90,7 +93,7 @@ const (
 
 // use "-1" as count for just last line
 func TailFile(count int, path string) ([]byte, error) {
-	c := exec.Command("tail", strconv.Itoa(count), path)
+	c := exec.Command("tail", strconv.Itoa(count), path) // nolint:gosec // subprocess not at risk
 	output, err := c.Output()
 	if err != nil {
 		log.Warn().Msgf("Could not find file at %s", path)
@@ -107,14 +110,11 @@ func MakeNoopJob() (*executor.JobSpec, *executor.JobDeal) {
 	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
 }
 
-func MakeJob(engineType executor.EngineType,
-	verifierType verifier.VerifierType) (*executor.JobSpec,
-	*executor.JobDeal) {
-
+func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (*executor.JobSpec, *executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
-		Vm: executor.JobSpecVm{
+		VM: executor.JobSpecVM{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",

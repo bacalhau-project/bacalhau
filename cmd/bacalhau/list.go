@@ -10,19 +10,20 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-func init() {
+var DefaultNumberOfJobsToPrint = 10
+
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
 		`do not print the column headers.`)
-	listCmd.PersistentFlags().StringVar(&tableIdFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
+	listCmd.PersistentFlags().StringVar(&tableIDFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
 	listCmd.PersistentFlags().BoolVar(&tableNoStyle, "no-style", false, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
-		&tableMaxJobs, "number", "n", 10,
+		&tableMaxJobs, "number", "n", DefaultNumberOfJobsToPrint,
 		`print the first NUM jobs instead of the first 10.`,
 	)
 	listCmd.PersistentFlags().StringVar(
@@ -43,10 +44,6 @@ func init() {
 		&tableOutputWide, "wide", false,
 		`Print full values in the table results`,
 	)
-	// listCmd.PersistentFlags().BoolVar(
-	// 	&tableMergeValues, "merge-identical", false,
-	// 	`Merge identical values`,
-	// )
 }
 
 // From: https://stackoverflow.com/questions/50824554/permitted-flag-values-for-cobra
@@ -97,24 +94,24 @@ var listCmd = &cobra.Command{
 		t.SetColumnConfigs(columnConfig)
 
 		jobArray := []*executor.Job{}
-		for _, thisJob := range jobs {
-			if tableIdFilter != "" {
-				if thisJob.Id == tableIdFilter || shortId(thisJob.Id) == tableIdFilter {
-					jobArray = append(jobArray, thisJob)
+		for _, j := range jobs {
+			if tableIDFilter != "" {
+				if j.ID == tableIDFilter || shortID(j.ID) == tableIDFilter {
+					jobArray = append(jobArray, j)
 				}
 			} else {
-				jobArray = append(jobArray, thisJob)
+				jobArray = append(jobArray, j)
 			}
 		}
 
 		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
-		log.Debug().Msgf("Table filter flag set to: %s", tableIdFilter)
+		log.Debug().Msgf("Table filter flag set to: %s", tableIDFilter)
 		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
 
 		sort.Slice(jobArray, func(i, j int) bool {
 			switch tableSortBy {
 			case ColumnID:
-				return shortId(jobArray[i].Id) < shortId(jobArray[j].Id)
+				return shortID(jobArray[i].ID) < shortID(jobArray[j].ID)
 			case ColumnCreatedAt:
 				return jobArray[i].CreatedAt.Format(time.RFC3339) < jobArray[j].CreatedAt.Format(time.RFC3339)
 			default:
@@ -123,13 +120,13 @@ var listCmd = &cobra.Command{
 		})
 
 		if tableSortReverse {
-			jobIds := []string{}
-			for _, job := range jobArray {
-				jobIds = append(jobIds, job.Id)
+			jobIDs := []string{}
+			for _, j := range jobArray {
+				jobIDs = append(jobIDs, j.ID)
 			}
-			jobIds = ReverseList(jobIds)
+			jobIDs = ReverseList(jobIDs)
 			jobArray = []*executor.Job{}
-			for _, id := range jobIds {
+			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}
 		}
@@ -138,37 +135,41 @@ var listCmd = &cobra.Command{
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
-		for _, jobInRow := range jobArray[0:numberInTable] {
+		for _, j := range jobArray[0:numberInTable] {
 			jobDesc := []string{
-				jobInRow.Spec.Engine.String(),
+				j.Spec.Engine.String(),
 			}
 
-			if jobInRow.Spec.Engine == executor.EngineDocker {
-				jobDesc = append(jobDesc, jobInRow.Spec.Vm.Image)
-				jobDesc = append(jobDesc, strings.Join(jobInRow.Spec.Vm.Entrypoint, " "))
+			if j.Spec.Engine == executor.EngineDocker {
+				jobDesc = append(jobDesc, j.Spec.VM.Image)
+				jobDesc = append(jobDesc, strings.Join(j.Spec.VM.Entrypoint, " "))
 			}
 
-			if len(jobInRow.State) == 0 {
+			if len(j.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
-						jobInRow.CreatedAt.Format("06-01-02-15:04:05"),
-						shortId(jobInRow.Id),
+						shortID(j.ID),
 						shortenString(strings.Join(jobDesc, " ")),
 						"waiting",
 						"",
 					},
 				})
 			} else {
-				_, currentJobState := job.GetCurrentJobState(jobInRow)
-				t.AppendRows([]table.Row{
-					{
-						shortenTime(jobInRow.CreatedAt),
-						shortId(jobInRow.Id),
-						shortenString(strings.Join(jobDesc, " ")),
-						shortenString(currentJobState.State.String()),
-						shortenString(getJobResult(jobInRow, currentJobState)),
-					},
-				})
+				for node, jobState := range j.State {
+					t.AppendRows([]table.Row{
+						{
+							shortID(j.ID),
+							shortenString(strings.Join(jobDesc, " ")),
+							j.CreatedAt.Format("06-01-02-15:04:05"),
+							len(j.Spec.Inputs),
+							len(j.Spec.Outputs),
+							j.Deal.Concurrency,
+							shortID(node),
+							shortenString(jobState.State.String()),
+							shortenString(getJobResult(j, jobState)),
+						},
+					})
+				}
 			}
 
 		}

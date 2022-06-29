@@ -19,7 +19,7 @@ var getCmdFlags = struct {
 	outputDir: ".",
 }
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	getCmd.Flags().StringVar(&getCmdFlags.ipfsURL, "ipfs-url",
 		getCmdFlags.ipfsURL, "URL of the IPFS gateway to use.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
@@ -30,7 +30,7 @@ var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
@@ -45,8 +45,8 @@ var getCmd = &cobra.Command{
 
 		var resultCIDs []string
 		for _, jobState := range job.State {
-			if jobState.ResultsId != "" {
-				resultCIDs = append(resultCIDs, jobState.ResultsId)
+			if jobState.ResultsID != "" {
+				resultCIDs = append(resultCIDs, jobState.ResultsID)
 			}
 		}
 		log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)

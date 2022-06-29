@@ -6,27 +6,26 @@ import (
 	"os"
 	"strings"
 
-	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
-	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	ipfsCLI "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
+	ipfsDevstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
-type DevStackNode_IPFS struct {
-	IpfsNode *ipfs_devstack.IPFSDevServer
-	IpfsCli  *ipfs_cli.IPFSCli
+type DevStackNodeIPFS struct {
+	IpfsNode *ipfsDevstack.IPFSDevServer
+	IpfsCLI  *ipfsCLI.IPFSCli
 }
 
-type DevStack_IPFS struct {
-	Nodes          []*DevStackNode_IPFS
+type DevStackIPFS struct {
+	Nodes          []*DevStackNodeIPFS
 	CleanupManager *system.CleanupManager
 }
 
 // a devstack but with only IPFS servers connected to each other
-func NewDevStack_IPFS(cm *system.CleanupManager, count int) (
-	*DevStack_IPFS, error) {
-
-	nodes := []*DevStackNode_IPFS{}
+func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
+	nodes := []*DevStackNodeIPFS{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
@@ -42,7 +41,7 @@ func NewDevStack_IPFS(cm *system.CleanupManager, count int) (
 		}
 
 		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(cm, true)
+		ipfsNode, err := ipfsDevstack.NewDevServer(cm, true)
 		if err != nil {
 			return nil, err
 		}
@@ -52,15 +51,15 @@ func NewDevStack_IPFS(cm *system.CleanupManager, count int) (
 			return nil, err
 		}
 
-		devStackNode := &DevStackNode_IPFS{
+		devStackNode := &DevStackNodeIPFS{
 			IpfsNode: ipfsNode,
-			IpfsCli:  ipfs_cli.NewIPFSCli(ipfsNode.Repo),
+			IpfsCLI:  ipfsCLI.NewIPFSCli(ipfsNode.Repo),
 		}
 
 		nodes = append(nodes, devStackNode)
 	}
 
-	stack := &DevStack_IPFS{
+	stack := &DevStackIPFS{
 		Nodes:          nodes,
 		CleanupManager: cm,
 	}
@@ -68,8 +67,7 @@ func NewDevStack_IPFS(cm *system.CleanupManager, count int) (
 	return stack, nil
 }
 
-func (stack *DevStack_IPFS) PrintNodeInfo() {
-
+func (stack *DevStackIPFS) PrintNodeInfo() {
 	logString := `
 -------------------------------
 ipfs
@@ -78,17 +76,15 @@ ipfs
 command="add -q testdata/grep_file.txt"
 	`
 	for _, node := range stack.Nodes {
-
-		logString = logString + fmt.Sprintf(`
+		logString += fmt.Sprintf(`
 cid=$(IPFS_PATH=%s ipfs $command)
-curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.ApiPort)
-
+curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.APIPort)
 	}
 
 	log.Info().Msg(logString + "\n")
 }
 
-func (stack *DevStack_IPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
+func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
 	returnFileCid := ""
 
 	// ipfs add the file to 2 nodes
@@ -106,7 +102,7 @@ func (stack *DevStack_IPFS) addItemToNodes(nodeCount int, filePath string, isDir
 
 		args = append(args, filePath)
 
-		fileCid, err := node.IpfsCli.Run(args)
+		fileCid, err := node.IpfsCLI.Run(args)
 
 		if err != nil {
 			return "", err
@@ -120,15 +116,15 @@ func (stack *DevStack_IPFS) addItemToNodes(nodeCount int, filePath string, isDir
 	return returnFileCid, nil
 }
 
-func (stack *DevStack_IPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
+func (stack *DevStackIPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
 	return stack.addItemToNodes(nodeCount, filePath, false)
 }
 
-func (stack *DevStack_IPFS) AddFolderToNodes(nodeCount int, folderPath string) (string, error) {
+func (stack *DevStackIPFS) AddFolderToNodes(nodeCount int, folderPath string) (string, error) {
 	return stack.addItemToNodes(nodeCount, folderPath, true)
 }
 
-func (stack *DevStack_IPFS) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
+func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
 	testDir, err := ioutil.TempDir("", "bacalhau-test")
 
 	if err != nil {
@@ -136,7 +132,7 @@ func (stack *DevStack_IPFS) AddTextToNodes(nodeCount int, fileContent []byte) (s
 	}
 
 	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-	err = os.WriteFile(testFilePath, fileContent, 0644)
+	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW|util.OS_ALL_R)
 
 	if err != nil {
 		return "", err

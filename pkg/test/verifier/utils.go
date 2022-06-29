@@ -8,17 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func SetupTest(t *testing.T, nodes int) (
-	*devstack.DevStack_IPFS, *system.CleanupManager) {
-
+func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	stack, err := devstack.NewDevStack_IPFS(cm, nodes)
+	stack, err := devstack.NewDevStackIPFS(cm, nodes)
 	assert.NoError(t, err, "unable to create devstack")
 
 	return stack, cm
 }
 
-func TeardownTest(stack *devstack.DevStack_IPFS, cm *system.CleanupManager) {
+func TeardownTest(stack *devstack.DevStackIPFS, cm *system.CleanupManager) {
 	stack.PrintNodeInfo()
 	cm.Cleanup()
 }

@@ -31,3 +31,4 @@ ops/terraform/.terraform/*
 *.tfstate.backup
 .terraform.lock.hcl
 production.tfvars
+ops/terraform/*.out

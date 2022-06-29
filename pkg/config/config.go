@@ -5,16 +5,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-const ENV_PREFIX = "BACALHAU"
+const EnvPrefix = "BACALHAU"
 
-const DEFAULT_LOG_FILE = "/tmp/bacalhau.log"
-const DEFAULT_IPFS_DOCKER_IMAGE = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
-const DEFAULT_SWARM_ANNOUNCE_IP = "127.0.0.1"
+const DefaultLogFile = "/tmp/bacalhau.log"
+const DefaultIPFSDockerImage = "binocarlos/bacalhau-ipfs-sidebar-image:v1"
+const DefaultSwarmAnnounceIP = "127.0.0.1"
 
 var GlobalConfig *viper.Viper
 
@@ -30,7 +31,7 @@ func getConfigFilePath() (string, error) {
 			return "", err
 		}
 		configFileDir := fmt.Sprintf("%s/.bacalhau", homedir)
-		err = os.MkdirAll(configFileDir, 0700)
+		err = os.MkdirAll(configFileDir, util.OS_USER_RWX)
 		if err != nil {
 			return "", err
 		}
@@ -55,7 +56,7 @@ func CreateConfig(cmd *cobra.Command) (*viper.Viper, error) {
 	}
 	config := viper.New()
 	// any env variable prefixed with BACALHAU_ will be used as a config
-	config.SetEnvPrefix(ENV_PREFIX)
+	config.SetEnvPrefix(EnvPrefix)
 	config.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	config.AutomaticEnv()
 	if cmd != nil {
@@ -65,9 +66,9 @@ func CreateConfig(cmd *cobra.Command) (*viper.Viper, error) {
 		}
 	}
 
-	config.SetDefault("logfile", DEFAULT_LOG_FILE)
-	config.SetDefault("ipfs_docker_sidecar_image", DEFAULT_IPFS_DOCKER_IMAGE)
-	config.SetDefault("swarm_announce_ip", DEFAULT_SWARM_ANNOUNCE_IP)
+	config.SetDefault("logfile", DefaultLogFile)
+	config.SetDefault("ipfs_docker_sidecar_image", DefaultIPFSDockerImage)
+	config.SetDefault("swarm_announce_ip", DefaultSwarmAnnounceIP)
 
 	// do we have a specific config file to read or are we seafching the system for one?
 	configFilePath := os.Getenv("BACALHAU_CONFIG_FILE")

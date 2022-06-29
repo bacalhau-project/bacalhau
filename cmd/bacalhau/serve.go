@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requestor_node"
+	requestornode "github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -21,7 +21,7 @@ var hostAddress string
 var hostPort int
 var jobSelectionDataLocality string
 var jobSelectionDataRejectStateless bool
-var jobSelectionProbeHttp string
+var jobSelectionProbeHTTP string
 var jobSelectionProbeExec string
 
 var DefaultBootstrapAddresses = []string{
@@ -29,8 +29,9 @@ var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
 	"/ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
 }
+var DefaultSwarmPort = 1235
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	serveCmd.PersistentFlags().StringVar(
 		&peerConnect, "peer", "",
 		`The libp2p multiaddress to connect to.`,
@@ -44,7 +45,7 @@ func init() {
 		`The host to listen on (for both api and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", 1235,
+		&hostPort, "port", DefaultSwarmPort,
 		`The port to listen on for swarm connections.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
@@ -56,7 +57,7 @@ func init() {
 		`Reject jobs that don't specify any data.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&jobSelectionProbeHttp, "job-selection-probe-http", "",
+		&jobSelectionProbeHTTP, "job-selection-probe-http", "",
 		`Use the result of a HTTP POST to decide if we should take on the job.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
@@ -87,7 +88,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		requesterNode, err := requestor_node.NewRequesterNode(transport)
+		requesterNode, err := requestornode.NewRequesterNode(transport)
 		if err != nil {
 			return err
 		}
@@ -104,20 +105,20 @@ var serveCmd = &cobra.Command{
 		}
 
 		// construct the job selection policy from the CLI args
-		typedJobSelectionDataLocality := compute_node.Local
+		typedJobSelectionDataLocality := computenode.Local
 
 		if jobSelectionDataLocality == "anywhere" {
-			typedJobSelectionDataLocality = compute_node.Anywhere
+			typedJobSelectionDataLocality = computenode.Anywhere
 		}
 
-		jobSelectionPolicy := compute_node.JobSelectionPolicy{
+		jobSelectionPolicy := computenode.JobSelectionPolicy{
 			Locality:            typedJobSelectionDataLocality,
 			RejectStatelessJobs: jobSelectionDataRejectStateless,
-			ProbeHttp:           jobSelectionProbeHttp,
+			ProbeHTTP:           jobSelectionProbeHTTP,
 			ProbeExec:           jobSelectionProbeExec,
 		}
 
-		_, err = compute_node.NewComputeNode(
+		_, err = computenode.NewComputeNode(
 			transport,
 			executors,
 			verifiers,
@@ -138,14 +139,14 @@ var serveCmd = &cobra.Command{
 		defer cancel()
 
 		go func(ctx context.Context) {
-			if err := apiServer.ListenAndServe(ctx, cm); err != nil {
-				panic(err) // if api server can't run, bacalhau should stop
+			if err = apiServer.ListenAndServe(ctx, cm); err != nil {
+				log.Fatal().Msgf("Api server can't run, bacalhau should stop: %+v", err)
 			}
 		}(ctx)
 
 		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
-				panic(err) // if transport can't run, bacalhau should stop
+				log.Fatal().Msgf("Transport can't run, bacalhau should stop: %+v", err)
 			}
 		}(ctx)
 

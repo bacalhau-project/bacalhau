@@ -1,4 +1,4 @@
-package compute_node
+package computenode
 
 import (
 	"bytes"
@@ -30,14 +30,14 @@ type JobSelectionPolicy struct {
 	RejectStatelessJobs bool `json:"reject_stateless_jobs"`
 	// external hooks that decide if we should take on the job or not
 	// if either of these are given they will override the data locality settings
-	ProbeHttp string `json:"probe_http,omitempty"`
+	ProbeHTTP string `json:"probe_http,omitempty"`
 	ProbeExec string `json:"probe_exec,omitempty"`
 }
 
 // the JSON data we send to http or exec probes
 type JobSelectionPolicyProbeData struct {
-	NodeId string            `json:"node_id"`
-	JobId  string            `json:"job_id"`
+	NodeID string            `json:"node_id"`
+	JobID  string            `json:"job_id"`
 	Spec   *executor.JobSpec `json:"spec"`
 }
 
@@ -46,24 +46,26 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 	return JobSelectionPolicy{}
 }
 
+// nolintunparam // will fix
 func applyJobSelectionPolicyExecProbe(
 	ctx context.Context,
 	command string,
 	data JobSelectionPolicyProbeData,
 ) (bool, error) {
+	// TODO: Use context to trace exec call
 
-	json_data, err := json.Marshal(data)
+	jsonData, err := json.Marshal(data)
 
 	if err != nil {
-		log.Error().Msgf("Error marshalling job selection policy probe data: %s", err.Error())
+		log.Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
 		return false, err
 	}
 
 	cmd := exec.Command("bash", "-c", command)
 	cmd.Env = []string{
-		"BACALHAU_JOB_SELECTION_PROBE_DATA=" + string(json_data),
+		"BACALHAU_JOB_SELECTION_PROBE_DATA=" + string(jsonData),
 	}
-	cmd.Stdin = strings.NewReader(string(json_data))
+	cmd.Stdin = strings.NewReader(string(jsonData))
 	err = cmd.Run()
 	if err != nil {
 		// we ignore this error because it might be the script exiting 1 on purpose
@@ -73,37 +75,37 @@ func applyJobSelectionPolicyExecProbe(
 	return cmd.ProcessState.ExitCode() == 0, nil
 }
 
-func applyJobSelectionPolicyHttpProbe(
-	ctx context.Context,
-	url string,
-	data JobSelectionPolicyProbeData,
-) (bool, error) {
-
-	json_data, err := json.Marshal(data)
+func applyJobSelectionPolicyHTTPProbe(ctx context.Context, url string, data JobSelectionPolicyProbeData) (bool, error) {
+	jsonData, err := json.Marshal(data)
 
 	if err != nil {
-		log.Error().Msgf("Error marshalling job selection policy probe data: %s", err.Error())
+		log.Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
 		return false, err
 	}
 
-	resp, err := http.Post(url, "application/json",
-		bytes.NewBuffer(json_data))
+	body := bytes.NewBuffer(jsonData)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	req.Header.Add("Content-Type", "application/json")
+	if err != nil {
+		log.Error().Msgf("could not create http request with context: %s", url)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	resp.Body.Close()
 
 	if err != nil {
-		log.Error().Msgf("Error http POST job selection policy probe data: %s %s", url, err.Error())
+		log.Error().Msgf("error http POST job selection policy probe data: %s %s", url, err.Error())
 		return false, err
 	}
 
-	return resp.StatusCode == 200, nil
+	return resp.StatusCode == http.StatusOK, nil
 }
 
 func applyJobSelectionPolicyDataSettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
-	executor executor.Executor,
+	e executor.Executor,
 	job *executor.JobSpec,
 ) (bool, error) {
-
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job
 	if len(job.Inputs) == 0 {
@@ -127,7 +129,7 @@ func applyJobSelectionPolicyDataSettings(
 
 	for _, input := range job.Inputs {
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := executor.HasStorage(ctx, input)
+		hasStorage, err := e.HasStorage(ctx, input)
 		if err != nil {
 			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err
@@ -152,14 +154,14 @@ func applyJobSelectionPolicyDataSettings(
 func ApplyJobSelectionPolicy(
 	ctx context.Context,
 	policy JobSelectionPolicy,
-	executor executor.Executor,
+	e executor.Executor,
 	data JobSelectionPolicyProbeData,
 ) (bool, error) {
 	if policy.ProbeExec != "" {
 		return applyJobSelectionPolicyExecProbe(ctx, policy.ProbeExec, data)
-	} else if policy.ProbeHttp != "" {
-		return applyJobSelectionPolicyHttpProbe(ctx, policy.ProbeHttp, data)
+	} else if policy.ProbeHTTP != "" {
+		return applyJobSelectionPolicyHTTPProbe(ctx, policy.ProbeHTTP, data)
 	} else {
-		return applyJobSelectionPolicyDataSettings(ctx, policy, executor, data.Spec)
+		return applyJobSelectionPolicyDataSettings(ctx, policy, e, data.Spec)
 	}
 }

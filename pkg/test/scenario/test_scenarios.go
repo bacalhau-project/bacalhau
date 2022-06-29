@@ -8,33 +8,33 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
-const HELLO_WORLD = "hello world"
-const SIMPLE_MOUNT_PATH = "/data/file.txt"
-const SIMPLE_OUTPUT_PATH = "/output_data/output_file.txt"
-const STDOUT = "stdout"
-const CAT_PROGRAM = "cat " + SIMPLE_MOUNT_PATH + " > " + SIMPLE_OUTPUT_PATH
+const HelloWorld = "hello world"
+const SimpleMountPath = "/data/file.txt"
+const SimpleOutputPath = "/output_data/output_file.txt"
+const stdoutString = "stdout"
+const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
 
 func CatFileToStdout(t *testing.T) TestCase {
 	return TestCase{
 		Name: "cat_file_to_stdout",
 		SetupStorage: singleFileSetupStorageWithData(
 			t,
-			HELLO_WORLD,
-			SIMPLE_MOUNT_PATH,
+			HelloWorld,
+			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
-			STDOUT,
-			HELLO_WORLD,
+			stdoutString,
+			HelloWorld,
 			ExpectedModeEquals,
 			1,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVM {
+			return executor.JobSpecVM{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"cat",
-					SIMPLE_MOUNT_PATH,
+					SimpleMountPath,
 				},
 			}
 		},
@@ -46,13 +46,13 @@ func CatFileToVolume(t *testing.T) TestCase {
 		Name: "cat_file_to_volume",
 		SetupStorage: singleFileSetupStorageWithData(
 			t,
-			CAT_PROGRAM,
-			SIMPLE_MOUNT_PATH,
+			CatProgram,
+			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
 			"test/output_file.txt",
-			CAT_PROGRAM,
+			CatProgram,
 			ExpectedModeEquals,
 			1,
 		),
@@ -62,12 +62,12 @@ func CatFileToVolume(t *testing.T) TestCase {
 				Path: "/output_data",
 			},
 		},
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVM {
+			return executor.JobSpecVM{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"bash",
-					SIMPLE_MOUNT_PATH,
+					SimpleMountPath,
 				},
 			}
 		},
@@ -80,22 +80,22 @@ func GrepFile(t *testing.T) TestCase {
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
 			"../../../testdata/grep_file.txt",
-			SIMPLE_MOUNT_PATH,
+			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
-			STDOUT,
+			stdoutString,
 			"kiwi is delicious",
 			ExpectedModeContains,
 			2,
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVM {
+			return executor.JobSpecVM{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"grep",
 					"kiwi",
-					SIMPLE_MOUNT_PATH,
+					SimpleMountPath,
 				},
 			}
 		},
@@ -108,23 +108,23 @@ func SedFile(t *testing.T) TestCase {
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
 			"../../../testdata/sed_file.txt",
-			SIMPLE_MOUNT_PATH,
+			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
-			STDOUT,
+			stdoutString,
 			"LISBON",
 			ExpectedModeContains,
-			5,
+			5, // nolint:gomnd // magic number ok for testing
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVM {
+			return executor.JobSpecVM{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"sed",
 					"-n",
 					"/38.7[2-4]..,-9.1[3-7]../p",
-					SIMPLE_MOUNT_PATH,
+					SimpleMountPath,
 				},
 			}
 		},
@@ -137,23 +137,23 @@ func AwkFile(t *testing.T) TestCase {
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
 			"../../../testdata/awk_file.txt",
-			SIMPLE_MOUNT_PATH,
+			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
-			STDOUT,
+			stdoutString,
 			"LISBON",
 			ExpectedModeContains,
-			501,
+			501, // nolint:gomnd // magic number appropriate for test
 		),
-		GetJobSpec: func() executor.JobSpecVm {
-			return executor.JobSpecVm{
+		GetJobSpec: func() executor.JobSpecVM {
+			return executor.JobSpecVM{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"awk",
 					"-F,",
 					"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
-					SIMPLE_MOUNT_PATH,
+					SimpleMountPath,
 				},
 			}
 		},
