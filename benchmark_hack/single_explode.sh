@@ -12,6 +12,7 @@ sudo tee ./results/parameters-${RUN_ID}.json > /dev/null <<EOI
 EOI
 
 hyperfine \
+  --ignore-failure \
   --export-json=results/run-${RUN_ID}-$iterationid.json \
   --runs $BATCH_SIZE \
   "timeout 30s ./submit.sh"
