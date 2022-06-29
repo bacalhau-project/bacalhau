@@ -97,8 +97,7 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.
 
 	// Attach metadata to local job lifecycle context:
 	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
-	gt.addJobLifecycleEvent(jobCtx, event.JobID,
-		fmt.Sprintf("receive_%s", event.EventName))
+	gt.addJobLifecycleEvent(jobCtx, event.JobID, fmt.Sprintf("receive_%s", event.EventName))
 
 	// If the event is known to be terminal, end the lifecycle context:
 	if event.EventName.IsTerminal() {
@@ -179,6 +178,8 @@ func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, 
 }
 
 func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
+	gt.mutex.Lock()
+	defer gt.mutex.Unlock()
 	gt.SubscribeFuncs = append(gt.SubscribeFuncs, fn)
 }
 
@@ -187,6 +188,9 @@ func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 /////////////////////////////////////////////////////////////
 
 func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
+	gt.mutex.Lock()
+	defer gt.mutex.Unlock()
+
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("error creating job id: %w", err)
@@ -197,12 +201,7 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
-
-	func() {
-		gt.mutex.Lock()
-		defer gt.mutex.Unlock()
-		gt.jobContexts[jobID] = jobCtx
-	}()
+	gt.jobContexts[jobID] = jobCtx
 
 	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
 		JobID:     jobID,
@@ -224,6 +223,9 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 }
 
 func (gt *GenericTransport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
+	gt.mutex.Lock()
+	defer gt.mutex.Unlock()
+
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_UpdateDeal")
 
