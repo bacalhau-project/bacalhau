@@ -32,3 +32,4 @@ ops/terraform/.terraform/*
 .terraform.lock.hcl
 production.tfvars
 ops/terraform/*.out
+benchmark_hack/results
