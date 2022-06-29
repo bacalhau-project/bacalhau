@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -148,6 +149,7 @@ var listCmd = &cobra.Command{
 			if len(j.State) == 0 {
 				t.AppendRows([]table.Row{
 					{
+						j.CreatedAt.Format("06-01-02-15:04:05"),
 						shortID(j.ID),
 						shortenString(strings.Join(jobDesc, " ")),
 						"waiting",
@@ -155,21 +157,16 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-				for node, jobState := range j.State {
-					t.AppendRows([]table.Row{
-						{
-							shortID(j.ID),
-							shortenString(strings.Join(jobDesc, " ")),
-							j.CreatedAt.Format("06-01-02-15:04:05"),
-							len(j.Spec.Inputs),
-							len(j.Spec.Outputs),
-							j.Deal.Concurrency,
-							shortID(node),
-							shortenString(jobState.State.String()),
-							shortenString(getJobResult(j, jobState)),
-						},
-					})
-				}
+				_, currentJobState := job.GetCurrentJobState(j)
+				t.AppendRows([]table.Row{
+					{
+						shortenTime(j.CreatedAt),
+						shortID(j.ID),
+						shortenString(strings.Join(jobDesc, " ")),
+						shortenString(currentJobState.State.String()),
+						shortenString(getJobResult(j, currentJobState)),
+					},
+				})
 			}
 
 		}
