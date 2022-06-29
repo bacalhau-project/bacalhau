@@ -20,8 +20,6 @@ var getCmdFlags = struct {
 }
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
-	getCmd.Flags().StringVar(&getCmdFlags.ipfsURL, "ipfs-url",
-		getCmdFlags.ipfsURL, "URL of the IPFS gateway to use.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
 		getCmdFlags.outputDir, "Directory to write the output to.")
 }
