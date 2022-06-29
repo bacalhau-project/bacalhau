@@ -57,7 +57,7 @@ jobs:
               name: macOS-arm64,
               os: macOS-latest,
               target_os: darwin,
-              runner: M1,
+              runner: ubuntu-latest,
               target_arch: arm64,
             }
           - {
@@ -71,36 +71,17 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - uses: actions/setup-go@v3
-        if: matrix.target_arch != 'arm64' || matrix.target_os != 'darwin' # Setup go works on non-arm64
         with:
           go-version: "^1.18.3" # The Go version to download (if necessary) and use.
-      - name: Install go@1.18
-        if: matrix.target_arch == 'arm64' && matrix.target_os == 'darwin' # For arm64
-        run: |
-          curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          sudo rm -rf /usr/local/go 
-          sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          echo $PATH
 
       - name: Print go version
         run: go version
 
-      - name: Cache Go modules (Linux)
-        if: matrix.target_os == 'linux'
+      - name: Cache Go modules
         uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
-      - name: Cache Go modules (macOS)
-        if: matrix.target_os == 'darwin'
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/go-build
             ~/go/pkg/mod
           key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
           restore-keys: |
@@ -130,7 +111,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
       - name: Build
-        run: make build
+        run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
       - name: Install IPFS
         run: |
@@ -147,14 +128,14 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
 
-      - id: "auth"
+      - id: auth to gcloud
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v0"
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
 
-      - name: terraform apply
+      - name: install development cluster
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         run: |
           cd ops/terraform && terraform init && \

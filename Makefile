@@ -1,38 +1,24 @@
 RUSTFLAGS="-C target-feature=+crt-static"
 
+IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
+IPFS_FUSE_TAG ?= "v1"
+
 # Detect OS
 OS := $(shell uname | tr "[:upper:]" "[:lower:]")
 ARCH := $(shell uname -m | tr "[:upper:]" "[:lower:]")
 GOPATH ?= $(shell go env GOPATH)
 GOFLAGS ?= $(GOFLAGS:)
-GO=go
-GO_MAJOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
-GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
-GO_OS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
-GO_ARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 
-IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
-IPFS_FUSE_TAG ?= "v1"
-
-ifeq ($(GO_ARCH), x86_64)
-GO_ARCH = "amd64"
+ifeq ($(GOOS),)
+GOOS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
 endif
 
-# Assuming match
-MISMATCH=
+ifeq ($(GOARCH),)
+GOARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
+endif
 
 # use docker runtime rather than ignite, meaning we run basically everywhere (no need for hardware virtualization support)
 export BACALHAU_RUNTIME = docker
-
-define GO_MISMATCH_ERROR
-
-Your go binary does not match your architecture.
-	Go binary:    $(GO_OS) - $(GO_ARCH)
-	Environment:  $(OS) - $(ARCH)
-	GOPATH:       $(GOPATH)
-
-endef
-export GO_MISMATCH_ERROR
 
 # Env Variables
 export GO111MODULE = on
@@ -49,32 +35,10 @@ BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2
 # Temp dirs
 TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
 TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
-PACKAGE := $(shell echo "bacalhau_$(TAG)_${GO_OS}_$(GO_ARCH)")
+PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
-
-all: go-arch-alignment build
-.PHONY: all
-
-build: go-arch-alignment
-	go build
-.PHONY: build
-
-set-go-arch:
-ifeq ($(OS), darwin)
-ifneq ($(ARCH), $(GO_ARCH))
-MISMATCH=yes
-endif
-endif
-.PHONY: set-go-arch
-
-go-arch-alignment: set-go-arch
-ifdef $(MISMATCH)
-$(info $(GO_MISMATCH_ERROR))
-$(error Please change your go binary)
-endif
-.PHONY: go-arch-alignment
 
 all: build
 
@@ -107,7 +71,7 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GO_OS} GOARCH=${GO_ARCH} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GO_OS}_$(GO_ARCH)/bacalhau main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images
@@ -131,7 +95,7 @@ build-bacalhau-tgz:
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp bin/$(GO_OS)_$(GO_ARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
+	cp bin/$(GOOS)_$(GOARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
 	cd $(TMPRELEASEWORKINGDIR)
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
@@ -225,7 +189,7 @@ test-junit: build-bacalhau
 
 .PHONY: generate
 generate:
-	CGO_ENABLED=0 GOARCH=$(shell go env GOARCH) ${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
+	CGO_ENABLED=0 GOARCH=$(shell go env GOARCH) GO111MODULE=${GO111MODULE} ${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
 	echo "[OK] Files added to pipeline template directory!"
 
 .PHONY: security
