@@ -1,10 +1,11 @@
 #!/bin/bash
-set -xeuo pipefail
+set -euo pipefail
 
 export TOTAL_JOBS=${TOTAL_JOBS:-"10000"}
 export BATCH_SIZE=${BATCH_SIZE:-"10"}
 export CONCURRENCY=${CONCURRENCY:-"2"}
 export XARGS_LOOPS=$(( $TOTAL_JOBS / $BATCH_SIZE ))
+export RUN_ID=$(date +%s%N)
 
 mkdir -p results
 
