@@ -114,10 +114,17 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.
 		for k, v := range j.State {
 			jCopy.State[k] = v
 		}
-		jSpecCopy := *j.Spec
-		jCopy.Spec = &jSpecCopy
-		jDealCopy := *j.Deal
-		jCopy.Deal = &jDealCopy
+
+		if j.Spec != nil {
+			jSpecCopy := *j.Spec
+			jCopy.Spec = &jSpecCopy
+		}
+
+		if j.Deal != nil {
+			jDealCopy := *j.Deal
+			jCopy.Deal = &jDealCopy
+		}
+
 		go subscribeFunc(jobCtx, event, &jCopy)
 	}
 }
