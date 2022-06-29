@@ -149,3 +149,13 @@ Once you have deleted a cluster - don't forget to:
 terraform workspace delete $WORKSPACE
 rm -f $WORKSPACE.tfvars
 ```
+
+# Debugging startup issues
+
+To see the logs from a nodes startup script:
+
+```bash
+export WORKSPACE=apples
+bash scripts/connect_workspace.sh $WORKSPACE
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo journalctl -u google-startup-scripts.service
+```

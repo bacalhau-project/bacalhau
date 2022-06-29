@@ -28,133 +28,72 @@ resource "google_compute_instance" "bacalhau_vm" {
   }
 
   metadata_startup_script = <<-EOF
-#!/bin/bash -xe
-
-sudo apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update -y
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-# TODO: move this into two systemd units!
-
-sudo mkdir -p /var/www/health_checker
-
-# Lay down a very basic web server to report when the node is healthy
-sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates
-wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
-    | sudo tee /etc/apt/sources.list.d/openresty.list
-sudo apt-get update -y
-sudo apt-get -y install --no-install-recommends openresty
-
-sudo mkdir -p /var/www/health_checker
-
-sudo tee /usr/local/openresty/nginx/conf/nginx.conf > /dev/null <<'EOI'
-${file("${path.module}/configs/nginx.conf")}
-EOI
-
-sudo tee /var/www/health_checker/livez.sh > /dev/null <<'EOI'
-${file("${path.module}/scripts/livez.sh")}
-EOI
-
-sudo tee /var/www/health_checker/healthz.sh > /dev/null <<'EOI'
-${file("${path.module}/scripts/healthz.sh")}
-EOI
-
-sudo chmod u+x /var/www/health_checker/*.sh
-
-wget https://github.com/filecoin-project/bacalhau/releases/download/${var.bacalhau_version}/bacalhau_${var.bacalhau_version}_linux_amd64.tar.gz
-tar xfv bacalhau_${var.bacalhau_version}_linux_amd64.tar.gz
-sudo mv ./bacalhau /usr/local/bin/bacalhau
-
-wget https://dist.ipfs.io/go-ipfs/${var.ipfs_version}/go-ipfs_${var.ipfs_version}_linux-amd64.tar.gz
-tar -xvzf go-ipfs_${var.ipfs_version}_linux-amd64.tar.gz
-cd go-ipfs
-sudo bash install.sh
-ipfs --version
-
-# wait for /dev/sdb to exist
-while [ ! -e /dev/sdb ]; do
-  sleep 1
-  echo "waiting for /dev/sdb to exist"
-done
-
-# mount /dev/sdb at /data
-sudo mkdir -p /data
-sudo mount /dev/sdb /data || (sudo mkfs -t ext4 /dev/sdb && sudo mount /dev/sdb /data)
-
-sudo mkdir -p /data/ipfs
-export IPFS_PATH=/data/ipfs
-
-if [ ! -e /data/ipfs/version ]; then
-  ipfs init
-fi
-
-sudo tee /etc/systemd/system/ipfs-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/configs/ipfs-daemon.service")}
-EOI
-
-sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
-${file("${path.module}/configs/bacalhau-daemon.service")}
-EOI
-
-# the path to the private key on the node
-export BACALHAU_NODE_PRIVATE_KEY_PATH="/data/.bacalhau/private_key.${var.bacalhau_port}"
-
-# should we write the unsafe private key to node0 if we are in auto connect mode
-export BACALHAU_SHOULD_WRITE_NODE0_UNSAFE_KEY="${var.bacalhau_unsafe_cluster && count.index == 0 ? "yes" : ""}"
-sudo mkdir -p /data/.bacalhau
-
-if [ -n "$BACALHAU_SHOULD_WRITE_NODE0_UNSAFE_KEY" ]; then
-  # only write the unsafe key if there is not already one
-  if [ ! -f "$BACALHAU_NODE_PRIVATE_KEY_PATH" ]; then
-    sudo tee "$BACALHAU_NODE_PRIVATE_KEY_PATH" > /dev/null <<'EOI'
-${file("${path.module}/configs/unsafe-private-key")}
-EOI
-    sudo chmod 0600 "$BACALHAU_NODE_PRIVATE_KEY_PATH"
-  fi
-fi
-
-# TODO: refactor this out into a script so it's easier to read
-# we need this as a script so we can write some terraform variables
-# into the startup script that is then called by systemd
-sudo tee /start-bacalhau.sh > /dev/null <<'EOI'
 #!/bin/bash
 set -euo pipefail
 IFS=$'\n\t'
-# the ip of node0
-export BACALHAU_NODE0_IP="${google_compute_address.ipv4_address[0].address}"
-# calculate what the unsafe id would be - either the fixed unsafe id or empty string
-# this just avoids nested terraform ternary expressions
-export BACALHAU_NODE0_UNSAFE_ID="${var.bacalhau_unsafe_cluster ? "QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD" : ""}"
-export BACALHAU_NODE0_ID="${var.bacalhau_connect_node0 != "" ? var.bacalhau_connect_node0 : "$BACALHAU_NODE0_UNSAFE_ID"}"
-# the fully exploded multiaddress for node0
-export BACALHAU_NODE0_MULTIADDRESS="/ip4/$BACALHAU_NODE0_IP/tcp/${var.bacalhau_port}/p2p/$BACALHAU_NODE0_ID"
-# work out if we actually want to connect to that multiaddress
-# if we are > node0 and have either an explicit node0 id or are in unsafe mode - then we do want to connect
-export BACALHAU_CONNECT_PEER="${count.index > 0 && (var.bacalhau_connect_node0 != "" || var.bacalhau_unsafe_cluster) ? "$BACALHAU_NODE0_MULTIADDRESS" : "none"}"
-bacalhau serve \
-  --job-selection-data-locality anywhere \
-  --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
-  --port ${var.bacalhau_port} \
-  --peer $BACALHAU_CONNECT_PEER
+
+sudo mkdir -p /terraform_node
+
+##############################
+# export the terraform variables ready for scripts to use
+# we write these to a file so the bacalhau startup script
+# called by systemd can also source them
+##############################
+
+sudo tee /terraform_node/variables > /dev/null <<'EOI'
+export TERRAFORM_NODE_INDEX="${count.index}"
+export TERRAFORM_NODE_IP="${google_compute_address.ipv4_address[count.index].address}"
+export TERRAFORM_NODE0_IP="${google_compute_address.ipv4_address[0].address}"
+export IPFS_VERSION="${var.ipfs_version}"
+export BACALHAU_VERSION="${var.bacalhau_version}"
+export BACALHAU_PORT="${var.bacalhau_port}"
+export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
+export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
+export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
 EOI
 
-# activate the systemd units now
-sudo systemctl daemon-reload
-sudo systemctl enable ipfs-daemon.service
-sudo systemctl enable bacalhau-daemon.service
-sudo systemctl start ipfs-daemon
-sudo systemctl start bacalhau-daemon
+##############################
+# write the local files to the node filesystem
+##############################
 
-sudo service openresty reload
+#########
+# node scripts
+#########
+
+sudo mkdir -p /terraform_node
+
+sudo tee /terraform_node/bacalhau-unsafe-private-key > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/unsafe-private-key")}
+EOI
+
+sudo tee /terraform_node/install-node.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/install-node.sh")}
+EOI
+
+sudo tee /terraform_node/start-bacalhau.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/scripts/start-bacalhau.sh")}
+EOI
+
+#########
+# health checker
+#########
+
+sudo mkdir -p /var/www/health_checker
+
+# this will be copied to the correct location once openresty has installed to avoid
+# an interactive prompt warning about the file existing blocking the headless install
+sudo tee /terraform_node/nginx.conf > /dev/null <<'EOI'
+${file("${path.module}/remote_files/health_checker/nginx.conf")}
+EOI
+
+sudo tee /var/www/health_checker/livez.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/health_checker/livez.sh")}
+EOI
+
+sudo tee /var/www/health_checker/healthz.sh > /dev/null <<'EOI'
+${file("${path.module}/remote_files/health_checker/healthz.sh")}
+EOI
+
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
 ${google_compute_network.bacalhau_network.name}
 EOI
@@ -163,6 +102,25 @@ sudo tee /var/www/health_checker/address.txt > /dev/null <<EOI
 ${google_compute_address.ipv4_address[count.index].address}
 EOI
 
+sudo chmod u+x /var/www/health_checker/*.sh
+
+#########
+# systemd units
+#########
+
+sudo tee /etc/systemd/system/ipfs-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/ipfs-daemon.service")}
+EOI
+
+sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/bacalhau-daemon.service")}
+EOI
+
+##############################
+# run the install script
+##############################
+
+sudo bash /terraform_node/install-node.sh
 EOF
   network_interface {
     network = google_compute_network.bacalhau_network.name

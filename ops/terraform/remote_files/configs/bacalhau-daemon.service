@@ -8,9 +8,7 @@ Environment="LOG_LEVEL=debug"
 Environment="BACALHAU_PATH=/data"
 Restart=always
 RestartSec=5s
-StartLimitIntervalSec=10s
-StartLimitBurst=10
-ExecStart=/usr/bin/sh -c "bash /start-bacalhau.sh 2>&1 | tee -a /tmp/bacalhau.log"
+ExecStart=/usr/bin/sh -c "bash /terraform_node/start-bacalhau.sh 2>&1 | tee -a /tmp/bacalhau.log"
 
 [Install]
 WantedBy=multi-user.target
