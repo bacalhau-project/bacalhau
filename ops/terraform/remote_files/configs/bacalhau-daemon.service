@@ -1,0 +1,14 @@
+[Unit]
+Description=Bacalhau Daemon
+After=network-online.target ipfs-daemon.service
+Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.service
+
+[Service]
+Environment="LOG_LEVEL=debug"
+Environment="BACALHAU_PATH=/data"
+Restart=always
+RestartSec=5s
+ExecStart=/usr/bin/sh -c "bash /terraform_node/start-bacalhau.sh 2>&1 | tee -a /tmp/bacalhau.log"
+
+[Install]
+WantedBy=multi-user.target
