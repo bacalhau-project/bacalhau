@@ -113,13 +113,6 @@ jobs:
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
-      - name: Install IPFS
-        run: |
-          curl -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          cd go-ipfs
-          sudo bash install.sh
-
       - name: Test
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make test
