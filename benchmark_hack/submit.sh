@@ -1,6 +1,9 @@
 #!/bin/bash
 set -xeuo pipefail
 
+# docker run busybox /bin/true
+# /bin/true
+
 ID=$(bacalhau --api-port=$API_PORT_0 --api-host=localhost docker run --concurrency=3 busybox -- /bin/true)
 while true; do
     sleep 0.01
