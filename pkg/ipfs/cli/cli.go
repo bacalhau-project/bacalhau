@@ -31,7 +31,7 @@ func (cli *IPFSCli) getBinaryFullPath() (string, error) {
 	ipfsBinaryFullPath, _ := filepath.Abs(ipfsBinary)
 
 	if strings.Contains(ipfsBinaryFullPath, "/snap/") {
-		return "", fmt.Errorf("you installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider") // nolint
+		return "", fmt.Errorf("you installed 'ipfs' using snap, which bacalhau is not compatible with. Please install from dist.ipfs.io or directly from your package provider") // nolint:lll // acceptable long line
 	}
 
 	return ipfsBinaryFullPath, nil
