@@ -148,7 +148,7 @@ var runPythonCmd = &cobra.Command{
 		if contextPath != "" {
 			// construct a tar file from the contextPath directory
 			// tar + gzip
-			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel")
+			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel", contextPath)
 			time.Sleep(1 * time.Second)
 			err = compress(contextPath, &buf)
 			if err != nil {
