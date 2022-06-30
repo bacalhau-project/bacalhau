@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -18,9 +19,10 @@ import (
 )
 
 type SeenJobRecord struct {
-	Id    string
-	Start time.Time
-	End   time.Time
+	Id          string
+	CurrentJobs int
+	Start       time.Time
+	End         time.Time
 }
 
 func TestJobResourceLimits(t *testing.T) {
@@ -113,6 +115,7 @@ func TestTotalResourceLimits(t *testing.T) {
 	) {
 
 		seenJobs := []SeenJobRecord{}
+		currentJobCount := 0
 
 		_, requestorNode, cm := SetupTestNoop(
 			t,
@@ -128,10 +131,13 @@ func TestTotalResourceLimits(t *testing.T) {
 				ExternalHooks: &noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
 						seenJob := SeenJobRecord{
-							Id:    job.ID,
-							Start: time.Now(),
+							Id:          job.ID,
+							Start:       time.Now(),
+							CurrentJobs: currentJobCount,
 						}
+						currentJobCount++
 						time.Sleep(time.Second * 1)
+						currentJobCount--
 						seenJob.End = time.Now()
 						seenJobs = append(seenJobs, seenJob)
 						return "", nil
@@ -176,9 +182,13 @@ func TestTotalResourceLimits(t *testing.T) {
 
 		err := waiter.Wait()
 		assert.NoError(t, err)
+
+		spew.Dump(seenJobs)
 	}
 
 	// 2 jobs at a time
+	// we should end up with 2 groups of 2 in terms of timing
+	// and the highest number of jobs at one time should be 2
 	runTest(
 		getResourcesArray([][]string{
 			{"1", "500Mb"},
