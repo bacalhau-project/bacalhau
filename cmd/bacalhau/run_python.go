@@ -22,6 +22,7 @@ var command string
 var requirementsPath string
 var contextPath string
 
+//nolint:gochecknoinits
 func init() {
 	// determinism flag
 	runPythonCmd.PersistentFlags().BoolVar(
@@ -58,8 +59,11 @@ func init() {
 		`Install from the given requirements file. (like pip)`, // TODO: This option can be used multiple times.
 	)
 	runPythonCmd.PersistentFlags().StringVar(
-		&contextPath, "context-path", ".", // TODO: consider replacing this with context-glob, default to "./**/*.py|./requirements.txt", OR .bacalhau_ignore
-		"Path to context (e.g. python code) to send to server (via public IPFS network) for execution (max 10MiB). Set to empty string to disable",
+		// TODO: consider replacing this with context-glob, default to
+		// "./**/*.py|./requirements.txt", OR .bacalhau_ignore
+		&contextPath, "context-path", ".",
+		"Path to context (e.g. python code) to send to server (via public IPFS network) "+
+			"for execution (max 10MiB). Set to empty string to disable",
 	)
 	runPythonCmd.PersistentFlags().StringVar(
 		&jobVerifier, "verifier", "ipfs",
@@ -173,6 +177,7 @@ var runPythonCmd = &cobra.Command{
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 
+//nolint:gocyclo
 func compress(src string, buf io.Writer) error {
 	// tar > gzip > buf
 	zr := gzip.NewWriter(buf)
@@ -186,28 +191,30 @@ func compress(src string, buf io.Writer) error {
 	mode := fi.Mode()
 	if mode.IsRegular() {
 		// get header
-		header, err := tar.FileInfoHeader(fi, src)
+		var header *tar.Header
+		header, err = tar.FileInfoHeader(fi, src)
 		if err != nil {
 			return err
 		}
 		// write header
-		if err := tw.WriteHeader(header); err != nil {
+		if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
 			return err
 		}
 		// get content
-		data, err := os.Open(src)
+		var data *os.File
+		data, err = os.Open(src)
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(tw, data); err != nil {
+		if _, err = io.Copy(tw, data); err != nil {
 			return err
 		}
 	} else if mode.IsDir() { // folder
-
 		// walk through every file in the folder
-		filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
+		err = filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
 			// generate tar header
-			header, err := tar.FileInfoHeader(fi, file)
+			var header *tar.Header
+			header, err = tar.FileInfoHeader(fi, file)
 			if err != nil {
 				return err
 			}
@@ -217,21 +224,25 @@ func compress(src string, buf io.Writer) error {
 			header.Name = filepath.ToSlash(file)
 
 			// write header
-			if err := tw.WriteHeader(header); err != nil {
+			if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
 				return err
 			}
 			// if not a dir, write file content
 			if !fi.IsDir() {
-				data, err := os.Open(file)
+				var data *os.File
+				data, err = os.Open(file)
 				if err != nil {
 					return err
 				}
-				if _, err := io.Copy(tw, data); err != nil {
+				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
 					return err
 				}
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 	} else {
 		return fmt.Errorf("error: file type not supported")
 	}
@@ -249,6 +260,7 @@ func compress(src string, buf io.Writer) error {
 }
 
 // check for path traversal and correct forward slashes
+//nolint:deadcode,unused
 func validRelPath(p string) bool {
 	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {
 		return false
@@ -256,6 +268,17 @@ func validRelPath(p string) bool {
 	return true
 }
 
+// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
+func SanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
+}
+
+//nolint:unused,deadcode
 func decompress(src io.Reader, dst string) error {
 	// ungzip
 	zr, err := gzip.NewReader(src)
@@ -282,17 +305,19 @@ func decompress(src io.Reader, dst string) error {
 		}
 
 		// add dst + re-format slashes according to system
-		target = filepath.Join(dst, header.Name)
+		target, err = SanitizeArchivePath(dst, header.Name)
+		if err != nil {
+			return err
+		}
 		// if no join is needed, replace with ToSlash:
 		// target = filepath.ToSlash(header.Name)
 
 		// check the type
 		switch header.Typeflag {
-
 		// if its a dir and it doesn't exist create it (with 0755 permission)
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil { //nolint:gomnd
 					return err
 				}
 			}
@@ -303,7 +328,7 @@ func decompress(src io.Reader, dst string) error {
 				return err
 			}
 			// copy over contents
-			if _, err := io.Copy(fileToWrite, tr); err != nil {
+			if _, err := io.CopyN(fileToWrite, tr, 10*1024*1024); err != nil { //nolint:gomnd
 				return err
 			}
 			// manually close here after each file operation; defering would cause each file close

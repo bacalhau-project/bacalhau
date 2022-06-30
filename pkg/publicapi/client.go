@@ -83,15 +83,17 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal, context *bytes.Buffer) (*executor.Job, error) {
+func (apiClient *APIClient) Submit(
+	ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal, buildContext *bytes.Buffer,
+) (*executor.Job, error) {
 	var res submitResponse
 
 	req := submitRequest{
 		Spec: spec,
 		Deal: deal,
 	}
-	if context != nil {
-		req.Context = base64.StdEncoding.EncodeToString(context.Bytes())
+	if buildContext != nil {
+		req.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {

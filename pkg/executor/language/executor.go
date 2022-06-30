@@ -36,15 +36,11 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context,
-	volume storage.StorageSpec) (bool, error) {
-
+func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
-	string, error) {
-
+func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	if job.Spec.Language.Language != "python" && job.Spec.Language.LanguageVersion != "3.10" {
 		return "", fmt.Errorf("only python 3.10 is supported")
 	}

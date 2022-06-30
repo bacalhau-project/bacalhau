@@ -12,6 +12,7 @@ import (
 // var jobConcurrency int
 // var skipSyntaxChecking bool
 
+//nolint:gochecknoinits
 func init() {
 	runCmd.AddCommand(runPythonCmd)
 }

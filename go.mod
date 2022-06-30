@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/google/uuid v1.3.0
-	github.com/ipfs/go-ipfs v0.13.0-rc1
+	github.com/ipfs/go-ipfs v0.13.0
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
@@ -151,7 +151,7 @@ require (
 	github.com/libp2p/go-libp2p-asn-util v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-blankhost v0.3.0 // indirect
 	github.com/libp2p/go-libp2p-discovery v0.6.0 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.15.0 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.16.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
 	github.com/libp2p/go-libp2p-loggables v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-mplex v0.7.0 // indirect

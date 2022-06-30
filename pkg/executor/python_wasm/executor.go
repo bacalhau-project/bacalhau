@@ -1,4 +1,4 @@
-package python_wasm
+package pythonwasm
 
 /*
 The python_wasm executor wraps the docker executor. The requestor will have
@@ -36,9 +36,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context,
-	volume storage.StorageSpec) (bool, error) {
-
+func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
 }
 

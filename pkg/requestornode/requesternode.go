@@ -119,7 +119,7 @@ func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeID string) (bidAcc
 	return true, "", nil
 }
 
-func (node *RequesterNode) PinContext(jobId string, context string) error {
+func (node *RequesterNode) PinContext(jobID, buildContext string) error {
 	return nil
 }
 

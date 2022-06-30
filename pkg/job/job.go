@@ -123,11 +123,10 @@ func ConstructLanguageJob(
 	contextPath string, // we have to tar this up and POST it to the requestor node
 	deterministic bool,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
-
 	// TODO refactor this wrt ConstructDockerJob
 
 	if concurrency <= 0 {
-		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
+		return nil, nil, fmt.Errorf("concurrency must be >= 1")
 	}
 
 	jobInputs := []storage.StorageSpec{}
@@ -136,7 +135,7 @@ func ConstructLanguageJob(
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
+			return nil, nil, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
@@ -150,7 +149,7 @@ func ConstructLanguageJob(
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
+			return nil, nil, fmt.Errorf("invalid output volume: %s", outputVolume)
 		}
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
