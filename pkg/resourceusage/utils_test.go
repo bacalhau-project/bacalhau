@@ -1,6 +1,7 @@
 package resourceusage
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/c2h5oh/datasize"
@@ -48,10 +49,18 @@ func TestParseResourceUsageConfig(t *testing.T) {
 			input:    c("500M", "512MB"),
 			expected: d(0.5, (datasize.MB * 512).Bytes()),
 		},
+		{
+			name:     "empty",
+			input:    c("", ""),
+			expected: d(0, (datasize.B * 0).Bytes()),
+		},
 	}
 
 	for _, test := range tests {
 		converted, err := ParseResourceUsageConfig(test.input)
+		if err != nil {
+			fmt.Printf("Error: %s\n", err.Error())
+		}
 		assert.NoError(t, err)
 		assert.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
 		assert.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
