@@ -175,12 +175,6 @@ func NewComputeNode(
 	return computeNode, nil
 }
 
-// how this is implemented could be improved
-// for example - it should be possible to shell out to a user-defined program or send a HTTP request
-// with the detauils of the job (input CIDs, submitter reputation etc)
-// that will decide if it's worth doing the job or not
-// for now - the rule is "do we have all the input CIDS"
-// TODO: allow user probes (http / exec) to be used to decide if we should run the job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
