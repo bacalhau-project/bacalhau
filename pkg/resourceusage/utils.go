@@ -22,18 +22,21 @@ func convertBytesString(st string) string {
 func ParseResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, error) {
 	data := ResourceUsageData{}
 
-	cpu, err := k8sresource.NewCPUFromString(convertBytesString(usage.CPU))
-	if err != nil {
-		return data, err
+	if usage.CPU != "" {
+		cpu, err := k8sresource.NewCPUFromString(convertBytesString(usage.CPU))
+		if err != nil {
+			return data, err
+		}
+		data.CPU = cpu.ToFloat64()
 	}
 
-	memory, err := datasize.ParseString(convertBytesString(usage.Memory))
-	if err != nil {
-		return data, err
+	if usage.Memory != "" {
+		memory, err := datasize.ParseString(convertBytesString(usage.Memory))
+		if err != nil {
+			return data, err
+		}
+		data.Memory = memory.Bytes()
 	}
-
-	data.CPU = cpu.ToFloat64()
-	data.Memory = memory.Bytes()
 
 	return data, nil
 }
