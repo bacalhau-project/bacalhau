@@ -95,14 +95,21 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.
 		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
 	}
 
-	// Attach metadata to local job lifecycle context:
 	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
-	gt.addJobLifecycleEvent(jobCtx, event.JobID,
-		fmt.Sprintf("receive_%s", event.EventName))
+	if event.NodeID == gt.NodeID {
+		// Attach metadata to local job lifecycle context:
+		gt.addJobLifecycleEvent(jobCtx, event.JobID,
+			fmt.Sprintf("receive_%s", event.EventName))
 
-	// If the event is known to be terminal, end the lifecycle context:
-	if event.EventName.IsTerminal() {
-		gt.endJobContext(event.JobID)
+		// If the event is known to be ignorable, end the local lifecycle context:
+		if event.EventName.IsIgnorable() {
+			gt.endJobNodeContext(event.JobID)
+		}
+
+		// If the event is known to be terminal, end the global lifecycle context:
+		if event.EventName.IsTerminal() {
+			gt.endJobContext(event.JobID)
+		}
 	}
 
 	// Actually notify in-process listeners:
@@ -344,12 +351,15 @@ func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, 
 	})
 }
 
-// endJobContext ends the local and global lifecycle contexts for a job.
+// endJobContext ends the global lifecycle context for a job.
 func (gt *GenericTransport) endJobContext(jobID string) {
-	ctx := gt.getJobNodeContext(context.Background(), jobID)
+	ctx := gt.getJobContext(jobID)
 	trace.SpanFromContext(ctx).End()
+}
 
-	ctx = gt.getJobContext(jobID)
+// endJobNodeContext ends the local lifecycle context for a job.
+func (gt *GenericTransport) endJobNodeContext(jobID string) {
+	ctx := gt.getJobNodeContext(context.Background(), jobID)
 	trace.SpanFromContext(ctx).End()
 }
 
@@ -407,6 +417,3 @@ func (gt *GenericTransport) newRootSpanForJob(ctx context.Context, jobID string)
 		),
 	)
 }
-
-// Compile-time interface check:
-var _ Transport = (*GenericTransport)(nil)
