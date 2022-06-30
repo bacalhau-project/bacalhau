@@ -98,6 +98,20 @@ func VerifyForUser(msg, sig []byte) (bool, error) {
 	return rsa.VerifyPKCS1v15(&key.PublicKey, sigHash, hashBytes, sig) == nil, nil
 }
 
+// GetClientID returns a hash identifying a user based on their id key.
+func GetClientID() (string, error) {
+	key, err := loadUserIDKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to load user ID key: %w", err)
+	}
+
+	hash := sigHash.New()
+	hash.Write(key.PublicKey.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes), nil
+}
+
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
 func ensureConfigDir() (string, error) {
 	configDir := os.Getenv("BACALHAU_DIR")
