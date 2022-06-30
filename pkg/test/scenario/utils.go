@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/api_copy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fuse_docker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
+	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +36,7 @@ const (
 	ExpectedModeContains
 )
 
-type IGetStorageDriver func(stack *devstack.DevStack_IPFS) (storage.StorageProvider, error)
+type IGetStorageDriver func(stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
 type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error)
 type ICheckResults func(resultsDir string)
 type IGetJobSpec func() executor.JobSpecDocker
@@ -46,18 +46,14 @@ type IGetJobSpec func() executor.JobSpecDocker
 	Storage Drivers
 
 */
-func FuseStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
-	storage.StorageProvider, error) {
-
-	return fuse_docker.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
+func FuseStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
+	return fusedocker.NewStorageProvider(
+		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
 }
 
-func ApiCopyStorageDriverFactoryHandler(stack *devstack.DevStack_IPFS) (
-	storage.StorageProvider, error) {
-
-	return api_copy.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.ApiAddress())
+func APICopyStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
+	return apicopy.NewStorageProvider(
+		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
 }
 
 var FuseStorageDriverFactory = StorageDriverFactory{
@@ -65,22 +61,22 @@ var FuseStorageDriverFactory = StorageDriverFactory{
 	DriverFactory: FuseStorageDriverFactoryHandler,
 }
 
-var ApiCopyStorageDriverFactory = StorageDriverFactory{
+var APICopyStorageDriverFactory = StorageDriverFactory{
 	Name:          "apiCopy",
-	DriverFactory: ApiCopyStorageDriverFactoryHandler,
+	DriverFactory: APICopyStorageDriverFactoryHandler,
 }
 
-var STORAGE_DRIVER_FACTORIES = []StorageDriverFactory{
+var StorageDriverFactories = []StorageDriverFactory{
 	//	FuseStorageDriverFactory,
-	ApiCopyStorageDriverFactory,
+	APICopyStorageDriverFactory,
 }
 
-var STORAGE_DRIVER_FACTORIES_FUSE = []StorageDriverFactory{
+var StorageDriverFactoriesFuse = []StorageDriverFactory{
 	FuseStorageDriverFactory,
 }
 
-var STORAGE_DRIVER_FACTORIES_API_COPY = []StorageDriverFactory{
-	ApiCopyStorageDriverFactory,
+var StorageDriverFactoriesAPICopy = []StorageDriverFactory{
+	APICopyStorageDriverFactory,
 }
 
 /*
@@ -149,14 +145,13 @@ func singleFileResultsChecker(
 	expectedLines int,
 ) ICheckResults {
 	return func(resultsDir string) {
-
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
 		assert.NoError(t, err)
 
 		log.Trace().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
 
-		actual_line_count := len(strings.Split(string(resultsContent), "\n"))
-		assert.Equal(t, expectedLines, actual_line_count, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actual_line_count))
+		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
+		assert.Equal(t, expectedLines, actualLineCount, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount))
 
 		if expectedMode == ExpectedModeEquals {
 			assert.Equal(t, expectedString, string(resultsContent))

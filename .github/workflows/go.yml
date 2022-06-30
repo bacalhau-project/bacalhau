@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       GOVER: ${{ matrix.go_version }}
-      GOLANGCILINT_VER: v1.45
+      GOLANGCILINT_VER: v1.46
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -57,7 +57,7 @@ jobs:
               name: macOS-arm64,
               os: macOS-latest,
               target_os: darwin,
-              runner: M1,
+              runner: ubuntu-latest,
               target_arch: arm64,
             }
           - {
@@ -70,38 +70,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - name: Install go@1.18
-        run: |
-          curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          sudo rm -rf /usr/local/go 
-          sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-
-      - name: echo PATH
-        run: echo $PATH
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "^1.18.3" # The Go version to download (if necessary) and use.
 
       - name: Print go version
         run: go version
 
-      - name: Cache Go modules (Linux)
-        if: matrix.target_os == 'linux'
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
-      - name: Cache Go modules (macOS)
-        if: matrix.target_os == 'darwin'
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/go-build
-            ~/go/pkg/mod
-          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
+      # https://filecoinproject.slack.com/archives/C02RLM3JHUY/p1656584355868019
+      # - name: Cache Go modules
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.cache/go-build
+      #       ~/go/pkg/mod
+      #     key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
 
       - name: Set up Honeycomb Otel from Github Secret
         run: |
@@ -114,7 +99,7 @@ jobs:
 
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v3.1.0
+        uses: golangci/golangci-lint-action@v3.2.0
         with:
           version: ${{ env.GOLANGCILINT_VER }}
 
@@ -126,15 +111,15 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      - name: Build
-        run: make build
-
       - name: Install IPFS
         run: |
-          curl -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          curl -s -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
           cd go-ipfs
           sudo bash install.sh
+
+      - name: Build
+        run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
       - name: Test
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
@@ -144,14 +129,14 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
 
-      - id: "auth"
+      - id: auth_to_gcloud
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v0"
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
 
-      - name: terraform apply
+      - name: install development cluster
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
         run: |
           cd ops/terraform && terraform init && \

@@ -20,41 +20,40 @@ var tableHideHeader bool
 var tableMaxJobs int
 var tableSortBy ColumnEnum
 var tableSortReverse bool
-var tableIdFilter string
+var tableIDFilter string
 var tableNoStyle bool
 
-// var tableMergeValues bool
-
-func shortenTime(t time.Time) string {
+func shortenTime(t time.Time) string { // nolint:unused // Useful function, holding here
 	if tableOutputWide {
 		return t.Format("06-01-02-15:04:05")
 	}
 
 	return t.Format("15:04:05")
-
 }
+
+var DefaultShortenStringLength = 20
 
 func shortenString(st string) string {
 	if tableOutputWide {
 		return st
 	}
 
-	if len(st) < 20 {
+	if len(st) < DefaultShortenStringLength {
 		return st
 	}
 
 	return st[:20] + "..."
 }
 
-func shortId(id string) string {
+func shortID(id string) string {
 	return id[:8]
 }
 
 func getJobResult(job *executor.Job, state *executor.JobState) string {
-	if state.ResultsId == "" {
+	if state.ResultsID == "" {
 		return "-"
 	}
-	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsId
+	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsID
 }
 
 func getAPIClient() *publicapi.APIClient {
@@ -80,7 +79,8 @@ func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) 
 	return c, buf.String(), err
 }
 
-// TODO: #233 Replace when we move to go1.18 https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
+// TODO: #233 Replace when we move to go1.18
+// https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
 func Min(a, b int) int {
 	if a < b {
 		return a
@@ -95,32 +95,11 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-func FilterStringArray(data []string, f func(string) bool) []string {
-	fltd := make([]string, 0)
-	for _, e := range data {
-		if f(e) {
-			fltd = append(fltd, e)
-		}
-	}
-	return fltd
-}
+// func RandInt(i int) int {
+// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
+// 	if err != nil {
+// 		log.Fatal().Msg("could not generate random number")
+// 	}
 
-// Below are utilities for testing
-// TODO: #276 Evaluate if this is the right place for this stuff and delete this comment or move
-
-func LoadBadStringsFull() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_full.txt")
-	return loadBadStrings(file)
-}
-
-func LoadBadStringsAnnotations() []string {
-	file, _ := os.ReadFile("../../testdata/bad_strings_annotations.txt")
-	return loadBadStrings(file)
-}
-
-func loadBadStrings(file []byte) []string {
-	badStringsRaw := strings.Split(string(file), "\n")
-	return FilterStringArray(badStringsRaw, func(s string) bool {
-		return !(strings.HasPrefix(s, "#") || strings.HasPrefix(s, "\n"))
-	})
-}
+// 	return int(n.Int64())
+// }

@@ -1,4 +1,4 @@
-package compute_node
+package computenode
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +16,7 @@ import (
 // but when it's not turned on the job is actually selected
 func TestJobSelectionNoVolumes(t *testing.T) {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
 			RejectStatelessJobs: rejectSetting,
 		})
 		defer cm.Cleanup()
@@ -36,15 +36,15 @@ func TestJobSelectionLocality(t *testing.T) {
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello"
 	cid, err := (func() (string, error) {
-		_, ipfsStack, cm := SetupTest(t, compute_node.JobSelectionPolicy{})
+		_, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{})
 		defer cm.Cleanup()
 		return ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	}())
 	assert.NoError(t, err)
 
-	runTest := func(locality compute_node.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
+	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		computeNode, ipfsStack, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+		computeNode, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{
 			Locality: locality,
 		})
 		defer cm.Cleanup()
@@ -60,16 +60,16 @@ func TestJobSelectionLocality(t *testing.T) {
 	}
 
 	// we are local - we do have the file - we should accept
-	runTest(compute_node.Local, true, true)
+	runTest(computenode.Local, true, true)
 
 	// we are local - we don't have the file - we should reject
-	runTest(compute_node.Local, false, false)
+	runTest(computenode.Local, false, false)
 
 	// we are anywhere - we do have the file - we should accept
-	runTest(compute_node.Anywhere, true, true)
+	runTest(computenode.Anywhere, true, true)
 
 	// we are anywhere - we don't have the file - we should accept
-	runTest(compute_node.Anywhere, false, true)
+	runTest(computenode.Anywhere, false, true)
 }
 
 func TestJobSelectionHttp(t *testing.T) {
@@ -87,8 +87,8 @@ func TestJobSelectionHttp(t *testing.T) {
 		}))
 		defer svr.Close()
 
-		computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
-			ProbeHttp: svr.URL,
+		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
+			ProbeHTTP: svr.URL,
 		})
 		defer cm.Cleanup()
 
@@ -107,7 +107,7 @@ func TestJobSelectionExec(t *testing.T) {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, cm := SetupTest(t, compute_node.JobSelectionPolicy{
+		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
 			ProbeExec: command,
 		})
 		defer cm.Cleanup()

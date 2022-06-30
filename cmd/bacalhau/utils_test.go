@@ -45,15 +45,6 @@ func (suite *UtilsSuite) TestSafeRegex() {
 		{stringToTest: "👫👭👲👴", predictedLength: len("👫👭👲👴")}, // Emojis should work
 	}
 
-	allBadStrings := LoadBadStringsFull()
-	for _, s := range allBadStrings {
-		l := struct {
-			stringToTest    string
-			predictedLength int // set to -1 if skip test
-		}{stringToTest: s, predictedLength: -1}
-		tests = append(tests, l)
-	}
-
 	for _, tc := range tests {
 		strippedString := job.SafeStringStripper(tc.stringToTest)
 		assert.LessOrEqual(suite.T(), len(strippedString), len(tc.stringToTest))

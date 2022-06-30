@@ -13,8 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// we need these to avoid stream based deadlocks
+// TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
+
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
@@ -27,16 +28,16 @@ func RunCommand(command string, args []string) error {
 }
 
 // same as run command but also returns buffers for stdout and stdin
-func RunTeeCommand(command string, args []string) (error, *bytes.Buffer, *bytes.Buffer) {
-	stdoutBuf := new(bytes.Buffer)
-	stderrBuf := new(bytes.Buffer)
+func RunTeeCommand(command string, args []string) (stdoutBuf, stderrBuf *bytes.Buffer, err error) {
+	stdoutBuf = new(bytes.Buffer)
+	stderrBuf = new(bytes.Buffer)
 
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 
 	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
 	cmd.Stderr = io.MultiWriter(Stderr, stderrBuf)
-	return cmd.Run(), stdoutBuf, stderrBuf
+	return stdoutBuf, stderrBuf, cmd.Run()
 }
 
 func TryUntilSucceedsN(f func() error, desc string, retries int) error {
@@ -64,7 +65,7 @@ func RunCommandGetResults(command string, args []string) (string, error) {
 	return string(result), err
 }
 
-func RunCommandGetResultsEnv(command string, args []string, env []string) (string, error) {
+func RunCommandGetResultsEnv(command string, args, env []string) (string, error) {
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	cmd.Env = env
@@ -96,11 +97,11 @@ func EnsureSystemDirectory(path string) (string, error) {
 	return path, err
 }
 
-func GetResultsDirectory(jobId, hostId string) string {
-	return fmt.Sprintf("results/%s/%s", ShortId(jobId), hostId)
+func GetResultsDirectory(jobID, hostID string) string {
+	return fmt.Sprintf("results/%s/%s", ShortID(jobID), hostID)
 }
 
-func ShortId(id string) string {
+func ShortID(id string) string {
 	parts := strings.Split(id, "-")
 	return parts[0]
 }

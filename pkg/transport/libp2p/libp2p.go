@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/libp2p/go-libp2p"
@@ -26,7 +26,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const JOB_EVENT_CHANNEL = "bacalhau-job-event"
+const JobEventChannel = "bacalhau-job-event"
+const BitsForKeyPair = 2048
 
 type Transport struct {
 	// Cleanup manager for resource teardown on exit:
@@ -49,7 +50,7 @@ func getConfigPath() string {
 		// e.g. /home/francesca/.bacalhau
 		dirname, err := os.UserHomeDir()
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err)
 		}
 		d = dirname + suffix
 	} else {
@@ -57,8 +58,8 @@ func getConfigPath() string {
 		d = env + suffix
 	}
 	// create dir if not exists
-	if err := os.MkdirAll(d, 0700); err != nil {
-		panic(err)
+	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
+		log.Fatal().Err(err)
 	}
 	return d
 }
@@ -74,13 +75,13 @@ func makeLibp2pHost(port int) (host.Host, error) {
 		// Private key does not exist - create and write it
 
 		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
 		if err != nil {
 			log.Error().Err(err)
 			return nil, err
 		}
 
-		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, util.OS_USER_RW)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
 		}
@@ -90,7 +91,7 @@ func makeLibp2pHost(port int) (host.Host, error) {
 		}
 		// base64 encode privBytes
 		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		_, err = keyOut.Write([]byte(b64 + "\n"))
+		_, err = keyOut.WriteString(b64 + "\n")
 		if err != nil {
 			return nil, fmt.Errorf("failed to write to key file: %v", err)
 		}
@@ -105,7 +106,7 @@ func makeLibp2pHost(port int) (host.Host, error) {
 	// it.
 
 	// read the private key
-	keyBytes, err := ioutil.ReadFile(privKeyPath)
+	keyBytes, err := os.ReadFile(privKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key: %v", err)
 	}
@@ -131,10 +132,8 @@ func makeLibp2pHost(port int) (host.Host, error) {
 	)
 }
 
-func NewTransport(cm *system.CleanupManager, port int) (
-	*Transport, error) {
-
-	host, err := makeLibp2pHost(port)
+func NewTransport(cm *system.CleanupManager, port int) (*Transport, error) {
+	h, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +145,12 @@ func NewTransport(cm *system.CleanupManager, port int) (
 		return nil
 	})
 
-	pubsub, err := pubsub.NewGossipSub(ctx, host)
+	ps, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
 		return nil, err
 	}
 
-	jobEventTopic, err := pubsub.Join(JOB_EVENT_CHANNEL)
+	jobEventTopic, err := ps.Join(JobEventChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -163,16 +162,16 @@ func NewTransport(cm *system.CleanupManager, port int) (
 
 	libp2pTransport := &Transport{
 		cm:                   cm,
-		Host:                 host,
+		Host:                 h,
 		Port:                 port,
-		PubSub:               pubsub,
+		PubSub:               ps,
 		JobEventTopic:        jobEventTopic,
 		JobEventSubscription: jobEventSubscription,
 	}
 
 	// setup the event writer
 	libp2pTransport.genericTransport = transport.NewGenericTransport(
-		host.ID().String(),
+		h.ID().String(),
 		func(ctx context.Context, event *executor.JobEvent) error {
 			return libp2pTransport.writeJobEvent(ctx, event)
 		},
@@ -190,7 +189,7 @@ func (t *Transport) HostID(ctx context.Context) (string, error) {
 }
 
 func (t *Transport) Start(ctx context.Context) error {
-	if len(t.genericTransport.SubscribeFuncs) <= 0 {
+	if len(t.genericTransport.SubscribeFuncs) == 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
 
@@ -218,9 +217,7 @@ func (t *Transport) Shutdown(ctx context.Context) error {
 /// READ OPERATIONS
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) List(ctx context.Context) (
-	transport.ListResponse, error) {
-
+func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
 	ctx, span := newSpan(ctx, "List")
 	defer span.End()
 
@@ -245,18 +242,14 @@ func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec,
-	deal *executor.JobDeal) (*executor.Job, error) {
-
+func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 	ctx, span := newSpan(ctx, "SubmitJob")
 	defer span.End()
 
 	return t.genericTransport.SubmitJob(ctx, spec, deal)
 }
 
-func (t *Transport) UpdateDeal(ctx context.Context, jobID string,
-	deal *executor.JobDeal) error {
-
+func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
 	ctx, span := newSpan(ctx, "UpdateDeal")
 	defer span.End()
 
@@ -267,18 +260,14 @@ func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
-func (t *Transport) AcceptJobBid(ctx context.Context, jobID,
-	nodeID string) error {
-
+func (t *Transport) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
 	ctx, span := newSpan(ctx, "AcceptJobBid")
 	defer span.End()
 
 	return t.genericTransport.AcceptJobBid(ctx, jobID, nodeID)
 }
 
-func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID,
-	message string) error {
-
+func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID, message string) error {
 	ctx, span := newSpan(ctx, "RejectJobBid")
 	defer span.End()
 
@@ -296,9 +285,7 @@ func (t *Transport) BidJob(ctx context.Context, jobID string) error {
 	return t.genericTransport.BidJob(ctx, jobID)
 }
 
-func (t *Transport) SubmitResult(ctx context.Context, jobID, status,
-	resultsID string) error {
-
+func (t *Transport) SubmitResult(ctx context.Context, jobID, status, resultsID string) error {
 	ctx, span := newSpan(ctx, "SubmitResult")
 	defer span.End()
 
@@ -317,9 +304,7 @@ func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID,
-	status string) error {
-
+func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status string) error {
 	ctx, span := newSpan(ctx, "ErrorJobForNode")
 	defer span.End()
 
@@ -403,9 +388,7 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 	}
 }
 
-func newSpan(ctx context.Context, apiName string) (
-	context.Context, trace.Span) {
-
+func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
 	return system.Span(ctx, "transport/libp2p", apiName)
 }
 

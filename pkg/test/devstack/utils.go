@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -17,17 +17,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var STORAGE_DRIVER_NAMES = []string{
-	storage.IPFS_FUSE_DOCKER,
-	storage.IPFS_API_COPY,
+var StorageDriverNames = []string{
+	storage.IPFSFuseDocker,
+	storage.IPFSAPICopy,
 }
 
 func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
-	jobSelectionPolicy compute_node.JobSelectionPolicy,
+	jobSelectionPolicy computenode.JobSelectionPolicy,
 ) (*devstack.DevStack, *system.CleanupManager) {
-
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
@@ -37,7 +36,6 @@ func SetupTest(
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 		map[verifier.VerifierType]verifier.Verifier, error) {
-
 		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
@@ -51,7 +49,7 @@ func SetupTest(
 	assert.NoError(t, err)
 
 	// important to give the pubsub network time to connect
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second)
 
 	return stack, cm
 }

@@ -40,7 +40,6 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
-	tableIdFilter = ""
 	tableSortReverse = false
 
 	tests := []struct {
@@ -74,7 +73,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
 				"--api-host", host,
 				"--api-port", port,
-				"-i", submittedJob.Id,
+				"-i", submittedJob.ID,
 			)
 
 			assert.NoError(suite.T(), err, "Error in describing job: %+v", err)

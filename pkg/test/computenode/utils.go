@@ -1,9 +1,9 @@
-package compute_node
+package computenode
 
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -17,17 +17,16 @@ import (
 
 func SetupTest(
 	t *testing.T,
-	jobSelectionPolicy compute_node.JobSelectionPolicy,
-) (*compute_node.ComputeNode, *devstack.DevStack_IPFS, *system.CleanupManager) {
-
+	jobSelectionPolicy computenode.JobSelectionPolicy,
+) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
-	ipfsStack, err := devstack.NewDevStack_IPFS(cm, 1)
+	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	apiAddress := ipfsStack.Nodes[0].IpfsNode.ApiAddress()
+	apiAddress := ipfsStack.Nodes[0].IpfsNode.APIAddress()
 	transport, err := inprocess.NewInprocessTransport()
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +43,7 @@ func SetupTest(
 		t.Fatal(err)
 	}
 
-	computeNode, err := compute_node.NewComputeNode(
+	computeNode, err := computenode.NewComputeNode(
 		transport,
 		executors,
 		verifiers,
@@ -82,10 +81,10 @@ func GetJobSpec(cid string) *executor.JobSpec {
 	}
 }
 
-func GetProbeData(cid string) compute_node.JobSelectionPolicyProbeData {
-	return compute_node.JobSelectionPolicyProbeData{
-		NodeId: "test",
-		JobId:  "test",
+func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
+	return computenode.JobSelectionPolicyProbeData{
+		NodeID: "test",
+		JobID:  "test",
 		Spec:   GetJobSpec(cid),
 	}
 }

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,8 +23,8 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 	for node := range job.State {
 		results = append(results, types.ResultsList{
 			Node:   node,
-			Cid:    job.State[node].ResultsId,
-			Folder: system.GetResultsDirectory(job.Id, node),
+			Cid:    job.State[node].ResultsID,
+			Folder: system.GetResultsDirectory(job.ID, node),
 		})
 	}
 
@@ -34,7 +35,7 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 
 func ConstructDockerJob(
 	engine executor.EngineType,
-	verifier verifier.VerifierType,
+	v verifier.VerifierType,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -44,7 +45,7 @@ func ConstructDockerJob(
 	annotations []string,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
-		return nil, nil, fmt.Errorf("Concurrency must be >= 1")
+		return nil, nil, fmt.Errorf("concurrency must be >= 1")
 	}
 
 	jobInputs := []storage.StorageSpec{}
@@ -53,7 +54,7 @@ func ConstructDockerJob(
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid input volume: %s", inputVolume)
+			return nil, nil, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
@@ -67,7 +68,9 @@ func ConstructDockerJob(
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("Invalid output volume: %s", outputVolume)
+			msg := fmt.Sprintf("invalid output volume: %s", outputVolume)
+			log.Error().Msgf(msg)
+			return nil, nil, errors.New(msg)
 		}
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
@@ -87,16 +90,16 @@ func ConstructDockerJob(
 
 	spec := &executor.JobSpec{
 		Engine:   engine,
-		Verifier: verifier,
+		Verifier: v,
 		Docker: executor.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,
 		},
 
-		Inputs:  jobInputs,
-		Outputs: jobOutputs,
-		Annotations:  jobAnnotations,
+		Inputs:      jobInputs,
+		Outputs:     jobOutputs,
+		Annotations: jobAnnotations,
 	}
 
 	deal := &executor.JobDeal{
@@ -183,11 +186,10 @@ func ConstructLanguageJob(
 	return spec, deal, nil
 }
 
-func VerifyJob(spec *executor.JobSpec, Deal *executor.JobDeal) error {
+func VerifyJob(spec *executor.JobSpec, deal *executor.JobDeal) error {
 	// TODO: do something useful here
 	return nil
 }
-
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
 func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
@@ -202,34 +204,34 @@ func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	// - Everything else SHOULD be equivalent, but doesn't matter (really), so we'll just show the
 	// 	 one that has the non-bid-rejected result.
 
-	finalNodeId := ""
+	finalNodeID := ""
 	finalJobState := &executor.JobState{}
 
-	for nodeId, jobState := range job.State {
-		if finalNodeId == "" {
-			finalNodeId = nodeId
+	for nodeID, jobState := range job.State {
+		if finalNodeID == "" {
+			finalNodeID = nodeID
 			finalJobState = jobState
 		} else if JobStateValue(jobState) > JobStateValue(finalJobState) {
 			// Overwrite any states that are there with a new state - so we only have one
-			finalNodeId = nodeId
+			finalNodeID = nodeID
 			finalJobState = jobState
 		}
 	}
-	return finalNodeId, finalJobState
+	return finalNodeID, finalJobState
 }
 
 func JobStateValue(jobState *executor.JobState) int {
 	switch jobState.State {
 	case executor.JobStateRunning:
-		return 100
+		return 100 // nolint:gomnd // magic number appropriate
 	case executor.JobStateComplete:
-		return 90
+		return 90 // nolint:gomnd // magic number appropriate
 	case executor.JobStateError:
-		return 80
+		return 80 // nolint:gomnd // magic number appropriate
 	case executor.JobStateBidding:
-		return 70
+		return 70 // nolint:gomnd // magic number appropriate
 	case executor.JobStateBidRejected:
-		return 60
+		return 60 // nolint:gomnd // magic number appropriate
 	default:
 		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
 		return 0

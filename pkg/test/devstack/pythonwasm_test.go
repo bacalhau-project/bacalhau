@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -24,7 +24,7 @@ import (
 func TestSimplestPythonWasmDashC(t *testing.T) {
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
-	stack, cm := SetupTest(t, 1, 0, compute_node.NewDefaultJobSelectionPolicy())
+	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultJobSelectionPolicy())
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()
@@ -33,7 +33,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
 	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
-		fmt.Sprintf("--api-port=%d", stack.Nodes[0].ApiServer.Port),
+		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
 		"python",

@@ -1,4 +1,4 @@
-package compute_node
+package computenode
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -24,40 +25,43 @@ type ComputeNode struct {
 	JobSelectionPolicy JobSelectionPolicy
 }
 
+// TODO: Clean up function so it's not so long
+// nolint:funlen // we get it, it's a big function
 func NewComputeNode(
-	transport transport.Transport,
+	t transport.Transport,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	jobSelectionPolicy JobSelectionPolicy,
 ) (*ComputeNode, error) {
 	ctx := context.Background()
-	nodeID, err := transport.HostID(ctx)
+	nodeID, err := t.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	computeNode := &ComputeNode{
 		NodeID:             nodeID,
-		Transport:          transport,
+		Transport:          t,
 		Verifiers:          verifiers,
 		Executors:          executors,
 		JobSelectionPolicy: jobSelectionPolicy,
 	}
 
-	transport.Subscribe(ctx, func(ctx context.Context,
-		jobEvent *executor.JobEvent, job *executor.Job) {
-
+	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+		var span trace.Span
 		switch jobEvent.EventName {
-		// a new job has arrived - decide if we want to bid on it
 		case executor.JobEventCreated:
-			ctx, span := computeNode.newSpanForJob(ctx,
-				job.Id, "JobEventCreated")
+			ctx, span = computeNode.newSpanForJob(ctx, job.ID, "JobEventCreated")
 			defer span.End()
 
+			// Increment the number of jobs seen by this compute node:
+			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
+
+			// A new job has arrived - decide if we want to bid on it:
 			shouldRun, err := computeNode.SelectJob(ctx,
 				JobSelectionPolicyProbeData{
-					NodeId: nodeID,
-					JobId:  jobEvent.JobId,
+					NodeID: nodeID,
+					JobID:  jobEvent.JobID,
 					Spec:   jobEvent.JobSpec,
 				})
 			if err != nil {
@@ -70,14 +74,14 @@ func NewComputeNode(
 				logger.LogJobEvent(logger.JobEvent{
 					Node: nodeID,
 					Type: "compute_node:bid",
-					Job:  job.Id,
+					Job:  job.ID,
 				})
 
 				log.Debug().Msgf("compute node %s bidding on: %+v", nodeID,
 					jobEvent.JobSpec)
 
 				// TODO: Check result of bid job
-				err = transport.BidJob(ctx, jobEvent.JobId)
+				err = t.BidJob(ctx, jobEvent.JobID)
 				if err != nil {
 					log.Error().Msgf("error bidding on job: %v", err)
 				}
@@ -90,62 +94,71 @@ func NewComputeNode(
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
 			// we only care if the accepted bid is for us
-			if jobEvent.NodeId != nodeID {
+			if jobEvent.NodeID != nodeID {
 				return
 			}
 
-			ctx, span := computeNode.newSpanForJob(ctx,
-				job.Id, "JobEventBidAccepted")
+			ctx, span = computeNode.newSpanForJob(ctx,
+				job.ID, "JobEventBidAccepted")
 			defer span.End()
 
-			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.Id)
+			// Increment the number of jobs accepted by this compute node:
+			jobsAccepted.With(prometheus.Labels{"node_id": nodeID}).Inc()
 
+			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.ID)
 			logger.LogJobEvent(logger.JobEvent{
 				Node: nodeID,
 				Type: "compute_node:run",
-				Job:  job.Id,
+				Job:  job.ID,
 				Data: job,
 			})
 
 			resultFolder, err := computeNode.RunJob(ctx, job)
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
-				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
+
+				// Increment the number of jobs failed by this compute node:
+				jobsFailed.With(prometheus.Labels{"node_id": nodeID}).Inc()
+
 				return
 			}
 
-			verifier, err := computeNode.getVerifier(ctx, job.Spec.Verifier)
+			v, err := computeNode.getVerifier(ctx, job.Spec.Verifier)
 			if err != nil {
-				log.Error().Msgf("Error geting the verifier for the job: %s %+v", err, job)
-				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error geting the verifier for the job: %s", err))
+				log.Error().Msgf("error getting the verifier for the job: %s %+v", err, job)
+				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("error getting the verifier for the job: %s", err))
 				return
 			}
 
-			resultValue, err := verifier.ProcessResultsFolder(
-				ctx, job.Id, resultFolder)
+			resultValue, err := v.ProcessResultsFolder(
+				ctx, job.ID, resultFolder)
 			if err != nil {
 				log.Error().Msgf("Error verifying results: %s %+v", err, job)
-				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error verifying results: %s", err))
+				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error verifying results: %s", err))
 				return
 			}
 
 			logger.LogJobEvent(logger.JobEvent{
 				Node: nodeID,
 				Type: "compute_node:result",
-				Job:  job.Id,
+				Job:  job.ID,
 				Data: resultValue,
 			})
 
-			if err = transport.SubmitResult(
+			if err = t.SubmitResult(
 				ctx,
-				job.Id,
+				job.ID,
 				fmt.Sprintf("Got job result: %s", resultValue),
 				resultValue,
 			); err != nil {
 				log.Error().Msgf("Error submitting result: %s %+v", err, job)
-				_ = transport.ErrorJob(ctx, job.Id, fmt.Sprintf("Error running the job: %s", err))
+				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
 				return
 			}
+
+			// Increment the number of jobs completed by this compute node:
+			jobsCompleted.With(prometheus.Labels{"node_id": nodeID}).Inc()
 		}
 	})
 
@@ -158,13 +171,9 @@ func NewComputeNode(
 // that will decide if it's worth doing the job or not
 // for now - the rule is "do we have all the input CIDS"
 // TODO: allow user probes (http / exec) to be used to decide if we should run the job
-func (node *ComputeNode) SelectJob(
-	ctx context.Context,
-	data JobSelectionPolicyProbeData,
-) (bool, error) {
-
+func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
 	// check that we have the executor and it's installed
-	executor, err := node.getExecutor(ctx, data.Spec.Engine)
+	e, err := node.getExecutor(ctx, data.Spec.Engine)
 	if err != nil {
 		return false, err
 	}
@@ -178,26 +187,23 @@ func (node *ComputeNode) SelectJob(
 	return ApplyJobSelectionPolicy(
 		ctx,
 		node.JobSelectionPolicy,
-		executor,
+		e,
 		data,
 	)
 }
 
-func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (
-	string, error) {
-
+func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	// check that we have the executor to run this job
-	executor, err := node.getExecutor(ctx, job.Spec.Engine)
+	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
 		return "", err
 	}
 
-	return executor.RunJob(ctx, job)
+	return e.RunJob(ctx, job)
 }
 
-func (node *ComputeNode) getExecutor(ctx context.Context,
-	typ executor.EngineType) (executor.Executor, error) {
-
+// nolint:dupl // methods are not duplicates
+func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineType) (executor.Executor, error) {
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
@@ -218,9 +224,8 @@ func (node *ComputeNode) getExecutor(ctx context.Context,
 	return executorEngine, nil
 }
 
-func (node *ComputeNode) getVerifier(ctx context.Context,
-	typ verifier.VerifierType) (verifier.Verifier, error) {
-
+// nolint:dupl // methods are not duplicates
+func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
 	node.Mutex.Lock()
 	defer node.Mutex.Unlock()
 
@@ -229,8 +234,8 @@ func (node *ComputeNode) getVerifier(ctx context.Context,
 			"no matching verifier found on this server: %s", typ.String())
 	}
 
-	verifier := node.Verifiers[typ]
-	installed, err := verifier.IsInstalled(ctx)
+	v := node.Verifiers[typ]
+	installed, err := v.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -238,12 +243,10 @@ func (node *ComputeNode) getVerifier(ctx context.Context,
 		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
 	}
 
-	return verifier, nil
+	return v, nil
 }
 
-func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID,
-	name string) (context.Context, trace.Span) {
-
+func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
 	return system.Span(ctx, "compute_node/compute_node", name,
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(

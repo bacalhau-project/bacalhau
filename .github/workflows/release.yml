@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       GOVER: ${{ matrix.go_version }}
-      GOLANGCILINT_VER: v1.45
+      GOLANGCILINT_VER: v1.46
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -30,7 +30,7 @@ jobs:
         # GitHub Actions does not yet support Arm or Arm64
         # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
         name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
-        go_version: [1.17.11]
+        go_version: [1.18.3]
         include:
           # - {
           #     name: ubuntu-arm,
@@ -57,7 +57,7 @@ jobs:
               name: macOS-arm64,
               os: macOS-latest,
               target_os: darwin,
-              runner: M1,
+              runner: ubuntu-latest,
               target_arch: arm64,
             }
           - {
@@ -70,17 +70,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@main
-      - name: Install go@1.17
-        run: |
-          curl -L -O https://go.dev/dl/go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          sudo rm -rf /usr/local/go 
-          sudo tar -C /usr/local -xzf go${{ env.GOVER }}.${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "^1.18.3" # The Go version to download (if necessary) and use.
 
       - name: echo PATH
         run: echo $PATH
 
       - name: Print go version
         run: go version
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
 
       - run: 'echo "$PRIVATE_PEM" > /tmp/private.pem'
         shell: bash
@@ -98,7 +106,7 @@ jobs:
 
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v3.1.0
+        uses: golangci/golangci-lint-action@v3.2.0
         with:
           version: ${{ env.GOLANGCILINT_VER }}
 
@@ -107,73 +115,53 @@ jobs:
         run: make modtidy check-diff
 
       - name: Build
-        run: GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build
+        run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
-      - name: Install gon (arm64)
-        if: matrix.target_os == 'darwin' && matrix.target_arch == 'arm64'
-        run: arch -arm64 brew install mitchellh/gon/gon
+      # - name: Install gon
+      #   run: brew install mitchellh/gon/gon
 
-      - name: Install gon (amd64)
-        if: matrix.target_os == 'darwin' && matrix.target_arch == 'amd64'
-        run: brew install mitchellh/gon/gon
+      # - name: Generate .gon.json
+      #   run: |-
+      #     sh -c '
+      #     cat > $RUNNER_TEMP/.gon.json << EOF
+      #     {
+      #         "source": ["./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau"],
+      #         "bundle_id": "org.bacalhau",
+      #         "apple_id": {
+      #             "username": "davidaronchick@hotmail.com",
+      #             "password": "@env:APPLE_DEVELOPER_ID_PASSWORD"
+      #         },
+      #         "sign": {
+      #             "application_identity": "Developer ID Application: David Aronchick (A4J58RH62D)"
+      #         }
+      #     }
+      #     EOF
+      #     '
 
-      - name: Generate .gon.json
-        if: matrix.target_os == 'darwin'
-        run: |-
-          sh -c '
-          cat > $RUNNER_TEMP/.gon.json << EOF
-          {
-              "source": ["./bin/${{ matrix.target_os }}_${{ matrix.target_arch }}/bacalhau"],
-              "bundle_id": "org.bacalhau",
-              "apple_id": {
-                  "username": "davidaronchick@hotmail.com",
-                  "password": "@env:APPLE_DEVELOPER_ID_PASSWORD"
-              },
-              "sign": {
-                  "application_identity": "Developer ID Application: David Aronchick (A4J58RH62D)"
-              }
-          }          
-          EOF
-          '
+      # - name: Codesign create keychain
+      #   run: |
+      #     KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+      #     CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
 
-      # ONLY DEBUGS WITH DARWIN (for now) - does not install on M1
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin' && matrix.runner != 'M1'}}
-        with:
-          install-dependencies: false
+      #     [ -f "$RUNNER_TEMP/app-signing.keychain-db"] && security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
 
-      # ONLY DEBUGS WITH DARWIN (for now) - installs on non-M1
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && matrix.target_os == 'darwin'}}
+      #     # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
+      #     # Doesn't seem like this would be an issue.
+      #     echo -n "$MACOS_CERTIFICATE" | base64 --decode --output $CERTIFICATE_PATH
 
-      - name: Codesign create keychain
-        if: ${{ matrix.target_os == 'darwin' }}
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+      #     # create temporary keychain
+      #     security create-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
+      #     security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+      #     security unlock-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
 
-          [ -f "$RUNNER_TEMP/app-signing.keychain-db"] && security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 
+      #     # import certificate to keychain
+      #     security import $CERTIFICATE_PATH -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+      #     security list-keychain -d user -s $KEYCHAIN_PATH
+      #     security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD $KEYCHAIN_PATH
 
-          # Reusing MACOS_CERTIFICATE_PWD for both the build.keychain password and the cert password for convenience.
-          # Doesn't seem like this would be an issue.
-          echo -n "$MACOS_CERTIFICATE" | base64 --decode --output $CERTIFICATE_PATH
-
-          # create temporary keychain
-          security create-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$MACOS_CERTIFICATE_PWD" $KEYCHAIN_PATH
-
-          # import certificate to keychain
-          security import $CERTIFICATE_PATH -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD $KEYCHAIN_PATH
-
-      - name: Use gon to sign
-        if: matrix.target_os == 'darwin'
-        run: |
-          gon $RUNNER_TEMP/.gon.json
+      # - name: Use gon to sign
+      #   run: |
+      #     gon $RUNNER_TEMP/.gon.json
 
       - name: Build tarball
         run: |
@@ -181,8 +169,10 @@ jobs:
           echo ${{ github.sha }} > Release.txt
         env:
           PRIVATE_KEY_PASSPHRASE: ${{secrets.PRIVATE_KEY_PASSPHRASE}}
+
       - name: Generate Changelog
         run: echo "# Release Notes" > CHANGELOG.txt
+
       - name: Release
         uses: softprops/action-gh-release@master
         if: startsWith(github.ref, 'refs/tags/')
@@ -193,8 +183,3 @@ jobs:
           body_path: CHANGELOG.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Clean up keychain and provisioning profile
-        if: matrix.target_os == 'darwin'
-        run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db

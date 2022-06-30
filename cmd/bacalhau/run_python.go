@@ -166,7 +166,7 @@ var runPythonCmd = &cobra.Command{
 		log.Debug().Msgf(
 			"submitting job with spec %+v", spec)
 
-		fmt.Printf("%s\n", job.Id)
+		fmt.Printf("%s\n", job.ID)
 		return nil
 	},
 }

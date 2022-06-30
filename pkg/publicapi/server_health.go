@@ -8,8 +8,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GenerateHealthData() types.HealthInfo {
+var LINESOFLOGTOPRINT = 100
 
+func GenerateHealthData() types.HealthInfo {
 	var healthInfo types.HealthInfo
 
 	// Generating all, free, used amounts for each - in case these are different mounts, they'll have different
@@ -37,7 +38,7 @@ func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 	log.Debug().Msg("Received logz request")
 	res.Header().Add("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusOK)
-	fileOutput, err := TailFile(100, "/tmp/ipfs.log")
+	fileOutput, err := TailFile(LINESOFLOGTOPRINT, "/tmp/ipfs.log")
 	if err != nil {
 		missingLogFileMsg := "File not found at /tmp/ipfs.log"
 		log.Warn().Msgf(missingLogFileMsg)
@@ -51,7 +52,6 @@ func (apiServer *APIServer) logz(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Warn().Msg("Error writing body for logz request.")
 	}
-
 }
 
 func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
@@ -68,7 +68,6 @@ func (apiServer *APIServer) readyz(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Warn().Msg("Error writing body for readyz request.")
 	}
-
 }
 
 func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) {
@@ -81,9 +80,9 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 	// CPU usage
 
 	healthInfo := GenerateHealthData()
-	healthJsonBlob, _ := json.Marshal(healthInfo)
+	healthJSONBlob, _ := json.Marshal(healthInfo)
 
-	_, err := res.Write([]byte(healthJsonBlob))
+	_, err := res.Write(healthJSONBlob)
 	if err != nil {
 		log.Warn().Msg("Error writing body for healthz request.")
 	}

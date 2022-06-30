@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/compute_node"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -17,8 +17,9 @@ import (
 
 var devStackNodes int
 var devStackBadActors int
+var devStackNoop bool
 
-func init() {
+func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
 		&devStackNodes, "nodes", 3,
 		`How many nodes should be started in the cluster`,
@@ -27,14 +28,18 @@ func init() {
 		&devStackBadActors, "bad-actors", 0,
 		`How many nodes should be bad actors`,
 	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&devStackNoop, "noop", false,
+		`Use the noop executor and verifier for all jobs`,
+	)
 }
 
 var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
 		if devStackBadActors > devStackNodes {
-			return fmt.Errorf("Cannot have more bad actors than there are nodes")
+			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}
 
 		// Cleanup manager ensures that resources are freed before exiting:
@@ -49,12 +54,20 @@ var devstackCmd = &cobra.Command{
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 			map[executor.EngineType]executor.Executor, error) {
 
+			if devStackNoop {
+				return executor_util.NewNoopExecutors(cm)
+			}
+
 			return executor_util.NewStandardExecutors(cm,
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 			map[verifier.VerifierType]verifier.Verifier, error) {
+
+			if devStackNoop {
+				return verifier_util.NewNoopVerifiers(cm)
+			}
 
 			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 		}
@@ -65,7 +78,7 @@ var devstackCmd = &cobra.Command{
 			devStackBadActors,
 			getExecutors,
 			getVerifiers,
-			compute_node.NewDefaultJobSelectionPolicy(),
+			computenode.NewDefaultJobSelectionPolicy(),
 		)
 		if err != nil {
 			return err

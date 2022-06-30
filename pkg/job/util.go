@@ -5,15 +5,14 @@ import (
 	"regexp"
 )
 
-
 func SafeStringStripper(s string) string {
 	rChars := SafeAnnotationRegex()
 	return rChars.ReplaceAllString(s, "")
 }
 
 func IsSafeAnnotation(s string) bool {
-	matches := SafeAnnotationRegex().FindIndex([]byte(s))
-	return matches == nil
+	matches := SafeAnnotationRegex().FindString(s)
+	return matches == ""
 }
 
 func SafeAnnotationRegex() *regexp.Regexp {
@@ -22,4 +21,3 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	r := regexp.MustCompile(fmt.Sprintf("[^%s|^%s]", returnAllEmojiString(), regexString))
 	return r
 }
-
