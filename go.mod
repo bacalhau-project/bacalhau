@@ -3,6 +3,8 @@ module github.com/filecoin-project/bacalhau
 go 1.18
 
 require (
+	github.com/BTBurke/k8sresource v1.2.0
+	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-ipfs v0.13.0-rc1
@@ -37,7 +39,6 @@ require (
 require (
 	bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
-	github.com/BTBurke/k8sresource v1.2.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
@@ -46,7 +47,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect
-	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/ceramicnetwork/go-dag-jose v0.1.0 // indirect
