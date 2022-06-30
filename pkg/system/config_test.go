@@ -17,3 +17,18 @@ func TestMessageSigning(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, ok)
 }
+
+func TestGetClientID(t *testing.T) {
+	InitConfigForTesting(t)
+	id, err := GetClientID()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, id)
+
+	InitConfigForTesting(t)
+	id2, err := GetClientID()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, id2)
+
+	// Two different clients should have different IDs.
+	assert.NotEqual(t, id, id2)
+}
