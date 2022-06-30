@@ -96,11 +96,11 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      - name: golangci-lint
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v3.2.0
-        with:
-          version: ${{ env.GOLANGCILINT_VER }}
+      # - name: golangci-lint
+      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+      #   uses: golangci/golangci-lint-action@v3.2.0
+      #   with:
+      #     version: ${{ env.GOLANGCILINT_VER }}
 
       - name: Run go mod tidy check diff
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
