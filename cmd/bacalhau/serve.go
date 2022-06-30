@@ -73,12 +73,12 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`The port to serve prometheus metrics on.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&resourceLimitCpu, "resource-limit-cpu", "",
-		`How many CPU cores to use for jobs (e.g. 500m, 2, 8).`,
+		&resourceLimitCpu, "total-cpu-limit", "",
+		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&resourceLimitMemory, "resource-limit-memory", "",
-		`How much Memory to use for jobs (e.g. 500Mb, 2Gb, 8Gb).`,
+		&resourceLimitMemory, "total-memory-limit", "",
+		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 }
 
