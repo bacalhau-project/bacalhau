@@ -81,8 +81,8 @@ type JobSpec struct {
 	VM   JobSpecVM   `json:"job_spec_vm"`
 	Wasm JobSpecWasm `json:"job_spec_wasm"`
 
-	// the compute (cpy, ram, disk) resources this job requires
-	Resources resourceusage.ResourceUsageConfig
+	// the compute (cpy, ram) resources this job requires
+	Resources resourceusage.ResourceUsageConfig `json:"resources"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
