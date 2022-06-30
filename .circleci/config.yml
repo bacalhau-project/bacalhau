@@ -12,7 +12,6 @@ executors:
 jobs:
   build:
     working_directory: ~/repo
-    runs-on: ${{ matrix.runner }}
     steps:
       - checkout
       - restore_cache:
@@ -42,15 +41,18 @@ workflows:
           target_os: linux,
           runner: ubuntu-latest,
           target_arch: amd64,
+          executor: linux
       - build:
           name: macOS-arm64,
           os: macOS-latest,
           target_os: darwin,
           runner: ubuntu-latest,
           target_arch: arm64,
+          executor: linux
       - build:
           name: macOS-amd64,
           os: macOS-latest,
           target_os: darwin,
           runner: macOS-latest,
           target_arch: amd64,
+          executor: linux
