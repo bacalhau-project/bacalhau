@@ -18,13 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type SeenJobRecord struct {
-	Id          string
-	CurrentJobs int
-	Start       time.Time
-	End         time.Time
-}
-
 func TestJobResourceLimits(t *testing.T) {
 	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
 		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
@@ -94,6 +87,13 @@ func TestJobResourceLimits(t *testing.T) {
 
 }
 
+type SeenJobRecord struct {
+	Id          string
+	CurrentJobs int
+	Start       int64
+	End         int64
+}
+
 func TestTotalResourceLimits(t *testing.T) {
 
 	// for this test we use the transport so the compute_node is calling
@@ -114,6 +114,8 @@ func TestTotalResourceLimits(t *testing.T) {
 		totalLimits resourceusage.ResourceUsageConfig,
 	) {
 
+		epochSeconds := time.Now().Unix()
+
 		seenJobs := []SeenJobRecord{}
 		currentJobCount := 0
 
@@ -132,13 +134,13 @@ func TestTotalResourceLimits(t *testing.T) {
 					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
 						seenJob := SeenJobRecord{
 							Id:          job.ID,
-							Start:       time.Now(),
+							Start:       time.Now().Unix() - epochSeconds,
 							CurrentJobs: currentJobCount,
 						}
 						currentJobCount++
 						time.Sleep(time.Second * 1)
 						currentJobCount--
-						seenJob.End = time.Now()
+						seenJob.End = time.Now().Unix() - epochSeconds
 						seenJobs = append(seenJobs, seenJob)
 						return "", nil
 					},
