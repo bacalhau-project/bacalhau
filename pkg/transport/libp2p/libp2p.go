@@ -384,7 +384,7 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 
 		// Notify all the listeners in this process of the event:
 		ctx = otel.GetTextMapPropagator().Extract(ctx, jed.TraceData)
-		t.genericTransport.BroadcastEvent(ctx, jed.JobEvent)
+		t.genericTransport.ReadEvent(ctx, jed.JobEvent)
 	}
 }
 
