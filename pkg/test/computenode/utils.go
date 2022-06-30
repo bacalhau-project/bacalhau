@@ -9,6 +9,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -63,10 +64,15 @@ func SetupTestNoop(
 	t *testing.T,
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
-) (*computenode.ComputeNode, *inprocess.Transport, *system.CleanupManager) {
+) (*computenode.ComputeNode, *requestornode.RequesterNode, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestorNode, err := requestornode.NewRequesterNode(transport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +97,7 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	return computeNode, transport, cm
+	return computeNode, requestorNode, cm
 }
 
 func GetJobSpec(cid string) *executor.JobSpec {
@@ -142,6 +148,13 @@ func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
 	return res
 }
 
-func RunJobsViaTransport(transport *inprocess.Transport) {
-
+// given a transport interface - run a job from start to end
+// basically acting as an "auto requestor" node
+// that will submit the job and then accept any bids
+// that come in (up until the concurrency)
+func RunJobViaRequestor(
+	requestor requestornode.RequesterNode,
+	job *executor.JobSpec,
+) error {
+	return nil
 }

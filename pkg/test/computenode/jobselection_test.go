@@ -2,7 +2,6 @@ package computenode
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,73 +128,4 @@ func TestJobSelectionExec(t *testing.T) {
 
 	runTest(true, false)
 	runTest(false, true)
-}
-
-func TestJobSelectionResourceUsage(t *testing.T) {
-	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
-				ResourceLimits: limits,
-			},
-		}, noop_executor.ExecutorConfig{})
-		defer cm.Cleanup()
-		job := GetProbeData("")
-		job.Spec.Resources = jobResources
-
-		result, err := computeNode.SelectJob(context.Background(), job)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, limits))
-	}
-
-	// the job is half the limit
-	runTest(
-		getResources("1", "500Mb"),
-		getResources("2", "1Gb"),
-		true,
-	)
-
-	// // the job is on the limit
-	runTest(
-		getResources("1", "500Mb"),
-		getResources("1", "500Mb"),
-		true,
-	)
-
-	// the job is over the limit
-	runTest(
-		getResources("2", "1Gb"),
-		getResources("1", "500Mb"),
-		false,
-	)
-
-	// test with fractional CPU
-	// the job is less than the limit
-	runTest(
-		getResources("250m", "200Mb"),
-		getResources("1", "500Mb"),
-		true,
-	)
-
-	// test when the limit is empty
-	runTest(
-		getResources("250m", "200Mb"),
-		getResources("", ""),
-		true,
-	)
-
-	// test when both is empty
-	runTest(
-		getResources("", ""),
-		getResources("", ""),
-		true,
-	)
-
-	// test when job is empty
-	// but there are limits and so we should not run the job
-	runTest(
-		getResources("", ""),
-		getResources("250m", "200Mb"),
-		false,
-	)
-
 }

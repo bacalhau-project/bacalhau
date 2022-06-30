@@ -2,20 +2,94 @@ package computenode
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/stretchr/testify/assert"
 )
 
-type TotalResourceLimitsTestJobRecord struct {
+type SeenJobRecord struct {
 	Id    string
 	Start time.Time
 	End   time.Time
+}
+
+func TestJobResourceLimits(t *testing.T) {
+	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
+		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				ResourceLimits: limits,
+			},
+		}, noop_executor.ExecutorConfig{})
+		defer cm.Cleanup()
+		job := GetProbeData("")
+		job.Spec.Resources = jobResources
+
+		result, err := computeNode.SelectJob(context.Background(), job)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, limits))
+	}
+
+	// the job is half the limit
+	runTest(
+		getResources("1", "500Mb"),
+		getResources("2", "1Gb"),
+		true,
+	)
+
+	// // the job is on the limit
+	runTest(
+		getResources("1", "500Mb"),
+		getResources("1", "500Mb"),
+		true,
+	)
+
+	// the job is over the limit
+	runTest(
+		getResources("2", "1Gb"),
+		getResources("1", "500Mb"),
+		false,
+	)
+
+	// test with fractional CPU
+	// the job is less than the limit
+	runTest(
+		getResources("250m", "200Mb"),
+		getResources("1", "500Mb"),
+		true,
+	)
+
+	// test when the limit is empty
+	runTest(
+		getResources("250m", "200Mb"),
+		getResources("", ""),
+		true,
+	)
+
+	// test when both is empty
+	runTest(
+		getResources("", ""),
+		getResources("", ""),
+		true,
+	)
+
+	// test when job is empty
+	// but there are limits and so we should not run the job
+	runTest(
+		getResources("", ""),
+		getResources("250m", "200Mb"),
+		false,
+	)
+
 }
 
 func TestTotalResourceLimits(t *testing.T) {
@@ -33,15 +107,30 @@ func TestTotalResourceLimits(t *testing.T) {
 	//    * i.e. a job that was seen 20 seconds ago we now have space to run so let's bid on it now
 	//
 	runTest := func(
-
 		// the total list of jobs to throw at the cluster all at the same time
 		allJobs []resourceusage.ResourceUsageConfig,
 		totalLimits resourceusage.ResourceUsageConfig,
-	) []TotalResourceLimitsTestJobRecord {
+	) []SeenJobRecord {
 
-		results := []TotalResourceLimitsTestJobRecord{}
+		seenJobs := []SeenJobRecord{}
 
-		_, _, cm := SetupTestNoop(
+		// our function that will "execute the job"
+		// in other words record some time stamps of when the job was running
+		// sleep for a bit to simulate real work happening
+		// and then hopefully when this job has finihsed
+		// the compute node will pick up the others
+		jobHandler := func(ctx context.Context, job *executor.Job) (string, error) {
+			seenJob := SeenJobRecord{
+				Id:    job.ID,
+				Start: time.Now(),
+			}
+			time.Sleep(time.Second * 1)
+			seenJob.End = time.Now()
+			seenJobs = append(seenJobs, seenJob)
+			return "", nil
+		}
+
+		_, requestorNode, cm := SetupTestNoop(
 			t,
 			computenode.ComputeNodeConfig{
 				ResourceLimits: totalLimits,
@@ -52,38 +141,50 @@ func TestTotalResourceLimits(t *testing.T) {
 			// are currently running
 			noop_executor.ExecutorConfig{
 				ExternalHooks: &noop_executor.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
-						result := TotalResourceLimitsTestJobRecord{
-							Id:    job.ID,
-							Start: time.Now(),
-						}
-						time.Sleep(time.Second * 1)
-						result.End = time.Now()
-						results = append(results, result)
-						return "", nil
-					},
+					JobHandler: jobHandler,
 				},
 			},
 		)
 		defer cm.Cleanup()
 
 		for _, jobResources := range allJobs {
-			job := GetProbeData("")
-			job.Spec.Resources = jobResources
-			// result, err := computeNode.SelectJob(context.Background(), job)
-			// assert.NoError(t, err)
+
+			// what the job is doesn't matter - it will only end up
+			spec, deal, err := job.ConstructJob(
+				executor.EngineNoop,
+				verifier.VerifierNoop,
+				jobResources.CPU,
+				jobResources.Memory,
+				[]string{},
+				[]string{},
+				[]string{},
+				[]string{},
+				"",
+				1,
+				[]string{},
+			)
+
+			assert.NoError(t, err)
+			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
+			assert.NoError(t, err)
 		}
 
-		return results
+		time.Sleep(time.Second * 2)
+
+		spew.Dump(seenJobs)
+
+		return seenJobs
 	}
 
-	// the job is half the limit
+	// 2 jobs at a time
 	runTest(
 		getResourcesArray([][]string{
 			{"1", "500Mb"},
 			{"1", "500Mb"},
+			{"1", "500Mb"},
+			{"1", "500Mb"},
 		}),
-		getResources("4", "2Gb"),
+		getResources("2", "1Gb"),
 	)
 
 }
