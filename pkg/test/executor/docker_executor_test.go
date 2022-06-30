@@ -59,11 +59,7 @@ func dockerExecutorStorageTest(
 			Owner: "test-owner",
 			Spec: &executor.JobSpec{
 				Engine:  executor.EngineDocker,
-<<<<<<< HEAD
 				Docker:  testCase.GetJobSpec(),
-=======
-				VM:      testCase.GetJobSpec(),
->>>>>>> copy-before-sharing-pointer
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
