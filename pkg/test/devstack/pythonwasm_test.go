@@ -2,6 +2,8 @@ package devstack
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,9 +47,10 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 	assert.NoError(t, err)
 
 	// XXX This might not work because run_python.go just uses fmt.Printf of the
-	// job id. It needs to write it to the cobra buffer instead.
+	// job id. It needs to write it to the cobra buffer instead. XXX This is right!!!
 
 	jobId := strings.TrimSpace(out)
+	log.Debug().Msgf("jobId=%s", jobId)
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
@@ -65,37 +69,54 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 
 // TODO: test that > 10MB context is rejected
 
-// func TestSimplePythonWasm(t *testing.T) {
-// 	tmpDir, err := ioutil.TempDir("", "devstack_test")
-// 	assert.NoError(t, err)
-// 	defer func() {
-// 		err := os.RemoveAll(tmpDir)
-// 		assert.NoError(t, err)
-// 	}()
+func TestSimplePythonWasm(t *testing.T) {
+	ctx, span := newSpan("TestSimplePythonWasm")
+	defer span.End()
+	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultJobSelectionPolicy())
+	defer TeardownTest(stack, cm)
 
-// 	oldDir, err := os.Getwd()
-// 	assert.NoError(t, err)
-// 	err = os.Chdir(tmpDir)
-// 	assert.NoError(t, err)
-// 	defer func() {
-// 		err := os.Chdir(oldDir)
-// 		assert.NoError(t, err)
-// 	}()
+	nodeIds, err := stack.GetNodeIds()
+	assert.NoError(t, err)
+	tmpDir, err := ioutil.TempDir("", "devstack_test")
+	assert.NoError(t, err)
+	defer func() {
+		err := os.RemoveAll(tmpDir)
+		assert.NoError(t, err)
+	}()
 
-// 	// write bytes to main.py
-// 	mainPy := []byte("print(1+1)")
-// 	err = ioutil.WriteFile("main.py", mainPy, 0644)
-// 	assert.NoError(t, err)
+	oldDir, err := os.Getwd()
+	assert.NoError(t, err)
+	err = os.Chdir(tmpDir)
+	assert.NoError(t, err)
+	defer func() {
+		err := os.Chdir(oldDir)
+		assert.NoError(t, err)
+	}()
 
-// 	_, out, err := ExecuteTestCobraCommand(t, RootCmd,
-// 		"run",
-// 		"python",
-// 		"--deterministic",
-// 		"main.py",
-// 	)
-// 	assert.NoError(t, err)
+	// write bytes to main.py
+	mainPy := []byte("print(1+1)")
+	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	assert.NoError(t, err)
 
-// }
+	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
+		"run",
+		"python",
+		"--deterministic",
+		"main.py",
+	)
+	assert.NoError(t, err)
+	jobId := strings.TrimSpace(out)
+	log.Debug().Msgf("jobId=%s", jobId) // XXX jobId EMPTY!
+	err = stack.WaitForJob(ctx, jobId,
+		devstack.WaitForJobThrowErrors([]executor.JobStateType{
+			executor.JobStateBidRejected,
+			executor.JobStateError,
+		}),
+		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+	)
+	assert.NoError(t, err)
+
+}
 
 // func TestPythonWasmWithRequirements(t *testing.T) {
 // 	tmpDir, err := ioutil.TempDir("", "devstack_test")

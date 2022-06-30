@@ -140,6 +140,8 @@ test-badactors:
 
 .PHONY: test-pythonwasm
 test-pythonwasm:
+# TestSimplestPythonWasmDashC
+#	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
 
 ################################################################################
