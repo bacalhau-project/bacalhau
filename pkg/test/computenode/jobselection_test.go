@@ -18,7 +18,7 @@ import (
 // but when it's not turned on the job is actually selected
 func TestJobSelectionNoVolumes(t *testing.T) {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
@@ -40,7 +40,7 @@ func TestJobSelectionLocality(t *testing.T) {
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello"
 	cid, err := (func() (string, error) {
-		_, ipfsStack, cm := SetupTest(t, computenode.NewDefaultComputeNodeConfig())
+		_, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 		defer cm.Cleanup()
 		return ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	}())
@@ -48,7 +48,7 @@ func TestJobSelectionLocality(t *testing.T) {
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		computeNode, ipfsStack, cm := SetupTest(t, computenode.ComputeNodeConfig{
+		computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
 			},
@@ -93,7 +93,7 @@ func TestJobSelectionHttp(t *testing.T) {
 		}))
 		defer svr.Close()
 
-		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
@@ -115,7 +115,7 @@ func TestJobSelectionExec(t *testing.T) {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
@@ -140,7 +140,7 @@ func getResources(c, m string) resourceusage.ResourceUsageConfig {
 
 func TestJobSelectionResourceUsage(t *testing.T) {
 	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ResourceLimits: limits,
 			},

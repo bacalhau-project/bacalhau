@@ -15,7 +15,8 @@ import (
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 )
 
-func SetupTest(
+// setup a docker ipfs stack to run compute node tests against
+func SetupTestDockerIpfs(
 	t *testing.T,
 	config computenode.ComputeNodeConfig,
 ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
@@ -54,6 +55,40 @@ func SetupTest(
 	}
 
 	return computeNode, ipfsStack, cm
+}
+
+func SetupTestNoop(
+	t *testing.T,
+	config computenode.ComputeNodeConfig,
+) (*computenode.ComputeNode, *system.CleanupManager) {
+	cm := system.NewCleanupManager()
+
+	transport, err := inprocess.NewInprocessTransport()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	executors, err := executor_util.NewNoopExecutors(cm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	verifiers, err := verifier_util.NewNoopVerifiers(cm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	computeNode, err := computenode.NewComputeNode(
+		transport,
+		executors,
+		verifiers,
+		config,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return computeNode, cm
 }
 
 func GetJobSpec(cid string) *executor.JobSpec {
