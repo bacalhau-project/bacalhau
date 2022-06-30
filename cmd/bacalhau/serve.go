@@ -25,8 +25,10 @@ var jobSelectionDataRejectStateless bool
 var jobSelectionProbeHTTP string
 var jobSelectionProbeExec string
 var metricsPort = 2112
-var resourceLimitCpu string
-var resourceLimitMemory string
+var limitTotalCpu string
+var limitTotalMemory string
+var limitJobCpu string
+var limitJobMemory string
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -73,12 +75,20 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`The port to serve prometheus metrics on.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&resourceLimitCpu, "total-cpu-limit", "",
+		&limitTotalCpu, "limit-total-cpu", "",
 		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&resourceLimitMemory, "total-memory-limit", "",
+		&limitTotalMemory, "limit-total-memory", "",
 		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&limitJobCpu, "limit-job-cpu", "",
+		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&limitJobMemory, "limit-job-memory", "",
+		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 }
 
@@ -127,21 +137,29 @@ var serveCmd = &cobra.Command{
 			typedJobSelectionDataLocality = computenode.Anywhere
 		}
 
+		// the total amount of CPU / Memory the system can be using at one time
+		totalResourceLimits := resourceusage.ResourceUsageConfig{
+			CPU:    limitTotalCpu,
+			Memory: limitTotalMemory,
+		}
+
+		// the per job CPU / Memory limits
+		jobResourceLimits := resourceusage.ResourceUsageConfig{
+			CPU:    limitJobCpu,
+			Memory: limitJobMemory,
+		}
+
 		jobSelectionPolicy := computenode.JobSelectionPolicy{
 			Locality:            typedJobSelectionDataLocality,
 			RejectStatelessJobs: jobSelectionDataRejectStateless,
 			ProbeHTTP:           jobSelectionProbeHTTP,
 			ProbeExec:           jobSelectionProbeExec,
-		}
-
-		resourceLimits := resourceusage.ResourceUsageConfig{
-			CPU:    resourceLimitCpu,
-			Memory: resourceLimitMemory,
+			ResourceLimits:      jobResourceLimits,
 		}
 
 		config := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
-			ResourceLimits:     resourceLimits,
+			ResourceLimits:     totalResourceLimits,
 		}
 
 		_, err = computenode.NewComputeNode(
