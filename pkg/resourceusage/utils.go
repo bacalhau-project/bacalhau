@@ -17,7 +17,7 @@ func convertBytesString(st string) string {
 	return st
 }
 
-func ConvertResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, error) {
+func ParseResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, error) {
 	data := ResourceUsageData{}
 
 	cpu, err := k8sresource.NewCPUFromString(convertBytesString(usage.CPU))
@@ -40,4 +40,16 @@ func ConvertResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, e
 	data.Disk = disk.Bytes()
 
 	return data, nil
+}
+
+func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
+	config := ResourceUsageConfig{}
+
+	cpu := k8sresource.NewCPUFromFloat(usage.CPU)
+
+	config.CPU = cpu.ToString()
+	config.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
+	config.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
+
+	return config, nil
 }

@@ -23,7 +23,7 @@ func d(cpu float64, mem, disk uint64) ResourceUsageData {
 	}
 }
 
-func TestConvertResourceUsage(t *testing.T) {
+func TestParseResourceUsageConfig(t *testing.T) {
 
 	tests := []struct {
 		name     string
@@ -53,11 +53,35 @@ func TestConvertResourceUsage(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		converted, err := ConvertResourceUsageConfig(test.input)
+		converted, err := ParseResourceUsageConfig(test.input)
 		assert.NoError(t, err)
 		assert.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
 		assert.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
 		assert.Equal(t, converted.Disk, test.expected.Disk, "disk is incorrect")
+	}
+
+}
+
+func TestGetResourceUsageConfig(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		input    ResourceUsageData
+		expected ResourceUsageConfig
+	}{
+		{
+			name:     "basic",
+			input:    d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
+			expected: c("500m", "512MB", "1GB"),
+		},
+	}
+
+	for _, test := range tests {
+		converted, err := GetResourceUsageConfig(test.input)
+		assert.NoError(t, err)
+		assert.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+		assert.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+		assert.Equal(t, test.expected.Disk, converted.Disk, "disk is incorrect")
 	}
 
 }
