@@ -1,8 +1,11 @@
 <p align="center">
-<img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
+  <img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
 </p>
-<p align=center>Compute Over Data == CoD<br>
-Bacalhau == "Salted CoD Fish" (Portuguese)</p>
+<p align=center>
+  Compute Over Data == CoD
+  <br>
+  Bacalhau == "Salted CoD Fish" (Portuguese)
+</p>
   
 <br>
 
@@ -16,8 +19,14 @@ Bacalhau == "Salted CoD Fish" (Portuguese)</p>
  
 ## Latest Updates
   * Most recent [Bacalhau Project Report](https://github.com/filecoin-project/bacalhau/wiki)
-  
 
 ## Running Bacalhau locally with devstack
-
 The easiest way to spin up bacalhau and run a local demo is to use the devstack command. Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
+
+
+## Notes for Contributors
+Bacalhau's CI pipeline performs a variety of linting and formatting checks on new pull requests. To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
+
+```bash
+git config core.hooksPath ./githooks
+```
