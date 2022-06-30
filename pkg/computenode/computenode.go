@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -17,7 +18,12 @@ import (
 )
 
 type ComputeNodeConfig struct {
+	// this contains things like data locality and per
+	// job resource limits
 	JobSelectionPolicy JobSelectionPolicy
+	// the total amount of CPU and RAM we want to
+	// give to running bacalhau jobs
+	ResourceLimits resourceusage.ResourceUsageConfig
 }
 
 type ComputeNode struct {
@@ -32,6 +38,7 @@ type ComputeNode struct {
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 	return ComputeNodeConfig{
 		JobSelectionPolicy: NewDefaultJobSelectionPolicy(),
+		ResourceLimits:     resourceusage.NewDefaultResourceUsageConfig(),
 	}
 }
 
@@ -43,6 +50,7 @@ func NewComputeNode(
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
+
 	ctx := context.Background()
 	nodeID, err := t.HostID(ctx)
 	if err != nil {

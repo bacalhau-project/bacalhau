@@ -8,6 +8,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	requestornode "github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -24,6 +25,8 @@ var jobSelectionDataRejectStateless bool
 var jobSelectionProbeHTTP string
 var jobSelectionProbeExec string
 var metricsPort = 2112
+var resourceLimitCpu string
+var resourceLimitMemory string
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -68,6 +71,14 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	serveCmd.PersistentFlags().IntVar(
 		&metricsPort, "metrics-port", metricsPort,
 		`The port to serve prometheus metrics on.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&resourceLimitCpu, "resource-limit-cpu", "",
+		`How many CPU cores to use for jobs (e.g. 500m, 2, 8).`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&resourceLimitMemory, "resource-limit-memory", "",
+		`How much Memory to use for jobs (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 }
 
@@ -123,8 +134,14 @@ var serveCmd = &cobra.Command{
 			ProbeExec:           jobSelectionProbeExec,
 		}
 
+		resourceLimits := resourceusage.ResourceUsageConfig{
+			CPU:    resourceLimitCpu,
+			Memory: resourceLimitMemory,
+		}
+
 		config := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
+			ResourcesLimits:    resourceLimits,
 		}
 
 		_, err = computenode.NewComputeNode(
