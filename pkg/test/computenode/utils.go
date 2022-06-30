@@ -6,8 +6,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -59,8 +61,9 @@ func SetupTestDockerIpfs(
 
 func SetupTestNoop(
 	t *testing.T,
-	config computenode.ComputeNodeConfig,
-) (*computenode.ComputeNode, *system.CleanupManager) {
+	computeNodeconfig computenode.ComputeNodeConfig,
+	noopExecutorConfig noop_executor.ExecutorConfig,
+) (*computenode.ComputeNode, *inprocess.Transport, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
@@ -68,7 +71,7 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	executors, err := executor_util.NewNoopExecutors(cm)
+	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,13 +85,13 @@ func SetupTestNoop(
 		transport,
 		executors,
 		verifiers,
-		config,
+		computeNodeconfig,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return computeNode, cm
+	return computeNode, transport, cm
 }
 
 func GetJobSpec(cid string) *executor.JobSpec {
@@ -122,4 +125,23 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 		JobID:  "test",
 		Spec:   GetJobSpec(cid),
 	}
+}
+
+func getResources(c, m string) resourceusage.ResourceUsageConfig {
+	return resourceusage.ResourceUsageConfig{
+		CPU:    c,
+		Memory: m,
+	}
+}
+
+func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
+	var res []resourceusage.ResourceUsageConfig
+	for _, d := range data {
+		res = append(res, getResources(d[0], d[1]))
+	}
+	return res
+}
+
+func RunJobsViaTransport(transport *inprocess.Transport) {
+
 }

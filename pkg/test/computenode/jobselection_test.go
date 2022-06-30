@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/stretchr/testify/assert"
@@ -18,11 +19,11 @@ import (
 // but when it's not turned on the job is actually selected
 func TestJobSelectionNoVolumes(t *testing.T) {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
-		})
+		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
@@ -93,11 +94,11 @@ func TestJobSelectionHttp(t *testing.T) {
 		}))
 		defer svr.Close()
 
-		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
-		})
+		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
@@ -115,11 +116,11 @@ func TestJobSelectionExec(t *testing.T) {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
-		})
+		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
@@ -131,27 +132,20 @@ func TestJobSelectionExec(t *testing.T) {
 	runTest(false, true)
 }
 
-func getResources(c, m string) resourceusage.ResourceUsageConfig {
-	return resourceusage.ResourceUsageConfig{
-		CPU:    c,
-		Memory: m,
-	}
-}
-
 func TestJobSelectionResourceUsage(t *testing.T) {
 	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ResourceLimits: limits,
 			},
-		})
+		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 		job := GetProbeData("")
 		job.Spec.Resources = jobResources
 
 		result, err := computeNode.SelectJob(context.Background(), job)
 		assert.NoError(t, err)
-		assert.Equal(t, result, expectedResult, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, limits))
+		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, limits))
 	}
 
 	// the job is half the limit
@@ -181,6 +175,28 @@ func TestJobSelectionResourceUsage(t *testing.T) {
 		getResources("250m", "200Mb"),
 		getResources("1", "500Mb"),
 		true,
+	)
+
+	// test when the limit is empty
+	runTest(
+		getResources("250m", "200Mb"),
+		getResources("", ""),
+		true,
+	)
+
+	// test when both is empty
+	runTest(
+		getResources("", ""),
+		getResources("", ""),
+		true,
+	)
+
+	// test when job is empty
+	// but there are limits and so we should not run the job
+	runTest(
+		getResources("", ""),
+		getResources("250m", "200Mb"),
+		false,
 	)
 
 }
