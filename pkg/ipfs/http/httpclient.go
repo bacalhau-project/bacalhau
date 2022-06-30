@@ -168,7 +168,7 @@ func (ipfsHTTP *IPFSHTTPClient) DownloadTar(ctx context.Context, targetDir, cid 
 		return err
 	}
 	if res == nil {
-		return fmt.Errorf("Got nil response")
+		return fmt.Errorf("got nil response")
 	}
 	defer res.Close()
 
@@ -180,7 +180,7 @@ func (ipfsHTTP *IPFSHTTPClient) DownloadTar(ctx context.Context, targetDir, cid 
 		return err
 	}
 	if res == nil {
-		return fmt.Errorf("Got nil outFile")
+		return fmt.Errorf("got nil outFile")
 	}
 	defer outFile.Close()
 
