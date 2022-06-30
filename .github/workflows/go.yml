@@ -77,15 +77,16 @@ jobs:
       - name: Print go version
         run: go version
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
+      # https://filecoinproject.slack.com/archives/C02RLM3JHUY/p1656584355868019
+      # - name: Cache Go modules
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.cache/go-build
+      #       ~/go/pkg/mod
+      #     key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+      #     restore-keys: |
+      #       ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
 
       - name: Set up Honeycomb Otel from Github Secret
         run: |
@@ -96,11 +97,11 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      # - name: golangci-lint
-      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-      #   uses: golangci/golangci-lint-action@v3.2.0
-      #   with:
-      #     version: ${{ env.GOLANGCILINT_VER }}
+      - name: golangci-lint
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        uses: golangci/golangci-lint-action@v3.2.0
+        with:
+          version: ${{ env.GOLANGCILINT_VER }}
 
       - name: Run go mod tidy check diff
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
