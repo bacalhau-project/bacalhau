@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
 )
@@ -110,25 +110,9 @@ func TestTotalResourceLimits(t *testing.T) {
 		// the total list of jobs to throw at the cluster all at the same time
 		allJobs []resourceusage.ResourceUsageConfig,
 		totalLimits resourceusage.ResourceUsageConfig,
-	) []SeenJobRecord {
+	) {
 
 		seenJobs := []SeenJobRecord{}
-
-		// our function that will "execute the job"
-		// in other words record some time stamps of when the job was running
-		// sleep for a bit to simulate real work happening
-		// and then hopefully when this job has finihsed
-		// the compute node will pick up the others
-		jobHandler := func(ctx context.Context, job *executor.Job) (string, error) {
-			seenJob := SeenJobRecord{
-				Id:    job.ID,
-				Start: time.Now(),
-			}
-			time.Sleep(time.Second * 1)
-			seenJob.End = time.Now()
-			seenJobs = append(seenJobs, seenJob)
-			return "", nil
-		}
 
 		_, requestorNode, cm := SetupTestNoop(
 			t,
@@ -136,12 +120,22 @@ func TestTotalResourceLimits(t *testing.T) {
 				ResourceLimits: totalLimits,
 			},
 
-			// this is how we hook into the noop_executor to run our function
-			// for the "job" - this means we can keep track of which jobs
-			// are currently running
 			noop_executor.ExecutorConfig{
+
+				// our function that will "execute the job"
+				// record time stamps of start and end
+				// sleep for a bit to simulate real work happening
 				ExternalHooks: &noop_executor.ExecutorConfigExternalHooks{
-					JobHandler: jobHandler,
+					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
+						seenJob := SeenJobRecord{
+							Id:    job.ID,
+							Start: time.Now(),
+						}
+						time.Sleep(time.Second * 1)
+						seenJob.End = time.Now()
+						seenJobs = append(seenJobs, seenJob)
+						return "", nil
+					},
 				},
 			},
 		)
@@ -169,11 +163,19 @@ func TestTotalResourceLimits(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		time.Sleep(time.Second * 2)
+		// wait for all the jobs to have completed
+		// we can check the seenJobs because that is easier
+		waiter := &system.FunctionWaiter{
+			Name:        "wait for jobs",
+			MaxAttempts: 10,
+			Delay:       time.Second * 1,
+			Handler: func() (bool, error) {
+				return len(seenJobs) >= len(allJobs), nil
+			},
+		}
 
-		spew.Dump(seenJobs)
-
-		return seenJobs
+		err := waiter.Wait()
+		assert.NoError(t, err)
 	}
 
 	// 2 jobs at a time
