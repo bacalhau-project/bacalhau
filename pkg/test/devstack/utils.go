@@ -25,7 +25,7 @@ var StorageDriverNames = []string{
 func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
-	jobSelectionPolicy computenode.JobSelectionPolicy,
+	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
@@ -43,7 +43,7 @@ func SetupTest(
 		badActors,
 		getExecutors,
 		getVerifiers,
-		jobSelectionPolicy,
+		config,
 	)
 	assert.NoError(t, err)
 

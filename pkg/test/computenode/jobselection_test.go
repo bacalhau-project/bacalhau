@@ -16,8 +16,10 @@ import (
 // but when it's not turned on the job is actually selected
 func TestJobSelectionNoVolumes(t *testing.T) {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
-			RejectStatelessJobs: rejectSetting,
+		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				RejectStatelessJobs: rejectSetting,
+			},
 		})
 		defer cm.Cleanup()
 
@@ -36,7 +38,7 @@ func TestJobSelectionLocality(t *testing.T) {
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello"
 	cid, err := (func() (string, error) {
-		_, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{})
+		_, ipfsStack, cm := SetupTest(t, computenode.NewDefaultComputeNodeConfig())
 		defer cm.Cleanup()
 		return ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	}())
@@ -44,8 +46,10 @@ func TestJobSelectionLocality(t *testing.T) {
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		computeNode, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{
-			Locality: locality,
+		computeNode, ipfsStack, cm := SetupTest(t, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				Locality: locality,
+			},
 		})
 		defer cm.Cleanup()
 
@@ -87,8 +91,10 @@ func TestJobSelectionHttp(t *testing.T) {
 		}))
 		defer svr.Close()
 
-		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
-			ProbeHTTP: svr.URL,
+		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				ProbeHTTP: svr.URL,
+			},
 		})
 		defer cm.Cleanup()
 
@@ -107,8 +113,10 @@ func TestJobSelectionExec(t *testing.T) {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, cm := SetupTest(t, computenode.JobSelectionPolicy{
-			ProbeExec: command,
+		computeNode, _, cm := SetupTest(t, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				ProbeExec: command,
+			},
 		})
 		defer cm.Cleanup()
 
