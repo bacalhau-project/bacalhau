@@ -23,7 +23,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size = var.boot_disk_size_gb
+      size  = var.boot_disk_size_gb
     }
   }
 
@@ -123,7 +123,7 @@ EOI
 sudo bash /terraform_node/install-node.sh
 EOF
   network_interface {
-    network = google_compute_network.bacalhau_network.name
+    network    = google_compute_network.bacalhau_network.name
     subnetwork = google_compute_subnetwork.bacalhau_subnetwork.name
 
     access_config {
@@ -234,6 +234,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "5001",  // ipfs API
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
+      "2112",  // bacalhau metrics
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts
     ]
@@ -267,6 +268,6 @@ resource "google_compute_subnetwork" "bacalhau_subnetwork" {
 }
 
 resource "google_compute_network" "bacalhau_network" {
-  name = "bacalhau-network-${terraform.workspace}"
+  name                    = "bacalhau-network-${terraform.workspace}"
   auto_create_subnetworks = false
 }
