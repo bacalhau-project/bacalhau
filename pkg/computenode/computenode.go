@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -47,15 +48,16 @@ func NewComputeNode(
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+		var span trace.Span
 		switch jobEvent.EventName {
-		// a new job has arrived - decide if we want to bid on it
 		case executor.JobEventCreated:
-			// Need to declare span separately to prevent shadowing
-			var span trace.Span
-
 			ctx, span = computeNode.newSpanForJob(ctx, job.ID, "JobEventCreated")
 			defer span.End()
 
+			// Increment the number of jobs seen by this compute node:
+			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
+
+			// A new job has arrived - decide if we want to bid on it:
 			shouldRun, err := computeNode.SelectJob(ctx,
 				JobSelectionPolicyProbeData{
 					NodeID: nodeID,
@@ -96,14 +98,14 @@ func NewComputeNode(
 				return
 			}
 
-			// Need to define span separately to prevent shadowing
-			var span trace.Span
 			ctx, span = computeNode.newSpanForJob(ctx,
 				job.ID, "JobEventBidAccepted")
 			defer span.End()
 
-			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.ID)
+			// Increment the number of jobs accepted by this compute node:
+			jobsAccepted.With(prometheus.Labels{"node_id": nodeID}).Inc()
 
+			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.ID)
 			logger.LogJobEvent(logger.JobEvent{
 				Node: nodeID,
 				Type: "compute_node:run",
@@ -115,6 +117,10 @@ func NewComputeNode(
 			if err != nil {
 				log.Error().Msgf("Error running the job: %s %+v", err, job)
 				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
+
+				// Increment the number of jobs failed by this compute node:
+				jobsFailed.With(prometheus.Labels{"node_id": nodeID}).Inc()
+
 				return
 			}
 
@@ -150,6 +156,9 @@ func NewComputeNode(
 				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
 				return
 			}
+
+			// Increment the number of jobs completed by this compute node:
+			jobsCompleted.With(prometheus.Labels{"node_id": nodeID}).Inc()
 		}
 	})
 
