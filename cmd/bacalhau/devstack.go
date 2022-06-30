@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -55,7 +56,7 @@ var devstackCmd = &cobra.Command{
 			map[executor.EngineType]executor.Executor, error) {
 
 			if devStackNoop {
-				return executor_util.NewNoopExecutors(cm)
+				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
 			}
 
 			return executor_util.NewDockerIPFSExecutors(cm,

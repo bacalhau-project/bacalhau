@@ -70,9 +70,15 @@ func GetSystemResources() (ResourceUsageData, error) {
 // given a "required" usage and a "limit" of usage - can we run the requirement
 func CompareUsageConfigs(wantsConfig, limitConfig ResourceUsageConfig) (bool, error) {
 
-	// shortcut for when there is no
+	// if there are no limits then everything goes
 	if limitConfig.CPU == "" && limitConfig.Memory == "" {
 		return true, nil
+	}
+
+	// if there are some limits and there are zero values for "wants"
+	// we deny the job because we can't know if it would exceed our limit
+	if wantsConfig.CPU == "" && wantsConfig.Memory == "" && (limitConfig.CPU != "" || limitConfig.Memory != "") {
+		return false, nil
 	}
 
 	wants, err := ParseResourceUsageConfig(wantsConfig)
