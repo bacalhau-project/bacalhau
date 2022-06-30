@@ -90,6 +90,9 @@ func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDire
 	// ipfs add the file to 2 nodes
 	// this tests self selection
 	for i, node := range stack.Nodes {
+		if node == nil {
+			continue
+		}
 		if i >= nodeCount {
 			continue
 		}
