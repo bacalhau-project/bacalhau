@@ -32,7 +32,14 @@ type ComputeNode struct {
 	Transport transport.Transport
 	Executors map[executor.EngineType]executor.Executor
 	Verifiers map[verifier.VerifierType]verifier.Verifier
-	Config    ComputeNodeConfig
+	// jobs that are currently running in their executor
+	RunningJobs map[string]*executor.Job
+	// a FIFO queue of jobs that we selected to run by our JobSelectionPolicy
+	// but didn't have enough capacity to run at the time
+	// there is a control loop that will attempt to clear this queue
+	// it will only bid on jobs it currently has capacity for
+	PausedJobs map[string]*executor.Job
+	Config     ComputeNodeConfig
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -58,11 +65,12 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		NodeID:    nodeID,
-		Transport: t,
-		Verifiers: verifiers,
-		Executors: executors,
-		Config:    config,
+		NodeID:      nodeID,
+		Transport:   t,
+		Verifiers:   verifiers,
+		Executors:   executors,
+		RunningJobs: map[string]*executor.Job{},
+		Config:      config,
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
@@ -196,12 +204,25 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		return false, err
 	}
 
-	return ApplyJobSelectionPolicy(
+	// decide if we want to take on the job based on
+	// our selection policy
+	passedSelection, err := ApplyJobSelectionPolicy(
 		ctx,
 		node.Config.JobSelectionPolicy,
 		e,
 		data,
 	)
+	if err != nil {
+		return false, err
+	}
+	if !passedSelection {
+		return false, nil
+	}
+
+	// now let's take a look at how many jobs we are currently running (across all of our executors)
+	// and decide if we have enough capacity right now to run this
+
+	return true, nil
 }
 
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
@@ -211,7 +232,15 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 		return "", err
 	}
 
-	return e.RunJob(ctx, job)
+	node.RunningJobs[job.ID] = job
+	result, err := e.RunJob(ctx, job)
+	delete(node.RunningJobs, job.ID)
+
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
 }
 
 // nolint:dupl // methods are not duplicates
@@ -266,4 +295,29 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 			attribute.String("jobID", jobID),
 		),
 	)
+}
+
+// add up all the resources being used by all the jobs currently running
+func (node *ComputeNode) getTotalResourceUsage() resourceusage.ResourceUsageData {
+
+	var cpu float64
+	var memory uint64
+
+	for _, job := range node.RunningJobs {
+		cpu += resourceusage.ConvertCpuString(job.Spec.Resources.CPU)
+		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
+	}
+
+	return resourceusage.ResourceUsageData{
+		CPU:    cpu,
+		Memory: memory,
+	}
+}
+
+// based on what is being used - work out what we have left for cpu / ram
+func (node *ComputeNode) getRemainingResourceUsage() resourceusage.ResourceUsageData {
+	return resourceusage.ResourceUsageData{
+		CPU:    0,
+		Memory: 0,
+	}
 }

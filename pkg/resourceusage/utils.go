@@ -16,6 +16,13 @@ func NewDefaultResourceUsageConfig() ResourceUsageConfig {
 	}
 }
 
+func NewResourceUsageConfig(cpu, memory string) ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    cpu,
+		Memory: memory,
+	}
+}
+
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
 // lowercase
@@ -26,26 +33,49 @@ func convertBytesString(st string) string {
 	return st
 }
 
+func ConvertCpuStringWithError(val string) (float64, error) {
+	if val == "" {
+		return 0, nil
+	}
+	cpu, err := k8sresource.NewCPUFromString(convertBytesString(val))
+	if err != nil {
+		return 0, err
+	}
+	return cpu.ToFloat64(), nil
+}
+
+func ConvertCpuString(val string) float64 {
+	ret, err := ConvertCpuStringWithError(val)
+	if err != nil {
+		return 0
+	}
+	return ret
+}
+
+func ConvertMemoryStringWithError(val string) (uint64, error) {
+	if val == "" {
+		return 0, nil
+	}
+	memory, err := datasize.ParseString(convertBytesString(val))
+	if err != nil {
+		return 0, err
+	}
+	return memory.Bytes(), nil
+}
+
+func ConvertMemoryString(val string) uint64 {
+	ret, err := ConvertMemoryStringWithError(val)
+	if err != nil {
+		return 0
+	}
+	return ret
+}
+
 func ParseResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, error) {
-	data := ResourceUsageData{}
-
-	if usage.CPU != "" {
-		cpu, err := k8sresource.NewCPUFromString(convertBytesString(usage.CPU))
-		if err != nil {
-			return data, err
-		}
-		data.CPU = cpu.ToFloat64()
-	}
-
-	if usage.Memory != "" {
-		memory, err := datasize.ParseString(convertBytesString(usage.Memory))
-		if err != nil {
-			return data, err
-		}
-		data.Memory = memory.Bytes()
-	}
-
-	return data, nil
+	return ResourceUsageData{
+		CPU:    ConvertCpuString(usage.CPU),
+		Memory: ConvertMemoryString(usage.Memory),
+	}, nil
 }
 
 func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
