@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -39,9 +38,9 @@ type jobSpecVMDescription struct {
 	Image       string   `yaml:"Image"`
 	Entrypoint  []string `yaml:"Entrypoint Command"`
 	Env         []string `yaml:"Submitted Env Variables"`
-	CPU         int      `yaml:"CPU Allocated"`
-	Memory      int      `yaml:"Memory Allocated"`
-	Disk        int      `yaml:"Disk Allocated"`
+	CPU         string   `yaml:"CPU Allocated"`
+	Memory      string   `yaml:"Memory Allocated"`
+	Disk        string   `yaml:"Disk Allocated"`
 	Inputs      []string `yaml:"Inputs"`
 	Outputs     []string `yaml:"Outputs"`
 	Annotations []string `yaml:"Annotations"`
@@ -74,14 +73,9 @@ var describeCmd = &cobra.Command{
 		jobVMDesc.Entrypoint = job.Spec.VM.Entrypoint
 		jobVMDesc.Env = job.Spec.VM.Env
 
-		cpuVal, _ := strconv.Atoi(job.Spec.VM.CPU)
-		jobVMDesc.CPU = cpuVal
-
-		memoryVal, _ := strconv.Atoi(job.Spec.VM.Memory)
-		jobVMDesc.Memory = memoryVal
-
-		diskVal, _ := strconv.Atoi(job.Spec.VM.Disk)
-		jobVMDesc.Disk = diskVal
+		jobVMDesc.CPU = job.Spec.Resources.CPU
+		jobVMDesc.Memory = job.Spec.Resources.Memory
+		jobVMDesc.Disk = job.Spec.Resources.Disk
 
 		jobSpecDesc := &jobSpecDescription{}
 		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
