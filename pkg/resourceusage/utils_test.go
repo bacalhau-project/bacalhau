@@ -7,19 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func c(cpu, mem, disk string) ResourceUsageConfig {
+func c(cpu, mem string) ResourceUsageConfig {
 	return ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: mem,
-		Disk:   disk,
 	}
 }
 
-func d(cpu float64, mem, disk uint64) ResourceUsageData {
+func d(cpu float64, mem uint64) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    cpu,
 		Memory: mem,
-		Disk:   disk,
 	}
 }
 
@@ -32,23 +30,23 @@ func TestParseResourceUsageConfig(t *testing.T) {
 	}{
 		{
 			name:     "basic",
-			input:    c("500m", "512mb", "1gb"),
-			expected: d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
+			input:    c("500m", "512mb"),
+			expected: d(0.5, (datasize.MB * 512).Bytes()),
 		},
 		{
 			name:     "with i",
-			input:    c("500m", "512mi", "1gi"),
-			expected: d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
+			input:    c("500m", "512mi"),
+			expected: d(0.5, (datasize.MB * 512).Bytes()),
 		},
 		{
 			name:     "with spaces",
-			input:    c("500 m", "512 mi", "1 gi"),
-			expected: d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
+			input:    c("500 m", "512 mi"),
+			expected: d(0.5, (datasize.MB * 512).Bytes()),
 		},
 		{
 			name:     "with capitals",
-			input:    c("500M", "512MB", "1GI"),
-			expected: d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
+			input:    c("500M", "512MB"),
+			expected: d(0.5, (datasize.MB * 512).Bytes()),
 		},
 	}
 
@@ -57,7 +55,6 @@ func TestParseResourceUsageConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
 		assert.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
-		assert.Equal(t, converted.Disk, test.expected.Disk, "disk is incorrect")
 	}
 
 }
@@ -71,8 +68,8 @@ func TestGetResourceUsageConfig(t *testing.T) {
 	}{
 		{
 			name:     "basic",
-			input:    d(0.5, (datasize.MB * 512).Bytes(), (datasize.GB * 1).Bytes()),
-			expected: c("500m", "512MB", "1GB"),
+			input:    d(0.5, (datasize.MB * 512).Bytes()),
+			expected: c("500m", "512MB"),
 		},
 	}
 
@@ -81,7 +78,6 @@ func TestGetResourceUsageConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
 		assert.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
-		assert.Equal(t, test.expected.Disk, converted.Disk, "disk is incorrect")
 	}
 
 }
