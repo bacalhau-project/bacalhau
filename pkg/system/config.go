@@ -227,6 +227,14 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode user ID key file")
 	}
 
+	// TODO: Add support for both rsa _and_ ecdsa private keys, see cryto.PrivateKey.
+	//       Since we have access to the private key we can hack it by signing a
+	//       message twice and comparing them, rather than verifying directly.
+	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse user: %w", err)
+	// }
+
 	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
