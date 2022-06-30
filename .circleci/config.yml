@@ -11,7 +11,19 @@ executors:
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   build:
+    environment:
+      GOVER: 1.18.3
+      GOLANGCILINT_VER: v1.46
+      GOPROXY: https://proxy.golang.org
+      ARCHIVE_OUTDIR: dist/archives
     working_directory: ~/repo
+    executor: linux
+    parameters:
+      target_arch:
+        type: string
+      target_os:
+        type: string
+
     steps:
       - checkout
       - restore_cache:
@@ -29,30 +41,16 @@ jobs:
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
   build-workflow:
-    environment:
-      GOVER: 1.18.3
-      GOLANGCILINT_VER: v1.46
-      GOPROXY: https://proxy.golang.org
-      ARCHIVE_OUTDIR: dist/archives
     jobs:
       - build:
           name: ubuntu-amd64,
-          os: ubuntu-latest,
           target_os: linux,
-          runner: ubuntu-latest,
           target_arch: amd64,
-          executor: linux
       - build:
           name: macOS-arm64,
-          os: macOS-latest,
           target_os: darwin,
-          runner: ubuntu-latest,
           target_arch: arm64,
-          executor: linux
       - build:
           name: macOS-amd64,
-          os: macOS-latest,
           target_os: darwin,
-          runner: macOS-latest,
           target_arch: amd64,
-          executor: linux
