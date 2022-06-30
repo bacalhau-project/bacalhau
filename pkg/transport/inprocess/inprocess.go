@@ -133,7 +133,8 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 // do this in a go-routine to simulate the network
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
 	t.Events = append(t.Events, event)
-	t.gt.BroadcastEvent(ctx, event)
+	// async so that our stack doesn't hold onto mutexes
+	go t.gt.BroadcastEvent(ctx, event)
 
 	return nil
 }

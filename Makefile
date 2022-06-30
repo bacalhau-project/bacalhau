@@ -148,6 +148,10 @@ test-badactors:
 devstack:
 	BACALHAU_RUNTIME=docker go run . devstack
 
+.PHONY: devstack-noop
+devstack-noop:
+	go run . devstack --noop
+
 .PHONY: devstack-race
 devstack-race:
 	BACALHAU_RUNTIME=docker go run -race . devstack

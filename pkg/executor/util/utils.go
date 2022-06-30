@@ -3,6 +3,7 @@ package util
 import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
@@ -38,5 +39,21 @@ func NewDockerIPFSExecutors(
 
 	return map[executor.EngineType]executor.Executor{
 		executor.EngineDocker: ex,
+	}, nil
+}
+
+// return noop executors for all engines
+func NewNoopExecutors(
+	cm *system.CleanupManager,
+) (map[executor.EngineType]executor.Executor, error) {
+	noopExecutor, err := noop_executor.NewExecutor()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return map[executor.EngineType]executor.Executor{
+		executor.EngineDocker: noopExecutor,
+		executor.EngineNoop:   noopExecutor,
 	}, nil
 }
