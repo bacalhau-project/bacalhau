@@ -7,8 +7,6 @@ type ResourceUsageConfig struct {
 	CPU string `json:"cpu"`
 	// github.com/c2h5oh/datasize string
 	Memory string `json:"memory"`
-	// github.com/c2h5oh/datasize string
-	Disk string `json:"disk"`
 }
 
 // these are the numeric values in bytes for ResourceUsageConfig
@@ -17,6 +15,4 @@ type ResourceUsageData struct {
 	CPU float64 `json:"cpu"`
 	// bytes
 	Memory uint64 `json:"memory"`
-	// bytes
-	Disk uint64 `json:"disk"`
 }

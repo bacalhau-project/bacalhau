@@ -1,10 +1,12 @@
 package resourceusage
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/BTBurke/k8sresource"
 	"github.com/c2h5oh/datasize"
+	"github.com/pbnjay/memory"
 )
 
 // allow Mi, Gi to mean Mb, Gb
@@ -30,14 +32,8 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, err
 		return data, err
 	}
 
-	disk, err := datasize.ParseString(convertBytesString(usage.Disk))
-	if err != nil {
-		return data, err
-	}
-
 	data.CPU = cpu.ToFloat64()
 	data.Memory = memory.Bytes()
-	data.Disk = disk.Bytes()
 
 	return data, nil
 }
@@ -49,7 +45,14 @@ func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error
 
 	config.CPU = cpu.ToString()
 	config.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
-	config.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
 
 	return config, nil
+}
+
+// what resources does this compute node actually have?
+func GetSystemResources() (ResourceUsageData, error) {
+	return ResourceUsageData{
+		CPU:    float64(runtime.NumCPU()),
+		Memory: memory.FreeMemory(),
+	}, nil
 }

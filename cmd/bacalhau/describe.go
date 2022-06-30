@@ -40,7 +40,6 @@ type jobSpecVMDescription struct {
 	Env         []string `yaml:"Submitted Env Variables"`
 	CPU         string   `yaml:"CPU Allocated"`
 	Memory      string   `yaml:"Memory Allocated"`
-	Disk        string   `yaml:"Disk Allocated"`
 	Inputs      []string `yaml:"Inputs"`
 	Outputs     []string `yaml:"Outputs"`
 	Annotations []string `yaml:"Annotations"`
@@ -75,7 +74,6 @@ var describeCmd = &cobra.Command{
 
 		jobVMDesc.CPU = job.Spec.Resources.CPU
 		jobVMDesc.Memory = job.Spec.Resources.Memory
-		jobVMDesc.Disk = job.Spec.Resources.Disk
 
 		jobSpecDesc := &jobSpecDescription{}
 		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
