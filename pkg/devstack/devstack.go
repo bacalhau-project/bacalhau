@@ -49,7 +49,7 @@ func NewDevStack(
 	count, badActors int, // nolintunparam // Incorrectly assumed as unused
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
-	jobSelectionPolicy computenode.JobSelectionPolicy,
+	config computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
 	ctx, span := newSpan("NewDevStack")
 	defer span.End()
@@ -122,7 +122,7 @@ func NewDevStack(
 			transport,
 			executors,
 			verifiers,
-			jobSelectionPolicy,
+			config,
 		)
 		if err != nil {
 			return nil, err

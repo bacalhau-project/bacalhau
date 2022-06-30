@@ -123,11 +123,15 @@ var serveCmd = &cobra.Command{
 			ProbeExec:           jobSelectionProbeExec,
 		}
 
+		config := computenode.ComputeNodeConfig{
+			JobSelectionPolicy: jobSelectionPolicy,
+		}
+
 		_, err = computenode.NewComputeNode(
 			transport,
 			executors,
 			verifiers,
-			jobSelectionPolicy,
+			config,
 		)
 		if err != nil {
 			return err

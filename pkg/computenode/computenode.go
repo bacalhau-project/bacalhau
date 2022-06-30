@@ -16,13 +16,23 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type ComputeNode struct {
-	NodeID             string
-	Mutex              sync.Mutex
-	Transport          transport.Transport
-	Executors          map[executor.EngineType]executor.Executor
-	Verifiers          map[verifier.VerifierType]verifier.Verifier
+type ComputeNodeConfig struct {
 	JobSelectionPolicy JobSelectionPolicy
+}
+
+type ComputeNode struct {
+	NodeID    string
+	Mutex     sync.Mutex
+	Transport transport.Transport
+	Executors map[executor.EngineType]executor.Executor
+	Verifiers map[verifier.VerifierType]verifier.Verifier
+	Config    ComputeNodeConfig
+}
+
+func NewDefaultComputeNodeConfig() ComputeNodeConfig {
+	return ComputeNodeConfig{
+		JobSelectionPolicy: NewDefaultJobSelectionPolicy(),
+	}
 }
 
 // TODO: Clean up function so it's not so long
@@ -31,7 +41,7 @@ func NewComputeNode(
 	t transport.Transport,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
-	jobSelectionPolicy JobSelectionPolicy,
+	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	ctx := context.Background()
 	nodeID, err := t.HostID(ctx)
@@ -40,11 +50,11 @@ func NewComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		NodeID:             nodeID,
-		Transport:          t,
-		Verifiers:          verifiers,
-		Executors:          executors,
-		JobSelectionPolicy: jobSelectionPolicy,
+		NodeID:    nodeID,
+		Transport: t,
+		Verifiers: verifiers,
+		Executors: executors,
+		Config:    config,
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
@@ -186,7 +196,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	return ApplyJobSelectionPolicy(
 		ctx,
-		node.JobSelectionPolicy,
+		node.Config.JobSelectionPolicy,
 		e,
 		data,
 	)

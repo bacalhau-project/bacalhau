@@ -45,7 +45,7 @@ func setupTest(t *testing.T) (
 		transport,
 		executors,
 		verifiers,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	assert.NoError(t, err)
 
@@ -64,7 +64,7 @@ func TestTransportSanity(t *testing.T) {
 		transport,
 		executors,
 		verifiers,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	assert.NoError(t, err)
 	_, err = requestornode.NewRequesterNode(transport)

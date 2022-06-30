@@ -17,7 +17,7 @@ import (
 
 func SetupTest(
 	t *testing.T,
-	jobSelectionPolicy computenode.JobSelectionPolicy,
+	config computenode.ComputeNodeConfig,
 ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
@@ -47,7 +47,7 @@ func SetupTest(
 		transport,
 		executors,
 		verifiers,
-		jobSelectionPolicy,
+		config,
 	)
 	if err != nil {
 		t.Fatal(err)

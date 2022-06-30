@@ -78,7 +78,7 @@ var devstackCmd = &cobra.Command{
 			devStackBadActors,
 			getExecutors,
 			getVerifiers,
-			computenode.NewDefaultJobSelectionPolicy(),
+			computenode.NewDefaultComputeNodeConfig(),
 		)
 		if err != nil {
 			return err
