@@ -9,6 +9,13 @@ import (
 	"github.com/pbnjay/memory"
 )
 
+func NewDefaultResourceUsageConfig() ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    "",
+		Memory: "",
+	}
+}
+
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
 // lowercase
@@ -58,4 +65,24 @@ func GetSystemResources() (ResourceUsageData, error) {
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.FreeMemory(),
 	}, nil
+}
+
+// given a "required" usage and a "limit" of usage - can we run the requirement
+func CompareUsageConfigs(wantsConfig, limitConfig ResourceUsageConfig) (bool, error) {
+
+	// shortcut for when there is no
+	if limitConfig.CPU == "" && limitConfig.Memory == "" {
+		return true, nil
+	}
+
+	wants, err := ParseResourceUsageConfig(wantsConfig)
+	if err != nil {
+		return false, err
+	}
+	limit, err := ParseResourceUsageConfig(limitConfig)
+	if err != nil {
+		return false, err
+	}
+
+	return wants.CPU <= limit.CPU && wants.Memory <= limit.Memory, nil
 }
