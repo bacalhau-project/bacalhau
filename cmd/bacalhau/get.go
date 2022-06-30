@@ -2,8 +2,10 @@ package bacalhau
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -12,14 +14,16 @@ import (
 )
 
 var getCmdFlags = struct {
-	ipfsURL   string
-	outputDir string
+	timeoutSecs int
+	outputDir   string
 }{
-	ipfsURL:   "ipfs.io",
-	outputDir: ".",
+	timeoutSecs: 60,
+	outputDir:   ".",
 }
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+	getCmd.Flags().IntVar(&getCmdFlags.timeoutSecs, "timeout-secs",
+		getCmdFlags.timeoutSecs, "Timeout duration for IPFS downloads.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
 		getCmdFlags.outputDir, "Directory to write the output to.")
 }
@@ -32,7 +36,7 @@ var getCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		log.Debug().Msgf("Fetching results of job '%s'...", args[0])
+		log.Info().Msgf("Fetching results of job '%s'...", args[0])
 		job, ok, err := getAPIClient().Get(context.Background(), args[0])
 		if err != nil {
 			return err
@@ -57,11 +61,19 @@ var getCmd = &cobra.Command{
 
 		for _, cid := range resultCIDs {
 			outputDir := filepath.Join(getCmdFlags.outputDir, cid)
-			log.Debug().Msgf("Downloading result CID '%s' to '%s'...",
+			log.Info().Msgf("Downloading result CID '%s' to '%s'...",
 				cid, outputDir)
 
-			err = cl.Get(context.Background(), cid, outputDir)
+			ctx, cancel := context.WithDeadline(context.Background(),
+				time.Now().Add(time.Second*time.Duration(getCmdFlags.timeoutSecs)))
+			defer cancel()
+
+			err = cl.Get(ctx, cid, outputDir)
 			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					log.Error().Msg("Timed out while downloading result.")
+				}
+
 				return err
 			}
 		}
