@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -195,6 +196,9 @@ func TestTotalResourceLimits(t *testing.T) {
 			assert.NoError(t, err)
 			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
 			assert.NoError(t, err)
+
+			// sleep a bit here to simulate jobs being sumbmitted over time
+			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
 		}
 
 		// wait for all the jobs to have completed
