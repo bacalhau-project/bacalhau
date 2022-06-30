@@ -23,16 +23,49 @@ type Executor interface {
 	RunJob(context.Context, *Job) (string, error)
 }
 
-// Job contains data about a job running on some execution provider.
+// Job contains data about a job in the bacalhau network.
 type Job struct {
+	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"id"`
-	// the client node that "owns" this job (as in who submitted it)
-	Owner string   `json:"owner"`
-	Spec  *JobSpec `json:"spec"`
-	Deal  *JobDeal `json:"deal"`
-	// a map of nodeID -> state of the job on that node
-	State     map[string]*JobState `json:"state"`
-	CreatedAt time.Time            `json:"created_at"`
+
+	// The ID of the requester node that owns this job.
+	Owner string `json:"owner"`
+
+	// The ID of the client that created this job.
+	ClientID string // TODO: wire up JSON
+
+	// The specification of this job.
+	Spec *JobSpec `json:"spec"`
+
+	// The deal the client has made, such as which job bids they have accepted.
+	Deal *JobDeal `json:"deal"`
+
+	// The states of the job on different compute nodes indexed by node ID.
+	State map[string]*JobState `json:"state"`
+
+	// Time the job was submitted to the bacalhau network.
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Copy returns a deep copy of the given job.
+// TODO: use a library for deepcopies, this is tedious and likely to be
+//       fragile to changes in the Job type.
+func (j *Job) Copy() Job {
+	jc := *j
+	jc.State = make(map[string]*JobState)
+	for k, v := range j.State {
+		jc.State[k] = v
+	}
+	if j.Spec != nil {
+		sc := *j.Spec
+		jc.Spec = &sc
+	}
+	if j.Deal != nil {
+		dc := *j.Deal
+		jc.Deal = &dc
+	}
+
+	return jc
 }
 
 // JobSpec is a complete specification of a job that can be run on some

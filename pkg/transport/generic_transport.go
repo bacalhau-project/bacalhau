@@ -115,31 +115,9 @@ func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.
 
 	// Actually notify in-process listeners:
 	for _, subscribeFunc := range gt.SubscribeFuncs {
-		j := gt.jobs[event.JobID]
-		jCopy := jobCopy(j)
-		go subscribeFunc(jobCtx, event, jCopy)
+		j := gt.jobs[event.JobID].Copy()
+		go subscribeFunc(jobCtx, event, &j)
 	}
-}
-
-func jobCopy(j *executor.Job) *executor.Job {
-	// deepcopy j to avoid future mutations to the original causing
-	// data races
-	jCopy := *j
-	jCopy.State = make(map[string]*executor.JobState)
-	for k, v := range j.State {
-		jCopy.State[k] = v
-	}
-
-	if j.Spec != nil {
-		jSpecCopy := *j.Spec
-		jCopy.Spec = &jSpecCopy
-	}
-
-	if j.Deal != nil {
-		jDealCopy := *j.Deal
-		jCopy.Deal = &jDealCopy
-	}
-	return &jCopy
 }
 
 /////////////////////////////////////////////////////////////
@@ -178,14 +156,14 @@ func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
 
-	response := map[string]*executor.Job{}
-
-	for k, v := range gt.jobs {
-		response[k] = jobCopy(v)
+	res := map[string]*executor.Job{}
+	for name, job := range gt.jobs {
+		j := job.Copy()
+		res[name] = &j
 	}
 
 	return ListResponse{
-		Jobs: response,
+		Jobs: res,
 	}, nil
 }
 
@@ -193,12 +171,13 @@ func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, 
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
 
-	job, ok := gt.jobs[id]
+	j, ok := gt.jobs[id]
 	if !ok {
 		return nil, fmt.Errorf("job not found in transport: %s", id)
 	}
 
-	return jobCopy(job), nil
+	jc := j.Copy()
+	return &jc, nil
 }
 
 func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
