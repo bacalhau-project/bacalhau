@@ -167,6 +167,9 @@ func (ipfsHTTP *IPFSHTTPClient) DownloadTar(ctx context.Context, targetDir, cid 
 	if err != nil {
 		return err
 	}
+	if res == nil {
+		return fmt.Errorf("Got nil response")
+	}
 	defer res.Close()
 
 	tarfilePath := fmt.Sprintf("%s/%s.tar", targetDir, cid)
@@ -175,6 +178,9 @@ func (ipfsHTTP *IPFSHTTPClient) DownloadTar(ctx context.Context, targetDir, cid 
 	outFile, err := os.Create(tarfilePath)
 	if err != nil {
 		return err
+	}
+	if res == nil {
+		return fmt.Errorf("Got nil outFile")
 	}
 	defer outFile.Close()
 
