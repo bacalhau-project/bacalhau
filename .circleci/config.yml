@@ -2,25 +2,55 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+executors:
+  linux:
+    docker:
+      - image: cimg/go:1.18.3
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: cimg/base:stable
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+  build:
+    working_directory: ~/repo
+    runs-on: ${{ matrix.runner }}
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+          name: Install Dependencies
+          command: go get ./...
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  say-hello-workflow:
+  build-workflow:
+    environment:
+      GOVER: 1.18.3
+      GOLANGCILINT_VER: v1.46
+      GOPROXY: https://proxy.golang.org
+      ARCHIVE_OUTDIR: dist/archives
     jobs:
-      - say-hello
+      - build:
+          name: ubuntu-amd64,
+          os: ubuntu-latest,
+          target_os: linux,
+          runner: ubuntu-latest,
+          target_arch: amd64,
+      - build:
+          name: macOS-arm64,
+          os: macOS-latest,
+          target_os: darwin,
+          runner: ubuntu-latest,
+          target_arch: arm64,
+      - build:
+          name: macOS-amd64,
+          os: macOS-latest,
+          target_os: darwin,
+          runner: macOS-latest,
+          target_arch: amd64,

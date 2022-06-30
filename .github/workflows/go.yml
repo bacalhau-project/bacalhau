@@ -1,146 +1,146 @@
-name: Go
+# name: Go
 
-on:
-  push:
-    branches:
-      - "*"
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      debug_enabled:
-        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
-        required: false
-        default: "false"
+# on:
+#   push:
+#     branches:
+#       - "*"
+#   pull_request:
+#     branches: [main]
+#   workflow_dispatch:
+#     inputs:
+#       debug_enabled:
+#         description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
+#         required: false
+#         default: "false"
 
-jobs:
-  build:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ${{ matrix.runner }}
-    env:
-      GOVER: ${{ matrix.go_version }}
-      GOLANGCILINT_VER: v1.46
-      GOOS: ${{ matrix.target_os }}
-      GOARCH: ${{ matrix.target_arch }}
-      GOPROXY: https://proxy.golang.org
-      ARCHIVE_OUTDIR: dist/archives
-    strategy:
-      fail-fast: false
-      matrix:
-        # GitHub Actions does not yet support Arm or Arm64
-        # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
-        name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
-        go_version: [1.18.3]
-        include:
-          # - {
-          #     name: ubuntu-arm,
-          #     os: ubuntu-latest,
-          #     target_os: linux,
-          #     runner: ubuntu-latest,
-          #     target_arch: arm,
-          #   }
-          # - {
-          #     name: ubuntu-arm64,
-          #     os: ubuntu-latest,
-          #     target_os: linux,
-          #     runner: ubuntu-latest,
-          #     target_arch: arm64,
-          #   }
-          - {
-              name: ubuntu-amd64,
-              os: ubuntu-latest,
-              target_os: linux,
-              runner: ubuntu-latest,
-              target_arch: amd64,
-            }
-          - {
-              name: macOS-arm64,
-              os: macOS-latest,
-              target_os: darwin,
-              runner: ubuntu-latest,
-              target_arch: arm64,
-            }
-          - {
-              name: macOS-amd64,
-              os: macOS-latest,
-              target_os: darwin,
-              runner: macOS-latest,
-              target_arch: amd64,
-            }
+# jobs:
+#   build:
+#     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+#     runs-on: ${{ matrix.runner }}
+#     env:
+#       GOVER: ${{ matrix.go_version }}
+#       GOLANGCILINT_VER: v1.46
+#       GOOS: ${{ matrix.target_os }}
+#       GOARCH: ${{ matrix.target_arch }}
+#       GOPROXY: https://proxy.golang.org
+#       ARCHIVE_OUTDIR: dist/archives
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         # GitHub Actions does not yet support Arm or Arm64
+#         # name: [macOS-arm64, macOS-amd64, ubuntu-arm, ubuntu-arm64, ubuntu-amd64]
+#         name: [macOS-arm64, macOS-amd64, ubuntu-amd64]
+#         go_version: [1.18.3]
+#         include:
+#           # - {
+#           #     name: ubuntu-arm,
+#           #     os: ubuntu-latest,
+#           #     target_os: linux,
+#           #     runner: ubuntu-latest,
+#           #     target_arch: arm,
+#           #   }
+#           # - {
+#           #     name: ubuntu-arm64,
+#           #     os: ubuntu-latest,
+#           #     target_os: linux,
+#           #     runner: ubuntu-latest,
+#           #     target_arch: arm64,
+#           #   }
+#           - {
+#               name: ubuntu-amd64,
+#               os: ubuntu-latest,
+#               target_os: linux,
+#               runner: ubuntu-latest,
+#               target_arch: amd64,
+#             }
+#           - {
+#               name: macOS-arm64,
+#               os: macOS-latest,
+#               target_os: darwin,
+#               runner: ubuntu-latest,
+#               target_arch: arm64,
+#             }
+#           - {
+#               name: macOS-amd64,
+#               os: macOS-latest,
+#               target_os: darwin,
+#               runner: macOS-latest,
+#               target_arch: amd64,
+#             }
 
-    steps:
-      - uses: actions/checkout@main
-      - uses: actions/setup-go@v3
-        with:
-          go-version: "^1.18.3" # The Go version to download (if necessary) and use.
+#     steps:
+#       - uses: actions/checkout@main
+#       - uses: actions/setup-go@v3
+#         with:
+#           go-version: "^1.18.3" # The Go version to download (if necessary) and use.
 
-      - name: Print go version
-        run: go version
+#       - name: Print go version
+#         run: go version
 
-      # https://filecoinproject.slack.com/archives/C02RLM3JHUY/p1656584355868019
-      # - name: Cache Go modules
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: |
-      #       ~/.cache/go-build
-      #       ~/go/pkg/mod
-      #     key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
-      #     restore-keys: |
-      #       ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
+#       # https://filecoinproject.slack.com/archives/C02RLM3JHUY/p1656584355868019
+#       # - name: Cache Go modules
+#       #   uses: actions/cache@v3
+#       #   with:
+#       #     path: |
+#       #       ~/.cache/go-build
+#       #       ~/go/pkg/mod
+#       #     key: ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-${{ hashFiles('**/go.sum') }}
+#       #     restore-keys: |
+#       #       ${{ matrix.target_os }}-${{ matrix.target_arch }}-go-${{ env.GOVER }}-build-
 
-      - name: Set up Honeycomb Otel from Github Secret
-        run: |
-          mkdir -p $HOME/.bacalhau
-          echo "${{ secrets.HONEYCOMB_OTEL_KEY }}" >> $HOME/.bacalhau/config.toml
+#       - name: Set up Honeycomb Otel from Github Secret
+#         run: |
+#           mkdir -p $HOME/.bacalhau
+#           echo "${{ secrets.HONEYCOMB_OTEL_KEY }}" >> $HOME/.bacalhau/config.toml
 
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+#       - name: Debugging with tmate
+#         uses: mxschmitt/action-tmate@v3.11
+#         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      - name: golangci-lint
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v3.2.0
-        with:
-          version: ${{ env.GOLANGCILINT_VER }}
+#       - name: golangci-lint
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+#         uses: golangci/golangci-lint-action@v3.2.0
+#         with:
+#           version: ${{ env.GOLANGCILINT_VER }}
 
-      - name: Run go mod tidy check diff
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: make modtidy check-diff
+#       - name: Run go mod tidy check diff
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+#         run: make modtidy check-diff
 
-      - name: Debugging with tmate
-        uses: mxschmitt/action-tmate@v3.11
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
+#       - name: Debugging with tmate
+#         uses: mxschmitt/action-tmate@v3.11
+#         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
-      - name: Install IPFS
-        run: |
-          curl -s -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
-          cd go-ipfs
-          sudo bash install.sh
+#       - name: Install IPFS
+#         run: |
+#           curl -s -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+#           tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+#           cd go-ipfs
+#           sudo bash install.sh
 
-      - name: Build
-        run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
+#       - name: Build
+#         run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
-      - name: Test
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: make test
+#       - name: Test
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+#         run: make test
 
-      - name: setup gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
+#       - name: setup gcloud
+#         uses: google-github-actions/setup-gcloud@v0
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
 
-      - id: auth_to_gcloud
-        name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@v0"
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
-        with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
+#       - id: auth_to_gcloud
+#         name: "Authenticate to Google Cloud"
+#         uses: "google-github-actions/auth@v0"
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
+#         with:
+#           credentials_json: ${{ secrets.GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS}}
 
-      - name: install development cluster
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
-        run: |
-          cd ops/terraform && terraform init && \
-                              terraform workspace select development && \
-                              terraform apply -auto-approve --var-file=development.tfvars
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
+#       - name: install development cluster
+#         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && github.ref == 'refs/heads/main'
+#         run: |
+#           cd ops/terraform && terraform init && \
+#                               terraform workspace select development && \
+#                               terraform apply -auto-approve --var-file=development.tfvars
+#         env:
+#           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
