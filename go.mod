@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-ipfs v0.13.0-rc1
 	github.com/ipfs/go-ipfs-files v0.1.1
-	github.com/ipfs/go-ipfs-http-client v0.3.1
+	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/jedib0t/go-pretty/v6 v6.2.7
 	github.com/libp2p/go-libp2p v0.19.4
@@ -16,6 +16,7 @@ require (
 	github.com/moby/moby v20.10.15+incompatible
 	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
+	github.com/prometheus/client_golang v1.12.2
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
@@ -92,8 +93,8 @@ require (
 	github.com/ipfs/go-bitswap v0.6.0 // indirect
 	github.com/ipfs/go-block-format v0.0.3 // indirect
 	github.com/ipfs/go-blockservice v0.3.0 // indirect
-	github.com/ipfs/go-cid v0.1.0 // indirect
-	github.com/ipfs/go-cidutil v0.0.2 // indirect
+	github.com/ipfs/go-cid v0.2.0 // indirect
+	github.com/ipfs/go-cidutil v0.1.0 // indirect
 	github.com/ipfs/go-datastore v0.5.1 // indirect
 	github.com/ipfs/go-ds-badger v0.3.0 // indirect
 	github.com/ipfs/go-ds-flatfs v0.5.1 // indirect
@@ -218,7 +219,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
-	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.34.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect

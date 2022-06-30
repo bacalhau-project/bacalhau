@@ -131,6 +131,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		// JSON RPC
 		//////////////////////////////////////
+
 		apiPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -144,6 +145,21 @@ func NewDevStack(
 		}(context.Background())
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
+
+		//////////////////////////////////////
+		// metrics
+		//////////////////////////////////////
+
+		metricsPort, err := freeport.GetFreePort()
+		if err != nil {
+			return nil, err
+		}
+
+		go func(ctx context.Context) {
+			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
+				log.Error().Msgf("Cannot serve metrics: %v", err)
+			}
+		}(context.Background())
 
 		//////////////////////////////////////
 		// intra-connections

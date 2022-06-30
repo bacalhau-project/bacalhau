@@ -111,7 +111,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	for _, line := range strings.Split(out, "\n") {
 		parts := strings.Split(line, " ")
 		if len(parts) > 2 {
-			seenIds = append(seenIds, strings.Split(line, " ")[1])
+			seenIds = append(seenIds, strings.Split(line, " ")[3])
 		}
 	}
 
@@ -222,7 +222,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 						for _, line := range strings.Split(out, "\n") {
 							parts := strings.Split(line, " ")
 							if len(parts) > 2 {
-								seenIds = append(seenIds, strings.Split(line, " ")[1])
+								seenIds = append(seenIds, strings.Split(line, " ")[3])
 							}
 						}
 
