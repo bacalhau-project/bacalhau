@@ -110,6 +110,13 @@ jobs:
         uses: mxschmitt/action-tmate@v3.11
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled }}
 
+      - name: Install IPFS
+        run: |
+          curl -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+          cd go-ipfs
+          sudo bash install.sh
+
       - name: Build
         run: GOOS=${{ matrix.target_os }} GOOARCH=${{ matrix.target_arch }} GO111MODULE=on make build
 
