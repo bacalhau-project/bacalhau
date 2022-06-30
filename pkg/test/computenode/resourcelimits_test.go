@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -90,8 +91,22 @@ func TestJobResourceLimits(t *testing.T) {
 type SeenJobRecord struct {
 	Id          string
 	CurrentJobs int
+	MaxJobs     int
 	Start       int64
 	End         int64
+}
+
+type TotalResourceTestCaseCheck struct {
+	name    string
+	handler func(seenJobs []SeenJobRecord) (bool, error)
+}
+
+type TotalResourceTestCase struct {
+	// the total list of jobs to throw at the cluster all at the same time
+	jobs        []resourceusage.ResourceUsageConfig
+	totalLimits resourceusage.ResourceUsageConfig
+	wait        TotalResourceTestCaseCheck
+	checkers    []TotalResourceTestCaseCheck
 }
 
 func TestTotalResourceLimits(t *testing.T) {
@@ -109,20 +124,27 @@ func TestTotalResourceLimits(t *testing.T) {
 	//    * i.e. a job that was seen 20 seconds ago we now have space to run so let's bid on it now
 	//
 	runTest := func(
-		// the total list of jobs to throw at the cluster all at the same time
-		allJobs []resourceusage.ResourceUsageConfig,
-		totalLimits resourceusage.ResourceUsageConfig,
+		testCase TotalResourceTestCase,
 	) {
 
 		epochSeconds := time.Now().Unix()
 
 		seenJobs := []SeenJobRecord{}
+		var seenJobsMutex sync.Mutex
+
+		addSeenJob := func(job SeenJobRecord) {
+			seenJobsMutex.Lock()
+			defer seenJobsMutex.Unlock()
+			seenJobs = append(seenJobs, job)
+		}
+
 		currentJobCount := 0
+		maxJobCount := 0
 
 		_, requestorNode, cm := SetupTestNoop(
 			t,
 			computenode.ComputeNodeConfig{
-				ResourceLimits: totalLimits,
+				ResourceLimits: testCase.totalLimits,
 			},
 
 			noop_executor.ExecutorConfig{
@@ -132,16 +154,20 @@ func TestTotalResourceLimits(t *testing.T) {
 				// sleep for a bit to simulate real work happening
 				ExternalHooks: &noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
+						currentJobCount++
+						if currentJobCount > maxJobCount {
+							maxJobCount = currentJobCount
+						}
 						seenJob := SeenJobRecord{
 							Id:          job.ID,
 							Start:       time.Now().Unix() - epochSeconds,
 							CurrentJobs: currentJobCount,
+							MaxJobs:     maxJobCount,
 						}
-						currentJobCount++
 						time.Sleep(time.Second * 1)
 						currentJobCount--
 						seenJob.End = time.Now().Unix() - epochSeconds
-						seenJobs = append(seenJobs, seenJob)
+						addSeenJob(seenJob)
 						return "", nil
 					},
 				},
@@ -149,7 +175,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		)
 		defer cm.Cleanup()
 
-		for _, jobResources := range allJobs {
+		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
 			spec, deal, err := job.ConstructJob(
@@ -178,27 +204,87 @@ func TestTotalResourceLimits(t *testing.T) {
 			MaxAttempts: 10,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
-				return len(seenJobs) >= len(allJobs), nil
+				//spew.Dump(seenJobs)
+				return testCase.wait.handler(seenJobs)
 			},
 		}
 
 		err := waiter.Wait()
-		assert.NoError(t, err)
+		assert.NoError(t, err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
-		spew.Dump(seenJobs)
+		if err != nil {
+			fmt.Printf("error waiting for jobs to have been seen\n")
+			spew.Dump(seenJobs)
+		}
+
+		checkOk := true
+		failingCheckMessage := ""
+
+		for _, checker := range testCase.checkers {
+			innerCheck, err := checker.handler(seenJobs)
+			errorMessage := ""
+			if err != nil {
+				errorMessage = fmt.Sprintf("there was an error in the check function: %s %s", checker.name, err.Error())
+			}
+			assert.NoError(t, err, errorMessage)
+			if !innerCheck {
+				checkOk = false
+				failingCheckMessage = fmt.Sprintf("there was an fail in the check function: %s", checker.name)
+			}
+		}
+
+		assert.True(t, checkOk, failingCheckMessage)
+
+		if !checkOk {
+			fmt.Printf("error checking results on seen jobs\n")
+			spew.Dump(seenJobs)
+		}
+	}
+
+	fourJobs := getResourcesArray([][]string{
+		{"1", "500Mb"},
+		{"1", "500Mb"},
+		{"1", "500Mb"},
+		{"1", "500Mb"},
+	})
+
+	waitUntilSeenAllJobs := func(expected int) TotalResourceTestCaseCheck {
+		return TotalResourceTestCaseCheck{
+			name: fmt.Sprintf("waitUntilSeenAllJobs: %d", expected),
+			handler: func(seenJobs []SeenJobRecord) (bool, error) {
+				return len(seenJobs) >= expected, nil
+			},
+		}
+	}
+
+	checkMaxJobs := func(max int) TotalResourceTestCaseCheck {
+		return TotalResourceTestCaseCheck{
+			name: fmt.Sprintf("checkMaxJobs: %d", max),
+			handler: func(seenJobs []SeenJobRecord) (bool, error) {
+				seenMax := 0
+				for _, seenJob := range seenJobs {
+					if seenJob.MaxJobs > seenMax {
+						seenMax = seenJob.MaxJobs
+					}
+				}
+				return seenMax <= max, nil
+			},
+		}
 	}
 
 	// 2 jobs at a time
 	// we should end up with 2 groups of 2 in terms of timing
 	// and the highest number of jobs at one time should be 2
 	runTest(
-		getResourcesArray([][]string{
-			{"1", "500Mb"},
-			{"1", "500Mb"},
-			{"1", "500Mb"},
-			{"1", "500Mb"},
-		}),
-		getResources("2", "1Gb"),
+		TotalResourceTestCase{
+			jobs:        fourJobs,
+			totalLimits: getResources("2", "1Gb"),
+			wait:        waitUntilSeenAllJobs(len(fourJobs)),
+			checkers: []TotalResourceTestCaseCheck{
+				// there should only have ever been 2 jobs at one time
+				checkMaxJobs(2),
+			},
+		},
 	)
 
 }
