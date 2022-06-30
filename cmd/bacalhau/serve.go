@@ -141,7 +141,7 @@ var serveCmd = &cobra.Command{
 
 		config := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
-			ResourcesLimits:    resourceLimits,
+			ResourceLimits:     resourceLimits,
 		}
 
 		_, err = computenode.NewComputeNode(
