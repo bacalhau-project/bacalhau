@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -80,6 +81,9 @@ type JobSpec struct {
 	VM   JobSpecVM   `json:"job_spec_vm"`
 	Wasm JobSpecWasm `json:"job_spec_wasm"`
 
+	// the compute (cpy, ram, disk) resources this job requires
+	Resources resourceusage.ResourceUsageData
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []storage.StorageSpec `json:"inputs"`
@@ -99,10 +103,6 @@ type JobSpecVM struct {
 	Entrypoint []string `json:"entrypoint"`
 	// a map of env to run the container with
 	Env []string `json:"env"`
-	// https://github.com/BTBurke/k8sresource strings
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-	Disk   string `json:"disk"`
 }
 
 // for Wasm style executors
