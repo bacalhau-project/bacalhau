@@ -23,6 +23,7 @@ var jobSelectionDataLocality string
 var jobSelectionDataRejectStateless bool
 var jobSelectionProbeHTTP string
 var jobSelectionProbeExec string
+var metricsPort = 2112
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -63,6 +64,10 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	serveCmd.PersistentFlags().StringVar(
 		&jobSelectionProbeExec, "job-selection-probe-exec", "",
 		`Use the result of a exec an external program to decide if we should take on the job.`,
+	)
+	serveCmd.PersistentFlags().IntVar(
+		&metricsPort, "metrics-port", metricsPort,
+		`The port to serve prometheus metrics on.`,
 	)
 }
 
@@ -147,6 +152,12 @@ var serveCmd = &cobra.Command{
 		go func(ctx context.Context) {
 			if err = transport.Start(ctx); err != nil {
 				log.Fatal().Msgf("Transport can't run, bacalhau should stop: %+v", err)
+			}
+		}(ctx)
+
+		go func(ctx context.Context) {
+			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
+				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(ctx)
 
