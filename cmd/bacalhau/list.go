@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -80,7 +79,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		jobs, err := getAPIClient().List(context.Background(), system.GetClientID())
+		jobs, err := getAPIClient().List(context.Background())
 		if err != nil {
 			return err
 		}

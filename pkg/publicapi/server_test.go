@@ -43,7 +43,7 @@ func (suite *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx, "client_id")
+	jobs, err := c.List(ctx)
 	assert.NoError(suite.T(), err)
 	assert.Empty(suite.T(), jobs)
 
@@ -54,7 +54,7 @@ func (suite *ServerSuite) TestList() {
 	assert.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx, "client_id")
+	jobs, err = c.List(ctx)
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), jobs, 1)
 }

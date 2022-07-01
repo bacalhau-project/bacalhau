@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -51,9 +52,9 @@ func (apiClient *APIClient) Alive() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List(ctx context.Context, clientID string) (map[string]*executor.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job, error) {
 	req := listRequest{
-		ClientID: clientID,
+		ClientID: system.GetClientID(),
 	}
 
 	var res listResponse
@@ -66,8 +67,8 @@ func (apiClient *APIClient) List(ctx context.Context, clientID string) (map[stri
 
 // Get returns job data for a particular job ID.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, clientID, jobID string) (*executor.Job, bool, error) {
-	jobs, err := apiClient.List(ctx, clientID)
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Job, bool, error) {
+	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err
 	}
@@ -85,9 +86,7 @@ func (apiClient *APIClient) Get(ctx context.Context, clientID, jobID string) (*e
 
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
-	if deal.ClientID == "" {
-		return nil, fmt.Errorf("job deal must contain a ClientID in submit request")
-	}
+	deal.ClientID = system.GetClientID() // ensure we have a client ID
 
 	var res submitResponse
 	req := submitRequest{

@@ -65,10 +65,7 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-			clientID, err := system.GetClientID()
-			assert.NoError(suite.T(), err)
-
-			job, _, err := c.Get(ctx, clientID, strings.TrimSpace(out))
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			assert.NoError(suite.T(), err)
 			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
@@ -89,9 +86,6 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			clientID, err := system.GetClientID()
-			assert.NoError(suite.T(), err)
-
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
@@ -101,7 +95,7 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, clientID, strings.TrimSpace(out))
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			assert.NoError(suite.T(), err)
 			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 			assert.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
@@ -157,9 +151,6 @@ func (suite *RunSuite) TestRun_Annotations() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			clientID, err := system.GetClientID()
-			assert.NoError(suite.T(), err)
-
 			for _, labelTest := range annotationsToTest {
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				assert.NoError(suite.T(), err)
@@ -178,7 +169,7 @@ func (suite *RunSuite) TestRun_Annotations() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				testJob, _, err := c.Get(ctx, clientID, strings.TrimSpace(out))
+				testJob, _, err := c.Get(ctx, strings.TrimSpace(out))
 				assert.NoError(suite.T(), err)
 
 				if labelTest.BadCase {

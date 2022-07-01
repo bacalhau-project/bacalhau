@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -157,9 +156,6 @@ func (suite *ListSuite) TestList_SortFlags() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
-
-				clientID, err := system.GetClientID()
-				assert.NoError(suite.T(), err)
 
 				jobIDs := []string{}
 				for i := 0; i < tc.numberOfJobs; i++ {
