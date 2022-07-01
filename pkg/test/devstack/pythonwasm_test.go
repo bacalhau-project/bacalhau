@@ -96,6 +96,8 @@ func TestSimplePythonWasm(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
+		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
+		"--api-host=localhost",
 		"run",
 		"python",
 		"--deterministic",
