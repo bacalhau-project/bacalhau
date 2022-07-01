@@ -39,7 +39,17 @@ type ComputeNode struct {
 	// there is a control loop that will attempt to clear this queue
 	// it will only bid on jobs it currently has capacity for
 	PausedJobs map[string]*executor.Job
-	Config     ComputeNodeConfig
+
+	// the config for this compute node
+	// things like job selection policy and configured resource limits
+	// live here
+	Config ComputeNodeConfig
+
+	// how much resources do we have available
+	// this either comes from config values or the actual physical resources
+	// if the configured values are more than the actual physical resources
+	// then we expect an error here
+	AvailableResources resourceusage.ResourceUsageData
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -64,13 +74,21 @@ func NewComputeNode(
 		return nil, err
 	}
 
+	// this is either what the physical CPU / memory values are
+	// or the user defined limits from the config (if defined and less than physical amounts)
+	availableResources, err := resourceusage.GetSystemResources(config.ResourceLimits)
+	if err != nil {
+		return nil, err
+	}
+
 	computeNode := &ComputeNode{
-		NodeID:      nodeID,
-		Transport:   t,
-		Verifiers:   verifiers,
-		Executors:   executors,
-		RunningJobs: map[string]*executor.Job{},
-		Config:      config,
+		NodeID:             nodeID,
+		Transport:          t,
+		Verifiers:          verifiers,
+		Executors:          executors,
+		RunningJobs:        map[string]*executor.Job{},
+		Config:             config,
+		AvailableResources: availableResources,
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
