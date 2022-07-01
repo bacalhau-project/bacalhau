@@ -54,7 +54,11 @@ func setupTest(t *testing.T) (
 	)
 	assert.NoError(t, err)
 
-	_, err = requestornode.NewRequesterNode(transport)
+	_, err = requestornode.NewRequesterNode(
+		cm,
+		transport,
+		verifiers,
+	)
 	assert.NoError(t, err)
 
 	return transport, noopExecutor, noopVerifier, cm
@@ -75,7 +79,11 @@ func TestTransportSanity(t *testing.T) {
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	assert.NoError(t, err)
-	_, err = requestornode.NewRequesterNode(transport)
+	_, err = requestornode.NewRequesterNode(
+		cm,
+		transport,
+		verifiers,
+	)
 	assert.NoError(t, err)
 }
 

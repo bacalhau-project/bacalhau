@@ -7,7 +7,7 @@ import (
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	requestornode "github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -114,11 +114,6 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		requesterNode, err := requestornode.NewRequesterNode(transport)
-		if err != nil {
-			return err
-		}
-
 		executors, err := executor_util.NewStandardExecutors(cm, ipfsConnect,
 			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
 		if err != nil {
@@ -162,6 +157,14 @@ var serveCmd = &cobra.Command{
 			JobResourceLimit:   jobResourceLimit,
 		}
 
+		requesterNode, err := requestornode.NewRequesterNode(
+			cm,
+			transport,
+			verifiers,
+		)
+		if err != nil {
+			return err
+		}
 		_, err = computenode.NewComputeNode(
 			cm,
 			transport,

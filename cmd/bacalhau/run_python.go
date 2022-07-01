@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -159,6 +158,7 @@ var runPythonCmd = &cobra.Command{
 			if buf.Len() > 10*1024*1024 {
 				return fmt.Errorf("context tar file is too large (>10MiB)")
 			}
+
 		}
 
 		ctx := context.Background()
@@ -255,88 +255,6 @@ func compress(src string, buf io.Writer) error {
 	if err := zr.Close(); err != nil {
 		return err
 	}
-	//
-	return nil
-}
-
-// check for path traversal and correct forward slashes
-//nolint:deadcode,unused
-func validRelPath(p string) bool {
-	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {
-		return false
-	}
-	return true
-}
-
-// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
-func SanitizeArchivePath(d, t string) (v string, err error) {
-	v = filepath.Join(d, t)
-	if strings.HasPrefix(v, filepath.Clean(d)) {
-		return v, nil
-	}
-
-	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
-}
-
-//nolint:unused,deadcode
-func decompress(src io.Reader, dst string) error {
-	// ungzip
-	zr, err := gzip.NewReader(src)
-	if err != nil {
-		return err
-	}
-	// untar
-	tr := tar.NewReader(zr)
-
-	// uncompress each element
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break // End of archive
-		}
-		if err != nil {
-			return err
-		}
-		target := header.Name
-
-		// validate name against path traversal
-		if !validRelPath(header.Name) {
-			return fmt.Errorf("tar contained invalid name error %q", target)
-		}
-
-		// add dst + re-format slashes according to system
-		target, err = SanitizeArchivePath(dst, header.Name)
-		if err != nil {
-			return err
-		}
-		// if no join is needed, replace with ToSlash:
-		// target = filepath.ToSlash(header.Name)
-
-		// check the type
-		switch header.Typeflag {
-		// if its a dir and it doesn't exist create it (with 0755 permission)
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil { //nolint:gomnd
-					return err
-				}
-			}
-		// if it's a file create it (with same permission)
-		case tar.TypeReg:
-			fileToWrite, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			// copy over contents
-			if _, err := io.CopyN(fileToWrite, tr, 10*1024*1024); err != nil { //nolint:gomnd
-				return err
-			}
-			// manually close here after each file operation; defering would cause each file close
-			// to wait until all operations have completed.
-			fileToWrite.Close()
-		}
-	}
-
 	//
 	return nil
 }

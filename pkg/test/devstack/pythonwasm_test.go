@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -46,9 +47,6 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	// XXX This might not work because run_python.go just uses fmt.Printf of the
-	// job id. It needs to write it to the cobra buffer instead. XXX This is right!!!
-
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	// wait for the job to complete across all nodes
@@ -60,10 +58,9 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
 	)
 	assert.NoError(t, err)
-	// load result from ipfs
-	// result, err := stack.GetJobResult(ctx, jobId)
-	// assert.NoError(t, err)
-	// assert.Equal(t, "2", result)
+
+	// load result from ipfs and check it
+	// TODO: see devStackDockerStorageTest for how to do this
 
 }
 
@@ -106,7 +103,8 @@ func TestSimplePythonWasm(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	jobId := strings.TrimSpace(out)
-	log.Debug().Msgf("jobId=%s", jobId) // XXX jobId EMPTY!
+	log.Debug().Msgf("jobId=%s", jobId)
+	time.Sleep(time.Second * 5)
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
 			executor.JobStateBidRejected,

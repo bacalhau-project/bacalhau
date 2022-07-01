@@ -1,4 +1,3 @@
-// nolint:funlen,gocyclo // dev function, poor coding practice acceptable
 package devstack
 
 import (
@@ -44,6 +43,7 @@ type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
 type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 	map[verifier.VerifierType]verifier.Verifier, error)
 
+//nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
 	count, badActors int, // nolint:unparam // Incorrectly assumed as unused
@@ -99,15 +99,7 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
-		// Requestor node
-		//////////////////////////////////////
-		requesterNode, err := requestornode.NewRequesterNode(transport)
-		if err != nil {
-			return nil, err
-		}
-
-		//////////////////////////////////////
-		// Compute node
+		// Executors and verifiers
 		//////////////////////////////////////
 		executors, err := getExecutors(ipfsNode.APIAddress(), i)
 		if err != nil {
@@ -119,6 +111,21 @@ func NewDevStack(
 			return nil, err
 		}
 
+		//////////////////////////////////////
+		// Requestor node
+		//////////////////////////////////////
+		requesterNode, err := requestornode.NewRequesterNode(
+			cm,
+			transport,
+			verifiers,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
+		// Compute node
+		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
 			cm,
 			transport,

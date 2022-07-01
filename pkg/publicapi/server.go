@@ -1,14 +1,24 @@
 package publicapi
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -136,20 +146,60 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if submitReq.Context != "" {
+		// TODO: gc pinned contexts
+		// TODO:
+		//  * base64 decode submitReq.Context
+
+		decoded, err := base64.StdEncoding.DecodeString(submitReq.Context)
+		if err != nil {
+			log.Debug().Msgf("====> DecodeContext error: %s", err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		//  * write decoded base64 to .tar file
+
+		// create tmp dir
+		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
+		if err != nil {
+			log.Debug().Msgf("====> Create tmp dir error: %s", err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// untar tmpDir/context.tar
+
+		tarReader := bytes.NewReader(decoded)
+		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
+		if err != nil {
+			log.Debug().Msgf("====> Decompress error: %s", err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		//  * untar into directory
+		//  * call apiServer.Node.PinContext with directory name
+		cid, err := apiServer.Node.PinContext(filepath.Join(tmpDir, "context"))
+		if err != nil {
+			log.Debug().Msgf("====> PinContext error: %s", err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		submitReq.Spec.Inputs = append(submitReq.Spec.Inputs, storage.StorageSpec{
+			// we have a chance to have a kind of storage multiaddress here
+			// e.g. --cid ipfs:abc --cid filecoin:efg
+			Engine: "ipfs",
+			Cid:    cid,
+			Path:   "/job",
+		})
+	}
+
 	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
 		submitReq.Spec, submitReq.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	if submitReq.Context != "" {
-		// TODO: gc pinned contexts
-		err = apiServer.Node.PinContext(j.ID, submitReq.Context)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	}
 
 	res.WriteHeader(http.StatusOK)
@@ -164,4 +214,91 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 func instrument(name string, fn http.HandlerFunc) http.Handler {
 	return otelhttp.NewHandler(fn, fmt.Sprintf("publicapi/%s", name))
+}
+
+// check for path traversal and correct forward slashes
+//nolint:deadcode,unused
+func validRelPath(p string) bool {
+	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {
+		return false
+	}
+	return true
+}
+
+// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
+func SanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
+}
+
+//nolint:unused,deadcode
+func decompress(src io.Reader, dst string) error {
+	// ungzip
+	zr, err := gzip.NewReader(src)
+	if err != nil {
+		return err
+	}
+	// untar
+	tr := tar.NewReader(zr)
+
+	// uncompress each element
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return err
+		}
+		target := header.Name
+
+		// validate name against path traversal
+		if !validRelPath(header.Name) {
+			return fmt.Errorf("tar contained invalid name error %q", target)
+		}
+
+		// add dst + re-format slashes according to system
+		target, err = SanitizeArchivePath(dst, header.Name)
+		if err != nil {
+			return err
+		}
+		// if no join is needed, replace with ToSlash:
+		// target = filepath.ToSlash(header.Name)
+
+		// check the type
+		switch header.Typeflag {
+		// if its a dir and it doesn't exist create it (with 0755 permission)
+		case tar.TypeDir:
+			if _, err := os.Stat(target); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil { //nolint:gomnd
+					return err
+				}
+			}
+		// if it's a file create it (with same permission)
+		case tar.TypeReg:
+			fileToWrite, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			// copy over contents (max 10MB per file!)
+			// TODO: error if files are too big, rather than silently truncating them :-O
+			if _, err := io.CopyN(fileToWrite, tr, 10*1024*1024); err != nil { //nolint:gomnd
+				log.Debug().Msgf("CopyN err is %s", err)
+				// io.EOF is expected
+				if err != io.EOF {
+					return err
+				}
+			}
+			// manually close here after each file operation; defering would cause each file close
+			// to wait until all operations have completed.
+			fileToWrite.Close()
+		}
+	}
+
+	//
+	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -27,18 +28,25 @@ var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
+	cm := system.NewCleanupManager()
+	cm.RegisterCallback(system.CleanupTracer)
+
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
-	rn, err := requestornode.NewRequesterNode(ipt)
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
+	assert.NoError(t, err)
+
+	rn, err := requestornode.NewRequesterNode(
+		cm,
+		ipt,
+		noopVerifiers,
+	)
 	assert.NoError(t, err)
 
 	host := "0.0.0.0"
 	port, err := freeport.GetFreePort()
 	assert.NoError(t, err)
-
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
 
 	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
