@@ -1,6 +1,7 @@
 package resourceusage
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 
@@ -90,11 +91,33 @@ func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error
 }
 
 // what resources does this compute node actually have?
-func GetSystemResources() (ResourceUsageData, error) {
-	return ResourceUsageData{
+func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+	// the actual resources we have
+	data := ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.FreeMemory(),
-	}, nil
+	}
+
+	parsedLimitConfig, err := ParseResourceUsageConfig(limitConfig)
+	if err != nil {
+		return data, err
+	}
+
+	if parsedLimitConfig.CPU > 0 {
+		if parsedLimitConfig.CPU > data.CPU {
+			return data, fmt.Errorf("You cannot configure more CPU than you have on this node: configured %f, have %f", parsedLimitConfig.CPU, data.CPU)
+		}
+		data.CPU = parsedLimitConfig.CPU
+	}
+
+	if parsedLimitConfig.Memory > 0 {
+		if parsedLimitConfig.Memory > data.Memory {
+			return data, fmt.Errorf("You cannot configure more Memory than you have on this node: configured %d, have %d", parsedLimitConfig.Memory, data.Memory)
+		}
+		data.Memory = parsedLimitConfig.Memory
+	}
+
+	return data, nil
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement

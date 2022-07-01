@@ -2,9 +2,11 @@ package resourceusage
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/pbnjay/memory"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -87,6 +89,59 @@ func TestGetResourceUsageConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
 		assert.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+	}
+
+}
+
+func TestSystemResources(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		shouldError bool
+		input       ResourceUsageConfig
+		expected    ResourceUsageData
+	}{
+		{
+			name:        "should return what the system has",
+			shouldError: false,
+			input:       c("", ""),
+			expected:    d(float64(runtime.NumCPU()), memory.FreeMemory()),
+		},
+		{
+			name:        "should return the configured CPU amount",
+			shouldError: false,
+			input:       c("100m", ""),
+			expected:    d(float64(0.1), memory.FreeMemory()),
+		},
+		{
+			name:        "should return the configured Memory amount",
+			shouldError: false,
+			input:       c("", "100Mb"),
+			expected:    d(float64(runtime.NumCPU()), ConvertMemoryString("100Mb")),
+		},
+		{
+			name:        "should error with too many CPUs asked for",
+			shouldError: true,
+			input:       c(fmt.Sprintf("%f", float64(runtime.NumCPU())*2), ""),
+		},
+		{
+			name:        "should error with too much Memory asked for",
+			shouldError: true,
+			input:       c("", fmt.Sprintf("%db", memory.FreeMemory()*2)),
+		},
+	}
+
+	for _, test := range tests {
+		resources, err := GetSystemResources(test.input)
+
+		if test.shouldError {
+			assert.Error(t, err, "an error was expected")
+		} else {
+			assert.NoError(t, err, "an error was not expected")
+			assert.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
+			assert.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
+		}
+
 	}
 
 }
