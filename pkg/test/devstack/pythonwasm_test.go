@@ -27,7 +27,7 @@ import (
 func TestSimplestPythonWasmDashC(t *testing.T) {
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
-	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultJobSelectionPolicy())
+	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()
@@ -72,7 +72,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 func TestSimplePythonWasm(t *testing.T) {
 	ctx, span := newSpan("TestSimplePythonWasm")
 	defer span.End()
-	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultJobSelectionPolicy())
+	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()

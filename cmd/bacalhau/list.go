@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -196,7 +195,7 @@ var listCmd = &cobra.Command{
 				return err
 			}
 
-			fmt.Printf("%s\n", msgBytes)
+			cmd.Printf("%s\n", msgBytes)
 			return nil
 		} else {
 			t.Render()

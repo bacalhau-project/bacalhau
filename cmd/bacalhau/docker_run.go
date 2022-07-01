@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -132,7 +131,7 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", job.ID)
+		cmd.Printf("%s\n", job.ID)
 		return nil
 	},
 }
