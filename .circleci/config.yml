@@ -34,13 +34,13 @@ jobs:
       - run:
           name: Echos
           command: |
-            echo "GOOS => $(GOOS)"
-            echo "GOARCH => $(GOARCH)"
+            echo "GOOS => $GOOS"
+            echo "GOARCH => $GOARCH"
       - run:
           name: Install Go
           command: |
-            curl -Ls https://dl.google.com/go$(GOVER).$(GOOS)-$(GOARCH).tar.gz
-            rm -rf /usr/local/go && tar -C /usr/local -xzf go$(GOVER).$(GOOS)-$(GOARCH).tar.gz
+            curl -Ls "https://dl.google.com/go$(GOVER).$GOOS-$GOARCH.tar.gz"
+            rm -rf /usr/local/go && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
             export PATH=$PATH:/usr/local/go/bin
       - restore_cache:
           keys:
@@ -55,7 +55,7 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['target_os', << parameters.target_os >>]
+              - equal: ['linux', << parameters.target_os >>]
               - equal: ['amd64', << parameters.target_arch >>]
           steps:
             - run:
@@ -84,7 +84,7 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['target_os', << parameters.target_os >>]
+              - equal: ['linux', << parameters.target_os >>]
               - equal: ['amd64', << parameters.target_arch >>]
           steps:
             - run:
