@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -30,6 +31,7 @@ func (suite *RunSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *RunSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
 }
 
@@ -66,7 +68,6 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			assert.NoError(suite.T(), err)
 			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 		}()
 	}
 }

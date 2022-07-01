@@ -23,16 +23,46 @@ type Executor interface {
 	RunJob(context.Context, *Job) (string, error)
 }
 
-// Job contains data about a job running on some execution provider.
+// Job contains data about a job in the bacalhau network.
 type Job struct {
+	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"id"`
-	// the client node that "owns" this job (as in who submitted it)
-	Owner string   `json:"owner"`
-	Spec  *JobSpec `json:"spec"`
-	Deal  *JobDeal `json:"deal"`
-	// a map of nodeID -> state of the job on that node
-	State     map[string]*JobState `json:"state"`
-	CreatedAt time.Time            `json:"created_at"`
+
+	// The ID of the requester node that owns this job.
+	Owner string `json:"owner"`
+
+	// The specification of this job.
+	Spec *JobSpec `json:"spec"`
+
+	// The deal the client has made, such as which job bids they have accepted.
+	Deal *JobDeal `json:"deal"`
+
+	// The states of the job on different compute nodes indexed by node ID.
+	State map[string]*JobState `json:"state"`
+
+	// Time the job was submitted to the bacalhau network.
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Copy returns a deep copy of the given job.
+// TODO: use a library for deepcopies, this is tedious and likely to be
+//       fragile to changes in the Job type.
+func (j *Job) Copy() Job {
+	jc := *j
+	jc.State = make(map[string]*JobState)
+	for k, v := range j.State {
+		jc.State[k] = v
+	}
+	if j.Spec != nil {
+		sc := *j.Spec
+		jc.Spec = &sc
+	}
+	if j.Deal != nil {
+		dc := *j.Deal
+		jc.Deal = &dc
+	}
+
+	return jc
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -91,21 +121,29 @@ type JobSpecLanguage struct {
 	RequirementsPath string `json:"requirements_path"`
 }
 
-// keep track of job states on a particular node
+// The state of a job on a particular compute node. Note that the job will
+// generally be in different states on different nodes - one node may be
+// ignoring a job as its bid was rejected, while another node may be
+// submitting results for the job to the requester node.
 type JobState struct {
 	State     JobStateType `json:"state"`
 	Status    string       `json:"status"`
 	ResultsID string       `json:"results_id"`
 }
 
-// omly the client can update this as it's the client that will
-// pay out based on the deal
+// The deal the client has made with the bacalhau network.
 type JobDeal struct {
-	// how many nodes do we want to run this job?
+	// The ID of the client that created this job.
+	ClientID string `json:"client_id"`
+
+	// The maximum number of concurrent compute node bids that will be
+	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
-	// the nodes we have assigned (and will pay)
-	// other nodes are welcome to submit results without having been assigned
-	// this is how they can bootstrap their reputation
+
+	// The compute node bids that have been accepted by the requester node on
+	// behalf of the client. Nodes that do not have accepted bids may still
+	// run and submit results for a job - this could be used to create a
+	// reputation system for new compute nodes.
 	AssignedNodes []string `json:"assigned_nodes"`
 }
 

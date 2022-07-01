@@ -49,6 +49,7 @@ func (suite *ServerSuite) TestList() {
 
 	// Submit a random job to the node:
 	spec, deal := MakeGenericJob()
+	deal.ClientID = "client_id"
 	_, err = c.Submit(ctx, spec, deal, nil)
 	assert.NoError(suite.T(), err)
 

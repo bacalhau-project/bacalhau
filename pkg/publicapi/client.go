@@ -12,8 +12,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // APIClient is a utility for interacting with a node's API server.
@@ -29,8 +32,14 @@ func NewAPIClient(baseURI string) *APIClient {
 		BaseURI: baseURI,
 
 		client: &http.Client{
-			Timeout:   300 * time.Second,
-			Transport: otelhttp.NewTransport(nil),
+			Timeout: 300 * time.Second,
+			Transport: otelhttp.NewTransport(nil,
+				otelhttp.WithSpanOptions(
+					trace.WithAttributes(
+						attribute.String("clientID", system.GetClientID()),
+					),
+				),
+			),
 		},
 	}
 }
@@ -53,9 +62,11 @@ func (apiClient *APIClient) Alive() (bool, error) {
 
 // List returns the list of jobs in the node's transport.
 func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job, error) {
-	var req listRequest
-	var res listResponse
+	req := listRequest{
+		ClientID: system.GetClientID(),
+	}
 
+	var res listResponse
 	if err := apiClient.post(ctx, "list", req, &res); err != nil {
 		return nil, err
 	}
@@ -71,8 +82,8 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 		return nil, false, err
 	}
 
+	// TODO: make this deterministic, return the first match alphabetically
 	for _, job := range jobs {
-		// TODO: could have multiple matches in jobs, right? is this bad?
 		if strings.HasPrefix(job.ID, jobID) {
 			return job, true, nil
 		}
@@ -86,6 +97,8 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 func (apiClient *APIClient) Submit(
 	ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal, buildContext *bytes.Buffer,
 ) (*executor.Job, error) {
+	deal.ClientID = system.GetClientID() // ensure we have a client ID
+
 	var res submitResponse
 
 	req := submitRequest{

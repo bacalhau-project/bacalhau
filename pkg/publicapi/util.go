@@ -25,6 +25,8 @@ var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
+	system.InitConfigForTesting(t)
+
 	ipt, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 
