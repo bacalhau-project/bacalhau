@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Install Go
           command: |
-            curl -Ls "https://dl.google.com/go$(GOVER).$GOOS-$GOARCH.tar.gz"
+            curl -Ls "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
             rm -rf /usr/local/go && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
             export PATH=$PATH:/usr/local/go/bin
       - restore_cache:
@@ -59,10 +59,10 @@ jobs:
               - equal: ['amd64', << parameters.target_arch >>]
           steps:
             - run:
-                name: golangci-lint-$(GOLANGCILINT_VER)
+                name: golangci-lint-$GOLANGCILINT_VER
                 command: |
                     # binary will be $(go env GOPATH)/bin/golangci-lint
-                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $(GOLANGCILINT_VER)
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINT_VER
                     golangci-lint --version
             - run:
                 name: Run go mod tidy check diff
@@ -71,8 +71,8 @@ jobs:
             - run:
                 name: Install IPFS
                 command: |
-                  export IPFS_BUILD="$(GOOS)-$(GOARCH)"
-                  curl -s -L -O "https://dist.ipfs.io/go-ipfs/$(IPFS_VERSION)/go-ipfs_$IPFS_VERSION_$IPFS_BUILD.tar.gz"
+                  export IPFS_BUILD="$GOOS-$GOARCH"
+                  curl -s -L -O "https://dist.ipfs.io/go-ipfs/$IPFS_VERSION/go-ipfs_$IPFS_VERSION_$IPFS_BUILD.tar.gz"
                   tar -xvzf "go-ipfs_$IPFS_VERSION_$IPFS_BUILD.tar.gz"
                   cd go-ipfs
                   sudo bash install.sh
