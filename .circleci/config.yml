@@ -36,6 +36,18 @@ jobs:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
+      - when:
+          condition:
+            and:
+              - equal: ['target_os', << parameters.target_os >>]
+              - equal: ['amd64', << parameters.target_arch >>]
+          steps:
+            - run:
+                name: golangci-lint-$(GOLANGCILINT_VER)
+                command: |
+                    # binary will be $(go env GOPATH)/bin/golangci-lint
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GOLANGCILINT_VER }}
+                    golangci-lint --version
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
