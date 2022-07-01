@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -29,6 +30,7 @@ func (suite *DescribeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
 }
 
@@ -41,6 +43,9 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 
 func (suite *DescribeSuite) TestDescribeJob() {
 	tableSortReverse = false
+
+	clientID, err := system.GetClientID()
+	assert.NoError(suite.T(), err)
 
 	tests := []struct {
 		numberOfAcceptNodes int
@@ -63,6 +68,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 			for i := 0; i < tc.numberOfAcceptNodes; i++ {
 				spec, deal := publicapi.MakeNoopJob()
+				deal.ClientID = clientID
 				s, err := c.Submit(ctx, spec, deal)
 				assert.NoError(suite.T(), err)
 				submittedJob = s
@@ -86,7 +92,6 @@ func (suite *DescribeSuite) TestDescribeJob() {
 			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 		}()
-
 	}
 }
 

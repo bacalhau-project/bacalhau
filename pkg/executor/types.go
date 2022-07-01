@@ -31,9 +31,6 @@ type Job struct {
 	// The ID of the requester node that owns this job.
 	Owner string `json:"owner"`
 
-	// The ID of the client that created this job.
-	ClientID string // TODO: wire up JSON
-
 	// The specification of this job.
 	Spec *JobSpec `json:"spec"`
 
@@ -113,21 +110,29 @@ type JobSpecWasm struct {
 	Bytecode storage.StorageSpec `json:"bytecode"`
 }
 
-// keep track of job states on a particular node
+// The state of a job on a particular compute node. Note that the job will
+// generally be in different states on different nodes - one node may be
+// ignoring a job as its bid was rejected, while another node may be
+// submitting results for the job to the requester node.
 type JobState struct {
 	State     JobStateType `json:"state"`
 	Status    string       `json:"status"`
 	ResultsID string       `json:"results_id"`
 }
 
-// omly the client can update this as it's the client that will
-// pay out based on the deal
+// The deal the client has made with the bacalhau network.
 type JobDeal struct {
-	// how many nodes do we want to run this job?
+	// The ID of the client that created this job.
+	ClientID string `json:"client_id"`
+
+	// The maximum number of concurrent compute node bids that will be
+	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
-	// the nodes we have assigned (and will pay)
-	// other nodes are welcome to submit results without having been assigned
-	// this is how they can bootstrap their reputation
+
+	// The compute node bids that have been accepted by the requester node on
+	// behalf of the client. Nodes that do not have accepted bids may still
+	// run and submit results for a job - this could be used to create a
+	// reputation system for new compute nodes.
 	AssignedNodes []string `json:"assigned_nodes"`
 }
 

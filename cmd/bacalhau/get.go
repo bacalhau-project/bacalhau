@@ -36,8 +36,14 @@ var getCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
+		clientID, err := system.GetClientID()
+		if err != nil {
+			log.Error().Msgf("Failed to get client ID: %s", err)
+			return err
+		}
+
 		log.Info().Msgf("Fetching results of job '%s'...", args[0])
-		job, ok, err := getAPIClient().Get(context.Background(), args[0])
+		job, ok, err := getAPIClient().Get(context.Background(), clientID, args[0])
 		if err != nil {
 			return err
 		}

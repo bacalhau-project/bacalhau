@@ -43,17 +43,18 @@ func (suite *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx)
+	jobs, err := c.List(ctx, "client_id")
 	assert.NoError(suite.T(), err)
 	assert.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
 	spec, deal := MakeGenericJob()
+	deal.ClientID = "client_id"
 	_, err = c.Submit(ctx, spec, deal)
 	assert.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx)
+	jobs, err = c.List(ctx, "client_id")
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), jobs, 1)
 }
