@@ -4,8 +4,9 @@ version: 2.1
 
 executors:
   linux:
-    docker:
-      - image: cimg/go:1.18.3
+    machine:
+      image: ubuntu-2204:2022.04.2
+    resource_class: xlarge
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -29,6 +30,17 @@ jobs:
 
     steps:
       - checkout
+      - run:
+          name: Echos
+          command: |
+            echo "GOOS => $(GOOS)"
+            echo "GOARCH => $(GOARCH)"
+      - run:
+          name: Install Go
+          command: |
+            curl -Ls https://dl.google.com/go$(GOVER).$(GOOS)-$(GOARCH).tar.gz
+            rm -rf /usr/local/go && tar -C /usr/local -xzf go$(GOVER).$(GOOS)-$(GOARCH).tar.gz
+            export PATH=$PATH:/usr/local/go/bin
       - restore_cache:
           keys:
             - go-mod-v4-{{ checksum "go.sum" }}
@@ -39,11 +51,6 @@ jobs:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
-      - run:
-          name: Echos
-          command: |
-            echo "GOOS => $(GOOS)"
-            echo "GOARCH => $(GOARCH)"
       - when:
           condition:
             and:
