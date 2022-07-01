@@ -40,7 +40,7 @@ jobs:
           name: Install Go
           command: |
             curl -Ls "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
-            rm -rf /usr/local/go && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
+            rm -rf /usr/local && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
             export PATH=$PATH:/usr/local/go/bin
       - restore_cache:
           keys:
@@ -61,8 +61,8 @@ jobs:
             - run:
                 name: golangci-lint-$GOLANGCILINT_VER
                 command: |
-                    # binary will be $(go env GOPATH)/bin/golangci-lint
-                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCILINT_VER
+                    # binary will be /usr/local/go/bin/bin/golangci-lint
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                     golangci-lint --version
             - run:
                 name: Run go mod tidy check diff
