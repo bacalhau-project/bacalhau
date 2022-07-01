@@ -15,7 +15,7 @@ jobs:
     parallelism: 10
     environment:
       GOVER: 1.18.3
-      GOLANGCILINT_VER: v1.46
+      GOLANGCILINT_VER: v1.46.2
       IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
