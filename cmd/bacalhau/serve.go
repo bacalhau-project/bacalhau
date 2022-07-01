@@ -138,13 +138,13 @@ var serveCmd = &cobra.Command{
 		}
 
 		// the total amount of CPU / Memory the system can be using at one time
-		totalResourceLimits := resourceusage.ResourceUsageConfig{
+		totalResourceLimit := resourceusage.ResourceUsageConfig{
 			CPU:    limitTotalCpu,
 			Memory: limitTotalMemory,
 		}
 
 		// the per job CPU / Memory limits
-		jobResourceLimits := resourceusage.ResourceUsageConfig{
+		jobResourceLimit := resourceusage.ResourceUsageConfig{
 			CPU:    limitJobCpu,
 			Memory: limitJobMemory,
 		}
@@ -154,15 +154,16 @@ var serveCmd = &cobra.Command{
 			RejectStatelessJobs: jobSelectionDataRejectStateless,
 			ProbeHTTP:           jobSelectionProbeHTTP,
 			ProbeExec:           jobSelectionProbeExec,
-			ResourceLimits:      jobResourceLimits,
 		}
 
 		config := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
-			ResourceLimits:     totalResourceLimits,
+			TotalResourceLimit: totalResourceLimit,
+			JobResourceLimit:   jobResourceLimit,
 		}
 
 		_, err = computenode.NewComputeNode(
+			cm,
 			transport,
 			executors,
 			verifiers,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -17,13 +18,21 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const DEFAULT_JOB_CPU = "100m"
+const DEFAULT_JOB_MEMORY = "100Mb"
+
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
 	// job resource limits
 	JobSelectionPolicy JobSelectionPolicy
 	// the total amount of CPU and RAM we want to
 	// give to running bacalhau jobs
-	ResourceLimits resourceusage.ResourceUsageConfig
+	TotalResourceLimit resourceusage.ResourceUsageConfig
+	// limit the max CPU / Memory usage for any single job
+	JobResourceLimit resourceusage.ResourceUsageConfig
+	// if a job does not state how much CPU or Memory is used
+	// what values should we assume?
+	DefaultJobResourceRequirements resourceusage.ResourceUsageConfig
 }
 
 type ComputeNode struct {
@@ -34,12 +43,14 @@ type ComputeNode struct {
 	Verifiers map[verifier.VerifierType]verifier.Verifier
 
 	// a FIFO queue of jobs that we selected to run by our JobSelectionPolicy
-	// but didn't have enough capacity to run at the time
-	// there is a control loop that will attempt to clear this queue
-	// it will only bid on jobs it currently has capacity for
-	SelectedJobs []JobSelectionPolicyProbeData
+	// but have not yet had accepted bids on - this is our "backlog"
+	// there can be no more than AvailableResources * SelectedJobQueueSize jobs in this queue
+	// ^ this can be many more times than our capacity because we will work through the queue
+	// only at the rate of capacity we have available
+	SelectedJobs []*executor.Job
 
 	// jobs that are currently running in their executor
+	// any jobs here will not be present in the selected job queue
 	RunningJobs map[string]*executor.Job
 
 	// the config for this compute node
@@ -47,23 +58,43 @@ type ComputeNode struct {
 	// live here
 	Config ComputeNodeConfig
 
-	// how much resources do we have available
-	// this either comes from config values or the actual physical resources
-	// if the configured values are more than the actual physical resources
-	// then we expect an error here
-	AvailableResources resourceusage.ResourceUsageData
+	// both of these are is either what the physical CPU / memory values are
+	// or the user defined limits from the config
+	// if the user defined limits are more than the actual physical
+	// amounts we will get an error
+	// if job resource limit is more than total resource limit
+	// then we will error (in the case both values are supplied)
+	TotalResourceLimit             resourceusage.ResourceUsageData
+	JobResourceLimit               resourceusage.ResourceUsageData
+	DefaultJobResourceRequirements resourceusage.ResourceUsageData
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 	return ComputeNodeConfig{
 		JobSelectionPolicy: NewDefaultJobSelectionPolicy(),
-		ResourceLimits:     resourceusage.NewDefaultResourceUsageConfig(),
 	}
 }
 
-// TODO: Clean up function so it's not so long
-// nolint:funlen // we get it, it's a big function
 func NewComputeNode(
+	cm *system.CleanupManager,
+	t transport.Transport,
+	executors map[executor.EngineType]executor.Executor,
+	verifiers map[verifier.VerifierType]verifier.Verifier,
+	config ComputeNodeConfig,
+) (*ComputeNode, error) {
+	computeNode, err := constructComputeNode(t, executors, verifiers, config)
+	if err != nil {
+		return nil, err
+	}
+
+	computeNode.subscriptionSetup()
+	go computeNode.controlLoopSetup(cm)
+
+	return computeNode, nil
+}
+
+// process the arguments and return a valid compoute node
+func constructComputeNode(
 	t transport.Transport,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
@@ -76,147 +107,260 @@ func NewComputeNode(
 		return nil, err
 	}
 
-	// this is either what the physical CPU / memory values are
-	// or the user defined limits from the config (if defined and less than physical amounts)
-	availableResources, err := resourceusage.GetSystemResources(config.ResourceLimits)
+	// assign the default config values
+	useConfig := config
+
+	// if we've not been given a default job resource limit
+	// then let's use some sensible defaults (which are low on purpose)
+	if useConfig.DefaultJobResourceRequirements.CPU == "" {
+		useConfig.DefaultJobResourceRequirements.CPU = DEFAULT_JOB_CPU
+	}
+
+	if useConfig.DefaultJobResourceRequirements.Memory == "" {
+		useConfig.DefaultJobResourceRequirements.Memory = DEFAULT_JOB_MEMORY
+	}
+
+	totalResourceLimit, err := resourceusage.GetSystemResources(useConfig.TotalResourceLimit)
 	if err != nil {
 		return nil, err
 	}
 
-	computeNode := &ComputeNode{
-		NodeID:             nodeID,
-		Transport:          t,
-		Verifiers:          verifiers,
-		Executors:          executors,
-		Config:             config,
-		AvailableResources: availableResources,
-		SelectedJobs:       []JobSelectionPolicyProbeData{},
-		RunningJobs:        map[string]*executor.Job{},
+	// this is the per job resource limit - i.e. no job can use more than this
+	// if no values are given - then we will use the system available resources
+	jobResourceLimit := resourceusage.ParseResourceUsageConfig(useConfig.JobResourceLimit)
+
+	// the default value for how much CPU / RAM one job says it needs
+	// this is for when a job is submitted with no values for CPU & RAM
+	// we will assign these values to it
+	defaultJobResourceRequirements := resourceusage.ParseResourceUsageConfig(useConfig.DefaultJobResourceRequirements)
+
+	// if we don't have a limit on job size
+	// then let's use the total resources we have on the system
+	if jobResourceLimit.CPU <= 0 {
+		jobResourceLimit.CPU = totalResourceLimit.CPU
 	}
 
-	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
-		var span trace.Span
-		switch jobEvent.EventName {
-		case executor.JobEventCreated:
-			ctx, span = computeNode.newSpanForJob(ctx, job.ID, "JobEventCreated")
-			defer span.End()
+	if jobResourceLimit.Memory <= 0 {
+		jobResourceLimit.Memory = totalResourceLimit.Memory
+	}
 
-			// Increment the number of jobs seen by this compute node:
-			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
+	// we can't have one job that uses more than we have
+	if jobResourceLimit.CPU > totalResourceLimit.CPU {
+		return nil, fmt.Errorf("job resource limit CPU %f is greater than total system limit %f", jobResourceLimit.CPU, totalResourceLimit.CPU)
+	}
 
-			// resourceProfile, err := computeNode.GetResourceUsageProfileForJob(jobEvent.JobSpec)
-			// if err != nil {
-			// 	log.Error().Msgf("error getting resource profile: %v", err)
-			// 	return
-			// }
+	if jobResourceLimit.Memory > totalResourceLimit.Memory {
+		return nil, fmt.Errorf("job resource limit memory %d is greater than total system limit %d", jobResourceLimit.Memory, totalResourceLimit.Memory)
+	}
 
-			// A new job has arrived - decide if we want to bid on it:
-			isJobSelected, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
-				NodeID: nodeID,
-				JobID:  jobEvent.JobID,
-				Spec:   jobEvent.JobSpec,
-			})
-			if err != nil {
-				log.Error().Msgf("error checking job policy: %v", err)
-				return
-			}
+	// the default for job requirements can't be more than our job limit
+	// or we'll never accept any jobs and so this is classed as a config error
+	if defaultJobResourceRequirements.CPU > jobResourceLimit.CPU {
+		return nil, fmt.Errorf("default job resource CPU %f is greater than limit %f", defaultJobResourceRequirements.CPU, jobResourceLimit.CPU)
+	}
 
-			if isJobSelected {
-				// TODO: Why do we have two different kinds of loggers?
-				logger.LogJobEvent(logger.JobEvent{
-					Node: nodeID,
-					Type: "compute_node:bid",
-					Job:  job.ID,
-				})
+	if defaultJobResourceRequirements.Memory > jobResourceLimit.Memory {
+		return nil, fmt.Errorf("default job resource Memory %d is greater than limit %d", defaultJobResourceRequirements.Memory, jobResourceLimit.Memory)
+	}
 
-				log.Debug().Msgf("compute node %s bidding on: %+v", nodeID,
-					jobEvent.JobSpec)
-
-				// TODO: Check result of bid job
-				err = t.BidJob(ctx, jobEvent.JobID)
-				if err != nil {
-					log.Error().Msgf("error bidding on job: %v", err)
-				}
-				return
-			} else {
-				log.Debug().Msgf("compute node %s skipped bidding on: %+v",
-					nodeID, jobEvent.JobSpec)
-			}
-
-		// we have been given the goahead to run the job
-		case executor.JobEventBidAccepted:
-			// we only care if the accepted bid is for us
-			if jobEvent.NodeID != nodeID {
-				return
-			}
-
-			ctx, span = computeNode.newSpanForJob(ctx,
-				job.ID, "JobEventBidAccepted")
-			defer span.End()
-
-			// Increment the number of jobs accepted by this compute node:
-			jobsAccepted.With(prometheus.Labels{"node_id": nodeID}).Inc()
-
-			log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", nodeID, job.ID)
-			logger.LogJobEvent(logger.JobEvent{
-				Node: nodeID,
-				Type: "compute_node:run",
-				Job:  job.ID,
-				Data: job,
-			})
-
-			resultFolder, err := computeNode.RunJob(ctx, job)
-			if err != nil {
-				log.Error().Msgf("Error running the job: %s %+v", err, job)
-				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
-
-				// Increment the number of jobs failed by this compute node:
-				jobsFailed.With(prometheus.Labels{"node_id": nodeID}).Inc()
-
-				return
-			}
-
-			v, err := computeNode.getVerifier(ctx, job.Spec.Verifier)
-			if err != nil {
-				log.Error().Msgf("error getting the verifier for the job: %s %+v", err, job)
-				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("error getting the verifier for the job: %s", err))
-				return
-			}
-
-			resultValue, err := v.ProcessResultsFolder(
-				ctx, job.ID, resultFolder)
-			if err != nil {
-				log.Error().Msgf("Error verifying results: %s %+v", err, job)
-				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error verifying results: %s", err))
-				return
-			}
-
-			logger.LogJobEvent(logger.JobEvent{
-				Node: nodeID,
-				Type: "compute_node:result",
-				Job:  job.ID,
-				Data: resultValue,
-			})
-
-			if err = t.SubmitResult(
-				ctx,
-				job.ID,
-				fmt.Sprintf("Got job result: %s", resultValue),
-				resultValue,
-			); err != nil {
-				log.Error().Msgf("Error submitting result: %s %+v", err, job)
-				_ = t.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
-				return
-			}
-
-			// Increment the number of jobs completed by this compute node:
-			jobsCompleted.With(prometheus.Labels{"node_id": nodeID}).Inc()
-		}
-	})
+	computeNode := &ComputeNode{
+		NodeID:                         nodeID,
+		Transport:                      t,
+		Verifiers:                      verifiers,
+		Executors:                      executors,
+		Config:                         useConfig,
+		TotalResourceLimit:             totalResourceLimit,
+		JobResourceLimit:               jobResourceLimit,
+		DefaultJobResourceRequirements: defaultJobResourceRequirements,
+	}
 
 	return computeNode, nil
 }
 
+/*
+
+  control loops
+
+*/
+func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
+
+	// run our control loop every second
+	// TODO: decide how often to run this control loop - perhaps make that configurable?
+	ticker := time.NewTicker(time.Second * 1)
+	ctx, cancelFunction := context.WithCancel(context.Background())
+
+	cm.RegisterCallback(func() error {
+		cancelFunction()
+		return nil
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			node.controlLoopBidOnJobs()
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+// each control loop we should bid on jobs in our queue
+func (node *ComputeNode) controlLoopBidOnJobs() {
+	fmt.Printf("Control loop tick\n")
+}
+
+/*
+
+  subscriptions
+
+*/
+func (node *ComputeNode) subscriptionSetup() {
+	node.Transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+		switch jobEvent.EventName {
+		case executor.JobEventCreated:
+			node.subscriptionEventCreated(ctx, jobEvent, job)
+		// we have been given the goahead to run the job
+		case executor.JobEventBidAccepted:
+			node.subscriptionEventBidAccepted(ctx, jobEvent, job)
+		// our bid has not been accepted - let's remove this job from our current queue
+		case executor.JobEventBidRejected:
+			node.subscriptionEventBidRejected(ctx, jobEvent, job)
+		}
+
+	})
+}
+
+/*
+
+  subscriptions -> created
+
+*/
+func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+	var span trace.Span
+	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventCreated")
+	defer span.End()
+
+	// Increment the number of jobs seen by this compute node:
+	jobsReceived.With(prometheus.Labels{"node_id": node.NodeID}).Inc()
+
+	// A new job has arrived - decide if we want to bid on it:
+	isJobSelected, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
+		NodeID: node.NodeID,
+		JobID:  jobEvent.JobID,
+		Spec:   jobEvent.JobSpec,
+	})
+
+	if err != nil {
+		log.Error().Msgf("error checking job policy: %v", err)
+		return
+	}
+
+	if isJobSelected {
+
+		// add the job to the queue on selected jobs
+		node.addSelectedJob(job)
+
+		// err = node.BidOnJob(ctx, job)
+		// if err != nil {
+		// 	log.Error().Msgf("error bidding on job: %v", err)
+		// 	return
+		// }
+	} else {
+		log.Debug().Msgf("compute node %s skipped bidding on: %+v",
+			node.NodeID, jobEvent.JobSpec)
+	}
+}
+
+/*
+
+  subscriptions -> bid accepted
+
+*/
+func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+	var span trace.Span
+	// we only care if the accepted bid is for us
+	if jobEvent.NodeID != node.NodeID {
+		return
+	}
+
+	ctx, span = node.newSpanForJob(ctx,
+		job.ID, "JobEventBidAccepted")
+	defer span.End()
+
+	// Increment the number of jobs accepted by this compute node:
+	jobsAccepted.With(prometheus.Labels{"node_id": node.NodeID}).Inc()
+
+	log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", node.NodeID, job.ID)
+	logger.LogJobEvent(logger.JobEvent{
+		Node: node.NodeID,
+		Type: "compute_node:run",
+		Job:  job.ID,
+		Data: job,
+	})
+
+	resultFolder, err := node.RunJob(ctx, job)
+	if err != nil {
+		log.Error().Msgf("Error running the job: %s %+v", err, job)
+		_ = node.Transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
+
+		// Increment the number of jobs failed by this compute node:
+		jobsFailed.With(prometheus.Labels{"node_id": node.NodeID}).Inc()
+
+		return
+	}
+
+	v, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		log.Error().Msgf("error getting the verifier for the job: %s %+v", err, job)
+		_ = node.Transport.ErrorJob(ctx, job.ID, fmt.Sprintf("error getting the verifier for the job: %s", err))
+		return
+	}
+
+	resultValue, err := v.ProcessResultsFolder(
+		ctx, job.ID, resultFolder)
+	if err != nil {
+		log.Error().Msgf("Error verifying results: %s %+v", err, job)
+		_ = node.Transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error verifying results: %s", err))
+		return
+	}
+
+	logger.LogJobEvent(logger.JobEvent{
+		Node: node.NodeID,
+		Type: "compute_node:result",
+		Job:  job.ID,
+		Data: resultValue,
+	})
+
+	if err = node.Transport.SubmitResult(
+		ctx,
+		job.ID,
+		fmt.Sprintf("Got job result: %s", resultValue),
+		resultValue,
+	); err != nil {
+		log.Error().Msgf("Error submitting result: %s %+v", err, job)
+		_ = node.Transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
+		return
+	}
+
+	// Increment the number of jobs completed by this compute node:
+	jobsCompleted.With(prometheus.Labels{"node_id": node.NodeID}).Inc()
+}
+
+/*
+
+  subscriptions -> bid rejected
+
+*/
+func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+	node.removeSelectedJob(job.ID)
+}
+
+/*
+
+  job selection
+
+*/
 // ask the job selection policy if we would consider running this job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
 	// check that we have the executor and it's installed
@@ -231,6 +375,18 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		return false, err
 	}
 
+	// get the resource requirements for the job
+	// this takes into accounts the defaults if the job itself didn't have any requirements
+	jobResourceRequirements := node.getJobResourceRequirements(data.Spec.Resources)
+
+	// reject a job that would use more CPU than we would allow
+	jobPassesResourceCheck := resourceusage.CheckResourceRequirements(jobResourceRequirements, node.JobResourceLimit)
+
+	if !jobPassesResourceCheck {
+		log.Info().Msgf("Job is more than allowed resource usage - rejecting job: job: %+v, limit: %+v", jobResourceRequirements, node.JobResourceLimit)
+		return false, nil
+	}
+
 	// decide if we want to take on the job based on
 	// our selection policy
 	return ApplyJobSelectionPolicy(
@@ -241,6 +397,25 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 	)
 }
 
+func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error {
+	// TODO: Why do we have two different kinds of loggers?
+	logger.LogJobEvent(logger.JobEvent{
+		Node: node.NodeID,
+		Type: "compute_node:bid",
+		Job:  job.ID,
+	})
+
+	log.Debug().Msgf("compute node %s bidding on: %+v", node.NodeID, job.Spec)
+
+	// TODO: Check result of bid job
+	return node.Transport.BidJob(ctx, job.ID)
+}
+
+/*
+
+  run job
+
+*/
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
@@ -315,18 +490,18 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 
 var selectedJobMutex sync.Mutex
 
-func (node *ComputeNode) addSelectedJob(probeData JobSelectionPolicyProbeData) {
+func (node *ComputeNode) addSelectedJob(job *executor.Job) {
 	selectedJobMutex.Lock()
 	defer selectedJobMutex.Unlock()
-	node.SelectedJobs = append(node.SelectedJobs, probeData)
+	node.SelectedJobs = append(node.SelectedJobs, job)
 }
 
 func (node *ComputeNode) removeSelectedJob(id string) {
 	selectedJobMutex.Lock()
 	defer selectedJobMutex.Unlock()
-	newArr := []JobSelectionPolicyProbeData{}
+	newArr := []*executor.Job{}
 	for _, j := range node.SelectedJobs {
-		if j.JobID != id {
+		if j.ID != id {
 			newArr = append(newArr, j)
 		}
 	}
@@ -348,7 +523,7 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 }
 
 // add up all the resources being used by all the jobs currently running
-func (node *ComputeNode) getResourcesUsing() resourceusage.ResourceUsageData {
+func (node *ComputeNode) getRunningJobResourcesUsed() resourceusage.ResourceUsageData {
 
 	var cpu float64
 	var memory uint64
@@ -367,15 +542,28 @@ func (node *ComputeNode) getResourcesUsing() resourceusage.ResourceUsageData {
 	}
 }
 
-func (node *ComputeNode) GetResourceUsageProfileForJob(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
-	data := resourceusage.ResourceUsageProfile{}
-	jobResources, err := resourceusage.ParseResourceUsageConfig(spec.Resources)
-	if err != nil {
-		return data, err
+// get the limits for a single job
+// either using it's configured limits or the compute node default job limits
+func (node *ComputeNode) getJobResourceRequirements(jobRequirements resourceusage.ResourceUsageConfig) resourceusage.ResourceUsageData {
+	data := resourceusage.ParseResourceUsageConfig(jobRequirements)
+	if data.CPU <= 0 {
+		data.CPU = node.DefaultJobResourceRequirements.CPU
 	}
-	return resourceusage.ResourceUsageProfile{
-		Job:         jobResources,
-		SystemUsing: node.getResourcesUsing(),
-		SystemTotal: node.AvailableResources,
-	}, nil
+	if data.Memory <= 0 {
+		data.Memory = node.DefaultJobResourceRequirements.Memory
+	}
+	return data
 }
+
+// func (node *ComputeNode) getResourceUsageProfileForJob(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
+// 	data := resourceusage.ResourceUsageProfile{}
+// 	jobResources, err := resourceusage.ParseResourceUsageConfig(spec.Resources)
+// 	if err != nil {
+// 		return data, err
+// 	}
+// 	return resourceusage.ResourceUsageProfile{
+// 		Job:         jobResources,
+// 		SystemUsing: node.getResourcesUsing(),
+// 		SystemTotal: node.AvailableResources,
+// 	}, nil
+// }
