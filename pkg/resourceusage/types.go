@@ -16,3 +16,12 @@ type ResourceUsageData struct {
 	// bytes
 	Memory uint64 `json:"memory"`
 }
+
+type ResourceUsageProfile struct {
+	// how many resources does the job want to consume
+	Job ResourceUsageData `json:"job"`
+	// how many resources is the system currently using
+	SystemUsing ResourceUsageData `json:"system_using"`
+	// what is the total amount of resources available to the system
+	SystemTotal ResourceUsageData `json:"system_total"`
+}
