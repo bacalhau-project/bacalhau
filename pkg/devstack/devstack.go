@@ -46,9 +46,10 @@ type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, // nolintunparam // Incorrectly assumed as unused
+	count, badActors int, // nolint:unparam // Incorrectly assumed as unused
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
+	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
 	ctx, span := newSpan("NewDevStack")

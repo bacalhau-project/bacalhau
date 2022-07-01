@@ -28,12 +28,12 @@ func NewExecutor() (*Executor, error) {
 }
 
 func NewExecutorWithConfig(config ExecutorConfig) (*Executor, error) {
-	executor, err := NewExecutor()
+	e, err := NewExecutor()
 	if err != nil {
 		return nil, err
 	}
-	executor.Config = config
-	return executor, nil
+	e.Config = config
+	return e, nil
 }
 
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {

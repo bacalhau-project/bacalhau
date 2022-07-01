@@ -17,10 +17,10 @@ func NewDefaultResourceUsageConfig() ResourceUsageConfig {
 	}
 }
 
-func NewResourceUsageConfig(cpu, memory string) ResourceUsageConfig {
+func NewResourceUsageConfig(cpu, mem string) ResourceUsageConfig {
 	return ResourceUsageConfig{
 		CPU:    cpu,
-		Memory: memory,
+		Memory: mem,
 	}
 }
 
@@ -34,7 +34,7 @@ func convertBytesString(st string) string {
 	return st
 }
 
-func ConvertCpuStringWithError(val string) (float64, error) {
+func ConvertCPUStringWithError(val string) (float64, error) {
 	if val == "" {
 		return 0, nil
 	}
@@ -45,8 +45,8 @@ func ConvertCpuStringWithError(val string) (float64, error) {
 	return cpu.ToFloat64(), nil
 }
 
-func ConvertCpuString(val string) float64 {
-	ret, err := ConvertCpuStringWithError(val)
+func ConvertCPUString(val string) float64 {
+	ret, err := ConvertCPUStringWithError(val)
 	if err != nil {
 		return 0
 	}
@@ -57,11 +57,11 @@ func ConvertMemoryStringWithError(val string) (uint64, error) {
 	if val == "" {
 		return 0, nil
 	}
-	memory, err := datasize.ParseString(convertBytesString(val))
+	mem, err := datasize.ParseString(convertBytesString(val))
 	if err != nil {
 		return 0, err
 	}
-	return memory.Bytes(), nil
+	return mem.Bytes(), nil
 }
 
 func ConvertMemoryString(val string) uint64 {
@@ -74,7 +74,7 @@ func ConvertMemoryString(val string) uint64 {
 
 func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 	return ResourceUsageData{
-		CPU:    ConvertCpuString(usage.CPU),
+		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertMemoryString(usage.Memory),
 	}
 }
@@ -102,14 +102,20 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 
 	if parsedLimitConfig.CPU > 0 {
 		if parsedLimitConfig.CPU > data.CPU {
-			return data, fmt.Errorf("You cannot configure more CPU than you have on this node: configured %f, have %f", parsedLimitConfig.CPU, data.CPU)
+			return data, fmt.Errorf(
+				"you cannot configure more CPU than you have on this node: configured %f, have %f",
+				parsedLimitConfig.CPU, data.CPU,
+			)
 		}
 		data.CPU = parsedLimitConfig.CPU
 	}
 
 	if parsedLimitConfig.Memory > 0 {
 		if parsedLimitConfig.Memory > data.Memory {
-			return data, fmt.Errorf("You cannot configure more Memory than you have on this node: configured %d, have %d", parsedLimitConfig.Memory, data.Memory)
+			return data, fmt.Errorf(
+				"you cannot configure more Memory than you have on this node: configured %d, have %d",
+				parsedLimitConfig.Memory, data.Memory,
+			)
 		}
 		data.Memory = parsedLimitConfig.Memory
 	}

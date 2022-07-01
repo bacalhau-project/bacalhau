@@ -18,8 +18,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const DEFAULT_JOB_CPU = "100m"
-const DEFAULT_JOB_MEMORY = "100Mb"
+const DefaultJobCPU = "100m"
+const DefaultJobMemory = "100Mb"
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -77,7 +77,7 @@ func NewComputeNode(
 	t transport.Transport,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
-	config ComputeNodeConfig,
+	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
 	computeNode, err := constructComputeNode(t, executors, verifiers, config)
 	if err != nil {
@@ -95,9 +95,8 @@ func constructComputeNode(
 	t transport.Transport,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
-	config ComputeNodeConfig,
+	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
-
 	ctx := context.Background()
 	nodeID, err := t.HostID(ctx)
 	if err != nil {
@@ -110,11 +109,11 @@ func constructComputeNode(
 	// if we've not been given a default job resource limit
 	// then let's use some sensible defaults (which are low on purpose)
 	if useConfig.DefaultJobResourceRequirements.CPU == "" {
-		useConfig.DefaultJobResourceRequirements.CPU = DEFAULT_JOB_CPU
+		useConfig.DefaultJobResourceRequirements.CPU = DefaultJobCPU
 	}
 
 	if useConfig.DefaultJobResourceRequirements.Memory == "" {
-		useConfig.DefaultJobResourceRequirements.Memory = DEFAULT_JOB_MEMORY
+		useConfig.DefaultJobResourceRequirements.Memory = DefaultJobMemory
 	}
 
 	totalResourceLimit, err := resourceusage.GetSystemResources(useConfig.TotalResourceLimit)
@@ -147,17 +146,26 @@ func constructComputeNode(
 	}
 
 	if jobResourceLimit.Memory > totalResourceLimit.Memory {
-		return nil, fmt.Errorf("job resource limit memory %d is greater than total system limit %d", jobResourceLimit.Memory, totalResourceLimit.Memory)
+		return nil, fmt.Errorf(
+			"job resource limit memory %d is greater than total system limit %d",
+			jobResourceLimit.Memory, totalResourceLimit.Memory,
+		)
 	}
 
 	// the default for job requirements can't be more than our job limit
 	// or we'll never accept any jobs and so this is classed as a config error
 	if defaultJobResourceRequirements.CPU > jobResourceLimit.CPU {
-		return nil, fmt.Errorf("default job resource CPU %f is greater than limit %f", defaultJobResourceRequirements.CPU, jobResourceLimit.CPU)
+		return nil, fmt.Errorf(
+			"default job resource CPU %f is greater than limit %f",
+			defaultJobResourceRequirements.CPU, jobResourceLimit.CPU,
+		)
 	}
 
 	if defaultJobResourceRequirements.Memory > jobResourceLimit.Memory {
-		return nil, fmt.Errorf("default job resource Memory %d is greater than limit %d", defaultJobResourceRequirements.Memory, jobResourceLimit.Memory)
+		return nil, fmt.Errorf(
+			"default job resource Memory %d is greater than limit %d",
+			defaultJobResourceRequirements.Memory, jobResourceLimit.Memory,
+		)
 	}
 
 	computeNode := &ComputeNode{
@@ -182,7 +190,6 @@ func constructComputeNode(
 
 */
 func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
-
 	// run our control loop every second
 	// TODO: decide how often to run this control loop - perhaps make that configurable?
 	ticker := time.NewTicker(time.Second * 1)
@@ -212,7 +219,6 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-
 	runningJobResources := node.getRunningJobResources()
 	remainingJobResources := resourceusage.ResourceUsageData{
 		CPU:    node.TotalResourceLimit.CPU - runningJobResources.CPU,
@@ -220,7 +226,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	}
 
 	for _, queuedJob := range node.SelectedJobQueue {
-
 		// see if we have enough free resources to run this job
 		jobRequirements := node.getJobResourceRequirements(queuedJob.Spec.Resources)
 
@@ -230,10 +235,13 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 			// bid on this job
 			node.removeSelectedJob(queuedJob.ID)
-			node.BidOnJob(context.Background(), queuedJob)
+			err := node.BidOnJob(context.Background(), queuedJob)
+			if err != nil {
+				log.Warn().Msgf("Error bidding on job %s: %s", queuedJob.ID, err)
+				continue
+			}
 		}
 	}
-
 }
 
 /*
@@ -253,7 +261,6 @@ func (node *ComputeNode) subscriptionSetup() {
 		case executor.JobEventBidRejected:
 			node.subscriptionEventBidRejected(ctx, jobEvent, job)
 		}
-
 	})
 }
 
@@ -283,16 +290,9 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	}
 
 	if isJobSelected {
-
 		// add the job to the queue on selected jobs
 		node.addSelectedJob(job)
 		node.controlLoopBidOnJobs()
-
-		// err = node.BidOnJob(ctx, job)
-		// if err != nil {
-		// 	log.Error().Msgf("error bidding on job: %v", err)
-		// 	return
-		// }
 	} else {
 		log.Debug().Msgf("compute node %s skipped bidding on: %+v",
 			node.NodeID, jobEvent.JobSpec)
@@ -418,7 +418,10 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 	jobPassesResourceCheck := resourceusage.CheckResourceRequirements(jobResourceRequirements, node.JobResourceLimit)
 
 	if !jobPassesResourceCheck {
-		log.Info().Msgf("Job is more than allowed resource usage - rejecting job: job: %+v, limit: %+v", jobResourceRequirements, node.JobResourceLimit)
+		log.Info().Msgf(
+			"Job is more than allowed resource usage - rejecting job: job: %+v, limit: %+v",
+			jobResourceRequirements, node.JobResourceLimit,
+		)
 		return false, nil
 	}
 
@@ -559,7 +562,6 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 
 // add up all the resources being used by all the jobs currently running
 func (node *ComputeNode) getRunningJobResources() resourceusage.ResourceUsageData {
-
 	var cpu float64
 	var memory uint64
 
@@ -567,7 +569,7 @@ func (node *ComputeNode) getRunningJobResources() resourceusage.ResourceUsageDat
 	defer runningJobMutex.Unlock()
 
 	for _, job := range node.RunningJobs {
-		cpu += resourceusage.ConvertCpuString(job.Spec.Resources.CPU)
+		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
 		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
 	}
 

@@ -46,7 +46,6 @@ func ConstructJob(
 	concurrency int,
 	annotations []string,
 ) (*executor.JobSpec, *executor.JobDeal, error) {
-
 	if concurrency <= 0 {
 		return nil, nil, fmt.Errorf("concurrency must be >= 1")
 	}
