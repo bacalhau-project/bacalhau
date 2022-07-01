@@ -42,8 +42,8 @@ jobs:
       - run:
           name: Echos
           command: |
-            echo $GOOS
-            echo $GOARCH
+            echo "GOOS => $(GOOS)"
+            echo "GOARCH => $(GOARCH)"
       - when:
           condition:
             and:
@@ -89,14 +89,14 @@ workflows:
   build-workflow:
     jobs:
       - build:
-          name: ubuntu-amd64,
-          target_os: linux,
-          target_arch: amd64,
+          name: ubuntu-amd64
+          target_os: linux
+          target_arch: amd64
       - build:
-          name: macOS-arm64,
-          target_os: darwin,
-          target_arch: arm64,
+          name: macOS-arm64
+          target_os: darwin
+          target_arch: arm64
       - build:
-          name: macOS-amd64,
-          target_os: darwin,
-          target_arch: amd64,
+          name: macOS-amd64
+          target_os: darwin
+          target_arch: amd64
