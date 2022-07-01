@@ -23,9 +23,7 @@ import (
 func TestJobResourceLimits(t *testing.T) {
 	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
 		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
-				ResourceLimits: limits,
-			},
+			JobResourceLimit: limits,
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 		job := GetProbeData("")
@@ -145,7 +143,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		_, requestorNode, cm := SetupTestNoop(
 			t,
 			computenode.ComputeNodeConfig{
-				ResourceLimits: testCase.totalLimits,
+				TotalResourceLimit: testCase.totalLimits,
 			},
 
 			noop_executor.ExecutorConfig{
@@ -245,13 +243,6 @@ func TestTotalResourceLimits(t *testing.T) {
 		}
 	}
 
-	fourJobs := getResourcesArray([][]string{
-		{"1", "500Mb"},
-		{"1", "500Mb"},
-		{"1", "500Mb"},
-		{"1", "500Mb"},
-	})
-
 	waitUntilSeenAllJobs := func(expected int) TotalResourceTestCaseCheck {
 		return TotalResourceTestCaseCheck{
 			name: fmt.Sprintf("waitUntilSeenAllJobs: %d", expected),
@@ -281,9 +272,14 @@ func TestTotalResourceLimits(t *testing.T) {
 	// and the highest number of jobs at one time should be 2
 	runTest(
 		TotalResourceTestCase{
-			jobs:        fourJobs,
+			jobs: getResourcesArray([][]string{
+				{"1", "500Mb"},
+				{"1", "500Mb"},
+				{"1", "500Mb"},
+				{"1", "500Mb"},
+			}),
 			totalLimits: getResources("2", "1Gb"),
-			wait:        waitUntilSeenAllJobs(len(fourJobs)),
+			wait:        waitUntilSeenAllJobs(4),
 			checkers: []TotalResourceTestCaseCheck{
 				// there should only have ever been 2 jobs at one time
 				checkMaxJobs(2),

@@ -72,11 +72,11 @@ func ConvertMemoryString(val string) uint64 {
 	return ret
 }
 
-func ParseResourceUsageConfig(usage ResourceUsageConfig) (ResourceUsageData, error) {
+func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    ConvertCpuString(usage.CPU),
 		Memory: ConvertMemoryString(usage.Memory),
-	}, nil
+	}
 }
 
 func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
@@ -95,13 +95,10 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	// the actual resources we have
 	data := ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
-		Memory: memory.FreeMemory(),
+		Memory: memory.TotalMemory(),
 	}
 
-	parsedLimitConfig, err := ParseResourceUsageConfig(limitConfig)
-	if err != nil {
-		return data, err
-	}
+	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
 
 	if parsedLimitConfig.CPU > 0 {
 		if parsedLimitConfig.CPU > data.CPU {
@@ -121,27 +118,15 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
-func CompareUsageConfigs(wantsConfig, limitConfig ResourceUsageConfig) (bool, error) {
-
+func CheckResourceRequirements(wants, limits ResourceUsageData) bool {
 	// if there are no limits then everything goes
-	if limitConfig.CPU == "" && limitConfig.Memory == "" {
-		return true, nil
+	if limits.CPU <= 0 && limits.Memory <= 0 {
+		return true
 	}
-
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
-	if wantsConfig.CPU == "" && wantsConfig.Memory == "" && (limitConfig.CPU != "" || limitConfig.Memory != "") {
-		return false, nil
+	if wants.CPU <= 0 && wants.Memory <= 0 && (limits.CPU > 0 || limits.Memory > 0) {
+		return false
 	}
-
-	wants, err := ParseResourceUsageConfig(wantsConfig)
-	if err != nil {
-		return false, err
-	}
-	limit, err := ParseResourceUsageConfig(limitConfig)
-	if err != nil {
-		return false, err
-	}
-
-	return wants.CPU <= limit.CPU && wants.Memory <= limit.Memory, nil
+	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory
 }

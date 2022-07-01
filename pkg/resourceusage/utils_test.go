@@ -59,11 +59,7 @@ func TestParseResourceUsageConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		converted, err := ParseResourceUsageConfig(test.input)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
-		}
-		assert.NoError(t, err)
+		converted := ParseResourceUsageConfig(test.input)
 		assert.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
 		assert.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
 	}
@@ -105,13 +101,13 @@ func TestSystemResources(t *testing.T) {
 			name:        "should return what the system has",
 			shouldError: false,
 			input:       c("", ""),
-			expected:    d(float64(runtime.NumCPU()), memory.FreeMemory()),
+			expected:    d(float64(runtime.NumCPU()), memory.TotalMemory()),
 		},
 		{
 			name:        "should return the configured CPU amount",
 			shouldError: false,
 			input:       c("100m", ""),
-			expected:    d(float64(0.1), memory.FreeMemory()),
+			expected:    d(float64(0.1), memory.TotalMemory()),
 		},
 		{
 			name:        "should return the configured Memory amount",
@@ -127,7 +123,7 @@ func TestSystemResources(t *testing.T) {
 		{
 			name:        "should error with too much Memory asked for",
 			shouldError: true,
-			input:       c("", fmt.Sprintf("%db", memory.FreeMemory()*2)),
+			input:       c("", fmt.Sprintf("%db", memory.TotalMemory()*2)),
 		},
 	}
 

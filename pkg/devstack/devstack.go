@@ -119,6 +119,7 @@ func NewDevStack(
 		}
 
 		computeNode, err := computenode.NewComputeNode(
+			cm,
 			transport,
 			executors,
 			verifiers,

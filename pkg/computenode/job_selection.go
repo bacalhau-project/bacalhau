@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,8 +28,6 @@ type JobSelectionPolicy struct {
 	// should we reject jobs that don't specify any data
 	// the default is "accept"
 	RejectStatelessJobs bool `json:"reject_stateless_jobs"`
-	// limit the max CPU / Memory usage for any single job
-	ResourceLimits resourceusage.ResourceUsageConfig `json:"resource_limits"`
 	// external hooks that decide if we should take on the job or not
 	// if either of these are given they will override the data locality settings
 	ProbeHTTP string `json:"probe_http,omitempty"`
@@ -109,18 +106,6 @@ func applyJobSelectionPolicySettings(
 	e executor.Executor,
 	job *executor.JobSpec,
 ) (bool, error) {
-
-	// reject a job that would use more CPU than we would allow
-	jobPassesResourceCheck, err := resourceusage.CompareUsageConfigs(job.Resources, policy.ResourceLimits)
-	if err != nil {
-		log.Error().Msgf("Error checking for job resource limits: %s", err.Error())
-		return false, err
-	}
-
-	if !jobPassesResourceCheck {
-		log.Info().Msgf("Job is more than allowed resource usage - rejecting job")
-		return false, nil
-	}
 
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job

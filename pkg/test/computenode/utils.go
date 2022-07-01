@@ -3,6 +3,7 @@ package computenode
 import (
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -48,6 +49,7 @@ func SetupTestDockerIpfs(
 	}
 
 	computeNode, err := computenode.NewComputeNode(
+		cm,
 		transport,
 		executors,
 		verifiers,
@@ -88,12 +90,14 @@ func SetupTestNoop(
 	}
 
 	computeNode, err := computenode.NewComputeNode(
+		cm,
 		transport,
 		executors,
 		verifiers,
 		computeNodeconfig,
 	)
 	if err != nil {
+		spew.Dump(computeNodeconfig)
 		t.Fatal(err)
 	}
 
