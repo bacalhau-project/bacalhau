@@ -163,6 +163,17 @@ func GetClientPublicKey() string {
 	return encodePublicKey(&globalUserIDKey.PublicKey)
 }
 
+// PublicKeyMatchesID returns true if the given base64-encoded public key and
+// the given client ID correspond to each other:
+func PublicKeyMatchesID(publicKey, clientID string) (bool, error) {
+	pkey, err := decodePublicKey(publicKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode public key: %w", err)
+	}
+
+	return clientID == convertToClientID(pkey), nil
+}
+
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
 func ensureConfigDir() (string, error) {
 	configDir := os.Getenv("BACALHAU_DIR")
@@ -301,11 +312,16 @@ func loadClientID() (string, error) {
 		return "", fmt.Errorf("failed to load user ID key: %w", err)
 	}
 
+	return convertToClientID(&key.PublicKey), nil
+}
+
+// convertToClientID converts a public key to a client ID:
+func convertToClientID(key *rsa.PublicKey) string {
 	hash := sigHash.New()
-	hash.Write(key.PublicKey.N.Bytes())
+	hash.Write(key.N.Bytes())
 	hashBytes := hash.Sum(nil)
 
-	return fmt.Sprintf("%x", hashBytes), nil
+	return fmt.Sprintf("%x", hashBytes)
 }
 
 // encodePublicKey encodes a public key as a string:

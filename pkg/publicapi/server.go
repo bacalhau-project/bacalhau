@@ -176,6 +176,9 @@ func verifySubmitRequest(req *submitRequest) error {
 	if req.Data.Deal == nil {
 		return errors.New("job deal is required")
 	}
+	if req.Data.Deal.ClientID == "" {
+		return errors.New("job deal must contain a client ID")
+	}
 	if req.ClientSignature == "" {
 		return errors.New("client's signature is required")
 	}
@@ -183,8 +186,28 @@ func verifySubmitRequest(req *submitRequest) error {
 		return errors.New("client's public key is required")
 	}
 
-	// TODO: check that the public key matches the client ID
-	// TODO: check that the signature is valid
+	// Check that the client's public key matches the client ID:
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.Deal.ClientID)
+	if err != nil {
+		return fmt.Errorf("error verifying client ID: %w", err)
+	}
+	if !ok {
+		return errors.New("client's public key does not match client ID")
+	}
+
+	// Check that the signature is valid:
+	jsonData, err := json.Marshal(req.Data)
+	if err != nil {
+		return fmt.Errorf("error marshaling job data: %w", err)
+	}
+
+	ok, err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
+	if err != nil {
+		return fmt.Errorf("error verifying client signature: %w", err)
+	}
+	if !ok {
+		return errors.New("client's signature is invalid")
+	}
 
 	return nil
 }

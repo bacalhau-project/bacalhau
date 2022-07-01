@@ -47,3 +47,19 @@ func TestGetClientID(t *testing.T) {
 	// Two different clients should have different IDs.
 	assert.NotEqual(t, id, id2)
 }
+
+func TestPublicKeyMatchesID(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic: %v", r)
+		}
+	}()
+
+	InitConfigForTesting(t)
+
+	id := GetClientID()
+	publicKey := GetClientPublicKey()
+	ok, err := PublicKeyMatchesID(publicKey, id)
+	assert.NoError(t, err)
+	assert.True(t, ok)
+}
