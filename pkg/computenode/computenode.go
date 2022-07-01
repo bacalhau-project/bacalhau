@@ -83,12 +83,19 @@ func NewComputeNode(
 			// Increment the number of jobs seen by this compute node:
 			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
 
+			resourceProfile, err := computeNode.getResourceUsageProfile(jobEvent.JobSpec)
+			if err != nil {
+				log.Error().Msgf("error getting resource profile: %v", err)
+				return
+			}
+
 			// A new job has arrived - decide if we want to bid on it:
 			shouldRun, err := computeNode.SelectJob(ctx,
 				JobSelectionPolicyProbeData{
-					NodeID: nodeID,
-					JobID:  jobEvent.JobID,
-					Spec:   jobEvent.JobSpec,
+					NodeID:    nodeID,
+					JobID:     jobEvent.JobID,
+					Resources: resourceProfile,
+					Spec:      jobEvent.JobSpec,
 				})
 			if err != nil {
 				log.Error().Msgf("error checking job policy: %v", err)
@@ -206,7 +213,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// decide if we want to take on the job based on
 	// our selection policy
-	passedSelection, err := ApplyJobSelectionPolicy(
+	passedJobSelection, err := ApplyJobSelectionPolicy(
 		ctx,
 		node.Config.JobSelectionPolicy,
 		e,
@@ -215,7 +222,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 	if err != nil {
 		return false, err
 	}
-	if !passedSelection {
+	if !passedJobSelection {
 		return false, nil
 	}
 
@@ -298,7 +305,7 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 }
 
 // add up all the resources being used by all the jobs currently running
-func (node *ComputeNode) getTotalResourceUsage() resourceusage.ResourceUsageData {
+func (node *ComputeNode) getResourcesUsing() resourceusage.ResourceUsageData {
 
 	var cpu float64
 	var memory uint64
@@ -314,10 +321,23 @@ func (node *ComputeNode) getTotalResourceUsage() resourceusage.ResourceUsageData
 	}
 }
 
-// based on what is being used - work out what we have left for cpu / ram
-func (node *ComputeNode) getRemainingResourceUsage() resourceusage.ResourceUsageData {
+// what resources are we allowed to use
+func (node *ComputeNode) getResourcesTotal() resourceusage.ResourceUsageData {
 	return resourceusage.ResourceUsageData{
 		CPU:    0,
 		Memory: 0,
 	}
+}
+
+func (node *ComputeNode) getResourceUsageProfile(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
+	data := resourceusage.ResourceUsageProfile{}
+	jobResources, err := resourceusage.ParseResourceUsageConfig(spec.Resources)
+	if err != nil {
+		return data, err
+	}
+	return resourceusage.ResourceUsageProfile{
+		Job:         jobResources,
+		SystemUsing: node.getResourcesUsing(),
+		SystemTotal: node.getResourcesTotal(),
+	}, nil
 }
