@@ -22,12 +22,13 @@ func TestGet(t *testing.T) {
 	var job *executor.Job
 	for i := 0; i < 5; i++ {
 		spec, deal := MakeGenericJob()
+		deal.ClientID = "client_id"
 		job, err = c.Submit(ctx, spec, deal)
 		assert.NoError(t, err)
 	}
 
 	// Should be able to look up one of them:
-	job2, ok, err := c.Get(ctx, job.ID)
+	job2, ok, err := c.Get(ctx, "client_id", job.ID)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, job2.ID, job.ID)

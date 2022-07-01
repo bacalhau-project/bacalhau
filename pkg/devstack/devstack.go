@@ -303,7 +303,12 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 func (stack *DevStack) GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
 
-	job, ok, err := apiClient.Get(ctx, jobID)
+	clientID, err := system.GetClientID()
+	if err != nil {
+		return nil, fmt.Errorf("error getting client ID: %w", err)
+	}
+
+	job, ok, err := apiClient.Get(ctx, clientID, jobID)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"devstack: error fetching job %s: %v", jobID, err)

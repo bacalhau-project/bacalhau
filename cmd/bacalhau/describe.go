@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -63,7 +64,13 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		job, _, err := getAPIClient().Get(context.Background(), id)
+		clientID, err := system.GetClientID()
+		if err != nil {
+			log.Error().Msgf("Failed to get client ID: %s", err)
+			return err
+		}
+
+		job, _, err := getAPIClient().Get(context.Background(), clientID, id)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", id, err)
 			return err
