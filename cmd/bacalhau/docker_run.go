@@ -60,10 +60,6 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobMemory, "memory", "",
 		`Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
-	dockerRunCmd.PersistentFlags().IntVarP(
-		&jobConcurrency, "concurrency", "c", 1,
-		`How many nodes should run the job`,
-	)
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,

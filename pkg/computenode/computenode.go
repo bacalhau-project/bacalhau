@@ -286,6 +286,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 		// add the job to the queue on selected jobs
 		node.addSelectedJob(job)
+		node.controlLoopBidOnJobs()
 
 		// err = node.BidOnJob(ctx, job)
 		// if err != nil {
@@ -314,7 +315,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	// message came back - we need to know "have I already completed this job?"
 	_, ok := node.RunningJobs[job.ID]
 	if ok {
-		log.Debug().Msgf("Already running job so ignore", job.ID)
+		log.Debug().Msgf("Already running job so ignore: %s", job.ID)
 		return
 	}
 
