@@ -95,11 +95,26 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 	deal.ClientID = system.GetClientID() // ensure we have a client ID
+	data := submitData{
+		Spec: spec,
+		Deal: deal,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := system.SignForClient(jsonData)
+	if err != nil {
+		return nil, err
+	}
 
 	var res submitResponse
 	req := submitRequest{
-		Spec: spec,
-		Deal: deal,
+		Data:            data,
+		ClientSignature: signature,
+		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {

@@ -16,9 +16,17 @@ func TestMessageSigning(t *testing.T) {
 	InitConfigForTesting(t)
 
 	msg := []byte("Hello, world!")
-	sig, err := SignForUser(msg)
+	sig, err := SignForClient(msg)
 	assert.NoError(t, err)
-	assert.True(t, VerifyForUser(msg, sig))
+
+	ok, err := VerifyForClient(msg, sig)
+	assert.NoError(t, err)
+	assert.True(t, ok)
+
+	publicKey := GetClientPublicKey()
+	ok, err = Verify(msg, sig, publicKey)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }
 
 func TestGetClientID(t *testing.T) {

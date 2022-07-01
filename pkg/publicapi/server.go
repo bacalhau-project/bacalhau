@@ -3,6 +3,7 @@ package publicapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -110,9 +111,24 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type submitRequest struct {
+type submitData struct {
+	// The job specification:
 	Spec *executor.JobSpec `json:"spec"`
+
+	// The deal the client has made with the network, at minimum this should
+	// contain the client's ID for verifying the message authenticity:
 	Deal *executor.JobDeal `json:"deal"`
+}
+
+type submitRequest struct {
+	// The data needed to submit and run a job on the network:
+	Data submitData `json:"data"`
+
+	// A base64-encoded signature of the data, signed by the client:
+	ClientSignature string `json:"signature"`
+
+	// The base64-encoded public key of the client:
+	ClientPublicKey string `json:"client_public_key"`
 }
 
 type submitResponse struct {
@@ -126,13 +142,18 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Spec, submitReq.Deal); err != nil {
+	if err := verifySubmitRequest(&submitReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := job.VerifyJob(submitReq.Data.Spec, submitReq.Data.Deal); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
-		submitReq.Spec, submitReq.Deal)
+		submitReq.Data.Spec, submitReq.Data.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -146,6 +167,26 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func verifySubmitRequest(req *submitRequest) error {
+	if req.Data.Spec == nil {
+		return errors.New("job spec is required")
+	}
+	if req.Data.Deal == nil {
+		return errors.New("job deal is required")
+	}
+	if req.ClientSignature == "" {
+		return errors.New("client's signature is required")
+	}
+	if req.ClientPublicKey == "" {
+		return errors.New("client's public key is required")
+	}
+
+	// TODO: check that the public key matches the client ID
+	// TODO: check that the signature is valid
+
+	return nil
 }
 
 func instrument(name string, fn http.HandlerFunc) http.Handler {
