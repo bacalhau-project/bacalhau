@@ -32,13 +32,15 @@ type ComputeNode struct {
 	Transport transport.Transport
 	Executors map[executor.EngineType]executor.Executor
 	Verifiers map[verifier.VerifierType]verifier.Verifier
-	// jobs that are currently running in their executor
-	RunningJobs map[string]*executor.Job
+
 	// a FIFO queue of jobs that we selected to run by our JobSelectionPolicy
 	// but didn't have enough capacity to run at the time
 	// there is a control loop that will attempt to clear this queue
 	// it will only bid on jobs it currently has capacity for
-	PausedJobs map[string]*executor.Job
+	SelectedJobs []JobSelectionPolicyProbeData
+
+	// jobs that are currently running in their executor
+	RunningJobs map[string]*executor.Job
 
 	// the config for this compute node
 	// things like job selection policy and configured resource limits
@@ -86,9 +88,10 @@ func NewComputeNode(
 		Transport:          t,
 		Verifiers:          verifiers,
 		Executors:          executors,
-		RunningJobs:        map[string]*executor.Job{},
 		Config:             config,
 		AvailableResources: availableResources,
+		SelectedJobs:       []JobSelectionPolicyProbeData{},
+		RunningJobs:        map[string]*executor.Job{},
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
@@ -101,26 +104,24 @@ func NewComputeNode(
 			// Increment the number of jobs seen by this compute node:
 			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
 
-			resourceProfile, err := computeNode.GetResourceUsageProfileForJob(jobEvent.JobSpec)
-			if err != nil {
-				log.Error().Msgf("error getting resource profile: %v", err)
-				return
-			}
+			// resourceProfile, err := computeNode.GetResourceUsageProfileForJob(jobEvent.JobSpec)
+			// if err != nil {
+			// 	log.Error().Msgf("error getting resource profile: %v", err)
+			// 	return
+			// }
 
 			// A new job has arrived - decide if we want to bid on it:
-			shouldRun, err := computeNode.SelectJob(ctx,
-				JobSelectionPolicyProbeData{
-					NodeID:    nodeID,
-					JobID:     jobEvent.JobID,
-					Resources: resourceProfile,
-					Spec:      jobEvent.JobSpec,
-				})
+			isJobSelected, err := computeNode.SelectJob(ctx, JobSelectionPolicyProbeData{
+				NodeID: nodeID,
+				JobID:  jobEvent.JobID,
+				Spec:   jobEvent.JobSpec,
+			})
 			if err != nil {
 				log.Error().Msgf("error checking job policy: %v", err)
 				return
 			}
 
-			if shouldRun {
+			if isJobSelected {
 				// TODO: Why do we have two different kinds of loggers?
 				logger.LogJobEvent(logger.JobEvent{
 					Node: nodeID,
@@ -216,6 +217,7 @@ func NewComputeNode(
 	return computeNode, nil
 }
 
+// ask the job selection policy if we would consider running this job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
@@ -231,23 +233,12 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// decide if we want to take on the job based on
 	// our selection policy
-	passedJobSelection, err := ApplyJobSelectionPolicy(
+	return ApplyJobSelectionPolicy(
 		ctx,
 		node.Config.JobSelectionPolicy,
 		e,
 		data,
 	)
-	if err != nil {
-		return false, err
-	}
-	if !passedJobSelection {
-		return false, nil
-	}
-
-	// now let's take a look at how many jobs we are currently running (across all of our executors)
-	// and decide if we have enough capacity right now to run this
-
-	return true, nil
 }
 
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
@@ -320,6 +311,26 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 			attribute.String("jobID", jobID),
 		),
 	)
+}
+
+var selectedJobMutex sync.Mutex
+
+func (node *ComputeNode) addSelectedJob(probeData JobSelectionPolicyProbeData) {
+	selectedJobMutex.Lock()
+	defer selectedJobMutex.Unlock()
+	node.SelectedJobs = append(node.SelectedJobs, probeData)
+}
+
+func (node *ComputeNode) removeSelectedJob(id string) {
+	selectedJobMutex.Lock()
+	defer selectedJobMutex.Unlock()
+	newArr := []JobSelectionPolicyProbeData{}
+	for _, j := range node.SelectedJobs {
+		if j.JobID != id {
+			newArr = append(newArr, j)
+		}
+	}
+	node.SelectedJobs = newArr
 }
 
 var runningJobMutex sync.Mutex
