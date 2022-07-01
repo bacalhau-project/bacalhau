@@ -14,8 +14,11 @@ jobs:
     environment:
       GOVER: 1.18.3
       GOLANGCILINT_VER: v1.46
+      IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
+      GOOS: << parameters.target_os >>
+      GOARCH: << parameters.target_arch >>
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -46,8 +49,34 @@ jobs:
                 name: golangci-lint-$(GOLANGCILINT_VER)
                 command: |
                     # binary will be $(go env GOPATH)/bin/golangci-lint
-                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GOLANGCILINT_VER }}
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $(GOLANGCILINT_VER)
                     golangci-lint --version
+            - run:
+                name: Run go mod tidy check diff
+                command: make modtidy check-diff
+
+            - run:
+                name: Install IPFS
+                command: |
+                  export IPFS_BUILD="$(GOOS)-$(GOARCH)"
+                  curl -s -L -O https://dist.ipfs.io/go-ipfs/$(IPFS_VERSION)/go-ipfs_$(IPFS_VERSION)_$(IPFS_BUILD).tar.gz
+                  tar -xvzf go-ipfs_$(IPFS_VERSION)_$(IPFS_BUILD).tar.gz
+                  cd go-ipfs
+                  sudo bash install.sh
+
+      - run:
+          name: Build
+          command: GO111MODULE=on make build
+
+      - when:
+          condition:
+            and:
+              - equal: ['target_os', << parameters.target_os >>]
+              - equal: ['amd64', << parameters.target_arch >>]
+          steps:
+            - run:
+                name: Test
+                command: make test
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
