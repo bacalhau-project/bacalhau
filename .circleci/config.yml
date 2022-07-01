@@ -72,8 +72,8 @@ jobs:
                 name: Install IPFS
                 command: |
                   export IPFS_BUILD="$GOOS-$GOARCH"
-                  curl -s -L -O "https://dist.ipfs.io/go-ipfs/$IPFS_VERSION/go-ipfs_$IPFS_VERSION_$IPFS_BUILD.tar.gz"
-                  tar -xvzf "go-ipfs_$IPFS_VERSION_$IPFS_BUILD.tar.gz"
+                  curl -s -L -O "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
+                  tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
                   cd go-ipfs
                   sudo bash install.sh
                   cd ..
