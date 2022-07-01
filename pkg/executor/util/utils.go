@@ -63,8 +63,9 @@ func NewStandardExecutors(
 // return noop executors for all engines
 func NewNoopExecutors(
 	cm *system.CleanupManager,
+	config noop_executor.ExecutorConfig,
 ) (map[executor.EngineType]executor.Executor, error) {
-	noopExecutor, err := noop_executor.NewExecutor()
+	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 	if err != nil {
 		return nil, err

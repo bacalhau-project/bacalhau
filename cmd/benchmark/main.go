@@ -39,7 +39,7 @@ func main() {
 	}
 	stack, err := devstack.NewDevStack(cm, numNodes, numBadNodes,
 		getExecutors, getVerifiers,
-		computenode.NewDefaultJobSelectionPolicy())
+		computenode.NewDefaultComputeNodeConfig())
 	if err != nil {
 		panic(fmt.Errorf("fatal error while spinning up devstack: %w", err))
 	}

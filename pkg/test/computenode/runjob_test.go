@@ -16,7 +16,7 @@ import (
 func TestRunJob(t *testing.T) {
 
 	EXAMPLE_TEXT := "hello"
-	computeNode, ipfsStack, cm := SetupTest(t, computenode.JobSelectionPolicy{})
+	computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))

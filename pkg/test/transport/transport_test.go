@@ -13,6 +13,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
@@ -23,7 +24,10 @@ func setupTest(t *testing.T) (
 	*inprocess.Transport,
 	*executorNoop.Executor,
 	*verifier_noop.Verifier,
+	*system.CleanupManager,
 ) {
+	cm := system.NewCleanupManager()
+
 	noopExecutor, err := executorNoop.NewExecutor()
 	assert.NoError(t, err)
 
@@ -42,29 +46,33 @@ func setupTest(t *testing.T) (
 	assert.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
+		cm,
 		transport,
 		executors,
 		verifiers,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	assert.NoError(t, err)
 
 	_, err = requestornode.NewRequesterNode(transport)
 	assert.NoError(t, err)
 
-	return transport, noopExecutor, noopVerifier
+	return transport, noopExecutor, noopVerifier, cm
 }
 
 func TestTransportSanity(t *testing.T) {
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
 	assert.NoError(t, err)
 	_, err = computenode.NewComputeNode(
+		cm,
 		transport,
 		executors,
 		verifiers,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	assert.NoError(t, err)
 	_, err = requestornode.NewRequesterNode(transport)
@@ -73,7 +81,8 @@ func TestTransportSanity(t *testing.T) {
 
 func TestSchedulerSubmitJob(t *testing.T) {
 	ctx := context.Background()
-	transport, noopExecutor, _ := setupTest(t)
+	transport, noopExecutor, _, cm := setupTest(t)
+	defer cm.Cleanup()
 
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,
@@ -104,7 +113,8 @@ func TestSchedulerSubmitJob(t *testing.T) {
 
 func TestTransportEvents(t *testing.T) {
 	ctx := context.Background()
-	transport, _, _ := setupTest(t)
+	transport, _, _, cm := setupTest(t)
+	defer cm.Cleanup()
 
 	spec := &executor.JobSpec{
 		Engine:   executor.EngineNoop,

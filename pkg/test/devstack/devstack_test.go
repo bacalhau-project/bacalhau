@@ -37,7 +37,7 @@ func devStackDockerStorageTest(
 		t,
 		nodeCount,
 		0,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 

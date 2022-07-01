@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -80,6 +81,9 @@ type JobSpec struct {
 	Docker   JobSpecDocker   `json:"job_spec_docker"`
 	Language JobSpecLanguage `json:"job_spec_language"`
 
+	// the compute (cpy, ram) resources this job requires
+	Resources resourceusage.ResourceUsageConfig `json:"resources"`
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []storage.StorageSpec `json:"inputs"`
@@ -99,10 +103,6 @@ type JobSpecDocker struct {
 	Entrypoint []string `json:"entrypoint"`
 	// a map of env to run the container with
 	Env []string `json:"env"`
-	// https://github.com/BTBurke/k8sresource strings
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-	Disk   string `json:"disk"`
 }
 
 // for language style executors (can target docker or wasm)

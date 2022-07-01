@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -36,6 +37,7 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
+	cpu, memory string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -47,7 +49,10 @@ func ConstructDockerJob(
 	if concurrency <= 0 {
 		return nil, nil, fmt.Errorf("concurrency must be >= 1")
 	}
-
+	jobResources := resourceusage.ResourceUsageConfig{
+		CPU:    cpu,
+		Memory: memory,
+	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
 
@@ -97,6 +102,7 @@ func ConstructDockerJob(
 			Env:        env,
 		},
 
+		Resources:   jobResources,
 		Inputs:      jobInputs,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,

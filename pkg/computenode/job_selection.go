@@ -100,7 +100,7 @@ func applyJobSelectionPolicyHTTPProbe(ctx context.Context, url string, data JobS
 	return resp.StatusCode == http.StatusOK, nil
 }
 
-func applyJobSelectionPolicyDataSettings(
+func applyJobSelectionPolicySettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
 	e executor.Executor,
@@ -162,6 +162,6 @@ func ApplyJobSelectionPolicy(
 	} else if policy.ProbeHTTP != "" {
 		return applyJobSelectionPolicyHTTPProbe(ctx, policy.ProbeHTTP, data)
 	} else {
-		return applyJobSelectionPolicyDataSettings(ctx, policy, e, data.Spec)
+		return applyJobSelectionPolicySettings(ctx, policy, e, data.Spec)
 	}
 }
