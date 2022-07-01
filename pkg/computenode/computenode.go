@@ -44,10 +44,7 @@ type ComputeNode struct {
 
 	// a FIFO queue of jobs that we selected to run by our JobSelectionPolicy
 	// but have not yet had accepted bids on - this is our "backlog"
-	// there can be no more than AvailableResources * SelectedJobQueueSize jobs in this queue
-	// ^ this can be many more times than our capacity because we will work through the queue
-	// only at the rate of capacity we have available
-	SelectedJobs []*executor.Job
+	SelectedJobQueue []*executor.Job
 
 	// jobs that are currently running in their executor
 	// any jobs here will not be present in the selected job queue
@@ -172,6 +169,8 @@ func constructComputeNode(
 		TotalResourceLimit:             totalResourceLimit,
 		JobResourceLimit:               jobResourceLimit,
 		DefaultJobResourceRequirements: defaultJobResourceRequirements,
+		RunningJobs:                    map[string]*executor.Job{},
+		SelectedJobQueue:               []*executor.Job{},
 	}
 
 	return computeNode, nil
@@ -206,8 +205,35 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 }
 
 // each control loop we should bid on jobs in our queue
+//   * calculate "remaining resources"
+//     * this is total - running
+//   * loop over each job in selected queue
+//     * if there is enough in the remaining then bid
+//   * add each bid on job to the "projected resources"
+//   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-	fmt.Printf("Control loop tick\n")
+
+	runningJobResources := node.getRunningJobResources()
+	remainingJobResources := resourceusage.ResourceUsageData{
+		CPU:    node.TotalResourceLimit.CPU - runningJobResources.CPU,
+		Memory: node.TotalResourceLimit.Memory - runningJobResources.Memory,
+	}
+
+	for _, queuedJob := range node.SelectedJobQueue {
+
+		// see if we have enough free resources to run this job
+		jobRequirements := node.getJobResourceRequirements(queuedJob.Spec.Resources)
+
+		if resourceusage.CheckResourceRequirements(jobRequirements, remainingJobResources) {
+			remainingJobResources.CPU -= jobRequirements.CPU
+			remainingJobResources.Memory -= jobRequirements.Memory
+
+			// bid on this job
+			node.removeSelectedJob(queuedJob.ID)
+			node.BidOnJob(context.Background(), queuedJob)
+		}
+	}
+
 }
 
 /*
@@ -281,6 +307,14 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	var span trace.Span
 	// we only care if the accepted bid is for us
 	if jobEvent.NodeID != node.NodeID {
+		return
+	}
+
+	// TODO: what if we have started and finished the job quicker than the libp2p
+	// message came back - we need to know "have I already completed this job?"
+	_, ok := node.RunningJobs[job.ID]
+	if ok {
+		log.Debug().Msgf("Already running job so ignore", job.ID)
 		return
 	}
 
@@ -493,19 +527,19 @@ var selectedJobMutex sync.Mutex
 func (node *ComputeNode) addSelectedJob(job *executor.Job) {
 	selectedJobMutex.Lock()
 	defer selectedJobMutex.Unlock()
-	node.SelectedJobs = append(node.SelectedJobs, job)
+	node.SelectedJobQueue = append(node.SelectedJobQueue, job)
 }
 
 func (node *ComputeNode) removeSelectedJob(id string) {
 	selectedJobMutex.Lock()
 	defer selectedJobMutex.Unlock()
 	newArr := []*executor.Job{}
-	for _, j := range node.SelectedJobs {
+	for _, j := range node.SelectedJobQueue {
 		if j.ID != id {
 			newArr = append(newArr, j)
 		}
 	}
-	node.SelectedJobs = newArr
+	node.SelectedJobQueue = newArr
 }
 
 var runningJobMutex sync.Mutex
@@ -523,7 +557,7 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 }
 
 // add up all the resources being used by all the jobs currently running
-func (node *ComputeNode) getRunningJobResourcesUsed() resourceusage.ResourceUsageData {
+func (node *ComputeNode) getRunningJobResources() resourceusage.ResourceUsageData {
 
 	var cpu float64
 	var memory uint64
@@ -554,16 +588,3 @@ func (node *ComputeNode) getJobResourceRequirements(jobRequirements resourceusag
 	}
 	return data
 }
-
-// func (node *ComputeNode) getResourceUsageProfileForJob(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
-// 	data := resourceusage.ResourceUsageProfile{}
-// 	jobResources, err := resourceusage.ParseResourceUsageConfig(spec.Resources)
-// 	if err != nil {
-// 		return data, err
-// 	}
-// 	return resourceusage.ResourceUsageProfile{
-// 		Job:         jobResources,
-// 		SystemUsing: node.getResourcesUsing(),
-// 		SystemTotal: node.AvailableResources,
-// 	}, nil
-// }
