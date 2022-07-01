@@ -12,6 +12,7 @@ executors:
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   build:
+    parallelism: 10
     environment:
       GOVER: 1.18.3
       GOLANGCILINT_VER: v1.46
@@ -88,7 +89,8 @@ jobs:
           steps:
             - run:
                 name: Test
-                command: make test
+                command: |
+                  go test -v $(go list ./... | circleci tests split --split-by=timings)
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
