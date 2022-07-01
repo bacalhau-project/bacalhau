@@ -101,7 +101,7 @@ func NewComputeNode(
 			// Increment the number of jobs seen by this compute node:
 			jobsReceived.With(prometheus.Labels{"node_id": nodeID}).Inc()
 
-			resourceProfile, err := computeNode.getResourceUsageProfile(jobEvent.JobSpec)
+			resourceProfile, err := computeNode.GetResourceUsageProfileForJob(jobEvent.JobSpec)
 			if err != nil {
 				log.Error().Msgf("error getting resource profile: %v", err)
 				return
@@ -356,15 +356,7 @@ func (node *ComputeNode) getResourcesUsing() resourceusage.ResourceUsageData {
 	}
 }
 
-// what resources are we allowed to use
-func (node *ComputeNode) getResourcesTotal() resourceusage.ResourceUsageData {
-	return resourceusage.ResourceUsageData{
-		CPU:    0,
-		Memory: 0,
-	}
-}
-
-func (node *ComputeNode) getResourceUsageProfile(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
+func (node *ComputeNode) GetResourceUsageProfileForJob(spec *executor.JobSpec) (resourceusage.ResourceUsageProfile, error) {
 	data := resourceusage.ResourceUsageProfile{}
 	jobResources, err := resourceusage.ParseResourceUsageConfig(spec.Resources)
 	if err != nil {
@@ -373,6 +365,6 @@ func (node *ComputeNode) getResourceUsageProfile(spec *executor.JobSpec) (resour
 	return resourceusage.ResourceUsageProfile{
 		Job:         jobResources,
 		SystemUsing: node.getResourcesUsing(),
-		SystemTotal: node.getResourcesTotal(),
+		SystemTotal: node.AvailableResources,
 	}, nil
 }

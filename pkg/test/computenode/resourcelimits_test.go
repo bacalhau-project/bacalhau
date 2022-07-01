@@ -2,8 +2,11 @@ package computenode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -291,4 +294,46 @@ func TestTotalResourceLimits(t *testing.T) {
 		},
 	)
 
+}
+
+func TestJobSelectionHttpResourceLimits(t *testing.T) {
+
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var probeData computenode.JobSelectionPolicyProbeData
+		err := json.NewDecoder(r.Body).Decode(&probeData)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		assert.Equal(t, probeData.Resources.Job.CPU, probeData.Resources.SystemTotal.CPU/2, "the job CPU was not half the system total")
+		assert.Equal(t, probeData.Resources.Job.Memory, probeData.Resources.SystemTotal.Memory/2, "the job Memory was not half the system total")
+	}))
+
+	defer svr.Close()
+
+	// configure the system with X
+	computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		JobSelectionPolicy: computenode.JobSelectionPolicy{
+			ProbeHTTP: svr.URL,
+		},
+		ResourceLimits: resourceusage.ResourceUsageConfig{
+			CPU:    "100m",
+			Memory: "100Mb",
+		},
+	}, noop_executor.ExecutorConfig{})
+	defer cm.Cleanup()
+
+	// configure the system with X / 2
+	jobData := GetProbeData("")
+	jobData.Spec.Resources = resourceusage.ResourceUsageConfig{
+		CPU:    "50m",
+		Memory: "50Mb",
+	}
+
+	resourceProfile, err := computeNode.GetResourceUsageProfileForJob(jobData.Spec)
+	assert.NoError(t, err)
+	jobData.Resources = resourceProfile
+	_, err = computeNode.SelectJob(context.Background(), jobData)
+	assert.NoError(t, err)
 }
