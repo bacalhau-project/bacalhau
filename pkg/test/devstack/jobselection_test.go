@@ -30,7 +30,9 @@ func TestSelectAllJobs(t *testing.T) {
 		ctx, span := newSpan(testCase.name)
 		defer span.End()
 		scenario := scenario.CatFileToStdout(t)
-		stack, cm := SetupTest(t, testCase.nodeCount, 0, testCase.policy)
+		stack, cm := SetupTest(t, testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: testCase.policy,
+		})
 		defer TeardownTest(stack, cm)
 
 		nodeIds, err := stack.GetNodeIds()

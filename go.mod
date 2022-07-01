@@ -3,6 +3,9 @@ module github.com/filecoin-project/bacalhau
 go 1.18
 
 require (
+	github.com/BTBurke/k8sresource v1.2.0
+	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-ipfs v0.13.0-rc1
@@ -15,6 +18,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
 	github.com/moby/moby v20.10.15+incompatible
 	github.com/multiformats/go-multiaddr v0.6.0
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/prometheus/client_golang v1.12.2
 	github.com/rs/zerolog v1.26.1
@@ -56,7 +60,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/dgraph-io/badger v1.6.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.2 // indirect
@@ -213,7 +216,6 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openzipkin/zipkin-go v0.4.0 // indirect
-	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

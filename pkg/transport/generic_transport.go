@@ -62,10 +62,10 @@ func (gt *GenericTransport) writeEvent(ctx context.Context, event *executor.JobE
 	return gt.writeEventHandler(ctx, event)
 }
 
-// BroadcastEvent notifies every listener in the transport's process of a
+// ReadEvent notifies every listener in the transport's process of a
 // new event. Note that this is purely local, and doesn't broadcast the
 // event to the parent transport's network of bacalhau nodes.
-func (gt *GenericTransport) BroadcastEvent(ctx context.Context, event *executor.JobEvent) {
+func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEvent) {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
 
