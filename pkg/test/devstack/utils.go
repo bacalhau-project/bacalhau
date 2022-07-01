@@ -25,6 +25,7 @@ var StorageDriverNames = []string{
 func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
+	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()

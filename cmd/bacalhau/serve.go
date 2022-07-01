@@ -25,9 +25,9 @@ var jobSelectionDataRejectStateless bool
 var jobSelectionProbeHTTP string
 var jobSelectionProbeExec string
 var metricsPort = 2112
-var limitTotalCpu string
+var limitTotalCPU string
 var limitTotalMemory string
-var limitJobCpu string
+var limitJobCPU string
 var limitJobMemory string
 
 var DefaultBootstrapAddresses = []string{
@@ -75,7 +75,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`The port to serve prometheus metrics on.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&limitTotalCpu, "limit-total-cpu", "",
+		&limitTotalCPU, "limit-total-cpu", "",
 		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
@@ -83,7 +83,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&limitJobCpu, "limit-job-cpu", "",
+		&limitJobCPU, "limit-job-cpu", "",
 		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
@@ -139,13 +139,13 @@ var serveCmd = &cobra.Command{
 
 		// the total amount of CPU / Memory the system can be using at one time
 		totalResourceLimit := resourceusage.ResourceUsageConfig{
-			CPU:    limitTotalCpu,
+			CPU:    limitTotalCPU,
 			Memory: limitTotalMemory,
 		}
 
 		// the per job CPU / Memory limits
 		jobResourceLimit := resourceusage.ResourceUsageConfig{
-			CPU:    limitJobCpu,
+			CPU:    limitJobCPU,
 			Memory: limitJobMemory,
 		}
 

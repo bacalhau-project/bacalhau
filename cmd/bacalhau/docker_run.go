@@ -18,7 +18,7 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
-var jobCpu string
+var jobCPU string
 var jobMemory string
 var skipSyntaxChecking bool
 var jobLabels []string
@@ -53,7 +53,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`How many nodes should run the job`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
-		&jobCpu, "cpu", "",
+		&jobCPU, "cpu", "",
 		`Job CPU cores (e.g. 500m, 2, 8).`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
@@ -106,7 +106,7 @@ var dockerRunCmd = &cobra.Command{
 		spec, deal, err := job.ConstructJob(
 			engineType,
 			verifierType,
-			jobCpu,
+			jobCPU,
 			jobMemory,
 			jobInputVolumes,
 			jobOutputVolumes,

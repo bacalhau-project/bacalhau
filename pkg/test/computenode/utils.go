@@ -22,7 +22,7 @@ import (
 // setup a docker ipfs stack to run compute node tests against
 func SetupTestDockerIpfs(
 	t *testing.T,
-	config computenode.ComputeNodeConfig,
+	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
@@ -64,6 +64,7 @@ func SetupTestDockerIpfs(
 
 func SetupTestNoop(
 	t *testing.T,
+	//nolint:gocritic
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 ) (*computenode.ComputeNode, *requestornode.RequesterNode, *system.CleanupManager) {
@@ -137,6 +138,7 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 	}
 }
 
+//nolint:unused,deadcode
 func getResources(c, m string) resourceusage.ResourceUsageConfig {
 	return resourceusage.ResourceUsageConfig{
 		CPU:    c,
@@ -144,6 +146,7 @@ func getResources(c, m string) resourceusage.ResourceUsageConfig {
 	}
 }
 
+//nolint:unused,deadcode
 func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
 	var res []resourceusage.ResourceUsageConfig
 	for _, d := range data {

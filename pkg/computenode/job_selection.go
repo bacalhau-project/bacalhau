@@ -106,7 +106,6 @@ func applyJobSelectionPolicySettings(
 	e executor.Executor,
 	job *executor.JobSpec,
 ) (bool, error) {
-
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job
 	if len(job.Inputs) == 0 {
