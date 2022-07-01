@@ -27,6 +27,8 @@ func SetupTest(
 	nodes int, badActors int,
 	jobSelectionPolicy computenode.JobSelectionPolicy,
 ) (*devstack.DevStack, *system.CleanupManager) {
+	system.InitConfigForTesting(t)
+
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {

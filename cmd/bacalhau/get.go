@@ -37,7 +37,7 @@ var getCmd = &cobra.Command{
 		defer cm.Cleanup()
 
 		log.Info().Msgf("Fetching results of job '%s'...", args[0])
-		job, ok, err := getAPIClient().Get(context.Background(), system.GetClientID(), args[0])
+		job, ok, err := getAPIClient().Get(context.Background(), args[0])
 		if err != nil {
 			return err
 		}

@@ -44,9 +44,6 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 func (suite *DescribeSuite) TestDescribeJob() {
 	tableSortReverse = false
 
-	clientID, err := system.GetClientID()
-	assert.NoError(suite.T(), err)
-
 	tests := []struct {
 		numberOfAcceptNodes int
 		numberOfRejectNodes int
@@ -68,7 +65,6 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 			for i := 0; i < tc.numberOfAcceptNodes; i++ {
 				spec, deal := publicapi.MakeNoopJob()
-				deal.ClientID = clientID
 				s, err := c.Submit(ctx, spec, deal)
 				assert.NoError(suite.T(), err)
 				submittedJob = s
