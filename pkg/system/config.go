@@ -24,7 +24,13 @@ const (
 	sigHash      = crypto.SHA256 // hash function to use for sign/verify
 )
 
+var (
+	globalClientID  string          // global cache of client ID
+	globalUserIDKey *rsa.PrivateKey // global cache of user ID key
+)
+
 // InitConfig ensures that a bacalhau config file exists and loads it.
+// NOTE: this will override the global config cache if called twice.
 func InitConfig() error {
 	configDir, err := ensureConfigDir()
 	if err != nil {
@@ -48,8 +54,20 @@ func InitConfig() error {
 	viper.AutomaticEnv()            // try to read config from env if possible
 	viper.SetEnvPrefix("bacalhau")  // BACALHAU_<key> is encoding for env vars
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	if err := viper.ReadInConfig(); err != nil {
+	if err = viper.ReadInConfig(); err != nil {
 		return fmt.Errorf("failed to load config file: %w", err)
+	}
+
+	// Cache user ID key related data so we don't have to constantly load
+	// it from disk, and so that we fail fast if something is wrong:
+	globalUserIDKey, err = loadUserIDKey()
+	if err != nil {
+		return fmt.Errorf("failed to load user ID key: %w", err)
+	}
+
+	globalClientID, err = loadClientID()
+	if err != nil {
+		return fmt.Errorf("failed to load client ID: %w", err)
 	}
 
 	return nil
@@ -57,6 +75,7 @@ func InitConfig() error {
 
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
+// NOTE: this will overwrite the global config cache if called twice.
 func InitConfigForTesting(t *testing.T) {
 	configDir, err := ioutil.TempDir("", "bacalhau-test")
 	assert.NoError(t, err)
@@ -65,17 +84,17 @@ func InitConfigForTesting(t *testing.T) {
 }
 
 // SignForUser signs a message with the user's private id key.
+// NOTE: must be called after InitConfig() or system will panic.
 func SignForUser(msg []byte) ([]byte, error) {
-	key, err := loadUserIDKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load user ID key: %w", err)
+	if globalUserIDKey == nil {
+		panic("must call InitConfig() before calling SignForUser()")
 	}
 
 	hash := sigHash.New()
 	hash.Write(msg)
 	hashBytes := hash.Sum(nil)
 
-	sig, err := rsa.SignPKCS1v15(rand.Reader, key, sigHash, hashBytes)
+	sig, err := rsa.SignPKCS1v15(rand.Reader, globalUserIDKey, sigHash, hashBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)
 	}
@@ -84,10 +103,10 @@ func SignForUser(msg []byte) ([]byte, error) {
 }
 
 // VerifyForUser verifies a signed message with the user's public id key.
-func VerifyForUser(msg, sig []byte) (bool, error) {
-	key, err := loadUserIDKey()
-	if err != nil {
-		return false, fmt.Errorf("failed to load user ID key: %w", err)
+// NOTE: must be called after InitConfig() or system will panic.
+func VerifyForUser(msg, sig []byte) bool {
+	if globalUserIDKey == nil {
+		panic("must call InitConfig() before calling VerifyForUser()")
 	}
 
 	hash := sigHash.New()
@@ -95,21 +114,17 @@ func VerifyForUser(msg, sig []byte) (bool, error) {
 	hashBytes := hash.Sum(nil)
 
 	// A successful verification is indicated by a nil return:
-	return rsa.VerifyPKCS1v15(&key.PublicKey, sigHash, hashBytes, sig) == nil, nil
+	return rsa.VerifyPKCS1v15(&globalUserIDKey.PublicKey, sigHash, hashBytes, sig) == nil
 }
 
 // GetClientID returns a hash identifying a user based on their id key.
-func GetClientID() (string, error) {
-	key, err := loadUserIDKey()
-	if err != nil {
-		return "", fmt.Errorf("failed to load user ID key: %w", err)
+// NOTE: must be called after InitConfig() or system will panic.
+func GetClientID() string {
+	if globalClientID == "" {
+		panic("must call InitConfig() before calling GetClientID()")
 	}
 
-	hash := sigHash.New()
-	hash.Write(key.PublicKey.N.Bytes())
-	hashBytes := hash.Sum(nil)
-
-	return fmt.Sprintf("%x", hashBytes), nil
+	return globalClientID
 }
 
 // ensureDefaultConfigDir ensures that a bacalhau config dir exists.
@@ -227,10 +242,32 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode user ID key file")
 	}
 
+	// TODO: Add support for both rsa _and_ ecdsa private keys, see cryto.PrivateKey.
+	//       Since we have access to the private key we can hack it by signing a
+	//       message twice and comparing them, rather than verifying directly.
+	// ecdsaKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse user: %w", err)
+	// }
+
 	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse user ID key file: %w", err)
 	}
 
 	return key, nil
+}
+
+// loadClientID loads a hash identifying a user based on their id key.
+func loadClientID() (string, error) {
+	key, err := loadUserIDKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to load user ID key: %w", err)
+	}
+
+	hash := sigHash.New()
+	hash.Write(key.PublicKey.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes), nil
 }

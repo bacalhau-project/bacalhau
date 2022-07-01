@@ -79,7 +79,9 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	return err
 }
 
-type listRequest struct{}
+type listRequest struct {
+	ClientID string `json:"client_id"`
+}
 
 type listResponse struct {
 	Jobs map[string]*executor.Job `json:"jobs"`

@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -29,6 +30,7 @@ func (suite *DescribeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
 }
 
@@ -86,7 +88,6 @@ func (suite *DescribeSuite) TestDescribeJob() {
 			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 		}()
-
 	}
 }
 
