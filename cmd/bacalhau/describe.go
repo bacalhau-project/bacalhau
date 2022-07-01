@@ -64,13 +64,7 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		clientID, err := system.GetClientID()
-		if err != nil {
-			log.Error().Msgf("Failed to get client ID: %s", err)
-			return err
-		}
-
-		job, _, err := getAPIClient().Get(context.Background(), clientID, id)
+		job, _, err := getAPIClient().Get(context.Background(), system.GetClientID(), id)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", id, err)
 			return err

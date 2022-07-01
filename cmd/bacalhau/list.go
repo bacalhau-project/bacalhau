@@ -80,13 +80,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List jobs on the network",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
-		clientID, err := system.GetClientID()
-		if err != nil {
-			log.Error().Msgf("Failed to get client ID: %s", err)
-			return err
-		}
-
-		jobs, err := getAPIClient().List(context.Background(), clientID)
+		jobs, err := getAPIClient().List(context.Background(), system.GetClientID())
 		if err != nil {
 			return err
 		}

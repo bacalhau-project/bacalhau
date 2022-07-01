@@ -7,26 +7,33 @@ import (
 )
 
 func TestMessageSigning(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic: %v", r)
+		}
+	}()
+
 	InitConfigForTesting(t)
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForUser(msg)
 	assert.NoError(t, err)
-
-	ok, err := VerifyForUser(msg, sig)
-	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.True(t, VerifyForUser(msg, sig))
 }
 
 func TestGetClientID(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic: %v", r)
+		}
+	}()
+
 	InitConfigForTesting(t)
-	id, err := GetClientID()
-	assert.NoError(t, err)
+	id := GetClientID()
 	assert.NotEmpty(t, id)
 
 	InitConfigForTesting(t)
-	id2, err := GetClientID()
-	assert.NoError(t, err)
+	id2 := GetClientID()
 	assert.NotEmpty(t, id2)
 
 	// Two different clients should have different IDs.
