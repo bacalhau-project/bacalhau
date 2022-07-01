@@ -239,9 +239,9 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 		return "", err
 	}
 
-	node.RunningJobs[job.ID] = job
+	node.addRunningJob(job)
 	result, err := e.RunJob(ctx, job)
-	delete(node.RunningJobs, job.ID)
+	node.removeRunningJob(job)
 
 	if err != nil {
 		return "", err
@@ -304,11 +304,28 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 	)
 }
 
+var runningJobMutex sync.Mutex
+
+func (node *ComputeNode) addRunningJob(job *executor.Job) {
+	runningJobMutex.Lock()
+	defer runningJobMutex.Unlock()
+	node.RunningJobs[job.ID] = job
+}
+
+func (node *ComputeNode) removeRunningJob(job *executor.Job) {
+	runningJobMutex.Lock()
+	defer runningJobMutex.Unlock()
+	delete(node.RunningJobs, job.ID)
+}
+
 // add up all the resources being used by all the jobs currently running
 func (node *ComputeNode) getResourcesUsing() resourceusage.ResourceUsageData {
 
 	var cpu float64
 	var memory uint64
+
+	runningJobMutex.Lock()
+	defer runningJobMutex.Unlock()
 
 	for _, job := range node.RunningJobs {
 		cpu += resourceusage.ConvertCpuString(job.Spec.Resources.CPU)
