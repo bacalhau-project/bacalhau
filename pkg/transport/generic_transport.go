@@ -396,8 +396,8 @@ func (gt *GenericTransport) getJobNodeContext(ctx context.Context, jobID string)
 			"JobLifecycle-"+gt.NodeID[:8],
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
-				attribute.String("job_id", jobID),
-				attribute.String("node_id", gt.NodeID),
+				attribute.String("jobID", jobID),
+				attribute.String("nodeID", gt.NodeID),
 			),
 		)
 

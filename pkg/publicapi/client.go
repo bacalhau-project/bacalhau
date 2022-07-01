@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // APIClient is a utility for interacting with a node's API server.
@@ -29,8 +31,14 @@ func NewAPIClient(baseURI string) *APIClient {
 		BaseURI: baseURI,
 
 		client: &http.Client{
-			Timeout:   300 * time.Second,
-			Transport: otelhttp.NewTransport(nil),
+			Timeout: 300 * time.Second,
+			Transport: otelhttp.NewTransport(nil,
+				otelhttp.WithSpanOptions(
+					trace.WithAttributes(
+						attribute.String("clientID", system.GetClientID()),
+					),
+				),
+			),
 		},
 	}
 }
