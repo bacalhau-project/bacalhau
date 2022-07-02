@@ -4,14 +4,15 @@ version: 2.1
 
 executors:
   linux:
-    docker:
-      - image: cimg/go:1.18.3
-      
+    machine:
+      image: ubuntu-2204:2022.04.2
+    resource_class: xlarge
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   build:
-    parallelism: 10
+    parallelism: 4
     environment:
       GOVER: 1.18.3
       GOLANGCILINT_VER: v1.46.2
