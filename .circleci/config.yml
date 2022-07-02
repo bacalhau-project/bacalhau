@@ -38,6 +38,7 @@ jobs:
           command: |
             echo "GOOS => $GOOS"
             echo "GOARCH => $GOARCH"
+            echo "BRANCH => {{ .Branch }}"
       - run:
           name: Install Go
           command: |
