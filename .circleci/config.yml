@@ -115,7 +115,7 @@ jobs:
 
             - when:
                 condition:
-                  equal: ['main', $CIRCLE_BRANCH]
+                  equal: ['circleci-project-setup', $CIRCLE_BRANCH]
                 steps:
                   - run:
                       name: Setup GCloud
