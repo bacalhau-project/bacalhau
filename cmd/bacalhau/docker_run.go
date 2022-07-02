@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -103,7 +102,7 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		spec, deal, err := job.ConstructJob(
+		spec, deal, err := job.ConstructDockerJob(
 			engineType,
 			verifierType,
 			jobCPU,
@@ -127,12 +126,12 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal)
+		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("%s\n", job.ID)
+		cmd.Printf("%s\n", job.ID)
 		return nil
 	},
 }

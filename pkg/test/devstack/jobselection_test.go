@@ -44,7 +44,7 @@ func TestSelectAllJobs(t *testing.T) {
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
-			VM:       scenario.GetJobSpec(),
+			Docker:   scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,
 		}
@@ -55,7 +55,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
-		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
+		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		assert.NoError(t, err)
 
 		// wait for the job to complete across all nodes

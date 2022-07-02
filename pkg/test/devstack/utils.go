@@ -33,7 +33,7 @@ func SetupTest(
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
-		return executor_util.NewDockerIPFSExecutors(
+		return executor_util.NewStandardExecutors(
 			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (

@@ -13,6 +13,8 @@ type Verifier interface {
 	// the executor has completed the job and produced a local folder of results
 	// the verifier will now "process" this local folder into the result
 	// that will be broadcast back to the network
+	// For example, the IPFS verifier publishes a local folder to IPFS and
+	// returns the CID
 	ProcessResultsFolder(ctx context.Context, jobID string,
 		resultsPath string) (string, error)
 }

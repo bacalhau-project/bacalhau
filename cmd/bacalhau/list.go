@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -142,8 +141,8 @@ var listCmd = &cobra.Command{
 			}
 
 			if j.Spec.Engine == executor.EngineDocker {
-				jobDesc = append(jobDesc, j.Spec.VM.Image)
-				jobDesc = append(jobDesc, strings.Join(j.Spec.VM.Entrypoint, " "))
+				jobDesc = append(jobDesc, j.Spec.Docker.Image)
+				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
 			}
 
 			if len(j.State) == 0 {
@@ -196,7 +195,7 @@ var listCmd = &cobra.Command{
 				return err
 			}
 
-			fmt.Printf("%s\n", msgBytes)
+			cmd.Printf("%s\n", msgBytes)
 			return nil
 		} else {
 			t.Render()

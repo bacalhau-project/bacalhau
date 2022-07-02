@@ -178,7 +178,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
-			spec, deal, err := job.ConstructJob(
+			spec, deal, err := job.ConstructDockerJob(
 				executor.EngineNoop,
 				verifier.VerifierNoop,
 				jobResources.CPU,

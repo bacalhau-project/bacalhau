@@ -37,7 +37,7 @@ func SetupTestDockerIpfs(
 		t.Fatal(err)
 	}
 
-	executors, err := executor_util.NewDockerIPFSExecutors(
+	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, "devstacknode0")
 	if err != nil {
 		t.Fatal(err)
@@ -75,17 +75,21 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	requestorNode, err := requestornode.NewRequesterNode(transport)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestorNode, err := requestornode.NewRequesterNode(
+		cm,
+		transport,
+		verifiers,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +123,7 @@ func GetJobSpec(cid string) *executor.JobSpec {
 	return &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		VM: executor.JobSpecVM{
+		Docker: executor.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"cat",

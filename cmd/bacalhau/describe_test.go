@@ -65,7 +65,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 			for i := 0; i < tc.numberOfAcceptNodes; i++ {
 				spec, deal := publicapi.MakeNoopJob()
-				s, err := c.Submit(ctx, spec, deal)
+				s, err := c.Submit(ctx, spec, deal, nil)
 				assert.NoError(suite.T(), err)
 				submittedJob = s
 			}

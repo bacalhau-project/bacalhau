@@ -59,7 +59,7 @@ var devstackCmd = &cobra.Command{
 				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
 			}
 
-			return executor_util.NewDockerIPFSExecutors(cm,
+			return executor_util.NewStandardExecutors(cm,
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 

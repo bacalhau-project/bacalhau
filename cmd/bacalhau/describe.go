@@ -68,9 +68,9 @@ var describeCmd = &cobra.Command{
 		}
 
 		jobVMDesc := &jobSpecVMDescription{}
-		jobVMDesc.Image = job.Spec.VM.Image
-		jobVMDesc.Entrypoint = job.Spec.VM.Entrypoint
-		jobVMDesc.Env = job.Spec.VM.Env
+		jobVMDesc.Image = job.Spec.Docker.Image
+		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
+		jobVMDesc.Env = job.Spec.Docker.Env
 
 		jobVMDesc.CPU = job.Spec.Resources.CPU
 		jobVMDesc.Memory = job.Spec.Resources.Memory
