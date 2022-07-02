@@ -71,7 +71,7 @@ jobs:
                   export GCLOUD_TARBALL="google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
                   curl -s -L -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${GCLOUD_TARBALL}"
                   tar -xf "${GCLOUD_TARBALL}"
-                  ./google-cloud-sdk/install.sh --disable-prompts
+                  ./google-cloud-sdk/install.sh --quiet
             - run:
                 name: Install golangci-lint@$GOLANGCILINT_VERSION
                 command: |
