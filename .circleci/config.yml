@@ -50,34 +50,39 @@ jobs:
       - run:
           name: Install Dependencies
           command: go get ./...
-      - run:
-          name: Setup GCloud@$GCLOUD_VERSION
-          command: |
-            curl -Ls https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-392.0.0-linux-x86_64.tar.gz
-            tar -xf google-cloud-cli-392.0.0-linux-x86.tar.gz
-            ./google-cloud-sdk/install.sh
-      - run:
-          name: Install golangci-lint@$GOLANGCILINT_VERSION
-          command: |
-              # binary will be /usr/local/go/bin/bin/golangci-lint
-              curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
-              golangci-lint --version
+
       - run:
           name: Install IPFS@$IPFS_VERSION
           command: |
             export IPFS_BUILD="$GOOS-$GOARCH"
             curl -s -L -O "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
             tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
-            cd go-ipfs
-            sudo bash install.sh
-            cd ..
+            bash ./go-ipfs/install.sh
 
-      - run:
-          name: Install terraform@$TERRAFORM_VERSION
-          command: |
-            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-            sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-            sudo apt-get update && sudo apt-get install terraform==$TERRAFORM_VERSION
+      - when:
+          condition:
+            and:
+              - equal: ['linux', << parameters.target_os >>]
+              - equal: ['amd64', << parameters.target_arch >>]
+          steps:
+            - run:
+                name: Setup GCloud@$GCLOUD_VERSION
+                command: |
+                  curl -Ls https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-392.0.0-linux-x86_64.tar.gz
+                  tar -xf google-cloud-cli-392.0.0-linux-x86.tar.gz
+                  ./google-cloud-sdk/install.sh
+            - run:
+                name: Install golangci-lint@$GOLANGCILINT_VERSION
+                command: |
+                    # binary will be /usr/local/go/bin/bin/golangci-lint
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
+                    golangci-lint --version
+            - run:
+                name: Install terraform@$TERRAFORM_VERSION
+                command: |
+                  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+                  sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+                  sudo apt-get update && sudo apt-get install terraform==$TERRAFORM_VERSION
 
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
@@ -114,9 +119,6 @@ jobs:
                   - run:
                       name: Setup GCloud
                       command: |
-                        curl -Ls "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
-                        tar -xf "google-cloud-cli-${GCLOUD_VERSION}-linux-x86.tar.gz"
-                        ./google-cloud-sdk/install.sh
                         echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
                         
                   - run:
