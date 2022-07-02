@@ -68,8 +68,9 @@ jobs:
             - run:
                 name: Setup GCloud@$GCLOUD_VERSION
                 command: |
-                  curl -s -L -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
-                  tar -xf "google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
+                  export GCLOUD_TARBALL="google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
+                  curl -s -L -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${GCLOUD_TARBALL}"
+                  tar -xf "${GCLOUD_TARBALL}"
                   ./google-cloud-sdk/install.sh
             - run:
                 name: Install golangci-lint@$GOLANGCILINT_VERSION
