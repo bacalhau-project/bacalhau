@@ -41,7 +41,7 @@ jobs:
       - run:
           name: Install Go
           command: |
-            curl -Ls "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
+            curl -s -L -O "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
             rm -rf /usr/local && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
             export PATH=$PATH:/usr/local/go/bin
       - restore_cache:
@@ -68,7 +68,7 @@ jobs:
             - run:
                 name: Setup GCloud@$GCLOUD_VERSION
                 command: |
-                  curl -Ls "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
+                  curl -s -L -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
                   tar -xf "google-cloud-cli-${GCLOUD_VERSION}-linux-x86.tar.gz"
                   ./google-cloud-sdk/install.sh
             - run:
