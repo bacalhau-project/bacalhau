@@ -17,7 +17,7 @@ jobs:
       GOVER: 1.18.3
       GOLANGCILINT_VERSION: v1.46.2
       IPFS_VERSION: v0.12.2
-      GCLOUD_VERSION: 392.0.2
+      GCLOUD_VERSION: 392.0.0
       TERRAFORM_VERSION: 1.2.4
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
