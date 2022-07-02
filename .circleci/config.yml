@@ -115,7 +115,7 @@ jobs:
 
             - when:
                 condition:
-                  equal: ['circleci-project-setup', $CIRCLE_BRANCH]
+                  equal: ['circleci-project-setup', {{ .Branch }}]
                 steps:
                   - run:
                       name: Setup GCloud
