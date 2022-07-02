@@ -38,7 +38,7 @@ jobs:
           command: |
             echo "GOOS => $GOOS"
             echo "GOARCH => $GOARCH"
-            echo "BRANCH => {{ .Branch }}"
+            echo "BRANCH => $CIRCLE_BRANCH"
       - run:
           name: Install Go
           command: |
@@ -116,7 +116,7 @@ jobs:
 
             - when:
                 condition:
-                  equal: ['circleci-project-setup', {{ .Branch }}]
+                  equal: ['circleci-project-setup', "$CIRCLE_BRANCH"]
                 steps:
                   - run:
                       name: Setup GCloud
