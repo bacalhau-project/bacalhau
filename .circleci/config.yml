@@ -101,9 +101,12 @@ jobs:
                 command: |
                   go test -v $(go list ./... | circleci tests split --split-by=timings)
 
-  deploy-to-development-cluster:
+  deploy:
     docker:  
       - image: google/cloud-sdk:392.0.0
+    parameters:
+      rollout_stage:
+        type: string
     steps:
       - run:
           name: Setup GCloud
@@ -123,11 +126,11 @@ jobs:
             sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
 
       - run:
-          name: Install development cluster
+          name: Deploy cluster
           command: |
             cd ops/terraform && terraform init && \
-                                terraform workspace select development && \
-                                terraform apply -auto-approve --var-file=development.tfvars
+                                terraform workspace select << parameters.rollout_stage >> && \
+                                terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -146,11 +149,12 @@ workflows:
           name: macOS-amd64
           target_os: darwin
           target_arch: amd64
-      - deploy-to-development-cluster:
+      - deploy:
           requires:
             - ubuntu-amd64
             - macOS-arm64
             - macOS-amd64
+          rollout_stage: development
           filters:
             branches:
-              only: main
+              only: circleci-project-setup
