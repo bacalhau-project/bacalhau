@@ -108,8 +108,6 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['linux', << parameters.target_os >>]
-              - equal: ['amd64', << parameters.target_arch >>]           
               - equal: ['circleci-project-setup', << pipeline.git.branch >>]
           steps:
             - run:
