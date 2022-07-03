@@ -153,3 +153,6 @@ workflows:
           name: macOS-amd64
           target_os: darwin
           target_arch: amd64
+      - deploy-to-development-cluster:
+          requires:
+            - build
