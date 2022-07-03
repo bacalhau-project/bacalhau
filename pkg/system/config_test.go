@@ -16,9 +16,17 @@ func TestMessageSigning(t *testing.T) {
 	InitConfigForTesting(t)
 
 	msg := []byte("Hello, world!")
-	sig, err := SignForUser(msg)
+	sig, err := SignForClient(msg)
 	assert.NoError(t, err)
-	assert.True(t, VerifyForUser(msg, sig))
+
+	ok, err := VerifyForClient(msg, sig)
+	assert.NoError(t, err)
+	assert.True(t, ok)
+
+	publicKey := GetClientPublicKey()
+	ok, err = Verify(msg, sig, publicKey)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }
 
 func TestGetClientID(t *testing.T) {
@@ -38,4 +46,20 @@ func TestGetClientID(t *testing.T) {
 
 	// Two different clients should have different IDs.
 	assert.NotEqual(t, id, id2)
+}
+
+func TestPublicKeyMatchesID(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic: %v", r)
+		}
+	}()
+
+	InitConfigForTesting(t)
+
+	id := GetClientID()
+	publicKey := GetClientPublicKey()
+	ok, err := PublicKeyMatchesID(publicKey, id)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }

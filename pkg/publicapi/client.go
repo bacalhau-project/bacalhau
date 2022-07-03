@@ -94,19 +94,33 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(
-	ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal, buildContext *bytes.Buffer,
-) (*executor.Job, error) {
+func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
+	deal *executor.JobDeal, buildContext *bytes.Buffer) (*executor.Job,
+	error) {
 	deal.ClientID = system.GetClientID() // ensure we have a client ID
-
-	var res submitResponse
-
-	req := submitRequest{
+	data := submitData{
 		Spec: spec,
 		Deal: deal,
 	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := system.SignForClient(jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	var res submitResponse
+	req := submitRequest{
+		Data:            data,
+		ClientSignature: signature,
+		ClientPublicKey: system.GetClientPublicKey(),
+	}
 	if buildContext != nil {
-		req.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
+		req.Data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {

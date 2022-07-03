@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -119,13 +120,29 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type submitRequest struct {
+type submitData struct {
+	// The job specification:
 	Spec *executor.JobSpec `json:"spec"`
+
+	// The deal the client has made with the network, at minimum this should
+	// contain the client's ID for verifying the message authenticity:
 	Deal *executor.JobDeal `json:"deal"`
-	// optional base64 encoded tar file that the api server will pin to ipfs for
-	// you (the client), NOT part of the spec so we don't flood libp2p with
-	// these files, max 10mb
+
+	// Optional base64-encoded tar file that will be pinned to IPFS and
+	// mounted as storage for the job. Not part of the spec so we don't
+	// flood the transport layer with it (potentially very large).
 	Context string `json:"context,omitempty"`
+}
+
+type submitRequest struct {
+	// The data needed to submit and run a job on the network:
+	Data submitData `json:"data"`
+
+	// A base64-encoded signature of the data, signed by the client:
+	ClientSignature string `json:"signature"`
+
+	// The base64-encoded public key of the client:
+	ClientPublicKey string `json:"client_public_key"`
 }
 
 type submitResponse struct {
@@ -140,35 +157,33 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Spec, submitReq.Deal); err != nil {
+	if err := verifySubmitRequest(&submitReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := job.VerifyJob(submitReq.Data.Spec, submitReq.Data.Deal); err != nil {
 		log.Debug().Msgf("====> VerifyJob error: %s", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if submitReq.Context != "" {
+	// If we have a build context, pin it to IPFS and mount it in the job:
+	if submitReq.Data.Context != "" {
 		// TODO: gc pinned contexts
-		// TODO:
-		//  * base64 decode submitReq.Context
-
-		decoded, err := base64.StdEncoding.DecodeString(submitReq.Context)
+		decoded, err := base64.StdEncoding.DecodeString(submitReq.Data.Context)
 		if err != nil {
 			log.Debug().Msgf("====> DecodeContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		//  * write decoded base64 to .tar file
-
-		// create tmp dir
 		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
 		if err != nil {
 			log.Debug().Msgf("====> Create tmp dir error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		// untar tmpDir/context.tar
 
 		tarReader := bytes.NewReader(decoded)
 		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
@@ -178,17 +193,16 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		//  * untar into directory
-		//  * call apiServer.Node.PinContext with directory name
 		cid, err := apiServer.Node.PinContext(filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		submitReq.Spec.Inputs = append(submitReq.Spec.Inputs, storage.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
+
+		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
+		//               --cid ipfs:abc --cid filecoin:efg
+		submitReq.Data.Spec.Inputs = append(submitReq.Data.Spec.Inputs, storage.StorageSpec{
 			Engine: "ipfs",
 			Cid:    cid,
 			Path:   "/job",
@@ -196,7 +210,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 
 	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
-		submitReq.Spec, submitReq.Deal)
+		submitReq.Data.Spec, submitReq.Data.Deal)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -210,6 +224,49 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func verifySubmitRequest(req *submitRequest) error {
+	if req.Data.Spec == nil {
+		return errors.New("job spec is required")
+	}
+	if req.Data.Deal == nil {
+		return errors.New("job deal is required")
+	}
+	if req.Data.Deal.ClientID == "" {
+		return errors.New("job deal must contain a client ID")
+	}
+	if req.ClientSignature == "" {
+		return errors.New("client's signature is required")
+	}
+	if req.ClientPublicKey == "" {
+		return errors.New("client's public key is required")
+	}
+
+	// Check that the client's public key matches the client ID:
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.Deal.ClientID)
+	if err != nil {
+		return fmt.Errorf("error verifying client ID: %w", err)
+	}
+	if !ok {
+		return errors.New("client's public key does not match client ID")
+	}
+
+	// Check that the signature is valid:
+	jsonData, err := json.Marshal(req.Data)
+	if err != nil {
+		return fmt.Errorf("error marshaling job data: %w", err)
+	}
+
+	ok, err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
+	if err != nil {
+		return fmt.Errorf("error verifying client signature: %w", err)
+	}
+	if !ok {
+		return errors.New("client's signature is invalid")
+	}
+
+	return nil
 }
 
 func instrument(name string, fn http.HandlerFunc) http.Handler {
