@@ -21,8 +21,6 @@ jobs:
       ARCHIVE_OUTDIR: dist/archives
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
-      TEST_OUTPUT_FILE_PREFIX: "test-report"
-      TEST_OUTPUT_ARTIFACTS_DIR: "test-results"
       CGO: 0
     working_directory: ~/repo
     executor: linux
@@ -100,21 +98,16 @@ jobs:
             - run:
                 name: Test
                 command: |
-                  go test -v $(go list ./... | circleci tests split --split-by=timings)
-            - run:
-                name: Test
-                command: |
-                  mkdir ${TEST_OUTPUT_ARTIFACTS_DIR}
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
                   gotestsum \
-                    --junitfile "${TEST_OUTPUT_ARTIFACTS_DIR}\${TEST_OUTPUT_FILE_PREFIX}-unit-tests.xml" \
+                    --junitfile unit-tests.xml \
                     --format standard-quiet \
                     -- \
                       ./pkg/... ./cmd/... \
                       ${COVERAGE_OPTS} --tags=unit
             - store_test_results:
-                path: ${TEST_OUTPUT_ARTIFACTS_DIR}
+                path: /tmp/test-results
 
   deploy:
     docker:  
@@ -132,15 +125,16 @@ jobs:
             # Create service account and get credentials here
             # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
             echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
-            
+            echo "Using GCloud: $GCLOUD_VERSION"
       - run:
           name: Authenticate to Google Cloud
           command: |
             gcloud auth activate-service-account --key-file /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
 
       - run:
-          name: Install terraform@$TERRAFORM_VERSION
+          name: Install terraform
           command: |
+            echo "Insalling Terraform: $TERRAFORM_VERSION"
             curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
             sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
             sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
