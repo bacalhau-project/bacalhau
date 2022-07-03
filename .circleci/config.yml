@@ -52,8 +52,9 @@ jobs:
           command: go get ./...
 
       - run:
-          name: Install IPFS@$IPFS_VERSION
+          name: Install IPFS
           command: |
+            echo "Installing IPFS_VERSION: $IPFS_VERSION"
             export IPFS_BUILD="$GOOS-$GOARCH"
             curl -s -L -O "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
             tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
@@ -66,8 +67,9 @@ jobs:
               - equal: ['amd64', << parameters.target_arch >>]
           steps:
             - run:
-                name: Install golangci-lint@$GOLANGCILINT_VERSION
+                name: Install golangci-lint
                 command: |
+                    echo "Installing GOLANGCILINT: $GOLANGCILINT_VERSION"
                     # binary will be /usr/local/go/bin/bin/golangci-lint
                     curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                     golangci-lint --version
