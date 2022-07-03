@@ -105,6 +105,7 @@ jobs:
                 name: Test
                 command: |
                   mkdir ${TEST_OUTPUT_ARTIFACTS_DIR}
+                  go get gotest.tools/gotestsum
                   CGO_ENABLED=${CGO} \
                   gotestsum \
                     --junitfile "${TEST_OUTPUT_ARTIFACTS_DIR}\${TEST_OUTPUT_FILE_PREFIX}-unit-tests.xml" \
