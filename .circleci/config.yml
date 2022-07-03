@@ -6,7 +6,7 @@ executors:
   linux:
     machine:
       image: ubuntu-2204:2022.04.2
-    resource_class: xlarge
+    resource_class: large
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -114,26 +114,29 @@ jobs:
                 command: |
                   go test -v $(go list ./... | circleci tests split --split-by=timings)
 
-            - when:
-                condition:
-                  equal: ['circleci-project-setup', "$CIRCLE_BRANCH"]
-                steps:
-                  - run:
-                      name: Setup GCloud
-                      command: |
-                        echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
-                        
-                  - run:
-                      name: Authenticate to Google Cloud
-                      command: |
-                        gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+      - when:
+          condition:
+            and:
+              - equal: ['linux', << parameters.target_os >>]
+              - equal: ['amd64', << parameters.target_arch >>]           
+              - equal: ['circleci-project-setup', "$CIRCLE_BRANCH"]
+          steps:
+            - run:
+                name: Setup GCloud
+                command: |
+                  echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+                  
+            - run:
+                name: Authenticate to Google Cloud
+                command: |
+                  gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
 
-                  - run:
-                      name: Install development cluster
-                      command: |
-                        cd ops/terraform && terraform init && \
-                                            terraform workspace select development && \
-                                            terraform apply -auto-approve --var-file=development.tfvars
+            - run:
+                name: Install development cluster
+                command: |
+                  cd ops/terraform && terraform init && \
+                                      terraform workspace select development && \
+                                      terraform apply -auto-approve --var-file=development.tfvars
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
