@@ -22,7 +22,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       TEST_OUTPUT_FILE_PREFIX: "test-report"
-      $TEST_OUTPUT_ARTIFACTS_DIR: "test-results"
+      TEST_OUTPUT_ARTIFACTS_DIR: "test-results"
       CGO: 0
     working_directory: ~/repo
     executor: linux
