@@ -153,24 +153,19 @@ jobs:
       - run:
           name: Build tarball
           command: |
-            GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build-bacalhau-tgz
-            echo ${{ github.sha }} > Release.txt
+            make build-bacalhau-tgz
+            echo << pipeline.git.revision >> > Release.txt
 
       - run:
           name: Generate Changelog
           command: echo "# Release Notes" > CHANGELOG.txt
 
-      # - run:
-      #     name: Release
-      #     uses: softprops/action-gh-release@master
-      #     if: startsWith(github.ref, 'refs/tags/')
-      #     with:
-      #       files: |
-      #         ${{ env.BINARY_TARBALL }}
-      #         ${{ env.BINARY_TARBALL_SIGNATURE }}
-      #       body_path: CHANGELOG.txt
-      #     env:
-      #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run:
+          name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
+          command: |
+            gh release upload << pipeline.git.tag >> $BINARY_TARBALL
+            gh release upload << pipeline.git.tag >> $BINARY_TARBALL_SIGNATURE
+            cat CHANGELOG.txt | gh release edit -F -
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -206,6 +201,7 @@ workflows:
                 target_arch: "arm64"
           filters:  # required since `test` has tag filters AND requires `build`
             tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)$/
             branches:
               only: /^main$/
