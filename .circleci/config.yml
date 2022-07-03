@@ -6,7 +6,7 @@ executors:
   linux:
     machine:
       image: ubuntu-2204:2022.04.2
-    resource_class: large
+    resource_class: large    
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -67,24 +67,11 @@ jobs:
               - equal: ['amd64', << parameters.target_arch >>]
           steps:
             - run:
-                name: Setup GCloud@$GCLOUD_VERSION
-                command: |
-                  export GCLOUD_TARBALL="google-cloud-cli-${GCLOUD_VERSION}-linux-x86_64.tar.gz"
-                  curl -s -L -O "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${GCLOUD_TARBALL}"
-                  tar -xf "${GCLOUD_TARBALL}"
-                  ./google-cloud-sdk/install.sh --quiet
-            - run:
                 name: Install golangci-lint@$GOLANGCILINT_VERSION
                 command: |
                     # binary will be /usr/local/go/bin/bin/golangci-lint
                     curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                     golangci-lint --version
-            - run:
-                name: Install terraform@$TERRAFORM_VERSION
-                command: |
-                  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-                  sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-                  sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
 
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
@@ -114,12 +101,16 @@ jobs:
                 command: |
                   go test -v $(go list ./... | circleci tests split --split-by=timings)
 
+  deploy-to-development-cluster:
+    docker:  
+      - image: google/cloud-sdk:392.0.0
+    steps:
       - when:
           condition:
             and:
               - equal: ['linux', << parameters.target_os >>]
               - equal: ['amd64', << parameters.target_arch >>]           
-              - equal: ['circleci-project-setup', "$CIRCLE_BRANCH"]
+              - equal: ['circleci-project-setup', << pipeline.git.branch >>]
           steps:
             - run:
                 name: Setup GCloud
@@ -130,6 +121,13 @@ jobs:
                 name: Authenticate to Google Cloud
                 command: |
                   gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+
+            - run:
+                name: Install terraform@$TERRAFORM_VERSION
+                command: |
+                  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+                  sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+                  sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
 
             - run:
                 name: Install development cluster
