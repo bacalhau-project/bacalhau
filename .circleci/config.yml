@@ -147,6 +147,10 @@ jobs:
         type: string
     steps:
       - run:
+          name: Install gh
+          command: |
+            echo "$GITHUB_TOKEN" | gh auth login --with-token
+      - run:
           name: Build tarball
           command: |
             GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build-bacalhau-tgz
@@ -200,6 +204,8 @@ workflows:
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
-          filters:
+          filters:  # required since `test` has tag filters AND requires `build`
             tags:
-              only: /v.*/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+            branches:
+              only: /^main$/
