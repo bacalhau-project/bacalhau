@@ -3,6 +3,7 @@ package publicapi
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,7 +94,10 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
+func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
+	deal *executor.JobDeal, buildContext *bytes.Buffer) (*executor.Job,
+	error) {
+
 	deal.ClientID = system.GetClientID() // ensure we have a client ID
 	data := submitData{
 		Spec: spec,
@@ -116,6 +120,9 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec, 
 		ClientSignature: signature,
 		ClientPublicKey: system.GetClientPublicKey(),
 	}
+	if buildContext != nil {
+		req.Data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
+	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
 		return nil, err
@@ -129,6 +136,12 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
+
+	bs, err := json.Marshal(reqData)
+	if err != nil {
+		panic(err)
+	}
+	log.Debug().Msgf("request body: %s", string(bs))
 
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
@@ -148,6 +161,8 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
+
+	log.Debug().Msgf("http request --> %+v", req)
 	defer func() {
 		if err := res.Body.Close(); err != nil {
 			log.Error().Msgf("error closing response body: %v", err)
@@ -158,7 +173,7 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		body, err := io.ReadAll(res.Body)
 		if err == nil { // not critical if this fails
 			log.Error().Msgf(
-				"publicapi: non-200 body returned from API server: %s", string(body))
+				"publicapi: %d body returned from API server: %s", res.StatusCode, string(body))
 		}
 
 		return fmt.Errorf(

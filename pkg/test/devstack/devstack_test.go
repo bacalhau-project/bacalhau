@@ -37,7 +37,7 @@ func devStackDockerStorageTest(
 		t,
 		nodeCount,
 		0,
-		computenode.NewDefaultJobSelectionPolicy(),
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
@@ -50,7 +50,7 @@ func devStackDockerStorageTest(
 	jobSpec := &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
-		VM:       testCase.GetJobSpec(),
+		Docker:   testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  testCase.Outputs,
 	}
@@ -61,7 +61,7 @@ func devStackDockerStorageTest(
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
+	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	assert.NoError(t, err)
 
 	// wait for the job to complete across all nodes

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -68,7 +69,7 @@ func (j *Job) Copy() Job {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	// e.g. firecracker, docker or wasm
+	// e.g. docker or language
 	Engine EngineType `json:"engine"`
 
 	// e.g. ipfs or localfs
@@ -76,9 +77,12 @@ type JobSpec struct {
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier"`
 
-	// for VM based executors
-	VM   JobSpecVM   `json:"job_spec_vm"`
-	Wasm JobSpecWasm `json:"job_spec_wasm"`
+	// executor specific data
+	Docker   JobSpecDocker   `json:"job_spec_docker"`
+	Language JobSpecLanguage `json:"job_spec_language"`
+
+	// the compute (cpy, ram) resources this job requires
+	Resources resourceusage.ResourceUsageConfig `json:"resources"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
@@ -92,22 +96,29 @@ type JobSpec struct {
 }
 
 // for VM style executors
-type JobSpecVM struct {
+type JobSpecDocker struct {
 	// this should be pullable by docker
 	Image string `json:"image"`
 	// optionally override the default entrypoint
 	Entrypoint []string `json:"entrypoint"`
 	// a map of env to run the container with
 	Env []string `json:"env"`
-	// https://github.com/BTBurke/k8sresource strings
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-	Disk   string `json:"disk"`
 }
 
-// for Wasm style executors
-type JobSpecWasm struct {
-	Bytecode storage.StorageSpec `json:"bytecode"`
+// for language style executors (can target docker or wasm)
+type JobSpecLanguage struct {
+	Language        string `json:"language"`         // e.g. python
+	LanguageVersion string `json:"language_version"` // e.g. 3.8
+	// must this job be run in a deterministic context?
+	Deterministic bool `json:"deterministic"`
+	// context is a tar file stored in ipfs, containing e.g. source code and requirements
+	Context storage.StorageSpec `json:"context"`
+	// optional program specified on commandline, like python -c "print(1+1)"
+	Command string `json:"command"`
+	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
+	ProgramPath string `json:"program_path"`
+	// optional requirements.txt (or equivalent) path relative to the context dir
+	RequirementsPath string `json:"requirements_path"`
 }
 
 // The state of a job on a particular compute node. Note that the job will

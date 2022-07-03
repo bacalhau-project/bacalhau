@@ -134,7 +134,7 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
 	t.Events = append(t.Events, event)
 	// async so that our stack doesn't hold onto mutexes
-	go t.gt.BroadcastEvent(ctx, event)
+	go t.gt.ReadEvent(ctx, event)
 
 	return nil
 }

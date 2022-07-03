@@ -3,32 +3,36 @@ package util
 import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
+	"github.com/filecoin-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func NewDockerIPFSExecutors(
+func NewStandardExecutors(
 	cm *system.CleanupManager,
 	ipfsMultiAddress,
 	dockerID string,
 ) (map[executor.EngineType]executor.Executor, error) {
-	ipfsFuseStorage, err := fusedocker.NewStorageProvider(cm, ipfsMultiAddress)
-	if err != nil {
-		return nil, err
-	}
+	// Don't allow user to choose the fuse driver in case it has security issues.
+	// ipfsFuseStorage, err := fusedocker.NewStorageProvider(cm, ipfsMultiAddress)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	ex, err := docker.NewExecutor(cm, dockerID,
+	exDocker, err := docker.NewExecutor(cm, dockerID,
 		map[string]storage.StorageProvider{
-			storage.IPFSFuseDocker: ipfsFuseStorage,
-			storage.IPFSAPICopy:    ipfsAPICopyStorage,
+			// fuse driver is disabled so that - in case it poses a security
+			// risk - arbitrary users can't request it
+			// storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
+			storage.IPFSAPICopy: ipfsAPICopyStorage,
 			// we make the copy driver the "default" storage driver for docker
 			// users have to specify the fuse driver explicitly
 			storage.IPFSDefault: ipfsAPICopyStorage,
@@ -37,16 +41,31 @@ func NewDockerIPFSExecutors(
 		return nil, err
 	}
 
-	return map[executor.EngineType]executor.Executor{
-		executor.EngineDocker: ex,
-	}, nil
+	executors := map[executor.EngineType]executor.Executor{
+		executor.EngineDocker: exDocker,
+	}
+
+	// language executors wrap other executors, so pass them a reference to all
+	// the executors so they can look up the ones they need
+	exLang, err := language.NewExecutor(cm, executors)
+	executors[executor.EngineLanguage] = exLang
+	if err != nil {
+		return nil, err
+	}
+	exPythonWasm, err := pythonwasm.NewExecutor(cm, executors)
+	executors[executor.EnginePythonWasm] = exPythonWasm
+	if err != nil {
+		return nil, err
+	}
+	return executors, nil
 }
 
 // return noop executors for all engines
 func NewNoopExecutors(
 	cm *system.CleanupManager,
+	config noop_executor.ExecutorConfig,
 ) (map[executor.EngineType]executor.Executor, error) {
-	noopExecutor, err := noop_executor.NewExecutor()
+	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 	if err != nil {
 		return nil, err

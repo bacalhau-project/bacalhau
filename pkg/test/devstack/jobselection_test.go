@@ -30,7 +30,9 @@ func TestSelectAllJobs(t *testing.T) {
 		ctx, span := newSpan(testCase.name)
 		defer span.End()
 		scenario := scenario.CatFileToStdout(t)
-		stack, cm := SetupTest(t, testCase.nodeCount, 0, testCase.policy)
+		stack, cm := SetupTest(t, testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+			JobSelectionPolicy: testCase.policy,
+		})
 		defer TeardownTest(stack, cm)
 
 		nodeIds, err := stack.GetNodeIds()
@@ -42,7 +44,7 @@ func TestSelectAllJobs(t *testing.T) {
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
-			VM:       scenario.GetJobSpec(),
+			Docker:   scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,
 		}
@@ -53,7 +55,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
-		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
+		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		assert.NoError(t, err)
 
 		// wait for the job to complete across all nodes

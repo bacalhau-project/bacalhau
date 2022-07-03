@@ -25,14 +25,15 @@ var StorageDriverNames = []string{
 func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
-	jobSelectionPolicy computenode.JobSelectionPolicy,
+	//nolint:gocritic
+	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
-		return executor_util.NewDockerIPFSExecutors(
+		return executor_util.NewStandardExecutors(
 			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
@@ -45,7 +46,7 @@ func SetupTest(
 		badActors,
 		getExecutors,
 		getVerifiers,
-		jobSelectionPolicy,
+		config,
 	)
 	assert.NoError(t, err)
 

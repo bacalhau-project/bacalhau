@@ -183,20 +183,20 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 
 		stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
 			"docker",
-			[]string{"pull", j.Spec.VM.Image},
+			[]string{"pull", j.Spec.Docker.Image},
 		)
 		if err != nil {
 			return "", err
 		}
 
-		log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.VM.Image, stdout)
+		log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.Docker.Image, stdout)
 	}
 
 	containerConfig := &container.Config{
-		Image:           j.Spec.VM.Image,
+		Image:           j.Spec.Docker.Image,
 		Tty:             false,
-		Env:             j.Spec.VM.Env,
-		Entrypoint:      j.Spec.VM.Entrypoint,
+		Env:             j.Spec.Docker.Env,
+		Entrypoint:      j.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(j),
 		NetworkDisabled: true,
 	}

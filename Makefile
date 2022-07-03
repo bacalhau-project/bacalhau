@@ -17,9 +17,6 @@ ifeq ($(GOARCH),)
 GOARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
 endif
 
-# use docker runtime rather than ignite, meaning we run basically everywhere (no need for hardware virtualization support)
-export BACALHAU_RUNTIME = docker
-
 # Env Variables
 export GO111MODULE = on
 export GO = go
@@ -53,21 +50,21 @@ vet:
 
 ## Run all pre-commit hooks
 ################################################################################
-# Target: precommit                                                            #
+# Target: precommit
 ################################################################################
 .PHONY: precommit
 precommit:
 	${PRECOMMIT} run --all
 
 ################################################################################
-# Target: build	                                                               #
+# Target: build
 ################################################################################
 .PHONY: build
 build: build-bacalhau
 
 
 ################################################################################
-# Target: build-bacalhau                                                       #
+# Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
@@ -87,7 +84,7 @@ build-docker-images: build-ipfs-sidecar-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
-# Target: build-bacalhau-tgz                                                   #
+# Target: build-bacalhau-tgz
 ################################################################################
 .PHONY: build-bacalhau-tgz
 build-bacalhau-tgz: 
@@ -107,7 +104,7 @@ build-bacalhau-tgz:
 	@echo "BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
 
 ################################################################################
-# Target: clean					                               #
+# Target: clean
 ################################################################################
 .PHONY: clean
 clean:
@@ -115,7 +112,7 @@ clean:
 
 
 ################################################################################
-# Target: test					                               #
+# Target: test
 ################################################################################
 .PHONY: test
 test: build-ipfs-sidecar-image
@@ -127,7 +124,7 @@ test-debug: build-ipfs-sidecar-image
 
 .PHONY: test-one
 test-one:
-	BACALHAU_RUNTIME=docker go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
+	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
 test-devstack:
@@ -141,12 +138,18 @@ test-commands:
 test-badactors:
 	TEST=TestCatchBadActors make test-one
 
+.PHONY: test-pythonwasm
+test-pythonwasm:
+# TestSimplestPythonWasmDashC
+	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+#	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+
 ################################################################################
 # Target: devstack
 ################################################################################
 .PHONY: devstack
 devstack:
-	BACALHAU_RUNTIME=docker go run . devstack
+	go run . devstack
 
 .PHONY: devstack-noop
 devstack-noop:
@@ -154,28 +157,28 @@ devstack-noop:
 
 .PHONY: devstack-race
 devstack-race:
-	BACALHAU_RUNTIME=docker go run -race . devstack
+	go run -race . devstack
 
 .PHONY: devstack-badactor
 devstack-badactor:
-	BACALHAU_RUNTIME=docker go run . devstack --bad-actors 1
+	go run . devstack --bad-actors 1
 
 ################################################################################
-# Target: lint					                               #
+# Target: lint
 ################################################################################
 .PHONY: lint
 lint: build-bacalhau
 	golangci-lint run --timeout 10m
 
 ################################################################################
-# Target: modtidy                                                              #
+# Target: modtidy
 ################################################################################
 .PHONY: modtidy
 modtidy:
 	go mod tidy
 
 ################################################################################
-# Target: check-diff                                                           #
+# Target: check-diff
 ################################################################################
 .PHONY: check-diff
 check-diff:
@@ -184,7 +187,7 @@ check-diff:
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################
-# Target: test-junit			                                       #
+# Target: test-junit
 ################################################################################
 .PHONY: test-junit
 test-junit: build-bacalhau
