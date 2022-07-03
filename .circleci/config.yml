@@ -135,29 +135,71 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
+  release:
+    environment:
+      GOOS: << parameters.target_os >>
+      GOARCH: << parameters.target_arch >>
+    executor: linux
+    parameters:
+      target_arch:
+        type: string
+      target_os:
+        type: string
+    steps:
+      - run:
+          name: Build tarball
+          command: |
+            GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }} make build-bacalhau-tgz
+            echo ${{ github.sha }} > Release.txt
+
+      - run:
+          name: Generate Changelog
+          command: echo "# Release Notes" > CHANGELOG.txt
+
+      # - run:
+      #     name: Release
+      #     uses: softprops/action-gh-release@master
+      #     if: startsWith(github.ref, 'refs/tags/')
+      #     with:
+      #       files: |
+      #         ${{ env.BINARY_TARBALL }}
+      #         ${{ env.BINARY_TARBALL_SIGNATURE }}
+      #       body_path: CHANGELOG.txt
+      #     env:
+      #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
   build-workflow:
     jobs:
       - build:
-          name: ubuntu-amd64
-          target_os: linux
-          target_arch: amd64
-      - build:
-          name: macOS-arm64
-          target_os: darwin
-          target_arch: arm64
-      - build:
-          name: macOS-amd64
-          target_os: darwin
-          target_arch: amd64
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
       - deploy:
           requires:
-            - ubuntu-amd64
-            - macOS-arm64
-            - macOS-amd64
+            - build-linux-amd64
           rollout_stage: development
           filters:
             branches:
               only: circleci-project-setup
+      - release:
+          name: release-<< matrix.target_os >>-<< matrix.target_arch >>
+          requires:
+            - build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
+          filters:
+            tags:
+              only: /v.*/
