@@ -105,34 +105,29 @@ jobs:
     docker:  
       - image: google/cloud-sdk:392.0.0
     steps:
-      - when:
-          condition:
-            and:
-              - equal: ['circleci-project-setup', << pipeline.git.branch >>]
-          steps:
-            - run:
-                name: Setup GCloud
-                command: |
-                  echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
-                  
-            - run:
-                name: Authenticate to Google Cloud
-                command: |
-                  gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+      - run:
+          name: Setup GCloud
+          command: |
+            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+            
+      - run:
+          name: Authenticate to Google Cloud
+          command: |
+            gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
 
-            - run:
-                name: Install terraform@$TERRAFORM_VERSION
-                command: |
-                  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-                  sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-                  sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
+      - run:
+          name: Install terraform@$TERRAFORM_VERSION
+          command: |
+            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+            sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
 
-            - run:
-                name: Install development cluster
-                command: |
-                  cd ops/terraform && terraform init && \
-                                      terraform workspace select development && \
-                                      terraform apply -auto-approve --var-file=development.tfvars
+      - run:
+          name: Install development cluster
+          command: |
+            cd ops/terraform && terraform init && \
+                                terraform workspace select development && \
+                                terraform apply -auto-approve --var-file=development.tfvars
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -153,4 +148,9 @@ workflows:
           target_arch: amd64
       - deploy-to-development-cluster:
           requires:
-            - build
+            - ubuntu-amd64
+            - macOS-arm64
+            - macOS-amd64
+          filters:
+            branches:
+              only: main
