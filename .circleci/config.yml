@@ -105,7 +105,7 @@ jobs:
                 name: Test
                 command: |
                   mkdir ${TEST_OUTPUT_ARTIFACTS_DIR}
-                  go get gotest.tools/gotestsum
+                  go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
                   gotestsum \
                     --junitfile "${TEST_OUTPUT_ARTIFACTS_DIR}\${TEST_OUTPUT_FILE_PREFIX}-unit-tests.xml" \
@@ -219,6 +219,6 @@ workflows:
           filters:  # required since `test` has tag filters AND requires `build`
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)-fooz-.*$/
             branches:
               only: /^main$/
