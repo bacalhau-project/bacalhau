@@ -21,6 +21,9 @@ jobs:
       ARCHIVE_OUTDIR: dist/archives
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
+      TEST_OUTPUT_FILE_PREFIX: "test-report"
+      $TEST_OUTPUT_ARTIFACTS_DIR: "test-results"
+      CGO: 0
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -98,6 +101,19 @@ jobs:
                 name: Test
                 command: |
                   go test -v $(go list ./... | circleci tests split --split-by=timings)
+            - run:
+                name: Test
+                command: |
+                  mkdir ${TEST_OUTPUT_ARTIFACTS_DIR}
+                  CGO_ENABLED=${CGO} \
+                  gotestsum \
+                    --junitfile "${TEST_OUTPUT_ARTIFACTS_DIR}\${TEST_OUTPUT_FILE_PREFIX}-unit-tests.xml" \
+                    --format standard-quiet \
+                    -- \
+                      ./pkg/... ./cmd/... \
+                      ${COVERAGE_OPTS} --tags=unit
+            - store_test_results:
+                path: ${TEST_OUTPUT_ARTIFACTS_DIR}
 
   deploy:
     docker:  
