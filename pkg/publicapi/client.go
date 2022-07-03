@@ -97,7 +97,6 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 	deal *executor.JobDeal, buildContext *bytes.Buffer) (*executor.Job,
 	error) {
-
 	deal.ClientID = system.GetClientID() // ensure we have a client ID
 	data := submitData{
 		Spec: spec,
