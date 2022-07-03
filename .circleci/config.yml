@@ -111,12 +111,14 @@ jobs:
       - run:
           name: Setup GCloud
           command: |
-            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS" > /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+            # Create service account and get credentials here
+            # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
+            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
             
       - run:
           name: Authenticate to Google Cloud
           command: |
-            gcloud auth activate-service-account --key-file /tmp/$CIRCLE_WORKFLOW_JOB_ID.json
+            gcloud auth activate-service-account --key-file /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
 
       - run:
           name: Install terraform@$TERRAFORM_VERSION
