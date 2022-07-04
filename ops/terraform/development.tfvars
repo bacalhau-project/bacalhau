@@ -9,3 +9,4 @@ zone                   = "europe-north1-c"
 volume_size_gb         = 10
 machine_type           = "e2-standard-4"
 protect_resources      = true
+auto_subnets           = true

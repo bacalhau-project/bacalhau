@@ -196,3 +196,12 @@ The disks and ip addresses are in one of two modes:
  * `unprotected`
 
 To control which type is used - you set the `protect_resources` variable to true when creating a cluster.
+
+# Auto subnets
+
+With long lived clusters - we use the `auto_subnets = true` setting which means there will be a bunch of subnetworks auto created for the deployment network.
+
+For short lived clusters - we set this to false and create a single manual sub network.
+
+This is so we don't use up all of our network quota making subnets that we don't actually use.
+

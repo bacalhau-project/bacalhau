@@ -43,7 +43,7 @@ sudo mkdir -p /terraform_node
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
 export TERRAFORM_NODE_INDEX="${count.index}"
 export TERRAFORM_NODE_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
-export TERRAFORM_NODE0_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
+export TERRAFORM_NODE0_IP="${var.protect_resources ? google_compute_address.ipv4_address[0].address : google_compute_address.ipv4_address_unprotected[0].address}"
 export IPFS_VERSION="${var.ipfs_version}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
 export BACALHAU_PORT="${var.bacalhau_port}"
@@ -63,7 +63,7 @@ EOI
 sudo mkdir -p /terraform_node
 
 sudo tee /terraform_node/bacalhau-unsafe-private-key > /dev/null <<'EOI'
-${file("${path.module}/remote_files/configs/unsafe-private-key")}
+${var.bacalhau_unsafe_cluster ? file("${path.module}/remote_files/configs/unsafe-private-key") : ""}
 EOI
 
 sudo tee /terraform_node/install-node.sh > /dev/null <<'EOI'
@@ -95,7 +95,7 @@ ${file("${path.module}/remote_files/health_checker/healthz.sh")}
 EOI
 
 sudo tee /var/www/health_checker/network_name.txt > /dev/null <<EOI
-${google_compute_network.bacalhau_network.name}
+${var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name}
 EOI
 
 sudo tee /var/www/health_checker/address.txt > /dev/null <<EOI
@@ -123,9 +123,7 @@ EOI
 sudo bash /terraform_node/install-node.sh
 EOF
   network_interface {
-    network    = google_compute_network.bacalhau_network.name
-    subnetwork = google_compute_subnetwork.bacalhau_subnetwork.name
-
+    network    = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
     access_config {
       nat_ip = var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address
     }
@@ -221,7 +219,7 @@ resource "google_compute_attached_disk" "default" {
 
 resource "google_compute_firewall" "bacalhau_firewall" {
   name    = "bacalhau-ingress-firewall-${terraform.workspace}"
-  network = google_compute_network.bacalhau_network.name
+  network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
 
   allow {
     protocol = "icmp"
@@ -245,7 +243,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
 
 resource "google_compute_firewall" "bacalhau_ssh_firewall" {
   name    = "bacalhau-ssh-firewall-${terraform.workspace}"
-  network = google_compute_network.bacalhau_network.name
+  network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
 
   allow {
     protocol = "icmp"
@@ -260,14 +258,24 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
   source_ranges = var.ssh_access_cidrs
 }
 
-resource "google_compute_subnetwork" "bacalhau_subnetwork" {
-  name          = "bacalhau-subnetwork-${terraform.workspace}"
-  ip_cidr_range = "192.168.0.0/16"
-  region        = var.region
-  network       = google_compute_network.bacalhau_network.id
-}
-
 resource "google_compute_network" "bacalhau_network" {
   name                    = "bacalhau-network-${terraform.workspace}"
+  auto_create_subnetworks = true
+  count         = var.auto_subnets ? 1 : 0
+}
+
+// these are used for short lived clusters where we only make
+// 1 subnet otherwise we use up our quota for subnetworks
+resource "google_compute_network" "bacalhau_network_manual" {
+  name                    = "bacalhau-network-manual-${terraform.workspace}"
   auto_create_subnetworks = false
+  count         = var.auto_subnets ? 0 : 1
+}
+
+resource "google_compute_subnetwork" "bacalhau_subnetwork_manual" {
+  name          = "bacalhau-subnetwork-manual-${terraform.workspace}"
+  ip_cidr_range = "192.168.0.0/16"
+  region        = var.region
+  network       = google_compute_network.bacalhau_network_manual[0].id
+  count         = var.auto_subnets ? 0 : 1
 }
