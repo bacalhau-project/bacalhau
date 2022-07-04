@@ -121,6 +121,7 @@ jobs:
       GCLOUD_VERSION: 392.0.0
       TERRAFORM_VERSION: 1.2.4
     steps:
+      - checkout
       - run:
           name: Setup GCloud
           command: |
