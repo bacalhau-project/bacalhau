@@ -30,7 +30,7 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	t.Skip("Skipping while we work out the null pointer test issue")
+	t.Skip("Skipping while we work out the null pointer test")
 	ctx, span := newSpan(testCase.Name)
 	defer span.End()
 
