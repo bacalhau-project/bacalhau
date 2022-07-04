@@ -21,9 +21,10 @@ import (
 )
 
 func TestJobResourceLimits(t *testing.T) {
-	runTest := func(jobResources, limits resourceusage.ResourceUsageConfig, expectedResult bool) {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
 		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			JobResourceLimit: limits,
+			JobResourceLimit:               jobResourceLimits,
+			DefaultJobResourceRequirements: defaultJobResourceLimits,
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 		job := GetProbeData("")
@@ -31,13 +32,14 @@ func TestJobResourceLimits(t *testing.T) {
 
 		result, err := computeNode.SelectJob(context.Background(), job)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, limits))
+		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
 	}
 
 	// the job is half the limit
 	runTest(
 		getResources("1", "500Mb"),
 		getResources("2", "1Gb"),
+		getResources("100m", "100Mb"),
 		true,
 	)
 
@@ -45,6 +47,7 @@ func TestJobResourceLimits(t *testing.T) {
 	runTest(
 		getResources("1", "500Mb"),
 		getResources("1", "500Mb"),
+		getResources("100m", "100Mb"),
 		true,
 	)
 
@@ -52,6 +55,7 @@ func TestJobResourceLimits(t *testing.T) {
 	runTest(
 		getResources("2", "1Gb"),
 		getResources("1", "500Mb"),
+		getResources("100m", "100Mb"),
 		false,
 	)
 
@@ -60,6 +64,7 @@ func TestJobResourceLimits(t *testing.T) {
 	runTest(
 		getResources("250m", "200Mb"),
 		getResources("1", "500Mb"),
+		getResources("100m", "100Mb"),
 		true,
 	)
 
@@ -67,6 +72,7 @@ func TestJobResourceLimits(t *testing.T) {
 	runTest(
 		getResources("250m", "200Mb"),
 		getResources("", ""),
+		getResources("100m", "100Mb"),
 		true,
 	)
 
@@ -74,17 +80,23 @@ func TestJobResourceLimits(t *testing.T) {
 	runTest(
 		getResources("", ""),
 		getResources("", ""),
+		getResources("100m", "100Mb"),
 		true,
 	)
 
-	// // test when job is empty
-	// // but there are limits and so we should not run the job
-	// TODO: make this work - probably need to assign the job limit rather than total limit
-	// runTest(
-	// 	getResources("", ""),
-	// 	getResources("250m", "200Mb"),
-	// 	false,
-	// )
+	runTest(
+		getResources("", ""),
+		getResources("250m", "200Mb"),
+		getResources("100m", "100Mb"),
+		true,
+	)
+
+	runTest(
+		getResources("300m", ""),
+		getResources("250m", "200Mb"),
+		getResources("100m", "100Mb"),
+		false,
+	)
 
 }
 
