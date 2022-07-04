@@ -1,0 +1,18 @@
+version: 0.1
+cli:
+  version: 0.14.0-beta
+lint:
+  enabled:
+    - actionlint@1.6.15
+    - black@22.6.0
+    - flake8@4.0.1
+    - gitleaks@8.8.11
+    - gofmt@1.16.7
+    - golangci-lint@1.46.2
+    - hadolint@2.10.0
+    - isort@5.10.1
+    - markdownlint@0.31.1
+    - shellcheck@0.8.0
+    - shfmt@3.5.0
+    - taplo@release-taplo-cli-0.6.8
+    - tflint@0.35.0

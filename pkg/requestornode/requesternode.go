@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -14,10 +15,13 @@ import (
 type RequesterNode struct {
 	NodeID    string
 	Transport transport.Transport
+	Verifiers map[verifier.VerifierType]verifier.Verifier
 }
 
 func NewRequesterNode(
+	cm *system.CleanupManager,
 	t transport.Transport,
+	verifiers map[verifier.VerifierType]verifier.Verifier,
 ) (*RequesterNode, error) {
 	ctx := context.Background() // TODO: instrument with trace
 
@@ -32,6 +36,7 @@ func NewRequesterNode(
 	requesterNode := &RequesterNode{
 		NodeID:    nodeID,
 		Transport: t,
+		Verifiers: verifiers,
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context,
@@ -117,6 +122,12 @@ func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeID string) (bidAcc
 	}
 
 	return true, "", nil
+}
+
+func (node *RequesterNode) PinContext(buildContext string) (string, error) {
+	ipfsVerifier := node.Verifiers[verifier.VerifierIpfs]
+	// TODO: we should have a method specifically for this not just piggybacking on the ipfs verifier
+	return ipfsVerifier.ProcessResultsFolder(context.Background(), "", buildContext)
 }
 
 func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {

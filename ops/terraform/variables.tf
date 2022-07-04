@@ -37,9 +37,16 @@ variable "boot_disk_size_gb" {
   type = number
   default = 10
 }
+// should we add delete protection to public ip addresses and disks?
 variable "protect_resources" {
   type    = bool
   default = true
+}
+// should we automatically make subnets (for long lived clusters)
+// set to false if this is a short lived cluster
+variable "auto_subnets" {
+  type    = bool
+  default = false
 }
 variable "restore_from_backup" {
   type    = string

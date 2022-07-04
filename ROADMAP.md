@@ -23,19 +23,20 @@
 
 1. *(performance-1)* Get the resolution of jobs down to seconds, even in large networks where 1000s of nodes are participating with hundreds of job submissions per second.
     1. **Example:** As the network is dealing with a multitude of use cases (landsat, biomedical, SETI@home and protein folding has migrated over to use Bacalhau, etc) and the network is processing hundreds of job executions per second, it’s now started to slow down a lot. This phase is all about getting it speedy again.
-2. *(byzantine-1)* Extend that system to work when up to 10% of the nodes are malicious.
-    1. **Example:** Even when a small minority of nodes are trying to mess up the results, a user can still run cloud detection on 10,000 files in IPFS with no errors or incorrect results.
+2. *(filecoin)* Add support for reading datasets from Filecoin so that data in that network becomes accessible to IPCS workloads
+    1. **Example:** A big data provider has put petabytes of public data onto Filecoin. Bacalhau users can consume it by attaching a Filecoin wallet to their Bacalhau node and giving it a spending limit.
 
 **SEPTEMBER**
 
+2. *(byzantine-1)* Extend that system to work when up to 10% of the nodes are malicious.
+    1. **Example:** Even when a small minority of nodes are trying to mess up the results, a user can still run cloud detection on 10,000 files in IPFS with no errors or incorrect results.
+
 1. *(dag)* Extend that system to support jobs that are described in terms of pipelines: the output of one job feeding into the input of the next.
     1. **Example:** Cloud removal in the Landsat job is actually a pipeline which first detects images with clouds, then only for those images, forwards them to a pipeline which removes the clouds.
-2. *(byzantine-2)* Extend that system to work when up to 49% of the nodes are malicious.
-    1. **Example:** A larger attack happens on the network (>10%, <50%). Before this phase, this attack would bring down the network. After this phase, the network would carry on operating (although potentially degraded, higher latencies etc).
 
 **OCTOBER (TBD)**
 
+2. *(byzantine-2)* Extend that system to work when up to 49% of the nodes are malicious.
+    1. **Example:** A larger attack happens on the network (>10%, <50%). Before this phase, this attack would bring down the network. After this phase, the network would carry on operating (although potentially degraded, higher latencies etc).
 1. *(nondeterminism)* Extend that system to work with execution runtimes that are non-deterministic, e.g. arbitrary user-provided container images, to support workloads such ML training. In particular, this would prove out that the system is pluggable in terms of verification strategies, this lays the groundwork for future support for other strategies in the triad of trustless compute, such as cryptographic verifiability, secrecy and optimistic verifiability.
     1. **Example:** Nondeterministic workloads, or ones that can’t be expressed as deterministic WASM binaries, can now be run on the network, for example training ML models.
-2. *(filecoin)* Add support for reading datasets from Filecoin so that data in that network becomes accessible to IPCS workloads
-    1. **Example:** A big data provider has put petabytes of public data onto Filecoin. Bacalhau users can consume it by attaching a Filecoin wallet to their Bacalhau node and giving it a spending limit.

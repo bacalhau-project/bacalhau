@@ -32,7 +32,7 @@ func main() {
 	numNodes := 3
 	numBadNodes := 0
 	getExecutors := func(addr string, node int) (map[executor.EngineType]executor.Executor, error) {
-		return executor_util.NewDockerIPFSExecutors(cm, addr, fmt.Sprintf("devstack-node-%d", node))
+		return executor_util.NewStandardExecutors(cm, addr, fmt.Sprintf("devstack-node-%d", node))
 	}
 	getVerifiers := func(addr string, node int) (map[verifier.VerifierType]verifier.Verifier, error) {
 		return verifier_util.NewIPFSVerifiers(cm, addr)
@@ -57,7 +57,7 @@ func main() {
 		apiClient := publicapi.NewAPIClient(APIUri)
 
 		spec, deal := newJob()
-		job, err := apiClient.Submit(context.Background(), spec, deal)
+		job, err := apiClient.Submit(context.Background(), spec, deal, nil)
 		if err != nil {
 			panic(fmt.Errorf("fatal error while submitting job: %w", err))
 		}
@@ -89,7 +89,7 @@ func newJob() (*executor.JobSpec, *executor.JobDeal) {
 	return &executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
-			VM: executor.JobSpecVM{
+			Docker: executor.JobSpecDocker{
 				Image:      "ubuntu:latest",
 				Entrypoint: []string{"echo", "Hello, world!"},
 			},

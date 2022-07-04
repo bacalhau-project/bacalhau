@@ -39,7 +39,7 @@ const (
 type IGetStorageDriver func(stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
 type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error)
 type ICheckResults func(resultsDir string)
-type IGetJobSpec func() executor.JobSpecVM
+type IGetJobSpec func() executor.JobSpecDocker
 
 /*
 

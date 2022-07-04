@@ -13,7 +13,14 @@ var DefaultPortNumber = 1234
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(serveCmd)
+
+	// Porcelain commands (language specific easy to use commands)
+	RootCmd.AddCommand(runCmd)
+
+	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
+	// TODO: RootCmd.AddCommand(wasmCmd)
+
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(describeCmd)

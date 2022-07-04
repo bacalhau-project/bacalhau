@@ -1,8 +1,8 @@
-from collections import defaultdict
 # glob the files in results directory
 import glob
 import json
 import statistics
+from collections import defaultdict
 
 files = glob.glob("results/run-*.json")
 
@@ -37,9 +37,9 @@ for run in sorted(runs):
             for code in js["results"][0]["exit_codes"]:
                 exitCodes[code] += 1
             means.append(js["results"][0]["mean"])
+        # trunk-ignore(flake8/E722)
         except:
             pass
     print(f"    exitCodes: {dict(exitCodes)}")
     if means:
         print(f"    mean: {statistics.mean(means)}")
-

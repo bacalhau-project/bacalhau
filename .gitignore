@@ -33,3 +33,4 @@ ops/terraform/.terraform/*
 production.tfvars
 ops/terraform/*.out
 benchmark_hack/results
+*_unit.json

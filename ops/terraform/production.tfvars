@@ -1,4 +1,4 @@
-bacalhau_version       = "v0.1.16"
+bacalhau_version       = "v0.1.17"
 bacalhau_port          = "1235"
 bacalhau_connect_node0 = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
 ipfs_version           = "v0.12.2"
@@ -10,3 +10,4 @@ volume_size_gb         = 500
 boot_disk_size_gb      = 500
 machine_type           = "e2-standard-16"
 protect_resources      = true
+auto_subnets           = true

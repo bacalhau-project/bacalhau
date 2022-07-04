@@ -6,9 +6,10 @@ Wants=network-online.target systemd-networkd-wait-online.service ipfs-daemon.ser
 [Service]
 Environment="LOG_LEVEL=debug"
 Environment="BACALHAU_PATH=/data"
+Environment="BACALHAU_DIR=/data"
 Restart=always
 RestartSec=5s
-ExecStart=/usr/bin/sh -c "bash /terraform_node/start-bacalhau.sh 2>&1 | tee -a /tmp/bacalhau.log"
+ExecStart=bash /terraform_node/start-bacalhau.sh
 
 [Install]
 WantedBy=multi-user.target
