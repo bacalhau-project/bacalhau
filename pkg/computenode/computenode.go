@@ -195,6 +195,7 @@ func constructComputeNode(
 		JobResourceLimit:               jobResourceLimit,
 		DefaultJobResourceRequirements: defaultJobResourceRequirements,
 		RunningJobs:                    map[string]*executor.Job{},
+		BiddingJobs:                    map[string]*executor.Job{},
 		SelectedJobQueue:               []*executor.Job{},
 	}
 
