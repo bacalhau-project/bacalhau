@@ -33,6 +33,11 @@ type ComputeNodeConfig struct {
 	// if a job does not state how much CPU or Memory is used
 	// what values should we assume?
 	DefaultJobResourceRequirements resourceusage.ResourceUsageConfig
+
+	// how long is a job in "bidding" state before we clear it out of
+	// our backlog to make space for new jobs to be selected
+	// this is turned into a duration using time.ParseDuration()
+	BiddingBacklogTimeout string
 }
 
 type ComputeNode struct {
@@ -45,6 +50,18 @@ type ComputeNode struct {
 	// a FIFO queue of jobs that we selected to run by our JobSelectionPolicy
 	// but have not yet had accepted bids on - this is our "backlog"
 	SelectedJobQueue []*executor.Job
+
+	// jobs we are currently bidding on
+	// this is "potential" usage because accepted bids
+	// will start coming in (which turns a BiddingJob into a RunningJob)
+	// so when we ask "how much capacity are we using"
+	// we need to sum "RunningJobs" and a coeffcieint of "BiddingJobs"
+	// the coefficient represents how much we over promise our capacity
+	// based on bids not being accepted
+	// TODO: replace all of this with a proper state machine implmentation
+	// that is based on a data store
+	// https://github.com/filecoin-project/bacalhau/issues/327
+	BiddingJobs map[string]*executor.Job
 
 	// jobs that are currently running in their executor
 	// any jobs here will not be present in the selected job queue
@@ -190,9 +207,11 @@ func constructComputeNode(
 
 */
 func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
-	// run our control loop every second
-	// TODO: decide how often to run this control loop - perhaps make that configurable?
-	ticker := time.NewTicker(time.Second * 1)
+
+	// this won't hurt our throughput becauase we are calling
+	// controlLoopBidOnJobs right away as soon as a created event is
+	// seen or a job has finished
+	ticker := time.NewTicker(time.Second * 10)
 	ctx, cancelFunction := context.WithCancel(context.Background())
 
 	cm.RegisterCallback(func() error {
@@ -219,10 +238,11 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-	runningJobResources := node.getRunningJobResources()
+
+	activeJobResourceUsage := node.getTotalJobResourceUsage()
 	remainingJobResources := resourceusage.ResourceUsageData{
-		CPU:    node.TotalResourceLimit.CPU - runningJobResources.CPU,
-		Memory: node.TotalResourceLimit.Memory - runningJobResources.Memory,
+		CPU:    node.TotalResourceLimit.CPU - activeJobResourceUsage.CPU,
+		Memory: node.TotalResourceLimit.Memory - activeJobResourceUsage.Memory,
 	}
 
 	for _, queuedJob := range node.SelectedJobQueue {
@@ -230,16 +250,13 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		jobRequirements := node.getJobResourceRequirements(queuedJob.Spec.Resources)
 
 		if resourceusage.CheckResourceRequirements(jobRequirements, remainingJobResources) {
-			remainingJobResources.CPU -= jobRequirements.CPU
-			remainingJobResources.Memory -= jobRequirements.Memory
-
-			// bid on this job
-			node.removeSelectedJob(queuedJob.ID)
 			err := node.BidOnJob(context.Background(), queuedJob)
 			if err != nil {
 				log.Warn().Msgf("Error bidding on job %s: %s", queuedJob.ID, err)
 				continue
 			}
+			remainingJobResources.CPU -= jobRequirements.CPU
+			remainingJobResources.Memory -= jobRequirements.Memory
 		}
 	}
 }
@@ -445,8 +462,17 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 	log.Debug().Msgf("compute node %s bidding on: %+v", node.NodeID, job.Spec)
 
-	// TODO: Check result of bid job
-	return node.Transport.BidJob(ctx, job.ID)
+	err := node.Transport.BidJob(ctx, job.ID)
+
+	if err != nil {
+		return err
+	}
+
+	// bid on this job
+	node.removeSelectedJob(job.ID)
+	node.addBiddingJob(job)
+
+	return nil
 }
 
 /*
@@ -458,9 +484,11 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
+		node.removeBiddingJob(job)
 		return "", err
 	}
 
+	node.removeBiddingJob(job)
 	node.addRunningJob(job)
 	result, err := e.RunJob(ctx, job)
 	node.removeRunningJob(job)
@@ -547,6 +575,20 @@ func (node *ComputeNode) removeSelectedJob(id string) {
 	node.SelectedJobQueue = newArr
 }
 
+var biddingJobMutex sync.Mutex
+
+func (node *ComputeNode) addBiddingJob(job *executor.Job) {
+	biddingJobMutex.Lock()
+	defer biddingJobMutex.Unlock()
+	node.BiddingJobs[job.ID] = job
+}
+
+func (node *ComputeNode) removeBiddingJob(job *executor.Job) {
+	biddingJobMutex.Lock()
+	defer biddingJobMutex.Unlock()
+	delete(node.BiddingJobs, job.ID)
+}
+
 var runningJobMutex sync.Mutex
 
 func (node *ComputeNode) addRunningJob(job *executor.Job) {
@@ -561,8 +603,27 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 	delete(node.RunningJobs, job.ID)
 }
 
+// add up all the resources reserved by jobs we are currently bidding on
+func (node *ComputeNode) getBiddingJobResourceUsage() resourceusage.ResourceUsageData {
+	var cpu float64
+	var memory uint64
+
+	biddingJobMutex.Lock()
+	defer biddingJobMutex.Unlock()
+
+	for _, job := range node.BiddingJobs {
+		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
+		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
+	}
+
+	return resourceusage.ResourceUsageData{
+		CPU:    cpu,
+		Memory: memory,
+	}
+}
+
 // add up all the resources being used by all the jobs currently running
-func (node *ComputeNode) getRunningJobResources() resourceusage.ResourceUsageData {
+func (node *ComputeNode) getRunningJobResourceUsage() resourceusage.ResourceUsageData {
 	var cpu float64
 	var memory uint64
 
@@ -578,6 +639,18 @@ func (node *ComputeNode) getRunningJobResources() resourceusage.ResourceUsageDat
 		CPU:    cpu,
 		Memory: memory,
 	}
+}
+
+func (node *ComputeNode) getTotalJobResourceUsage() resourceusage.ResourceUsageData {
+	usage := resourceusage.ResourceUsageData{}
+
+	bidding := node.getBiddingJobResourceUsage()
+	running := node.getRunningJobResourceUsage()
+
+	usage.CPU = bidding.CPU + running.CPU
+	usage.Memory = bidding.Memory + running.Memory
+
+	return usage
 }
 
 // get the limits for a single job
