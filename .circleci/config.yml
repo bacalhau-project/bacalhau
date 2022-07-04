@@ -6,7 +6,7 @@ executors:
   linux:
     machine:
       image: ubuntu-2204:2022.04.2
-    resource_class: large    
+    resource_class: large
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -63,16 +63,16 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['linux', << parameters.target_os >>]
-              - equal: ['amd64', << parameters.target_arch >>]
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
           steps:
             - run:
                 name: Install golangci-lint
                 command: |
-                    echo "Installing GOLANGCILINT: $GOLANGCILINT_VERSION"
-                    # binary will be /usr/local/go/bin/bin/golangci-lint
-                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
-                    golangci-lint --version
+                  echo "Installing GOLANGCILINT: $GOLANGCILINT_VERSION"
+                  # binary will be /usr/local/go/bin/bin/golangci-lint
+                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
+                  golangci-lint --version
 
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
@@ -81,8 +81,8 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['linux', << parameters.target_os >>]
-              - equal: ['amd64', << parameters.target_arch >>]
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
           steps:
             - run:
                 name: Run go mod tidy check diff
@@ -94,8 +94,8 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ['linux', << parameters.target_os >>]
-              - equal: ['amd64', << parameters.target_arch >>]
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
           steps:
             - run:
                 name: Test
@@ -112,7 +112,7 @@ jobs:
                 path: /tmp/test-results
 
   deploy:
-    docker:  
+    docker:
       - image: google/cloud-sdk:392.0.0
     parameters:
       rollout_stage:
@@ -204,7 +204,7 @@ workflows:
           rollout_stage: development
           filters:
             branches:
-              only: circleci-project-setup
+              only: main
       - release:
           name: release-<< matrix.target_os >>-<< matrix.target_arch >>
           requires:
@@ -216,9 +216,9 @@ workflows:
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
-          filters:  # required since `test` has tag filters AND requires `build`
+          filters: # required since `test` has tag filters AND requires `build`
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)-fooz-.*$/
             branches:
-              only: /^main$/
+              only: /^circleci-project-setup$/

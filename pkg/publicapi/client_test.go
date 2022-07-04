@@ -10,7 +10,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	t.Skip("Skipping while we work out the null pointer test")
+	t.Skip("TEMP_SKIP_FOR_NULL_POINTER_FAST_FAIL_TEST")
 
 	c, cm := SetupTests(t)
 	defer cm.Cleanup()
