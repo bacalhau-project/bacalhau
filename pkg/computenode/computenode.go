@@ -223,6 +223,9 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 		select {
 		case <-ticker.C:
 			node.controlLoopBidOnJobs()
+			// TODO: implement this but let's wait for https://github.com/filecoin-project/bacalhau/issues/320
+			// to happen before we make the problem that tries to solve worse
+			//node.controlLoopCancelBids()
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -260,6 +263,13 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		}
 	}
 }
+
+// remove jobs that we've bid on but have not yet had an accepted bid
+// TODO: implement this but let's wait for https://github.com/filecoin-project/bacalhau/issues/320
+// to happen before we make the problem that tries to solve worse
+// func (node *ComputeNode) controlLoopCancelBids() {
+
+// }
 
 /*
 
