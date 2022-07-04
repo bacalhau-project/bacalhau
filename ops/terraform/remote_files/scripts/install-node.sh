@@ -72,6 +72,7 @@ function init-bacalhau() {
   export BACALHAU_NODE_PRIVATE_KEY_PATH="/data/.bacalhau/private_key.${BACALHAU_PORT}"
   sudo mkdir -p /data/.bacalhau
   if [ "$TERRAFORM_NODE_INDEX" == "0" ] && [ -n "$BACALHAU_UNSAFE_CLUSTER" ] && [ ! -f "$BACALHAU_NODE_PRIVATE_KEY_PATH" ]; then
+    echo "WE ARE NOW INSTALLING THE UNSAFE KEY YO"
     sudo cp /terraform_node/bacalhau-unsafe-private-key "$BACALHAU_NODE_PRIVATE_KEY_PATH"
     sudo chmod 0600 "$BACALHAU_NODE_PRIVATE_KEY_PATH"
   fi

@@ -83,7 +83,8 @@ func NewDevStack(
 				"devstack: failed to start ipfs node: %w", err)
 		}
 
-		log.Debug().Msgf("IPFS dev server started: %s", ipfsNode.APIAddress())
+		log.Debug().Msgf("IPFS dev server api address: %s", ipfsNode.APIAddress())
+		log.Debug().Msgf("IPFS dev server swarm address: %s", ipfsNode.SwarmAddress())
 
 		//////////////////////////////////////
 		// Scheduler

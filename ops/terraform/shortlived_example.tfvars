@@ -1,4 +1,4 @@
-bacalhau_version        = "v0.1.14"
+bacalhau_version        = "v0.1.17"
 bacalhau_port           = "1235"
 bacalhau_connect_node0  = ""
 ipfs_version            = "v0.12.2"
@@ -10,3 +10,4 @@ volume_size_gb          = 10
 machine_type            = "e2-standard-4"
 protect_resources       = false
 bacalhau_unsafe_cluster = true
+auto_subnets            = false

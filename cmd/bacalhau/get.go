@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -14,25 +15,29 @@ import (
 )
 
 var getCmdFlags = struct {
-	timeoutSecs int
-	outputDir   string
+	timeoutSecs    int
+	outputDir      string
+	ipfsSwarmAddrs string
 }{
-	timeoutSecs: 60,
-	outputDir:   ".",
+	timeoutSecs:    10,
+	outputDir:      ".",
+	ipfsSwarmAddrs: "",
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { // nolint:gochecknoinits
 	getCmd.Flags().IntVar(&getCmdFlags.timeoutSecs, "timeout-secs",
 		getCmdFlags.timeoutSecs, "Timeout duration for IPFS downloads.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
 		getCmdFlags.outputDir, "Directory to write the output to.")
+	getCmd.Flags().StringVar(&getCmdFlags.ipfsSwarmAddrs, "ipfs-swarm-addrs",
+		getCmdFlags.ipfsSwarmAddrs, "Comma-separated list of additional IPFS nodes to use as peers.")
 }
 
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
@@ -53,8 +58,18 @@ var getCmd = &cobra.Command{
 		}
 		log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
 
+		if len(resultCIDs) == 0 {
+			log.Info().Msg("Job has no results.")
+			return nil
+		}
+
+		swarmAddrs := []string{}
+		if getCmdFlags.ipfsSwarmAddrs != "" {
+			swarmAddrs = strings.Split(getCmdFlags.ipfsSwarmAddrs, ",")
+		}
+
 		log.Debug().Msg("Spinning up IPFS client...")
-		cl, err := ipfs.NewClient(cm)
+		cl, err := ipfs.NewClient(cm, swarmAddrs)
 		if err != nil {
 			return err
 		}
