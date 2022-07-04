@@ -123,13 +123,16 @@ func (cfg *Config) getBootstrapNodes() []string {
 // NewClient creates a new IPFS client in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
-func NewClient(cm *system.CleanupManager) (*Client, error) {
-	return NewClientWithConfig(cm, Config{})
+func NewClient(cm *system.CleanupManager, peers []string) (*Client, error) {
+	return NewClientWithConfig(cm, Config{
+		BootstrapNodes: peers,
+	})
 }
 
 // NewLocalClient creates a new local IPFS client in local mode, which can
 // be used to create test environments without polluting the public IPFS nodes.
 func NewLocalClient(cm *system.CleanupManager, peers []string) (*Client, error) {
+	log.Debug().Msgf("%v", peers)
 	return NewClientWithConfig(cm, Config{
 		Mode:           ModeLocal,
 		BootstrapNodes: peers,

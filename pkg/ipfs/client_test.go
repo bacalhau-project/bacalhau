@@ -67,7 +67,7 @@ func TestClient(t *testing.T) {
 	assert.Equal(t, testString, string(data))
 
 	// Create a new client on the public IPFS network:
-	cl3, err := NewClient(cm)
+	cl3, err := NewClient(cm, nil)
 	assert.NoError(t, err)
 
 	// Check that the file didn't pollute the global IPFS network:
