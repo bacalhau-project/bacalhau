@@ -96,7 +96,7 @@ terraform apply \
 sleep 10
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
 # now we need to get the libp2p id of the first node
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl bacalhau-daemon | grep "peer id is" | awk -F': ' '{print $2}'
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -u bacalhau-daemon | grep "peer id is" | awk -F': ' '{print $2}'
 # copy this id and paste it into the variables file
 # edit variables
 #   * bacalhau_connect_node0 = <id copied from SSH command above>
