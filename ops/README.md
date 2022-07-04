@@ -161,6 +161,7 @@ export WORKSPACE=oranges
 bash scripts/connect_workspace.sh $WORKSPACE
 terraform destroy \
   -var-file $WORKSPACE.tfvars
+terraform workspace select development
 terraform workspace delete $WORKSPACE
 rm $WORKSPACE.tfvars
 ```
