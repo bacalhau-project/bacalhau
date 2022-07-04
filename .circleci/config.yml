@@ -163,6 +163,7 @@ jobs:
       target_os:
         type: string
     steps:
+      - checkout
       - run:
           name: Install gh
           command: |
