@@ -145,7 +145,7 @@ jobs:
       - run:
           name: Deploy cluster
           command: |
-            cd ops/terraform && terraform init && \
+            cd repo/ops/terraform && terraform init && \
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
