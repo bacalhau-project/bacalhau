@@ -120,10 +120,11 @@ EOI
 # run the install script
 ##############################
 
-sudo bash /terraform_node/install-node.sh
+sudo bash /terraform_node/install-node.sh 2>&1 | tee -a /tmp/bacalhau.log
 EOF
   network_interface {
     network    = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
+    subnetwork = var.auto_subnets ? "" : google_compute_subnetwork.bacalhau_subnetwork_manual[0].name
     access_config {
       nat_ip = var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address
     }
