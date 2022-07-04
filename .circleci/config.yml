@@ -137,9 +137,10 @@ jobs:
           name: Install terraform
           command: |
             echo "Insalling Terraform: $TERRAFORM_VERSION"
-            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-            sudo apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-            sudo apt-get -y update && sudo apt-get -y install terraform=$TERRAFORM_VERSION
+            apt-get install -y software-properties-common
+            curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+            apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            apt-get -y update && apt-get -y install terraform=$TERRAFORM_VERSION
 
       - run:
           name: Deploy cluster
