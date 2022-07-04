@@ -1,6 +1,9 @@
 package computenode
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -17,6 +20,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/stretchr/testify/assert"
 )
 
 // setup a docker ipfs stack to run compute node tests against
@@ -168,4 +172,23 @@ func RunJobViaRequestor(
 	job *executor.JobSpec,
 ) error {
 	return nil
+}
+
+func RunJobGetStdout(
+	t *testing.T,
+	computeNode *computenode.ComputeNode,
+	spec *executor.JobSpec,
+) string {
+	result, err := computeNode.RunJob(context.Background(), &executor.Job{
+		ID:   "test",
+		Spec: spec,
+	})
+	assert.NoError(t, err)
+
+	stdoutPath := fmt.Sprintf("%s/stdout", result)
+	assert.DirExists(t, result, "The job result folder exists")
+	assert.FileExists(t, stdoutPath, "The stdout file exists")
+	dat, err := os.ReadFile(stdoutPath)
+	assert.NoError(t, err)
+	return string(dat)
 }

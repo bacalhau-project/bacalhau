@@ -14,6 +14,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -203,11 +204,17 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
+	resourceRequirements := resourceusage.ParseResourceUsageConfig(j.Spec.Resources)
+
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
+			Resources: container.Resources{
+				Memory:   int64(resourceRequirements.Memory),
+				NanoCPUs: int64(resourceRequirements.CPU * 1000000000),
+			},
 		},
 		&network.NetworkingConfig{},
 		nil,

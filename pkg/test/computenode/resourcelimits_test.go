@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -300,4 +302,37 @@ func TestTotalResourceLimits(t *testing.T) {
 		},
 	)
 
+}
+
+func TestDockerResourceLimits(t *testing.T) {
+
+	MEMORY_LIMIT := "100mb"
+
+	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
+	defer cm.Cleanup()
+
+	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierNoop,
+		Resources: resourceusage.ResourceUsageConfig{
+			CPU:    "100m",
+			Memory: MEMORY_LIMIT,
+		},
+		Docker: executor.JobSpecDocker{
+			Image: "ubuntu",
+			Entrypoint: []string{
+				"bash",
+				"-c",
+				"grep MemTotal /proc/meminfo | awk '{print $2}'",
+			},
+		},
+	})
+
+	intVar, err := strconv.Atoi(strings.TrimSpace(result))
+	assert.NoError(t, err)
+
+	fmt.Printf("memory limit: %d\n", resourceusage.ConvertMemoryString(MEMORY_LIMIT))
+	fmt.Printf("result: %d\n", intVar*1024)
+
+	assert.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar*1024), "the container reported memory does not equal the configured limit")
 }
