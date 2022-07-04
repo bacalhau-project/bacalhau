@@ -11,8 +11,9 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
-
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/phayes/freeport"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/ipfs/go-ipfs/config"
@@ -48,19 +49,38 @@ type Client struct {
 	api    icore.CoreAPI
 	node   *core.IpfsNode
 	cancel context.CancelFunc
+	Mode   ClientMode
 }
+
+// ClientMode configures how the client treats the public IPFS network.
+type ClientMode int
+
+const (
+	// ModeDefault is the default client mode, which uses an IPFS repo backed
+	// by the `flatfs` datastore, and connects to the public IPFS network.
+	ModeDefault ClientMode = iota
+
+	// ModeLocal is a client mode that uses an IPFS repo backed by the `flatfs`
+	// datastore and ignores the public IPFS network completely, for setting
+	// up test environments without polluting the public IPFS nodes.
+	ModeLocal
+)
 
 // Config contains configuration for the IPFS node.
 type Config struct {
 	// RepoPath is the path to the node's IPFS repository. If nil, then a
-	// random temporary directory is used as the node's repository.
+	// random temporary directory is initialized as the node's repository.
 	RepoPath *string
 
-	// BootstrapNodes is a list of IPFS node multiaddrs to use as peers. If
-	// nil, then the public bootstrap.libp2p.io nodes are used. Note that the
-	// list of bootstrap nodes may be non-nil and empty to signal that the
-	// node connect to no peers.
+	// BootstrapNodes is a list of additional IPFS node multiaddrs to use as
+	// peers. By default, the IPFS node will connect to whatever nodes are
+	// listed in its profile, or the public IPFS nodes if no profile is
+	// specified.
 	BootstrapNodes []string
+
+	// Mode configures how the client treats the public IPFS network. If nil,
+	// then ModeDefault is used, which connects to the public IPFS network.
+	Mode ClientMode
 
 	// KeypairSize is the number of bits to use for the node's repo keypair. If
 	// nil, then a default value of 2048 is used.
@@ -88,6 +108,10 @@ func (cfg *Config) getRepoPath() (string, error) {
 	return *cfg.RepoPath, nil
 }
 
+func (cfg *Config) getMode() ClientMode {
+	return cfg.Mode
+}
+
 func (cfg *Config) getBootstrapNodes() []string {
 	if cfg.BootstrapNodes == nil {
 		return defaultBootstrapNodes
@@ -96,15 +120,25 @@ func (cfg *Config) getBootstrapNodes() []string {
 	return cfg.BootstrapNodes
 }
 
-// NewDefaultClient creates a new IPFS client with the default configuration,
-// which creates an IPFS repo in a temporary directory, uses the public libp2p
-// nodes as peers and generates a repo keypair with 2048 bits.
-func NewDefaultClient(cm *system.CleanupManager) (*Client, error) {
-	return NewClient(cm, Config{})
+// NewClient creates a new IPFS client in default mode, which creates an IPFS
+// repo in a temporary directory, uses the public libp2p nodes as peers and
+// generates a repo keypair with 2048 bits.
+func NewClient(cm *system.CleanupManager) (*Client, error) {
+	return NewClientWithConfig(cm, Config{})
 }
 
-// NewClient creates a new IPFS client with the given configuration.
-func NewClient(cm *system.CleanupManager, cfg Config) (*Client, error) {
+// NewLocalClient creates a new local IPFS client in local mode, which can
+// be used to create test environments without polluting the public IPFS nodes.
+func NewLocalClient(cm *system.CleanupManager, peers []string) (*Client, error) {
+	return NewClientWithConfig(cm, Config{
+		Mode:           ModeLocal,
+		BootstrapNodes: peers,
+	})
+}
+
+// NewClientWithConfig creates a new IPFS client with the given configuration.
+// NOTE: use NewClient() or NewLocalClient() unless you know what you're doing.
+func NewClientWithConfig(cm *system.CleanupManager, cfg Config) (*Client, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
@@ -113,6 +147,7 @@ func NewClient(cm *system.CleanupManager, cfg Config) (*Client, error) {
 		return nil, err
 	}
 
+	// go-ipfs uses contexts for lifecycle management:
 	ctx, cancel := context.WithCancel(context.Background())
 	cm.RegisterCallback(func() error {
 		cancel()
@@ -123,13 +158,11 @@ func NewClient(cm *system.CleanupManager, cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
+	log.Debug().Msgf("IPFS node created with ID: %s", node.Identity)
 
-	// Connecting to bootstrap peers can be done asynchronously:
-	go func() {
-		if err := connectToPeers(ctx, api, cfg.getBootstrapNodes()); err != nil {
-			log.Error().Msgf("ipfs client failed to connect to peers: %s", err)
-		}
-	}()
+	if err := connectToPeers(ctx, api, node, cfg.getBootstrapNodes()); err != nil {
+		log.Error().Msgf("ipfs client failed to connect to peers: %s", err)
+	}
 
 	return &Client{
 		api:    api,
@@ -138,9 +171,24 @@ func NewClient(cm *system.CleanupManager, cfg Config) (*Client, error) {
 	}, nil
 }
 
-// Multiaddr returns the client's ipfs node multiaddress.
-func (cl *Client) Multiaddr() string {
-	return fmt.Sprintf("/ip4/127.0.0.1/p2p/%s", cl.node.Identity)
+// ID returns the client's ipfs node ID.
+func (cl *Client) ID() string {
+	return cl.node.Identity.String()
+}
+
+// P2pAddrs returns the client's libp2p addresses.
+func (cl *Client) P2pAddrs() ([]string, error) {
+	cfg, err := cl.node.Repo.Config()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo config: %w", err)
+	}
+
+	var res []string
+	for _, addr := range cfg.Addresses.Swarm {
+		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, cl.ID()))
+	}
+
+	return res, nil
 }
 
 // Get fetches a file or directory from the IPFS network.
@@ -174,31 +222,33 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
-func connectToPeers(ctx context.Context, ipfs icore.CoreAPI, bootstrapNodes []string) error {
-	var wg sync.WaitGroup
-	peerInfos := make(map[peer.ID]*peer.AddrInfo, len(bootstrapNodes))
+func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, bootstrapNodes []string) error {
+	log.Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
+	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, bootstrapNodes)
+
+	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
+	peerInfos := make(map[peer.ID]*peer.AddrInfo)
 	for _, addrStr := range bootstrapNodes {
 		addr, err := ma.NewMultiaddr(addrStr)
 		if err != nil {
 			return err
 		}
+
 		pii, err := peer.AddrInfoFromP2pAddr(addr)
 		if err != nil {
 			return err
 		}
-		pi, ok := peerInfos[pii.ID]
-		if !ok {
-			pi = &peer.AddrInfo{ID: pii.ID}
-			peerInfos[pi.ID] = pi
-		}
-		pi.Addrs = append(pi.Addrs, pii.Addrs...)
+
+		peerInfos[pii.ID] = pii
 	}
 
+	// Bootstrap the node's list of peers:
+	var wg sync.WaitGroup
 	wg.Add(len(peerInfos))
 	for _, peerInfo := range peerInfos {
 		go func(peerInfo *peer.AddrInfo) {
 			defer wg.Done()
-			if err := ipfs.Swarm().Connect(ctx, *peerInfo); err != nil {
+			if err := api.Swarm().Connect(ctx, *peerInfo); err != nil {
 				log.Debug().Msgf(
 					"failed to connect to ipfs peer %s, skipping: %s",
 					peerInfo.ID, err)
@@ -217,7 +267,7 @@ func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode,
 		return nil, nil, fmt.Errorf("failed to create repo dir: %w", err)
 	}
 
-	if err = createRepo(repoPath, cfg.getKeypairSize()); err != nil {
+	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
 		return nil, nil, fmt.Errorf("failed to create repo: %w", err)
 	}
 
@@ -229,7 +279,7 @@ func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode,
 	nodeOptions := &core.BuildCfg{
 		Repo:    repo,
 		Online:  true,
-		Routing: libp2p.DHTOption, // TODO: can set to be client for gets
+		Routing: libp2p.DHTOption,
 	}
 
 	node, err := core.NewNode(ctx, nodeOptions)
@@ -242,10 +292,65 @@ func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode,
 }
 
 // createRepo creates an IPFS repository in a given directory.
-func createRepo(path string, keypairSize int) error {
+func createRepo(path string, mode ClientMode, keypairSize int) error {
 	cfg, err := config.Init(io.Discard, keypairSize)
 	if err != nil {
 		return fmt.Errorf("failed to initialize config: %w", err)
+	}
+
+	profile := "flatfs"
+	if mode == ModeLocal {
+		profile = "test"
+	}
+
+	transformer, ok := config.Profiles[profile]
+	if !ok {
+		return fmt.Errorf("invalid configuration profile: %s", profile)
+	}
+	if err := transformer.Transform(cfg); err != nil { // nolint: govet
+		return err
+	}
+
+	// If we're in local mode, then we need to manually change the config to
+	// serve an IPFS swarm client on some local port:
+	if mode == ModeLocal {
+		var gatewayPort int
+		gatewayPort, err = freeport.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("could not create port for gateway: %w", err)
+		}
+
+		var apiPort int
+		apiPort, err = freeport.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("could not create port for api: %w", err)
+		}
+
+		var swarmPort int
+		swarmPort, err = freeport.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("could not create port for swarm: %w", err)
+		}
+
+		cfg.AutoNAT.ServiceMode = config.AutoNATServiceDisabled
+		cfg.Swarm.EnableHolePunching = config.False
+		cfg.Swarm.DisableNatPortMap = true
+		cfg.Swarm.RelayClient.Enabled = config.False
+		cfg.Swarm.RelayService.Enabled = config.False
+		cfg.Swarm.Transports.Network.Relay = config.False
+		cfg.Discovery.MDNS.Enabled = false
+		cfg.Addresses.Announce = []string{
+			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+		}
+		cfg.Addresses.Gateway = []string{
+			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort),
+		}
+		cfg.Addresses.API = []string{
+			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
+		}
+		cfg.Addresses.Swarm = []string{
+			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+		}
 	}
 
 	err = fsrepo.Init(path, cfg)

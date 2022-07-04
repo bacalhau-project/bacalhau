@@ -54,7 +54,7 @@ var getCmd = &cobra.Command{
 		log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
 
 		log.Debug().Msg("Spinning up IPFS client...")
-		cl, err := ipfs.NewDefaultClient(cm)
+		cl, err := ipfs.NewClient(cm)
 		if err != nil {
 			return err
 		}
