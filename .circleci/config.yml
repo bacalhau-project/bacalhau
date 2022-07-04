@@ -120,6 +120,7 @@ jobs:
     environment:
       GCLOUD_VERSION: 392.0.0
       TERRAFORM_VERSION: 1.2.4
+      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
     steps:
       - checkout
       - run:
@@ -127,10 +128,8 @@ jobs:
           command: |
             # Create service account and get credentials here
             # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
-            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
-            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
+            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
             echo "Using GCloud: $GCLOUD_VERSION"
-            echo "Credentials File: ${GOOGLE_APPLICATION_CREDENTIALS}"
 
       - run:
           name: Authenticate to Google Cloud
