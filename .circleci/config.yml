@@ -176,6 +176,7 @@ jobs:
       - run:
           name: Build tarball
           command: |
+            make build
             make build-bacalhau-tgz
             echo << pipeline.git.revision >> > Release.txt
 
