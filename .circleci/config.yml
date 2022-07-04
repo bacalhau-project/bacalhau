@@ -130,6 +130,7 @@ jobs:
             echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
             export GOOGLE_APPLICATION_CREDENTIALS="/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
             echo "Using GCloud: $GCLOUD_VERSION"
+            echo "Credentials File: ${GOOGLE_APPLICATION_CREDENTIALS}"
 
       - run:
           name: Authenticate to Google Cloud
