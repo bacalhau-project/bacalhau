@@ -143,7 +143,7 @@ func (cl *Client) Multiaddr() string {
 	return fmt.Sprintf("/ip4/127.0.0.1/p2p/%s", cl.node.Identity)
 }
 
-// Get fetches a file from the IPFS network.
+// Get fetches a file or directory from the IPFS network.
 func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
@@ -151,6 +151,26 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	}
 
 	return files.WriteTo(node, outputPath)
+}
+
+// Put uploads a file or directory to the IPFS network.
+func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
+	st, err := os.Stat(inputPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to stat file '%s': %w", inputPath, err)
+	}
+
+	node, err := files.NewSerialFile(inputPath, false, st)
+	if err != nil {
+		return "", fmt.Errorf("failed to create ipfs node: %w", err)
+	}
+
+	cid, err := cl.api.Unixfs().Add(ctx, node)
+	if err != nil {
+		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
+	}
+
+	return cid.String(), nil
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
