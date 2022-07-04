@@ -129,11 +129,9 @@ rm -f $WORKSPACE.tfvars
 
 # Stand up a new short lived cluster
 
-**NOTE** for the moment - use the long lived cluster method until [this issue](https://github.com/filecoin-project/bacalhau/issues/300) is resolved.
-
 This is for scale tests or short lived tests on a live network.
 
-We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other.
+We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other (it uploads a fixed, unsafe private key from this repo so we know the libp2p id of node0)
 
 We set `protect_resources=false` so we can easily delete the cluster when we are done.
 
@@ -163,8 +161,9 @@ export WORKSPACE=oranges
 bash scripts/connect_workspace.sh $WORKSPACE
 terraform destroy \
   -var-file $WORKSPACE.tfvars
+terraform workspace delete $WORKSPACE
+rm $WORKSPACE.tfvars
 ```
-
 
 # Debugging startup issues
 
