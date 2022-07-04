@@ -96,7 +96,7 @@ terraform apply \
 sleep 10
 gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- sudo systemctl status bacalhau-daemon
 # now we need to get the libp2p id of the first node
-gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- cat /tmp/bacalhau.log | grep "peer id is" | awk -F': ' '{print $2}'
+gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -u bacalhau-daemon | grep "peer id is" | awk -F': ' '{print $2}'
 # copy this id and paste it into the variables file
 # edit variables
 #   * bacalhau_connect_node0 = <id copied from SSH command above>
@@ -129,11 +129,9 @@ rm -f $WORKSPACE.tfvars
 
 # Stand up a new short lived cluster
 
-**NOTE** for the moment - use the long lived cluster method until [this issue](https://github.com/filecoin-project/bacalhau/issues/300) is resolved.
-
 This is for scale tests or short lived tests on a live network.
 
-We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other.
+We set `bacalhau_unsafe_cluster=true` so nodes automatically connect to each other (it uploads a fixed, unsafe private key from this repo so we know the libp2p id of node0)
 
 We set `protect_resources=false` so we can easily delete the cluster when we are done.
 
@@ -163,8 +161,10 @@ export WORKSPACE=oranges
 bash scripts/connect_workspace.sh $WORKSPACE
 terraform destroy \
   -var-file $WORKSPACE.tfvars
+terraform workspace select development
+terraform workspace delete $WORKSPACE
+rm $WORKSPACE.tfvars
 ```
-
 
 # Debugging startup issues
 
@@ -196,3 +196,12 @@ The disks and ip addresses are in one of two modes:
  * `unprotected`
 
 To control which type is used - you set the `protect_resources` variable to true when creating a cluster.
+
+# Auto subnets
+
+With long lived clusters - we use the `auto_subnets = true` setting which means there will be a bunch of subnetworks auto created for the deployment network.
+
+For short lived clusters - we set this to false and create a single manual sub network.
+
+This is so we don't use up all of our network quota making subnets that we don't actually use.
+
