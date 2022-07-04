@@ -21,7 +21,7 @@ var getCmdFlags = struct {
 	outputDir:   ".",
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { // nolint:gochecknoinits
 	getCmd.Flags().IntVar(&getCmdFlags.timeoutSecs, "timeout-secs",
 		getCmdFlags.timeoutSecs, "Timeout duration for IPFS downloads.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
@@ -32,7 +32,7 @@ var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
@@ -54,7 +54,7 @@ var getCmd = &cobra.Command{
 		log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
 
 		log.Debug().Msg("Spinning up IPFS client...")
-		cl, err := ipfs.NewClient(cm)
+		cl, err := ipfs.NewDefaultClient(cm)
 		if err != nil {
 			return err
 		}

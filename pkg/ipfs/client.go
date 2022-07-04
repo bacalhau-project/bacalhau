@@ -24,16 +24,23 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-// For loading ipfs plugins once per process:
-var pluginOnce sync.Once
+var (
+	// For loading ipfs plugins once per process:
+	pluginOnce sync.Once
 
-// A list of IPFS nodes we can use as bootstrap peers:
-var bootstrapNodes = []string{
-	"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-	"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
-	"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-	"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-}
+	// The default list of nodes to use as peers:
+	defaultBootstrapNodes = []string{
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+	}
+)
+
+const (
+	// The default size of a node's repo keypair.
+	defaultKeypairSize = 2048
+)
 
 // Client is a wrapper around an in-process IPFS node that can be used to
 // interact with the IPFS network without requiring an `ipfs` binary.
@@ -43,10 +50,61 @@ type Client struct {
 	cancel context.CancelFunc
 }
 
-var nBitsForKeypair = 2048
+// Config contains configuration for the IPFS node.
+type Config struct {
+	// RepoPath is the path to the node's IPFS repository. If nil, then a
+	// random temporary directory is used as the node's repository.
+	RepoPath *string
 
-// NewClient creates a new IPFS client.
-func NewClient(cm *system.CleanupManager) (*Client, error) {
+	// BootstrapNodes is a list of IPFS node multiaddrs to use as peers. If
+	// nil, then the public bootstrap.libp2p.io nodes are used. Note that the
+	// list of bootstrap nodes may be non-nil and empty to signal that the
+	// node connect to no peers.
+	BootstrapNodes []string
+
+	// KeypairSize is the number of bits to use for the node's repo keypair. If
+	// nil, then a default value of 2048 is used.
+	KeypairSize *int
+}
+
+func (cfg *Config) getKeypairSize() int {
+	if cfg.KeypairSize == nil {
+		return defaultKeypairSize
+	}
+
+	return *cfg.KeypairSize
+}
+
+func (cfg *Config) getRepoPath() (string, error) {
+	if cfg.RepoPath == nil {
+		path, err := os.MkdirTemp("", "ipfs-tmp")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp dir: %w", err)
+		}
+
+		return path, nil
+	}
+
+	return *cfg.RepoPath, nil
+}
+
+func (cfg *Config) getBootstrapNodes() []string {
+	if cfg.BootstrapNodes == nil {
+		return defaultBootstrapNodes
+	}
+
+	return cfg.BootstrapNodes
+}
+
+// NewDefaultClient creates a new IPFS client with the default configuration,
+// which creates an IPFS repo in a temporary directory, uses the public libp2p
+// nodes as peers and generates a repo keypair with 2048 bits.
+func NewDefaultClient(cm *system.CleanupManager) (*Client, error) {
+	return NewClient(cm, Config{})
+}
+
+// NewClient creates a new IPFS client with the given configuration.
+func NewClient(cm *system.CleanupManager, cfg Config) (*Client, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
@@ -61,14 +119,14 @@ func NewClient(cm *system.CleanupManager) (*Client, error) {
 		return nil
 	})
 
-	api, node, err := createNode(ctx)
+	api, node, err := createNode(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
 
 	// Connecting to bootstrap peers can be done asynchronously:
 	go func() {
-		if err := connectToPeers(ctx, api); err != nil {
+		if err := connectToPeers(ctx, api, cfg.getBootstrapNodes()); err != nil {
 			log.Error().Msgf("ipfs client failed to connect to peers: %s", err)
 		}
 	}()
@@ -78,6 +136,11 @@ func NewClient(cm *system.CleanupManager) (*Client, error) {
 		node:   node,
 		cancel: cancel,
 	}, nil
+}
+
+// Multiaddr returns the client's ipfs node multiaddress.
+func (cl *Client) Multiaddr() string {
+	return fmt.Sprintf("/ip4/127.0.0.1/p2p/%s", cl.node.Identity)
 }
 
 // Get fetches a file from the IPFS network.
@@ -91,7 +154,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
-func connectToPeers(ctx context.Context, ipfs icore.CoreAPI) error {
+func connectToPeers(ctx context.Context, ipfs icore.CoreAPI, bootstrapNodes []string) error {
 	var wg sync.WaitGroup
 	peerInfos := make(map[peer.ID]*peer.AddrInfo, len(bootstrapNodes))
 	for _, addrStr := range bootstrapNodes {
@@ -128,10 +191,14 @@ func connectToPeers(ctx context.Context, ipfs icore.CoreAPI) error {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
-	repoPath, err := createTempRepo()
+func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode, error) {
+	repoPath, err := cfg.getRepoPath()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create temp repo: %w", err)
+		return nil, nil, fmt.Errorf("failed to create repo dir: %w", err)
+	}
+
+	if err = createRepo(repoPath, cfg.getKeypairSize()); err != nil {
+		return nil, nil, fmt.Errorf("failed to create repo: %w", err)
 	}
 
 	repo, err := fsrepo.Open(repoPath)
@@ -154,24 +221,19 @@ func createNode(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
 	return api, node, err
 }
 
-// createTempRepo creates an IPFS repository in some ephemeral directory.
-func createTempRepo() (string, error) {
-	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
+// createRepo creates an IPFS repository in a given directory.
+func createRepo(path string, keypairSize int) error {
+	cfg, err := config.Init(io.Discard, keypairSize)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
+		return fmt.Errorf("failed to initialize config: %w", err)
 	}
 
-	cfg, err := config.Init(io.Discard, nBitsForKeypair)
+	err = fsrepo.Init(path, cfg)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to init ipfs repo: %w", err)
 	}
 
-	err = fsrepo.Init(repoPath, cfg)
-	if err != nil {
-		return "", fmt.Errorf("failed to init ipfs repo: %w", err)
-	}
-
-	return repoPath, nil
+	return nil
 }
 
 // loadPlugins initializes and injects the standard set of ipfs plugins.
