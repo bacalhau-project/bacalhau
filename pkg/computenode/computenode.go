@@ -464,6 +464,7 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 	node.addRunningJob(job)
 	result, err := e.RunJob(ctx, job)
 	node.removeRunningJob(job)
+	node.controlLoopBidOnJobs()
 
 	if err != nil {
 		return "", err
