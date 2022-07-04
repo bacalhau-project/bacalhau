@@ -3,7 +3,7 @@ name: Release Bacalhau binaries
 on:
   push:
     tags:
-      - "v*"
+      - "DISABLEv*"
   workflow_dispatch:
     inputs:
       debug_enabled:
