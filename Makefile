@@ -3,6 +3,10 @@ RUSTFLAGS="-C target-feature=+crt-static"
 IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
 IPFS_FUSE_TAG ?= "v1"
 
+ifeq ($(BUILD_SIDECAR), 1)
+	$(MAKE) build-ipfs-sidecar-image
+endif
+
 # Detect OS
 OS := $(shell uname | tr "[:upper:]" "[:lower:]")
 ARCH := $(shell uname -m | tr "[:upper:]" "[:lower:]")
@@ -83,7 +87,7 @@ build-ipfs-sidecar-image:
 
 
 .PHONY: build-docker-images
-build-docker-images: build-ipfs-sidecar-image
+build-docker-images:
 	@echo docker images built
 
 # Release tarballs suitable for upload to GitHub release pages
@@ -119,11 +123,11 @@ clean:
 # Target: test					                               #
 ################################################################################
 .PHONY: test
-test: build-ipfs-sidecar-image
+test:
 	go test ./... -v
 
 .PHONY: test-debug
-test-debug: build-ipfs-sidecar-image
+test-debug: 
 	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: test-one
@@ -188,7 +192,7 @@ check-diff:
 # Target: test-and-report			                                       #
 ################################################################################
 .PHONY: test-and-report
-test-and-report: build-ipfs-sidecar-image build-bacalhau
+test-and-report: build-bacalhau
 	CGO_ENABLED=${CGO} \
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
@@ -196,8 +200,6 @@ test-and-report: build-ipfs-sidecar-image build-bacalhau
 			-- \
 				./pkg/... ./cmd/... \
 				$(COVERAGE_OPTS) --tags=unit
-	CGO_ENABLED=${CGO} \
-		go test ./tests/...
 
 .PHONY: generate
 generate:
