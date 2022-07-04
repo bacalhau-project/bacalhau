@@ -23,6 +23,7 @@ export BACALHAU_RUNTIME = docker
 # Env Variables
 export GO111MODULE = on
 export GO = go
+export CGO = 0
 export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
@@ -71,13 +72,13 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
+	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images
 ################################################################################
 .PHONY: build-ipfs-sidecar-image
-build-ipfs-sidecar-image: 
+build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
 
@@ -182,14 +183,21 @@ check-diff:
 	git diff --exit-code ./go.mod # check no changes
 	git diff --exit-code ./go.sum # check no changes
 
-# Run the unittests and output a junit report for use with prow
+# Run the unittests and output results for recording
 ################################################################################
-# Target: test-junit			                                       #
+# Target: test-and-report			                                       #
 ################################################################################
-.PHONY: test-junit
-test-junit: build-bacalhau
-	echo Running tests ... junit_file=$(JUNIT_FILE)
-	go test ./... -v 2>&1 | go-junit-report > $(JUNIT_FILE) --set-exit-code
+.PHONY: test-and-report
+test-and-report: build-ipfs-sidecar-image build-bacalhau
+	CGO_ENABLED=${CGO} \
+		gotestsum \
+			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+			--format standard-quiet \
+			-- \
+				./pkg/... ./cmd/... \
+				$(COVERAGE_OPTS) --tags=unit
+	CGO_ENABLED=${CGO} \
+		go test ./tests/...
 
 .PHONY: generate
 generate:
