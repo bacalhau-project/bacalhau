@@ -128,11 +128,13 @@ jobs:
             # Create service account and get credentials here
             # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
             echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
             echo "Using GCloud: $GCLOUD_VERSION"
+
       - run:
           name: Authenticate to Google Cloud
           command: |
-            gcloud auth activate-service-account --key-file /tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json
+            gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
 
       - run:
           name: Install terraform
@@ -146,7 +148,7 @@ jobs:
       - run:
           name: Deploy cluster
           command: |
-            cd repo/ops/terraform && terraform init && \
+            cd ops/terraform && terraform init && \
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
