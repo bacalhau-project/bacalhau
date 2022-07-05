@@ -226,7 +226,8 @@ workflows:
                 target_arch: "arm64"
           filters: &filters-development # this yaml anchor is setting these values to "filters-development"
             branches:
-              ignore: main
+              only: DISABLE_DEVELOPMENT_BUILD_TEMPORARILY # remove
+              # ignore: main
             tags:
               ignore: /.*/
       - deploy:
