@@ -400,10 +400,6 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
 
 	if data.Spec == nil {
-		log.Error().Msgf(
-			"Job was submitted with an empty Spec: %+v",
-			data,
-		)
 		return false, fmt.Errorf("job spec is nil")
 	}
 
