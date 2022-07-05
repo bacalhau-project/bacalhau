@@ -227,7 +227,7 @@ jobs:
               echo "Found release - $TAG"
             fi
 
-            gh release upload $TAG /tmp/dist/*
+            gh release upload $TAG dist/*
             cat CHANGELOG.txt | gh release edit $TAG -F -
 
 # Invoke jobs via workflows
