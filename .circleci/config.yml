@@ -177,10 +177,10 @@ jobs:
           name: Build tarball
           command: |
             make build
-            make build-bacalhau-tgz
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            make build-bacalhau-tgz
             echo << pipeline.git.revision >> > Release.txt
 
       - run:
@@ -190,6 +190,7 @@ jobs:
       - run:
           name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
           command: |
+            source /tmp/packagevars
             gh release upload << pipeline.git.tag >> $BINARY_TARBALL
             gh release upload << pipeline.git.tag >> $BINARY_TARBALL_SIGNATURE
             cat CHANGELOG.txt | gh release edit -F -
