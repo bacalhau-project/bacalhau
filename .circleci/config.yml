@@ -240,8 +240,7 @@ workflows:
           filters:
             &filters-development # this yaml anchor is setting these values to "filters-development"
             branches:
-              only: DISABLE_DEVELOPMENT_BUILD_TEMPORARILY # remove
-              # ignore: main
+              ignore: main
             tags:
               ignore: /.*/
       - deploy:
@@ -283,10 +282,10 @@ workflows:
           target_arch: amd64
           filters: &filters-production
             branches:
-              only: /^main$/
+              only: main
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
       - build:
           name: build-darwin-amd64
           target_os: darwin
