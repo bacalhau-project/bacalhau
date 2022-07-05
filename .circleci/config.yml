@@ -188,12 +188,8 @@ jobs:
             - dist/*
   release:
     executor: linux
-    parameters:
-      target_arch:
-        type: string
-      target_os:
-        type: string
     steps:
+      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: dist
@@ -340,8 +336,6 @@ workflows:
             <<: *filters-production
       - release:
           name: create-release-<< pipeline.git.tag >>
-          target_os: linux
-          target_arch: amd64
           requires:
             - build-release-linux-amd64
             - build-release-darwin-amd64
