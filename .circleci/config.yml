@@ -287,31 +287,63 @@ workflows:
   production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
-          matrix: &matrix-production
-            parameters:
-              target_os: ["linux", "darwin"]
-              target_arch: ["amd64", "arm64"]
-            exclude:
-              - target_os: "linux"
-                target_arch: "arm64"
-          filters:
-            &filters-production # this yaml anchor is setting these values to "filters-filters-production"
+          name: build-linux-amd64
+          target_os: linux
+          target_arch: amd64
+          filters: &filters-production
+            branches:
+              only: /^main$/
+            tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+      - build:
+          name: build-darwin-amd64
+          target_os: darwin
+          target_arch: amd64
+          filters: &filters-production
+            branches:
+              only: /^main$/
+            tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+      - build:
+          name: build-darwin-arm64
+          target_os: darwin
+          target_arch: arm64
+          filters: &filters-production
             branches:
               only: /^main$/
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
       - build-release:
-          name: build-release-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-release-linux-amd64
+          target_os: linux
+          target_arch: amd64
           requires:
-            - build-<< matrix.target_os >>-<< matrix.target_arch >>
-          matrix:
-            <<: *matrix-production
+            - build-linux-amd64
+          filters:
+            <<: *filters-production
+      - build-release:
+          name: build-release-darwin-amd64
+          target_os: darwin
+          target_arch: amd64
+          requires:
+            - build-darwin-amd64
+          filters:
+            <<: *filters-production
+      - build-release:
+          name: build-release-darwin-arm64
+          target_os: darwin
+          target_arch: arm64
+          requires:
+            - build-darwin-arm64
           filters:
             <<: *filters-production
       - release:
           name: create-release-<< pipeline.git.tag >>
+          target_os: linux
+          target_arch: amd64
           requires:
             - build-release-linux-amd64
             - build-release-darwin-amd64
