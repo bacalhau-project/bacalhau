@@ -181,7 +181,7 @@ jobs:
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
             make build-bacalhau-tgz
-            echo << pipeline.git.revision >> > Release.txt
+            echo "<< pipeline.git.revision >>" > Release.txt # Is this correct?
 
       - run:
           name: Generate Changelog
