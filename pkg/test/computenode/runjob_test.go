@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -36,4 +37,20 @@ func TestRunJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, EXAMPLE_TEXT, string(dat), "The stdout file contained the correct result from the job")
 
+}
+
+func TestEmptySpec(t *testing.T) {
+
+	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
+	defer cm.Cleanup()
+
+	// it seems when we return an error so quickly we need to sleep a little bit
+	// otherwise we don't cleanup
+	// TODO: work out why
+	time.Sleep(time.Millisecond * 10)
+	_, err := computeNode.RunJob(context.Background(), &executor.Job{
+		ID:   "test",
+		Spec: nil,
+	})
+	assert.Error(t, err)
 }
