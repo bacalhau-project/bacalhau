@@ -210,9 +210,8 @@ jobs:
           name: Generate Changelog
           command: echo "# Release Notes" > CHANGELOG.txt
       - run:
-          name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
+          name: Uploading to Release - << pipeline.git.tag >>
           command: |
-            source /tmp/packagevars
             if [ "<< pipeline.git.tag >>" = "" ]; then
               TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
             else
