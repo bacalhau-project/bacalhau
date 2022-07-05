@@ -173,6 +173,7 @@ jobs:
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
             make build-bacalhau-tgz
             source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+            rm dist/.keep                         # Need to remove this file so it's not persisted
             cp $BINARY_TARBALL dist
             cp $BINARY_TARBALL_SIGNATURE dist
       - persist_to_workspace:
