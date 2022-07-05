@@ -7,7 +7,6 @@ executors:
     machine:
       image: ubuntu-2204:2022.04.2
     resource_class: large
-    working_directory: /tmp
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -197,7 +196,7 @@ jobs:
     steps:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
-          at: /tmp/dist
+          at: dist
       - run:
           name: Install gh
           command: |
