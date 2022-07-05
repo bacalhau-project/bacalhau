@@ -165,10 +165,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Create Temporary Persisted Artifact Directory
-          command: |
-            mkdir -p dist
-      - run:
           name: Build tarball
           command: |
             make build
@@ -294,22 +290,14 @@ workflows:
           name: build-darwin-amd64
           target_os: darwin
           target_arch: amd64
-          filters: &filters-production
-            branches:
-              only: /^main$/
-            tags:
-              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+          filters: 
+            <<: *filters-production # this is calling the previously set yaml anchor
       - build:
           name: build-darwin-arm64
           target_os: darwin
           target_arch: arm64
-          filters: &filters-production
-            branches:
-              only: /^main$/
-            tags:
-              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+          filters:
+            <<: *filters-production # this is calling the previously set yaml anchor
       - build-release:
           name: build-release-linux-amd64
           target_os: linux
