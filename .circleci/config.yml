@@ -193,10 +193,12 @@ jobs:
             source /tmp/packagevars
             export TEMP_TAG="<< pipeline.git.tag >>"
             if [ -z "$TEMP_TAG" ]; then
-              TAG := "testing-release-ci-tag"
+              TAG="testing-release-ci-tag"
+            else
+              TAG="<< pipeline.git.tag >>"
             fi
-            gh release upload << pipeline.git.tag >> $BINARY_TARBALL
-            gh release upload << pipeline.git.tag >> $BINARY_TARBALL_SIGNATURE
+            gh release upload $TAG $BINARY_TARBALL
+            gh release upload $TAG $BINARY_TARBALL_SIGNATURE
             cat CHANGELOG.txt | gh release edit -F -
 
 # Invoke jobs via workflows
