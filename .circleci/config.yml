@@ -12,7 +12,7 @@ executors:
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   build:
-    parallelism: 4
+    parallelism: 1
     environment:
       GOVER: 1.18.3
       GOLANGCILINT_VERSION: v1.46.2
@@ -21,7 +21,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       CGO: 0
-      TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
+      GCS_TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
     working_directory: ~/repo
     executor: linux
     parameters:
