@@ -464,6 +464,11 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 */
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+
+	if job.Spec == nil {
+		return "", fmt.Errorf("job spec is nil")
+	}
+
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
