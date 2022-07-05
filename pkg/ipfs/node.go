@@ -8,17 +8,18 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	files "github.com/ipfs/go-ipfs-files"
 	icore "github.com/ipfs/interface-go-ipfs-core"
-	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/phayes/freeport"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/ipfs/go-ipfs/commands"
 	"github.com/ipfs/go-ipfs/config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
+	"github.com/ipfs/go-ipfs/core/corehttp"
 	"github.com/ipfs/go-ipfs/core/node/libp2p"
 	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
@@ -29,13 +30,8 @@ var (
 	// For loading ipfs plugins once per process:
 	pluginOnce sync.Once
 
-	// The default list of nodes to use as peers:
-	defaultPeerAddrs = []string{
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-	}
+	// Global cache of the plugin loader:
+	pluginLoader *loader.PluginLoader
 )
 
 const (
@@ -111,10 +107,6 @@ func (cfg *Config) getMode() NodeMode {
 }
 
 func (cfg *Config) getPeerAddrs() []string {
-	if cfg.PeerAddrs == nil {
-		return defaultPeerAddrs
-	}
-
 	return cfg.PeerAddrs
 }
 
@@ -154,81 +146,198 @@ func NewNodeWithConfig(cm *system.CleanupManager, cfg Config) (*Node, error) {
 		return nil
 	})
 
-	api, node, err := createNode(ctx, cfg)
+	api, node, repoPath, err := createNode(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
-	log.Debug().Msgf("IPFS node created with ID: %s", node.Identity)
 
 	if err := connectToPeers(ctx, api, node, cfg.getPeerAddrs()); err != nil {
 		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
-	return &Node{
+	if err := serveAPI(cm, node, repoPath); err != nil {
+		log.Error().Msgf("ipfs node failed to serve API: %s", err)
+	}
+
+	n := Node{
 		api:    api,
 		node:   node,
 		cancel: cancel,
-	}, nil
+	}
+
+	// Log details so that user can connect to the new node:
+	log.Info().Msgf("IPFS node created with ID: %s", node.Identity)
+	n.LogDetails()
+
+	return &n, nil
 }
 
 // ID returns the node's ipfs ID.
-func (cl *Node) ID() string {
-	return cl.node.Identity.String()
+func (n *Node) ID() string {
+	return n.node.Identity.String()
+}
+
+// APIAddresses returns the node's api addresses.
+func (n *Node) APIAddresses() ([]string, error) {
+	cfg, err := n.node.Repo.Config()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo config: %w", err)
+	}
+
+	var res []string
+	for _, addr := range cfg.Addresses.API {
+		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, n.ID()))
+	}
+
+	return res, nil
 }
 
 // SwarmAddresses returns the node's swarm addresses.
-func (cl *Node) SwarmAddresses() ([]string, error) {
-	cfg, err := cl.node.Repo.Config()
+func (n *Node) SwarmAddresses() ([]string, error) {
+	cfg, err := n.node.Repo.Config()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get repo config: %w", err)
 	}
 
 	var res []string
 	for _, addr := range cfg.Addresses.Swarm {
-		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, cl.ID()))
+		res = append(res, fmt.Sprintf("%s/p2p/%s", addr, n.ID()))
 	}
 
 	return res, nil
 }
 
-// Get fetches a file or directory from the IPFS network.
-func (cl *Node) Get(ctx context.Context, cid, outputPath string) error {
-	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
+// LogDetails logs connection details for the node's swarm and API servers.
+func (n *Node) LogDetails() {
+	apiAddrs, err := n.APIAddresses()
 	if err != nil {
-		return fmt.Errorf("failed to get file '%s': %w", cid, err)
+		log.Debug().Msgf("error fetching api addresses: %s", err)
+		return
 	}
 
-	return files.WriteTo(node, outputPath)
+	var swarmAddrs []string
+	swarmAddrs, err = n.SwarmAddresses()
+	if err != nil {
+		log.Debug().Msgf("error fetching swarm addresses: %s", err)
+	}
+
+	id := n.ID()
+	for _, apiAddr := range apiAddrs {
+		log.Info().Msgf("IPFS node %s listening for API on: %s", id, apiAddr)
+	}
+	for _, swarmAddr := range swarmAddrs {
+		log.Info().Msgf("IPFS node %s listening for swarm on: %s", id, swarmAddr)
+	}
 }
 
-// Put uploads a file or directory to the IPFS network.
-func (cl *Node) Put(ctx context.Context, inputPath string) (string, error) {
-	st, err := os.Stat(inputPath)
+// Client returns an API client for interacting with the node.
+func (n *Node) Client() (*Client, error) {
+	addrs, err := n.APIAddresses()
 	if err != nil {
-		return "", fmt.Errorf("failed to stat file '%s': %w", inputPath, err)
+		return nil, fmt.Errorf("failed to fetch api addresses: %w", err)
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("error creating client: node has no available api addresses")
 	}
 
-	node, err := files.NewSerialFile(inputPath, false, st)
+	return NewClient(addrs[0])
+}
+
+// createNode spawns a new IPFS node using a temporary repo path.
+func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
+	repoPath, err := cfg.getRepoPath()
 	if err != nil {
-		return "", fmt.Errorf("failed to create ipfs node: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
 
-	cid, err := cl.api.Unixfs().Add(ctx, node)
-	if err != nil {
-		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
+	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
+		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
-	return cid.String(), nil
+	repo, err := fsrepo.Open(repoPath)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to open temp repo: %w", err)
+	}
+
+	nodeOptions := &core.BuildCfg{
+		Repo:    repo,
+		Online:  true,
+		Routing: libp2p.DHTOption,
+	}
+
+	node, err := core.NewNode(ctx, nodeOptions)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to create node: %w", err)
+	}
+
+	api, err := coreapi.NewCoreAPI(node)
+	return api, node, repoPath, err
+}
+
+// serveAPI starts a new API server for the node on the given address.
+func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) error {
+	cfg, err := node.Repo.Config()
+	if err != nil {
+		return fmt.Errorf("failed to get repo config: %w", err)
+	}
+
+	var listeners []manet.Listener
+	for _, addr := range cfg.Addresses.API {
+		maddr, err := ma.NewMultiaddr(addr)
+		if err != nil {
+			return fmt.Errorf("failed to parse multiaddr: %w", err)
+		}
+
+		listener, err := manet.Listen(maddr)
+		if err != nil {
+			return fmt.Errorf("failed to listen on api multiaddr: %w", err)
+		}
+
+		listeners = append(listeners, listener)
+	}
+
+	// We need to construct a commands.Context in order to use the node APIs:
+	cmdContext := commands.Context{
+		ReqLog:     &commands.ReqLog{},
+		Plugins:    pluginLoader,
+		ConfigRoot: repoPath,
+		ConstructNode: func() (n *core.IpfsNode, err error) {
+			return node, nil
+		},
+	}
+
+	// Options determine which functionality the API should include:
+	var opts = []corehttp.ServeOption{
+		corehttp.VersionOption(),
+		corehttp.GatewayOption(false),
+		corehttp.WebUIOption,
+		corehttp.CommandsOption(cmdContext),
+	}
+
+	for _, listener := range listeners {
+		go func(listener manet.Listener) {
+			cm.RegisterCallback(func() error {
+				return listener.Close()
+			})
+
+			// NOTE: this is not critical, but we should log for debugging
+			if err := corehttp.Serve(node, manet.NetListener(listener), opts...); err != nil {
+				log.Debug().Msgf("node '%s' failed to serve ipfs api: %s", node.Identity, err)
+			}
+		}(listener)
+	}
+
+	return nil
 }
 
 // connectToPeers connects the node to a list of IPFS bootstrap peers.
-func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, bootstrapNodes []string) error {
+func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode, peerAddrs []string) error {
 	log.Debug().Msgf("IPFS node %s has current peers: %v", node.Identity, node.Peerstore.Peers())
-	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, bootstrapNodes)
+	log.Debug().Msgf("IPFS node %s is connecting to new peers: %v", node.Identity, peerAddrs)
 
 	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
 	peerInfos := make(map[peer.ID]*peer.AddrInfo)
-	for _, addrStr := range bootstrapNodes {
+	for _, addrStr := range peerAddrs {
 		addr, err := ma.NewMultiaddr(addrStr)
 		if err != nil {
 			return err
@@ -243,12 +352,14 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 	}
 
 	// Bootstrap the node's list of peers:
+	var anyErr error
 	var wg sync.WaitGroup
 	wg.Add(len(peerInfos))
 	for _, peerInfo := range peerInfos {
 		go func(peerInfo *peer.AddrInfo) {
 			defer wg.Done()
 			if err := api.Swarm().Connect(ctx, *peerInfo); err != nil {
+				anyErr = err
 				log.Debug().Msgf(
 					"failed to connect to ipfs peer %s, skipping: %s",
 					peerInfo.ID, err)
@@ -257,38 +368,7 @@ func connectToPeers(ctx context.Context, api icore.CoreAPI, node *core.IpfsNode,
 	}
 
 	wg.Wait()
-	return nil
-}
-
-// createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode, error) {
-	repoPath, err := cfg.getRepoPath()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create repo dir: %w", err)
-	}
-
-	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
-		return nil, nil, fmt.Errorf("failed to create repo: %w", err)
-	}
-
-	repo, err := fsrepo.Open(repoPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open temp repo: %w", err)
-	}
-
-	nodeOptions := &core.BuildCfg{
-		Repo:    repo,
-		Online:  true,
-		Routing: libp2p.DHTOption,
-	}
-
-	node, err := core.NewNode(ctx, nodeOptions)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create node: %w", err)
-	}
-
-	api, err := coreapi.NewCoreAPI(node)
-	return api, node, err
+	return anyErr
 }
 
 // createRepo creates an IPFS repository in a given directory.
@@ -343,13 +423,13 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
 		}
 		cfg.Addresses.Gateway = []string{
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", gatewayPort),
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", gatewayPort),
 		}
 		cfg.Addresses.API = []string{
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", apiPort),
 		}
 		cfg.Addresses.Swarm = []string{
-			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarmPort),
 		}
 	}
 
@@ -376,5 +456,7 @@ func loadPlugins() error {
 		return fmt.Errorf("error initializing plugins: %s", err)
 	}
 
+	// Set the global cache so we can use it in the ipfs daemon:
+	pluginLoader = plugins
 	return nil
 }

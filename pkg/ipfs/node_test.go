@@ -14,25 +14,24 @@ import (
 
 const testString = "Hello World"
 
-// TestNode tests some basic functionality of the in-process IPFS client:
+// TestFunctionality tests the in-process IPFS node/client as follows:
 //   1. local IPFS can be created using the 'test' profile
 //   2. files can be uploaded/downloaded from the IPFS network
-//   3. uploading to a local IPFS network doesn't pollute the public one
-func TestNode(t *testing.T) {
+func TestFunctionality(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
 
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	cl1, err := NewLocalNode(cm, nil)
+	n1, err := NewLocalNode(cm, nil)
 	assert.NoError(t, err)
 
-	addrs, err := cl1.SwarmAddresses()
+	addrs, err := n1.SwarmAddresses()
 	assert.NoError(t, err)
 
-	var cl2 *Node
-	cl2, err = NewLocalNode(cm, addrs)
+	var n2 *Node
+	n2, err = NewLocalNode(cm, addrs) // connect to first node
 	assert.NoError(t, err)
 
 	// Create a file in a temp dir to upload to the nodes:
@@ -48,11 +47,19 @@ func TestNode(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Upload a file to the second client:
+	cl2, err := n2.Client()
+	assert.NoError(t, err)
+	assert.NoError(t, cl2.WaitUntilAvailable(ctx))
+
 	cid, err := cl2.Put(ctx, filePath)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, cid)
 
 	// Download the file from the first client:
+	cl1, err := n1.Client()
+	assert.NoError(t, err)
+	assert.NoError(t, cl1.WaitUntilAvailable(ctx))
+
 	outputPath := filepath.Join(dirPath, "output.txt")
 	err = cl1.Get(ctx, cid, outputPath)
 	assert.NoError(t, err)
