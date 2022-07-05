@@ -97,6 +97,14 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 	deal *executor.JobDeal, buildContext *bytes.Buffer) (*executor.Job,
 	error) {
+	if spec == nil {
+		return nil, fmt.Errorf("publicapi: spec is nil")
+	}
+
+	if deal == nil {
+		return nil, fmt.Errorf("publicapi: deal is nil")
+	}
+
 	deal.ClientID = system.GetClientID() // ensure we have a client ID
 	data := submitData{
 		Spec: spec,

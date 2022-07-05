@@ -129,3 +129,15 @@ func TestJobSelectionExec(t *testing.T) {
 	runTest(true, false)
 	runTest(false, true)
 }
+
+func TestJobSelectionEmptySpec(t *testing.T) {
+	computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	defer cm.Cleanup()
+
+	_, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+		NodeID: "test",
+		JobID:  "test",
+		Spec:   nil,
+	})
+	assert.Error(t, err)
+}
