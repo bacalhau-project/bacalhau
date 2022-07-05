@@ -398,6 +398,15 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
+
+	if data.Spec == nil {
+		log.Error().Msgf(
+			"Job was submitted with an empty Spec: %+v",
+			data,
+		)
+		return false, fmt.Errorf("job spec is nil")
+	}
+
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
 	if err != nil {

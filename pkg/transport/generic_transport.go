@@ -91,6 +91,16 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEv
 		gt.jobs[event.JobID].Deal = event.JobDeal
 	}
 
+	// if for some reason our event does not contain the spec
+	// then let's read it out of our data store
+	if event.JobSpec == nil {
+		event.JobSpec = gt.jobs[event.JobID].Spec
+	}
+
+	if event.JobDeal == nil {
+		event.JobDeal = gt.jobs[event.JobID].Deal
+	}
+
 	// Jobs have different states on different nodes:
 	if event.JobState != nil && event.NodeID != "" {
 		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
@@ -194,6 +204,14 @@ func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
+
+	if spec == nil {
+		return nil, fmt.Errorf("job spec is required")
+	}
+
+	if deal == nil {
+		return nil, fmt.Errorf("job deal is required")
+	}
 
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
