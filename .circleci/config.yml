@@ -111,15 +111,15 @@ jobs:
             - run:
                 name: Upload results
                 command: |
-                  apt-get install gcc python-dev python-setuptools libffi-dev -y
-                  apt-get install python-pip -y
+                  sudo apt-get install gcc python-dev python-setuptools libffi-dev -y
+                  sudo apt-get install python-pip -y
                   pip install gsutil
                   export SHA="<< pipeline.git.revision >>"
                   export DATETIME="$(date --rfc-3339=ns)"
                   export TEST_RESULTS_FILENAME="$DATETIME-$SHA.xml"
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" > /root/.boto
                   mv unit-tests.xml $TEST_RESULTS_FILENAME
-                  gsutil cp $TEST_RESULTS_FILENAME $GCS_TEST_RESULTS_BUCKET
+                  gsutil cp $TEST_RESULTS_FILENAME $GCS_TEST_RESULTS_BUCKET/<<pipeline.git.branch>>
 
   deploy:
     docker:
@@ -241,7 +241,6 @@ jobs:
               cat CHANGELOG.txt | gh release edit $TAG -F -
             fi
 
-
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
@@ -267,7 +266,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: development
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: '$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64'
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
           filters:
             <<: *filters-development # this is calling the previously set yaml anchor
 
@@ -293,7 +292,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: staging
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: '$GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64'
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
           filters:
             <<: *filters-staging # this is calling the previously set yaml anchor
 
