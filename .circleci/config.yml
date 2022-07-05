@@ -198,6 +198,15 @@ jobs:
               TAG="<< pipeline.git.tag >>"
             fi
             echo "TAG = ${TAG}"
+
+            # Testing to see if release exists - should be for testing only
+            if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
+              echo "Release not found - creating (for testing only - disable in prod)"
+              gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
+            else
+              echo "Found release - $TAG"
+            fi
+
             gh release upload $TAG $BINARY_TARBALL
             gh release upload $TAG $BINARY_TARBALL_SIGNATURE
             cat CHANGELOG.txt | gh release edit -F -
@@ -216,7 +225,9 @@ workflows:
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
-          filters: &filters-development # this yaml anchor is setting these values to "filters-staging"
+          filters: &filters-development # this yaml anchor is setting these values to "filters-development"
+            branches:
+              ignore: main
             tags:
               ignore: /.*/
       - deploy:
