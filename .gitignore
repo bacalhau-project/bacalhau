@@ -7,7 +7,8 @@ build
 public
 lib
 .DS_Store
-dist
+dist/*.sha256
+dist/*.tar.gz
 .cache
 env.*
 .env
@@ -33,3 +34,4 @@ ops/terraform/.terraform/*
 production.tfvars
 ops/terraform/*.out
 benchmark_hack/results
+*_unit.json

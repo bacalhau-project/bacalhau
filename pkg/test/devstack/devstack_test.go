@@ -30,6 +30,7 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
+	t.Skip("TEMP_SKIP_FOR_NULL_POINTER_FAST_FAIL_TEST")
 	ctx, span := newSpan(testCase.Name)
 	defer span.End()
 

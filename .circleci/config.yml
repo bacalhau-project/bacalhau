@@ -1,0 +1,333 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+executors:
+  linux:
+    machine:
+      image: ubuntu-2204:2022.04.2
+    resource_class: large
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  build:
+    parallelism: 4
+    environment:
+      GOVER: 1.18.3
+      GOLANGCILINT_VERSION: v1.46.2
+      IPFS_VERSION: v0.12.2
+      GOPROXY: https://proxy.golang.org
+      GOOS: << parameters.target_os >>
+      GOARCH: << parameters.target_arch >>
+      CGO: 0
+    working_directory: ~/repo
+    executor: linux
+    parameters:
+      target_arch:
+        type: string
+      target_os:
+        type: string
+
+    steps:
+      - checkout
+      - run:
+          name: Echos
+          command: |
+            echo "GOOS => $GOOS"
+            echo "GOARCH => $GOARCH"
+            echo "BRANCH => $CIRCLE_BRANCH"
+      - run:
+          name: Install Go
+          command: |
+            curl -s -L -O "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
+            rm -rf /usr/local && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
+            export PATH=$PATH:/usr/local/go/bin
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run:
+          name: Install Dependencies
+          command: go get ./...
+
+      - run:
+          name: Install IPFS
+          command: |
+            echo "Installing IPFS_VERSION: $IPFS_VERSION"
+            export IPFS_BUILD="$GOOS-$GOARCH"
+            curl -s -L -O "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
+            tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
+            sudo bash ./go-ipfs/install.sh
+
+      - when:
+          condition:
+            and:
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
+          steps:
+            - run:
+                name: Install golangci-lint
+                command: |
+                  echo "Installing GOLANGCILINT: $GOLANGCILINT_VERSION"
+                  # binary will be /usr/local/go/bin/bin/golangci-lint
+                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
+                  golangci-lint --version
+
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - when:
+          condition:
+            and:
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
+          steps:
+            - run:
+                name: Run go mod tidy check diff
+                command: make modtidy check-diff
+      - run:
+          name: Build
+          command: GO111MODULE=on make build
+
+      - when:
+          condition:
+            and:
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
+          steps:
+            - run:
+                name: Test
+                command: |
+                  go install gotest.tools/gotestsum@latest
+                  CGO_ENABLED=${CGO} \
+                  gotestsum \
+                    --junitfile unit-tests.xml \
+                    --format standard-quiet \
+                    -- \
+                      ./pkg/... ./cmd/... \
+                      ${COVERAGE_OPTS} --tags=unit
+            - store_test_results:
+                path: /tmp/test-results
+
+  deploy:
+    docker:
+      - image: google/cloud-sdk:392.0.0
+    parameters:
+      rollout_stage:
+        type: string
+    environment:
+      GCLOUD_VERSION: 392.0.0
+      TERRAFORM_VERSION: 1.2.4
+      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
+    steps:
+      - checkout
+      - run:
+          name: Setup GCloud
+          command: |
+            # Create service account and get credentials here
+            # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
+            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
+            echo "Using GCloud: $GCLOUD_VERSION"
+
+      - run:
+          name: Authenticate to Google Cloud
+          command: |
+            gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+
+      - run:
+          name: Install terraform
+          command: |
+            echo "Insalling Terraform: $TERRAFORM_VERSION"
+            apt-get install -y software-properties-common
+            curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+            apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            apt-get -y update && apt-get -y install terraform=$TERRAFORM_VERSION
+
+      - run:
+          name: Deploy cluster
+          command: |
+            cd ops/terraform && terraform init && \
+                                terraform workspace select << parameters.rollout_stage >> && \
+                                terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+
+  build-release:
+    environment:
+      GOOS: << parameters.target_os >>
+      GOARCH: << parameters.target_arch >>
+    executor: linux
+    parameters:
+      target_arch:
+        type: string
+      target_os:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: Build tarball
+          command: |
+            make build
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            make build-bacalhau-tgz
+            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+            rm dist/.keep                         # Need to remove this file so it's not persisted
+            cp $BINARY_TARBALL dist
+            cp $BINARY_TARBALL_SIGNATURE dist
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
+          # taken to be the root directory of the workspace.
+          root: .
+          # Must be relative path from root
+          paths:
+            - dist/*
+  release:
+    executor: linux
+    steps:
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: .
+      - run:
+          name: Install gh
+          command: |
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update -y
+            sudo apt install gh -y
+            echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
+      - run:
+          name: Generate Changelog
+          command: echo "# Release Notes" > CHANGELOG.txt
+      - run:
+          name: Uploading to Release - << pipeline.git.tag >>
+          command: |
+            if [ "<< pipeline.git.tag >>" = "" ]; then
+              TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
+            else
+              TAG="<< pipeline.git.tag >>"
+            fi
+            echo "TAG = ${TAG}"
+
+            # Testing to see if release exists - should be for testing only
+            if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
+              echo "Release not found - creating (for testing only - disable in prod)"
+              gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
+            else
+              echo "Found release - $TAG"
+            fi
+
+            gh release upload $TAG dist/*
+            cat CHANGELOG.txt | gh release edit $TAG -F -
+
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+workflows:
+  development: # This workflow will run on all branches except 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
+          filters:
+            &filters-development # this yaml anchor is setting these values to "filters-development"
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - deploy:
+          name: deploy-development-cluster
+          requires:
+            - build-linux-amd64
+          rollout_stage: development
+          filters:
+            <<: *filters-development # this is calling the previously set yaml anchor
+
+  staging: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
+          filters:
+            &filters-staging # this yaml anchor is setting these values to "filters-staging"
+            branches:
+              only: main
+            tags:
+              ignore: /.*/
+      - deploy:
+          name: deploy-staging-cluster
+          requires:
+            - build-linux-amd64
+          rollout_stage: staging
+          filters:
+            <<: *filters-staging # this is calling the previously set yaml anchor
+
+  production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
+    jobs:
+      - build:
+          name: build-linux-amd64
+          target_os: linux
+          target_arch: amd64
+          filters: &filters-production
+            branches:
+              only: main
+            tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
+      - build:
+          name: build-darwin-amd64
+          target_os: darwin
+          target_arch: amd64
+          filters:
+            <<: *filters-production # this is calling the previously set yaml anchor
+      - build:
+          name: build-darwin-arm64
+          target_os: darwin
+          target_arch: arm64
+          filters:
+            <<: *filters-production # this is calling the previously set yaml anchor
+      - build-release:
+          name: build-release-linux-amd64
+          target_os: linux
+          target_arch: amd64
+          requires:
+            - build-linux-amd64
+          filters:
+            <<: *filters-production
+      - build-release:
+          name: build-release-darwin-amd64
+          target_os: darwin
+          target_arch: amd64
+          requires:
+            - build-darwin-amd64
+          filters:
+            <<: *filters-production
+      - build-release:
+          name: build-release-darwin-arm64
+          target_os: darwin
+          target_arch: arm64
+          requires:
+            - build-darwin-arm64
+          filters:
+            <<: *filters-production
+      - release:
+          name: create-release-<< pipeline.git.tag >>
+          requires:
+            - build-release-linux-amd64
+            - build-release-darwin-amd64
+            - build-release-darwin-arm64
+          filters:
+            <<: *filters-production
