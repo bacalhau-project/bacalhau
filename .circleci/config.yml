@@ -305,7 +305,12 @@ workflows:
           requires:
             - build-<< matrix.target_os >>-<< matrix.target_arch >>
           matrix:
-            <<: *matrix-production
+            parameters: 
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
           filters:
             <<: *filters-production
       # - release:
