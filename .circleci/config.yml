@@ -116,10 +116,12 @@ jobs:
     parameters:
       rollout_stage:
         type: string
+      GOOGLE_APPLICATION_CREDENTIALS_VARIABLE:
+        type: string
     environment:
       GCLOUD_VERSION: 392.0.0
       TERRAFORM_VERSION: 1.2.4
-      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS.json"
+      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_CREDENTIALS.json"
     steps:
       - checkout
       - run:
@@ -127,7 +129,7 @@ jobs:
           command: |
             # Create service account and get credentials here
             # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
-            echo "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
+            echo "$GOOGLE_APPLICATION_CREDENTIALS_VARIABLE" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
             echo "Using GCloud: $GCLOUD_VERSION"
 
       - run:
@@ -220,7 +222,7 @@ jobs:
             # fi
 
             # Adding the below because for some reason, production still goes through (occassionally) but we should NEVER make a release if the tag is empty
-            if [ "<< pipeline.git.tag >>" ~= ^v([0-9]+).([0-9]+).([0-9]+)$ ]; then
+            if [[ "<< pipeline.git.tag >>" =~ '^v[0-9]+.[0-9]+.[0-9]+$' ]]; then
               TAG="<< pipeline.git.tag >>"
               echo "TAG = ${TAG}"
 
@@ -254,6 +256,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: development
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
           filters:
             <<: *filters-development # this is calling the previously set yaml anchor
 
@@ -279,6 +282,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: staging
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
           filters:
             <<: *filters-staging # this is calling the previously set yaml anchor
 
