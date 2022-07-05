@@ -256,7 +256,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: development
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: '$GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64'
           filters:
             <<: *filters-development # this is calling the previously set yaml anchor
 
@@ -282,7 +282,7 @@ workflows:
           requires:
             - build-linux-amd64
           rollout_stage: staging
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "$GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: '$GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64'
           filters:
             <<: *filters-staging # this is calling the previously set yaml anchor
 
