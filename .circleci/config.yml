@@ -197,6 +197,7 @@ jobs:
             else
               TAG="<< pipeline.git.tag >>"
             fi
+            echo "TAG = ${TAG}"
             gh release upload $TAG $BINARY_TARBALL
             gh release upload $TAG $BINARY_TARBALL_SIGNATURE
             cat CHANGELOG.txt | gh release edit -F -
