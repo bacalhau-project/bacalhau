@@ -205,7 +205,7 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  build-workflow:
+  development: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>
@@ -216,17 +216,20 @@ workflows:
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
+          filters: &filters-development # this yaml anchor is setting these values to "filters-staging"
+            tags:
+              ignore: /.*/
       - deploy:
           requires:
             - build-linux-amd64
           rollout_stage: development
           filters:
-            branches:
-              only: main
-      - release:
-          name: release-<< matrix.target_os >>-<< matrix.target_arch >>
-          requires:
-            - build-<< matrix.target_os >>-<< matrix.target_arch >>
+            <<: *filters-development # this is calling the previously set yaml anchor
+
+  staging: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
               target_os: ["linux", "darwin"]
@@ -234,9 +237,40 @@ workflows:
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
-          filters: # required since `test` has tag filters AND requires `build`
+          filters: &filters-staging # this yaml anchor is setting these values to "filters-staging"
+            branches:
+              only: main
+            tags:
+              ignore: /.*/
+      - deploy:
+          requires:
+            - build-linux-amd64
+          rollout_stage: staging
+          filters:
+            <<: *filters-staging # this is calling the previously set yaml anchor
+  
+  production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix: &matrix-production
+            parameters: 
+              target_os: ["linux", "darwin"]
+              target_arch: ["amd64", "arm64"]
+            exclude:
+              - target_os: "linux"
+                target_arch: "arm64"
+          filters: &filters-production # this yaml anchor is setting these values to "filters-filters-production"
+            branches:
+              only: /^circleci-project-setup$/
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)-fooz-.*$/
-            branches:
-              only: /^circleci-project-setup$/
+      - release:
+          name: release-<< matrix.target_os >>-<< matrix.target_arch >>
+          requires:
+            - build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            <<: *matrix-production
+          filters:
+            <<: *filters-production
