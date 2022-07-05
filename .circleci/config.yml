@@ -201,7 +201,7 @@ jobs:
             # Testing to see if release exists - should be for testing only
             if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
               echo "Release not found - creating (for testing only - disable in prod)"
-              gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
+              gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes >/dev/null 2&>1
             else
               echo "Found release - $TAG"
             fi
