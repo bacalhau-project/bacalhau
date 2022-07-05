@@ -119,8 +119,8 @@ jobs:
                   export DATETIME="$(date -u +"%FT%H%MZ")"
                   export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" > ~/.boto
-                  mv unit-tests.xml "-$TEST_RESULTS_FILENAME"
-                  gsutil cp $TEST_RESULTS_FILENAME $GCS_TEST_RESULTS_BUCKET
+                  mv unit-tests.xml "$TEST_RESULTS_FILENAME"
+                  gsutil cp "$TEST_RESULTS_FILENAME" "$GCS_TEST_RESULTS_BUCKET"
 
   deploy:
     docker:
