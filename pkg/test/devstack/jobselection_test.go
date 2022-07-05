@@ -17,7 +17,7 @@ import (
 // re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func TestSelectAllJobs(t *testing.T) {
-	t.Skip("Skipping while we work out the null pointer test issue")
+	t.Skip("TEMP_SKIP_FOR_NULL_POINTER_FAST_FAIL_TEST")
 
 	type TestCase struct {
 		name            string
