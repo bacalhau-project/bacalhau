@@ -398,7 +398,6 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
-
 	if data.Spec == nil {
 		return false, fmt.Errorf("job spec is nil")
 	}
@@ -460,7 +459,6 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 */
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
-
 	if job.Spec == nil {
 		return "", fmt.Errorf("job spec is nil")
 	}
