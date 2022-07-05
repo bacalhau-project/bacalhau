@@ -14,25 +14,25 @@ import (
 
 const testString = "Hello World"
 
-// TestClient tests some basic functionality of the in-process IPFS client:
+// TestNode tests some basic functionality of the in-process IPFS client:
 //   1. local IPFS can be created using the 'test' profile
 //   2. files can be uploaded/downloaded from the IPFS network
 //   3. uploading to a local IPFS network doesn't pollute the public one
-func TestClient(t *testing.T) {
+func TestNode(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
 
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	cl1, err := NewLocalClient(cm, nil)
+	cl1, err := NewLocalNode(cm, nil)
 	assert.NoError(t, err)
 
-	addrs, err := cl1.P2pAddrs()
+	addrs, err := cl1.SwarmAddresses()
 	assert.NoError(t, err)
 
-	var cl2 *Client
-	cl2, err = NewLocalClient(cm, addrs)
+	var cl2 *Node
+	cl2, err = NewLocalNode(cm, addrs)
 	assert.NoError(t, err)
 
 	// Create a file in a temp dir to upload to the nodes:
@@ -65,11 +65,4 @@ func TestClient(t *testing.T) {
 	data, err := ioutil.ReadAll(file)
 	assert.NoError(t, err)
 	assert.Equal(t, testString, string(data))
-
-	// Create a new client on the public IPFS network:
-	cl3, err := NewClient(cm, nil)
-	assert.NoError(t, err)
-
-	// Check that the file didn't pollute the global IPFS network:
-	assert.Error(t, cl3.Get(ctx, cid, outputPath))
 }

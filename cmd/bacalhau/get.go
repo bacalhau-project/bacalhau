@@ -69,7 +69,7 @@ var getCmd = &cobra.Command{
 		}
 
 		log.Debug().Msg("Spinning up IPFS client...")
-		cl, err := ipfs.NewClient(cm, swarmAddrs)
+		cl, err := ipfs.NewNode(cm, swarmAddrs)
 		if err != nil {
 			return err
 		}
