@@ -153,7 +153,7 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
-  build-release:
+  build_release:
     environment:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
@@ -300,28 +300,23 @@ workflows:
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-      - build-release:
+      - build_release:
           name: build-release-<< matrix.target_os >>-<< matrix.target_arch >>
           requires:
             - build-<< matrix.target_os >>-<< matrix.target_arch >>
           matrix:
-            parameters: 
-              target_os: ["linux", "darwin"]
-              target_arch: ["amd64", "arm64"]
-            exclude:
-              - target_os: "linux"
-                target_arch: "arm64"
+            <<: *matrix-production
           filters:
             <<: *filters-production
-      # - release:
-      #     name: create-release-<< pipeline.git.tag >>
-      #     requires:
-      #       - build-release-linux-amd64
-      #       - build-release-darwin-amd64
-      #       - build-release-darwin-arm64
-      #     filters:
-      #       branches:
-      #         only: /^main$/
-      #       tags:
-      #         # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-      #         only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+      - release:
+          name: create-release-<< pipeline.git.tag >>
+          requires:
+            - build-release-linux-amd64
+            - build-release-darwin-amd64
+            - build-release-darwin-arm64
+          filters:
+            branches:
+              only: /^main$/
+            tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
