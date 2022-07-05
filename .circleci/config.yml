@@ -244,6 +244,7 @@ workflows:
             tags:
               ignore: /.*/
       - deploy:
+          name: deploy-development-cluster
           requires:
             - build-linux-amd64
           rollout_stage: development
@@ -268,6 +269,7 @@ workflows:
             tags:
               ignore: /.*/
       - deploy:
+          name: deploy-staging-cluster
           requires:
             - build-linux-amd64
           rollout_stage: staging
