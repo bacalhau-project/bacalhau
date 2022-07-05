@@ -273,7 +273,7 @@ workflows:
                 target_arch: "arm64"
           filters: &filters-production # this yaml anchor is setting these values to "filters-filters-production"
             branches:
-              only: /^circleci-project-setup$/
+              only: /^main$/
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
