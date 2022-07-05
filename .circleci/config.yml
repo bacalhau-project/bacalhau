@@ -189,11 +189,11 @@ jobs:
             - dist/*
   release:
     executor: linux
-    parameters:
-      target_arch:
-        type: string
-      target_os:
-        type: string
+    # parameters:
+    #   target_arch:
+    #     type: string
+    #   target_os:
+    #     type: string
     steps:
     - attach_workspace:
           # Must be absolute path or relative path from working_directory
@@ -310,13 +310,13 @@ workflows:
             <<: *filters-production
       - release:
           name: create-release-<< pipeline.git.tag >>
-          matrix: 
-            parameters: 
-              target_os: ["NULL"]
-              target_arch: ["NULL"]
           requires:
             - build-release-linux-amd64
             - build-release-darwin-amd64
             - build-release-darwin-arm64
           filters:
-            <<: *filters-production
+            branches:
+              only: /^main$/
+            tags:
+              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+              only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
