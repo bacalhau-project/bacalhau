@@ -21,6 +21,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       CGO: 0
+      TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -107,8 +108,18 @@ jobs:
                     -- \
                       ./pkg/... ./cmd/... \
                       ${COVERAGE_OPTS} --tags=unit
-            - store_test_results:
-                path: /tmp/test-results
+            - run:
+                name: Upload results
+                command: |
+                  apt-get install gcc python-dev python-setuptools libffi-dev -y
+                  apt-get install python-pip -y
+                  pip install gsutil
+                  export SHA="<< pipeline.git.revision >>"
+                  export DATETIME="$(date --rfc-3339=ns)"
+                  export TEST_RESULTS_FILENAME="$DATETIME-$SHA.xml"
+                  echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" > /root/.boto
+                  mv unit-tests.xml $TEST_RESULTS_FILENAME
+                  gsutil cp $TEST_RESULTS_FILENAME $GCS_TEST_RESULTS_BUCKET
 
   deploy:
     docker:
@@ -129,7 +140,7 @@ jobs:
           command: |
             # Create service account and get credentials here
             # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
-            echo "$GOOGLE_APPLICATION_CREDENTIALS_VARIABLE" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
+            echo "$<< parameters.GOOGLE_APPLICATION_CREDENTIALS_VARIABLE >>" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
             echo "Using GCloud: $GCLOUD_VERSION"
 
       - run:
