@@ -204,23 +204,30 @@ jobs:
       - run:
           name: Uploading to Release - << pipeline.git.tag >>
           command: |
-            if [ "<< pipeline.git.tag >>" = "" ]; then
-              TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
-            else
+            # if [ "<< pipeline.git.tag >>" = "" ]; then
+            #   TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
+            # else
+            #   TAG="<< pipeline.git.tag >>"
+            # fi
+            # echo "TAG = ${TAG}"
+
+            # # Testing to see if release exists - should be for testing only
+            # if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
+            #   echo "Release not found - creating (for testing only - disable in prod)"
+            #   gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
+            # else
+            #   echo "Found release - $TAG"
+            # fi
+
+            # Adding the below because for some reason, production still goes through (occassionally) but we should NEVER make a release if the tag is empty
+            if [ "<< pipeline.git.tag >>" ~= ^v([0-9]+).([0-9]+).([0-9]+)$ ]; then
               TAG="<< pipeline.git.tag >>"
-            fi
-            echo "TAG = ${TAG}"
+              echo "TAG = ${TAG}"
 
-            # Testing to see if release exists - should be for testing only
-            if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
-              echo "Release not found - creating (for testing only - disable in prod)"
-              gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
-            else
-              echo "Found release - $TAG"
+              gh release upload $TAG dist/*
+              cat CHANGELOG.txt | gh release edit $TAG -F -
             fi
 
-            gh release upload $TAG dist/*
-            cat CHANGELOG.txt | gh release edit $TAG -F -
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
