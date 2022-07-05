@@ -68,8 +68,8 @@ var getCmd = &cobra.Command{
 			swarmAddrs = strings.Split(getCmdFlags.ipfsSwarmAddrs, ",")
 		}
 
-		// NOTE: we have to spin up a temporary IPFS node as we don't generally
-		// have direct access to a remote node's API server.
+		// NOTE: we have to spin up a temporary IPFS node as we don't
+		// generally have direct access to a remote node's API server.
 		log.Debug().Msg("Spinning up IPFS node...")
 		n, err := ipfs.NewNode(cm, swarmAddrs)
 		if err != nil {

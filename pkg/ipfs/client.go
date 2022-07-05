@@ -10,7 +10,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	icore "github.com/ipfs/interface-go-ipfs-core"
-	"github.com/ipfs/interface-go-ipfs-core/path"
+	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -111,7 +111,13 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 
 // Get fetches a file or directory from the ipfs network.
 func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
-	node, err := cl.api.Unixfs().Get(ctx, path.New(cid))
+	// If outputPath already exists as a directory, we download results to
+	// a new outputPath/cid directory instead to mimic `ipfs get`:
+	if s, err := os.Stat(outputPath); err == nil && s.IsDir() {
+		outputPath = fmt.Sprintf("%s/%s", outputPath, cid)
+	}
+
+	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
 		return fmt.Errorf("failed to get file '%s': %w", cid, err)
 	}
@@ -131,12 +137,13 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to create ipfs node: %w", err)
 	}
 
-	cid, err := cl.api.Unixfs().Add(ctx, node)
+	ipfsPath, err := cl.api.Unixfs().Add(ctx, node)
 	if err != nil {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
 
-	return cid.String(), nil
+	// Return just the CID, without the leading "/ipfs/" prefix:
+	return ipfsPath.Cid().String(), nil
 }
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
@@ -144,7 +151,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	ctx, span := newSpan(ctx, "NodesWithCID")
 	defer span.End()
 
-	ch, err := cl.api.Dht().FindProviders(ctx, path.New(cid))
+	ch, err := cl.api.Dht().FindProviders(ctx, icorepath.New(cid))
 	if err != nil {
 		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
 	}
@@ -179,16 +186,6 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-func (cl *Client) DownloadTar(ctx context.Context, targetDir, cid string) error {
-	return fmt.Errorf("not implemented: DownloadTar")
-}
-
-// TODO: #291 we need to work out how to upload a tar file
-// using just the HTTP api and not needing to shell out
-func (cl *Client) UploadTar(ctx context.Context, sourceDir string) (string, error) {
-	return "", fmt.Errorf("not implemented: UploadTar")
 }
 
 func newSpan(ctx context.Context, api string) (context.Context, trace.Span) {

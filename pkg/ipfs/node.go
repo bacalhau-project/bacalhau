@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -45,7 +46,18 @@ type Node struct {
 	api    icore.CoreAPI
 	node   *core.IpfsNode
 	cancel context.CancelFunc
-	Mode   NodeMode
+
+	// Mode is the mode the ipfs node was created in.
+	Mode NodeMode
+
+	// RepoPath is the path to the ipfs node's data repository.
+	RepoPath string
+
+	// APIPort is the port that the node's ipfs API is listening on.
+	APIPort int
+
+	// SwarmPort is the port that the node's ipfs swarm is listening on.
+	SwarmPort int
 }
 
 // NodeMode configures how the node treats the public IPFS network.
@@ -151,18 +163,45 @@ func NewNodeWithConfig(cm *system.CleanupManager, cfg Config) (*Node, error) {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
 
-	if err := connectToPeers(ctx, api, node, cfg.getPeerAddrs()); err != nil {
+	if err = connectToPeers(ctx, api, node, cfg.getPeerAddrs()); err != nil {
 		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
-	if err := serveAPI(cm, node, repoPath); err != nil {
+	if err = serveAPI(cm, node, repoPath); err != nil {
 		log.Error().Msgf("ipfs node failed to serve API: %s", err)
+	}
+
+	// Fetch useful info from the newly initialized node:
+	nodeCfg, err := node.Repo.Config()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo config: %w", err)
+	}
+
+	var apiPort int
+	if len(nodeCfg.Addresses.API) > 0 {
+		apiPort, err = getTCPPort(nodeCfg.Addresses.API[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse api port: %w", err)
+		}
+	}
+
+	var swarmPort int
+	if len(nodeCfg.Addresses.Swarm) > 0 {
+		swarmPort, err = getTCPPort(nodeCfg.Addresses.Swarm[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse swarm port: %w", err)
+		}
 	}
 
 	n := Node{
 		api:    api,
 		node:   node,
 		cancel: cancel,
+
+		Mode:      cfg.getMode(),
+		RepoPath:  repoPath,
+		APIPort:   apiPort,
+		SwarmPort: swarmPort,
 	}
 
 	// Log details so that user can connect to the new node:
@@ -459,4 +498,19 @@ func loadPlugins() error {
 	// Set the global cache so we can use it in the ipfs daemon:
 	pluginLoader = plugins
 	return nil
+}
+
+// getTCPPort returns the tcp port in a multiaddress.
+func getTCPPort(addr string) (int, error) {
+	maddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return 0, err
+	}
+
+	p, err := maddr.ValueForProtocol(ma.P_TCP)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(p)
 }

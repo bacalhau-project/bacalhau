@@ -24,7 +24,7 @@ type EnvironmentData struct {
 
 // Envs is a list of environment data for various environments:
 var Envs = map[EnvironmentType]EnvironmentData{
-	Production: EnvironmentData{
+	Production: {
 		APIPort: 1234,
 		APIHost: "bootstrap.production.bacalhau.org",
 		IPFSSwarmAddresses: []string{
@@ -35,6 +35,6 @@ var Envs = map[EnvironmentType]EnvironmentData{
 	},
 
 	// TODO: fill these in
-	Development: EnvironmentData{},
-	Staging:     EnvironmentData{},
+	Development: {},
+	Staging:     {},
 }

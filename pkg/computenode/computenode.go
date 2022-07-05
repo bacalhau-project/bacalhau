@@ -462,9 +462,9 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 	}
 
 	node.addRunningJob(job)
-	result, err := e.RunJob(ctx, job)
-	node.removeRunningJob(job)
+	defer node.removeRunningJob(job)
 
+	result, err := e.RunJob(ctx, job)
 	if err != nil {
 		return "", err
 	}

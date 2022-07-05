@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -72,7 +71,6 @@ func devStackDockerStorageTest(
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
 	)
-
 	assert.NoError(t, err)
 
 	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
@@ -87,11 +85,9 @@ func devStackDockerStorageTest(
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		assert.NoError(t, err)
 
-		ipfsClient, err := ipfs_http.NewIPFSHTTPClient(
-			node.IpfsNode.APIAddress())
+		err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
 		assert.NoError(t, err)
 
-		ipfsClient.DownloadTar(ctx, outputDir, state.ResultsID)
 		testCase.ResultsChecker(outputDir + "/" + state.ResultsID)
 	}
 }
