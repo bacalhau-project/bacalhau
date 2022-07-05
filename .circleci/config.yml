@@ -191,9 +191,8 @@ jobs:
           name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
           command: |
             source /tmp/packagevars
-            export TEMP_TAG="<< pipeline.git.tag >>"
-            if [ -z "$TEMP_TAG" ]; then
-              TAG="testing-release-ci-tag"
+            if [ "<< pipeline.git.tag >>" = "" ]; then
+              TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
             else
               TAG="<< pipeline.git.tag >>"
             fi
