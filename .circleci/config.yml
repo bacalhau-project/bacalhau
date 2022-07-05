@@ -153,84 +153,84 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
-  build_release:
-    environment:
-      GOOS: << parameters.target_os >>
-      GOARCH: << parameters.target_arch >>
-    executor: linux
-    parameters:
-      target_arch:
-        type: string
-      target_os:
-        type: string
-    steps:
-      - checkout
-      - run:
-          name: Create Temporary Persisted Artifact Directory
-          command: |
-            mkdir -p dist
-      - run:
-          name: Build tarball
-          command: |
-            make build
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            cp $BINARY_TARBALL dist
-            cp $BINARY_TARBALL_SIGNATURE dist
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
-          # taken to be the root directory of the workspace.
-          root: .
-          # Must be relative path from root
-          paths:
-            - dist/*
-  release:
-    executor: linux
-    # parameters:
-    #   target_arch:
-    #     type: string
-    #   target_os:
-    #     type: string
-    steps:
-    - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: /tmp/dist
-    - run:
-        name: Install gh
-        command: |
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update -y
-          sudo apt install gh -y
-          echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token 
-    - run:
-        name: Generate Changelog
-        command: echo "# Release Notes" > CHANGELOG.txt
-    - run:
-        name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
-        command: |
-          source /tmp/packagevars
-          if [ "<< pipeline.git.tag >>" = "" ]; then
-            TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
-          else
-            TAG="<< pipeline.git.tag >>"
-          fi
-          echo "TAG = ${TAG}"
+  # build_release:
+  #   environment:
+  #     GOOS: << parameters.target_os >>
+  #     GOARCH: << parameters.target_arch >>
+  #   executor: linux
+  #   parameters:
+  #     target_arch:
+  #       type: string
+  #     target_os:
+  #       type: string
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Create Temporary Persisted Artifact Directory
+  #         command: |
+  #           mkdir -p dist
+  #     - run:
+  #         name: Build tarball
+  #         command: |
+  #           make build
+  #           echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+  #           echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+  #           export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+  #           make build-bacalhau-tgz
+  #           source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+  #           cp $BINARY_TARBALL dist
+  #           cp $BINARY_TARBALL_SIGNATURE dist
+  #     - persist_to_workspace:
+  #         # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
+  #         # taken to be the root directory of the workspace.
+  #         root: .
+  #         # Must be relative path from root
+  #         paths:
+  #           - dist/*
+  # release:
+  #   executor: linux
+  #   # parameters:
+  #   #   target_arch:
+  #   #     type: string
+  #   #   target_os:
+  #   #     type: string
+  #   steps:
+  #   - attach_workspace:
+  #         # Must be absolute path or relative path from working_directory
+  #         at: /tmp/dist
+  #   - run:
+  #       name: Install gh
+  #       command: |
+  #         curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+  #         sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+  #         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+  #         sudo apt update -y
+  #         sudo apt install gh -y
+  #         echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token 
+  #   - run:
+  #       name: Generate Changelog
+  #       command: echo "# Release Notes" > CHANGELOG.txt
+  #   - run:
+  #       name: Upload $BINARY_TARBALL to << pipeline.git.tag >>
+  #       command: |
+  #         source /tmp/packagevars
+  #         if [ "<< pipeline.git.tag >>" = "" ]; then
+  #           TAG="testing-release-ci-tag-<< pipeline.git.revision >>"
+  #         else
+  #           TAG="<< pipeline.git.tag >>"
+  #         fi
+  #         echo "TAG = ${TAG}"
 
-          # Testing to see if release exists - should be for testing only
-          if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
-            echo "Release not found - creating (for testing only - disable in prod)"
-            gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
-          else
-            echo "Found release - $TAG"
-          fi
+  #         # Testing to see if release exists - should be for testing only
+  #         if [ "$(gh release view $TAG 2>&1)" = "release not found" ]; then
+  #           echo "Release not found - creating (for testing only - disable in prod)"
+  #           gh release create -t $TAG -p $TAG --notes "Testing CI Release" --generate-notes
+  #         else
+  #           echo "Found release - $TAG"
+  #         fi
 
-          gh release upload $TAG /tmp/dist/*
-          cat CHANGELOG.txt | gh release edit $TAG -F -
+  #         gh release upload $TAG /tmp/dist/*
+  #         cat CHANGELOG.txt | gh release edit $TAG -F -
 
 
 # Invoke jobs via workflows
