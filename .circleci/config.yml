@@ -305,8 +305,8 @@ workflows:
       - release:
           name: create-release-<< pipeline.git.tag >>
           requires:
-            - build-release-<< matrix.target_os >>-<< matrix.target_arch >>
-          matrix:
-            <<: *matrix-production
+            - build-release-linux-amd64
+            - build-release-darwin-amd64
+            - build-release-darwin-arm64
           filters:
             <<: *filters-production
