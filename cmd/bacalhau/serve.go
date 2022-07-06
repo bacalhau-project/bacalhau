@@ -198,7 +198,8 @@ var serveCmd = &cobra.Command{
 			}
 		}(ctx)
 
-		go func(ctx context.Context) {
+		// TODO: #352 should system.ListenAndServeMetrix take ctx?
+		go func(ctx context.Context) { // nolint:unparam // ctx appropriate here 
 			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
