@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
@@ -299,7 +300,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 }
 
 func (e *Executor) cleanupJob(job *executor.Job) {
-	if system.ShouldKeepStack() {
+	if config.ShouldKeepStack() {
 		return
 	}
 	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
@@ -309,7 +310,7 @@ func (e *Executor) cleanupJob(job *executor.Job) {
 }
 
 func (e *Executor) cleanupAll() {
-	if system.ShouldKeepStack() {
+	if config.ShouldKeepStack() {
 		return
 	}
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)

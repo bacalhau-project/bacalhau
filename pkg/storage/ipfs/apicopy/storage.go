@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	ipfsHTTP "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -30,7 +30,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (*St
 	}
 
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := ioutil.TempDir(os.Getenv("BACALHAU_STORAGE_PATH"), "bacalhau-ipfs")
+	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}

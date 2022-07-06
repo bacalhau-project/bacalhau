@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/moby/moby/pkg/stdcopy"
 	"github.com/rs/zerolog/log"
@@ -185,7 +186,7 @@ func PullImage(dockerClient *dockerclient.Client, image string) error {
 		return err
 	}
 
-	if system.IsDebug() {
+	if config.IsDebug() {
 		_, err = io.Copy(os.Stdout, imagePullStream)
 		if err != nil {
 			return err

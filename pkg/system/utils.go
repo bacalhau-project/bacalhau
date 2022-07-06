@@ -131,14 +131,6 @@ func MapByteArray(vs []byte, f func(byte) byte) []byte {
 	return vsm
 }
 
-func IsDebug() bool {
-	return os.Getenv("LOG_LEVEL") == "debug"
-}
-
-func ShouldKeepStack() bool {
-	return os.Getenv("KEEP_STACK") != ""
-}
-
 func GetJobStateStringArray(states []executor.JobStateType) []string {
 	ret := []string{}
 	for _, state := range states {

@@ -2,13 +2,13 @@ package resourceusage
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 	"syscall"
 
 	"github.com/BTBurke/k8sresource"
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/pbnjay/memory"
 )
 
@@ -107,7 +107,7 @@ func getFreeDiskSpace(path string) (uint64, error) {
 
 // what resources does this compute node actually have?
 func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
-	diskSpace, err := getFreeDiskSpace(os.Getenv("BACALHAU_STORAGE_PATH"))
+	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return ResourceUsageData{}, err
 	}
