@@ -230,7 +230,6 @@ resource "google_compute_firewall" "bacalhau_firewall" {
     protocol = "tcp"
     ports = [
       "4001",  // ipfs swarm
-      "5001",  // ipfs API
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
       "2112",  // bacalhau metrics
