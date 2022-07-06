@@ -20,6 +20,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
+const ControlLoopIntervalSeconds = 10
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -207,12 +208,12 @@ func constructComputeNode(
   control loops
 
 */
-func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 
+func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	// this won't hurt our throughput becauase we are calling
 	// controlLoopBidOnJobs right away as soon as a created event is
 	// seen or a job has finished
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(time.Second * ControlLoopIntervalSeconds)
 	ctx, cancelFunction := context.WithCancel(context.Background())
 
 	cm.RegisterCallback(func() error {
@@ -226,7 +227,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 			node.controlLoopBidOnJobs()
 			// TODO: implement this but let's wait for https://github.com/filecoin-project/bacalhau/issues/320
 			// to happen before we make the problem that tries to solve worse
-			//node.controlLoopCancelBids()
+			// node.controlLoopCancelBids()
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -242,7 +243,6 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-
 	activeJobResourceUsage := node.getTotalJobResourceUsage()
 	remainingJobResources := resourceusage.ResourceUsageData{
 		CPU:    node.TotalResourceLimit.CPU - activeJobResourceUsage.CPU,

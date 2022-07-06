@@ -22,6 +22,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const NanoCPUCoefficient = 1000000000
+
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
@@ -213,7 +215,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 			Mounts: mounts,
 			Resources: container.Resources{
 				Memory:   int64(resourceRequirements.Memory),
-				NanoCPUs: int64(resourceRequirements.CPU * 1000000000),
+				NanoCPUs: int64(resourceRequirements.CPU * NanoCPUCoefficient),
 			},
 		},
 		&network.NetworkingConfig{},
