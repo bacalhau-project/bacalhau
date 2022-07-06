@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 )
 
 var apiHost string
 var apiPort int
-var DefaultPortNumber = 1234
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(serveCmd)
@@ -26,11 +26,11 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	RootCmd.AddCommand(describeCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
-		&apiHost, "api-host", "bootstrap.production.bacalhau.org",
+		&apiHost, "api-host", system.Envs[system.Production].APIHost,
 		`The host for the client and server to communicate on (via REST).`,
 	)
 	RootCmd.PersistentFlags().IntVar(
-		&apiPort, "api-port", DefaultPortNumber,
+		&apiPort, "api-port", system.Envs[system.Production].APIPort,
 		`The port for the client and server to communicate on (via REST).`,
 	)
 }
