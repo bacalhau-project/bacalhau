@@ -2,6 +2,7 @@ package ipfshttp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -103,6 +104,14 @@ func (ipfsHTTP *IPFSHTTPClient) GetPeerID(ctx context.Context) (string, error) {
 	return key.ID().String(), nil
 }
 
+type GetCidProvidersResponse struct {
+	Hash           string `json:"Hash"`
+	Size           uint64 `json:"Size"`
+	CumulativeSize uint64 `json:"CumulativeSize"`
+	Blocks         uint64 `json:"Blocks"`
+	Type           string `json:"Type"`
+}
+
 // return the peer ids of peers that provide the given cid
 func (ipfsHTTP *IPFSHTTPClient) GetCidProviders(ctx context.Context, cid string) ([]string, error) {
 	ctx, span := newSpan(ctx, "GetCidProviders")
@@ -136,6 +145,38 @@ func (ipfsHTTP *IPFSHTTPClient) HasCidLocally(ctx context.Context, cid string) (
 	}
 
 	return system.StringArrayContains(providers, peerID), nil
+}
+
+func (ipfsHTTP *IPFSHTTPClient) GetCidStat(ctx context.Context, cid string) (GetCidProvidersResponse, error) {
+	ctx, span := newSpan(ctx, "GetCidStat")
+	defer span.End()
+	data := GetCidProvidersResponse{}
+	res, err := ipfsHTTP.API.Request("files/stat", cid).Send(ctx)
+	if err != nil {
+		return data, err
+	}
+	if res == nil {
+		return data, fmt.Errorf("got nil response")
+	}
+	defer res.Close()
+	err = json.NewDecoder(res.Output).Decode(&data)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+func (ipfsHTTP *IPFSHTTPClient) GetCidSize(ctx context.Context, cid string) (uint64, error) {
+	ctx, span := newSpan(ctx, "GetCidSize")
+	defer span.End()
+
+	stat, err := ipfsHTTP.GetCidStat(ctx, cid)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.CumulativeSize, nil
 }
 
 func (ipfsHTTP *IPFSHTTPClient) GetURL() (string, error) {

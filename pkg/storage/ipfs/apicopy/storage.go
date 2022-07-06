@@ -66,10 +66,10 @@ func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume
 	return dockerIPFS.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
-	return 0, nil
+	return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
