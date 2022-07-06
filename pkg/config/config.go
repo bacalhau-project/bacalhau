@@ -13,5 +13,9 @@ func ShouldKeepStack() bool {
 }
 
 func GetStoragePath() string {
-	return os.Getenv("BACALHAU_STORAGE_PATH")
+	storagePath := os.Getenv("BACALHAU_STORAGE_PATH")
+	if storagePath == "" {
+		storagePath = os.TempDir()
+	}
+	return storagePath
 }
