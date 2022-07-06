@@ -42,7 +42,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return true, nil
 }
 
-func (e *Executor) HasStorageCapacity(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
 	return true, nil
 }
 

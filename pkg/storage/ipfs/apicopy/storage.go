@@ -66,8 +66,7 @@ func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume
 	return dockerIPFS.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) HasStorageCapacity(ctx context.Context,
-	volume storage.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageCapacity")
 	defer span.End()
 	return true, nil

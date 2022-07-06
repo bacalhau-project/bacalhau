@@ -88,16 +88,41 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return s.HasStorageLocally(ctx, volume)
 }
 
-func (e *Executor) HasStorageCapacity(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+// TODO: currently this will group volumes by their driver and ask the question
+// "is there space for ALL these at the same time"
+// the problem is if we have a two volumes from different drivers
+// that on their own would fit but together would not fit
+func (e *Executor) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
-	s, err := e.getStorageProvider(ctx, volume.Engine)
-	if err != nil {
-		return false, err
+	volumesByEngine := map[string][]storage.StorageSpec{}
+
+	for _, volume := range volumes {
+		_, ok := volumesByEngine[volume.Engine]
+		if !ok {
+			volumesByEngine[volume.Engine] = []storage.StorageSpec{}
+		}
+		volumesByEngine[volume.Engine] = append(volumesByEngine[volume.Engine], volume)
 	}
 
-	return s.HasStorageCapacity(ctx, volume)
+	for engineName, volumes := range volumesByEngine {
+		s, err := e.getStorageProvider(ctx, engineName)
+		if err != nil {
+			return false, err
+		}
+
+		hasCapacity, err := s.HasStorageCapacity(ctx, volumes)
+		if err != nil {
+			return false, err
+		}
+
+		if !hasCapacity {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // TODO: #289 Clean up RunJob

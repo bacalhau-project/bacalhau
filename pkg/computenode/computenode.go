@@ -458,6 +458,19 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		return false, nil
 	}
 
+	// reject a job that would use more disk space than we are reporting to have
+	jobPassesDiskSpaceCheck, err := e.HasStorageCapacity(ctx, data.Spec.Inputs)
+	if err != nil {
+		return false, err
+	}
+	if !jobPassesDiskSpaceCheck {
+		log.Info().Msgf(
+			"Job is more than free disk space - rejecting job: job: %+v",
+			data.Spec,
+		)
+		return false, nil
+	}
+
 	// decide if we want to take on the job based on
 	// our selection policy
 	return ApplyJobSelectionPolicy(
