@@ -21,7 +21,7 @@ var getCmdFlags = struct {
 }{
 	timeoutSecs:    10,
 	outputDir:      ".",
-	ipfsSwarmAddrs: "",
+	ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
 func init() { // nolint:gochecknoinits
@@ -30,7 +30,7 @@ func init() { // nolint:gochecknoinits
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
 		getCmdFlags.outputDir, "Directory to write the output to.")
 	getCmd.Flags().StringVar(&getCmdFlags.ipfsSwarmAddrs, "ipfs-swarm-addrs",
-		getCmdFlags.ipfsSwarmAddrs, "Comma-separated list of additional IPFS nodes to use as peers.")
+		getCmdFlags.ipfsSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 }
 
 var getCmd = &cobra.Command{
@@ -68,8 +68,16 @@ var getCmd = &cobra.Command{
 			swarmAddrs = strings.Split(getCmdFlags.ipfsSwarmAddrs, ",")
 		}
 
-		log.Debug().Msg("Spinning up IPFS client...")
-		cl, err := ipfs.NewClient(cm, swarmAddrs)
+		// NOTE: we have to spin up a temporary IPFS node as we don't
+		// generally have direct access to a remote node's API server.
+		log.Debug().Msg("Spinning up IPFS node...")
+		n, err := ipfs.NewNode(cm, swarmAddrs)
+		if err != nil {
+			return err
+		}
+
+		log.Debug().Msg("Connecting client to new IPFS node...")
+		cl, err := n.Client()
 		if err != nil {
 			return err
 		}

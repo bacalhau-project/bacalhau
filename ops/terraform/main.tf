@@ -6,7 +6,7 @@ provider "google" {
 
 terraform {
   backend "gcs" {
-    # this bucket lives in the bacalhau-cicd google projecty
+    # this bucket lives in the bacalhau-cicd google project
     # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
     bucket = "bacalhau-global-storage"
     prefix = "terraform/state"
@@ -145,7 +145,7 @@ resource "google_compute_address" "ipv4_address" {
   name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.protect_resources ? var.instance_count : 0
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
@@ -168,7 +168,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
@@ -230,7 +230,6 @@ resource "google_compute_firewall" "bacalhau_firewall" {
     protocol = "tcp"
     ports = [
       "4001",  // ipfs swarm
-      "5001",  // ipfs API
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
       "2112",  // bacalhau metrics

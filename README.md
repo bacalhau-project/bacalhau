@@ -1,3 +1,5 @@
+[![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
+
 <p align="center">
   <img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
 </p>

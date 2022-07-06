@@ -3,6 +3,10 @@ RUSTFLAGS="-C target-feature=+crt-static"
 IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
 IPFS_FUSE_TAG ?= "v1"
 
+ifeq ($(BUILD_SIDECAR), 1)
+	$(MAKE) build-ipfs-sidecar-image
+endif
+
 # Detect OS
 OS := $(shell uname | tr "[:upper:]" "[:lower:]")
 ARCH := $(shell uname -m | tr "[:upper:]" "[:lower:]")
@@ -20,6 +24,7 @@ endif
 # Env Variables
 export GO111MODULE = on
 export GO = go
+export CGO = 0
 export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
@@ -68,18 +73,18 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
+	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images
 ################################################################################
 .PHONY: build-ipfs-sidecar-image
-build-ipfs-sidecar-image: 
+build-ipfs-sidecar-image:
 	docker build -t $(IPFS_FUSE_IMAGE):$(IPFS_FUSE_TAG) docker/ipfs-sidecar-image
 
 
 .PHONY: build-docker-images
-build-docker-images: build-ipfs-sidecar-image
+build-docker-images:
 	@echo docker images built
 
 # Release tarballs suitable for upload to GitHub release pages
@@ -98,10 +103,10 @@ build-bacalhau-tgz:
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
-	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
-	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
-	@echo "BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
-	@echo "BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
+	@echo "export BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> /tmp/packagevars
+	@echo "export BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> /tmp/packagevars
+	@echo "export BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
+	@echo "export BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
 
 ################################################################################
 # Target: clean
@@ -115,11 +120,11 @@ clean:
 # Target: test
 ################################################################################
 .PHONY: test
-test: build-ipfs-sidecar-image
+test:
 	go test ./... -v
 
 .PHONY: test-debug
-test-debug: build-ipfs-sidecar-image
+test-debug: 
 	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: test-one
@@ -185,14 +190,19 @@ check-diff:
 	git diff --exit-code ./go.mod # check no changes
 	git diff --exit-code ./go.sum # check no changes
 
-# Run the unittests and output a junit report for use with prow
+# Run the unittests and output results for recording
 ################################################################################
-# Target: test-junit
+# Target: test-test-and-report
 ################################################################################
-.PHONY: test-junit
-test-junit: build-bacalhau
-	echo Running tests ... junit_file=$(JUNIT_FILE)
-	go test ./... -v 2>&1 | go-junit-report > $(JUNIT_FILE) --set-exit-code
+.PHONY: test-and-report
+test-and-report: build-bacalhau
+	CGO_ENABLED=${CGO} \
+		gotestsum \
+			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+			--format standard-quiet \
+			-- \
+				./pkg/... ./cmd/... \
+				$(COVERAGE_OPTS) --tags=unit
 
 .PHONY: generate
 generate:

@@ -426,6 +426,10 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, error) {
+	if data.Spec == nil {
+		return false, fmt.Errorf("job spec is nil")
+	}
+
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
 	if err != nil {
@@ -492,6 +496,10 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 */
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+	if job.Spec == nil {
+		return "", fmt.Errorf("job spec is nil")
+	}
+
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
@@ -501,10 +509,13 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 
 	node.removeBiddingJob(job)
 	node.addRunningJob(job)
-	result, err := e.RunJob(ctx, job)
-	node.removeRunningJob(job)
-	node.controlLoopBidOnJobs()
 
+	defer func() {
+		node.removeRunningJob(job)
+		node.controlLoopBidOnJobs()
+	}()
+
+	result, err := e.RunJob(ctx, job)
 	if err != nil {
 		return "", err
 	}

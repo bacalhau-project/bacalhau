@@ -10,8 +10,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	ipfs_cli "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
-	ipfs_devstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -26,11 +25,11 @@ import (
 type DevStackNode struct {
 	ComputeNode   *computenode.ComputeNode
 	RequesterNode *requestornode.RequesterNode
-	IpfsNode      *ipfs_devstack.IPFSDevServer
-	IpfsCLI       *ipfs_cli.IPFSCli
 	Transport     *libp2p.Transport
 
-	APIServer *publicapi.APIServer
+	IpfsNode   *ipfs.Node
+	IpfsClient *ipfs.Client
+	APIServer  *publicapi.APIServer
 }
 
 type DevStack struct {
@@ -62,29 +61,32 @@ func NewDevStack(
 		//////////////////////////////////////
 		// IPFS
 		//////////////////////////////////////
-		ipfsConnectAddress := ""
-
+		var err error
+		var ipfsSwarmAddrs []string
 		if i > 0 {
-			// connect the libp2p scheduler node
-			firstNode := nodes[0]
-			ipfsConnectAddress = firstNode.IpfsNode.SwarmAddress()
+			ipfsSwarmAddrs, err = nodes[0].IpfsNode.SwarmAddresses()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
+			}
 		}
 
-		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfs_devstack.NewDevServer(cm, true)
+		ipfsNode, err := ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"devstack: failed to create ipfs node: %w", err)
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		err = ipfsNode.Start(ipfsConnectAddress)
+		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
-			return nil, fmt.Errorf(
-				"devstack: failed to start ipfs node: %w", err)
+			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		log.Debug().Msgf("IPFS dev server api address: %s", ipfsNode.APIAddress())
-		log.Debug().Msgf("IPFS dev server swarm address: %s", ipfsNode.SwarmAddress())
+		ipfsAPIAddrs, err := ipfsNode.APIAddresses()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ipfs api addresses: %w", err)
+		}
+		if len(ipfsAPIAddrs) == 0 { // should never happen
+			return nil, fmt.Errorf("devstack ipfs node has no api addresses")
+		}
 
 		//////////////////////////////////////
 		// Scheduler
@@ -102,12 +104,12 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Executors and verifiers
 		//////////////////////////////////////
-		executors, err := getExecutors(ipfsNode.APIAddress(), i)
+		executors, err := getExecutors(ipfsAPIAddrs[0], i)
 		if err != nil {
 			return nil, err
 		}
 
-		verifiers, err := getVerifiers(ipfsNode.APIAddress(), i)
+		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i)
 		if err != nil {
 			return nil, err
 		}
@@ -205,20 +207,18 @@ func NewDevStack(
 		devStackNode := &DevStackNode{
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
-			IpfsNode:      ipfsNode,
-			IpfsCLI:       ipfs_cli.NewIPFSCli(ipfsNode.Repo),
 			Transport:     transport,
+			IpfsNode:      ipfsNode,
+			IpfsClient:    ipfsClient,
 			APIServer:     apiServer,
 		}
 
 		nodes = append(nodes, devStackNode)
 	}
 
-	stack := &DevStack{
+	return &DevStack{
 		Nodes: nodes,
-	}
-
-	return stack, nil
+	}, nil
 }
 
 func (stack *DevStack) PrintNodeInfo() {
@@ -229,7 +229,7 @@ func (stack *DevStack) PrintNodeInfo() {
 export IPFS_PATH_%d=%s
 export API_PORT_%d=%d`,
 			nodeIndex,
-			node.IpfsNode.Repo,
+			node.IpfsNode.RepoPath,
 			nodeIndex,
 			stack.Nodes[0].APIServer.Port,
 		)
@@ -251,10 +251,10 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			nodeIndex,
 			node.IpfsNode.APIPort,
 			nodeIndex,
-			node.IpfsNode.Repo,
+			node.IpfsNode.RepoPath,
 			nodeIndex,
 			stack.Nodes[0].APIServer.Port,
-			node.IpfsNode.Repo,
+			node.IpfsNode.RepoPath,
 			node.IpfsNode.APIPort,
 		)
 	}
@@ -263,40 +263,26 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 }
 
 func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {
-	returnFileCid := ""
-
-	// ipfs add the file to 2 nodes
-	// this tests self selection
+	var res string
 	for i, node := range stack.Nodes {
 		if i >= nodeCount {
 			continue
 		}
 
-		nodeID, err := node.ComputeNode.Transport.HostID(context.Background())
-
+		cid, err := node.IpfsClient.Put(context.Background(), filePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
 		}
 
-		fileCid, err := node.IpfsCLI.Run([]string{
-			"add", "-Q", filePath,
-		})
-
-		if err != nil {
-			return "", err
-		}
-
-		fileCid = strings.TrimSpace(fileCid)
-		returnFileCid = fileCid
-		log.Debug().Msgf("Added CID: %s to NODE: %s", fileCid, nodeID)
+		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.IpfsNode.ID())
+		res = strings.TrimSpace(cid)
 	}
 
-	return returnFileCid, nil
+	return res, nil
 }
 
 func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
 	testDir, err := ioutil.TempDir("", "bacalhau-test")
-
 	if err != nil {
 		return "", err
 	}
