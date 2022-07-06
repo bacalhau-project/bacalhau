@@ -662,10 +662,7 @@ func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) reso
 	var memory uint64
 	var disk uint64
 
-	biddingJobMutex.Lock()
-	defer biddingJobMutex.Unlock()
-
-	for _, job := range node.BiddingJobs {
+	for _, job := range jobs {
 		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
 		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
 		disk += resourceusage.ConvertMemoryString(job.Spec.Resources.Disk)
@@ -680,9 +677,20 @@ func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) reso
 
 func (node *ComputeNode) getTotalJobResourceUsage() resourceusage.ResourceUsageData {
 	usage := resourceusage.ResourceUsageData{}
+	bidding := resourceusage.ResourceUsageData{}
+	running := resourceusage.ResourceUsageData{}
 
-	bidding := node.getJobResourceUsage(node.BiddingJobs)
-	running := node.getJobResourceUsage(node.RunningJobs)
+	func() {
+		biddingJobMutex.Lock()
+		defer biddingJobMutex.Unlock()
+		bidding = node.getJobResourceUsage(node.BiddingJobs)
+	}()
+
+	func() {
+		runningJobMutex.Lock()
+		defer runningJobMutex.Unlock()
+		running = node.getJobResourceUsage(node.RunningJobs)
+	}()
 
 	usage.CPU = bidding.CPU + running.CPU
 	usage.Memory = bidding.Memory + running.Memory
