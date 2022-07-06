@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -15,7 +14,6 @@ import (
 var id string
 
 func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
-	describeCmd.PersistentFlags().StringVarP(&id, "id", "i", "", `show all information related to a job.`)
 }
 
 type jobDescription struct {
@@ -52,15 +50,11 @@ type jobDealDescription struct {
 
 // nolintunparam // incorrectly suggesting unused
 var describeCmd = &cobra.Command{
-	Use:   "describe",
+	Use:   "describe [id]",
 	Short: "Describe a job on the network",
+	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		if id == "" {
-			err := fmt.Errorf("please submit an id with the --id flag")
-			log.Error().Msgf(err.Error())
-			return err
-		}
-
 		job, _, err := getAPIClient().Get(context.Background(), id)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", id, err)
