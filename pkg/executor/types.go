@@ -17,7 +17,11 @@ type Executor interface {
 	IsInstalled(context.Context) (bool, error)
 
 	// used to filter and select jobs
+	//    tells us if the storage resource is "close" i.e. cheap to access
 	HasStorageLocally(context.Context, storage.StorageSpec) (bool, error)
+	//    tells us if there is enough "capacity" for the executor to work with
+	//    this storage resource - that could mean disk space or something else
+	HasStorageCapacity(context.Context, storage.StorageSpec) (bool, error)
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results

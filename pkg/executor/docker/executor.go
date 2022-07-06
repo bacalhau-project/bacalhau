@@ -88,6 +88,10 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return s.HasStorageLocally(ctx, volume)
 }
 
+func (e *Executor) HasStorageCapacity(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+	return true, nil
+}
+
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
 func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) {

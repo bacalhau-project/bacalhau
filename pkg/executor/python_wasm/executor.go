@@ -42,6 +42,10 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return true, nil
 }
 
+func (e *Executor) HasStorageCapacity(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+	return true, nil
+}
+
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
