@@ -77,7 +77,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorage")
+	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
 	s, err := e.getStorageProvider(ctx, volume.Engine)
