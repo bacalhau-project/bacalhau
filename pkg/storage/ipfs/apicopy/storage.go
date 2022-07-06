@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	ipfsHTTP "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -28,7 +29,8 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (*St
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
+	dir, err := ioutil.TempDir(os.Getenv("BACALHAU_PATH_STORAGE"), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +59,7 @@ func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 	return true, nil
 }
 
-func (dockerIPFS *StorageProvider) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
 

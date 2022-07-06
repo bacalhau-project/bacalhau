@@ -17,7 +17,7 @@ type Executor interface {
 	IsInstalled(context.Context) (bool, error)
 
 	// used to filter and select jobs
-	HasStorage(context.Context, storage.StorageSpec) (bool, error)
+	HasStorageLocally(context.Context, storage.StorageSpec) (bool, error)
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results

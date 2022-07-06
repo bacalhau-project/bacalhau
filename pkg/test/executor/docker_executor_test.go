@@ -48,7 +48,7 @@ func dockerExecutorStorageTest(
 		assert.True(t, isInstalled)
 
 		for _, inputStorageSpec := range inputStorageList {
-			hasStorage, err := dockerExecutor.HasStorage(
+			hasStorage, err := dockerExecutor.HasStorageLocally(
 				ctx, inputStorageSpec)
 			assert.NoError(t, err)
 			assert.True(t, hasStorage)

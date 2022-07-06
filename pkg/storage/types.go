@@ -7,7 +7,7 @@ import (
 type StorageProvider interface {
 	IsInstalled(context.Context) (bool, error)
 
-	HasStorage(context.Context, StorageSpec) (bool, error)
+	HasStorageLocally(context.Context, StorageSpec) (bool, error)
 
 	PrepareStorage(context.Context, StorageSpec) (*StorageVolume, error)
 

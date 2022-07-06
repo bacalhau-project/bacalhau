@@ -93,7 +93,7 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorage(ctx context.Context,
+func (sp *StorageProvider) HasStorageLocally(ctx context.Context,
 	volume storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()

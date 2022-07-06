@@ -76,7 +76,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return docker.IsInstalled(e.Client), nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
 
@@ -85,7 +85,7 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 		return false, err
 	}
 
-	return s.HasStorage(ctx, volume)
+	return s.HasStorageLocally(ctx, volume)
 }
 
 // TODO: #289 Clean up RunJob

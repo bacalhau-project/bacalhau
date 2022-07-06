@@ -36,7 +36,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
 }
 
