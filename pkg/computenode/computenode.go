@@ -417,6 +417,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 */
 func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
 	node.removeSelectedJob(job.ID)
+	node.controlLoopBidOnJobs()
 }
 
 /*
