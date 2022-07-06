@@ -89,7 +89,15 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 }
 
 func (e *Executor) HasStorageCapacity(ctx context.Context, volume storage.StorageSpec) (bool, error) {
-	return true, nil
+	ctx, span := newSpan(ctx, "HasStorageLocally")
+	defer span.End()
+
+	s, err := e.getStorageProvider(ctx, volume.Engine)
+	if err != nil {
+		return false, err
+	}
+
+	return s.HasStorageCapacity(ctx, volume)
 }
 
 // TODO: #289 Clean up RunJob
