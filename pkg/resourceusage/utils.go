@@ -80,6 +80,7 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertMemoryString(usage.Memory),
+		Disk:   ConvertMemoryString(usage.Disk),
 	}
 }
 
@@ -90,6 +91,7 @@ func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error
 
 	config.CPU = cpu.ToString()
 	config.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
+	config.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
 
 	return config, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
@@ -377,4 +378,50 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
 	assert.NoError(t, err)
 	assert.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+}
+
+func TestDockerResourceLimitsDisk(t *testing.T) {
+
+	EXAMPLE_TEXT := "hello"
+
+	computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
+		TotalResourceLimit: resourceusage.ResourceUsageConfig{
+			// so we have a compute node with 1 byte of disk space
+			Disk: "1b",
+		},
+	})
+	defer cm.Cleanup()
+
+	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+
+	result, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+		NodeID: computeNode.NodeID,
+		JobID:  "test",
+		Spec: &executor.JobSpec{
+			Engine:   executor.EngineDocker,
+			Verifier: verifier.VerifierNoop,
+			Resources: resourceusage.ResourceUsageConfig{
+				CPU:    "100m",
+				Memory: "100mb",
+			},
+			Inputs: []storage.StorageSpec{
+				{
+					Engine: storage.IPFSDefault,
+					Cid:    cid,
+					Path:   "/data/file.txt",
+				},
+			},
+			Docker: executor.JobSpecDocker{
+				Image: "ubuntu",
+				Entrypoint: []string{
+					"bash",
+					"-c",
+					"/data/file.txt",
+				},
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	fmt.Printf("---> %+v\n", result)
 }

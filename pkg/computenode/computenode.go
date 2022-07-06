@@ -734,6 +734,6 @@ func (node *ComputeNode) getJobResourceRequirements(jobID string, spec *executor
 	if err != nil {
 		return resourceusage.ResourceUsageData{}, err
 	}
-	data.Memory = diskSpace
+	data.Disk = diskSpace
 	return data, nil
 }
