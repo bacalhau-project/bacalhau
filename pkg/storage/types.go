@@ -8,7 +8,9 @@ type StorageProvider interface {
 	IsInstalled(context.Context) (bool, error)
 
 	HasStorageLocally(context.Context, StorageSpec) (bool, error)
-	HasStorageCapacity(context.Context, []StorageSpec) (bool, error)
+
+	// how big is the given volume in terms of resource consumption?
+	GetVolumeSize(context.Context, StorageSpec) (uint64, error)
 
 	PrepareStorage(context.Context, StorageSpec) (*StorageVolume, error)
 

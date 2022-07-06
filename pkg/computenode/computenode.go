@@ -82,6 +82,9 @@ type ComputeNode struct {
 	TotalResourceLimit             resourceusage.ResourceUsageData
 	JobResourceLimit               resourceusage.ResourceUsageData
 	DefaultJobResourceRequirements resourceusage.ResourceUsageData
+
+	// keep a cache of job total required disk size
+	JobRequiredDiskSpaceCache map[string]uint64
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -158,15 +161,28 @@ func constructComputeNode(
 		jobResourceLimit.Memory = totalResourceLimit.Memory
 	}
 
+	if jobResourceLimit.Disk <= 0 {
+		jobResourceLimit.Disk = totalResourceLimit.Disk
+	}
+
 	// we can't have one job that uses more than we have
 	if jobResourceLimit.CPU > totalResourceLimit.CPU {
-		return nil, fmt.Errorf("job resource limit CPU %f is greater than total system limit %f", jobResourceLimit.CPU, totalResourceLimit.CPU)
+		return nil, fmt.Errorf("job resource limit CPU %f is greater than total system limit %f",
+			jobResourceLimit.CPU, totalResourceLimit.CPU,
+		)
 	}
 
 	if jobResourceLimit.Memory > totalResourceLimit.Memory {
 		return nil, fmt.Errorf(
 			"job resource limit memory %d is greater than total system limit %d",
 			jobResourceLimit.Memory, totalResourceLimit.Memory,
+		)
+	}
+
+	if jobResourceLimit.Disk > totalResourceLimit.Disk {
+		return nil, fmt.Errorf(
+			"job resource limit disk %d is greater than total system limit %d",
+			jobResourceLimit.Disk, totalResourceLimit.Disk,
 		)
 	}
 
@@ -186,6 +202,13 @@ func constructComputeNode(
 		)
 	}
 
+	if defaultJobResourceRequirements.Disk > jobResourceLimit.Disk {
+		return nil, fmt.Errorf(
+			"default job resource Disk %d is greater than limit %d",
+			defaultJobResourceRequirements.Disk, jobResourceLimit.Disk,
+		)
+	}
+
 	computeNode := &ComputeNode{
 		NodeID:                         nodeID,
 		Transport:                      t,
@@ -198,6 +221,7 @@ func constructComputeNode(
 		RunningJobs:                    map[string]*executor.Job{},
 		BiddingJobs:                    map[string]*executor.Job{},
 		SelectedJobQueue:               []*executor.Job{},
+		JobRequiredDiskSpaceCache:      map[string]uint64{},
 	}
 
 	return computeNode, nil
@@ -247,12 +271,16 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	remainingJobResources := resourceusage.ResourceUsageData{
 		CPU:    node.TotalResourceLimit.CPU - activeJobResourceUsage.CPU,
 		Memory: node.TotalResourceLimit.Memory - activeJobResourceUsage.Memory,
+		Disk:   node.TotalResourceLimit.Disk - activeJobResourceUsage.Disk,
 	}
 
 	for _, queuedJob := range node.SelectedJobQueue {
 		// see if we have enough free resources to run this job
-		jobRequirements := node.getJobResourceRequirements(queuedJob.Spec.Resources)
-
+		jobRequirements, err := node.getJobResourceRequirements(queuedJob.ID, queuedJob.Spec)
+		if err != nil {
+			log.Warn().Msgf("Error getting getJobResourceRequirements space on job %s: %s", queuedJob.ID, err)
+			continue
+		}
 		if resourceusage.CheckResourceRequirements(jobRequirements, remainingJobResources) {
 			err := node.BidOnJob(context.Background(), queuedJob)
 			if err != nil {
@@ -445,7 +473,10 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// get the resource requirements for the job
 	// this takes into accounts the defaults if the job itself didn't have any requirements
-	jobResourceRequirements := node.getJobResourceRequirements(data.Spec.Resources)
+	jobResourceRequirements, err := node.getJobResourceRequirements(data.JobID, data.Spec)
+	if err != nil {
+		return false, err
+	}
 
 	// reject a job that would use more CPU than we would allow
 	jobPassesResourceCheck := resourceusage.CheckResourceRequirements(jobResourceRequirements, node.JobResourceLimit)
@@ -454,19 +485,6 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		log.Info().Msgf(
 			"Job is more than allowed resource usage - rejecting job: job: %+v, limit: %+v",
 			jobResourceRequirements, node.JobResourceLimit,
-		)
-		return false, nil
-	}
-
-	// reject a job that would use more disk space than we are reporting to have
-	jobPassesDiskSpaceCheck, err := e.HasStorageCapacity(ctx, data.Spec.Inputs)
-	if err != nil {
-		return false, err
-	}
-	if !jobPassesDiskSpaceCheck {
-		log.Info().Msgf(
-			"Job is more than free disk space - rejecting job: job: %+v",
-			data.Spec,
 		)
 		return false, nil
 	}
@@ -639,10 +657,10 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 	delete(node.RunningJobs, job.ID)
 }
 
-// add up all the resources reserved by jobs we are currently bidding on
-func (node *ComputeNode) getBiddingJobResourceUsage() resourceusage.ResourceUsageData {
+func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) resourceusage.ResourceUsageData {
 	var cpu float64
 	var memory uint64
+	var disk uint64
 
 	biddingJobMutex.Lock()
 	defer biddingJobMutex.Unlock()
@@ -650,54 +668,64 @@ func (node *ComputeNode) getBiddingJobResourceUsage() resourceusage.ResourceUsag
 	for _, job := range node.BiddingJobs {
 		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
 		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
+		disk += resourceusage.ConvertMemoryString(job.Spec.Resources.Disk)
 	}
 
 	return resourceusage.ResourceUsageData{
 		CPU:    cpu,
 		Memory: memory,
-	}
-}
-
-// add up all the resources being used by all the jobs currently running
-func (node *ComputeNode) getRunningJobResourceUsage() resourceusage.ResourceUsageData {
-	var cpu float64
-	var memory uint64
-
-	runningJobMutex.Lock()
-	defer runningJobMutex.Unlock()
-
-	for _, job := range node.RunningJobs {
-		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
-		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
-	}
-
-	return resourceusage.ResourceUsageData{
-		CPU:    cpu,
-		Memory: memory,
+		Disk:   disk,
 	}
 }
 
 func (node *ComputeNode) getTotalJobResourceUsage() resourceusage.ResourceUsageData {
 	usage := resourceusage.ResourceUsageData{}
 
-	bidding := node.getBiddingJobResourceUsage()
-	running := node.getRunningJobResourceUsage()
+	bidding := node.getJobResourceUsage(node.BiddingJobs)
+	running := node.getJobResourceUsage(node.RunningJobs)
 
 	usage.CPU = bidding.CPU + running.CPU
 	usage.Memory = bidding.Memory + running.Memory
+	usage.Disk = bidding.Disk + running.Disk
 
 	return usage
 }
 
+func (node *ComputeNode) getJobDiskspaceRequirements(jobID string, spec *executor.JobSpec) (uint64, error) {
+	value, ok := node.JobRequiredDiskSpaceCache[jobID]
+	if ok {
+		return value, nil
+	}
+	e, err := node.getExecutor(context.Background(), spec.Engine)
+	if err != nil {
+		return 0, err
+	}
+	var total uint64 = 0
+	for _, volume := range spec.Inputs {
+		size, err := e.GetVolumeSize(context.Background(), volume)
+		if err != nil {
+			return 0, err
+		}
+		total += size
+	}
+	return total, nil
+}
+
 // get the limits for a single job
 // either using it's configured limits or the compute node default job limits
-func (node *ComputeNode) getJobResourceRequirements(jobRequirements resourceusage.ResourceUsageConfig) resourceusage.ResourceUsageData {
-	data := resourceusage.ParseResourceUsageConfig(jobRequirements)
+// we calculate the disk space requirements for the job by asking the executor
+func (node *ComputeNode) getJobResourceRequirements(jobID string, spec *executor.JobSpec) (resourceusage.ResourceUsageData, error) {
+	data := resourceusage.ParseResourceUsageConfig(spec.Resources)
 	if data.CPU <= 0 {
 		data.CPU = node.DefaultJobResourceRequirements.CPU
 	}
 	if data.Memory <= 0 {
 		data.Memory = node.DefaultJobResourceRequirements.Memory
 	}
-	return data
+	diskSpace, err := node.getJobDiskspaceRequirements(jobID, spec)
+	if err != nil {
+		return resourceusage.ResourceUsageData{}, err
+	}
+	data.Memory = diskSpace
+	return data, nil
 }

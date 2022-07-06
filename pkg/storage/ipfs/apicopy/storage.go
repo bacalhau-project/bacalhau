@@ -30,7 +30,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (*St
 	}
 
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := ioutil.TempDir(os.Getenv("BACALHAU_PATH_STORAGE"), "bacalhau-ipfs")
+	dir, err := ioutil.TempDir(os.Getenv("BACALHAU_STORAGE_PATH"), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +66,10 @@ func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume
 	return dockerIPFS.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorageCapacity")
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
-	return true, nil
+	return 0, nil
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {

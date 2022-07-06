@@ -100,10 +100,10 @@ func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage
 	return sp.IPFSClient.HasCidLocally(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorageCapacity")
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
-	return true, nil
+	return 0, nil
 }
 
 // sometimes (for reasons we still need to work out) - the sidecar fuse mount container

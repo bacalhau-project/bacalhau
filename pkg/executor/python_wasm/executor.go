@@ -42,8 +42,8 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return true, nil
 }
 
-func (e *Executor) HasStorageCapacity(ctx context.Context, volumes []storage.StorageSpec) (bool, error) {
-	return true, nil
+func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpec) (uint64, error) {
+	return 0, nil
 }
 
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
