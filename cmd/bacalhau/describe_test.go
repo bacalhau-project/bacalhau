@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/url"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -50,45 +52,85 @@ func (suite *DescribeSuite) TestDescribeJob() {
 		jobState            string
 	}{
 		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobStateComplete.String()}, // Run and accept
-		// {numberOfJobs: 5, numberOfJobsOutput: 5},   // Test for 5 (less than default of 10)
-		// {numberOfJobs: 20, numberOfJobsOutput: 10}, // Test for 20 (more than max of 10)
-		// {numberOfJobs: 20, numberOfJobsOutput: 15}, // The default is 10 so test for non-default
-
+		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobStateComplete.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobStateComplete.String()}, // Run and accept
 	}
+
+	numOfJobsTests := []struct {
+		numOfJobs int
+	}{
+		{numOfJobs: 1, }, 
+		{numOfJobs: 21, }, // one more than the default list length 
+	}
+
 
 	for _, tc := range tests {
-		func() {
-			var submittedJob *executor.Job
-			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
-			defer cm.Cleanup()
+		for _, n := range numOfJobsTests {
 
-			for i := 0; i < tc.numberOfAcceptNodes; i++ {
-				spec, deal := publicapi.MakeNoopJob()
-				s, err := c.Submit(ctx, spec, deal, nil)
-				assert.NoError(suite.T(), err)
-				submittedJob = s
-			}
+			func() {
+				var submittedJob *executor.Job
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
-				"--api-host", host,
-				"--api-port", port,
-				"-i", submittedJob.ID,
-			)
+				for i := 0; i < tc.numberOfAcceptNodes; i++ {
+					for i := 0; i < n.numOfJobs; i++  {
+						spec, deal := publicapi.MakeNoopJob()
+						spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+						s, err := c.Submit(ctx, spec, deal, nil)
+						assert.NoError(suite.T(), err)
+						submittedJob = s // Default to the last job submitted, should be fine?
+					}
+				}
 
-			assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				var returnedJobDescription = &jobDescription{}
 
-			var returnedJobDescription = &jobDescription{}
-			err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				// No job id (should error)
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+					"--api-host", host,
+					"--api-port", port,
+				)
 
-			assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				assert.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
-			// assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+				// Job Id at the end
+				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+					"--api-host", host,
+					"--api-port", port,
+					submittedJob.Deal.ClientID,
+				)
 
-		}()
+				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				assert.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				assert.Equal(suite.T(), 
+										submittedJob.Spec.Docker.Entrypoint[0], 
+										returnedJobDescription.Spec.VM.Entrypoint[0], 
+										fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+
+				// Job Id in the middle
+				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+					"--api-host", host,
+					submittedJob.Deal.ClientID,
+					"--api-port", port,
+				)
+
+				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				assert.Equal(suite.T(), submittedJob.Deal.ClientID, returnedJobDescription.Deal.ClientID, "IDs do not match.")
+				assert.Equal(suite.T(), 
+										submittedJob.Spec.Docker.Entrypoint[0], 
+										returnedJobDescription.Spec.VM.Entrypoint[0], 
+										fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+
+			}()
+		}
 	}
+
 }
 
 // In order for 'go test' to run this suite, we need to create
