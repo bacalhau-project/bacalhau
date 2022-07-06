@@ -99,7 +99,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
 					"--api-host", host,
 					"--api-port", port,
-					submittedJob.Deal.ClientID,
+					submittedJob.ID,
 				)
 
 				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
@@ -114,7 +114,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				// Job Id in the middle
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
 					"--api-host", host,
-					submittedJob.Deal.ClientID,
+					submittedJob.ID,
 					"--api-port", port,
 				)
 
