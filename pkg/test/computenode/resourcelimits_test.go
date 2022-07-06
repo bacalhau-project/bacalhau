@@ -304,7 +304,53 @@ func TestTotalResourceLimits(t *testing.T) {
 
 }
 
-func TestDockerResourceLimits(t *testing.T) {
+func TestDockerResourceLimitsCPU(t *testing.T) {
+
+	CPU_LIMIT := "100m"
+
+	//10000
+
+	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
+	defer cm.Cleanup()
+
+	// this will give us a numerator and denominator that should end up at the
+	// same 0.1 value that 100m means
+	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
+	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierNoop,
+		Resources: resourceusage.ResourceUsageConfig{
+			CPU:    CPU_LIMIT,
+			Memory: "100mb",
+		},
+		Docker: executor.JobSpecDocker{
+			Image: "ubuntu",
+			Entrypoint: []string{
+				"bash",
+				"-c",
+				"cat /sys/fs/cgroup/cpu.max",
+			},
+		},
+	})
+
+	values := strings.Fields(result)
+
+	numerator, err := strconv.Atoi(values[0])
+	assert.NoError(t, err)
+
+	denominator, err := strconv.Atoi(values[1])
+	assert.NoError(t, err)
+
+	var containerCPU float64 = 0
+
+	if denominator > 0 {
+		containerCPU = float64(numerator) / float64(denominator)
+	}
+
+	assert.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+}
+
+func TestDockerResourceLimitsMemory(t *testing.T) {
 
 	MEMORY_LIMIT := "100mb"
 
@@ -323,16 +369,12 @@ func TestDockerResourceLimits(t *testing.T) {
 			Entrypoint: []string{
 				"bash",
 				"-c",
-				"grep MemTotal /proc/meminfo | awk '{print $2}'",
+				"cat /sys/fs/cgroup/memory.max",
 			},
 		},
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
 	assert.NoError(t, err)
-
-	fmt.Printf("memory limit: %d\n", resourceusage.ConvertMemoryString(MEMORY_LIMIT))
-	fmt.Printf("result: %d\n", intVar*1024)
-
-	assert.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar*1024), "the container reported memory does not equal the configured limit")
+	assert.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
