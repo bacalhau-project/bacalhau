@@ -192,7 +192,12 @@ func ConstructLanguageJob(
 }
 
 func VerifyJob(spec *executor.JobSpec, deal *executor.JobDeal) error {
-	// TODO: do something useful here
+	if spec == nil {
+		return fmt.Errorf("job spec is required")
+	}
+	if deal == nil {
+		return fmt.Errorf("job deal is required")
+	}
 	return nil
 }
 
