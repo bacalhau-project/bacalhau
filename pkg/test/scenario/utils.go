@@ -48,12 +48,12 @@ type IGetJobSpec func() executor.JobSpecDocker
 */
 func FuseStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return fusedocker.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
+		stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
 
 func APICopyStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return apicopy.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsNode.APIAddress())
+		stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
 
 var FuseStorageDriverFactory = StorageDriverFactory{

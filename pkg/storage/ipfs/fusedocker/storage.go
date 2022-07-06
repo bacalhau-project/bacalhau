@@ -15,7 +15,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
-	ipfs_http "github.com/filecoin-project/bacalhau/pkg/ipfs/http"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -42,18 +42,18 @@ type StorageProvider struct {
 	// the job of this mutex is to stop a race condition starting two sidecars
 	Mutex        sync.Mutex
 	ID           string
-	IPFSClient   *ipfs_http.IPFSHTTPClient
+	IPFSClient   *ipfs.Client
 	DockerClient *dockerclient.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
+func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (
 	*StorageProvider, error) {
-	api, err := ipfs_http.NewIPFSHTTPClient(ipfsMultiAddress)
+	api, err := ipfs.NewClient(ipfsAPIAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	peerID, err := api.GetPeerID(context.Background())
+	peerID, err := api.ID(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsMultiAddress string) (
 	})
 
 	log.Debug().Msgf(
-		"Docker IPFS storage initialized with address: %s", ipfsMultiAddress)
+		"Docker IPFS storage initialized with address: %s", ipfsAPIAddress)
 	return storageHandler, nil
 }
 
@@ -82,7 +82,7 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	ctx, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 
-	addresses, err := sp.IPFSClient.GetLocalAddrs(ctx)
+	addresses, err := sp.IPFSClient.SwarmAddresses(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -98,7 +98,7 @@ func (sp *StorageProvider) HasStorage(ctx context.Context,
 	ctx, span := newSpan(ctx, "HasStorage")
 	defer span.End()
 
-	return sp.IPFSClient.HasCidLocally(ctx, volume.Cid)
+	return sp.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
 // sometimes (for reasons we still need to work out) - the sidecar fuse mount container
@@ -229,7 +229,7 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 }
 
 func (sp *StorageProvider) startSidecar(ctx context.Context) error {
-	addresses, err := sp.IPFSClient.GetSwarmAddresses(ctx)
+	addresses, err := sp.IPFSClient.SwarmAddresses(ctx)
 	if err != nil {
 		return err
 	}
