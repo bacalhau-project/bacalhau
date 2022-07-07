@@ -27,7 +27,7 @@ func TestIPFSVerifier(t *testing.T) {
 	assert.NoError(t, err)
 
 	verifier, err := ipfs.NewVerifier(
-		cm, stack.Nodes[0].IpfsNode.APIAddress())
+		cm, stack.Nodes[0].IpfsClient.APIAddress())
 	assert.NoError(t, err)
 
 	installed, err := verifier.IsInstalled(ctx)
@@ -38,7 +38,7 @@ func TestIPFSVerifier(t *testing.T) {
 		"fake-job-id", inputDir)
 	assert.NoError(t, err)
 
-	err = verifier.IPFSClient.DownloadTar(ctx, outputDir, resultHash)
+	err = verifier.IPFSClient.Get(ctx, resultHash, outputDir)
 	assert.NoError(t, err)
 
 	outputContent, err := os.ReadFile(outputDir + "/" + resultHash + "/file.txt")
