@@ -114,7 +114,11 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
-	err := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, dockerIPFS.LocalDir)
+
+	_, err := system.Timeout(config.GetDownloadCidRequestTimeout(), func() (interface{}, error) {
+		innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, dockerIPFS.LocalDir)
+		return nil, innerErr
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -39,3 +39,16 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 func SetVolumeSizeRequestTimeout(seconds int64) {
 	getVolumeSizeRequestTimeoutSeconds = seconds
 }
+
+// by default we wait 5 minutes for the IPFS network to download a CID
+// tests will override this using config.SetVolumeSizeRequestTimeout(2)
+var downloadCidRequestTimeoutSeconds int64 = 300
+
+// how long do we wait for a cid to download
+func GetDownloadCidRequestTimeout() time.Duration {
+	return time.Duration(downloadCidRequestTimeoutSeconds) * time.Second
+}
+
+func SetDownloadCidRequestTimeout(seconds int64) {
+	downloadCidRequestTimeoutSeconds = seconds
+}
