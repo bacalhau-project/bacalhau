@@ -3,7 +3,7 @@ package system
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCleanupManager(t *testing.T) {
@@ -16,5 +16,5 @@ func TestCleanupManager(t *testing.T) {
 	})
 
 	cm.Cleanup()
-	assert.True(t, clean, "cleanup handler failed to run registered functions")
+	require.True(t, clean, "cleanup handler failed to run registered functions")
 }

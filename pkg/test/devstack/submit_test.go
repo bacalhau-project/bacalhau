@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEmptySpec(t *testing.T) {
@@ -26,8 +26,8 @@ func TestEmptySpec(t *testing.T) {
 	apiClient := publicapi.NewAPIClient(apiUri)
 
 	_, missingSpecError := apiClient.Submit(ctx, nil, &executor.JobDeal{}, nil)
-	assert.Error(t, missingSpecError)
+	require.Error(t, missingSpecError)
 
 	_, missingDealError := apiClient.Submit(ctx, &executor.JobSpec{}, nil, nil)
-	assert.Error(t, missingDealError)
+	require.Error(t, missingDealError)
 }

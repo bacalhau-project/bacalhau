@@ -35,7 +35,7 @@ func SetupTestDockerIpfs(
 		t.Fatal(err)
 	}
 
-	apiAddress := ipfsStack.Nodes[0].IpfsNode.APIAddress()
+	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 	transport, err := inprocess.NewInprocessTransport()
 	if err != nil {
 		t.Fatal(err)

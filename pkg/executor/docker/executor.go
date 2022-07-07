@@ -323,7 +323,7 @@ func (e *Executor) cleanupAll() {
 	for _, container := range containersWithLabel {
 		err = docker.RemoveContainer(e.Client, container.ID)
 		if err != nil {
-			log.Error().Msgf("Docker remove container error: %s", err.Error())
+			log.Error().Msgf("Non-critical error cleaning up container: %s", err.Error())
 		}
 	}
 }

@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIPFSVerifier(t *testing.T) {
@@ -17,32 +17,32 @@ func TestIPFSVerifier(t *testing.T) {
 	defer TeardownTest(stack, cm)
 
 	inputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-verifier-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fixtureContent := "hello world"
 	err = os.WriteFile(inputDir+"/file.txt", []byte(fixtureContent), 0644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	verifier, err := ipfs.NewVerifier(
-		cm, stack.Nodes[0].IpfsNode.APIAddress())
-	assert.NoError(t, err)
+		cm, stack.Nodes[0].IpfsClient.APIAddress())
+	require.NoError(t, err)
 
 	installed, err := verifier.IsInstalled(ctx)
-	assert.NoError(t, err)
-	assert.True(t, installed)
+	require.NoError(t, err)
+	require.True(t, installed)
 
 	resultHash, err := verifier.ProcessResultsFolder(ctx,
 		"fake-job-id", inputDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	err = verifier.IPFSClient.DownloadTar(ctx, outputDir, resultHash)
-	assert.NoError(t, err)
+	err = verifier.IPFSClient.Get(ctx, resultHash, outputDir)
+	require.NoError(t, err)
 
 	outputContent, err := os.ReadFile(outputDir + "/" + resultHash + "/file.txt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, fixtureContent, string(outputContent))
+	require.Equal(t, fixtureContent, string(outputContent))
 }

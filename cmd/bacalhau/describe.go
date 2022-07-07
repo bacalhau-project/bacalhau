@@ -2,16 +2,14 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
-
-var id string
 
 func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
@@ -55,10 +53,17 @@ var describeCmd = &cobra.Command{
 	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		job, _, err := getAPIClient().Get(context.Background(), id)
+		// TODO: can cobra do validation on args, check this is a valid id?
+		jobID := cmdArgs[0]
+
+		job, ok, err := getAPIClient().Get(context.Background(), jobID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job ID '%s': %s", id, err)
+			log.Error().Msgf("Failure retrieving job ID '%s': %s", jobID, err)
 			return err
+		}
+		if !ok {
+			log.Error().Msgf("No job found with ID '%s'.", jobID)
+			return fmt.Errorf("no job found with ID: %s", jobID)
 		}
 
 		jobVMDesc := &jobSpecVMDescription{}
@@ -76,8 +81,7 @@ var describeCmd = &cobra.Command{
 		jobDealDesc.Concurrency = job.Deal.Concurrency
 		jobDealDesc.AssignedNodes = job.Deal.AssignedNodes
 
-		// TODO: Ugh, do we have to special case this?
-		jobSpecDesc.Verifier = verifier.VerifierTypes()[job.Spec.Verifier-2].String()
+		jobSpecDesc.Verifier = job.Spec.Verifier.String()
 		jobSpecDesc.VM = *jobVMDesc
 
 		jobDesc := &jobDescription{}

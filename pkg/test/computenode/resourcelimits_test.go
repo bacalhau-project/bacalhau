@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJobResourceLimits(t *testing.T) {
@@ -34,8 +35,8 @@ func TestJobResourceLimits(t *testing.T) {
 		job.Spec.Resources = jobResources
 
 		result, err := computeNode.SelectJob(context.Background(), job)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
+		require.NoError(t, err)
+		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
 	}
 
 	// the job is half the limit
@@ -218,9 +219,9 @@ func TestTotalResourceLimits(t *testing.T) {
 				[]string{},
 			)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
 			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
@@ -239,7 +240,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		}
 
 		err := waiter.Wait()
-		assert.NoError(t, err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
+		require.NoError(t, err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
 		if err != nil {
 			fmt.Printf("error waiting for jobs to have been seen\n")
@@ -255,14 +256,14 @@ func TestTotalResourceLimits(t *testing.T) {
 			if err != nil {
 				errorMessage = fmt.Sprintf("there was an error in the check function: %s %s", checker.name, err.Error())
 			}
-			assert.NoError(t, err, errorMessage)
+			require.NoError(t, err, errorMessage)
 			if !innerCheck {
 				checkOk = false
 				failingCheckMessage = fmt.Sprintf("there was an fail in the check function: %s", checker.name)
 			}
 		}
 
-		assert.True(t, checkOk, failingCheckMessage)
+		require.True(t, checkOk, failingCheckMessage)
 
 		if !checkOk {
 			fmt.Printf("error checking results on seen jobs\n")
