@@ -118,7 +118,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
 				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				assert.Equal(suite.T(), submittedJob.Deal.ClientID, returnedJobDescription.Deal.ClientID, "IDs do not match.")
+				assert.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
 				assert.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Spec.VM.Entrypoint[0],
