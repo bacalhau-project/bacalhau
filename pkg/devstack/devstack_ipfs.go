@@ -1,21 +1,21 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	ipfsCLI "github.com/filecoin-project/bacalhau/pkg/ipfs/cli"
-	ipfsDevstack "github.com/filecoin-project/bacalhau/pkg/ipfs/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
 type DevStackNodeIPFS struct {
-	IpfsNode *ipfsDevstack.IPFSDevServer
-	IpfsCLI  *ipfsCLI.IPFSCli
+	IpfsNode   *ipfs.Node
+	IpfsClient *ipfs.Client
 }
 
 type DevStackIPFS struct {
@@ -32,28 +32,28 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error
 		//////////////////////////////////////
 		// IPFS
 		//////////////////////////////////////
-		ipfsConnectAddress := ""
-
+		var err error
+		var ipfsSwarmAddrs []string
 		if i > 0 {
-			// connect the libp2p scheduler node
-			firstNode := nodes[0]
-			ipfsConnectAddress = firstNode.IpfsNode.SwarmAddress()
+			ipfsSwarmAddrs, err = nodes[0].IpfsNode.SwarmAddresses()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
+			}
 		}
 
-		// construct the ipfs, scheduler, requester, compute and jsonRpc nodes
-		ipfsNode, err := ipfsDevstack.NewDevServer(cm, true)
+		ipfsNode, err := ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		err = ipfsNode.Start(ipfsConnectAddress)
+		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
 		devStackNode := &DevStackNodeIPFS{
-			IpfsNode: ipfsNode,
-			IpfsCLI:  ipfsCLI.NewIPFSCli(ipfsNode.Repo),
+			IpfsNode:   ipfsNode,
+			IpfsClient: ipfsClient,
 		}
 
 		nodes = append(nodes, devStackNode)
@@ -78,17 +78,14 @@ command="add -q testdata/grep_file.txt"
 	for _, node := range stack.Nodes {
 		logString += fmt.Sprintf(`
 cid=$(IPFS_PATH=%s ipfs $command)
-curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.Repo, node.IpfsNode.APIPort)
+curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.RepoPath, node.IpfsNode.APIPort)
 	}
 
 	log.Info().Msg(logString + "\n")
 }
 
 func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
-	returnFileCid := ""
-
-	// ipfs add the file to 2 nodes
-	// this tests self selection
+	var res string
 	for i, node := range stack.Nodes {
 		if node == nil {
 			continue
@@ -97,26 +94,16 @@ func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDire
 			continue
 		}
 
-		args := []string{"add", "-Q"}
-
-		if isDirectory {
-			args = append(args, "-r")
-		}
-
-		args = append(args, filePath)
-
-		fileCid, err := node.IpfsCLI.Run(args)
-
+		cid, err := node.IpfsClient.Put(context.Background(), filePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
 		}
 
-		fileCid = strings.TrimSpace(fileCid)
-		returnFileCid = fileCid
-		log.Debug().Msgf("Added CID: %s to NODE: %d", fileCid, i)
+		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.IpfsNode.ID())
+		res = strings.TrimSpace(cid)
 	}
 
-	return returnFileCid, nil
+	return res, nil
 }
 
 func (stack *DevStackIPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {

@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	dag "github.com/ipfs/go-merkledag"
+	ft "github.com/ipfs/go-unixfs"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
@@ -111,6 +113,9 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 
 // Get fetches a file or directory from the ipfs network.
 func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
+	ctx, span := newSpan(ctx, "Get")
+	defer span.End()
+
 	// If outputPath already exists as a directory, we download results to
 	// a new outputPath/cid directory instead to mimic `ipfs get`:
 	if s, err := os.Stat(outputPath); err == nil && s.IsDir() {
@@ -119,7 +124,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 
 	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
-		return fmt.Errorf("failed to get file '%s': %w", cid, err)
+		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
 	return files.WriteTo(node, outputPath)
@@ -127,6 +132,9 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 
 // Put uploads a file or directory to the ipfs network.
 func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
+	ctx, span := newSpan(ctx, "Put")
+	defer span.End()
+
 	st, err := os.Stat(inputPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to stat file '%s': %w", inputPath, err)
@@ -144,6 +152,56 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 
 	// Return just the CID, without the leading "/ipfs/" prefix:
 	return ipfsPath.Cid().String(), nil
+}
+
+type IPLDType int
+
+const (
+	IPLDUnknown IPLDType = iota
+	IPLDFile
+	IPLDDirectory
+)
+
+type StatResult struct {
+	Type IPLDType
+}
+
+// Stat returns information about an IPLD CID on the ipfs network.
+func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
+	ctx, span := newSpan(ctx, "Stat")
+	defer span.End()
+
+	node, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+	}
+
+	// Taken from go-ipfs/core/commands/files.go:
+	var nodeType IPLDType
+	switch n := node.(type) {
+	case *dag.ProtoNode:
+		d, err := ft.FSNodeFromBytes(n.Data())
+		if err != nil {
+			return nil, err
+		}
+
+		switch d.Type() {
+		case ft.TDirectory, ft.THAMTShard:
+			nodeType = IPLDDirectory
+		case ft.TFile, ft.TMetadata, ft.TRaw:
+			nodeType = IPLDFile
+		default:
+			return nil, fmt.Errorf("unrecognized node type: %s", d.Type())
+		}
+	case *dag.RawNode:
+		nodeType = IPLDFile
+	default:
+		return nil, fmt.Errorf("unrecognized node type: %T", node)
+	}
+
+	return &StatResult{
+		Type: nodeType,
+	}, nil
 }
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
