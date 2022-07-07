@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // full end-to-end test of python/wasm:
@@ -34,7 +34,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
@@ -47,7 +47,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 		"-c",
 		"print(1+1)",
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
@@ -59,7 +59,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// load result from ipfs and check it
 	// TODO: see devStackDockerStorageTest for how to do this
@@ -77,27 +77,27 @@ func TestSimplePythonWasm(t *testing.T) {
 	defer TeardownTest(stack, cm)
 
 	nodeIds, err := stack.GetNodeIds()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		err := os.RemoveAll(tmpDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	oldDir, err := os.Getwd()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = os.Chdir(tmpDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		err := os.Chdir(oldDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	// write bytes to main.py
 	mainPy := []byte("print(1+1)")
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(t, cmd.RootCmd,
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
@@ -107,7 +107,7 @@ func TestSimplePythonWasm(t *testing.T) {
 		"--deterministic",
 		"main.py",
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
@@ -118,25 +118,25 @@ func TestSimplePythonWasm(t *testing.T) {
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 }
 
 // func TestPythonWasmWithRequirements(t *testing.T) {
 // 	tmpDir, err := ioutil.TempDir("", "devstack_test")
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 // 	defer func() {
 // 		err := os.RemoveAll(tmpDir)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 	}()
 
 // 	oldDir, err := os.Getwd()
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 // 	err = os.Chdir(tmpDir)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 // 	defer func() {
 // 		err := os.Chdir(oldDir)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 	}()
 
 // 	_, out, err := ExecuteTestCobraCommand(t, RootCmd,
@@ -145,7 +145,7 @@ func TestSimplePythonWasm(t *testing.T) {
 // 		"--deterministic",
 // 		"main.py",
 // 	)
-// 	assert.NoError(t, err)
+// 	require.NoError(t, err)
 
 // }
 
@@ -170,10 +170,10 @@ func TestSimplePythonWasm(t *testing.T) {
 // 		defer TeardownTest(stack, cm)
 
 // 		nodeIds, err := stack.GetNodeIds()
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFS_API_COPY, testCase.addFilesCount)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		jobSpec := &executor.JobSpec{
 // 			Engine:   executor.EngineDocker,
@@ -190,7 +190,7 @@ func TestSimplePythonWasm(t *testing.T) {
 // 		apiUri := stack.Nodes[0].ApiServer.GetURI()
 // 		apiClient := publicapi.NewAPIClient(apiUri)
 // 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal)
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 
 // 		// wait for the job to complete across all nodes
 // 		err = stack.WaitForJob(ctx, submittedJob.Id,
@@ -201,7 +201,7 @@ func TestSimplePythonWasm(t *testing.T) {
 // 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),
 // 		)
 
-// 		assert.NoError(t, err)
+// 		require.NoError(t, err)
 // 	}
 
 // 	for _, testCase := range []TestCase{

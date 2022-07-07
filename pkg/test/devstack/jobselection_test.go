@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -37,10 +37,10 @@ func TestSelectAllJobs(t *testing.T) {
 		defer TeardownTest(stack, cm)
 
 		nodeIds, err := stack.GetNodeIds()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
@@ -57,7 +57,7 @@ func TestSelectAllJobs(t *testing.T) {
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// wait for the job to complete across all nodes
 		err = stack.WaitForJob(ctx, submittedJob.ID,
@@ -68,7 +68,7 @@ func TestSelectAllJobs(t *testing.T) {
 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),
 		)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	for _, testCase := range []TestCase{

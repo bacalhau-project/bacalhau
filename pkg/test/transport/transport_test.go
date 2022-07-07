@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTest(t *testing.T) (
@@ -29,10 +29,10 @@ func setupTest(t *testing.T) (
 	cm := system.NewCleanupManager()
 
 	noopExecutor, err := executorNoop.NewExecutor()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	noopVerifier, err := verifier_noop.NewVerifier()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	executors := map[executor.EngineType]executor.Executor{
 		executor.EngineNoop: noopExecutor,
@@ -43,7 +43,7 @@ func setupTest(t *testing.T) (
 	}
 
 	transport, err := inprocess.NewInprocessTransport()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
 		cm,
@@ -52,14 +52,14 @@ func setupTest(t *testing.T) (
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = requestornode.NewRequesterNode(
 		cm,
 		transport,
 		verifiers,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return transport, noopExecutor, noopVerifier, cm
 }
@@ -70,7 +70,7 @@ func TestTransportSanity(t *testing.T) {
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	transport, err := inprocess.NewInprocessTransport()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = computenode.NewComputeNode(
 		cm,
 		transport,
@@ -78,13 +78,13 @@ func TestTransportSanity(t *testing.T) {
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = requestornode.NewRequesterNode(
 		cm,
 		transport,
 		verifiers,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSchedulerSubmitJob(t *testing.T) {
@@ -112,11 +112,11 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	}
 
 	jobSelected, err := transport.SubmitJob(ctx, spec, deal)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Second * 1)
-	assert.Equal(t, 1, len(noopExecutor.Jobs))
-	assert.Equal(t, jobSelected.ID, noopExecutor.Jobs[0].ID)
+	require.Equal(t, 1, len(noopExecutor.Jobs))
+	require.Equal(t, jobSelected.ID, noopExecutor.Jobs[0].ID)
 }
 
 func TestTransportEvents(t *testing.T) {
@@ -144,7 +144,7 @@ func TestTransportEvents(t *testing.T) {
 	}
 
 	_, err := transport.SubmitJob(ctx, spec, deal)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{
@@ -162,5 +162,5 @@ func TestTransportEvents(t *testing.T) {
 	sort.Strings(expectedEventNames)
 	sort.Strings(actualEventNames)
 
-	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
+	require.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }

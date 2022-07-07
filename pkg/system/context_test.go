@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOnCancel(t *testing.T) {
@@ -20,5 +20,5 @@ func TestOnCancel(t *testing.T) {
 
 	cancel()
 	<-ch
-	assert.True(t, seenHandler, "OnCancel() callback not called")
+	require.True(t, seenHandler, "OnCancel() callback not called")
 }

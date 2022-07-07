@@ -3,7 +3,7 @@ package system
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageSigning(t *testing.T) {
@@ -17,16 +17,16 @@ func TestMessageSigning(t *testing.T) {
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ok, err := VerifyForClient(msg, sig)
-	assert.NoError(t, err)
-	assert.True(t, ok)
+	require.NoError(t, err)
+	require.True(t, ok)
 
 	publicKey := GetClientPublicKey()
 	ok, err = Verify(msg, sig, publicKey)
-	assert.NoError(t, err)
-	assert.True(t, ok)
+	require.NoError(t, err)
+	require.True(t, ok)
 }
 
 func TestGetClientID(t *testing.T) {
@@ -38,14 +38,14 @@ func TestGetClientID(t *testing.T) {
 
 	InitConfigForTesting(t)
 	id := GetClientID()
-	assert.NotEmpty(t, id)
+	require.NotEmpty(t, id)
 
 	InitConfigForTesting(t)
 	id2 := GetClientID()
-	assert.NotEmpty(t, id2)
+	require.NotEmpty(t, id2)
 
 	// Two different clients should have different IDs.
-	assert.NotEqual(t, id, id2)
+	require.NotEqual(t, id, id2)
 }
 
 func TestPublicKeyMatchesID(t *testing.T) {
@@ -60,6 +60,6 @@ func TestPublicKeyMatchesID(t *testing.T) {
 	id := GetClientID()
 	publicKey := GetClientPublicKey()
 	ok, err := PublicKeyMatchesID(publicKey, id)
-	assert.NoError(t, err)
-	assert.True(t, ok)
+	require.NoError(t, err)
+	require.True(t, ok)
 }

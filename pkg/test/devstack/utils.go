@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var StorageDriverNames = []string{
@@ -48,7 +48,7 @@ func SetupTest(
 		getVerifiers,
 		config,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// important to give the pubsub network time to connect
 	time.Sleep(time.Second)
