@@ -12,15 +12,18 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/assert"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -366,10 +369,10 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 	values := strings.Fields(result)
 
 	numerator, err := strconv.Atoi(values[0])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	denominator, err := strconv.Atoi(values[1])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var containerCPU float64 = 0
 
@@ -377,7 +380,7 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	assert.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
 func TestDockerResourceLimitsMemory(t *testing.T) {
@@ -405,8 +408,8 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	assert.NoError(t, err)
-	assert.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.NoError(t, err)
+	require.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
 func TestDockerResourceLimitsDisk(t *testing.T) {
@@ -431,6 +434,8 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 				Resources: resourceusage.ResourceUsageConfig{
 					CPU:    "100m",
 					Memory: "100mb",
+					// we simulate having calculated the disk size here
+					Disk: "6b",
 				},
 				Inputs: []storage.StorageSpec{
 					{
@@ -450,11 +455,71 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, err)
-		assert.Equal(t, result, expected)
+		require.NoError(t, err)
+		require.Equal(t, expected, result)
 	}
 
 	runTest("hello", "1b", false)
 	runTest("hello", "1k", true)
+
+}
+
+// how many bytes more does ipfs report the file than the actual content?
+const IpfsMetadataSize = 8
+
+func TestGetVolumeSize(t *testing.T) {
+
+	runTest := func(text string, expected uint64) {
+
+		cm := system.NewCleanupManager()
+
+		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
+		transport, err := inprocess.NewInprocessTransport()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		executors, err := executor_util.NewStandardExecutors(
+			cm, apiAddress, "devstacknode0")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = computenode.NewComputeNode(
+			cm,
+			transport,
+			executors,
+			verifiers,
+			computenode.ComputeNodeConfig{},
+		)
+		require.NoError(t, err)
+
+		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
+		require.NoError(t, err)
+
+		executor := executors[executor.EngineDocker]
+
+		result, err := executor.GetVolumeSize(context.Background(), storage.StorageSpec{
+			Engine: storage.IPFSDefault,
+			Cid:    cid,
+			Path:   "/",
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, expected+IpfsMetadataSize, result)
+	}
+
+	runTest("hello", 5)
+	runTest("hello world", 11)
 
 }

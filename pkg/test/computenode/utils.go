@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setup a docker ipfs stack to run compute node tests against
@@ -31,26 +32,18 @@ func SetupTestDockerIpfs(
 	cm := system.NewCleanupManager()
 
 	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 	transport, err := inprocess.NewInprocessTransport()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, "devstacknode0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
@@ -59,9 +52,7 @@ func SetupTestDockerIpfs(
 		verifiers,
 		config,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return computeNode, ipfsStack, cm
 }
@@ -75,28 +66,20 @@ func SetupTestNoop(
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	requestorNode, err := requestornode.NewRequesterNode(
 		cm,
 		transport,
 		verifiers,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,

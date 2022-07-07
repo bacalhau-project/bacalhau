@@ -34,11 +34,10 @@ type ComputeNodeConfig struct {
 	// if a job does not state how much CPU or Memory is used
 	// what values should we assume?
 	DefaultJobResourceRequirements resourceusage.ResourceUsageConfig
+}
 
-	// how long is a job in "bidding" state before we clear it out of
-	// our backlog to make space for new jobs to be selected
-	// this is turned into a duration using time.ParseDuration()
-	BiddingBacklogTimeout string
+type TransientJobState struct {
+	DiskSpaceRequired uint64
 }
 
 type ComputeNode struct {
@@ -83,8 +82,9 @@ type ComputeNode struct {
 	JobResourceLimit               resourceusage.ResourceUsageData
 	DefaultJobResourceRequirements resourceusage.ResourceUsageData
 
-	// keep a cache of job total required disk size
-	JobRequiredDiskSpaceCache map[string]uint64
+	// keep a local cache of job disk space requirements
+	// TODO: we really need https://github.com/filecoin-project/bacalhau/issues/327
+	TransientJobStateMap map[string]*TransientJobState
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -221,7 +221,7 @@ func constructComputeNode(
 		RunningJobs:                    map[string]*executor.Job{},
 		BiddingJobs:                    map[string]*executor.Job{},
 		SelectedJobQueue:               []*executor.Job{},
-		JobRequiredDiskSpaceCache:      map[string]uint64{},
+		TransientJobStateMap:           map[string]*TransientJobState{},
 	}
 
 	return computeNode, nil
@@ -249,9 +249,6 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 		select {
 		case <-ticker.C:
 			node.controlLoopBidOnJobs()
-			// TODO: implement this but let's wait for https://github.com/filecoin-project/bacalhau/issues/320
-			// to happen before we make the problem that tries to solve worse
-			// node.controlLoopCancelBids()
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -272,7 +269,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		log.Warn().Msgf("Error getTotalJobResourceUsage: %s", err)
 		return
 	}
-	remainingJobResources := &resourceusage.ResourceUsageData{
+	remainingJobResources := resourceusage.ResourceUsageData{
 		CPU:    node.TotalResourceLimit.CPU - activeJobResourceUsage.CPU,
 		Memory: node.TotalResourceLimit.Memory - activeJobResourceUsage.Memory,
 		Disk:   node.TotalResourceLimit.Disk - activeJobResourceUsage.Disk,
@@ -280,13 +277,9 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 	for _, queuedJob := range node.SelectedJobQueue {
 		// see if we have enough free resources to run this job
-		jobRequirements, err := node.getJobResourceRequirements(queuedJob.ID, queuedJob.Spec)
+		jobRequirements := node.getJobResourceRequirements(queuedJob.ID, queuedJob.Spec)
 
-		if err != nil {
-			log.Warn().Msgf("Error getting getJobResourceRequirements space on job %s: %s", queuedJob.ID, err)
-			continue
-		}
-		if resourceusage.CheckResourceRequirements(jobRequirements, *remainingJobResources) {
+		if resourceusage.CheckResourceRequirements(jobRequirements, remainingJobResources) {
 			err := node.BidOnJob(context.Background(), queuedJob)
 			if err != nil {
 				log.Warn().Msgf("Error bidding on job %s: %s", queuedJob.ID, err)
@@ -298,13 +291,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		}
 	}
 }
-
-// remove jobs that we've bid on but have not yet had an accepted bid
-// TODO: implement this but let's wait for https://github.com/filecoin-project/bacalhau/issues/320
-// to happen before we make the problem that tries to solve worse
-// func (node *ComputeNode) controlLoopCancelBids() {
-
-// }
 
 /*
 
@@ -338,6 +324,16 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	// Increment the number of jobs seen by this compute node:
 	jobsReceived.With(prometheus.Labels{"node_id": node.NodeID}).Inc()
+
+	diskSpace, err := node.getJobDiskspaceRequirements(job.Spec)
+	if err != nil {
+		log.Error().Msgf("error getting job disk space requirements: %v", err)
+		return
+	}
+
+	node.TransientJobStateMap[job.ID] = &TransientJobState{
+		DiskSpaceRequired: diskSpace,
+	}
 
 	// A new job has arrived - decide if we want to bid on it:
 	isJobSelected, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
@@ -479,10 +475,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// get the resource requirements for the job
 	// this takes into accounts the defaults if the job itself didn't have any requirements
-	jobResourceRequirements, err := node.getJobResourceRequirements(data.JobID, data.Spec)
-	if err != nil {
-		return false, err
-	}
+	jobResourceRequirements := node.getJobResourceRequirements(data.JobID, data.Spec)
 
 	// reject a job that would use more CPU than we would allow
 	jobPassesResourceCheck := resourceusage.CheckResourceRequirements(jobResourceRequirements, node.JobResourceLimit)
@@ -661,13 +654,11 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 	runningJobMutex.Lock()
 	defer runningJobMutex.Unlock()
 	delete(node.RunningJobs, job.ID)
+	delete(node.TransientJobStateMap, job.ID)
 }
 
-func (node *ComputeNode) getJobDiskspaceRequirements(jobID string, spec *executor.JobSpec) (uint64, error) {
-	value, ok := node.JobRequiredDiskSpaceCache[jobID]
-	if ok {
-		return value, nil
-	}
+// TODO: we could do this in parallel
+func (node *ComputeNode) getJobDiskspaceRequirements(spec *executor.JobSpec) (uint64, error) {
 	e, err := node.getExecutor(context.Background(), spec.Engine)
 	if err != nil {
 		return 0, err
@@ -686,7 +677,7 @@ func (node *ComputeNode) getJobDiskspaceRequirements(jobID string, spec *executo
 // get the limits for a single job
 // either using it's configured limits or the compute node default job limits
 // we calculate the disk space requirements for the job by asking the executor
-func (node *ComputeNode) getJobResourceRequirements(jobID string, spec *executor.JobSpec) (resourceusage.ResourceUsageData, error) {
+func (node *ComputeNode) getJobResourceRequirements(id string, spec *executor.JobSpec) resourceusage.ResourceUsageData {
 	data := resourceusage.ParseResourceUsageConfig(spec.Resources)
 	if data.CPU <= 0 {
 		data.CPU = node.DefaultJobResourceRequirements.CPU
@@ -694,53 +685,42 @@ func (node *ComputeNode) getJobResourceRequirements(jobID string, spec *executor
 	if data.Memory <= 0 {
 		data.Memory = node.DefaultJobResourceRequirements.Memory
 	}
-	diskSpace, err := node.getJobDiskspaceRequirements(jobID, spec)
-	if err != nil {
-		return resourceusage.ResourceUsageData{}, err
+
+	jobState, ok := node.TransientJobStateMap[id]
+
+	if ok {
+		data.Disk = jobState.DiskSpaceRequired
 	}
-	data.Disk = diskSpace
-	return data, nil
+
+	if data.Disk <= 0 {
+		data.Disk = node.DefaultJobResourceRequirements.Disk
+	}
+	return data
 }
 
-func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) (resourceusage.ResourceUsageData, error) {
-	var cpu float64
-	var memory uint64
-	var disk uint64
+// given a map of jobs - return the total amount of resources used
+func (node *ComputeNode) getJobMapTotalResourceUsage(jobs map[string]*executor.Job) resourceusage.ResourceUsageData {
+	data := resourceusage.ResourceUsageData{}
 
 	for _, job := range jobs {
-		jobRequirements, err := node.getJobResourceRequirements(job.ID, job.Spec)
-		if err != nil {
-			return resourceusage.ResourceUsageData{}, err
-		}
-		cpu += jobRequirements.CPU
-		memory += jobRequirements.Memory
-		disk += jobRequirements.Disk
+		jobRequirements := node.getJobResourceRequirements(job.ID, job.Spec)
+		data.CPU += jobRequirements.CPU
+		data.Memory += jobRequirements.Memory
+		data.Disk += jobRequirements.Disk
 	}
 
-	return resourceusage.ResourceUsageData{
-		CPU:    cpu,
-		Memory: memory,
-		Disk:   disk,
-	}, nil
+	return data
 }
 
 func (node *ComputeNode) getTotalJobResourceUsage() (resourceusage.ResourceUsageData, error) {
-	var err error
 	usage := resourceusage.ResourceUsageData{}
-
 	biddingJobMutex.Lock()
 	runningJobMutex.Lock()
 	defer biddingJobMutex.Unlock()
 	defer runningJobMutex.Unlock()
 
-	bidding, err := node.getJobResourceUsage(node.BiddingJobs)
-	if err != nil {
-		return usage, err
-	}
-	running, err := node.getJobResourceUsage(node.RunningJobs)
-	if err != nil {
-		return usage, err
-	}
+	bidding := node.getJobMapTotalResourceUsage(node.BiddingJobs)
+	running := node.getJobMapTotalResourceUsage(node.RunningJobs)
 
 	usage.CPU = bidding.CPU + running.CPU
 	usage.Memory = bidding.Memory + running.Memory
