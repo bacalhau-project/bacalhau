@@ -151,7 +151,8 @@ func NewDevStack(
 
 		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
 		go func(ctx context.Context) {
-			if err = apiServer.ListenAndServe(ctx, cm); err != nil {
+			var gerr error // don't capture outer scope
+			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
 				panic(err) // if api server can't run, devstack should stop
 			}
 		}(context.Background())
@@ -168,7 +169,8 @@ func NewDevStack(
 		}
 
 		go func(ctx context.Context) {
-			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
+			var gerr error // don't capture outer scope
+			if gerr = system.ListenAndServeMetrics(cm, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(context.Background())
