@@ -124,7 +124,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 
 	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
-		return fmt.Errorf("failed to get file '%s': %w", cid, err)
+		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
 	return files.WriteTo(node, outputPath)

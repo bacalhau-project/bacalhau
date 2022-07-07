@@ -60,7 +60,8 @@ func getAPIClient() *publicapi.APIClient {
 	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 }
 
-func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (c *cobra.Command, output string, err error) { //nolint:unparam // use of t is valuable here
+func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (
+	c *cobra.Command, output string, err error) { //nolint:unparam // use of t is valuable here
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(buf)

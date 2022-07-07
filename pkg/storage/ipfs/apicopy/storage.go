@@ -70,11 +70,17 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 		return nil, fmt.Errorf("failed to stat %s: %w", storageSpec.Cid, err)
 	}
 
-	if stat.Type == ipfs.IPLDFile || stat.Type == ipfs.IPLDDirectory {
-		return dockerIPFS.copyTarFile(ctx, storageSpec)
-	} else {
+	if stat.Type != ipfs.IPLDFile && stat.Type != ipfs.IPLDDirectory {
 		return nil, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.Cid, stat.Type)
 	}
+
+	var volume *storage.StorageVolume
+	volume, err = dockerIPFS.copyFile(ctx, storageSpec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
+	}
+
+	return volume, nil
 }
 
 // nolint:lll // Exception to the long rule
@@ -84,8 +90,8 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 	})
 }
 
-func (dockerIPFS *StorageProvider) copyTarFile(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
-	err := dockerIPFS.IPFSClient.Get(ctx, dockerIPFS.LocalDir, storageSpec.Cid)
+func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+	err := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, dockerIPFS.LocalDir)
 	if err != nil {
 		return nil, err
 	}

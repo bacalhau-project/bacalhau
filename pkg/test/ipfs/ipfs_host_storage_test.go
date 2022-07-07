@@ -19,6 +19,62 @@ import (
 type getStorageFunc func(cm *system.CleanupManager, api string) (
 	storage.StorageProvider, error)
 
+func TestIpfsApiCopyFile(t *testing.T) {
+
+	runFileTest(
+		t,
+		storage.IPFSAPICopy,
+		func(cm *system.CleanupManager, api string) (
+			storage.StorageProvider, error) {
+
+			return apicopy.NewStorageProvider(cm, api)
+		},
+	)
+
+}
+
+func TestIpfsApiCopyFolder(t *testing.T) {
+
+	runFolderTest(
+		t,
+		storage.IPFSAPICopy,
+		func(cm *system.CleanupManager, api string) (
+			storage.StorageProvider, error) {
+
+			return apicopy.NewStorageProvider(cm, api)
+		},
+	)
+}
+
+func TestIpfsFuseDockerFile(t *testing.T) {
+	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
+
+	runFileTest(
+		t,
+		storage.IPFSFuseDocker,
+		func(cm *system.CleanupManager, api string) (
+			storage.StorageProvider, error) {
+
+			return fusedocker.NewStorageProvider(cm, api)
+		},
+	)
+}
+
+func TestIpfsFuseDockerFolder(t *testing.T) {
+	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
+
+	runFolderTest(
+		t,
+		storage.IPFSFuseDocker,
+		func(cm *system.CleanupManager, api string) (
+			storage.StorageProvider, error) {
+
+			return fusedocker.NewStorageProvider(cm, api)
+		},
+	)
+
+}
+
 func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
 	ctx, span := newSpan(engine)
@@ -33,7 +89,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	assert.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsNode.APIAddress()
+	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
 	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
@@ -88,7 +144,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 	assert.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsNode.APIAddress()
+	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
 	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
 	assert.NoError(t, err)
 
@@ -121,62 +177,6 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	assert.NoError(t, err)
-}
-
-func TestIpfsFuseDockerFile(t *testing.T) {
-	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
-
-	runFileTest(
-		t,
-		storage.IPFSFuseDocker,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return fusedocker.NewStorageProvider(cm, api)
-		},
-	)
-}
-
-func TestIpfsFuseDockerFolder(t *testing.T) {
-	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
-
-	runFolderTest(
-		t,
-		storage.IPFSFuseDocker,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return fusedocker.NewStorageProvider(cm, api)
-		},
-	)
-
-}
-
-func TestIpfsApiCopyFile(t *testing.T) {
-
-	runFileTest(
-		t,
-		storage.IPFSAPICopy,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return apicopy.NewStorageProvider(cm, api)
-		},
-	)
-
-}
-
-func TestIpfsApiCopyFolder(t *testing.T) {
-
-	runFolderTest(
-		t,
-		storage.IPFSAPICopy,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return apicopy.NewStorageProvider(cm, api)
-		},
-	)
 }
 
 func newSpan(name string) (context.Context, trace.Span) {
