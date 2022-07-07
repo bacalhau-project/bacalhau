@@ -76,7 +76,7 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job,
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Job, bool, error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job *executor.Job, ok bool, err error) {
 	if jobID == "" {
 		return nil, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
@@ -87,7 +87,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 	}
 
 	// TODO: make this deterministic, return the first match alphabetically
-	for _, job := range jobs {
+	for _, job = range jobs {
 		if strings.HasPrefix(job.ID, jobID) {
 			log.Debug().Msgf("MATCH: %s", job.ID)
 			return job, true, nil
