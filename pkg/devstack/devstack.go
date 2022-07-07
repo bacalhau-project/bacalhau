@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -359,9 +360,20 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 	}
 }
 
-func (stack *DevStack) WaitForJob(
+// if there are > X states then error
+func WaitDontExceedCount(count int) CheckJobStatesFunction {
+	return func(jobStates map[string]executor.JobStateType) (bool, error) {
+		if len(jobStates) > count {
+			return false, fmt.Errorf("There are more states: %d than expected: %d", len(jobStates), count)
+		}
+		return true, nil
+	}
+}
+
+func (stack *DevStack) WaitForJobWithLogs(
 	ctx context.Context,
 	jobID string,
+	log bool,
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
 	waiter := &system.FunctionWaiter{
@@ -371,6 +383,9 @@ func (stack *DevStack) WaitForJob(
 		Handler: func() (bool, error) {
 			// load the current states of the job
 			states, err := stack.GetJobStates(ctx, jobID)
+			if log {
+				spew.Dump(states)
+			}
 			if err != nil {
 				return false, err
 			}
@@ -389,6 +404,14 @@ func (stack *DevStack) WaitForJob(
 	}
 
 	return waiter.Wait()
+}
+
+func (stack *DevStack) WaitForJob(
+	ctx context.Context,
+	jobID string,
+	checkJobStateFunctions ...CheckJobStatesFunction,
+) error {
+	return stack.WaitForJobWithLogs(ctx, jobID, false, checkJobStateFunctions...)
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
