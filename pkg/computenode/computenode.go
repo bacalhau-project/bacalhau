@@ -393,6 +393,7 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 	// we will want to free up the capacity manager from this job
 	defer func() {
 		node.capacityManager.Remove(job.ID)
+		node.controlLoopBidOnJobs()
 	}()
 
 	if job.Spec == nil {

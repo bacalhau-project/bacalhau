@@ -36,12 +36,17 @@ func TestJobResourceLimits(t *testing.T) {
 				ResourceRequirementsDefault: defaultJobResourceLimits,
 			},
 		}, noop_executor.ExecutorConfig{})
-		defer cm.Cleanup()
+		defer func() {
+			// sleep here otherwise the compute node tries to register cleanup handlers too late
+			time.Sleep(time.Millisecond * 10)
+			cm.Cleanup()
+		}()
 		job := GetProbeData("")
 		job.Spec.Resources = jobResources
 
 		result, _, err := computeNode.SelectJob(context.Background(), job)
 		require.NoError(t, err)
+
 		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
 	}
 
