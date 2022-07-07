@@ -267,8 +267,12 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-	activeJobResourceUsage := node.getTotalJobResourceUsage()
-	remainingJobResources := resourceusage.ResourceUsageData{
+	activeJobResourceUsage, err := node.getTotalJobResourceUsage()
+	if err != nil {
+		log.Warn().Msgf("Error getTotalJobResourceUsage: %s", err)
+		return
+	}
+	remainingJobResources := &resourceusage.ResourceUsageData{
 		CPU:    node.TotalResourceLimit.CPU - activeJobResourceUsage.CPU,
 		Memory: node.TotalResourceLimit.Memory - activeJobResourceUsage.Memory,
 		Disk:   node.TotalResourceLimit.Disk - activeJobResourceUsage.Disk,
@@ -277,11 +281,12 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	for _, queuedJob := range node.SelectedJobQueue {
 		// see if we have enough free resources to run this job
 		jobRequirements, err := node.getJobResourceRequirements(queuedJob.ID, queuedJob.Spec)
+
 		if err != nil {
 			log.Warn().Msgf("Error getting getJobResourceRequirements space on job %s: %s", queuedJob.ID, err)
 			continue
 		}
-		if resourceusage.CheckResourceRequirements(jobRequirements, remainingJobResources) {
+		if resourceusage.CheckResourceRequirements(jobRequirements, *remainingJobResources) {
 			err := node.BidOnJob(context.Background(), queuedJob)
 			if err != nil {
 				log.Warn().Msgf("Error bidding on job %s: %s", queuedJob.ID, err)
@@ -289,6 +294,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			}
 			remainingJobResources.CPU -= jobRequirements.CPU
 			remainingJobResources.Memory -= jobRequirements.Memory
+			remainingJobResources.Disk -= jobRequirements.Disk
 		}
 	}
 }
@@ -657,48 +663,6 @@ func (node *ComputeNode) removeRunningJob(job *executor.Job) {
 	delete(node.RunningJobs, job.ID)
 }
 
-func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) resourceusage.ResourceUsageData {
-	var cpu float64
-	var memory uint64
-	var disk uint64
-
-	for _, job := range jobs {
-		cpu += resourceusage.ConvertCPUString(job.Spec.Resources.CPU)
-		memory += resourceusage.ConvertMemoryString(job.Spec.Resources.Memory)
-		disk += resourceusage.ConvertMemoryString(job.Spec.Resources.Disk)
-	}
-
-	return resourceusage.ResourceUsageData{
-		CPU:    cpu,
-		Memory: memory,
-		Disk:   disk,
-	}
-}
-
-func (node *ComputeNode) getTotalJobResourceUsage() resourceusage.ResourceUsageData {
-	usage := resourceusage.ResourceUsageData{}
-	bidding := resourceusage.ResourceUsageData{}
-	running := resourceusage.ResourceUsageData{}
-
-	func() {
-		biddingJobMutex.Lock()
-		defer biddingJobMutex.Unlock()
-		bidding = node.getJobResourceUsage(node.BiddingJobs)
-	}()
-
-	func() {
-		runningJobMutex.Lock()
-		defer runningJobMutex.Unlock()
-		running = node.getJobResourceUsage(node.RunningJobs)
-	}()
-
-	usage.CPU = bidding.CPU + running.CPU
-	usage.Memory = bidding.Memory + running.Memory
-	usage.Disk = bidding.Disk + running.Disk
-
-	return usage
-}
-
 func (node *ComputeNode) getJobDiskspaceRequirements(jobID string, spec *executor.JobSpec) (uint64, error) {
 	value, ok := node.JobRequiredDiskSpaceCache[jobID]
 	if ok {
@@ -736,4 +700,51 @@ func (node *ComputeNode) getJobResourceRequirements(jobID string, spec *executor
 	}
 	data.Disk = diskSpace
 	return data, nil
+}
+
+func (node *ComputeNode) getJobResourceUsage(jobs map[string]*executor.Job) (resourceusage.ResourceUsageData, error) {
+	var cpu float64
+	var memory uint64
+	var disk uint64
+
+	for _, job := range jobs {
+		jobRequirements, err := node.getJobResourceRequirements(job.ID, job.Spec)
+		if err != nil {
+			return resourceusage.ResourceUsageData{}, err
+		}
+		cpu += jobRequirements.CPU
+		memory += jobRequirements.Memory
+		disk += jobRequirements.Disk
+	}
+
+	return resourceusage.ResourceUsageData{
+		CPU:    cpu,
+		Memory: memory,
+		Disk:   disk,
+	}, nil
+}
+
+func (node *ComputeNode) getTotalJobResourceUsage() (resourceusage.ResourceUsageData, error) {
+	var err error
+	usage := resourceusage.ResourceUsageData{}
+
+	biddingJobMutex.Lock()
+	runningJobMutex.Lock()
+	defer biddingJobMutex.Unlock()
+	defer runningJobMutex.Unlock()
+
+	bidding, err := node.getJobResourceUsage(node.BiddingJobs)
+	if err != nil {
+		return usage, err
+	}
+	running, err := node.getJobResourceUsage(node.RunningJobs)
+	if err != nil {
+		return usage, err
+	}
+
+	usage.CPU = bidding.CPU + running.CPU
+	usage.Memory = bidding.Memory + running.Memory
+	usage.Disk = bidding.Disk + running.Disk
+
+	return usage, nil
 }
