@@ -297,22 +297,22 @@ func TestTotalResourceLimits(t *testing.T) {
 	// 2 jobs at a time
 	// we should end up with 2 groups of 2 in terms of timing
 	// and the highest number of jobs at one time should be 2
-	// runTest(
-	// 	TotalResourceTestCase{
-	// 		jobs: getResourcesArray([][]string{
-	// 			{"1", "500Mb", ""},
-	// 			{"1", "500Mb", ""},
-	// 			{"1", "500Mb", ""},
-	// 			{"1", "500Mb", ""},
-	// 		}),
-	// 		totalLimits: getResources("2", "1Gb", "1Gb"),
-	// 		wait:        waitUntilSeenAllJobs(4),
-	// 		checkers: []TotalResourceTestCaseCheck{
-	// 			// there should only have ever been 2 jobs at one time
-	// 			checkMaxJobs(2),
-	// 		},
-	// 	},
-	// )
+	runTest(
+		TotalResourceTestCase{
+			jobs: getResourcesArray([][]string{
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
+			}),
+			totalLimits: getResources("2", "1Gb", "1Gb"),
+			wait:        waitUntilSeenAllJobs(4),
+			checkers: []TotalResourceTestCaseCheck{
+				// there should only have ever been 2 jobs at one time
+				checkMaxJobs(2),
+			},
+		},
+	)
 
 	// test disk space
 	// we have a 1Gb disk
