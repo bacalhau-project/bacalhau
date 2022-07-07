@@ -67,16 +67,16 @@ func TestJobSelectionLocality(t *testing.T) {
 	}
 
 	// we are local - we do have the file - we should accept
-	//runTest(computenode.Local, true, true)
+	runTest(computenode.Local, true, true)
 
 	// we are local - we don't have the file - we should reject
 	runTest(computenode.Local, false, false)
 
 	// // we are anywhere - we do have the file - we should accept
-	// runTest(computenode.Anywhere, true, true)
+	runTest(computenode.Anywhere, true, true)
 
 	// // we are anywhere - we don't have the file - we should accept
-	// runTest(computenode.Anywhere, false, true)
+	runTest(computenode.Anywhere, false, true)
 }
 
 func TestJobSelectionHttp(t *testing.T) {

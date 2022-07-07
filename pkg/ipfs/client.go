@@ -208,14 +208,10 @@ func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetCidSize")
 	defer span.End()
 
-	fmt.Printf("GetCidSize: %s\n", cid)
-
 	stat, err := cl.api.Object().Stat(ctx, icorepath.New(cid))
 	if err != nil {
 		return 0, err
 	}
-
-	fmt.Printf("AFTER: %s\n", cid)
 
 	return uint64(stat.CumulativeSize), nil
 }
