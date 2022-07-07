@@ -85,15 +85,15 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 }
 
 func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
-	config := ResourceUsageConfig{}
+	c := ResourceUsageConfig{}
 
 	cpu := k8sresource.NewCPUFromFloat(usage.CPU)
 
-	config.CPU = cpu.ToString()
-	config.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
-	config.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
+	c.CPU = cpu.ToString()
+	c.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
+	c.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
 
-	return config, nil
+	return c, nil
 }
 
 // get free disk space for storage path

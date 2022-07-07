@@ -7,6 +7,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const SleepBeforeCleanup = time.Millisecond * 100
+
 // CleanupManager provides utilities for ensuring that sub-goroutines can
 // clean up their resources before the main goroutine exits. Can be used to
 // register callbacks for long-running system processes.
@@ -43,7 +45,7 @@ func (cm *CleanupManager) Cleanup() {
 	// we sleep a tiny bit here because some tests run so quickly
 	// that there are RegisterCallback calls happening
 	// after we have been called
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(SleepBeforeCleanup)
 
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()

@@ -364,7 +364,7 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 func WaitDontExceedCount(count int) CheckJobStatesFunction {
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		if len(jobStates) > count {
-			return false, fmt.Errorf("There are more states: %d than expected: %d", len(jobStates), count)
+			return false, fmt.Errorf("there are more states: %d than expected: %d", len(jobStates), count)
 		}
 		return true, nil
 	}
@@ -373,7 +373,7 @@ func WaitDontExceedCount(count int) CheckJobStatesFunction {
 func (stack *DevStack) WaitForJobWithLogs(
 	ctx context.Context,
 	jobID string,
-	log bool,
+	shouldLog bool,
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
 	waiter := &system.FunctionWaiter{
@@ -383,7 +383,7 @@ func (stack *DevStack) WaitForJobWithLogs(
 		Handler: func() (bool, error) {
 			// load the current states of the job
 			states, err := stack.GetJobStates(ctx, jobID)
-			if log {
+			if shouldLog {
 				spew.Dump(states)
 			}
 			if err != nil {

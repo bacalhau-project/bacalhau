@@ -388,7 +388,6 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 */
 func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
-
 	// whatever happens here (either completion or error)
 	// we will want to free up the capacity manager from this job
 	defer func() {

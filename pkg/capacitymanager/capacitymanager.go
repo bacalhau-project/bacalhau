@@ -62,7 +62,6 @@ type CapacityManager struct {
 func NewCapacityManager(
 	config Config, //nolint:gocritic
 ) (*CapacityManager, error) {
-
 	// assign the default config values
 	useConfig := config
 
@@ -219,7 +218,6 @@ func (manager *CapacityManager) GetFreeSpace() resourceusage.ResourceUsageData {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (manager *CapacityManager) GetNextItems() []string {
-
 	// the list of job ids that we have capacity to run
 	ids := []string{}
 

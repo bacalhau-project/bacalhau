@@ -101,7 +101,7 @@ func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage
 }
 
 func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
-	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
+	_, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	return 0, nil
 }
