@@ -2,6 +2,7 @@ package apicopy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 
@@ -63,10 +64,25 @@ func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume
 	return dockerIPFS.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
+// we wrap this in a timeout because if the CID is not present on the network this seems to hang
 func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
-	return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
+	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
+		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
+	})
+	if err != nil {
+		if errors.Is(err, system.ErrorTimeout) {
+			return 0, nil
+		} else {
+			return 0, err
+		}
+	}
+	if uintResult, ok := result.(uint64); ok {
+		return uintResult, nil
+	} else {
+		return 0, fmt.Errorf("error casting timeout result to uint64")
+	}
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
