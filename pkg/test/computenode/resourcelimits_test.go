@@ -382,46 +382,50 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 
 func TestDockerResourceLimitsDisk(t *testing.T) {
 
-	EXAMPLE_TEXT := "hello"
-
-	computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
-		TotalResourceLimit: resourceusage.ResourceUsageConfig{
-			// so we have a compute node with 1 byte of disk space
-			Disk: "1b",
-		},
-	})
-	defer cm.Cleanup()
-
-	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
-
-	result, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
-		NodeID: computeNode.NodeID,
-		JobID:  "test",
-		Spec: &executor.JobSpec{
-			Engine:   executor.EngineDocker,
-			Verifier: verifier.VerifierNoop,
-			Resources: resourceusage.ResourceUsageConfig{
-				CPU:    "100m",
-				Memory: "100mb",
+	runTest := func(text, diskSize string, expected bool) {
+		computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
+			TotalResourceLimit: resourceusage.ResourceUsageConfig{
+				// so we have a compute node with 1 byte of disk space
+				Disk: diskSize,
 			},
-			Inputs: []storage.StorageSpec{
-				{
-					Engine: storage.IPFSDefault,
-					Cid:    cid,
-					Path:   "/data/file.txt",
+		})
+		defer cm.Cleanup()
+
+		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
+
+		result, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+			NodeID: computeNode.NodeID,
+			JobID:  "test",
+			Spec: &executor.JobSpec{
+				Engine:   executor.EngineDocker,
+				Verifier: verifier.VerifierNoop,
+				Resources: resourceusage.ResourceUsageConfig{
+					CPU:    "100m",
+					Memory: "100mb",
+				},
+				Inputs: []storage.StorageSpec{
+					{
+						Engine: storage.IPFSDefault,
+						Cid:    cid,
+						Path:   "/data/file.txt",
+					},
+				},
+				Docker: executor.JobSpecDocker{
+					Image: "ubuntu",
+					Entrypoint: []string{
+						"bash",
+						"-c",
+						"/data/file.txt",
+					},
 				},
 			},
-			Docker: executor.JobSpecDocker{
-				Image: "ubuntu",
-				Entrypoint: []string{
-					"bash",
-					"-c",
-					"/data/file.txt",
-				},
-			},
-		},
-	})
+		})
 
-	assert.NoError(t, err)
-	fmt.Printf("---> %+v\n", result)
+		assert.NoError(t, err)
+		assert.Equal(t, result, expected)
+	}
+
+	runTest("hello", "1b", false)
+	runTest("hello", "1k", true)
+
 }
