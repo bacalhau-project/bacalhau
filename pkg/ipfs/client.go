@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -150,6 +151,8 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
 
+	fmt.Printf("--------------------------\nUpload file\nto host: %s\ncid: %s\n", cl.APIAddress(), ipfsPath.Cid().String())
+
 	// Return just the CID, without the leading "/ipfs/" prefix:
 	return ipfsPath.Cid().String(), nil
 }
@@ -230,6 +233,9 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	for info := range ch {
 		res = append(res, info.ID.String())
 	}
+
+	fmt.Printf("--------------------------\nNodesWithCID\ncid: %s\n", cid)
+	spew.Dump(res)
 
 	return res, nil
 }

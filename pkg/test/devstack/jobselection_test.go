@@ -38,7 +38,6 @@ func TestSelectAllJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
-		require.NoError(t, err)
 
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
@@ -73,22 +72,22 @@ func TestSelectAllJobs(t *testing.T) {
 	for _, testCase := range []TestCase{
 
 		// the default policy with all files added should end up with all jobs accepted
-		// {
-		// 	name:            "all nodes added files, all nodes ran job",
-		// 	policy:          computenode.NewDefaultJobSelectionPolicy(),
-		// 	nodeCount:       3,
-		// 	addFilesCount:   3,
-		// 	expectedAccepts: 3,
-		// },
-
-		// check we get only 2 when we've only added data to 2
 		{
-			name:            "only nodes we added data to ran the job",
+			name:            "all nodes added files, all nodes ran job",
 			policy:          computenode.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
-			addFilesCount:   2,
-			expectedAccepts: 2,
+			addFilesCount:   1,
+			expectedAccepts: 3,
 		},
+
+		// check we get only 2 when we've only added data to 2
+		// {
+		// 	name:            "only nodes we added data to ran the job",
+		// 	policy:          computenode.NewDefaultJobSelectionPolicy(),
+		// 	nodeCount:       3,
+		// 	addFilesCount:   2,
+		// 	expectedAccepts: 2,
+		// },
 
 		// check we run on all 3 nodes even though we only added data to 1
 		// {
