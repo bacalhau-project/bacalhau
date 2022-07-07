@@ -26,8 +26,6 @@ import (
 //   context mounted in
 
 func TestSimplestPythonWasmDashC(t *testing.T) {
-	t.Skip("TEMP_SKIP_FOR_NULL_POINTER_FAST_FAIL_TEST")
-
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
@@ -69,8 +67,6 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 // TODO: test that > 10MB context is rejected
 
 func TestSimplePythonWasm(t *testing.T) {
-	t.Skip("TEMP_SKIP_FOR_NULL_POINTER_FAST_FAIL_TEST")
-
 	ctx, span := newSpan("TestSimplePythonWasm")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
