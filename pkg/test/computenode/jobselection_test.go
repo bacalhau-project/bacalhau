@@ -25,7 +25,7 @@ func TestJobSelectionNoVolumes(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -61,7 +61,7 @@ func TestJobSelectionLocality(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -101,7 +101,7 @@ func TestJobSelectionHttp(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -123,7 +123,7 @@ func TestJobSelectionExec(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -136,7 +136,7 @@ func TestJobSelectionEmptySpec(t *testing.T) {
 	computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
-	_, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
 		NodeID: "test",
 		JobID:  "test",
 		Spec:   nil,

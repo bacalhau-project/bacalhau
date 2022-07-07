@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -30,14 +31,16 @@ import (
 func TestJobResourceLimits(t *testing.T) {
 	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
 		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			JobResourceLimit:               jobResourceLimits,
-			DefaultJobResourceRequirements: defaultJobResourceLimits,
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitJob:            jobResourceLimits,
+				ResourceRequirementsDefault: defaultJobResourceLimits,
+			},
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 		job := GetProbeData("")
 		job.Spec.Resources = jobResources
 
-		result, err := computeNode.SelectJob(context.Background(), job)
+		result, _, err := computeNode.SelectJob(context.Background(), job)
 		require.NoError(t, err)
 		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
 	}
@@ -188,7 +191,9 @@ func TestTotalResourceLimits(t *testing.T) {
 		_, requestorNode, cm := SetupTestNoop(
 			t,
 			computenode.ComputeNodeConfig{
-				TotalResourceLimit: testCase.totalLimits,
+				CapacityManagerConfig: capacitymanager.Config{
+					ResourceLimitTotal: testCase.totalLimits,
+				},
 			},
 
 			noop_executor.ExecutorConfig{
@@ -416,17 +421,19 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 
 	runTest := func(text, diskSize string, expected bool) {
 		computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
-			TotalResourceLimit: resourceusage.ResourceUsageConfig{
-				// so we have a compute node with 1 byte of disk space
-				Disk: diskSize,
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: resourceusage.ResourceUsageConfig{
+					// so we have a compute node with 1 byte of disk space
+					Disk: diskSize,
+				},
 			},
 		})
 		defer cm.Cleanup()
 
 		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
 
-		result, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
-			NodeID: computeNode.NodeID,
+		result, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+			NodeID: "test",
 			JobID:  "test",
 			Spec: &executor.JobSpec{
 				Engine:   executor.EngineDocker,

@@ -17,6 +17,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// ErrContainerMarkedForRemoval indicates that the docker daemon is about to
+// delete, or has already deleted, the given container.
+var ErrContainerMarkedForRemoval = fmt.Errorf("docker container marked for removal")
+
 func NewDockerClient() (*dockerclient.Client, error) {
 	return dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 }
@@ -30,10 +34,10 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Co
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
 		All: true,
 	})
-
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
 	// nolint:gocritic // will fix when we care
 	for _, container := range containers {
@@ -51,6 +55,7 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Co
 			}
 		}
 	}
+
 	return nil, nil
 }
 
@@ -80,24 +85,33 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 func GetLogs(dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
 	container, err := GetContainer(dockerClient, nameOrID)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get container: %w", err)
 	}
 	if container == nil {
 		return "", "", fmt.Errorf("no container found: %s", nameOrID)
 	}
+
 	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	})
 	if err != nil {
-		return "", "", err
+		// String checking is unfortunately the best we have, as errors are
+		// returned by the docker server as strings, and aren't strongly typed.
+		if strings.Contains(err.Error(), "can not get logs from container which is dead or marked for removal") {
+			return "", "", ErrContainerMarkedForRemoval
+		}
+
+		return "", "", fmt.Errorf("failed to get container logs: %w", err)
 	}
+
 	stdoutBuffer := bytes.NewBuffer([]byte{})
 	stderrBuffer := bytes.NewBuffer([]byte{})
 	_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)
 	if err != nil {
 		return "", "", err
 	}
+
 	return stdoutBuffer.String(), stderrBuffer.String(), nil
 }
 
