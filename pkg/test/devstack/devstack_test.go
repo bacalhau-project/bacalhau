@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -42,10 +43,10 @@ func devStackDockerStorageTest(
 	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	jobSpec := &executor.JobSpec{
 		Engine:   executor.EngineDocker,
@@ -62,7 +63,7 @@ func devStackDockerStorageTest(
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
@@ -72,22 +73,22 @@ func devStackDockerStorageTest(
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
 	for nodeID, state := range loadedJob.State {
 		node, err := stack.GetNode(ctx, nodeID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputDir + "/" + state.ResultsID)
 	}

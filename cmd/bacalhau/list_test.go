@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -66,7 +67,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			for i := 0; i < tc.numberOfJobs; i++ {
 				spec, deal := publicapi.MakeNoopJob()
 				_, err := c.Submit(ctx, spec, deal, nil)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 			}
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -77,9 +78,9 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				"--api-port", port,
 				"--number", fmt.Sprintf("%d", tc.numberOfJobsOutput),
 			)
-			assert.NoError(suite.T(), err)
+			require.NoError(suite.T(), err)
 
-			assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+			require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 		}()
 	}
 }
@@ -94,7 +95,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		spec, deal := publicapi.MakeNoopJob()
 		job, err := c.Submit(ctx, spec, deal, nil)
 		jobIds = append(jobIds, shortID(job.ID))
-		assert.NoError(suite.T(), err)
+		require.NoError(suite.T(), err)
 	}
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -105,7 +106,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 		"--api-port", port,
 		"--id-filter", jobIds[0],
 	)
-	assert.NoError(suite.T(), err)
+	require.NoError(suite.T(), err)
 
 	seenIds := []string{}
 	for _, line := range strings.Split(out, "\n") {
@@ -115,8 +116,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 		}
 	}
 
-	assert.Equal(suite.T(), 1, len(seenIds), "We didn't get only one result")
-	assert.Equal(suite.T(), seenIds[0], jobIds[0], "The returned job id was not what we asked for")
+	require.Equal(suite.T(), 1, len(seenIds), "We didn't get only one result")
+	require.Equal(suite.T(), seenIds[0], jobIds[0], "The returned job id was not what we asked for")
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
@@ -161,7 +162,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 				for i := 0; i < tc.numberOfJobs; i++ {
 					spec, deal := publicapi.MakeNoopJob()
 					j, err := c.Submit(ctx, spec, deal, nil)
-					assert.NoError(suite.T(), err)
+					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, shortID(j.ID))
 
 					// all the middle jobs can have the same timestamp
@@ -176,7 +177,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				reverseString := ""
 				if sortFlags.reverseFlag {
@@ -202,8 +203,8 @@ func (suite *ListSuite) TestList_SortFlags() {
 					assert.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
 					assert.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
 				} else {
-					assert.NoError(suite.T(), err)
-					assert.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
+					require.NoError(suite.T(), err)
+					require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
 
 					if tc.numberOfJobsOutput > 0 {
 
@@ -249,7 +250,7 @@ Compare Ids:
 						} else if sortFlags.sortFlag == createdAtSortFlag {
 							// check the first and last are correct
 							// the middles all have the same created time so we ignore those
-							assert.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
+							require.Equal(suite.T(), compareIds[0], seenIds[0], errorMessage)
 						}
 					}
 				}

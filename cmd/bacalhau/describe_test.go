@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v2"
 )
@@ -76,7 +77,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 						spec, deal := publicapi.MakeNoopJob()
 						spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
 						s, err := c.Submit(ctx, spec, deal, nil)
-						assert.NoError(suite.T(), err)
+						require.NoError(suite.T(), err)
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
 				}
@@ -98,12 +99,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					"--api-port", port,
 					submittedJob.ID,
 				)
-				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
 				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
-				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				assert.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
-				assert.Equal(suite.T(),
+				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Spec.VM.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
@@ -115,11 +116,11 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					"--api-port", port,
 				)
 
-				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
-				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				assert.Equal(suite.T(), submittedJob.Deal.ClientID, returnedJobDescription.Deal.ClientID, "IDs do not match.")
-				assert.Equal(suite.T(),
+				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				require.Equal(suite.T(), submittedJob.Deal.ClientID, returnedJobDescription.Deal.ClientID, "IDs do not match.")
+				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJobDescription.Spec.VM.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))

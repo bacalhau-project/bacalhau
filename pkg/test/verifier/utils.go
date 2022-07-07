@@ -5,13 +5,13 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	stack, err := devstack.NewDevStackIPFS(cm, nodes)
-	assert.NoError(t, err, "unable to create devstack")
+	require.NoError(t, err, "unable to create devstack")
 
 	return stack, cm
 }

@@ -10,6 +10,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // test that when we have RejectStatelessJobs turned on
@@ -25,8 +26,8 @@ func TestJobSelectionNoVolumes(t *testing.T) {
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
-		assert.NoError(t, err)
-		assert.Equal(t, result, expectedResult)
+		require.NoError(t, err)
+		require.Equal(t, result, expectedResult)
 	}
 
 	runTest(true, false)
@@ -43,7 +44,7 @@ func TestJobSelectionLocality(t *testing.T) {
 		defer cm.Cleanup()
 		return ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	}())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
@@ -56,12 +57,12 @@ func TestJobSelectionLocality(t *testing.T) {
 
 		if shouldAddData {
 			_, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
-		assert.NoError(t, err)
-		assert.Equal(t, result, expectedResult)
+		require.NoError(t, err)
+		require.Equal(t, result, expectedResult)
 	}
 
 	// we are local - we do have the file - we should accept
@@ -80,7 +81,7 @@ func TestJobSelectionLocality(t *testing.T) {
 func TestJobSelectionHttp(t *testing.T) {
 	runTest := func(failMode, expectedResult bool) {
 		svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, r.Method, "POST")
+			require.Equal(t, r.Method, "POST")
 			if failMode {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("500 - Something bad happened!"))
@@ -100,8 +101,8 @@ func TestJobSelectionHttp(t *testing.T) {
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
-		assert.NoError(t, err)
-		assert.Equal(t, result, expectedResult)
+		require.NoError(t, err)
+		require.Equal(t, result, expectedResult)
 	}
 
 	runTest(true, false)
@@ -122,8 +123,8 @@ func TestJobSelectionExec(t *testing.T) {
 		defer cm.Cleanup()
 
 		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
-		assert.NoError(t, err)
-		assert.Equal(t, result, expectedResult)
+		require.NoError(t, err)
+		require.Equal(t, result, expectedResult)
 	}
 
 	runTest(true, false)

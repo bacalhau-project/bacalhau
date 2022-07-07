@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubmitSyntaxErrors(t *testing.T) {
@@ -31,7 +32,7 @@ func TestSubmitSyntaxErrors(t *testing.T) {
 				assert.Error(t, err, fmt.Sprintf("Error was expected, but none found: %s", tc.expected_error_contains))
 				assert.Contains(t, error_content, tc.expected_error_contains, fmt.Sprintf("Error was expected to contain: %s", tc.expected_error_contains))
 			} else {
-				assert.NoError(t, err, "Error in running command.")
+				require.NoError(t, err, "Error in running command.")
 			}
 
 		})

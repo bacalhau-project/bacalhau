@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -63,11 +64,11 @@ func (suite *RunSuite) TestRun_GenericSubmit() {
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
 	}
 }
@@ -93,11 +94,11 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 			assert.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
@@ -153,10 +154,10 @@ func (suite *RunSuite) TestRun_Annotations() {
 
 			for _, labelTest := range annotationsToTest {
 				parsedBasedURI, err := url.Parse(c.BaseURI)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				var args []string
 				args = append(args, "docker", "run", "--api-host", host, "--api-port", port)
@@ -167,16 +168,16 @@ func (suite *RunSuite) TestRun_Annotations() {
 				args = append(args, "ubuntu echo 'hello world'")
 
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				testJob, _, err := c.Get(ctx, strings.TrimSpace(out))
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				if labelTest.BadCase {
 					assert.Contains(suite.T(), out, "rror")
 				} else {
-					assert.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
-					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
+					require.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
+					require.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
 					msg := fmt.Sprintf(`
 Number of Annotations stored not equal to expected length.
 Name: %s
@@ -186,7 +187,7 @@ Actual length: %d
 Expected Annotations: %+v
 Actual Annotations: %+v
 `, labelTest.Name, len(labelTest.Annotations), len(testJob.Spec.Annotations), labelTest.Annotations, testJob.Spec.Annotations)
-					assert.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
+					require.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
 				}
 			}
 		}()

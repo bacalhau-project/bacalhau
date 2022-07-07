@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
@@ -25,12 +26,12 @@ func TestGet(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		spec, deal := MakeGenericJob()
 		job, err = c.Submit(ctx, spec, deal, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Should be able to look up one of them:
 	job2, ok, err := c.Get(ctx, job.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, job2.ID, job.ID)
+	require.Equal(t, job2.ID, job.ID)
 }

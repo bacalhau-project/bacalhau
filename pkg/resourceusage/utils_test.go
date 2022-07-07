@@ -8,6 +8,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/pbnjay/memory"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func c(cpu, mem string) ResourceUsageConfig {
@@ -60,8 +61,8 @@ func TestParseResourceUsageConfig(t *testing.T) {
 
 	for _, test := range tests {
 		converted := ParseResourceUsageConfig(test.input)
-		assert.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
-		assert.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
+		require.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
+		require.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
 	}
 
 }
@@ -82,9 +83,9 @@ func TestGetResourceUsageConfig(t *testing.T) {
 
 	for _, test := range tests {
 		converted, err := GetResourceUsageConfig(test.input)
-		assert.NoError(t, err)
-		assert.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
-		assert.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+		require.NoError(t, err)
+		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
 	}
 
 }
@@ -133,9 +134,9 @@ func TestSystemResources(t *testing.T) {
 		if test.shouldError {
 			assert.Error(t, err, "an error was expected")
 		} else {
-			assert.NoError(t, err, "an error was not expected")
-			assert.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
-			assert.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
+			require.NoError(t, err, "an error was not expected")
+			require.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
+			require.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
 		}
 
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type TestCase struct {
@@ -92,7 +93,7 @@ func singleFileSetupStorageWithData(
 ) ISetupStorage {
 	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		inputStorageSpecs := []storage.StorageSpec{
 			{
 				Engine: driverName,
@@ -111,7 +112,7 @@ func singleFileSetupStorageWithFile(
 ) ISetupStorage {
 	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddFileToNodes(nodeCount, filePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		inputStorageSpecs := []storage.StorageSpec{
 			{
 				Engine: driverName,
@@ -146,15 +147,15 @@ func singleFileResultsChecker(
 ) ICheckResults {
 	return func(resultsDir string) {
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		log.Trace().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
 
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
-		assert.Equal(t, expectedLines, actualLineCount, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount))
+		require.Equal(t, expectedLines, actualLineCount, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount))
 
 		if expectedMode == ExpectedModeEquals {
-			assert.Equal(t, expectedString, string(resultsContent))
+			require.Equal(t, expectedString, string(resultsContent))
 		} else if expectedMode == ExpectedModeContains {
 			assert.True(t, strings.Contains(string(resultsContent), expectedString))
 		} else {

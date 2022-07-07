@@ -18,7 +18,7 @@ import (
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var TimeToWaitForServerReply = 10 // nolint:mnd // magic number appropriate here
@@ -32,28 +32,28 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	cm.RegisterCallback(system.CleanupTracer)
 
 	ipt, err := inprocess.NewInprocessTransport()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	rn, err := requestornode.NewRequesterNode(
 		cm,
 		ipt,
 		noopVerifiers,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	host := "0.0.0.0"
 	port, err := freeport.GetFreePort()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s := NewServer(rn, host, port)
 	c := NewAPIClient(s.GetURI())
 	go func() {
-		assert.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
-	assert.NoError(t, waitForHealthy(c))
+	require.NoError(t, waitForHealthy(c))
 
 	return NewAPIClient(s.GetURI()), cm
 }
