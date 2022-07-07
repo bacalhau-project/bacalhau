@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -200,8 +199,8 @@ func (suite *ListSuite) TestList_SortFlags() {
 				)
 
 				if sortFlags.badSortFlag {
-					assert.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
-					assert.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
+					require.Error(suite.T(), err, "No error was thrown though it was a bad sort flag: %s", badSortFlag)
+					require.Contains(suite.T(), out, "Error: invalid argument", "'--sort-by' did not reject bad sort flag: %s", badSortFlag)
 				} else {
 					require.NoError(suite.T(), err)
 					require.Equal(suite.T(), tc.numberOfJobsOutput, strings.Count(out, "\n"))
@@ -246,7 +245,7 @@ Compare Ids:
 			    		`, tc.numberOfJobs, tc.numberOfJobsOutput, sortFlags.sortFlag, sortFlags.reverseFlag, out, strings.Join(seenIds, " "), strings.Join(compareIds, " "))
 
 						if sortFlags.sortFlag == string(ColumnID) {
-							assert.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
+							require.True(suite.T(), reflect.DeepEqual(compareIds, seenIds), errorMessage)
 						} else if sortFlags.sortFlag == createdAtSortFlag {
 							// check the first and last are correct
 							// the middles all have the same created time so we ignore those

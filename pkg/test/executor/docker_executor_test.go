@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,13 +45,13 @@ func dockerExecutorStorageTest(
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
 		require.NoError(t, err)
-		assert.True(t, isInstalled)
+		require.True(t, isInstalled)
 
 		for _, inputStorageSpec := range inputStorageList {
 			hasStorage, err := dockerExecutor.HasStorage(
 				ctx, inputStorageSpec)
 			require.NoError(t, err)
-			assert.True(t, hasStorage)
+			require.True(t, hasStorage)
 		}
 
 		job := &executor.Job{

@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -104,7 +103,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	// does the storage client think we have the cid locally?
 	hasCid, err := storageDriver.HasStorage(ctx, storage)
 	require.NoError(t, err)
-	assert.True(t, hasCid)
+	require.True(t, hasCid)
 
 	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)
@@ -159,7 +158,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 	// does the storage client think we have the cid locally?
 	hasCid, err := storageDriver.HasStorage(ctx, storage)
 	require.NoError(t, err)
-	assert.True(t, hasCid)
+	require.True(t, hasCid)
 
 	// this should start a sidecar container with a fuse mount
 	volume, err := storageDriver.PrepareStorage(ctx, storage)

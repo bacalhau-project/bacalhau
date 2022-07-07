@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v2"
@@ -91,7 +90,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					"--api-host", host,
 					"--api-port", port,
 				)
-				assert.Error(suite.T(), err, "Submitting a describe request with no id should error.")
+				require.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",

@@ -3,7 +3,6 @@ package system
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,12 +21,12 @@ func TestMessageSigning(t *testing.T) {
 
 	ok, err := VerifyForClient(msg, sig)
 	require.NoError(t, err)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	publicKey := GetClientPublicKey()
 	ok, err = Verify(msg, sig, publicKey)
 	require.NoError(t, err)
-	assert.True(t, ok)
+	require.True(t, ok)
 }
 
 func TestGetClientID(t *testing.T) {
@@ -62,5 +61,5 @@ func TestPublicKeyMatchesID(t *testing.T) {
 	publicKey := GetClientPublicKey()
 	ok, err := PublicKeyMatchesID(publicKey, id)
 	require.NoError(t, err)
-	assert.True(t, ok)
+	require.True(t, ok)
 }

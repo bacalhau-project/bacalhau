@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,5 +162,5 @@ func TestTransportEvents(t *testing.T) {
 	sort.Strings(expectedEventNames)
 	sort.Strings(actualEventNames)
 
-	assert.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
+	require.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }

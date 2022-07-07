@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,8 +30,8 @@ func TestRunJob(t *testing.T) {
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	assert.DirExists(t, result, "The job result folder exists")
-	assert.FileExists(t, stdoutPath, "The stdout file exists")
+	require.DirExists(t, result, "The job result folder exists")
+	require.FileExists(t, stdoutPath, "The stdout file exists")
 
 	dat, err := os.ReadFile(stdoutPath)
 	require.NoError(t, err)
@@ -53,5 +52,5 @@ func TestEmptySpec(t *testing.T) {
 		ID:   "test",
 		Spec: nil,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 }

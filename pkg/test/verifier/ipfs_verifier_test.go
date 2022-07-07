@@ -8,7 +8,6 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +32,7 @@ func TestIPFSVerifier(t *testing.T) {
 
 	installed, err := verifier.IsInstalled(ctx)
 	require.NoError(t, err)
-	assert.True(t, installed)
+	require.True(t, installed)
 
 	resultHash, err := verifier.ProcessResultsFolder(ctx,
 		"fake-job-id", inputDir)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +31,6 @@ func TestGet(t *testing.T) {
 	// Should be able to look up one of them:
 	job2, ok, err := c.Get(ctx, job.ID)
 	require.NoError(t, err)
-	assert.True(t, ok)
+	require.True(t, ok)
 	require.Equal(t, job2.ID, job.ID)
 }

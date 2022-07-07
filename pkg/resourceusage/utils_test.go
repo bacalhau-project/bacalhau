@@ -7,7 +7,6 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/pbnjay/memory"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -132,7 +131,7 @@ func TestSystemResources(t *testing.T) {
 		resources, err := GetSystemResources(test.input)
 
 		if test.shouldError {
-			assert.Error(t, err, "an error was expected")
+			require.Error(t, err, "an error was expected")
 		} else {
 			require.NoError(t, err, "an error was not expected")
 			require.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -76,7 +75,7 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
-	assert.True(t, ok)
+	require.True(t, ok)
 	require.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier

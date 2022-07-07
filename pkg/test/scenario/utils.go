@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -157,7 +156,7 @@ func singleFileResultsChecker(
 		if expectedMode == ExpectedModeEquals {
 			require.Equal(t, expectedString, string(resultsContent))
 		} else if expectedMode == ExpectedModeContains {
-			assert.True(t, strings.Contains(string(resultsContent), expectedString))
+			require.True(t, strings.Contains(string(resultsContent), expectedString))
 		} else {
 			t.Fail()
 		}

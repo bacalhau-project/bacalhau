@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,5 +139,5 @@ func TestJobSelectionEmptySpec(t *testing.T) {
 		JobID:  "test",
 		Spec:   nil,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 }

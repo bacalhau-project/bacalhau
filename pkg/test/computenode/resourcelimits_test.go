@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -237,7 +236,7 @@ func TestTotalResourceLimits(t *testing.T) {
 			}
 		}
 
-		assert.True(t, checkOk, failingCheckMessage)
+		require.True(t, checkOk, failingCheckMessage)
 
 		if !checkOk {
 			fmt.Printf("error checking results on seen jobs\n")

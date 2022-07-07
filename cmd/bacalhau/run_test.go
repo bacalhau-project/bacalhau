@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -99,10 +98,10 @@ func (suite *RunSuite) TestRun_CreatedAt() {
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
 			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-			assert.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			assert.GreaterOrEqual(suite.T(), job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(suite.T(), job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
@@ -174,7 +173,7 @@ func (suite *RunSuite) TestRun_Annotations() {
 				require.NoError(suite.T(), err)
 
 				if labelTest.BadCase {
-					assert.Contains(suite.T(), out, "rror")
+					require.Contains(suite.T(), out, "rror")
 				} else {
 					require.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
 					require.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
