@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -60,8 +59,6 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	}
 	job.Spec.Engine = executor.EngineDocker
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	fmt.Println("------------------------------->")
-	spew.Dump(job.Spec)
 	return e.executors[executor.EngineDocker].RunJob(ctx, job)
 }
 

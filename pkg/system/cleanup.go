@@ -2,6 +2,7 @@ package system
 
 import (
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -39,6 +40,11 @@ func (cm *CleanupManager) RegisterCallback(fn func() error) {
 // Cleanup runs all registered clean-up functions in sub-goroutines and
 // waits for them all to complete before exiting.
 func (cm *CleanupManager) Cleanup() {
+	// we sleep a tiny bit here because some tests run so quickly
+	// that there are RegisterCallback calls happening
+	// after we have been called
+	time.Sleep(time.Millisecond * 100)
+
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()
 
