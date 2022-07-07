@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func TestJobSelectionNoVolumes(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -38,6 +39,7 @@ func TestJobSelectionLocality(t *testing.T) {
 	// get the CID so we can use it in the tests below but without it actually being
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello"
+	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := (func() (string, error) {
 		_, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 		defer cm.Cleanup()
@@ -59,7 +61,7 @@ func TestJobSelectionLocality(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -70,10 +72,10 @@ func TestJobSelectionLocality(t *testing.T) {
 	// we are local - we don't have the file - we should reject
 	runTest(computenode.Local, false, false)
 
-	// we are anywhere - we do have the file - we should accept
+	// // we are anywhere - we do have the file - we should accept
 	runTest(computenode.Anywhere, true, true)
 
-	// we are anywhere - we don't have the file - we should accept
+	// // we are anywhere - we don't have the file - we should accept
 	runTest(computenode.Anywhere, false, true)
 }
 
@@ -99,7 +101,7 @@ func TestJobSelectionHttp(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -121,7 +123,7 @@ func TestJobSelectionExec(t *testing.T) {
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResult)
 	}
@@ -134,7 +136,7 @@ func TestJobSelectionEmptySpec(t *testing.T) {
 	computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
-	_, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
 		NodeID: "test",
 		JobID:  "test",
 		Spec:   nil,

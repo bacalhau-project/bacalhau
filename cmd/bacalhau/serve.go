@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -153,8 +154,10 @@ var serveCmd = &cobra.Command{
 
 		config := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
-			TotalResourceLimit: totalResourceLimit,
-			JobResourceLimit:   jobResourceLimit,
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: totalResourceLimit,
+				ResourceLimitJob:   jobResourceLimit,
+			},
 		}
 
 		requesterNode, err := requestornode.NewRequesterNode(

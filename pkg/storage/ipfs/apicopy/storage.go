@@ -2,9 +2,11 @@ package apicopy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -28,7 +30,8 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (*Stor
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
+	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +57,31 @@ func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 	return len(addresses) > 0, nil
 }
 
-func (dockerIPFS *StorageProvider) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorage")
+func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
-
 	return dockerIPFS.IPFSClient.HasCID(ctx, volume.Cid)
+}
+
+// we wrap this in a timeout because if the CID is not present on the network this seems to hang
+func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
+	defer span.End()
+	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
+		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
+	})
+	if err != nil {
+		if errors.Is(err, system.ErrorTimeout) {
+			return 0, nil
+		} else {
+			return 0, err
+		}
+	}
+	if uintResult, ok := result.(uint64); ok {
+		return uintResult, nil
+	} else {
+		return 0, fmt.Errorf("error casting timeout result to uint64")
+	}
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
@@ -91,7 +114,10 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
-	err := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, dockerIPFS.LocalDir)
+	_, err := system.Timeout(config.GetDownloadCidRequestTimeout(), func() (interface{}, error) {
+		innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, dockerIPFS.LocalDir)
+		return nil, innerErr
+	})
 	if err != nil {
 		return nil, err
 	}

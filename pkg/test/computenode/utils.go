@@ -1,6 +1,9 @@
 package computenode
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -17,6 +20,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setup a docker ipfs stack to run compute node tests against
@@ -27,26 +32,18 @@ func SetupTestDockerIpfs(
 	cm := system.NewCleanupManager()
 
 	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 	transport, err := inprocess.NewInprocessTransport()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, "devstacknode0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
@@ -55,9 +52,7 @@ func SetupTestDockerIpfs(
 		verifiers,
 		config,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return computeNode, ipfsStack, cm
 }
@@ -71,28 +66,20 @@ func SetupTestNoop(
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	requestorNode, err := requestornode.NewRequesterNode(
 		cm,
 		transport,
 		verifiers,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
@@ -143,10 +130,11 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 }
 
 //nolint:unused,deadcode
-func getResources(c, m string) resourceusage.ResourceUsageConfig {
+func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
 	return resourceusage.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
+		Disk:   d,
 	}
 }
 
@@ -154,7 +142,7 @@ func getResources(c, m string) resourceusage.ResourceUsageConfig {
 func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
 	var res []resourceusage.ResourceUsageConfig
 	for _, d := range data {
-		res = append(res, getResources(d[0], d[1]))
+		res = append(res, getResources(d[0], d[1], d[2]))
 	}
 	return res
 }
@@ -168,4 +156,23 @@ func RunJobViaRequestor(
 	job *executor.JobSpec,
 ) error {
 	return nil
+}
+
+func RunJobGetStdout(
+	t *testing.T,
+	computeNode *computenode.ComputeNode,
+	spec *executor.JobSpec,
+) string {
+	result, err := computeNode.RunJob(context.Background(), &executor.Job{
+		ID:   "test",
+		Spec: spec,
+	})
+	assert.NoError(t, err)
+
+	stdoutPath := fmt.Sprintf("%s/stdout", result)
+	assert.DirExists(t, result, "The job result folder exists")
+	assert.FileExists(t, stdoutPath, "The stdout file exists")
+	dat, err := os.ReadFile(stdoutPath)
+	assert.NoError(t, err)
+	return string(dat)
 }
