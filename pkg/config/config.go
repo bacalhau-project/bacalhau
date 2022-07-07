@@ -21,8 +21,9 @@ func GetStoragePath() string {
 	return storagePath
 }
 
-// by default we wait 10 seconds
-var getVolumeSizeRequestTimeoutSeconds int64 = 10
+// by default we wait 2 minutes for the IPFS network to resolve a CID
+// tests will override this using config.SetVolumeSizeRequestTimeout(2)
+var getVolumeSizeRequestTimeoutSeconds int64 = 120
 
 // how long do we wait for a volume size request to timeout
 // if a non-existing cid is asked for - the dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
