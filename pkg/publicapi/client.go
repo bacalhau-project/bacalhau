@@ -74,9 +74,13 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job,
 	return res.Jobs, nil
 }
 
-// Get returns job data for a particular job ID.
+// Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 // TODO(optimisation): implement with separate API call, don't filter list
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Job, bool, error) {
+	if jobID == "" {
+		return nil, false, fmt.Errorf("jobID must be non-empty in a Get call")
+	}
+
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
 		return nil, false, err
@@ -85,12 +89,12 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*executor.Jo
 	// TODO: make this deterministic, return the first match alphabetically
 	for _, job := range jobs {
 		if strings.HasPrefix(job.ID, jobID) {
+			log.Debug().Msgf("MATCH: %s", job.ID)
 			return job, true, nil
 		}
 	}
 
-	return nil, false, fmt.Errorf(
-		"publicapi: no job with ID '%s' found", jobID)
+	return nil, false, nil
 }
 
 // Submit submits a new job to the node's transport.
@@ -144,12 +148,6 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
-	bs, err := json.Marshal(reqData)
-	if err != nil {
-		panic(err)
-	}
-	log.Debug().Msgf("request body: %s", string(bs))
-
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
@@ -169,7 +167,6 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
 
-	log.Debug().Msgf("http request --> %+v", req)
 	defer func() {
 		if err := res.Body.Close(); err != nil {
 			log.Error().Msgf("error closing response body: %v", err)

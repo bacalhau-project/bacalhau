@@ -59,14 +59,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 	numOfJobsTests := []struct {
 		numOfJobs int
 	}{
-		{numOfJobs: 1, }, 
-		{numOfJobs: 21, }, // one more than the default list length 
+		{numOfJobs: 1},
+		{numOfJobs: 21}, // one more than the default list length
 	}
-
 
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
-
 			func() {
 				var submittedJob *executor.Job
 				ctx := context.Background()
@@ -74,7 +72,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				defer cm.Cleanup()
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
-					for i := 0; i < n.numOfJobs; i++  {
+					for i := 0; i < n.numOfJobs; i++ {
 						spec, deal := publicapi.MakeNoopJob()
 						spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
 						s, err := c.Submit(ctx, spec, deal, nil)
@@ -92,7 +90,6 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					"--api-host", host,
 					"--api-port", port,
 				)
-
 				assert.Error(suite.T(), err, "Submitting a describe request with no id should error.")
 
 				// Job Id at the end
@@ -101,15 +98,15 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					"--api-port", port,
 					submittedJob.ID,
 				)
-
 				assert.NoError(suite.T(), err, "Error in describing job: %+v", err)
+
 				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
 				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
 				assert.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
-				assert.Equal(suite.T(), 
-										submittedJob.Spec.Docker.Entrypoint[0], 
-										returnedJobDescription.Spec.VM.Entrypoint[0], 
-										fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				assert.Equal(suite.T(),
+					submittedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Spec.VM.Entrypoint[0],
+					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
@@ -122,10 +119,10 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
 				assert.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
 				assert.Equal(suite.T(), submittedJob.Deal.ClientID, returnedJobDescription.Deal.ClientID, "IDs do not match.")
-				assert.Equal(suite.T(), 
-										submittedJob.Spec.Docker.Entrypoint[0], 
-										returnedJobDescription.Spec.VM.Entrypoint[0], 
-										fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+				assert.Equal(suite.T(),
+					submittedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Spec.VM.Entrypoint[0],
+					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
 		}
