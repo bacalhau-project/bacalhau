@@ -40,64 +40,64 @@ func TestJobResourceLimits(t *testing.T) {
 
 	// the job is half the limit
 	runTest(
-		getResources("1", "500Mb"),
-		getResources("2", "1Gb"),
-		getResources("100m", "100Mb"),
+		getResources("1", "500Mb", ""),
+		getResources("2", "1Gb", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	// the job is on the limit
 	runTest(
-		getResources("1", "500Mb"),
-		getResources("1", "500Mb"),
-		getResources("100m", "100Mb"),
+		getResources("1", "500Mb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	// the job is over the limit
 	runTest(
-		getResources("2", "1Gb"),
-		getResources("1", "500Mb"),
-		getResources("100m", "100Mb"),
+		getResources("2", "1Gb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
 		false,
 	)
 
 	// test with fractional CPU
 	// the job is less than the limit
 	runTest(
-		getResources("250m", "200Mb"),
-		getResources("1", "500Mb"),
-		getResources("100m", "100Mb"),
+		getResources("250m", "200Mb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	// test when the limit is empty
 	runTest(
-		getResources("250m", "200Mb"),
-		getResources("", ""),
-		getResources("100m", "100Mb"),
+		getResources("250m", "200Mb", ""),
+		getResources("", "", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	// test when both is empty
 	runTest(
-		getResources("", ""),
-		getResources("", ""),
-		getResources("100m", "100Mb"),
+		getResources("", "", ""),
+		getResources("", "", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	runTest(
-		getResources("", ""),
-		getResources("250m", "200Mb"),
-		getResources("100m", "100Mb"),
+		getResources("", "", ""),
+		getResources("250m", "200Mb", ""),
+		getResources("100m", "100Mb", ""),
 		true,
 	)
 
 	runTest(
-		getResources("300m", ""),
-		getResources("250m", "200Mb"),
-		getResources("100m", "100Mb"),
+		getResources("300m", "", ""),
+		getResources("250m", "200Mb", ""),
+		getResources("100m", "100Mb", ""),
 		false,
 	)
 
@@ -156,6 +156,31 @@ func TestTotalResourceLimits(t *testing.T) {
 		currentJobCount := 0
 		maxJobCount := 0
 
+		// our function that will "execute the job"
+		// record time stamps of start and end
+		// sleep for a bit to simulate real work happening
+		jobHandler := func(ctx context.Context, job *executor.Job) (string, error) {
+			currentJobCount++
+			if currentJobCount > maxJobCount {
+				maxJobCount = currentJobCount
+			}
+			seenJob := SeenJobRecord{
+				Id:          job.ID,
+				Start:       time.Now().Unix() - epochSeconds,
+				CurrentJobs: currentJobCount,
+				MaxJobs:     maxJobCount,
+			}
+			time.Sleep(time.Second * 1)
+			currentJobCount--
+			seenJob.End = time.Now().Unix() - epochSeconds
+			addSeenJob(seenJob)
+			return "", nil
+		}
+
+		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+			return 0, nil
+		}
+
 		_, requestorNode, cm := SetupTestNoop(
 			t,
 			computenode.ComputeNodeConfig{
@@ -164,27 +189,9 @@ func TestTotalResourceLimits(t *testing.T) {
 
 			noop_executor.ExecutorConfig{
 
-				// our function that will "execute the job"
-				// record time stamps of start and end
-				// sleep for a bit to simulate real work happening
-				ExternalHooks: &noop_executor.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, job *executor.Job) (string, error) {
-						currentJobCount++
-						if currentJobCount > maxJobCount {
-							maxJobCount = currentJobCount
-						}
-						seenJob := SeenJobRecord{
-							Id:          job.ID,
-							Start:       time.Now().Unix() - epochSeconds,
-							CurrentJobs: currentJobCount,
-							MaxJobs:     maxJobCount,
-						}
-						time.Sleep(time.Second * 1)
-						currentJobCount--
-						seenJob.End = time.Now().Unix() - epochSeconds
-						addSeenJob(seenJob)
-						return "", nil
-					},
+				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+					JobHandler:    &jobHandler,
+					GetVolumeSize: &getVolumeSizeHandler,
 				},
 			},
 		)
@@ -198,7 +205,11 @@ func TestTotalResourceLimits(t *testing.T) {
 				verifier.VerifierNoop,
 				jobResources.CPU,
 				jobResources.Memory,
-				[]string{},
+				// pass the disk requirement of the job resources into the volume
+				// name so it can be returned from the GetVolumeSize function
+				[]string{
+					fmt.Sprintf("testvolumesize:%s", jobResources.Disk),
+				},
 				[]string{},
 				[]string{},
 				[]string{},
@@ -289,16 +300,35 @@ func TestTotalResourceLimits(t *testing.T) {
 	runTest(
 		TotalResourceTestCase{
 			jobs: getResourcesArray([][]string{
-				{"1", "500Mb"},
-				{"1", "500Mb"},
-				{"1", "500Mb"},
-				{"1", "500Mb"},
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
+				{"1", "500Mb", ""},
 			}),
-			totalLimits: getResources("2", "1Gb"),
+			totalLimits: getResources("2", "1Gb", "1Gb"),
 			wait:        waitUntilSeenAllJobs(4),
 			checkers: []TotalResourceTestCaseCheck{
 				// there should only have ever been 2 jobs at one time
 				checkMaxJobs(2),
+			},
+		},
+	)
+
+	// test disk space
+	// we have a 1Gb disk
+	// and 2 jobs each with 900Mb disk space requirements
+	// we should only see 1 job at a time
+	runTest(
+		TotalResourceTestCase{
+			jobs: getResourcesArray([][]string{
+				{"100m", "100Mb", "900Mb"},
+				{"100m", "100Mb", "900Mb"},
+			}),
+			totalLimits: getResources("2", "1Gb", "1Gb"),
+			wait:        waitUntilSeenAllJobs(2),
+			checkers: []TotalResourceTestCaseCheck{
+				// there should only have ever been 1 job at one time
+				checkMaxJobs(1),
 			},
 		},
 	)
@@ -308,8 +338,6 @@ func TestTotalResourceLimits(t *testing.T) {
 func TestDockerResourceLimitsCPU(t *testing.T) {
 
 	CPU_LIMIT := "100m"
-
-	//10000
 
 	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()

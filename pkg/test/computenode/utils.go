@@ -147,10 +147,11 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 }
 
 //nolint:unused,deadcode
-func getResources(c, m string) resourceusage.ResourceUsageConfig {
+func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
 	return resourceusage.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
+		Disk:   d,
 	}
 }
 
@@ -158,7 +159,7 @@ func getResources(c, m string) resourceusage.ResourceUsageConfig {
 func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
 	var res []resourceusage.ResourceUsageConfig
 	for _, d := range data {
-		res = append(res, getResources(d[0], d[1]))
+		res = append(res, getResources(d[0], d[1], d[2]))
 	}
 	return res
 }
