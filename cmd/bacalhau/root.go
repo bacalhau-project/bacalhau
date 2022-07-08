@@ -33,6 +33,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&apiPort, "api-port", system.Envs[system.Production].APIPort,
 		`The port for the client and server to communicate on (via REST).`,
 	)
+	RootCmd.AddCommand(versionCmd)
 }
 
 var RootCmd = &cobra.Command{
@@ -41,17 +42,10 @@ var RootCmd = &cobra.Command{
 	Long:  `Compute over data`,
 }
 
-func Execute(version string) {
-	RootCmd.Version = version
-	setVersion()
+func Execute() {
 
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-func setVersion() {
-	template := fmt.Sprintf("Bacalhau Version: %s\n", RootCmd.Version)
-	RootCmd.SetVersionTemplate(template)
 }
