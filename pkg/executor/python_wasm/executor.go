@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -38,8 +37,12 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
+}
+
+func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpec) (uint64, error) {
+	return 0, nil
 }
 
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
@@ -56,8 +59,6 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	}
 	job.Spec.Engine = executor.EngineDocker
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	fmt.Println("------------------------------->")
-	spew.Dump(job.Spec)
 	return e.executors[executor.EngineDocker].RunJob(ctx, job)
 }
 

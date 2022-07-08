@@ -12,14 +12,18 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
+
+const NanoCPUCoefficient = 1000000000
 
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
@@ -73,8 +77,8 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return docker.IsInstalled(e.Client), nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorage")
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
 	s, err := e.getStorageProvider(ctx, volume.Engine)
@@ -82,7 +86,15 @@ func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (
 		return false, err
 	}
 
-	return s.HasStorage(ctx, volume)
+	return s.HasStorageLocally(ctx, volume)
+}
+
+func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+	storageProvider, err := e.getStorageProvider(ctx, volume.Engine)
+	if err != nil {
+		return 0, err
+	}
+	return storageProvider.GetVolumeSize(ctx, volume)
 }
 
 // TODO: #289 Clean up RunJob
@@ -203,11 +215,17 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
+	resourceRequirements := resourceusage.ParseResourceUsageConfig(j.Spec.Resources)
+
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,
 		containerConfig,
 		&container.HostConfig{
 			Mounts: mounts,
+			Resources: container.Resources{
+				Memory:   int64(resourceRequirements.Memory),
+				NanoCPUs: int64(resourceRequirements.CPU * NanoCPUCoefficient),
+			},
 		},
 		&network.NetworkingConfig{},
 		nil,
@@ -282,7 +300,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 }
 
 func (e *Executor) cleanupJob(job *executor.Job) {
-	if system.ShouldKeepStack() {
+	if config.ShouldKeepStack() {
 		return
 	}
 	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
@@ -292,7 +310,7 @@ func (e *Executor) cleanupJob(job *executor.Job) {
 }
 
 func (e *Executor) cleanupAll() {
-	if system.ShouldKeepStack() {
+	if config.ShouldKeepStack() {
 		return
 	}
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
@@ -305,7 +323,7 @@ func (e *Executor) cleanupAll() {
 	for _, container := range containersWithLabel {
 		err = docker.RemoveContainer(e.Client, container.ID)
 		if err != nil {
-			log.Error().Msgf("Docker remove container error: %s", err.Error())
+			log.Error().Msgf("Non-critical error cleaning up container: %s", err.Error())
 		}
 	}
 }

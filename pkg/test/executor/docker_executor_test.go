@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const TEST_STORAGE_DRIVER_NAME = "testdriver"
@@ -31,27 +31,27 @@ func dockerExecutorStorageTest(
 		defer ipfs.TeardownTest(stack, cm)
 
 		storageDriver, err := getStorageDriver(stack)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		dockerExecutor, err := docker.NewExecutor(
 			cm, "dockertest", map[string]storage.StorageProvider{
 				TEST_STORAGE_DRIVER_NAME: storageDriver,
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(
 			stack, TEST_STORAGE_DRIVER_NAME, TEST_NODE_COUNT)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
-		assert.NoError(t, err)
-		assert.True(t, isInstalled)
+		require.NoError(t, err)
+		require.True(t, isInstalled)
 
 		for _, inputStorageSpec := range inputStorageList {
-			hasStorage, err := dockerExecutor.HasStorage(
+			hasStorage, err := dockerExecutor.HasStorageLocally(
 				ctx, inputStorageSpec)
-			assert.NoError(t, err)
-			assert.True(t, hasStorage)
+			require.NoError(t, err)
+			require.True(t, hasStorage)
 		}
 
 		job := &executor.Job{
@@ -71,7 +71,7 @@ func dockerExecutorStorageTest(
 		}
 
 		resultsDirectory, err := dockerExecutor.RunJob(ctx, job)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if err != nil {
 			t.FailNow()

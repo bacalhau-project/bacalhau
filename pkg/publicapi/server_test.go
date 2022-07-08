@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -44,19 +44,19 @@ func (suite *ServerSuite) TestList() {
 
 	// Should have no jobs initially:
 	jobs, err := c.List(ctx)
-	assert.NoError(suite.T(), err)
-	assert.Empty(suite.T(), jobs)
+	require.NoError(suite.T(), err)
+	require.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
 	spec, deal := MakeGenericJob()
 	deal.ClientID = "client_id"
 	_, err = c.Submit(ctx, spec, deal, nil)
-	assert.NoError(suite.T(), err)
+	require.NoError(suite.T(), err)
 
 	// Should now have one job:
 	jobs, err = c.List(ctx)
-	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), jobs, 1)
+	require.NoError(suite.T(), err)
+	require.Len(suite.T(), jobs, 1)
 }
 
 func (suite *ServerSuite) TestHealthz() {
@@ -64,13 +64,13 @@ func (suite *ServerSuite) TestHealthz() {
 
 	var healthData types.HealthInfo
 	err := json.Unmarshal(rawHealthData, &healthData)
-	assert.NoError(suite.T(), err, "Error unmarshalling /healthz data.")
+	require.NoError(suite.T(), err, "Error unmarshalling /healthz data.")
 
 	// Checks that it's a number, and bigger than zero
-	assert.Greater(suite.T(), int(healthData.DiskFreeSpace.ROOT.All), 0)
+	require.Greater(suite.T(), int(healthData.DiskFreeSpace.ROOT.All), 0)
 
 	// "all" should be bigger than "free" always
-	assert.Greater(suite.T(), healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
+	require.Greater(suite.T(), healthData.DiskFreeSpace.ROOT.All, healthData.DiskFreeSpace.ROOT.Free)
 }
 
 func (suite *ServerSuite) TestLivez() {
@@ -91,7 +91,7 @@ func (suite *ServerSuite) TestVarz() {
 
 	var varZ types.VarZ
 	err := json.Unmarshal(rawVarZBody, &varZ)
-	assert.NoError(suite.T(), err, "Error unmarshalling /varz data.")
+	require.NoError(suite.T(), err, "Error unmarshalling /varz data.")
 
 }
 
@@ -120,13 +120,13 @@ func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
 	defer cm.Cleanup()
 
 	res, err := http.Get(c.BaseURI + endpoint)
-	assert.NoError(t, err, "Could not get %s endpoint.", endpoint)
+	require.NoError(t, err, "Could not get %s endpoint.", endpoint)
 	defer res.Body.Close()
 
-	assert.Equal(t, res.StatusCode, http.StatusOK)
+	require.Equal(t, res.StatusCode, http.StatusOK)
 	body, err := ioutil.ReadAll(res.Body)
-	assert.NoError(t, err, "Could not read %s response body", endpoint)
-	assert.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
+	require.NoError(t, err, "Could not read %s response body", endpoint)
+	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
 	return body
 }
 

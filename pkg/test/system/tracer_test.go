@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	_ "github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -26,9 +26,9 @@ func TestTracer(t *testing.T) {
 	span2.End()
 	span1.End()
 
-	assert.Len(t, sr.traces, 2)
-	assert.Equal(t, "service/span1", sr.traces[0].Name())
-	assert.Equal(t, "service/span2", sr.traces[1].Name())
+	require.Len(t, sr.traces, 2)
+	require.Equal(t, "service/span1", sr.traces[0].Name())
+	require.Equal(t, "service/span2", sr.traces[1].Name())
 }
 
 // SpanRecorder is an implementation of sdktrace.SpanProcessor that records

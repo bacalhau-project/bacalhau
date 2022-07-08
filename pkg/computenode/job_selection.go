@@ -129,7 +129,7 @@ func applyJobSelectionPolicySettings(
 
 	for _, input := range job.Inputs {
 		// see if the storage engine reports that we have the resource locally
-		hasStorage, err := e.HasStorage(ctx, input)
+		hasStorage, err := e.HasStorageLocally(ctx, input)
 		if err != nil {
 			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err

@@ -16,7 +16,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -79,9 +79,9 @@ func InitConfig() error {
 // NOTE: this will overwrite the global config cache if called twice.
 func InitConfigForTesting(t *testing.T) {
 	configDir, err := ioutil.TempDir("", "bacalhau-test")
-	assert.NoError(t, err)
-	assert.NoError(t, os.Setenv("BACALHAU_DIR", configDir))
-	assert.NoError(t, InitConfig())
+	require.NoError(t, err)
+	require.NoError(t, os.Setenv("BACALHAU_DIR", configDir))
+	require.NoError(t, InitConfig())
 }
 
 // SignForClient signs a message with the user's private ID key.
