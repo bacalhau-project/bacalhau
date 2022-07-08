@@ -204,6 +204,18 @@ func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 	}, nil
 }
 
+func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
+	ctx, span := newSpan(ctx, "GetCidSize")
+	defer span.End()
+
+	stat, err := cl.api.Object().Stat(ctx, icorepath.New(cid))
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(stat.CumulativeSize), nil
+}
+
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
 func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
 	ctx, span := newSpan(ctx, "NodesWithCID")

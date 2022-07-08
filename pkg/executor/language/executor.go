@@ -36,8 +36,12 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
+}
+
+func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpec) (uint64, error) {
+	return 0, nil
 }
 
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {

@@ -8,11 +8,12 @@ import (
 )
 
 type ExecutorConfigExternalHooks struct {
-	JobHandler func(ctx context.Context, job *executor.Job) (string, error)
+	JobHandler    *func(ctx context.Context, job *executor.Job) (string, error)
+	GetVolumeSize *func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
 }
 
 type ExecutorConfig struct {
-	ExternalHooks *ExecutorConfigExternalHooks
+	ExternalHooks ExecutorConfigExternalHooks
 }
 
 type Executor struct {
@@ -40,14 +41,23 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorage(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	return true, nil
+}
+
+func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+	if e.Config.ExternalHooks.GetVolumeSize != nil {
+		handler := *e.Config.ExternalHooks.GetVolumeSize
+		return handler(ctx, volume)
+	}
+	return 0, nil
 }
 
 func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
 	e.Jobs = append(e.Jobs, job)
-	if e.Config.ExternalHooks != nil {
-		return e.Config.ExternalHooks.JobHandler(ctx, job)
+	if e.Config.ExternalHooks.JobHandler != nil {
+		handler := *e.Config.ExternalHooks.JobHandler
+		return handler(ctx, job)
 	}
 	return "", nil
 }

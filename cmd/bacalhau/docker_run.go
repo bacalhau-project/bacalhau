@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -100,6 +101,38 @@ var dockerRunCmd = &cobra.Command{
 		verifierType, err := verifier.ParseVerifierType(jobVerifier)
 		if err != nil {
 			return err
+		}
+
+		shells := strings.Split(`/bin/sh
+/bin/bash
+/usr/bin/bash
+/bin/rbash
+/usr/bin/rbash
+/usr/bin/sh
+/bin/dash
+/usr/bin/dash
+/usr/bin/tmux
+/usr/bin/screen
+/bin/zsh
+/usr/bin/zsh`, "/n")
+
+		containsGlob := false
+		for _, entrypointArg := range jobEntrypoint {
+			if strings.ContainsAny(entrypointArg, "*") {
+				containsGlob = true
+			}
+		}
+
+		if containsGlob {
+			for _, shell := range shells {
+				if strings.Index(strings.TrimSpace(jobEntrypoint[0]), shell) == 0 {
+					containsGlob = false
+					break
+				}
+			}
+			if containsGlob {
+				log.Warn().Msgf("We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>).") // nolint:lll // error message
+			}
 		}
 
 		spec, deal, err := job.ConstructDockerJob(

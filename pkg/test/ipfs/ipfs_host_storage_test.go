@@ -101,7 +101,7 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	}
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorage(ctx, storage)
+	hasCid, err := storageDriver.HasStorageLocally(ctx, storage)
 	require.NoError(t, err)
 	require.True(t, hasCid)
 
@@ -156,7 +156,7 @@ func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc)
 	}
 
 	// does the storage client think we have the cid locally?
-	hasCid, err := storageDriver.HasStorage(ctx, storage)
+	hasCid, err := storageDriver.HasStorageLocally(ctx, storage)
 	require.NoError(t, err)
 	require.True(t, hasCid)
 

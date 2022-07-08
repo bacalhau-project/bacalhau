@@ -17,6 +17,9 @@ import (
 // re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func TestSelectAllJobs(t *testing.T) {
+
+	t.Skip("https://github.com/filecoin-project/bacalhau/issues/361")
+
 	type TestCase struct {
 		name            string
 		policy          computenode.JobSelectionPolicy
@@ -38,7 +41,6 @@ func TestSelectAllJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
-		require.NoError(t, err)
 
 		jobSpec := &executor.JobSpec{
 			Engine:   executor.EngineDocker,
@@ -58,7 +60,8 @@ func TestSelectAllJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		// wait for the job to complete across all nodes
-		err = stack.WaitForJob(ctx, submittedJob.ID,
+		err = stack.WaitForJobWithLogs(ctx, submittedJob.ID, true,
+			devstack.WaitDontExceedCount(testCase.expectedAccepts),
 			devstack.WaitForJobThrowErrors([]executor.JobStateType{
 				executor.JobStateBidRejected,
 				executor.JobStateError,
@@ -71,7 +74,6 @@ func TestSelectAllJobs(t *testing.T) {
 
 	for _, testCase := range []TestCase{
 
-		// the default policy with all files added should end up with all jobs accepted
 		{
 			name:            "all nodes added files, all nodes ran job",
 			policy:          computenode.NewDefaultJobSelectionPolicy(),
@@ -80,7 +82,7 @@ func TestSelectAllJobs(t *testing.T) {
 			expectedAccepts: 3,
 		},
 
-		// // check we get only 2 when we've only added data to 2
+		// check we get only 2 when we've only added data to 2
 		{
 			name:            "only nodes we added data to ran the job",
 			policy:          computenode.NewDefaultJobSelectionPolicy(),
@@ -89,7 +91,7 @@ func TestSelectAllJobs(t *testing.T) {
 			expectedAccepts: 2,
 		},
 
-		// // check we run on all 3 nodes even though we only added data to 1
+		// check we run on all 3 nodes even though we only added data to 1
 		{
 			name: "only added files to 1 node but all 3 run it",
 			policy: computenode.JobSelectionPolicy{

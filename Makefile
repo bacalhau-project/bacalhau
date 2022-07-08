@@ -31,8 +31,10 @@ export PRECOMMIT = poetry run pre-commit
 BUILD_DIR = bacalhau
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
+COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
+BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 
 # Temp dirs
 TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
@@ -41,6 +43,14 @@ PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
+
+define BUILD_FLAGS
+-X github.com/filecoin-project/bacalhau/pkg/version.GITVERSION=$(TAG) \
+-X github.com/filecoin-project/bacalhau/pkg/version.GITCOMMIT=$(COMMIT) \
+-X github.com/filecoin-project/bacalhau/pkg/version.BUILDDATE=$(BUILDDATE) \
+-X github.com/filecoin-project/bacalhau/pkg/version.GOOS=$(GOOS) \
+-X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
+endef
 
 all: build
 
@@ -73,7 +83,7 @@ build: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
+	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
 
 ################################################################################
 # Target: build-docker-images

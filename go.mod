@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/BTBurke/k8sresource v1.2.0
+	github.com/Masterminds/semver v1.5.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v20.10.14+incompatible

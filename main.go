@@ -3,14 +3,11 @@ package main
 import (
 	"os"
 
+	_ "github.com/filecoin-project/bacalhau/pkg/version"
+
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-)
-
-// Values for version are injected by the build.
-var (
-	VERSION = ""
 )
 
 func main() {
@@ -19,5 +16,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	bacalhau.Execute(VERSION)
+	bacalhau.Execute()
 }

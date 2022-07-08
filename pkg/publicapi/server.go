@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -60,6 +61,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
+	sm.Handle("/version", instrument("version", apiServer.version))
 	sm.Handle("/healthz", instrument("healthz", apiServer.healthz))
 	sm.Handle("/logz", instrument("logz", apiServer.logz))
 	sm.Handle("/varz", instrument("varz", apiServer.varz))
@@ -97,6 +99,14 @@ type listResponse struct {
 	Jobs map[string]*executor.Job `json:"jobs"`
 }
 
+
+type versionRequest struct {
+	ClientID string `json:"client_id"`
+}
+type versionResponse struct {
+	VersionInfo *executor.VersionInfo `json:"version_info"`
+}
+
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
@@ -113,6 +123,25 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: list.Jobs,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+
+func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {
+	var versionReq versionResponse
+	err := json.NewDecoder(req.Body).Decode(&versionReq)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(versionResponse{
+		VersionInfo: version.Get(),
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

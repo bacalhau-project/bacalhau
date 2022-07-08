@@ -94,3 +94,8 @@ type Transport interface {
 type ListResponse struct {
 	Jobs map[string]*executor.Job
 }
+
+// data structure for a Version response
+type VersionResponse struct {
+	VersionInfo *executor.VersionInfo
+}
