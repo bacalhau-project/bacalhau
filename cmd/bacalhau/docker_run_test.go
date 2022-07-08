@@ -196,11 +196,11 @@ Actual Annotations: %+v
 func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 	tests := []struct {
 		submitString string
-		errString string
+		errString    string
 	}{
 		{submitString: "*.jpg", errString: "contains a glob"},
 		{submitString: " /bin/bash *.jpg", errString: ""}, // contains a glob but starts with a shell
-		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"}, 
+		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
 	for i, tc := range tests {

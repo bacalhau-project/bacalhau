@@ -142,6 +142,20 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 	return res.Job, nil
 }
 
+// Submit submits a new job to the node's transport.
+func (apiClient *APIClient) Version(ctx context.Context) (*executor.VersionInfo, error) {
+	req := listRequest{
+		ClientID: system.GetClientID(),
+	}
+
+	var res versionResponse
+	if err := apiClient.post(ctx, "version", req, &res); err != nil {
+		return nil, err
+	}
+
+	return res.VersionInfo, nil
+}
+
 func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resData interface{}) error {
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
