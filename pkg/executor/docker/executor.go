@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
+	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -235,6 +237,8 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", err
 	}
 
+	time.Sleep(time.Second * 1)
+
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
@@ -336,6 +340,7 @@ func (e *Executor) cleanupJob(job *executor.Job) {
 	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
+		debug.PrintStack()
 	}
 }
 
