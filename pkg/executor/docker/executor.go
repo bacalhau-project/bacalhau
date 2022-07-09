@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
-	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -236,8 +235,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	if err != nil {
 		return "", err
 	}
-
-	time.Sleep(time.Second * 1)
 
 	err = e.Client.ContainerStart(
 		ctx,
