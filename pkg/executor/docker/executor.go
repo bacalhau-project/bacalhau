@@ -291,8 +291,8 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	if containerError != nil {
 		log.Info().Msgf("    error: %s", containerError.Error())
 	}
-	log.Info().Msgf("    stdout: %s", stdout)
-	log.Info().Msgf("    stderr: %s", stderr)
+	log.Info().Msgf("    stdout: %s", system.ShortString(stdout, 1024))
+	log.Info().Msgf("    stderr: %s", system.ShortString(stderr, 1024))
 
 	err = os.WriteFile(
 		fmt.Sprintf("%s/exitCode", jobResultsDir),

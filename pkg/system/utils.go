@@ -138,3 +138,10 @@ func GetJobStateStringArray(states []executor.JobStateType) []string {
 	}
 	return ret
 }
+
+func ShortString(s string, n int) string {
+	if len(s) < n {
+		return s
+	}
+	return s[0:n] + "..."
+}
