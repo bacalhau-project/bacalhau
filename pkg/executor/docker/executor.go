@@ -288,7 +288,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	log.Info().Msgf("Container: %+v", j.Spec)
 	log.Info().Msgf("    exitcode: %d", containerExitStatusCode)
 	if containerError != nil {
-		log.Error().Msgf("    error: %s", containerError.Error())
+		log.Info().Msgf("    error: %s", containerError.Error())
 	}
 	log.Info().Msgf("    stdout: %s", stdout)
 	log.Info().Msgf("    stderr: %s", stderr)
