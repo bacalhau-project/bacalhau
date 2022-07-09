@@ -100,6 +100,9 @@ jobs:
             - run:
                 name: Test
                 command: |
+                  echo "---------------------------------------"
+                  docker version
+                  echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
                   gotestsum \
