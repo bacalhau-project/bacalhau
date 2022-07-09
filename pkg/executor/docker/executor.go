@@ -235,7 +235,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", err
 	}
 
-	defer e.cleanupJob(j)
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
@@ -245,13 +244,19 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", err
 	}
 
-	// TODO: we should record all logs and as much diagnostics as possible
-	// in the error case so a user can debug why their job failed
-	handleErrorLogs := func() {
-		stdout, stderr, _ := docker.GetLogs(e.Client, jobContainer.ID)
-		log.Error().Msgf("Container stdout: %s", stdout)
-		log.Error().Msgf("Container stderr: %s", stderr)
+	defer e.cleanupJob(j)
+
+	// let's use a log streamer so we are getting logs as they are emitted
+	containerLogStreamer, err := docker.StreamLogs(ctx, e.Client, jobContainer.ID)
+	if err != nil {
+		return "", err
 	}
+	defer containerLogStreamer.Close()
+
+	// the idea here is even if the container errors
+	// we want to capture stdout, stderr and feed it back to the user
+	var containerError error
+	var containerExitStatusCode int64
 
 	statusCh, errCh := e.Client.ContainerWait(
 		ctx,
@@ -260,27 +265,33 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	)
 	select {
 	case err = <-errCh:
-		if err != nil {
-			handleErrorLogs()
-			return "", err
-		}
+		containerError = err
 	case exitStatus := <-statusCh:
+		containerExitStatusCode = exitStatus.StatusCode
 		if exitStatus.Error != nil {
-			handleErrorLogs()
-			return "", errors.New(exitStatus.Error.Message)
-		}
-		if exitStatus.StatusCode != 0 {
-			handleErrorLogs()
-			return "", fmt.Errorf("exit code was non zero: %d", exitStatus.StatusCode)
+			containerError = errors.New(exitStatus.Error.Message)
 		}
 	}
 
-	log.Debug().Msgf("Container stopped: %s", jobContainer.ID)
+	if containerExitStatusCode != 0 {
+		if containerError == nil {
+			containerError = errors.New(fmt.Sprintf("exit code was not zero: %d", containerExitStatusCode))
+		}
+		log.Debug().Err(containerError).Msgf("container error %+v")
+	}
 
-	stdout, stderr, err := docker.GetLogs(e.Client, jobContainer.ID)
+	stdout, stderr, err := containerLogStreamer.Logs()
 	if err != nil {
 		return "", err
 	}
+
+	log.Info().Msgf("Container: %+v", j.Spec)
+	log.Info().Msgf("    exit code: %d", containerExitStatusCode)
+	if containerError != nil {
+		log.Error().Msgf("    error: %s", containerError.Error())
+	}
+	log.Info().Msgf("    stdout: %s", stdout)
+	log.Info().Msgf("    stderr: %s", stderr)
 
 	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), util.OS_ALL_R|util.OS_USER_RW)
 	if err != nil {
@@ -296,7 +307,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", errors.New(msg)
 	}
 
-	return jobResultsDir, nil
+	return jobResultsDir, containerError
 }
 
 func (e *Executor) cleanupJob(job *executor.Job) {

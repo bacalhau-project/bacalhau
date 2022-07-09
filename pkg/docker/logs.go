@@ -10,18 +10,25 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/moby/moby/pkg/stdcopy"
+	"github.com/rs/zerolog/log"
 )
 
 // LogStreamer tails the logs of a container until it exits.
 type LogStreamer struct {
-	reader io.ReadCloser
-	buffer *bytes.Buffer
-	cancel context.CancelFunc
-	mu     sync.Mutex
+	reader     io.ReadCloser
+	buffer     *bytes.Buffer
+	cancel     context.CancelFunc
+	finishChan chan bool
+	mu         sync.Mutex
 }
 
 // Logs returns a copy of the container's logs up until now.
 func (ls *LogStreamer) Logs() (string, string, error) { // nolint:gocritic
+
+	// block on the containerLogStreamer getting an io.EOF because the container has stopped
+	// this ensures our logs buffer is flushed and that we have the full output from the container
+	<-ls.finishChan
+
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
 
@@ -67,14 +74,18 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, id string) (*L
 	}
 
 	ls := &LogStreamer{
-		reader: reader,
-		buffer: new(bytes.Buffer),
-		cancel: cancel,
+		reader:     reader,
+		buffer:     new(bytes.Buffer),
+		cancel:     cancel,
+		finishChan: make(chan bool, 1),
 	}
 
 	go func() {
 		defer reader.Close()
 		defer cancel()
+		defer func() {
+			ls.finishChan <- true
+		}()
 
 		for {
 			select {
@@ -84,6 +95,7 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, id string) (*L
 				buf := make([]byte, 1024) // nolint:gomnd
 				n, err := reader.Read(buf)
 				if err != nil && err != io.EOF {
+					log.Error().Msgf("We have an error reading docker logs: %s", err)
 					return
 				}
 
