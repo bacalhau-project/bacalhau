@@ -277,7 +277,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		if containerError == nil {
 			containerError = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
 		}
-		log.Debug().Err(containerError).Msgf("container error %+v")
+		log.Info().Msgf("container error %s", containerError)
 	}
 
 	stdout, stderr, err := containerLogStreamer.Logs()
