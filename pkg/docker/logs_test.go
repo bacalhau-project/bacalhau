@@ -7,10 +7,19 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStreamLogs(t *testing.T) {
+
+	// we need to run this first or we get a "no such image" error
+	_, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+		"docker",
+		[]string{"pull", "ubuntu"},
+	)
+	require.NoError(t, err)
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
 
