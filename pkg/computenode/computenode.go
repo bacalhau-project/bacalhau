@@ -242,6 +242,10 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 
 	resultFolder, containerRunError := node.RunJob(ctx, job)
 
+	if resultFolder == "" && containerRunError == nil {
+		containerRunError = fmt.Errorf("we did not get a results folder from RunJob")
+	}
+
 	if containerRunError != nil {
 		// Increment the number of jobs failed by this compute node:
 		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
