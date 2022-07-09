@@ -24,7 +24,6 @@ type LogStreamer struct {
 
 // Logs returns a copy of the container's logs up until now.
 func (ls *LogStreamer) Logs() (string, string, error) { // nolint:gocritic
-
 	// block on the containerLogStreamer getting an io.EOF because the container has stopped
 	// this ensures our logs buffer is flushed and that we have the full output from the container
 	<-ls.finishChan

@@ -275,7 +275,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 
 	if containerExitStatusCode != 0 {
 		if containerError == nil {
-			containerError = errors.New(fmt.Sprintf("exit code was not zero: %d", containerExitStatusCode))
+			containerError = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
 		}
 		log.Debug().Err(containerError).Msgf("container error %+v")
 	}
@@ -293,21 +293,33 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	log.Info().Msgf("    stdout: %s", stdout)
 	log.Info().Msgf("    stderr: %s", stderr)
 
-	err = os.WriteFile(fmt.Sprintf("%s/exitCode", jobResultsDir), []byte(fmt.Sprintf("%d", containerExitStatusCode)), util.OS_ALL_R|util.OS_USER_RW)
+	err = os.WriteFile(
+		fmt.Sprintf("%s/exitCode", jobResultsDir),
+		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to exitCode: %s", err)
 		log.Error().Msg(msg)
 		return "", errors.New(msg)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), util.OS_ALL_R|util.OS_USER_RW)
+	err = os.WriteFile(
+		fmt.Sprintf("%s/stdout", jobResultsDir),
+		[]byte(stdout),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stdout: %s", err)
 		log.Error().Msg(msg)
 		return "", errors.New(msg)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stderr", jobResultsDir), []byte(stderr), util.OS_ALL_R|util.OS_USER_RW)
+	err = os.WriteFile(
+		fmt.Sprintf("%s/stderr", jobResultsDir),
+		[]byte(stderr),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stderr: %s", err)
 		log.Error().Msg(msg)
