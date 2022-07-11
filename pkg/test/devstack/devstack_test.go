@@ -93,7 +93,6 @@ func devStackDockerStorageTest(
 }
 
 func TestCatFileStdout(t *testing.T) {
-	t.Skip("We need to work out why some containers are quitting early")
 	devStackDockerStorageTest(
 		t,
 		scenario.CatFileToStdout(t),

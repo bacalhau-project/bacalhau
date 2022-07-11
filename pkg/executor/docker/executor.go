@@ -244,7 +244,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	if err != nil {
 		return "", err
 	}
-
 	defer e.cleanupJob(j)
 
 	// let's use a log streamer so we are getting logs as they are emitted
@@ -258,7 +257,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	// we want to capture stdout, stderr and feed it back to the user
 	var containerError error
 	var containerExitStatusCode int64
-
 	statusCh, errCh := e.Client.ContainerWait(
 		ctx,
 		jobContainer.ID,
@@ -273,7 +271,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 			containerError = errors.New(exitStatus.Error.Message)
 		}
 	}
-
 	if containerExitStatusCode != 0 {
 		if containerError == nil {
 			containerError = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)

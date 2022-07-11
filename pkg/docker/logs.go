@@ -57,11 +57,19 @@ func (ls *LogStreamer) Close() {
 // NOTE: If the container is not running, this will exit immediately with the
 //       container's current logs (if any). If the container has not been
 //       started yet, this will be an empty buffer!
-func StreamLogs(ctx context.Context, client *dockerclient.Client, id string) (*LogStreamer, error) {
+func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrId string) (*LogStreamer, error) {
+	container, err := GetContainer(client, nameOrId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container: %w", err)
+	}
+	if container == nil {
+		return nil, fmt.Errorf("container not found: %s", nameOrId)
+	}
+
 	cctx, cancel := context.WithCancel(ctx)
 	reader, err := client.ContainerLogs(
 		cctx,
-		id,
+		container.ID,
 		types.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
@@ -94,7 +102,7 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, id string) (*L
 				buf := make([]byte, 1024) // nolint:gomnd
 				n, err := reader.Read(buf)
 				if err != nil && err != io.EOF {
-					log.Error().Msgf("We have an error reading docker logs: %s", err)
+					log.Error().Msgf("Error reading docker logs: %s", err)
 					return
 				}
 
