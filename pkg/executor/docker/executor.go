@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -204,10 +205,20 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.Docker.Image, stdout)
 	}
 
+	// json the job spec and pass it into all containers
+	// TODO: check if this will overwrite a user supplied version of this value
+	// (which is what we actually want to happen)
+	jsonJobSpec, err := json.Marshal(j.Spec)
+	if err != nil {
+		return "", err
+	}
+
+	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)))
+
 	containerConfig := &container.Config{
 		Image:           j.Spec.Docker.Image,
 		Tty:             false,
-		Env:             j.Spec.Docker.Env,
+		Env:             useEnv,
 		Entrypoint:      j.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(j),
 		NetworkDisabled: true,
