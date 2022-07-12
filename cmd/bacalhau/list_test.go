@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -68,6 +69,8 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 				_, err := c.Submit(ctx, spec, deal, nil)
 				require.NoError(suite.T(), err)
 			}
+
+			log.Info().Msgf("Number of jobs: %d", tc.numberOfJobs)
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
