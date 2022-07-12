@@ -82,6 +82,15 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrId strin
 		return nil, fmt.Errorf("failed to stream logs: %w", err)
 	}
 
+	container, err = GetContainer(client, nameOrId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container: %w", err)
+	}
+	if container == nil {
+		return nil, fmt.Errorf("container not found: %s", nameOrId)
+	}
+	log.Info().Msgf("REMOVE done getting logs for container state: %s", container.State)
+
 	ls := &LogStreamer{
 		reader:     reader,
 		buffer:     new(bytes.Buffer),
