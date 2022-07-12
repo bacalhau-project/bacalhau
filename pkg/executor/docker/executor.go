@@ -331,6 +331,7 @@ func (e *Executor) cleanupJob(job *executor.Job) {
 	if config.ShouldKeepStack() {
 		return
 	}
+
 	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
@@ -342,6 +343,7 @@ func (e *Executor) cleanupAll() {
 	if config.ShouldKeepStack() {
 		return
 	}
+
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
