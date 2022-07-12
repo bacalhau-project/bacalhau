@@ -66,6 +66,8 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrId strin
 		return nil, fmt.Errorf("container not found: %s", nameOrId)
 	}
 
+	log.Info().Msgf("REMOVE Getting logs for container state: %s", container.State)
+
 	cctx, cancel := context.WithCancel(ctx)
 	reader, err := client.ContainerLogs(
 		cctx,
