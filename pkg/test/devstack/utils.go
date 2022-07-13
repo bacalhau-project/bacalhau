@@ -34,7 +34,7 @@ func SetupTest(
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
 		return executor_util.NewStandardExecutors(
-			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsMultiAddress))
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
 		map[verifier.VerifierType]verifier.Verifier, error) {
