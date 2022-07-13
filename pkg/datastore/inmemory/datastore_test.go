@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -16,30 +17,30 @@ func TestInMemoryDataStore(t *testing.T) {
 	store, err := NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	err = store.AddJob(executor.Job{
+	err = store.AddJob(context.Background(), executor.Job{
 		ID:    jobId,
 		State: map[string]executor.JobState{},
 	})
 	require.NoError(t, err)
 
-	err = store.AddEvent(jobId, executor.JobEvent{
+	err = store.AddEvent(context.Background(), jobId, executor.JobEvent{
 		JobID:     jobId,
 		NodeID:    nodeId,
 		EventName: executor.JobEventBid,
 	})
 	require.NoError(t, err)
 
-	err = store.UpdateJobState(jobId, nodeId, executor.JobState{
+	err = store.UpdateJobState(context.Background(), jobId, nodeId, executor.JobState{
 		State: executor.JobStateBidding,
 	})
 	require.NoError(t, err)
 
-	err = store.UpdateLocalMetadata(jobId, executor.JobLocalMetadata{
+	err = store.UpdateLocalMetadata(context.Background(), jobId, executor.JobLocalMetadata{
 		ComputeNodeSelected: true,
 	})
 	require.NoError(t, err)
 
-	job, err := store.GetJob(jobId)
+	job, err := store.GetJob(context.Background(), jobId)
 	require.NoError(t, err)
 	require.Equal(t, jobId, job.ID)
 	require.Equal(t, 1, len(job.Events))

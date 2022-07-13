@@ -39,6 +39,12 @@ type Job struct {
 	// The ID of the requester node that owns this job.
 	Owner string `json:"owner"`
 
+	// The ID of the requester node that owns this job.
+	RequesterNodeID string `json:"requester_node_id"`
+
+	// The ID of the client that created this job.
+	ClientID string `json:"client_id"`
+
 	// The specification of this job.
 	Spec JobSpec `json:"spec"`
 
