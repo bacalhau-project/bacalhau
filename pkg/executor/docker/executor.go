@@ -247,11 +247,11 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	defer e.cleanupJob(j)
 
 	// let's use a log streamer so we are getting logs as they are emitted
-	containerLogStreamer, err := docker.StreamLogs(ctx, e.Client, jobContainer.ID)
-	if err != nil {
-		return "", err
-	}
-	defer containerLogStreamer.Close()
+	//containerLogStreamer, err := docker.StreamLogs(ctx, e.Client, jobContainer.ID)
+	//if err != nil {
+	//	return "", err
+	//}
+	//defer containerLogStreamer.Close()
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -278,9 +278,21 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		log.Info().Msgf("container error %s", containerError)
 	}
 
-	stdout, stderr, err := containerLogStreamer.Logs()
+	//stdout, stderr, err := containerLogStreamer.Logs()
+	//if err != nil {
+	//	return "", err
+	//}
+
+	stdout, stderr, err := system.RunCommandGetStdoutAndStderr(
+		"docker",
+		[]string{
+			"logs",
+			"-f",
+			jobContainer.ID,
+		},
+	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get logs: %w", err)
 	}
 
 	err = os.WriteFile(
