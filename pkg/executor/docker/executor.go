@@ -283,14 +283,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", err
 	}
 
-	log.Info().Msgf("Container: %+v", j.Spec)
-	log.Info().Msgf("    exitcode: %d", containerExitStatusCode)
-	if containerError != nil {
-		log.Info().Msgf("    error: %s", containerError.Error())
-	}
-	log.Info().Msgf("    stdout: %s", system.ShortString(stdout, 1024))
-	log.Info().Msgf("    stderr: %s", system.ShortString(stderr, 1024))
-
 	err = os.WriteFile(
 		fmt.Sprintf("%s/exitCode", jobResultsDir),
 		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),

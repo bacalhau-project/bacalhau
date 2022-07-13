@@ -57,13 +57,13 @@ func (ls *LogStreamer) Close() {
 // NOTE: If the container is not running, this will exit immediately with the
 //       container's current logs (if any). If the container has not been
 //       started yet, this will be an empty buffer!
-func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrId string) (*LogStreamer, error) {
-	container, err := GetContainer(client, nameOrId)
+func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrID string) (*LogStreamer, error) {
+	container, err := GetContainer(client, nameOrID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container: %w", err)
 	}
 	if container == nil {
-		return nil, fmt.Errorf("container not found: %s", nameOrId)
+		return nil, fmt.Errorf("container not found: %s", nameOrID)
 	}
 
 	log.Info().Msgf("REMOVE Getting logs for container state: %s", container.State)
@@ -82,12 +82,14 @@ func StreamLogs(ctx context.Context, client *dockerclient.Client, nameOrId strin
 		return nil, fmt.Errorf("failed to stream logs: %w", err)
 	}
 
-	container, err = GetContainer(client, nameOrId)
+	container, err = GetContainer(client, nameOrID)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("failed to get container: %w", err)
 	}
 	if container == nil {
-		return nil, fmt.Errorf("container not found: %s", nameOrId)
+		cancel()
+		return nil, fmt.Errorf("container not found: %s", nameOrID)
 	}
 	log.Info().Msgf("REMOVE done getting logs for container state: %s", container.State)
 

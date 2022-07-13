@@ -34,7 +34,6 @@ func SetupTest(
 	cm := system.NewCleanupManager()
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 		map[executor.EngineType]executor.Executor, error) {
-
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
