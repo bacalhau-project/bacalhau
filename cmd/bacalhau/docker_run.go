@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -22,6 +21,7 @@ var jobCPU string
 var jobMemory string
 var skipSyntaxChecking bool
 var jobLabels []string
+
 var flagClearLabels bool
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -64,12 +64,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
-		"labels", "l", []string{},
-		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
-	)
 
-	// For testing
 	dockerRunCmd.PersistentFlags().BoolVar(&flagClearLabels,
 		"clear-labels", false,
 		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
@@ -77,6 +72,11 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	if err := dockerRunCmd.PersistentFlags().MarkHidden("clear-labels"); err != nil {
 		log.Debug().Msgf("error hiding test flags: %v", err)
 	}
+
+	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
+		"labels", "l", []string{},
+		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
+	)
 }
 
 var dockerCmd = &cobra.Command{
@@ -88,7 +88,16 @@ var dockerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// Can't think of any reason we'd want these to persist.
+		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
+		// but potentially cleaner than making dockerRun or jobsLabel public, which would
+		// be the other way to attack this.)
+		jobLabels = []string{}
+	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
+		jobLabels = []string{}
+
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
@@ -103,37 +112,8 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		shells := strings.Split(`/bin/sh
-/bin/bash
-/usr/bin/bash
-/bin/rbash
-/usr/bin/rbash
-/usr/bin/sh
-/bin/dash
-/usr/bin/dash
-/usr/bin/tmux
-/usr/bin/screen
-/bin/zsh
-/usr/bin/zsh`, "/n")
-
-		containsGlob := false
-		for _, entrypointArg := range jobEntrypoint {
-			if strings.ContainsAny(entrypointArg, "*") {
-				containsGlob = true
-			}
-		}
-
-		if containsGlob {
-			for _, shell := range shells {
-				if strings.Index(strings.TrimSpace(jobEntrypoint[0]), shell) == 0 {
-					containsGlob = false
-					break
-				}
-			}
-			if containsGlob {
-				log.Warn().Msgf("We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>).") // nolint:lll // error message
-			}
-		}
+		// No error checking, because it will never be an error (for now)
+		_ = system.SanitizeImageAndEntrypoint(jobEntrypoint)
 
 		spec, deal, err := job.ConstructDockerJob(
 			engineType,

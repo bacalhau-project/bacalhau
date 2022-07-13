@@ -4,14 +4,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// var jobEngine string
-// var jobVerifier string
-// var jobInputVolumes []string
-// var jobOutputVolumes []string
-// var jobEnv []string
-// var jobConcurrency int
-// var skipSyntaxChecking bool
-
 //nolint:gochecknoinits
 func init() {
 	runCmd.AddCommand(runPythonCmd)

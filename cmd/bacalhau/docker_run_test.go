@@ -2,7 +2,9 @@ package bacalhau
 
 import (
 	"context"
+	crand "crypto/rand"
 	"fmt"
+	"math/big"
 	"net"
 	"net/url"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -63,11 +66,11 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
 	}
 }
@@ -96,20 +99,17 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-			assert.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			assert.GreaterOrEqual(suite.T(), job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(suite.T(), job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
 }
 func (suite *DockerRunSuite) TestRun_Annotations() {
-	// TODO: Assign to Aronchick - change tests to just reject if annotation is bad.
-	suite.T().Skip()
-
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -124,9 +124,9 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 		BadCase       bool
 	}{
 		{Name: "1", Annotations: []string{""}, CorrectLength: 0, BadCase: false},               // Label flag, no value, but correctly quoted
-		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 1, BadCase: false},           // Label flag, no value, but correctly quoted
+		{Name: "1.1", Annotations: []string{`""`}, CorrectLength: 0, BadCase: false},           // Label flag, no value, but correctly quoted
 		{Name: "2", Annotations: []string{"a"}, CorrectLength: 1, BadCase: false},              // Annotations, string
-		{Name: "3", Annotations: []string{"a", "1"}, CorrectLength: 2, BadCase: false},         // Annotations, string and int
+		{Name: "3", Annotations: []string{"b", "1"}, CorrectLength: 2, BadCase: false},         // Annotations, string and int
 		{Name: "4", Annotations: []string{`''`, `" "`}, CorrectLength: 2, BadCase: false},      // Annotations, some edge case characters
 		{Name: "5", Annotations: []string{"🏳", "0", "🌈️"}, CorrectLength: 3, BadCase: false},   // Emojis
 		{Name: "6", Annotations: []string{"ايطاليا"}, CorrectLength: 1, BadCase: false},        // Right to left
@@ -152,31 +152,36 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
+				// log.Warn().Msgf("%s - Args: %+v", labelTest.Name, os.Args)
 				parsedBasedURI, err := url.Parse(c.BaseURI)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				var args []string
+
 				args = append(args, "docker", "run", "--api-host", host, "--api-port", port)
 				for _, label := range labelTest.Annotations {
-					args = append(args, "annotations", label)
+					args = append(args, "-l", label)
 				}
-				args = append(args, "--clear-annotations")
-				args = append(args, "ubuntu echo 'hello world'")
+
+				args = append(args, "--clear-labels")
+
+				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
+				args = append(args, fmt.Sprintf("ubuntu echo 'hello world - %s'", randNum.String()))
 
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				testJob, _, err := c.Get(ctx, strings.TrimSpace(out))
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				if labelTest.BadCase {
-					assert.Contains(suite.T(), out, "rror")
+					require.Contains(suite.T(), out, "rror")
 				} else {
-					assert.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
-					assert.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
+					require.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
+					require.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
 					msg := fmt.Sprintf(`
 Number of Annotations stored not equal to expected length.
 Name: %s
@@ -186,7 +191,7 @@ Actual length: %d
 Expected Annotations: %+v
 Actual Annotations: %+v
 `, labelTest.Name, len(labelTest.Annotations), len(testJob.Spec.Annotations), labelTest.Annotations, testJob.Spec.Annotations)
-					assert.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
+					require.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
 				}
 			}
 		}()
@@ -199,7 +204,7 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 		errString    string
 	}{
 		{submitString: "*.jpg", errString: "contains a glob"},
-		{submitString: " /bin/bash *.jpg", errString: ""}, // contains a glob but starts with a shell
+		{submitString: " /bin/bash *.jpg", errString: ""}, // contains a glob but starts with a shell (and a space)
 		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
@@ -228,5 +233,5 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRunSuite(t *testing.T) {
-	suite.Run(t, new(RunSuite))
+	suite.Run(t, new(DockerRunSuite))
 }

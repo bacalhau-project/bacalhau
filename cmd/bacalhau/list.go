@@ -189,6 +189,7 @@ var listCmd = &cobra.Command{
 			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
+		// TODO: Need a place for string constants
 		if listOutputFormat == "json" {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
