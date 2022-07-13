@@ -247,11 +247,11 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	defer e.cleanupJob(j)
 
 	// let's use a log streamer so we are getting logs as they are emitted
-	containerLogStreamer, err := docker.StreamLogs(ctx, e.Client, jobContainer.ID)
-	if err != nil {
-		return "", err
-	}
-	defer containerLogStreamer.Close()
+	//containerLogStreamer, err := docker.StreamLogs(ctx, e.Client, jobContainer.ID)
+	//if err != nil {
+	//	return "", err
+	//}
+	//defer containerLogStreamer.Close()
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -278,10 +278,23 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		log.Info().Msgf("container error %s", containerError)
 	}
 
-	stdout, stderr, err := containerLogStreamer.Logs()
+	stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+		"docker",
+		[]string{
+			"logs",
+			"-f",
+			jobContainer.ID,
+		},
+	)
 	if err != nil {
 		return "", err
 	}
+	stderr := "TODO"
+
+	//stdout, stderr, err := containerLogStreamer.Logs()
+	//if err != nil {
+	//	return "", err
+	//}
 
 	log.Info().Msgf("Container: %+v", j.Spec)
 	log.Info().Msgf("    exitcode: %d", containerExitStatusCode)
