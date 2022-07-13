@@ -240,52 +240,57 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		Data: job,
 	})
 
-	resultFolder, err := node.RunJob(ctx, job)
-	if err != nil {
-		log.Error().Msgf("Error running the job: %s %+v", err, job)
-		_ = node.transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
-
-		// Increment the number of jobs failed by this compute node:
+	resultFolder, containerRunError := node.RunJob(ctx, job)
+	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
-
+	} else {
+		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
+	}
+	if resultFolder == "" {
+		errMessage := fmt.Sprintf("Missing results folder for job %s: %s", job.ID, containerRunError)
+		log.Error().Msgf(errMessage)
+		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
 	v, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
-		log.Error().Msgf("error getting the verifier for the job: %s %+v", err, job)
-		_ = node.transport.ErrorJob(ctx, job.ID, fmt.Sprintf("error getting the verifier for the job: %s", err))
+		errMessage := fmt.Sprintf("Error getting verifier: %s %+v", err, job)
+		log.Error().Msgf(errMessage)
+		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
-	resultValue, err := v.ProcessResultsFolder(
-		ctx, job.ID, resultFolder)
+	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
 	if err != nil {
-		log.Error().Msgf("Error verifying results: %s %+v", err, job)
-		_ = node.transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error verifying results: %s", err))
+		errMessage := fmt.Sprintf("Error verifying results: %s %+v", err, job)
+		log.Error().Msg(errMessage)
+		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
-	logger.LogJobEvent(logger.JobEvent{
-		Node: node.id,
-		Type: "compute_node:result",
-		Job:  job.ID,
-		Data: resultValue,
-	})
-
-	if err = node.transport.SubmitResult(
-		ctx,
-		job.ID,
-		fmt.Sprintf("Got job result: %s", resultValue),
-		resultValue,
-	); err != nil {
-		log.Error().Msgf("Error submitting result: %s %+v", err, job)
-		_ = node.transport.ErrorJob(ctx, job.ID, fmt.Sprintf("Error running the job: %s", err))
-		return
+	if containerRunError == nil {
+		logger.LogJobEvent(logger.JobEvent{
+			Node: node.id,
+			Type: "compute_node:result",
+			Job:  job.ID,
+			Data: resultValue,
+		})
+		err = node.transport.SubmitResult(
+			ctx,
+			job.ID,
+			fmt.Sprintf("Got job result: %s", resultValue),
+			resultValue,
+		)
+		if err != nil {
+			errMessage := fmt.Sprintf("Error submitting results: %s %+v", err, job)
+			log.Error().Msgf(errMessage)
+			_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		}
+	} else {
+		errMessage := fmt.Sprintf("Error running job: %s %+v", containerRunError.Error(), job)
+		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, resultValue)
 	}
-
-	// Increment the number of jobs completed by this compute node:
-	jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
 }
 
 /*
@@ -405,12 +410,7 @@ func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string,
 		return "", err
 	}
 
-	result, err := e.RunJob(ctx, job)
-	if err != nil {
-		return "", err
-	}
-
-	return result, nil
+	return e.RunJob(ctx, job)
 }
 
 // nolint:dupl // methods are not duplicates

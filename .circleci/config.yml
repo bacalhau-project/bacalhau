@@ -100,11 +100,14 @@ jobs:
             - run:
                 name: Test
                 command: |
+                  echo "---------------------------------------"
+                  docker version
+                  echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
                   gotestsum \
                     --junitfile unit-tests.xml \
-                    --format standard-quiet \
+                    --format standard-verbose \
                     -- \
                       ./pkg/... ./cmd/... \
                       ${COVERAGE_OPTS} --tags=unit

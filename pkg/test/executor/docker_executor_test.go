@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -34,7 +35,9 @@ func dockerExecutorStorageTest(
 		require.NoError(t, err)
 
 		dockerExecutor, err := docker.NewExecutor(
-			cm, "dockertest", map[string]storage.StorageProvider{
+			cm,
+			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
+			map[string]storage.StorageProvider{
 				TEST_STORAGE_DRIVER_NAME: storageDriver,
 			})
 		require.NoError(t, err)
