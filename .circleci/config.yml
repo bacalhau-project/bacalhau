@@ -107,9 +107,8 @@ jobs:
                   CGO_ENABLED=${CGO} \
                   gotestsum \
                     --junitfile unit-tests.xml \
-                    --format standard-quiet \
+                    --format standard-verbose \
                     -- \
-                      -v \
                       ./pkg/... ./cmd/... \
                       ${COVERAGE_OPTS} --tags=unit
             - run:
