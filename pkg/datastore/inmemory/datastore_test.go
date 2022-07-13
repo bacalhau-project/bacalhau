@@ -18,7 +18,7 @@ func TestInMemoryDataStore(t *testing.T) {
 
 	err = store.AddJob(executor.Job{
 		ID:    jobId,
-		State: map[string]*executor.JobState{},
+		State: map[string]executor.JobState{},
 	})
 	require.NoError(t, err)
 

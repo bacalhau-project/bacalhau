@@ -93,8 +93,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(jobID string, deal executor.JobDeal) e
 	if !ok {
 		return fmt.Errorf("no job found: %s", jobID)
 	}
-	// TODO: when we remove pointers, we can remove this
-	job.Deal = &deal
+	job.Deal = deal
 	return nil
 }
 
@@ -105,8 +104,7 @@ func (d *InMemoryDatastore) UpdateJobState(jobID, nodeID string, state executor.
 	if !ok {
 		return fmt.Errorf("no job found: %s", jobID)
 	}
-	// TODO: when we remove pointers, we can remove this
-	job.State[nodeID] = &state
+	job.State[nodeID] = state
 	return nil
 }
 

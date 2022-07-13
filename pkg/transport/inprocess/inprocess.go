@@ -16,7 +16,7 @@ type Transport struct {
 	gt *transport.GenericTransport
 
 	// Exported so that tests can inspect:
-	Events []*executor.JobEvent
+	Events []executor.JobEvent
 }
 
 func NewInprocessTransport() (*Transport, error) {
@@ -31,7 +31,7 @@ func NewInprocessTransport() (*Transport, error) {
 
 	res.gt = transport.NewGenericTransport(
 		hostID.String(),
-		func(ctx context.Context, event *executor.JobEvent) error {
+		func(ctx context.Context, event executor.JobEvent) error {
 			return res.writeJobEvent(ctx, event)
 		},
 	)
@@ -64,7 +64,7 @@ func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
 	return t.gt.List(ctx)
 }
 
-func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
+func (t *Transport) Get(ctx context.Context, id string) (executor.Job, error) {
 	return t.gt.Get(ctx, id)
 }
 
@@ -76,11 +76,11 @@ func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
+func (t *Transport) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
 	return t.gt.SubmitJob(ctx, spec, deal)
 }
 
-func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
+func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
 	return t.gt.UpdateDeal(ctx, jobID, deal)
 }
 
@@ -131,7 +131,7 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 
 // loop over all inprocess schdulers and call readJobEvent for each of them
 // do this in a go-routine to simulate the network
-func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
+func (t *Transport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
 	t.Events = append(t.Events, event)
 	// async so that our stack doesn't hold onto mutexes
 	go t.gt.ReadEvent(ctx, event)

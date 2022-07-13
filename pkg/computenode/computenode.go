@@ -168,7 +168,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 */
 func (node *ComputeNode) subscriptionSetup() {
-	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
 			node.subscriptionEventCreated(ctx, jobEvent, job)
@@ -187,7 +187,7 @@ func (node *ComputeNode) subscriptionSetup() {
   subscriptions -> created
 
 */
-func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
 	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventCreated")
 	defer span.End()
@@ -217,7 +217,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
   subscriptions -> bid accepted
 
 */
-func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
 
 	// we only care if the accepted bid is for us
@@ -293,7 +293,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
   subscriptions -> bid rejected
 
 */
-func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	node.capacityManager.Remove(job.ID)
 	node.controlLoopBidOnJobs()
 }
@@ -307,9 +307,6 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 // we return the processed resourceusage.ResourceUsageData for the job
 func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, resourceusage.ResourceUsageData, error) {
 	requirements := resourceusage.ResourceUsageData{}
-	if data.Spec == nil {
-		return false, requirements, fmt.Errorf("job spec is nil")
-	}
 
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
@@ -369,7 +366,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
-func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error {
+func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
 	// TODO: Why do we have two different kinds of loggers?
 	logger.LogJobEvent(logger.JobEvent{
 		Node: node.id,
@@ -387,17 +384,13 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
   run job
 
 */
-func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, error) {
 	// whatever happens here (either completion or error)
 	// we will want to free up the capacity manager from this job
 	defer func() {
 		node.capacityManager.Remove(job.ID)
 		node.controlLoopBidOnJobs()
 	}()
-
-	if job.Spec == nil {
-		return "", fmt.Errorf("job spec is nil")
-	}
 
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
@@ -467,7 +460,7 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 	)
 }
 
-func (node *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec *executor.JobSpec) (uint64, error) {
+func (node *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec executor.JobSpec) (uint64, error) {
 	e, err := node.getExecutor(context.Background(), spec.Engine)
 	if err != nil {
 		return 0, err

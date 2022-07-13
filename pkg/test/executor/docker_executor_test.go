@@ -54,16 +54,16 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := &executor.Job{
+		job := executor.Job{
 			ID:    "test-job",
 			Owner: "test-owner",
-			Spec: &executor.JobSpec{
+			Spec: executor.JobSpec{
 				Engine:  executor.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: &executor.JobDeal{
+			Deal: executor.JobDeal{
 				Concurrency:   TEST_NODE_COUNT,
 				AssignedNodes: []string{},
 			},

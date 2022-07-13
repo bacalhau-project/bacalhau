@@ -99,14 +99,9 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
-
-	spec := j.Spec
-	if spec == nil {
-		return "", fmt.Errorf("no job spec provided to docker executor")
-	}
 
 	jobResultsDir, err := e.ensureJobResultsDir(j)
 	if err != nil {
@@ -299,7 +294,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	return jobResultsDir, nil
 }
 
-func (e *Executor) cleanupJob(job *executor.Job) {
+func (e *Executor) cleanupJob(job executor.Job) {
 	if config.ShouldKeepStack() {
 		return
 	}
@@ -328,22 +323,22 @@ func (e *Executor) cleanupAll() {
 	}
 }
 
-func (e *Executor) jobContainerName(job *executor.Job) string {
+func (e *Executor) jobContainerName(job executor.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", e.ID, job.ID)
 }
 
-func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
 		"bacalhau-jobID":    job.ID,
 	}
 }
 
-func (e *Executor) jobResultsDir(job *executor.Job) string {
+func (e *Executor) jobResultsDir(job executor.Job) string {
 	return fmt.Sprintf("%s/%s", e.ResultsDir, job.ID)
 }
 
-func (e *Executor) ensureJobResultsDir(job *executor.Job) (string, error) {
+func (e *Executor) ensureJobResultsDir(job executor.Job) (string, error) {
 	dir := e.jobResultsDir(job)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	info, _ := os.Stat(dir)

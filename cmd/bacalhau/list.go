@@ -93,7 +93,7 @@ var listCmd = &cobra.Command{
 
 		t.SetColumnConfigs(columnConfig)
 
-		jobArray := []*executor.Job{}
+		jobArray := []executor.Job{}
 		for _, j := range jobs {
 			if tableIDFilter != "" {
 				if j.ID == tableIDFilter || shortID(j.ID) == tableIDFilter {
@@ -125,7 +125,7 @@ var listCmd = &cobra.Command{
 				jobIDs = append(jobIDs, j.ID)
 			}
 			jobIDs = ReverseList(jobIDs)
-			jobArray = []*executor.Job{}
+			jobArray = []executor.Job{}
 			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}

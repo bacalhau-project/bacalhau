@@ -42,7 +42,7 @@ func TestSelectAllJobs(t *testing.T) {
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
 
-		jobSpec := &executor.JobSpec{
+		jobSpec := executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
 			Docker:   scenario.GetJobSpec(),
@@ -50,7 +50,7 @@ func TestSelectAllJobs(t *testing.T) {
 			Outputs:  scenario.Outputs,
 		}
 
-		jobDeal := &executor.JobDeal{
+		jobDeal := executor.JobDeal{
 			Concurrency: testCase.nodeCount,
 		}
 

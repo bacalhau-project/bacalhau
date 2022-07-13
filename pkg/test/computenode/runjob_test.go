@@ -23,7 +23,7 @@ func TestRunJob(t *testing.T) {
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	require.NoError(t, err)
 
-	result, err := computeNode.RunJob(context.Background(), &executor.Job{
+	result, err := computeNode.RunJob(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
 	})
@@ -48,9 +48,9 @@ func TestEmptySpec(t *testing.T) {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	_, err := computeNode.RunJob(context.Background(), &executor.Job{
+	_, err := computeNode.RunJob(context.Background(), executor.Job{
 		ID:   "test",
-		Spec: nil,
+		Spec: executor.JobSpec{},
 	})
 	require.Error(t, err)
 }

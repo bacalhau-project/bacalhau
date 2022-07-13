@@ -171,7 +171,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, job *executor.Job) (string, error) {
+		jobHandler := func(ctx context.Context, job executor.Job) (string, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -359,7 +359,7 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: resourceusage.ResourceUsageConfig{
@@ -400,7 +400,7 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
-	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: resourceusage.ResourceUsageConfig{
@@ -440,7 +440,7 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 		result, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
 			JobID:  "test",
-			Spec: &executor.JobSpec{
+			Spec: executor.JobSpec{
 				Engine:   executor.EngineDocker,
 				Verifier: verifier.VerifierNoop,
 				Resources: resourceusage.ResourceUsageConfig{

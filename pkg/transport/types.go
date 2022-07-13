@@ -7,7 +7,7 @@ import (
 )
 
 // SubscribeFn is provided by an in-process listener as an event callback.
-type SubscribeFn func(context.Context, *executor.JobEvent, *executor.Job)
+type SubscribeFn func(context.Context, executor.JobEvent, executor.Job)
 
 // Transport is an interface representing a communication channel between
 // nodes, through which they can submit, bid on and complete jobs.
@@ -37,7 +37,7 @@ type Transport interface {
 	List(ctx context.Context) (ListResponse, error)
 
 	// Get returns information about the given job.
-	Get(ctx context.Context, jobID string) (*executor.Job, error)
+	Get(ctx context.Context, jobID string) (executor.Job, error)
 
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
@@ -50,11 +50,11 @@ type Transport interface {
 
 	// Executed by the client (Connie) requesting the work, puts the job into a
 	// mempool of work that is available to be done.
-	SubmitJob(ctx context.Context, spec *executor.JobSpec,
-		deal *executor.JobDeal) (*executor.Job, error)
+	SubmitJob(ctx context.Context, spec executor.JobSpec,
+		deal executor.JobDeal) (executor.Job, error)
 
 	// Update the job deal - for example updating concurrency
-	UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error
+	UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error
 
 	// Client has decided they no longer want the work done. Can only happen
 	// when no runs of the job are in progress.
@@ -92,10 +92,10 @@ type Transport interface {
 // the data structure a client can use to render a view of the state of the world
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
-	Jobs map[string]*executor.Job
+	Jobs map[string]executor.Job
 }
 
 // data structure for a Version response
 type VersionResponse struct {
-	VersionInfo *executor.VersionInfo
+	VersionInfo executor.VersionInfo
 }

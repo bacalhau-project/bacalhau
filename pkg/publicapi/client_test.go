@@ -19,7 +19,7 @@ func TestGet(t *testing.T) {
 
 	// Submit a few random jobs to the node:
 	var err error
-	var job *executor.Job
+	var job executor.Job
 	for i := 0; i < 5; i++ {
 		spec, deal := MakeGenericJob()
 		job, err = c.Submit(ctx, spec, deal, nil)

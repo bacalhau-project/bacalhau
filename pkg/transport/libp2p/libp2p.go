@@ -172,7 +172,7 @@ func NewTransport(cm *system.CleanupManager, port int) (*Transport, error) {
 	// setup the event writer
 	libp2pTransport.genericTransport = transport.NewGenericTransport(
 		h.ID().String(),
-		func(ctx context.Context, event *executor.JobEvent) error {
+		func(ctx context.Context, event executor.JobEvent) error {
 			return libp2pTransport.writeJobEvent(ctx, event)
 		},
 	)
@@ -224,7 +224,7 @@ func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
 	return t.genericTransport.List(ctx)
 }
 
-func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
+func (t *Transport) Get(ctx context.Context, id string) (executor.Job, error) {
 	ctx, span := newSpan(ctx, "Get")
 	defer span.End()
 
@@ -242,14 +242,14 @@ func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
+func (t *Transport) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
 	ctx, span := newSpan(ctx, "SubmitJob")
 	defer span.End()
 
 	return t.genericTransport.SubmitJob(ctx, spec, deal)
 }
 
-func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
+func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
 	ctx, span := newSpan(ctx, "UpdateDeal")
 	defer span.End()
 
@@ -341,11 +341,11 @@ func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 }
 
 type jobEventData struct {
-	JobEvent  *executor.JobEvent     `json:"job_event"`
+	JobEvent  executor.JobEvent      `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
+func (t *Transport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 

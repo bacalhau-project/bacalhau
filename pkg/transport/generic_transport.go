@@ -17,7 +17,7 @@ import (
 
 // WriteEventHandlerFn is provided by a parent transport layer for broadcasting
 // messages to other bacalhau nodes.
-type WriteEventHandlerFn func(context.Context, *executor.JobEvent) error
+type WriteEventHandlerFn func(context.Context, executor.JobEvent) error
 
 // GenericTransport is a generic base transport layer that handles a bunch of
 // boilerplate for a parent transport. The parent transport just has to provide
@@ -54,7 +54,7 @@ func NewGenericTransport(nodeID string, writeEventHandler WriteEventHandlerFn) *
 
 // writeEvent calls the parent transport's WriteEventHandler, which should
 // broadcast the event to its distributed network of bacalhau nodes.
-func (gt *GenericTransport) writeEvent(ctx context.Context, event *executor.JobEvent) error {
+func (gt *GenericTransport) writeEvent(ctx context.Context, event executor.JobEvent) error {
 	if event.NodeID == "" {
 		event.NodeID = gt.NodeID
 	}
@@ -65,46 +65,54 @@ func (gt *GenericTransport) writeEvent(ctx context.Context, event *executor.JobE
 // ReadEvent notifies every listener in the transport's process of a
 // new event. Note that this is purely local, and doesn't broadcast the
 // event to the parent transport's network of bacalhau nodes.
-func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEvent) {
+func (gt *GenericTransport) ReadEvent(ctx context.Context, event executor.JobEvent) {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
+
+	// TODO_DATASTORE: these updates need handling not by XXX == nil
 
 	// Keep track of the state of jobs we hear about:
 	if _, ok := gt.jobs[event.JobID]; !ok {
 		gt.jobs[event.JobID] = &executor.Job{
 			ID:        event.JobID,
 			Owner:     event.NodeID,
-			Spec:      nil,
-			Deal:      nil,
-			State:     make(map[string]*executor.JobState),
+			Spec:      executor.JobSpec{},
+			Deal:      executor.JobDeal{},
+			State:     map[string]executor.JobState{},
 			CreatedAt: time.Now(),
 		}
 	}
 
-	// Passed in for create and update events:
-	if event.JobSpec != nil {
-		gt.jobs[event.JobID].Spec = event.JobSpec
+	j, ok := gt.jobs[event.JobID]
+
+	if !ok {
+		return
 	}
 
-	// Keep track of job owner so we know who can edit a job:
-	if event.JobDeal != nil {
-		gt.jobs[event.JobID].Deal = event.JobDeal
-	}
+	// // Passed in for create and update events:
+	// if event.JobSpec != nil {
+	// 	gt.jobs[event.JobID].Spec = event.JobSpec
+	// }
 
-	// if for some reason our event does not contain the spec
-	// then let's read it out of our data store
-	if event.JobSpec == nil {
-		event.JobSpec = gt.jobs[event.JobID].Spec
-	}
+	// // Keep track of job owner so we know who can edit a job:
+	// if event.JobDeal != nil {
+	// 	gt.jobs[event.JobID].Deal = event.JobDeal
+	// }
 
-	if event.JobDeal == nil {
-		event.JobDeal = gt.jobs[event.JobID].Deal
-	}
+	// // if for some reason our event does not contain the spec
+	// // then let's read it out of our data store
+	// if event.JobSpec == nil {
+	// 	event.JobSpec = gt.jobs[event.JobID].Spec
+	// }
 
-	// Jobs have different states on different nodes:
-	if event.JobState != nil && event.NodeID != "" {
-		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
-	}
+	// if event.JobDeal == nil {
+	// 	event.JobDeal = gt.jobs[event.JobID].Deal
+	// }
+
+	// // Jobs have different states on different nodes:
+	// if event.JobState != nil && event.NodeID != "" {
+	// 	gt.jobs[event.JobID].State[event.NodeID] = event.JobState
+	// }
 
 	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
 	if event.NodeID == gt.NodeID {
@@ -125,8 +133,7 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEv
 
 	// Actually notify in-process listeners:
 	for _, subscribeFunc := range gt.SubscribeFuncs {
-		j := gt.jobs[event.JobID].Copy()
-		go subscribeFunc(jobCtx, event, &j)
+		go subscribeFunc(jobCtx, event, *j)
 	}
 }
 
@@ -166,10 +173,9 @@ func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
 
-	res := map[string]*executor.Job{}
-	for name, job := range gt.jobs {
-		j := job.Copy()
-		res[name] = &j
+	res := map[string]executor.Job{}
+	for jobId, j := range gt.jobs {
+		res[jobId] = *j
 	}
 
 	return ListResponse{
@@ -177,17 +183,16 @@ func (gt *GenericTransport) List(ctx context.Context) (ListResponse, error) {
 	}, nil
 }
 
-func (gt *GenericTransport) Get(ctx context.Context, id string) (*executor.Job, error) {
+func (gt *GenericTransport) Get(ctx context.Context, id string) (executor.Job, error) {
 	gt.mutex.RLock()
 	defer gt.mutex.RUnlock()
 
 	j, ok := gt.jobs[id]
 	if !ok {
-		return nil, fmt.Errorf("job not found in transport: %s", id)
+		return executor.Job{}, fmt.Errorf("job not found in transport: %s", id)
 	}
 
-	jc := j.Copy()
-	return &jc, nil
+	return *j, nil
 }
 
 func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
@@ -201,21 +206,13 @@ func (gt *GenericTransport) Subscribe(ctx context.Context, fn SubscribeFn) {
 /// WRITE OPERATIONS - "CLIENT" / REQUESTER NODE
 /////////////////////////////////////////////////////////////
 
-func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
+func (gt *GenericTransport) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
 
-	if spec == nil {
-		return nil, fmt.Errorf("job spec is required")
-	}
-
-	if deal == nil {
-		return nil, fmt.Errorf("job deal is required")
-	}
-
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("error creating job id: %w", err)
+		return executor.Job{}, fmt.Errorf("error creating job id: %w", err)
 	}
 	jobID := jobUUID.String()
 
@@ -225,33 +222,33 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
 	gt.jobContexts[jobID] = jobCtx
 
-	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
+	if err := gt.writeEvent(jobCtx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
 		EventTime: time.Now(),
 	}); err != nil {
-		return nil, fmt.Errorf("error writing job event: %w", err)
+		return executor.Job{}, fmt.Errorf("error writing job event: %w", err)
 	}
 
-	return &executor.Job{
+	return executor.Job{
 		ID:        jobID,
 		Spec:      spec,
 		Deal:      deal,
-		State:     make(map[string]*executor.JobState),
+		State:     map[string]executor.JobState{},
 		CreatedAt: time.Now(),
 	}, nil
 }
 
-func (gt *GenericTransport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
+func (gt *GenericTransport) UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
 	gt.mutex.Lock()
 	defer gt.mutex.Unlock()
 
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_UpdateDeal")
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventDealUpdated,
 		JobDeal:   deal,
@@ -275,12 +272,12 @@ func (gt *GenericTransport) AcceptJobBid(ctx context.Context, jobID, nodeID stri
 	}
 
 	job.Deal.AssignedNodes = append(job.Deal.AssignedNodes, nodeID)
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		NodeID:    nodeID,
 		EventName: executor.JobEventBidAccepted,
 		JobDeal:   job.Deal,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State: executor.JobStateRunning,
 		},
 		EventTime: time.Now(),
@@ -297,11 +294,11 @@ func (gt *GenericTransport) RejectJobBid(ctx context.Context, jobID, nodeID, mes
 		attribute.String("message", message),
 	)
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		NodeID:    nodeID,
 		EventName: executor.JobEventBidRejected,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State:  executor.JobStateBidRejected,
 			Status: message,
 		},
@@ -317,10 +314,10 @@ func (gt *GenericTransport) BidJob(ctx context.Context, jobID string) error {
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_BidJob")
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventBid,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State: executor.JobStateBidding,
 		},
 		EventTime: time.Now(),
@@ -331,10 +328,10 @@ func (gt *GenericTransport) SubmitResult(ctx context.Context, jobID, status, res
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_SubmitResult")
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventResults,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State:     executor.JobStateComplete,
 			Status:    status,
 			ResultsID: resultsID,
@@ -347,10 +344,10 @@ func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status string) 
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJob")
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventError,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State:  executor.JobStateError,
 			Status: status,
 		},
@@ -367,11 +364,11 @@ func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, 
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
 
-	return gt.writeEvent(ctx, &executor.JobEvent{
+	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		NodeID:    nodeID,
 		EventName: executor.JobEventError,
-		JobState: &executor.JobState{
+		JobState: executor.JobState{
 			State:  executor.JobStateError,
 			Status: status,
 		},
