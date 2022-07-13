@@ -154,7 +154,16 @@ func TestPythonWasmVolumes(t *testing.T) {
 
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
-open("%s/test.txt", "w").write(open("%s/test.txt").read())
+import os
+print("LIST /")
+print(os.listdir("/"))
+#print("LIST /input")
+#print(os.listdir("/input"))
+print("LIST /output")
+print(os.listdir("/output"))
+print("LIST /job")
+print(os.listdir("/job"))
+open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
