@@ -178,6 +178,6 @@ type VersionInfo struct {
 	GitVersion string    `json:"gitversion" yaml:"gitversion"`
 	GitCommit  string    `json:"gitcommit" yaml:"gitcommit"`
 	BuildDate  time.Time `json:"builddate" yaml:"builddate"`
-	GOOS  	   string    `json:"goos" yaml:"goos"`
+	GOOS       string    `json:"goos" yaml:"goos"`
 	GOARCH     string    `json:"goarch" yaml:"goarch"`
 }

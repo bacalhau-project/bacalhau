@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -39,6 +40,9 @@ var devstackCmd = &cobra.Command{
 	Use:   "devstack",
 	Short: "Start a cluster of bacalhau nodes for testing and development",
 	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+
+		config.DevstackSetShouldPrintInfo()
+
 		if devStackBadActors > devStackNodes {
 			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}

@@ -9,6 +9,14 @@ func IsDebug() bool {
 	return os.Getenv("LOG_LEVEL") == "debug"
 }
 
+func DevstackGetShouldPrintInfo() bool {
+	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
+}
+
+func DevstackSetShouldPrintInfo() {
+	os.Setenv("DEVSTACK_PRINT_INFO", "1")
+}
+
 func ShouldKeepStack() bool {
 	return os.Getenv("KEEP_STACK") != ""
 }

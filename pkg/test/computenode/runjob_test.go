@@ -15,7 +15,6 @@ import (
 
 // a simple sanity test of the RunJob with docker executor
 func TestRunJob(t *testing.T) {
-
 	EXAMPLE_TEXT := "hello"
 	computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
@@ -40,7 +39,6 @@ func TestRunJob(t *testing.T) {
 }
 
 func TestEmptySpec(t *testing.T) {
-
 	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
