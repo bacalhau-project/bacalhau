@@ -122,7 +122,7 @@ func TestSimplePythonWasm(t *testing.T) {
 func TestPythonWasmVolumes(t *testing.T) {
 
 	nodeCount := 1
-	inputPath := "/input/file.txt"
+	inputPath := "/input"
 	outputPath := "/output"
 	fileContents := "pineapples"
 
@@ -154,7 +154,7 @@ func TestPythonWasmVolumes(t *testing.T) {
 
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
-open("%s/file.txt", "w").write(open("%s").read())
+open("%s/test.txt", "w").write(open("%s/test.txt").read())
 `, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
@@ -203,7 +203,7 @@ open("%s/file.txt", "w").write(open("%s").read())
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
 	require.NoError(t, err)
 
-	filePath := fmt.Sprintf("%s/%s/output/file.txt", outputDir, state.ResultsID)
+	filePath := fmt.Sprintf("%s/%s/output/test.txt", outputDir, state.ResultsID)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 
