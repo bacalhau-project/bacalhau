@@ -28,7 +28,7 @@ type Executor interface {
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
-	RunJob(context.Context, *Job) (string, error)
+	RunJob(context.Context, Job) (string, error)
 }
 
 // Job contains data about a job in the bacalhau network.
@@ -40,37 +40,16 @@ type Job struct {
 	Owner string `json:"owner"`
 
 	// The specification of this job.
-	Spec *JobSpec `json:"spec"`
+	Spec JobSpec `json:"spec"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal *JobDeal `json:"deal"`
+	Deal JobDeal `json:"deal"`
 
 	// The states of the job on different compute nodes indexed by node ID.
-	State map[string]*JobState `json:"state"`
+	State map[string]JobState `json:"state"`
 
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
-}
-
-// Copy returns a deep copy of the given job.
-// TODO: use a library for deepcopies, this is tedious and likely to be
-//       fragile to changes in the Job type.
-func (j *Job) Copy() Job {
-	jc := *j
-	jc.State = make(map[string]*JobState)
-	for k, v := range j.State {
-		jc.State[k] = v
-	}
-	if j.Spec != nil {
-		sc := *j.Spec
-		jc.Spec = &sc
-	}
-	if j.Deal != nil {
-		dc := *j.Deal
-		jc.Deal = &dc
-	}
-
-	return jc
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -170,11 +149,11 @@ type JobEvent struct {
 	NodeID    string       `json:"node_id"`
 	EventName JobEventType `json:"event_name"`
 	// this is only defined in "create" events
-	JobSpec *JobSpec `json:"job_spec"`
+	JobSpec JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal *JobDeal `json:"job_deal"`
+	JobDeal JobDeal `json:"job_deal"`
 	// most other events are a case of a client<->node state change
-	JobState  *JobState `json:"job_state"`
+	JobState  JobState  `json:"job_state"`
 	EventTime time.Time `json:"event_time"`
 }
 

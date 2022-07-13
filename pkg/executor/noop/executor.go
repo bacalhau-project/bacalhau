@@ -8,7 +8,7 @@ import (
 )
 
 type ExecutorConfigExternalHooks struct {
-	JobHandler    *func(ctx context.Context, job *executor.Job) (string, error)
+	JobHandler    *func(ctx context.Context, job executor.Job) (string, error)
 	GetVolumeSize *func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
 }
 
@@ -17,13 +17,13 @@ type ExecutorConfig struct {
 }
 
 type Executor struct {
-	Jobs   []*executor.Job
+	Jobs   []executor.Job
 	Config ExecutorConfig
 }
 
 func NewExecutor() (*Executor, error) {
 	Executor := &Executor{
-		Jobs: []*executor.Job{},
+		Jobs: []executor.Job{},
 	}
 	return Executor, nil
 }
@@ -53,7 +53,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 	return 0, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error) {
 	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := *e.Config.ExternalHooks.JobHandler

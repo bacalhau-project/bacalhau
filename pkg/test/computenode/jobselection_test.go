@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -168,7 +169,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
 	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
 		NodeID: "test",
 		JobID:  "test",
-		Spec:   nil,
+		Spec:   executor.JobSpec{},
 	})
 	require.Error(suite.T(), err)
 }

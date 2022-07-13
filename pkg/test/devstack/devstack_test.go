@@ -75,7 +75,7 @@ func devStackDockerStorageTest(
 	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
 	require.NoError(t, err)
 
-	jobSpec := &executor.JobSpec{
+	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
 		Docker:   testCase.GetJobSpec(),
@@ -83,7 +83,7 @@ func devStackDockerStorageTest(
 		Outputs:  testCase.Outputs,
 	}
 
-	jobDeal := &executor.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: nodeCount,
 	}
 

@@ -120,7 +120,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	transport, noopExecutor, _, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -135,7 +135,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: 1,
 	}
 
@@ -152,7 +152,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 	transport, _, _, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -167,7 +167,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: 1,
 	}
 

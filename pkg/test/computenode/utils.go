@@ -97,7 +97,7 @@ func SetupTestNoop(
 	return computeNode, requestorNode, cm
 }
 
-func GetJobSpec(cid string) *executor.JobSpec {
+func GetJobSpec(cid string) executor.JobSpec {
 	inputs := []storage.StorageSpec{}
 	if cid != "" {
 		inputs = []storage.StorageSpec{
@@ -108,7 +108,7 @@ func GetJobSpec(cid string) *executor.JobSpec {
 			},
 		}
 	}
-	return &executor.JobSpec{
+	return executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -162,9 +162,9 @@ func RunJobViaRequestor(
 func RunJobGetStdout(
 	t *testing.T,
 	computeNode *computenode.ComputeNode,
-	spec *executor.JobSpec,
+	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.RunJob(context.Background(), &executor.Job{
+	result, err := computeNode.RunJob(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
 	})

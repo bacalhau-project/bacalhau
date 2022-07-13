@@ -15,12 +15,12 @@ func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideom
 }
 
 type jobDescription struct {
-	ID        string                        `yaml:"Id"`
-	Owner     string                        `yaml:"Owner"`
-	Spec      jobSpecDescription            `yaml:"Spec"`
-	Deal      executor.JobDeal              `yaml:"Deal"`
-	State     map[string]*executor.JobState `yaml:"State"`
-	CreatedAt time.Time                     `yaml:"Start Time"`
+	ID        string                       `yaml:"Id"`
+	Owner     string                       `yaml:"Owner"`
+	Spec      jobSpecDescription           `yaml:"Spec"`
+	Deal      executor.JobDeal             `yaml:"Deal"`
+	State     map[string]executor.JobState `yaml:"State"`
+	CreatedAt time.Time                    `yaml:"Start Time"`
 }
 
 type jobSpecDescription struct {
@@ -66,7 +66,7 @@ var describeCmd = &cobra.Command{
 			return fmt.Errorf("no job found with ID: %s", jobID)
 		}
 
-		jobVMDesc := &jobSpecVMDescription{}
+		jobVMDesc := jobSpecVMDescription{}
 		jobVMDesc.Image = job.Spec.Docker.Image
 		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
 		jobVMDesc.Env = job.Spec.Docker.Env
@@ -74,21 +74,21 @@ var describeCmd = &cobra.Command{
 		jobVMDesc.CPU = job.Spec.Resources.CPU
 		jobVMDesc.Memory = job.Spec.Resources.Memory
 
-		jobSpecDesc := &jobSpecDescription{}
+		jobSpecDesc := jobSpecDescription{}
 		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
 
-		jobDealDesc := &jobDealDescription{}
+		jobDealDesc := jobDealDescription{}
 		jobDealDesc.Concurrency = job.Deal.Concurrency
 		jobDealDesc.AssignedNodes = job.Deal.AssignedNodes
 
 		jobSpecDesc.Verifier = job.Spec.Verifier.String()
-		jobSpecDesc.VM = *jobVMDesc
+		jobSpecDesc.VM = jobVMDesc
 
-		jobDesc := &jobDescription{}
+		jobDesc := jobDescription{}
 		jobDesc.ID = job.ID
 		jobDesc.Owner = job.Owner
-		jobDesc.Spec = *jobSpecDesc
-		jobDesc.Deal = *job.Deal
+		jobDesc.Spec = jobSpecDesc
+		jobDesc.Deal = job.Deal
 		jobDesc.State = job.State
 		jobDesc.CreatedAt = job.CreatedAt
 

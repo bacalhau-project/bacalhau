@@ -40,7 +40,7 @@ func NewRequesterNode(
 	}
 
 	t.Subscribe(ctx, func(ctx context.Context,
-		jobEvent *executor.JobEvent, job *executor.Job) {
+		jobEvent executor.JobEvent, job executor.Job) {
 		// we only care about jobs that we own
 		if job.Owner != nodeID {
 			return
@@ -95,7 +95,7 @@ func NewRequesterNode(
 
 // a compute node has bid on the job
 // should we accept the bid or not?
-func (node *RequesterNode) ConsiderBid(job *executor.Job, nodeID string) (bidAccepted bool, reason string, err error) {
+func (node *RequesterNode) ConsiderBid(job executor.Job, nodeID string) (bidAccepted bool, reason string, err error) {
 	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeID, job.ID)
 
 	concurrency := job.Deal.Concurrency

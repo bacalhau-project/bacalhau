@@ -112,15 +112,15 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeGenericJob() (*executor.JobSpec, *executor.JobDeal) {
+func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
 	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs)
 }
 
-func MakeNoopJob() (*executor.JobSpec, *executor.JobDeal) {
+func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
 	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
 }
 
-func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (*executor.JobSpec, *executor.JobDeal) {
+func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (executor.JobSpec, executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
@@ -139,5 +139,5 @@ func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType)
 		Concurrency: 1,
 	}
 
-	return &jobSpec, &jobDeal
+	return jobSpec, jobDeal
 }

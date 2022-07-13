@@ -102,7 +102,7 @@ type listRequest struct {
 }
 
 type listResponse struct {
-	Jobs map[string]*executor.Job `json:"jobs"`
+	Jobs map[string]executor.Job `json:"jobs"`
 }
 
 type versionRequest struct {
@@ -176,11 +176,11 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 
 type submitData struct {
 	// The job specification:
-	Spec *executor.JobSpec `json:"spec"`
+	Spec executor.JobSpec `json:"spec"`
 
 	// The deal the client has made with the network, at minimum this should
 	// contain the client's ID for verifying the message authenticity:
-	Deal *executor.JobDeal `json:"deal"`
+	Deal executor.JobDeal `json:"deal"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't
@@ -200,7 +200,7 @@ type submitRequest struct {
 }
 
 type submitResponse struct {
-	Job *executor.Job `json:"job"`
+	Job executor.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
@@ -281,12 +281,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 }
 
 func verifySubmitRequest(req *submitRequest) error {
-	if req.Data.Spec == nil {
-		return errors.New("job spec is required")
-	}
-	if req.Data.Deal == nil {
-		return errors.New("job deal is required")
-	}
 	if req.Data.Deal.ClientID == "" {
 		return errors.New("job deal must contain a client ID")
 	}
