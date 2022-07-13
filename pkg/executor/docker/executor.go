@@ -278,7 +278,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		log.Info().Msgf("container error %s", containerError)
 	}
 
-	stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+	stdout, stderr, err := system.RunCommandGetStdoutAndStderr(
 		"docker",
 		[]string{
 			"logs",
@@ -289,7 +289,6 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	stderr := "TODO"
 
 	//stdout, stderr, err := containerLogStreamer.Logs()
 	//if err != nil {
