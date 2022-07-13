@@ -211,6 +211,7 @@ test-and-report: build-bacalhau
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 			--format standard-quiet \
 			-- \
+				-p 1 \
 				./pkg/... ./cmd/... \
 				$(COVERAGE_OPTS) --tags=unit
 
