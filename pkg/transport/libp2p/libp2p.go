@@ -29,39 +29,33 @@ type LibP2PTransport struct {
 	cm *system.CleanupManager
 
 	subscribeFunctions   []transport.SubscribeFn
-	ctx                  sync.RWMutex
+	ctx                  sync.Mutex
 	host                 host.Host
 	port                 int
-	peers                []string
 	pubSub               *pubsub.PubSub
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
 }
 
-func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
-	usePeers := []string{}
-
-	for _, p := range peers {
-		if p != "" {
-			usePeers = append(usePeers, p)
-		}
-	}
-
+func makeLibp2pHost(port int) (host.Host, error) {
 	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
 	if err != nil {
 		return nil, err
 	}
 
 	// 0.0.0.0 will listen on any interface device.
-	sourceMultiAddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
-	if err != nil {
-		return nil, err
-	}
+	sourceMultiAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
 
-	h, err := libp2p.New(
+	// libp2p.New constructs a new libp2p Host.
+	// Other options can be added here.
+	return libp2p.New(
 		libp2p.ListenAddrs(sourceMultiAddr),
 		libp2p.Identity(prvKey),
 	)
+}
+
+func NewTransport(cm *system.CleanupManager, port int) (*LibP2PTransport, error) {
+	h, err := makeLibp2pHost(port)
 	if err != nil {
 		return nil, err
 	}
@@ -92,40 +86,26 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		subscribeFunctions:   []transport.SubscribeFn{},
 		host:                 h,
 		port:                 port,
-		peers:                usePeers,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
 	}
 
-	// setup the event writer
-	libp2pTransport.genericTransport = transport.NewGenericTransport(
-		h.ID().String(),
-		func(ctx context.Context, event executor.JobEvent) error {
-			return libp2pTransport.writeJobEvent(ctx, event)
-		},
-	)
+	// // setup the event writer
+	// libp2pTransport.genericTransport = transport.NewGenericTransport(
+	// 	h.ID().String(),
+	// 	func(ctx context.Context, event executor.JobEvent) error {
+	// 		return libp2pTransport.writeJobEvent(ctx, event)
+	// 	},
+	// )
 
 	return libp2pTransport, nil
 }
 
 /*
 
-  public api
-
-*/
-
 func (t *LibP2PTransport) HostID(ctx context.Context) (string, error) {
 	return t.host.ID().String(), nil
-}
-
-func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
-	response := map[string][]peer.ID{}
-	for _, topic := range t.pubSub.GetTopics() {
-		peers := t.pubSub.ListPeers(topic)
-		response[topic] = peers
-	}
-	return response, nil
 }
 
 func (t *LibP2PTransport) Start(ctx context.Context) error {
@@ -133,24 +113,24 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
 
+	log.Debug().Msg("Libp2p transport has started")
+
 	t.cm.RegisterCallback(func() error {
+		t.host.Close()
+		log.Debug().Msg("Libp2p transport has stopped")
+
 		return t.Shutdown(ctx)
 	})
 
-	err := t.connectToPeers(ctx)
-	if err != nil {
-		return err
-	}
-
-	go t.listenForEvents(ctx)
-
-	log.Info().Msg("Libp2p transport has started")
+	log.Debug().Msg("libp2p transport is starting...")
+	go t.readLoopJobEvents(ctx)
 
 	return nil
 }
 
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
-	closeErr := t.host.Close()
+	return t.genericTransport.Shutdown(ctx)
+}
 
 	if closeErr != nil {
 		log.Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
@@ -180,44 +160,10 @@ func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 }
 
 /////////////////////////////////////////////////////////////
-/// WRITE OPERATIONS - "CLIENT" / REQUESTER
+/// INTERNAL IMPLEMENTATION
 /////////////////////////////////////////////////////////////
 
-func (t *Transport) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
-	ctx, span := newSpan(ctx, "SubmitJob")
-	defer span.End()
-
-	return t.genericTransport.SubmitJob(ctx, spec, deal)
-}
-
-func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
-	ctx, span := newSpan(ctx, "UpdateDeal")
-	defer span.End()
-
-	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
-}
-
-func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
-	return nil
-}
-
-func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
-	return t.writeJobEvent(ctx, ev)
-}
-
-func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
-	t.subscribeFunctions = append(t.subscribeFunctions, fn)
-}
-
-/*
-
-  libp2p
-
-*/
-
-func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
+func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
 	ctx, span := newSpan(ctx, "Connect")
 	defer span.End()
 
@@ -319,6 +265,12 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
 	return system.Span(ctx, "transport/libp2p", apiName)
+}
+
+func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
+	t.ctx.Lock()
+	defer t.ctx.Unlock()
+	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
 // Compile-time interface check:
