@@ -131,11 +131,11 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test ./... -v
+	go test ./... -v -p 1
 
 .PHONY: test-debug
 test-debug: 
-	LOG_LEVEL=debug go test ./... -v
+	LOG_LEVEL=debug go test ./... -v -p 1
 
 .PHONY: test-one
 test-one:
