@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +28,7 @@ import (
 //   context mounted in
 
 func TestSimplestPythonWasmDashC(t *testing.T) {
+	system.InitConfigForTesting(t)
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
@@ -68,6 +70,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 // TODO: test that > 10MB context is rejected
 
 func TestSimplePythonWasm(t *testing.T) {
+	system.InitConfigForTesting(t)
 	ctx, span := newSpan("TestSimplePythonWasm")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
@@ -120,9 +123,10 @@ func TestSimplePythonWasm(t *testing.T) {
 }
 
 func TestPythonWasmVolumes(t *testing.T) {
+	system.InitConfigForTesting(t)
 
 	nodeCount := 1
-	inputPath := "/input/file.txt"
+	inputPath := "/input"
 	outputPath := "/output"
 	fileContents := "pineapples"
 
@@ -154,7 +158,16 @@ func TestPythonWasmVolumes(t *testing.T) {
 
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
-open("%s/file.txt", "w").write(open("%s").read())
+import os
+print("LIST /")
+print(os.listdir("/"))
+#print("LIST /input")
+#print(os.listdir("/input"))
+print("LIST /output")
+print(os.listdir("/output"))
+print("LIST /job")
+print(os.listdir("/job"))
+open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
@@ -203,7 +216,7 @@ open("%s/file.txt", "w").write(open("%s").read())
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
 	require.NoError(t, err)
 
-	filePath := fmt.Sprintf("%s/%s/output/file.txt", outputDir, state.ResultsID)
+	filePath := fmt.Sprintf("%s/%s/output/test.txt", outputDir, state.ResultsID)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 

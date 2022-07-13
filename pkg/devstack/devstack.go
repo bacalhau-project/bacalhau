@@ -10,6 +10,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -225,6 +226,10 @@ func NewDevStack(
 }
 
 func (stack *DevStack) PrintNodeInfo() {
+	if !config.DevstackGetShouldPrintInfo() {
+		return
+	}
+
 	logString := ""
 
 	for nodeIndex, node := range stack.Nodes {

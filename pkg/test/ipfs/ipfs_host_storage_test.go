@@ -20,7 +20,6 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 	storage.StorageProvider, error)
 
 func TestIpfsApiCopyFile(t *testing.T) {
-
 	runFileTest(
 		t,
 		storage.IPFSAPICopy,
@@ -34,7 +33,6 @@ func TestIpfsApiCopyFile(t *testing.T) {
 }
 
 func TestIpfsApiCopyFolder(t *testing.T) {
-
 	runFolderTest(
 		t,
 		storage.IPFSAPICopy,
@@ -117,8 +115,6 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, EXAMPLE_TEXT)
-
-	fmt.Printf("HERE IS RESULTS: %s\n", result)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)

@@ -89,7 +89,6 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job *executo
 	// TODO: make this deterministic, return the first match alphabetically
 	for _, job = range jobs {
 		if strings.HasPrefix(job.ID, jobID) {
-			log.Debug().Msgf("MATCH: %s", job.ID)
 			return job, true, nil
 		}
 	}

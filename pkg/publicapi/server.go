@@ -99,7 +99,6 @@ type listResponse struct {
 	Jobs map[string]*executor.Job `json:"jobs"`
 }
 
-
 type versionRequest struct {
 	ClientID string `json:"client_id"`
 }
@@ -130,9 +129,8 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-
 func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {
-	var versionReq versionResponse
+	var versionReq versionRequest
 	err := json.NewDecoder(req.Body).Decode(&versionReq)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)

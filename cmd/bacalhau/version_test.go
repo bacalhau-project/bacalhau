@@ -79,7 +79,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "version",
 		"--api-host", host,
 		"--api-port", port,
-		"--output", "json",
+		"--output", JSONFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
@@ -91,7 +91,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "version",
 		"--api-host", host,
 		"--api-port", port,
-		"--output", "yaml",
+		"--output", YAMLFormat,
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 

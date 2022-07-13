@@ -75,7 +75,7 @@ func (o *Options) Validate(cmd *cobra.Command) error {
 		return fmt.Errorf("extra arguments: %v", o.args)
 	}
 
-	if o.Output != "" && o.Output != "yaml" && o.Output != "json" {
+	if o.Output != "" && o.Output != YAMLFormat && o.Output != JSONFormat {
 		return errors.New(`--output must be 'yaml' or 'json'`)
 	}
 
@@ -106,13 +106,13 @@ func (o *Options) Run(cmd *cobra.Command) error {
 		if versions.ServerVersion != nil {
 			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
 		}
-	case "yaml":
+	case YAMLFormat:
 		marshaled, err := yaml.Marshal(versions)
 		if err != nil {
 			return err
 		}
 		cmd.Println(string(marshaled))
-	case "json":
+	case JSONFormat:
 		marshaled, err := json.MarshalIndent(versions, "", "  ")
 		if err != nil {
 			return err
@@ -130,5 +130,4 @@ func (o *Options) Run(cmd *cobra.Command) error {
 // NewOptions returns initialized Options
 func NewOptions() *Options {
 	return &Options{}
-
 }
