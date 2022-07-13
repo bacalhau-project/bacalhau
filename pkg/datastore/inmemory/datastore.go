@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -26,7 +27,7 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	return res, nil
 }
 
-func (d *InMemoryDatastore) GetJob(id string) (datastore.Job, error) {
+func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (datastore.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[id]
@@ -49,12 +50,12 @@ func (d *InMemoryDatastore) GetJob(id string) (datastore.Job, error) {
 	}, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(query datastore.ListQuery) ([]datastore.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.ListQuery) ([]datastore.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	result := []datastore.Job{}
 	if query.ID != "" {
-		job, err := d.GetJob(query.ID)
+		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {
 			return result, err
 		}
@@ -63,14 +64,14 @@ func (d *InMemoryDatastore) GetJobs(query datastore.ListQuery) ([]datastore.Job,
 	return result, nil
 }
 
-func (d *InMemoryDatastore) AddJob(job executor.Job) error {
+func (d *InMemoryDatastore) AddJob(ctx context.Context, job executor.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	d.jobs[job.ID] = &job
 	return nil
 }
 
-func (d *InMemoryDatastore) AddEvent(jobID string, ev executor.JobEvent) error {
+func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev executor.JobEvent) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
@@ -86,7 +87,7 @@ func (d *InMemoryDatastore) AddEvent(jobID string, ev executor.JobEvent) error {
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateJobDeal(jobID string, deal executor.JobDeal) error {
+func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
@@ -97,7 +98,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(jobID string, deal executor.JobDeal) e
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateJobState(jobID, nodeID string, state executor.JobState) error {
+func (d *InMemoryDatastore) UpdateJobState(ctx context.Context, jobID, nodeID string, state executor.JobState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
@@ -108,7 +109,7 @@ func (d *InMemoryDatastore) UpdateJobState(jobID, nodeID string, state executor.
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateLocalMetadata(jobID string, data executor.JobLocalMetadata) error {
+func (d *InMemoryDatastore) UpdateLocalMetadata(ctx context.Context, jobID string, data executor.JobLocalMetadata) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]

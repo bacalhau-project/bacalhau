@@ -1,6 +1,10 @@
 package datastore
 
-import "github.com/filecoin-project/bacalhau/pkg/executor"
+import (
+	"context"
+
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+)
 
 type Job struct {
 	ID            string
@@ -21,11 +25,11 @@ type ListQuery struct {
 // The Datastore and Transport interfaces could be swapped out for some kind
 // of smart contract implementation (e.g. FVM)
 type DataStore interface {
-	GetJob(id string) (Job, error)
-	GetJobs(query ListQuery) ([]Job, error)
-	AddJob(job executor.Job) error
-	AddEvent(jobID string, event executor.JobEvent) error
-	UpdateJobDeal(jobID string, deal executor.JobDeal) error
-	UpdateJobState(jobID, nodeID string, state executor.JobState) error
-	UpdateLocalMetadata(jobID string, data executor.JobLocalMetadata) error
+	GetJob(ctx context.Context, id string) (Job, error)
+	GetJobs(ctx context.Context, query ListQuery) ([]Job, error)
+	AddJob(ctx context.Context, job executor.Job) error
+	AddEvent(ctx context.Context, jobID string, event executor.JobEvent) error
+	UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error
+	UpdateJobState(ctx context.Context, jobID, nodeID string, state executor.JobState) error
+	UpdateLocalMetadata(ctx context.Context, jobID string, data executor.JobLocalMetadata) error
 }
