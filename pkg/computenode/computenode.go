@@ -241,17 +241,16 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	})
 
 	resultFolder, containerRunError := node.RunJob(ctx, job)
-
-	if resultFolder == "" && containerRunError == nil {
-		containerRunError = fmt.Errorf("we did not get a results folder from RunJob")
-	}
-
 	if containerRunError != nil {
-		// Increment the number of jobs failed by this compute node:
 		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
 	} else {
-		// Increment the number of jobs completed by this compute node:
 		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
+	}
+	if resultFolder == "" {
+		errMessage := fmt.Sprintf("Missing results folder for job %s: %s", job.ID, containerRunError)
+		log.Error().Msgf(errMessage)
+		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		return
 	}
 
 	v, err := node.getVerifier(ctx, job.Spec.Verifier)
