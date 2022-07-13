@@ -121,10 +121,8 @@ type JobState struct {
 // so our compute node and requester node control loops
 // can keep state against a job without broadcasting it
 // to the rest of the network
-type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"event_name"`
-	JobID        string            `json:"job_id"`
-	TargetNodeID string            `json:"target_node_id"`
+type JobLocalMetadata struct {
+	ComputeNodeSelected bool `json:"selected"`
 }
 
 // The deal the client has made with the bacalhau network.
