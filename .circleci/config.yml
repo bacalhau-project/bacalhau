@@ -106,6 +106,7 @@ jobs:
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
                   gotestsum \
+                    -v \
                     --junitfile unit-tests.xml \
                     --format standard-quiet \
                     -- \
