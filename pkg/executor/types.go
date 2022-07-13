@@ -139,6 +139,14 @@ type JobState struct {
 	ResultsID string       `json:"results_id"`
 }
 
+// gives us a way to keep local data against a job
+// so our compute node and requester node control loops
+// can keep state against a job without broadcasting it
+// to the rest of the network
+type JobLocalMetadata struct {
+	ComputeNodeSelected bool `json:"selected"`
+}
+
 // The deal the client has made with the bacalhau network.
 type JobDeal struct {
 	// The ID of the client that created this job.
