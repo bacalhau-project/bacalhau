@@ -70,16 +70,7 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEv
 	defer gt.mutex.Unlock()
 
 	// Keep track of the state of jobs we hear about:
-	if _, ok := gt.jobs[event.JobID]; !ok {
-		gt.jobs[event.JobID] = &executor.Job{
-			ID:        event.JobID,
-			Owner:     event.NodeID,
-			Spec:      nil,
-			Deal:      nil,
-			State:     make(map[string]*executor.JobState),
-			CreatedAt: time.Now(),
-		}
-	}
+	gt.ensureJobExists(ctx, event)
 
 	// Passed in for create and update events:
 	if event.JobSpec != nil {
@@ -225,13 +216,17 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
 	gt.jobContexts[jobID] = jobCtx
 
-	if err := gt.writeEvent(jobCtx, &executor.JobEvent{
+	// Cache and send the event to other nodes in the network:
+	event := &executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
 		EventTime: time.Now(),
-	}); err != nil {
+	}
+
+	gt.ensureJobExists(ctx, event)
+	if err := gt.writeEvent(jobCtx, event); err != nil {
 		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
 
@@ -450,4 +445,17 @@ func (gt *GenericTransport) newRootSpanForJob(ctx context.Context, jobID string)
 			attribute.String("nodeID", gt.NodeID),
 		),
 	)
+}
+
+func (gt *GenericTransport) ensureJobExists(ctx context.Context, event *executor.JobEvent) {
+	if _, ok := gt.jobs[event.JobID]; !ok {
+		gt.jobs[event.JobID] = &executor.Job{
+			ID:        event.JobID,
+			Owner:     event.NodeID,
+			Spec:      nil,
+			Deal:      nil,
+			State:     make(map[string]*executor.JobState),
+			CreatedAt: time.Now(),
+		}
+	}
 }
