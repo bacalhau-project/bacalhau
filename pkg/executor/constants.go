@@ -43,22 +43,53 @@ type JobEventType int
 
 const (
 	jobEventUnknown JobEventType = iota // must be first
+
+	// the job was created by a client
 	JobEventCreated
+
+	// the concurrency or other mutable properties of the job were
+	// changed by the client
 	JobEventDealUpdated
+
+	// a compute node bid on a job
 	JobEventBid
+
+	// a requester node accepted for rejected a job bid
 	JobEventBidAccepted
 	JobEventBidRejected
-	JobEventResults
-	JobEventResultsAccepted
-	JobEventResultsRejected
+
+	// a compute node cancled a job bid
+	JobEventBidCancelled
+
+	// a compute node is preparing to run a job
+	// (e.g. preparing storage volumes and downloading docker images)
+	JobEventPreparing
+
+	// a compute node progressed with running a job
+	// this is called periodically for running jobs
+	// to give the client confidence the job is still running
+	// this is like a heartbeat for running jobs
+	JobEventRunning
+
+	// a compute node completed running a job
+	JobEventCompleted
+
+	// a compute node had an error running a job
 	JobEventError
+
+	// a requestor node accepted the results from a node for a job
+	JobEventResultsAccepted
+
+	// a requestor node rejected the results from a node for a job
+	JobEventResultsRejected
+
 	jobEventDone // must be last
 )
 
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (event JobEventType) IsTerminal() bool {
-	return event == JobEventError || event == JobEventResults
+	return event == JobEventError || event == JobEventCompleted
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
@@ -91,13 +122,32 @@ func JobEventTypes() []JobEventType {
 //go:generate stringer -type=JobStateType --trimprefix=JobState
 type JobStateType int
 
+// these are the states a job can be in against a single node
 const (
 	jobStateUnknown JobStateType = iota // must be first
+
+	// a compute node has selected a job and has bid on it
 	JobStateBidding
-	JobStateBidRejected
+
+	// a requester node has either rejected the bid or the compute node has cancelled the bid
+	JobStateCancelled
+
+	// the job is in the process of running
 	JobStateRunning
+
+	// the job had an error - this is an end state
 	JobStateError
+
+	// the requestor node is verifying the results
+	// we got back from the compute node
 	JobStateComplete
+
+	// these are 2 end states of a job
+	// the requestor node has made a decision about the results
+	// submitted by this node
+	JobStateResultsAccepted
+	JobStateResultsRejected
+
 	jobStateDone // must be last
 )
 

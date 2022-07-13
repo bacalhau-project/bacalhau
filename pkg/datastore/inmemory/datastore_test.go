@@ -24,9 +24,9 @@ func TestInMemoryDataStore(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.AddEvent(context.Background(), jobId, executor.JobEvent{
-		JobID:     jobId,
-		NodeID:    nodeId,
-		EventName: executor.JobEventBid,
+		JobID:        jobId,
+		SourceNodeID: nodeId,
+		EventName:    executor.JobEventBid,
 	})
 	require.NoError(t, err)
 

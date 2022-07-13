@@ -226,19 +226,5 @@ func GetCurrentJobState(job executor.Job) (string, executor.JobState) {
 }
 
 func JobStateValue(jobState executor.JobState) int {
-	switch jobState.State {
-	case executor.JobStateRunning:
-		return 100 // nolint:gomnd // magic number appropriate
-	case executor.JobStateComplete:
-		return 90 // nolint:gomnd // magic number appropriate
-	case executor.JobStateError:
-		return 80 // nolint:gomnd // magic number appropriate
-	case executor.JobStateBidding:
-		return 70 // nolint:gomnd // magic number appropriate
-	case executor.JobStateBidRejected:
-		return 60 // nolint:gomnd // magic number appropriate
-	default:
-		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
-		return 0
-	}
+	return int(executor.JobStateRunning)
 }

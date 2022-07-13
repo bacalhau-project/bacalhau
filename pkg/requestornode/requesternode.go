@@ -58,7 +58,7 @@ func NewRequesterNode(
 				job.ID, "JobEventBid")
 			defer span.End()
 
-			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.NodeID)
+			bidAccepted, message, err := requesterNode.ConsiderBid(job, jobEvent.TargetNodeID)
 			if err != nil {
 				threadLogger.Warn().Msgf("There was an error considering bid: %s", err)
 				return
@@ -71,7 +71,7 @@ func NewRequesterNode(
 					Job:  job.ID,
 				})
 				// TODO: Check result of accept job bid
-				err = t.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.NodeID)
+				err = t.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.TargetNodeID)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}
@@ -82,7 +82,7 @@ func NewRequesterNode(
 					Job:  job.ID,
 				})
 				// TODO: Check result of reject job bid
-				err = t.RejectJobBid(ctx, jobEvent.JobID, jobEvent.NodeID, message)
+				err = t.RejectJobBid(ctx, jobEvent.JobID, jobEvent.TargetNodeID, message)
 				if err != nil {
 					threadLogger.Error().Err(err)
 				}

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
@@ -13,13 +12,7 @@ import (
 
 // called by both self.SubmitJob and eventReader.JobEventCreated
 func (ctrl *Controller) handleJobCreated(ctx context.Context, ev executor.JobEvent) error {
-	job := executor.Job{
-		ID:        ev.JobID,
-		Spec:      ev.JobSpec,
-		Deal:      ev.JobDeal,
-		State:     map[string]executor.JobState{},
-		CreatedAt: time.Now(),
-	}
+	job := constructJob(ev)
 	err := ctrl.datastore.AddJob(ctx, job)
 	if err != nil {
 		return err

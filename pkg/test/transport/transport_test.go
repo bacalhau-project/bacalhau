@@ -151,7 +151,7 @@ func TestTransportEvents(t *testing.T) {
 		executor.JobEventCreated.String(),
 		executor.JobEventBid.String(),
 		executor.JobEventBidAccepted.String(),
-		executor.JobEventResults.String(),
+		executor.JobEventCompleted.String(),
 	}
 	actualEventNames := []string{}
 
