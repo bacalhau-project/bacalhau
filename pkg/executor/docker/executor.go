@@ -233,7 +233,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		e.jobContainerName(j),
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create container: %w", err)
 	}
 
 	err = e.Client.ContainerStart(
@@ -242,7 +242,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		dockertypes.ContainerStartOptions{},
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to start container: %w", err)
 	}
 	defer e.cleanupJob(j)
 
@@ -356,6 +356,7 @@ func (e *Executor) cleanupAll() {
 		return
 	}
 
+	log.Info().Msg("Cleaning up all bacalhau containers...")
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
