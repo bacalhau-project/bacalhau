@@ -356,7 +356,7 @@ func (e *Executor) cleanupAll() {
 		return
 	}
 
-	log.Info().Msg("Cleaning up all bacalhau containers...")
+	log.Info().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
