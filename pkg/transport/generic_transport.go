@@ -340,7 +340,7 @@ func (gt *GenericTransport) SubmitResult(ctx context.Context, jobID, status, res
 	})
 }
 
-func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status string) error {
+func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJob")
 
@@ -348,8 +348,9 @@ func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status string) 
 		JobID:     jobID,
 		EventName: executor.JobEventError,
 		JobState: executor.JobState{
-			State:  executor.JobStateError,
-			Status: status,
+			State:     executor.JobStateError,
+			Status:    status,
+			ResultsID: resultsID,
 		},
 		EventTime: time.Now(),
 	})
@@ -360,7 +361,7 @@ func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status string) 
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status string) error {
+func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status, resultsID string) error {
 	ctx = gt.getJobNodeContext(ctx, jobID)
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
 
@@ -369,8 +370,9 @@ func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, 
 		NodeID:    nodeID,
 		EventName: executor.JobEventError,
 		JobState: executor.JobState{
-			State:  executor.JobStateError,
-			Status: status,
+			State:     executor.JobStateError,
+			Status:    status,
+			ResultsID: resultsID,
 		},
 		EventTime: time.Now(),
 	})

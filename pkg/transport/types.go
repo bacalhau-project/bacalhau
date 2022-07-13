@@ -82,11 +82,12 @@ type Transport interface {
 
 	// something has gone wrong with running the job
 	// called by the compute node and so will have the nodeID auto-filled
-	ErrorJob(ctx context.Context, jobID, status string) error
+	// the results are included (e.g. stdout, stderr, etc) to help with debugging
+	ErrorJob(ctx context.Context, jobID, status, resultsID string) error
 
 	// something has gone wrong is checking the job from the requester node
 	// called by the requester node and so we need to be given the nodeID.
-	ErrorJobForNode(ctx context.Context, jobID, nodeID, status string) error
+	ErrorJobForNode(ctx context.Context, jobID, nodeID, status, resultsID string) error
 }
 
 // the data structure a client can use to render a view of the state of the world

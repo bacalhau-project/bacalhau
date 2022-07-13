@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	JSONFormat string = "json"
+	YAMLFormat string = "yaml"
+)
+
 var listOutputFormat string
 var tableOutputWide bool
 var tableHideHeader bool

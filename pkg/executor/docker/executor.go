@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -227,27 +228,23 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		e.jobContainerName(j),
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create container: %w", err)
 	}
 
-	defer e.cleanupJob(j)
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to start container: %w", err)
 	}
+	defer e.cleanupJob(j)
 
-	// TODO: we should record all logs and as much diagnostics as possible
-	// in the error case so a user can debug why their job failed
-	handleErrorLogs := func() {
-		stdout, stderr, _ := docker.GetLogs(e.Client, jobContainer.ID)
-		log.Error().Msgf("Container stdout: %s", stdout)
-		log.Error().Msgf("Container stderr: %s", stderr)
-	}
-
+	// the idea here is even if the container errors
+	// we want to capture stdout, stderr and feed it back to the user
+	var containerError error
+	var containerExitStatusCode int64
 	statusCh, errCh := e.Client.ContainerWait(
 		ctx,
 		jobContainer.ID,
@@ -255,52 +252,77 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	)
 	select {
 	case err = <-errCh:
-		if err != nil {
-			handleErrorLogs()
-			return "", err
-		}
+		containerError = err
 	case exitStatus := <-statusCh:
+		containerExitStatusCode = exitStatus.StatusCode
 		if exitStatus.Error != nil {
-			handleErrorLogs()
-			return "", errors.New(exitStatus.Error.Message)
-		}
-		if exitStatus.StatusCode != 0 {
-			handleErrorLogs()
-			return "", fmt.Errorf("exit code was non zero: %d", exitStatus.StatusCode)
+			containerError = errors.New(exitStatus.Error.Message)
 		}
 	}
+	if containerExitStatusCode != 0 {
+		if containerError == nil {
+			containerError = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
+		}
+		log.Info().Msgf("container error %s", containerError)
+	}
 
-	log.Debug().Msgf("Container stopped: %s", jobContainer.ID)
-
-	stdout, stderr, err := docker.GetLogs(e.Client, jobContainer.ID)
+	stdout, stderr, err := system.RunCommandGetStdoutAndStderr(
+		"docker",
+		[]string{
+			"logs",
+			"-f",
+			jobContainer.ID,
+		},
+	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get logs: %w", err)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stdout", jobResultsDir), []byte(stdout), util.OS_ALL_R|util.OS_USER_RW)
+	err = os.WriteFile(
+		fmt.Sprintf("%s/exitCode", jobResultsDir),
+		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
+	if err != nil {
+		msg := fmt.Sprintf("could not write results to exitCode: %s", err)
+		log.Error().Msg(msg)
+		return "", errors.New(msg)
+	}
+
+	err = os.WriteFile(
+		fmt.Sprintf("%s/stdout", jobResultsDir),
+		[]byte(stdout),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stdout: %s", err)
 		log.Error().Msg(msg)
 		return "", errors.New(msg)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s/stderr", jobResultsDir), []byte(stderr), util.OS_ALL_R|util.OS_USER_RW)
+	err = os.WriteFile(
+		fmt.Sprintf("%s/stderr", jobResultsDir),
+		[]byte(stderr),
+		util.OS_ALL_R|util.OS_USER_RW,
+	)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stderr: %s", err)
 		log.Error().Msg(msg)
 		return "", errors.New(msg)
 	}
 
-	return jobResultsDir, nil
+	return jobResultsDir, containerError
 }
 
 func (e *Executor) cleanupJob(job executor.Job) {
 	if config.ShouldKeepStack() {
 		return
 	}
+
 	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
+		debug.PrintStack()
 	}
 }
 
@@ -308,6 +330,8 @@ func (e *Executor) cleanupAll() {
 	if config.ShouldKeepStack() {
 		return
 	}
+
+	log.Info().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())

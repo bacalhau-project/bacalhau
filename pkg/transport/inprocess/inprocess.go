@@ -108,8 +108,8 @@ func (t *Transport) SubmitResult(ctx context.Context, jobID, status, resultsID s
 	return t.gt.SubmitResult(ctx, jobID, status, resultsID)
 }
 
-func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
-	return t.gt.ErrorJob(ctx, jobID, status)
+func (t *Transport) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
+	return t.gt.ErrorJob(ctx, jobID, status, resultsID)
 }
 
 // this is when the requester node needs to error the status for a node
@@ -117,8 +117,8 @@ func (t *Transport) ErrorJob(ctx context.Context, jobID, status string) error {
 // and in checking the results, the requester node came across some kind of error
 // we need to flag that error against the node that submitted the results
 // (but we are the requester node) - so we need this util function
-func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status string) error {
-	return t.gt.ErrorJobForNode(ctx, jobID, nodeID, status)
+func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status, resultsID string) error {
+	return t.gt.ErrorJobForNode(ctx, jobID, nodeID, status, resultsID)
 }
 
 /////////////////////////////////////////////////////////////

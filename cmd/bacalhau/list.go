@@ -189,7 +189,7 @@ var listCmd = &cobra.Command{
 			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
-		if listOutputFormat == "json" {
+		if listOutputFormat == JSONFormat {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
