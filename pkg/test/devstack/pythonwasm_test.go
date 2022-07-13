@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +28,7 @@ import (
 //   context mounted in
 
 func TestSimplestPythonWasmDashC(t *testing.T) {
+	system.InitConfigForTesting(t)
 	ctx, span := newSpan("TestSimplestPythonWasmDashC")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
@@ -68,6 +70,7 @@ func TestSimplestPythonWasmDashC(t *testing.T) {
 // TODO: test that > 10MB context is rejected
 
 func TestSimplePythonWasm(t *testing.T) {
+	system.InitConfigForTesting(t)
 	ctx, span := newSpan("TestSimplePythonWasm")
 	defer span.End()
 	stack, cm := SetupTest(t, 1, 0, computenode.NewDefaultComputeNodeConfig())
@@ -120,6 +123,7 @@ func TestSimplePythonWasm(t *testing.T) {
 }
 
 func TestPythonWasmVolumes(t *testing.T) {
+	system.InitConfigForTesting(t)
 
 	nodeCount := 1
 	inputPath := "/input"

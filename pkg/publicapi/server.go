@@ -279,20 +279,19 @@ func verifySubmitRequest(req *submitRequest) error {
 		return errors.New("client's public key does not match client ID")
 	}
 
-	// XXX this is broken in test mode (ExecuteTestCobraCommand) - put it back before merging!
-	// // Check that the signature is valid:
-	// jsonData, err := json.Marshal(req.Data)
-	// if err != nil {
-	// 	return fmt.Errorf("error marshaling job data: %w", err)
-	// }
+	// Check that the signature is valid:
+	jsonData, err := json.Marshal(req.Data)
+	if err != nil {
+		return fmt.Errorf("error marshaling job data: %w", err)
+	}
 
-	// ok, err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
-	// if err != nil {
-	// 	return fmt.Errorf("error verifying client signature: %w", err)
-	// }
-	// if !ok {
-	// 	return errors.New("client's signature is invalid")
-	// }
+	ok, err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
+	if err != nil {
+		return fmt.Errorf("error verifying client signature: %w", err)
+	}
+	if !ok {
+		return errors.New("client's signature is invalid")
+	}
 
 	return nil
 }
