@@ -45,7 +45,8 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpe
 	return 0, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, job executor.Job) (
+	string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
 	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"

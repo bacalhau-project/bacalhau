@@ -47,6 +47,9 @@ type Job struct {
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal JobDeal `json:"deal"`
 
+	// The states of the job on different compute nodes indexed by node ID.
+	State map[string]JobState `json:"state"`
+
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -147,9 +150,9 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobSpec JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal   JobDeal   `json:"job_deal"`
-	Status    string    `json:"status"`
-	ResultsID string    `json:"results_id"`
+	JobDeal JobDeal `json:"job_deal"`
+	// most other events are a case of a client<->node state change
+	JobState  JobState  `json:"job_state"`
 	EventTime time.Time `json:"event_time"`
 }
 

@@ -94,12 +94,6 @@ func ConstructDockerJob( //nolint:funlen
 		}
 	}
 
-	if len(unSafeAnnotations) > 0 {
-		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
-			RegexString,
-			strings.Join(unSafeAnnotations, ", "))
-	}
-
 	spec := executor.JobSpec{
 		Engine:   engine,
 		Verifier: v,
@@ -199,19 +193,12 @@ func ConstructLanguageJob(
 }
 
 func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
-	if reflect.DeepEqual(executor.JobSpec{}, spec) {
-		return fmt.Errorf("job spec is empty")
-	}
-
-	if reflect.DeepEqual(executor.JobDeal{}, deal) {
-		return fmt.Errorf("job spec is empty")
-	}
-
+	// TODO: actually check these values for errors
 	return nil
 }
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
-func GetCurrentJobState(states map[string]executor.JobState) (string, executor.JobState) {
+func GetCurrentJobState(job executor.Job) (string, executor.JobState) {
 	// Returns Node Id, JobState
 
 	// Combine the list of jobs down to just those that matter
@@ -240,5 +227,19 @@ func GetCurrentJobState(states map[string]executor.JobState) (string, executor.J
 }
 
 func JobStateValue(jobState executor.JobState) int {
-	return int(executor.JobStateRunning)
+	switch jobState.State {
+	case executor.JobStateRunning:
+		return 100 // nolint:gomnd // magic number appropriate
+	case executor.JobStateComplete:
+		return 90 // nolint:gomnd // magic number appropriate
+	case executor.JobStateError:
+		return 80 // nolint:gomnd // magic number appropriate
+	case executor.JobStateBidding:
+		return 70 // nolint:gomnd // magic number appropriate
+	case executor.JobStateBidRejected:
+		return 60 // nolint:gomnd // magic number appropriate
+	default:
+		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
+		return 0
+	}
 }

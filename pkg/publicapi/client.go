@@ -96,39 +96,14 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 	return executor.Job{}, false, nil
 }
 
-func (apiClient *APIClient) GetExecutionStates(ctx context.Context, jobID string) (states map[string]executor.JobState, err error) {
-	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
-	}
-
-	req := statesRequest{
-		ClientID: system.GetClientID(),
-		JobID:    jobID,
-	}
-
-	var res statesResponse
-	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return nil, err
-	}
-
-	return res.States, nil
-}
-
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(
-	ctx context.Context,
-	spec executor.JobSpec,
-	deal executor.JobDeal,
-	buildContext *bytes.Buffer,
-) (executor.Job, error) {
-	data := executor.JobCreatePayload{
-		ClientID: system.GetClientID(),
-		Spec:     spec,
-		Deal:     deal,
-	}
-
-	if buildContext != nil {
-		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
+func (apiClient *APIClient) Submit(ctx context.Context, spec executor.JobSpec,
+	deal executor.JobDeal, buildContext *bytes.Buffer) (executor.Job,
+	error) {
+	deal.ClientID = system.GetClientID() // ensure we have a client ID
+	data := submitData{
+		Spec: spec,
+		Deal: deal,
 	}
 
 	jsonData, err := json.Marshal(data)

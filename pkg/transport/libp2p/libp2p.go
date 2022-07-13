@@ -98,6 +98,14 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		jobEventSubscription: jobEventSubscription,
 	}
 
+	// setup the event writer
+	libp2pTransport.genericTransport = transport.NewGenericTransport(
+		h.ID().String(),
+		func(ctx context.Context, event executor.JobEvent) error {
+			return libp2pTransport.writeJobEvent(ctx, event)
+		},
+	)
+
 	return libp2pTransport, nil
 }
 
@@ -150,6 +158,46 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 		log.Debug().Msg("Libp2p transport has stopped")
 	}
 
+func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
+	ctx, span := newSpan(ctx, "List")
+	defer span.End()
+
+	return t.genericTransport.List(ctx)
+}
+
+func (t *Transport) Get(ctx context.Context, id string) (executor.Job, error) {
+	ctx, span := newSpan(ctx, "Get")
+	defer span.End()
+
+	return t.genericTransport.Get(ctx, id)
+}
+
+func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
+	ctx, span := newSpan(ctx, "Subscribe")
+	defer span.End()
+
+	t.genericTransport.Subscribe(ctx, fn)
+}
+
+/////////////////////////////////////////////////////////////
+/// WRITE OPERATIONS - "CLIENT" / REQUESTER
+/////////////////////////////////////////////////////////////
+
+func (t *Transport) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
+	ctx, span := newSpan(ctx, "SubmitJob")
+	defer span.End()
+
+	return t.genericTransport.SubmitJob(ctx, spec, deal)
+}
+
+func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
+	ctx, span := newSpan(ctx, "UpdateDeal")
+	defer span.End()
+
+	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
+}
+
+func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
@@ -200,20 +248,12 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 	return nil
 }
 
-/*
-
-  pub / sub
-
-*/
-
-// we wrap our events on the wire in this envelope so
-// we can pass our tracing context to remote peers
-type jobEventEnvelope struct {
+type jobEventData struct {
 	JobEvent  executor.JobEvent      `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
+func (t *Transport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 

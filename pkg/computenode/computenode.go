@@ -167,12 +167,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 */
 func (node *ComputeNode) subscriptionSetup() {
-	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
-		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
-		if err != nil {
-			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
-			return
-		}
+	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
 			node.subscriptionEventCreated(ctx, jobEvent, job)
@@ -315,8 +310,8 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
-func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, capacitymanager.ResourceUsageData, error) {
-	requirements := capacitymanager.ResourceUsageData{}
+func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, resourceusage.ResourceUsageData, error) {
+	requirements := resourceusage.ResourceUsageData{}
 
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)

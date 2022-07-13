@@ -15,13 +15,12 @@ func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideom
 }
 
 type jobDescription struct {
-	ID              string                       `yaml:"Id"`
-	ClientID        string                       `yaml:"ClientID"`
-	RequesterNodeID string                       `yaml:"RequesterNodeId"`
-	Spec            jobSpecDescription           `yaml:"Spec"`
-	Deal            executor.JobDeal             `yaml:"Deal"`
-	State           map[string]executor.JobState `yaml:"State"`
-	CreatedAt       time.Time                    `yaml:"Start Time"`
+	ID        string                       `yaml:"Id"`
+	Owner     string                       `yaml:"Owner"`
+	Spec      jobSpecDescription           `yaml:"Spec"`
+	Deal      executor.JobDeal             `yaml:"Deal"`
+	State     map[string]executor.JobState `yaml:"State"`
+	CreatedAt time.Time                    `yaml:"Start Time"`
 }
 
 type jobSpecDescription struct {
@@ -67,12 +66,6 @@ var describeCmd = &cobra.Command{
 			return fmt.Errorf("no job found with ID: %s", jobID)
 		}
 
-		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
-		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", jobID, err)
-			return err
-		}
-
 		jobVMDesc := jobSpecVMDescription{}
 		jobVMDesc.Image = job.Spec.Docker.Image
 		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
@@ -82,7 +75,7 @@ var describeCmd = &cobra.Command{
 		jobVMDesc.Memory = job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = job.Spec.Engine.String()
+		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
 
 		jobDealDesc := jobDealDescription{}
 		jobDealDesc.Concurrency = job.Deal.Concurrency
@@ -92,11 +85,10 @@ var describeCmd = &cobra.Command{
 
 		jobDesc := jobDescription{}
 		jobDesc.ID = job.ID
-		jobDesc.ClientID = job.ClientID
-		jobDesc.RequesterNodeID = job.RequesterNodeID
+		jobDesc.Owner = job.Owner
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-		jobDesc.State = states
+		jobDesc.State = job.State
 		jobDesc.CreatedAt = job.CreatedAt
 
 		bytes, _ := yaml.Marshal(jobDesc)
