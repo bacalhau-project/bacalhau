@@ -88,7 +88,7 @@ var dockerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PostRun: func(cmd *cobra.Command, args []string) {
 		// Can't think of any reason we'd want these to persist.
 		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
 		// but potentially cleaner than making dockerRun or jobsLabel public, which would
@@ -96,7 +96,6 @@ var dockerRunCmd = &cobra.Command{
 		jobLabels = []string{}
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
-		jobLabels = []string{}
 
 		ctx := context.Background()
 		jobImage := cmdArgs[0]

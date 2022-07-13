@@ -190,7 +190,7 @@ var listCmd = &cobra.Command{
 		}
 
 		// TODO: Need a place for string constants
-		if listOutputFormat == "json" {
+		if listOutputFormat == "json" { // nolint:goconst // need to add a place for string constants
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
