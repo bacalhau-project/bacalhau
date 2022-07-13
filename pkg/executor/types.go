@@ -136,6 +136,14 @@ type JobState struct {
 	ResultsID string       `json:"results_id"`
 }
 
+// gives us a way to keep local data against a job
+// so our compute node and requester node control loops
+// can keep state against a job without broadcasting it
+// to the rest of the network
+type JobLocalMetadata struct {
+	ComputeNodeSelected bool `json:"selected"`
+}
+
 // The deal the client has made with the bacalhau network.
 type JobDeal struct {
 	// The ID of the client that created this job.
@@ -178,6 +186,6 @@ type VersionInfo struct {
 	GitVersion string    `json:"gitversion" yaml:"gitversion"`
 	GitCommit  string    `json:"gitcommit" yaml:"gitcommit"`
 	BuildDate  time.Time `json:"builddate" yaml:"builddate"`
-	GOOS  	   string    `json:"goos" yaml:"goos"`
+	GOOS       string    `json:"goos" yaml:"goos"`
 	GOARCH     string    `json:"goarch" yaml:"goarch"`
 }
