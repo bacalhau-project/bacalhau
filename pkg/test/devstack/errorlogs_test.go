@@ -91,7 +91,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateComplete,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateError),

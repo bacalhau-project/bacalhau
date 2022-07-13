@@ -92,7 +92,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		err = stack.WaitForJobWithLogs(ctx, submittedJob.ID, true,
 			devstack.WaitDontExceedCount(testCase.expectedAccepts),
 			devstack.WaitForJobThrowErrors([]executor.JobStateType{
-				executor.JobStateBidRejected,
+				executor.JobStateCancelled,
 				executor.JobStateError,
 			}),
 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),

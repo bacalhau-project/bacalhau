@@ -151,15 +151,19 @@ type JobDeal struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobID     string       `json:"job_id"`
-	NodeID    string       `json:"node_id"`
-	EventName JobEventType `json:"event_name"`
+	JobID string `json:"job_id"`
+	// the node that emitted this event
+	SourceNodeID string `json:"source_node_id"`
+	// the node that this event is for
+	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
+	TargetNodeID string       `json:"target_node_id"`
+	EventName    JobEventType `json:"event_name"`
 	// this is only defined in "create" events
 	JobSpec JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal JobDeal `json:"job_deal"`
-	// most other events are a case of a client<->node state change
-	JobState  JobState  `json:"job_state"`
+	JobDeal   JobDeal   `json:"job_deal"`
+	Status    string    `json:"status"`
+	ResultsID string    `json:"results_id"`
 	EventTime time.Time `json:"event_time"`
 }
 

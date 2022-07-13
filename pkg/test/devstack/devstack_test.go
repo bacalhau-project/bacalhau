@@ -95,7 +95,7 @@ func devStackDockerStorageTest(
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),

@@ -55,8 +55,8 @@ func NewGenericTransport(nodeID string, writeEventHandler WriteEventHandlerFn) *
 // writeEvent calls the parent transport's WriteEventHandler, which should
 // broadcast the event to its distributed network of bacalhau nodes.
 func (gt *GenericTransport) writeEvent(ctx context.Context, event executor.JobEvent) error {
-	if event.NodeID == "" {
-		event.NodeID = gt.NodeID
+	if event.SourceNodeID == "" {
+		event.SourceNodeID = gt.NodeID
 	}
 
 	return gt.writeEventHandler(ctx, event)
@@ -75,7 +75,7 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event executor.JobEve
 	if _, ok := gt.jobs[event.JobID]; !ok {
 		gt.jobs[event.JobID] = &executor.Job{
 			ID:        event.JobID,
-			Owner:     event.NodeID,
+			Owner:     event.SourceNodeID,
 			Spec:      executor.JobSpec{},
 			Deal:      executor.JobDeal{},
 			State:     map[string]executor.JobState{},
@@ -115,7 +115,7 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event executor.JobEve
 	// }
 
 	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
-	if event.NodeID == gt.NodeID {
+	if event.SourceNodeID == gt.NodeID {
 		// Attach metadata to local job lifecycle context:
 		gt.addJobLifecycleEvent(jobCtx, event.JobID,
 			fmt.Sprintf("receive_%s", event.EventName))
@@ -274,13 +274,13 @@ func (gt *GenericTransport) AcceptJobBid(ctx context.Context, jobID, nodeID stri
 
 	job.Deal.AssignedNodes = append(job.Deal.AssignedNodes, nodeID)
 	return gt.writeEvent(ctx, executor.JobEvent{
-		JobID:     jobID,
-		NodeID:    nodeID,
-		EventName: executor.JobEventBidAccepted,
-		JobDeal:   job.Deal,
-		JobState: executor.JobState{
-			State: executor.JobStateRunning,
-		},
+		JobID:        jobID,
+		SourceNodeID: nodeID,
+		EventName:    executor.JobEventBidAccepted,
+		JobDeal:      job.Deal,
+		// JobState: executor.JobState{
+		// 	State: executor.JobStateRunning,
+		// },
 		EventTime: time.Now(),
 	})
 }
@@ -296,13 +296,13 @@ func (gt *GenericTransport) RejectJobBid(ctx context.Context, jobID, nodeID, mes
 	)
 
 	return gt.writeEvent(ctx, executor.JobEvent{
-		JobID:     jobID,
-		NodeID:    nodeID,
-		EventName: executor.JobEventBidRejected,
-		JobState: executor.JobState{
-			State:  executor.JobStateBidRejected,
-			Status: message,
-		},
+		JobID:        jobID,
+		SourceNodeID: nodeID,
+		EventName:    executor.JobEventBidRejected,
+		// JobState: executor.JobState{
+		// 	State:  executor.JobStateBidRejected,
+		// 	Status: message,
+		// },
 		EventTime: time.Now(),
 	})
 }
@@ -318,9 +318,9 @@ func (gt *GenericTransport) BidJob(ctx context.Context, jobID string) error {
 	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventBid,
-		JobState: executor.JobState{
-			State: executor.JobStateBidding,
-		},
+		// JobState: executor.JobState{
+		// 	State: executor.JobStateBidding,
+		// },
 		EventTime: time.Now(),
 	})
 }
@@ -331,12 +331,12 @@ func (gt *GenericTransport) SubmitResult(ctx context.Context, jobID, status, res
 
 	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
-		EventName: executor.JobEventResults,
-		JobState: executor.JobState{
-			State:     executor.JobStateComplete,
-			Status:    status,
-			ResultsID: resultsID,
-		},
+		EventName: executor.JobEventCompleted,
+		// JobState: executor.JobState{
+		// 	State:     executor.JobStateComplete,
+		// 	Status:    status,
+		// 	ResultsID: resultsID,
+		// },
 		EventTime: time.Now(),
 	})
 }
@@ -348,10 +348,11 @@ func (gt *GenericTransport) ErrorJob(ctx context.Context, jobID, status, results
 	return gt.writeEvent(ctx, executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventError,
-		JobState: executor.JobState{
-			State:  executor.JobStateError,
-			Status: status,
-		},
+		// JobState: executor.JobState{
+		// 	State:     executor.JobStateError,
+		// 	Status:    status,
+		// 	ResultsID: resultsID,
+		// },
 		EventTime: time.Now(),
 	})
 }
@@ -366,13 +367,14 @@ func (gt *GenericTransport) ErrorJobForNode(ctx context.Context, jobID, nodeID, 
 	gt.addJobLifecycleEvent(ctx, jobID, "write_ErrorJobForNode")
 
 	return gt.writeEvent(ctx, executor.JobEvent{
-		JobID:     jobID,
-		NodeID:    nodeID,
-		EventName: executor.JobEventError,
-		JobState: executor.JobState{
-			State:  executor.JobStateError,
-			Status: status,
-		},
+		JobID:        jobID,
+		SourceNodeID: nodeID,
+		EventName:    executor.JobEventError,
+		// JobState: executor.JobState{
+		// 	State:     executor.JobStateError,
+		// 	Status:    status,
+		// 	ResultsID: resultsID,
+		// },
 		EventTime: time.Now(),
 	})
 }

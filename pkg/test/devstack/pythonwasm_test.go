@@ -187,7 +187,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
@@ -246,7 +246,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	time.Sleep(time.Second * 5)
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
