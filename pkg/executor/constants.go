@@ -58,12 +58,12 @@ const (
 	JobEventBidAccepted
 	JobEventBidRejected
 
-	// a compute node canceled a job bid
+	// a compute node cancled a job bid
 	JobEventBidCancelled
 
-	// TODO: what if a requester node accepts a bid
-	// and the compute node takes too long to start running it?
-	// JobEventBidRevoked
+	// a compute node is preparing to run a job
+	// (e.g. preparing storage volumes and downloading docker images)
+	JobEventPreparing
 
 	// a compute node progressed with running a job
 	// this is called periodically for running jobs
@@ -122,6 +122,7 @@ func JobEventTypes() []JobEventType {
 //go:generate stringer -type=JobLocalEventType --trimprefix=JobLocalEvent
 type JobLocalEventType int
 
+// these are the states a job can be in against a single node
 const (
 	jobLocalEventUnknown JobLocalEventType = iota // must be first
 
@@ -141,16 +142,10 @@ const (
 	jobStateUnknown JobStateType = iota // must be first
 
 	// a compute node has selected a job and has bid on it
-	// we are currently waiting to hear back from the requester
-	// node whether our bid was accepted or not
 	JobStateBidding
 
-	// a requester node has either rejected the bid or the compute node has canceled the bid
-	// either way - this node will not progress with this job any more
+	// a requester node has either rejected the bid or the compute node has cancelled the bid
 	JobStateCancelled
-
-	// the bid has been accepted but we have not yet started the job
-	JobStateWaiting
 
 	// the job is in the process of running
 	JobStateRunning
@@ -162,8 +157,11 @@ const (
 	// we got back from the compute node
 	JobStateComplete
 
-	// our results have been processed
-	JobStateFinalized
+	// these are 2 end states of a job
+	// the requestor node has made a decision about the results
+	// submitted by this node
+	JobStateResultsAccepted
+	JobStateResultsRejected
 
 	jobStateDone // must be last
 )

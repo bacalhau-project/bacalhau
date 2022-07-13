@@ -145,8 +145,6 @@ type JobDeal struct {
 // state locally and can emit events locally
 type JobEvent struct {
 	JobID string `json:"job_id"`
-	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"client_id"`
 	// the node that emitted this event
 	SourceNodeID string `json:"source_node_id"`
 	// the node that this event is for
@@ -156,9 +154,9 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobSpec JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal JobDeal `json:"job_deal"`
-	// most other events are a case of a client<->node state change
-	JobState  JobState  `json:"job_state"`
+	JobDeal   JobDeal   `json:"job_deal"`
+	Status    string    `json:"status"`
+	ResultsID string    `json:"results_id"`
 	EventTime time.Time `json:"event_time"`
 }
 
