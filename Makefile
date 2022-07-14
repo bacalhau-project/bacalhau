@@ -131,11 +131,11 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test ./... -v
+	go test ./... -v -p 1
 
 .PHONY: test-debug
 test-debug: 
-	LOG_LEVEL=debug go test ./... -v
+	LOG_LEVEL=debug go test ./... -v -p 1
 
 .PHONY: test-one
 test-one:
@@ -211,6 +211,7 @@ test-and-report: build-bacalhau
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 			--format standard-quiet \
 			-- \
+				-p 1 \
 				./pkg/... ./cmd/... \
 				$(COVERAGE_OPTS) --tags=unit
 

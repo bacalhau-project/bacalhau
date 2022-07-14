@@ -116,7 +116,7 @@ jobs:
             - run:
                 name: Upload results
                 command: |
-                  sudo add-apt-repository ppa:deadsnakes/ppa -y
+                  # sudo add-apt-repository ppa:deadsnakes/ppa -y
                   sudo apt install python3.10 -y
                   python3 -m pip install --upgrade pip
                   pip3 install gsutil
