@@ -44,13 +44,13 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (datastore.Jo
 	}
 	return datastore.Job{
 		ID:            job.ID,
-		Job:           *job,
+		Data:          *job,
 		LocalMetadata: *localMetadata,
 		Events:        events,
 	}, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.ListQuery) ([]datastore.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuery) ([]datastore.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	result := []datastore.Job{}

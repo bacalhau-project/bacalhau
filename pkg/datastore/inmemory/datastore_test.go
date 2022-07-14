@@ -45,8 +45,8 @@ func TestInMemoryDataStore(t *testing.T) {
 	require.Equal(t, jobId, job.ID)
 	require.Equal(t, 1, len(job.Events))
 	require.Equal(t, executor.JobEventBid, job.Events[0].EventName)
-	require.Equal(t, 1, len(job.Job.State))
-	require.Equal(t, executor.JobStateBidding, job.Job.State[nodeId].State)
+	require.Equal(t, 1, len(job.Data.State))
+	require.Equal(t, executor.JobStateBidding, job.Data.State[nodeId].State)
 	require.Equal(t, true, job.LocalMetadata.ComputeNodeSelected)
 
 }
