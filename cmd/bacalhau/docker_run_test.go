@@ -1,12 +1,15 @@
 package bacalhau
 
 import (
+	"bytes"
 	"context"
 	crand "crypto/rand"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -25,11 +30,13 @@ import (
 type DockerRunSuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
+	logBuf  *bytes.Buffer
 }
 
 // Before all suite
 func (suite *DockerRunSuite) SetupAllSuite() {
-
+	var Stdout = struct{ io.Writer }{os.Stdout}
+	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, suite.logBuf))
 }
 
 // Before each test
@@ -200,11 +207,14 @@ Actual Annotations: %+v
 
 func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 	tests := []struct {
-		submitString string
-		errString    string
+		submitArgs []string
+		fatalErr   bool
+		errString  string
 	}{
-		{submitString: "*.jpg", errString: "contains a glob"},
-		{submitString: " /bin/bash *.jpg", errString: ""}, // contains a glob but starts with a shell (and a space)
+		{submitArgs: []string{"ubuntu", "-foo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"},     // submitting flag will fail if not separated with a --
+		{submitArgs: []string{"ubuntu", "python -foo -bar -baz"}, fatalErr: false, errString: ""},                   // separating with -- should work and allow flags
+		{submitArgs: []string{"ubuntu", "baz -foo -bar -baz *.jpg"}, fatalErr: false, errString: "contains a glob"}, // contains a glob, and should fail
+		{submitArgs: []string{"ubuntu", "/bin/bash *.jpg"}, fatalErr: false, errString: ""},                         // contains a glob but starts with a shell (and a space)
 		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
@@ -216,16 +226,26 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
-				"--api-host", host,
-				"--api-port", port,
-				tc.submitString,
-			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitString)
+			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
+			allArgs = append(allArgs, tc.submitArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
 
-			job, isErr, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.False(suite.T(), isErr, "error getting job")
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			if tc.fatalErr {
+				require.Contains(suite.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
+				return
+			} else {
+				require.NoError(suite.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
+			}
+
+			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
+
+			job, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
+			require.True(suite.T(), foundJob, "error getting job")
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
+			if tc.errString != "" {
+				o := suite.logBuf.String()
+				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
+			}
 		}()
 	}
 }

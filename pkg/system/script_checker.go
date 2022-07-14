@@ -16,7 +16,8 @@ func CheckBashSyntax(cmds []string) error {
 
 // Function for parsing the entrypoint of a docker command.
 // Could be more useful in the future (just does globs without shell parsing for now)
-func SanitizeImageAndEntrypoint(jobEntrypoint []string) error {
+func SanitizeImageAndEntrypoint(jobEntrypoint []string) (returnMessages []string, errorIsFatal bool) {
+	errorIsFatal = false // Should and everywhere and set to fatal if yes
 	shells := strings.Split(`/bin/sh
 /bin/bash
 /usr/bin/bash
@@ -45,9 +46,11 @@ func SanitizeImageAndEntrypoint(jobEntrypoint []string) error {
 			}
 		}
 		if containsGlob {
-			log.Warn().Msgf("We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>).") // nolint:lll // error message
+			msg := "We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>)." // nolint:lll // error message, ok to be long
+			returnMessages = append(returnMessages, msg)
+			log.Warn().Msgf(msg)
 		}
 	}
 
-	return nil
+	return returnMessages, errorIsFatal
 }

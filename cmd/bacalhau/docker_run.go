@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -112,7 +113,13 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		// No error checking, because it will never be an error (for now)
-		_ = system.SanitizeImageAndEntrypoint(jobEntrypoint)
+		sanitizationMsgs, sanitzationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
+		if sanitzationFatal {
+			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
+			return fmt.Errorf("could not continue with errors")
+		}
+
+		log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
 
 		spec, deal, err := job.ConstructDockerJob(
 			engineType,

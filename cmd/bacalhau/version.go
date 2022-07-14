@@ -130,5 +130,4 @@ func (o *Options) Run(cmd *cobra.Command) error {
 // NewOptions returns initialized Options
 func NewOptions() *Options {
 	return &Options{}
-
 }
