@@ -1,6 +1,7 @@
 ---
 sidebar_label: 'Installation' sidebar_position: 1
 ---
+import ReactPlayer from 'react-player'
 
 # Getting Started with the Public Bacalhau Network
 
@@ -41,7 +42,7 @@ You should see something like
 Copy the CID (in this case `QmQtZKRPXehLU5JroBbzBCVdhNkgZT7m4MiSD7sUVxE3LD`), and run:
 
 ```
-ipfs get CID
+bacalhau get CID
 ```
 Replace `CID` with the CID you copied above.
 
@@ -60,6 +61,14 @@ hello
 ```
 
 Hooray, you have just run a job on the Bacalhau network!
+<!-- 
+## Demo Video
 
+Here is an example of running a job live on the Bacalhau network:
 
-If you would like us to pin some other data you want to run processing jobs against, come ask us in the #bacalhau channel on the [Filecoin slack](https://filecoin.io/slack)!
+<ReactPlayer playing controls url='../../static/video/bacalhau-july-fast-noface.mp4' />
+-->
+
+## Support
+
+Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or in case of any issues.
