@@ -198,6 +198,7 @@ jobs:
             rm dist/.keep                         # Need to remove this file so it's not persisted
             cp $BINARY_TARBALL dist
             cp $BINARY_TARBALL_SIGNATURE dist
+            find dist/
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
           # taken to be the root directory of the workspace.
@@ -226,6 +227,7 @@ jobs:
           command: |
             TAG="<< pipeline.git.tag >>"
             echo "TAG = ${TAG}"
+            find dist/
             gh release upload $TAG dist/*
 
 # Invoke jobs via workflows
