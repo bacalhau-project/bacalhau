@@ -224,8 +224,8 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		go func(ctx context.Context) {
-			if err = transport.Start(ctx); err != nil {
-				panic(err) // if transport can't run, devstack should stop
+			if err = controller.Start(ctx); err != nil {
+				panic(err) // if controller can't run, devstack should stop
 			}
 		}(context.Background())
 

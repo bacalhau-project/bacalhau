@@ -39,6 +39,14 @@ type LibP2PTransport struct {
 }
 
 func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
+	usePeers := []string{}
+
+	for _, p := range peers {
+		if p != "" {
+			usePeers = append(usePeers, p)
+		}
+	}
+
 	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
 	if err != nil {
 		return nil, err
@@ -84,7 +92,7 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		subscribeFunctions:   []transport.SubscribeFn{},
 		host:                 h,
 		port:                 port,
-		peers:                peers,
+		peers:                usePeers,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
