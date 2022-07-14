@@ -150,7 +150,7 @@ func WaitForJobWithLogs(
 func WaitForJob(
 	ctx context.Context,
 	jobID string,
-	job *executor.Job,
+	job executor.Job,
 
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {

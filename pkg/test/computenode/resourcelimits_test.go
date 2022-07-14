@@ -13,6 +13,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -57,7 +59,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 }
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
@@ -220,7 +222,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return resourceusage.ConvertMemoryString(volume.Cid), nil
 		}
 
-		_, requestorNode, cm := SetupTestNoop(
+		_, _, ctrl, cm := SetupTestNoop(
 			suite.T(),
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
@@ -261,7 +263,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			)
 
 			require.NoError(suite.T(), err)
-			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
+			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
+				ClientID: "123",
+				Spec:     spec,
+				Deal:     deal,
+			})
 			require.NoError(suite.T(), err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
@@ -514,30 +520,27 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cm := system.NewCleanupManager()
 
 		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-		if err != nil {
-			suite.T().Fatal(err)
-		}
+		require.NoError(suite.T(), err)
 
 		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 		transport, err := inprocess.NewInprocessTransport()
-		if err != nil {
-			suite.T().Fatal(err)
-		}
+		require.NoError(suite.T(), err)
 
-		executors, err := executor_util.NewStandardExecutors(
-			cm, apiAddress, "devstacknode0")
-		if err != nil {
-			suite.T().Fatal(err)
-		}
+		datastore, err := inmemory.NewInMemoryDatastore()
+		require.NoError(suite.T(), err)
+
+		ctrl, err := controller.NewController(cm, datastore, transport)
+		require.NoError(suite.T(), err)
+
+		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
+		require.NoError(suite.T(), err)
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
-		if err != nil {
-			suite.T().Fatal(err)
-		}
+		require.NoError(suite.T(), err)
 
 		_, err = computenode.NewComputeNode(
 			cm,
-			transport,
+			ctrl,
 			executors,
 			verifiers,
 			computenode.ComputeNodeConfig{},

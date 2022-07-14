@@ -48,7 +48,7 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 // but when it's not turned on the job is actually selected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
@@ -124,7 +124,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		}))
 		defer svr.Close()
 
-		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
@@ -146,7 +146,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
@@ -163,7 +163,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
 	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
