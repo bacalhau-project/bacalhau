@@ -6,7 +6,7 @@ executors:
   linux:
     machine:
       image: ubuntu-2204:2022.04.2
-    resource_class: large
+    resource_class: xlarge
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -191,9 +191,9 @@ jobs:
             GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
             GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
             source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            rm dist/.keep                         # Need to remove this file so it's not persisted
-            cp *.tar.gz dist/
-            cp *.sha256 dist/
+            rm dist/.keep           # Need to remove this file so it's not persisted to github
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
             find dist/
       - run:
           name: Install gh
