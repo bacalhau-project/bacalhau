@@ -163,10 +163,6 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
 func checkResourceUsage(wants, limits ResourceUsageData) bool {
-	// if there are no limits then everything goes
-	if limits.CPU <= 0 && limits.Memory <= 0 && limits.Disk <= 0 {
-		return true
-	}
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
 	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0) {
