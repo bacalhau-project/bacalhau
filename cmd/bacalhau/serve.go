@@ -3,9 +3,12 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requestornode"
@@ -110,13 +113,39 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTracer)
 		defer cm.Cleanup()
 
-		transport, err := libp2p.NewTransport(cm, hostPort)
+		peers := DefaultBootstrapAddresses
+
+		if peerConnect != "" && peerConnect != "none" {
+			peers = []string{peerConnect}
+		}
+
+		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
+
+		datastore, err := inmemory.NewInMemoryDatastore()
 		if err != nil {
 			return err
 		}
 
-		executors, err := executor_util.NewStandardExecutors(cm, ipfsConnect,
-			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
+		transport, err := libp2p.NewTransport(cm, hostPort, peers)
+		if err != nil {
+			return err
+		}
+
+		controller, err := controller.NewController(
+			cm,
+			datastore,
+			transport,
+		)
+
+		hostID, err := transport.HostID(context.Background())
+		if err != nil {
+			return err
+		}
+		executors, err := executor_util.NewStandardExecutors(
+			cm,
+			ipfsConnect,
+			fmt.Sprintf("bacalhau-%s", hostID),
+		)
 		if err != nil {
 			return err
 		}
@@ -170,7 +199,7 @@ var serveCmd = &cobra.Command{
 		}
 		_, err = computenode.NewComputeNode(
 			cm,
-			transport,
+			controller,
 			executors,
 			verifiers,
 			config,
@@ -210,22 +239,7 @@ var serveCmd = &cobra.Command{
 
 		log.Debug().Msgf("libp2p server started: %d", hostPort)
 
-		if peerConnect == "" {
-			for _, addr := range DefaultBootstrapAddresses {
-				err = transport.Connect(ctx, addr)
-				if err != nil {
-					return err
-				}
-			}
-		} else if peerConnect != "none" {
-			err = transport.Connect(ctx, peerConnect)
-			if err != nil {
-				return err
-			}
-			log.Debug().Msgf("libp2p connecting to: %s", peerConnect)
-		}
-
-		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", transport.Host.ID().String())
+		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
 
 		<-ctx.Done() // block until killed
 		return nil

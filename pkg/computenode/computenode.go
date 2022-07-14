@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -40,7 +40,7 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig // nolint:gocritic
 
-	transport       transport.Transport
+	controller      *controller.Controller
 	executors       map[executor.EngineType]executor.Executor
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
@@ -55,12 +55,12 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 
 func NewComputeNode(
 	cm *system.CleanupManager,
-	t transport.Transport,
+	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
-	computeNode, err := constructComputeNode(t, executors, verifiers, config)
+	computeNode, err := constructComputeNode(c, executors, verifiers, config)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +73,14 @@ func NewComputeNode(
 
 // process the arguments and return a valid compoute node
 func constructComputeNode(
-	t transport.Transport,
+	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	config ComputeNodeConfig, // nolint:gocritic
 ) (*ComputeNode, error) {
+	// TODO: instrument with trace
 	ctx := context.Background()
-	nodeID, err := t.HostID(ctx)
+	nodeID, err := c.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func constructComputeNode(
 	computeNode := &ComputeNode{
 		id:              nodeID,
 		config:          config,
-		transport:       t,
+		controller:      c,
 		executors:       executors,
 		verifiers:       verifiers,
 		capacityManager: capacityManager,
@@ -140,12 +141,12 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 func (node *ComputeNode) controlLoopBidOnJobs() {
 	bidJobIds := node.capacityManager.GetNextItems()
 	for _, id := range bidJobIds {
-		job, err := node.transport.Get(context.Background(), id)
+		job, err := node.controller.GetJob(context.Background(), id)
 		if err != nil {
 			node.capacityManager.Remove(id)
 			continue
 		}
-		err = node.BidOnJob(context.Background(), job)
+		err = node.BidOnJob(context.Background(), job.Data)
 		if err != nil {
 			node.capacityManager.Remove(job.ID)
 			continue
@@ -168,16 +169,21 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 */
 func (node *ComputeNode) subscriptionSetup() {
-	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
+	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
+		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
+		if err != nil {
+			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
+			return
+		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
-			node.subscriptionEventCreated(ctx, jobEvent, job)
+			node.subscriptionEventCreated(ctx, jobEvent, job.Data)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
-			node.subscriptionEventBidAccepted(ctx, jobEvent, job)
+			node.subscriptionEventBidAccepted(ctx, jobEvent, job.Data)
 		// our bid has not been accepted - let's remove this job from our current queue
 		case executor.JobEventBidRejected:
-			node.subscriptionEventBidRejected(ctx, jobEvent, job)
+			node.subscriptionEventBidRejected(ctx, jobEvent, job.Data)
 		}
 	})
 }
@@ -249,7 +255,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if resultFolder == "" {
 		errMessage := fmt.Sprintf("Missing results folder for job %s: %s", job.ID, containerRunError)
 		log.Error().Msgf(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -257,7 +263,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if err != nil {
 		errMessage := fmt.Sprintf("Error getting verifier: %s %+v", err, job)
 		log.Error().Msgf(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -265,7 +271,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if err != nil {
 		errMessage := fmt.Sprintf("Error verifying results: %s %+v", err, job)
 		log.Error().Msg(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -276,7 +282,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 			Job:  job.ID,
 			Data: resultValue,
 		})
-		err = node.transport.SubmitResult(
+		err = node.controller.CompleteJob(
 			ctx,
 			job.ID,
 			fmt.Sprintf("Got job result: %s", resultValue),
@@ -285,11 +291,11 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		if err != nil {
 			errMessage := fmt.Sprintf("Error submitting results: %s %+v", err, job)
 			log.Error().Msgf(errMessage)
-			_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+			_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		}
 	} else {
 		errMessage := fmt.Sprintf("Error running job: %s %+v", containerRunError.Error(), job)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, resultValue)
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, resultValue)
 	}
 }
 
@@ -381,7 +387,7 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
 
 	log.Debug().Msgf("compute node %s bidding on: %+v", node.id, job.Spec)
 
-	return node.transport.BidJob(ctx, job.ID)
+	return node.controller.BidJob(ctx, job.ID)
 }
 
 /*

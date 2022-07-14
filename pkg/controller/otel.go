@@ -2,11 +2,44 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+func (ctrl *Controller) handleOtelReadEvent(ctx context.Context, ev executor.JobEvent) context.Context {
+	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
+	ctrl.addJobLifecycleEvent(jobCtx, ev.JobID, fmt.Sprintf("read_%s", ev.EventName))
+
+	// If the event is known to be ignorable, end the local lifecycle context:
+	if ev.EventName.IsIgnorable() {
+		ctrl.endJobNodeContext(ev.JobID)
+	}
+
+	// If the event is known to be terminal, end the global lifecycle context:
+	if ev.EventName.IsTerminal() {
+		ctrl.endJobContext(ev.JobID)
+	}
+
+	return jobCtx
+}
+
+func (ctrl *Controller) cleanJobContexts(ctx context.Context) error {
+	ctrl.contextMutex.RLock()
+	defer ctrl.contextMutex.RUnlock()
+	// End all job lifecycle spans so we don't lose any tracing data:
+	for _, ctx := range ctrl.jobContexts {
+		trace.SpanFromContext(ctx).End()
+	}
+	for _, ctx := range ctrl.jobNodeContexts {
+		trace.SpanFromContext(ctx).End()
+	}
+
+	return nil
+}
 
 // endJobContext ends the global lifecycle context for a job.
 func (ctrl *Controller) endJobContext(jobID string) {
@@ -42,11 +75,11 @@ func (ctrl *Controller) getJobNodeContext(ctx context.Context, jobID string) con
 	jobCtx, ok := ctrl.jobNodeContexts[jobID]
 	if !ok {
 		jobCtx, _ = system.Span(ctx, "controller",
-			"JobLifecycle-"+ctrl.nodeID[:8],
+			"JobLifecycle-"+ctrl.id[:8],
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
 				attribute.String("jobID", jobID),
-				attribute.String("nodeID", ctrl.nodeID),
+				attribute.String("nodeID", ctrl.id),
 			),
 		)
 
@@ -61,7 +94,7 @@ func (ctrl *Controller) addJobLifecycleEvent(ctx context.Context, jobID, eventNa
 		trace.WithAttributes(
 			append(attrs,
 				attribute.String("jobID", jobID),
-				attribute.String("nodeID", ctrl.nodeID),
+				attribute.String("nodeID", ctrl.id),
 			)...,
 		),
 	)
@@ -76,7 +109,7 @@ func (ctrl *Controller) newRootSpanForJob(ctx context.Context, jobID string) (co
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
 			attribute.String("jobID", jobID),
-			attribute.String("nodeID", ctrl.nodeID),
+			attribute.String("nodeID", ctrl.id),
 		),
 	)
 
