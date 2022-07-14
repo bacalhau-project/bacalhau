@@ -2,6 +2,7 @@ package capacitymanager
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func getResourcesArray(data [][]string) []ResourceUsageConfig {
 	return res
 }
 
-func TestManagerConstructionErrors(t *testing.T) {
+func TestConstructionErrors(t *testing.T) {
 
 	testCases := []struct {
 		name        string
@@ -101,6 +102,152 @@ func TestManagerConstructionErrors(t *testing.T) {
 	}
 
 }
+
+func TestFilter(t *testing.T) {
+	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
+
+	testCases := []struct {
+		name           string
+		limitTotal     ResourceUsageConfig
+		limitJob       ResourceUsageConfig
+		defaults       ResourceUsageConfig
+		value          ResourceUsageConfig
+		expectedOk     bool
+		expectedResult ResourceUsageConfig
+	}{
+		{
+			"sanity",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("", "", ""),
+			getResources("1", "1Gb", "1Gb"),
+			true,
+			getResources("1", "1Gb", "1Gb"),
+		},
+
+		// we should get back the default values
+		// if we give them no values
+		{
+			"process defaults",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("1", "1Gb", "1Gb"),
+			getResources("", "", ""),
+			true,
+			getResources("1", "1Gb", "1Gb"),
+		},
+
+		// a job that is over the per job limit
+		{
+			"over per job limit",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("", "", ""),
+			getResources("4", "4Gb", "4Gb"),
+			false,
+			getResources("4", "4Gb", "4Gb"),
+		},
+
+		// a job that is over the total limit
+		{
+			"over toal limit",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("", "", ""),
+			getResources("20", "20Gb", "20Gb"),
+			false,
+			getResources("20", "20Gb", "20Gb"),
+		},
+
+		// a job that is over only one limit
+		{
+			"over per job limit (just CPU)",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("", "", ""),
+			getResources("4", "1Gb", "1Gb"),
+			false,
+			getResources("4", "1Gb", "1Gb"),
+		},
+
+		// job is allowed with mixutre of defaults
+		{
+			"mixture of defaults - allowed job",
+			getResources("10", "10Gb", "10Gb"),
+			getResources("2", "2Gb", "2Gb"),
+			getResources("", "1Gb", ""),
+			getResources("1", "", "500Mb"),
+			true,
+			getResources("1", "1Gb", "500Mb"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mgr, err := NewCapacityManager(Config{
+				ResourceLimitTotal:          tc.limitTotal,
+				ResourceLimitJob:            tc.limitJob,
+				ResourceRequirementsDefault: tc.defaults,
+			})
+			require.NoError(t, err)
+
+			expectedResult := ParseResourceUsageConfig(tc.expectedResult)
+			ok, result := mgr.FilterRequirements(ParseResourceUsageConfig(tc.value))
+			require.Equal(t, tc.expectedOk, ok)
+			require.Equal(t, expectedResult.CPU, result.CPU)
+			require.Equal(t, expectedResult.Memory, result.Memory)
+			require.Equal(t, expectedResult.Disk, result.Disk)
+		})
+	}
+
+}
+
+// func TestManagerSelection(t *testing.T) {
+
+// 	testCases := []struct {
+// 		name         string
+// 		limitTotal   ResourceUsageConfig
+// 		limitJob     ResourceUsageConfig
+// 		jobDefaults  ResourceUsageConfig
+// 		usedCapacity ResourceUsageConfig
+// 		jobSpec      ResourceUsageConfig
+
+// 		expectedResult bool
+// 	}{
+// 		{
+// 			// 10 in total
+// 			// 2 per job limit
+// 			// defaults blank
+// 			// 1 being used
+// 			// 1 is the actual job
+// 			// should select
+// 			"sanity",
+// 			getResources("10", "10Gb", "10Gb"),
+// 			getResources("2", "2Gb", "2Gb"),
+// 			getResources("", "", ""),
+// 			getResources("1", "1Gb", "1Gb"),
+// 			getResources("1", "1Gb", "1Gb"),
+// 			true,
+// 		},
+// 	}
+
+// 	for _, tc := range testCases {
+// 		t.Run(tc.name, func(t *testing.T) {
+// 			_, err := NewCapacityManager(Config{
+// 				ResourceLimitTotal:          tc.limitTotal,
+// 				ResourceLimitJob:            tc.limitJob,
+// 				ResourceRequirementsDefault: tc.defaults,
+// 			})
+// 			if tc.expectError != "" {
+// 				require.Error(t, err)
+// 				require.Equal(t, tc.expectError, err.Error())
+// 			} else {
+// 				require.NoError(t, err)
+// 			}
+// 		})
+// 	}
+
+// }
 
 // the job is half the limit
 // runTest(
