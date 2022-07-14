@@ -254,7 +254,7 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  development: # This workflow will run on all branches except 'main' and will not run on tags
+  dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>
@@ -266,7 +266,7 @@ workflows:
               - target_os: "linux"
                 target_arch: "arm64"
           filters:
-            &filters-development # this yaml anchor is setting these values to "filters-development"
+            &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
               ignore: main
             tags:
@@ -278,9 +278,9 @@ workflows:
           rollout_stage: development
           GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
           filters:
-            <<: *filters-development # this is calling the previously set yaml anchor
+            <<: *filters_dev_branches # this is calling the previously set yaml anchor
 
-  staging: # This workflow will only run on 'main' and will not run on tags
+  main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>
@@ -292,7 +292,7 @@ workflows:
               - target_os: "linux"
                 target_arch: "arm64"
           filters:
-            &filters-staging # this yaml anchor is setting these values to "filters-staging"
+            &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
               only: main
             tags:
@@ -304,15 +304,15 @@ workflows:
           rollout_stage: staging
           GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
           filters:
-            <<: *filters-staging # this is calling the previously set yaml anchor
+            <<: *filters_main_only # this is calling the previously set yaml anchor
 
-  production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
+  tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
           name: build-linux-amd64
           target_os: linux
           target_arch: amd64
-          filters: &filters-production
+          filters: &filters_tags_only
             branches:
               ignore: /.*/
             tags:
@@ -323,13 +323,13 @@ workflows:
           target_os: darwin
           target_arch: amd64
           filters:
-            <<: *filters-production # this is calling the previously set yaml anchor
+            <<: *filters_tags_only # this is calling the previously set yaml anchor
       - build:
           name: build-darwin-arm64
           target_os: darwin
           target_arch: arm64
           filters:
-            <<: *filters-production # this is calling the previously set yaml anchor
+            <<: *filters_tags_only # this is calling the previously set yaml anchor
       - build-release:
           name: build-release-linux-amd64
           target_os: linux
@@ -337,7 +337,7 @@ workflows:
           requires:
             - build-linux-amd64
           filters:
-            <<: *filters-production
+            <<: *filters_tags_only
       - build-release:
           name: build-release-darwin-amd64
           target_os: darwin
@@ -345,7 +345,7 @@ workflows:
           requires:
             - build-darwin-amd64
           filters:
-            <<: *filters-production
+            <<: *filters_tags_only
       - build-release:
           name: build-release-darwin-arm64
           target_os: darwin
@@ -353,7 +353,7 @@ workflows:
           requires:
             - build-darwin-arm64
           filters:
-            <<: *filters-production
+            <<: *filters_tags_only
       - release:
           name: create-release-<< pipeline.git.tag >>
           requires:
@@ -361,4 +361,4 @@ workflows:
             - build-release-darwin-amd64
             - build-release-darwin-arm64
           filters:
-            <<: *filters-production
+            <<: *filters_tags_only
