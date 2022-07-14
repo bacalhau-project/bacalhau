@@ -14,11 +14,12 @@
 
 # The Filecoin Distributed Computation Framework  
 
-* Website: bacalhau.org
-* Documentation: docs.bacalhau.org
+* [Website](bacalhau.org)
+* [Documentation](docs.bacalhau.org)
+* [Twitter](https://twitter.com/BacalhauProject)
  
 ## Latest Updates
-* Most recent [Bacalhau Project Report](https://github.com/filecoin-project/bacalhau/wiki)
+* Most recent [Bacalhau Project Reports](https://github.com/filecoin-project/bacalhau/wiki)
 * [Bacalhau Overview at DeSci Berlin June 2022](https://www.youtube.com/watch?v=HA8ijt4dzAY)
 
 
