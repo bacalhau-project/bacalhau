@@ -56,10 +56,6 @@ jobs:
                   curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                   golangci-lint --version
 
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
       - when:
           condition:
             and:
