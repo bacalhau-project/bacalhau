@@ -41,12 +41,6 @@ type Job struct {
 	// The ID of the client that created this job.
 	ClientID string `json:"client_id"`
 
-	// The ID of the requester node that owns this job.
-	RequesterNodeID string `json:"requester_node_id"`
-
-	// The ID of the client that created this job.
-	ClientID string `json:"client_id"`
-
 	// The specification of this job.
 	Spec JobSpec `json:"spec"`
 
@@ -145,6 +139,8 @@ type JobDeal struct {
 // state locally and can emit events locally
 type JobEvent struct {
 	JobID string `json:"job_id"`
+	// optional clientID if this is an externally triggered event (like create job)
+	ClientID string `json:"client_id"`
 	// the node that emitted this event
 	SourceNodeID string `json:"source_node_id"`
 	// the node that this event is for

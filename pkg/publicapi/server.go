@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -31,23 +31,22 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-const ServerReadHeaderTimeout = 10 * time.Second
-
 type PinContextHandler func(ctx context.Context, localPath string) (string, error)
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Node      *requestornode.RequesterNode
-	Host      string
-	Port      int
-	Transport transport.Transport // so we can report on the libp2p peers
+	Controller        *controller.Controller
+	PinContextHandler PinContextHandler
+	Host              string
+	Port              int
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
 	host string,
 	port int,
-	transport transport.Transport,
+	c *controller.Controller,
+	p PinContextHandler,
 ) *APIServer {
 	return &APIServer{
 		Controller:        c,
@@ -146,7 +145,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.Controller.GetJobs(req.Context(), localdb.JobQuery{})
+	list, err := apiServer.Controller.GetJobs(req.Context(), datastore.JobQuery{})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -154,8 +153,8 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	rawJobs := map[string]executor.Job{}
 
-	for _, listJob := range list { //nolint:gocritic
-		rawJobs[listJob.ID] = listJob
+	for _, wrappedJob := range list {
+		rawJobs[wrappedJob.Data.ID] = wrappedJob.Data
 	}
 
 	res.WriteHeader(http.StatusOK)
@@ -184,20 +183,6 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-type submitData struct {
-	// The job specification:
-	Spec executor.JobSpec `json:"spec"`
-
-	// The deal the client has made with the network, at minimum this should
-	// contain the client's ID for verifying the message authenticity:
-	Deal executor.JobDeal `json:"deal"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"context,omitempty"`
 }
 
 type submitRequest struct {
@@ -296,7 +281,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 }
 
 func verifySubmitRequest(req *submitRequest) error {
-	if req.Data.Deal.ClientID == "" {
+	if req.Data.ClientID == "" {
 		return errors.New("job deal must contain a client ID")
 	}
 	if req.ClientSignature == "" {

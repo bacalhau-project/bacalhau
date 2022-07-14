@@ -31,8 +31,6 @@ type DevStackNode struct {
 	ComputeNode   *computenode.ComputeNode
 	RequesterNode *requesternode.RequesterNode
 	Transport     *libp2p.LibP2PTransport
-	Controller    *controller.Controller
-	Datastore     datastore.Datastore
 
 	IpfsNode   *ipfs.Node
 	IpfsClient *ipfs.Client
