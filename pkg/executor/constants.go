@@ -120,6 +120,8 @@ func JobEventTypes() []JobEventType {
 }
 
 //go:generate stringer -type=JobStateType --trimprefix=JobState
+// JobStateType is the state of a job on a particular node. Note that the job
+// will typically have different states on different nodes.
 type JobStateType int
 
 // these are the states a job can be in against a single node
@@ -150,6 +152,13 @@ const (
 
 	jobStateDone // must be last
 )
+
+// IsTerminal returns true if the given job type signals the end of the
+// lifecycle of that job on a particular node. After this, the job can be
+// safely ignored by the node.
+func (event JobStateType) IsTerminal() bool {
+	return event == JobStateComplete || event == JobStateError || event == JobStateBidRejected
+}
 
 func ParseJobStateType(str string) (JobStateType, error) {
 	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {

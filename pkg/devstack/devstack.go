@@ -418,6 +418,7 @@ func (stack *DevStack) WaitForJobWithLogs(
 			if err != nil {
 				return false, err
 			}
+
 			allOk := true
 			for _, checkFunction := range checkJobStateFunctions {
 				stepOk, err := checkFunction(states)
@@ -428,6 +429,20 @@ func (stack *DevStack) WaitForJobWithLogs(
 					allOk = false
 				}
 			}
+
+			// If all the jobs are in terminal states, then nothing is going
+			// to change if we keep polling, so we should exit early.
+			allTerminal := len(states) == len(stack.Nodes)
+			for _, state := range states {
+				if !state.IsTerminal() {
+					allTerminal = false
+					break
+				}
+			}
+			if allTerminal && !allOk {
+				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
+			}
+
 			return allOk, nil
 		},
 	}

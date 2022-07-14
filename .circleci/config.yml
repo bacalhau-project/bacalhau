@@ -96,6 +96,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
+              - << pipeline.git.branch >>
           steps:
             - run:
                 name: Test
@@ -105,6 +106,7 @@ jobs:
                   echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
+                  LOG_LEVEL=debug \
                   gotestsum \
                     --junitfile unit-tests.xml \
                     --format standard-verbose \
@@ -176,8 +178,10 @@ jobs:
     parameters:
       target_arch:
         type: string
+        default: ""
       target_os:
         type: string
+        default: ""
     steps:
       - checkout
       - run:
@@ -300,59 +304,36 @@ workflows:
           filters:
             <<: *filters-staging # this is calling the previously set yaml anchor
 
-  production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
-    jobs:
-      - build:
-          name: build-linux-amd64
-          target_os: linux
-          target_arch: amd64
-          filters: &filters-production
-            branches:
-              only: main
-            tags:
-              # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-              only: /^v([0-9]+).([0-9]+).([0-9]+)$/
-      - build:
-          name: build-darwin-amd64
-          target_os: darwin
-          target_arch: amd64
-          filters:
-            <<: *filters-production # this is calling the previously set yaml anchor
-      - build:
-          name: build-darwin-arm64
-          target_os: darwin
-          target_arch: arm64
-          filters:
-            <<: *filters-production # this is calling the previously set yaml anchor
-      - build-release:
-          name: build-release-linux-amd64
-          target_os: linux
-          target_arch: amd64
-          requires:
-            - build-linux-amd64
-          filters:
-            <<: *filters-production
-      - build-release:
-          name: build-release-darwin-amd64
-          target_os: darwin
-          target_arch: amd64
-          requires:
-            - build-darwin-amd64
-          filters:
-            <<: *filters-production
-      - build-release:
-          name: build-release-darwin-arm64
-          target_os: darwin
-          target_arch: arm64
-          requires:
-            - build-darwin-arm64
-          filters:
-            <<: *filters-production
-      - release:
-          name: create-release-<< pipeline.git.tag >>
-          requires:
-            - build-release-linux-amd64
-            - build-release-darwin-amd64
-            - build-release-darwin-arm64
-          filters:
-            <<: *filters-production
+production: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
+  jobs:
+  - build:
+      name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+      matrix: &matrix-production
+        parameters:
+          target_os: ["linux", "darwin"]
+          target_arch: ["amd64", "arm64"]
+        exclude:
+          - target_os: "linux"
+            target_arch: "arm64"
+      filters: &filters-production # this yaml anchor is setting these values to "filters-filters-production"
+        branches:
+          only: /^main$/
+        tags:
+          # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+          only: /^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]*))?$/
+  - build_release:
+      name: build-release-<< matrix.target_os >>-<< matrix.target_arch >>
+      requires:
+        - build-<< matrix.target_os >>-<< matrix.target_arch >>
+      matrix:
+        <<: *matrix-production
+      filters:
+        <<: *filters-production
+  - release:
+      name: create-release-<< pipeline.git.tag >>
+      requires:
+        - build-release-linux-amd64
+        - build-release-darwin-amd64
+        - build-release-darwin-arm64
+      filters:
+        <<: *filters-production
