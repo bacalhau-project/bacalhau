@@ -133,14 +133,14 @@ func NewCapacityManager(
 
 	if resourceRequirementsJobDefault.Memory > resourceLimitsJob.Memory {
 		return nil, fmt.Errorf(
-			"default job resource Memory %d is greater than limit %d",
+			"default job resource memory %d is greater than limit %d",
 			resourceRequirementsJobDefault.Memory, resourceLimitsJob.Memory,
 		)
 	}
 
 	if resourceRequirementsJobDefault.Disk > resourceLimitsJob.Disk {
 		return nil, fmt.Errorf(
-			"default job resource Disk %d is greater than limit %d",
+			"default job resource disk %d is greater than limit %d",
 			resourceRequirementsJobDefault.Disk, resourceLimitsJob.Disk,
 		)
 	}
