@@ -313,6 +313,8 @@ workflows:
           target_os: linux
           target_arch: amd64
           filters: &filters-production
+            branches:
+              ignore: /.*/
             tags:
               # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
