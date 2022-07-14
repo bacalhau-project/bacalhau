@@ -3,6 +3,7 @@ package capacitymanager
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -223,6 +224,9 @@ func TestGetNextItems(t *testing.T) {
 		// as well as the capacity manager's current state in terms of scheduling
 		expectedLogs []string
 	}{
+
+		// simple one off job where there is more than enough space to run it
+		// and it only lasts for one iteration
 		{
 			"sanity",
 			getResources("10", "10Gb", "10Gb"),
@@ -235,6 +239,85 @@ func TestGetNextItems(t *testing.T) {
 			// a single job on it's own once
 			[]string{
 				"0",
+				"",
+			},
+		},
+
+		// a sequence of equally sized and lasting jobs
+		// this should end up with 2 phases of 2 jobs each
+		{
+			"equal jobs",
+			getResources("10", "10Gb", "10Gb"),
+			[]TestJob{
+				{1, getResources("5", "5Gb", "5Gb")},
+				{1, getResources("5", "5Gb", "5Gb")},
+				{1, getResources("5", "5Gb", "5Gb")},
+				{1, getResources("5", "5Gb", "5Gb")},
+			},
+			// first two jobs then second two jobs
+			[]string{
+				"0,1",
+				"2,3",
+				"",
+			},
+		},
+
+		// one long running large job and lots
+		// of smaller jobs scheduled around it
+		{
+			"one large job",
+			getResources("10", "10Gb", "10Gb"),
+			[]TestJob{
+				{3, getResources("9", "9Gb", "9Gb")},
+				{1, getResources("1", "1Gb", "1Gb")},
+				{1, getResources("1", "1Gb", "1Gb")},
+				{1, getResources("1", "1Gb", "1Gb")},
+			},
+			// first two jobs then second two jobs
+			[]string{
+				"0,1",
+				"0,2",
+				"0,3",
+				"",
+			},
+		},
+
+		// there is not space for a big job
+		// until some others have finished
+		{
+			"big job waits",
+			getResources("10", "10Gb", "10Gb"),
+			[]TestJob{
+				{1, getResources("4", "4Gb", "4Gb")},
+				{1, getResources("4", "4Gb", "4Gb")},
+				{1, getResources("10", "10Gb", "10Gb")},
+			},
+			// first two jobs then second two jobs
+			[]string{
+				"0,1",
+				"2",
+				"",
+			},
+		},
+
+		// things are scheduled that were added
+		// later than earlier things until
+		// there is space to run the earlier thing
+		{
+			"schedule ahead",
+			getResources("10", "10Gb", "10Gb"),
+			[]TestJob{
+				{3, getResources("8", "8Gb", "8Gb")},
+				{1, getResources("4", "4Gb", "4Gb")},
+				{1, getResources("2", "2Gb", "2Gb")},
+				{1, getResources("2", "2Gb", "2Gb")},
+			},
+			// first two jobs then second two jobs
+			[]string{
+				"0,2",
+				"0,3",
+				"0",
+				"1",
 				"",
 			},
 		},
@@ -255,11 +338,31 @@ func TestGetNextItems(t *testing.T) {
 
 			for id, job := range tc.jobs {
 				idString := fmt.Sprintf("%d", id)
+				counterMap[idString] = 0
 				iterationMap[idString] = job.iterations
 				mgr.AddToBacklog(idString, ParseResourceUsageConfig(job.usage))
 			}
 
 			for {
+
+				toRemove := []string{}
+				running := []string{}
+
+				// loop over currently active items and increment
+				// the iteration counter and remove them
+				// if they have "completed"
+				mgr.active.Iterate(func(item CapacityManagerItem) {
+					counterMap[item.ID]++
+					if counterMap[item.ID] >= iterationMap[item.ID] {
+						toRemove = append(toRemove, item.ID)
+					} else {
+						running = append(running, item.ID)
+					}
+				})
+
+				for _, id := range toRemove {
+					mgr.Remove(id)
+				}
 
 				// get the items we have space to run
 				nextItems := mgr.GetNextItems()
@@ -268,28 +371,11 @@ func TestGetNextItems(t *testing.T) {
 				// iteration counter at zero
 				for _, id := range nextItems {
 					mgr.MoveToActive(id)
-					counterMap[id] = 0
+					running = append(running, id)
 				}
 
-				running := []string{}
-				toRemove := []string{}
-				// loop over currently active items and increment
-				// the iteration counter and remove them
-				// if they have "completed"
-				mgr.active.Iterate(func(item CapacityManagerItem) {
-					counterMap[item.ID]++
-					if counterMap[item.ID] > iterationMap[item.ID] {
-						toRemove = append(toRemove, item.ID)
-					} else {
-						running = append(running, item.ID)
-					}
-				})
-
+				sort.Strings(running)
 				logs = append(logs, strings.Join(running, ","))
-
-				for _, id := range toRemove {
-					mgr.Remove(id)
-				}
 
 				// this means we've cleared out all the jobs
 				if mgr.backlog.Count() <= 0 && mgr.active.Count() <= 0 {
@@ -302,143 +388,3 @@ func TestGetNextItems(t *testing.T) {
 	}
 
 }
-
-// func TestManagerSelection(t *testing.T) {
-
-// 	testCases := []struct {
-// 		name         string
-// 		limitTotal   ResourceUsageConfig
-// 		limitJob     ResourceUsageConfig
-// 		jobDefaults  ResourceUsageConfig
-// 		usedCapacity ResourceUsageConfig
-// 		jobSpec      ResourceUsageConfig
-
-// 		expectedResult bool
-// 	}{
-// 		{
-// 			// 10 in total
-// 			// 2 per job limit
-// 			// defaults blank
-// 			// 1 being used
-// 			// 1 is the actual job
-// 			// should select
-// 			"sanity",
-// 			getResources("10", "10Gb", "10Gb"),
-// 			getResources("2", "2Gb", "2Gb"),
-// 			getResources("", "", ""),
-// 			getResources("1", "1Gb", "1Gb"),
-// 			getResources("1", "1Gb", "1Gb"),
-// 			true,
-// 		},
-// 	}
-
-// 	for _, tc := range testCases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			_, err := NewCapacityManager(Config{
-// 				ResourceLimitTotal:          tc.limitTotal,
-// 				ResourceLimitJob:            tc.limitJob,
-// 				ResourceRequirementsDefault: tc.defaults,
-// 			})
-// 			if tc.expectError != "" {
-// 				require.Error(t, err)
-// 				require.Equal(t, tc.expectError, err.Error())
-// 			} else {
-// 				require.NoError(t, err)
-// 			}
-// 		})
-// 	}
-
-// }
-
-// the job is half the limit
-// runTest(
-// 	getResources("1", "500Mb", ""),
-// 	getResources("2", "1Gb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// // the job is on the limit
-// runTest(
-// 	getResources("1", "500Mb", ""),
-// 	getResources("1", "500Mb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// // the job is over the limit
-// runTest(
-// 	getResources("2", "1Gb", ""),
-// 	getResources("1", "500Mb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	false,
-// )
-
-// // test with fractional CPU
-// // the job is less than the limit
-// runTest(
-// 	getResources("250m", "200Mb", ""),
-// 	getResources("1", "500Mb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// // test when the limit is empty
-// runTest(
-// 	getResources("250m", "200Mb", ""),
-// 	getResources("", "", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// // test when both is empty
-// runTest(
-// 	getResources("", "", ""),
-// 	getResources("", "", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// runTest(
-// 	getResources("", "", ""),
-// 	getResources("250m", "200Mb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	true,
-// )
-
-// runTest(
-// 	getResources("300m", "", ""),
-// 	getResources("250m", "200Mb", ""),
-// 	getResources("100m", "100Mb", ""),
-// 	false,
-// )
-
-// func TestManagerConstruction(t *testing.T) {
-// 	runTest := func(
-// 		name string,
-// 		jobResourceLimits, defaultJobResourceLimits ResourceUsageConfig,
-// 		expectError bool,
-// 	) {
-
-// 		t.Run(name, func(t *testing.T) {
-// 			_, err := NewCapacityManager(Config{
-// 				ResourceLimitJob:            jobResourceLimits,
-// 				ResourceRequirementsDefault: defaultJobResourceLimits,
-// 			})
-// 			if expectError {
-// 				require.Error(t, err)
-// 			} else {
-// 				require.NoError(t, err)
-// 			}
-// 		})
-
-// 		// job := GetProbeData("")
-// 		// job.Spec.Resources = jobResources
-
-// 		// result, _, err := computeNode.SelectJob(context.Background(), job)
-// 		// require.NoError(t, err)
-
-// 		// require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
-// 	}
-
-// }
