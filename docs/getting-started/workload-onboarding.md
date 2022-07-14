@@ -2,6 +2,7 @@
 sidebar_label: 'Onboard Your Workload' sidebar_position: 2
 ---
 
+
 # Onboarding Your Workload
 
 ## Migrate your Python workload (script) to Bacalhau
@@ -24,8 +25,6 @@ Leverage an IPFS “pinning service” such as [Web3.Storage](https://web3.stora
 5. Run the workload on Bacalhau:
 
 ```
-docker run -v /host-mount-location:/container-input-location/ \
-    -o output-folder-name:/container-output-location/ IMAGENAME
 
 bacalhau docker run -v CID:/container-input-location/ \
     -o output-folder-name:/container-output-location/ IMAGENAME
@@ -41,4 +40,4 @@ Here is an example of an onboarded python script to Bacalhau: [SOCAT Test](https
 
 ## Support
 
-Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) in case of any issues.
+Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or in case of any issues.
