@@ -96,6 +96,8 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
+              - not:
+                equal: ["", << pipeline.git.branch >>]
           steps:
             - run:
                 name: Test
