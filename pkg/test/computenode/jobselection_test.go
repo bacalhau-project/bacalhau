@@ -19,7 +19,7 @@ import (
 // but when it's not turned on the job is actually selected
 func TestJobSelectionNoVolumes(t *testing.T) {
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
@@ -95,7 +95,7 @@ func TestJobSelectionHttp(t *testing.T) {
 		}))
 		defer svr.Close()
 
-		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
@@ -117,7 +117,7 @@ func TestJobSelectionExec(t *testing.T) {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
@@ -134,7 +134,7 @@ func TestJobSelectionExec(t *testing.T) {
 }
 
 func TestJobSelectionEmptySpec(t *testing.T) {
-	computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
 	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{

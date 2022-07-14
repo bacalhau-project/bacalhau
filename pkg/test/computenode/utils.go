@@ -8,12 +8,14 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -38,6 +40,12 @@ func SetupTestDockerIpfs(
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
+	require.NoError(t, err)
+
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, fmt.Sprintf("devstacknode0-%s", ipfsID))
@@ -48,7 +56,7 @@ func SetupTestDockerIpfs(
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		config,
@@ -63,10 +71,16 @@ func SetupTestNoop(
 	//nolint:gocritic
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
-) (*computenode.ComputeNode, *requestornode.RequesterNode, *system.CleanupManager) {
+) (*computenode.ComputeNode, *requesternode.RequesterNode, *controller.Controller, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(t, err)
 
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
@@ -75,16 +89,17 @@ func SetupTestNoop(
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
 	require.NoError(t, err)
 
-	requestorNode, err := requestornode.NewRequesterNode(
+	requestorNode, err := requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computeNodeconfig,
@@ -94,7 +109,7 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	return computeNode, requestorNode, cm
+	return computeNode, requestorNode, ctrl, cm
 }
 
 func GetJobSpec(cid string) executor.JobSpec {
@@ -153,7 +168,7 @@ func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
 // that will submit the job and then accept any bids
 // that come in (up until the concurrency)
 func RunJobViaRequestor(
-	requestor requestornode.RequesterNode,
+	requestor requesternode.RequesterNode,
 	job *executor.JobSpec,
 ) error {
 	return nil

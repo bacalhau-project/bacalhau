@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -21,9 +23,10 @@ import (
 )
 
 func setupTest(t *testing.T) (
-	*inprocess.Transport,
+	*inprocess.InProcessTransport,
 	*executorNoop.Executor,
 	*verifier_noop.Verifier,
+	*controller.Controller,
 	*system.CleanupManager,
 ) {
 	cm := system.NewCleanupManager()
@@ -42,26 +45,33 @@ func setupTest(t *testing.T) (
 		verifier.VerifierNoop: noopVerifier,
 	}
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
 
-	_, err = requestornode.NewRequesterNode(
+	_, err = requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
-	return transport, noopExecutor, noopVerifier, cm
+	return transport, noopExecutor, noopVerifier, ctrl, cm
 }
 
 func TestTransportSanity(t *testing.T) {
@@ -69,27 +79,32 @@ func TestTransportSanity(t *testing.T) {
 	defer cm.Cleanup()
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(t, err)
 	_, err = computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
-	_, err = requestornode.NewRequesterNode(
+	_, err = requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 }
 
 func TestSchedulerSubmitJob(t *testing.T) {
 	ctx := context.Background()
-	transport, noopExecutor, _, cm := setupTest(t)
+	_, noopExecutor, _, ctrl, cm := setupTest(t)
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -111,7 +126,13 @@ func TestSchedulerSubmitJob(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	jobSelected, err := transport.SubmitJob(ctx, spec, deal)
+	payload := executor.JobCreatePayload{
+		ClientID: "123",
+		Spec:     spec,
+		Deal:     deal,
+	}
+
+	jobSelected, err := ctrl.SubmitJob(ctx, payload)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second * 1)
@@ -121,7 +142,7 @@ func TestSchedulerSubmitJob(t *testing.T) {
 
 func TestTransportEvents(t *testing.T) {
 	ctx := context.Background()
-	transport, _, _, cm := setupTest(t)
+	transport, _, _, ctrl, cm := setupTest(t)
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -143,7 +164,13 @@ func TestTransportEvents(t *testing.T) {
 		Concurrency: 1,
 	}
 
-	_, err := transport.SubmitJob(ctx, spec, deal)
+	payload := executor.JobCreatePayload{
+		ClientID: "123",
+		Spec:     spec,
+		Deal:     deal,
+	}
+
+	_, err := ctrl.SubmitJob(ctx, payload)
 	require.NoError(t, err)
 	time.Sleep(time.Second * 1)
 
@@ -155,7 +182,7 @@ func TestTransportEvents(t *testing.T) {
 	}
 	actualEventNames := []string{}
 
-	for _, event := range transport.Events {
+	for _, event := range transport.GetEvents() {
 		actualEventNames = append(actualEventNames, event.EventName.String())
 	}
 

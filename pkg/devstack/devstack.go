@@ -11,6 +11,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/ipfs/go-datastore"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -28,9 +31,12 @@ type DevStackNode struct {
 	ComputeNode   *computenode.ComputeNode
 	RequesterNode *requesternode.RequesterNode
 	Transport     *libp2p.LibP2PTransport
+	Controller    *controller.Controller
+	Datastore     datastore.Datastore
 
 	IpfsNode   *ipfs.Node
 	IpfsClient *ipfs.Client
+	Libp2pPort int
 	APIServer  *publicapi.APIServer
 }
 
@@ -90,15 +96,43 @@ func NewDevStack(
 			return nil, fmt.Errorf("devstack ipfs node has no api addresses")
 		}
 
-		//////////////////////////////////////
-		// Scheduler
-		//////////////////////////////////////
+		inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
+		if err != nil {
+			return nil, err
+		}
+
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		transport, err := libp2p.NewTransport(cm, libp2pPort)
+		libp2pPeer := ""
+
+		if len(nodes) > 0 {
+			// connect the libp2p scheduler node
+			firstNode := nodes[0]
+
+			// get the libp2p id of the first scheduler node
+			libp2pHostID, err := firstNode.Transport.HostID(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			// connect this scheduler to the first
+			libp2pPeer = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Libp2pPort, libp2pHostID)
+			log.Debug().Msgf("Connectint to first libp2p scheduler node: %s", libp2pPeer)
+		}
+
+		transport, err := libp2p.NewTransport(cm, libp2pPort, []string{libp2pPeer})
+		if err != nil {
+			return nil, err
+		}
+
+		controller, err := controller.NewController(
+			cm,
+			inmemoryDatastore,
+			transport,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -119,10 +153,11 @@ func NewDevStack(
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
-		requesterNode, err := requestornode.NewRequesterNode(
+		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
-			transport,
+			controller,
 			verifiers,
+			requesternode.RequesterNodeConfig{},
 		)
 		if err != nil {
 			return nil, err
@@ -133,7 +168,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
 			cm,
-			transport,
+			controller,
 			executors,
 			verifiers,
 			config,
@@ -151,7 +186,14 @@ func NewDevStack(
 			return nil, err
 		}
 
-		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
+		apiServer := publicapi.NewServer(
+			"0.0.0.0",
+			apiPort,
+			controller,
+			func(ctx context.Context, path string) (string, error) {
+				return requesterNode.PinContext(path)
+			},
+		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope
 			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
@@ -189,25 +231,6 @@ func NewDevStack(
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
 
-		if len(nodes) > 0 {
-			// connect the libp2p scheduler node
-			firstNode := nodes[0]
-
-			// get the libp2p id of the first scheduler node
-			libp2pHostID, err := firstNode.Transport.HostID(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			// connect this scheduler to the first
-			firstSchedulerAddress := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Transport.Port, libp2pHostID)
-			log.Debug().Msgf("Connect to first libp2p scheduler node: %s", firstSchedulerAddress)
-			err = transport.Connect(ctx, firstSchedulerAddress)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		devStackNode := &DevStackNode{
 			ComputeNode:   computeNode,
 			RequesterNode: requesterNode,
@@ -215,6 +238,7 @@ func NewDevStack(
 			IpfsNode:      ipfsNode,
 			IpfsClient:    ipfsClient,
 			APIServer:     apiServer,
+			Libp2pPort:    libp2pPort,
 		}
 
 		nodes = append(nodes, devStackNode)
