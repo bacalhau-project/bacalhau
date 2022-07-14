@@ -383,7 +383,7 @@ func (stack *DevStack) WaitForJobWithLogs(
 ) error {
 	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
-		MaxAttempts: 100,
+		MaxAttempts: 5,
 		Delay:       time.Second * 1,
 		Handler: func() (bool, error) {
 			// load the current states of the job
