@@ -124,7 +124,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	time.Sleep(time.Second * 5)
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
