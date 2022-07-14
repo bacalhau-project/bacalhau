@@ -1,4 +1,4 @@
-package resourceusage
+package capacitymanager
 
 import (
 	"fmt"
@@ -81,7 +81,7 @@ func TestGetResourceUsageConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		converted, err := GetResourceUsageConfig(test.input)
+		converted, err := getResourceUsageConfig(test.input)
 		require.NoError(t, err)
 		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
 		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
@@ -128,7 +128,7 @@ func TestSystemResources(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		resources, err := GetSystemResources(test.input)
+		resources, err := getSystemResources(test.input)
 
 		if test.shouldError {
 			require.Error(t, err, "an error was expected")

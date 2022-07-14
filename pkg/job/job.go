@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -49,7 +49,7 @@ func ConstructDockerJob(
 	if concurrency <= 0 {
 		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
-	jobResources := resourceusage.ResourceUsageConfig{
+	jobResources := capacitymanager.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
 	}

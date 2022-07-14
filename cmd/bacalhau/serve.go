@@ -12,7 +12,6 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -163,13 +162,13 @@ var serveCmd = &cobra.Command{
 		}
 
 		// the total amount of CPU / Memory the system can be using at one time
-		totalResourceLimit := resourceusage.ResourceUsageConfig{
+		totalResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitTotalCPU,
 			Memory: limitTotalMemory,
 		}
 
 		// the per job CPU / Memory limits
-		jobResourceLimit := resourceusage.ResourceUsageConfig{
+		jobResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitJobCPU,
 			Memory: limitJobMemory,
 		}
@@ -212,7 +211,6 @@ var serveCmd = &cobra.Command{
 		}
 
 		apiServer := publicapi.NewServer(
-
 			hostAddress,
 			apiPort,
 			controller,

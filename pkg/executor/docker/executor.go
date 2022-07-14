@@ -13,10 +13,10 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -211,7 +211,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := resourceusage.ParseResourceUsageConfig(j.Spec.Resources)
+	resourceRequirements := capacitymanager.ParseResourceUsageConfig(j.Spec.Resources)
 
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,

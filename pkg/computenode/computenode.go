@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -316,8 +315,8 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
-func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, resourceusage.ResourceUsageData, error) {
-	requirements := resourceusage.ResourceUsageData{}
+func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, capacitymanager.ResourceUsageData, error) {
+	requirements := capacitymanager.ResourceUsageData{}
 
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
@@ -333,7 +332,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// caculate resource requirements for this job
 	// this is just parsing strings to ints
-	requirements = resourceusage.ParseResourceUsageConfig(data.Spec.Resources)
+	requirements = capacitymanager.ParseResourceUsageConfig(data.Spec.Resources)
 
 	// calculate the disk space we would require if we ran this job
 	// this is asking the executor for GetVolumeSize

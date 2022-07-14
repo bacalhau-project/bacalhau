@@ -156,8 +156,8 @@ const (
 // IsTerminal returns true if the given job type signals the end of the
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
-func (event JobStateType) IsTerminal() bool {
-	return event == JobStateComplete || event == JobStateError || event == JobStateBidRejected
+func (state JobStateType) IsTerminal() bool {
+	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
 }
 
 func ParseJobStateType(str string) (JobStateType, error) {

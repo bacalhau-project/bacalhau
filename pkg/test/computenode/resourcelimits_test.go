@@ -21,7 +21,6 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -29,93 +28,6 @@ import (
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
 )
-
-func TestJobResourceLimits(t *testing.T) {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitJob:            jobResourceLimits,
-				ResourceRequirementsDefault: defaultJobResourceLimits,
-			},
-		}, noop_executor.ExecutorConfig{})
-		defer func() {
-			// sleep here otherwise the compute node tries to register cleanup handlers too late
-			time.Sleep(time.Millisecond * 10)
-			cm.Cleanup()
-		}()
-		job := GetProbeData("")
-		job.Spec.Resources = jobResources
-
-		result, _, err := computeNode.SelectJob(context.Background(), job)
-		require.NoError(t, err)
-
-		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
-	}
-
-	// the job is half the limit
-	runTest(
-		getResources("1", "500Mb", ""),
-		getResources("2", "1Gb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// the job is on the limit
-	runTest(
-		getResources("1", "500Mb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// the job is over the limit
-	runTest(
-		getResources("2", "1Gb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		false,
-	)
-
-	// test with fractional CPU
-	// the job is less than the limit
-	runTest(
-		getResources("250m", "200Mb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// test when the limit is empty
-	runTest(
-		getResources("250m", "200Mb", ""),
-		getResources("", "", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// test when both is empty
-	runTest(
-		getResources("", "", ""),
-		getResources("", "", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	runTest(
-		getResources("", "", ""),
-		getResources("250m", "200Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	runTest(
-		getResources("300m", "", ""),
-		getResources("250m", "200Mb", ""),
-		getResources("100m", "100Mb", ""),
-		false,
-	)
-
-}
 
 type SeenJobRecord struct {
 	Id          string
@@ -132,8 +44,8 @@ type TotalResourceTestCaseCheck struct {
 
 type TotalResourceTestCase struct {
 	// the total list of jobs to throw at the cluster all at the same time
-	jobs        []resourceusage.ResourceUsageConfig
-	totalLimits resourceusage.ResourceUsageConfig
+	jobs        []capacitymanager.ResourceUsageConfig
+	totalLimits capacitymanager.ResourceUsageConfig
 	wait        TotalResourceTestCaseCheck
 	checkers    []TotalResourceTestCaseCheck
 }
@@ -192,7 +104,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
-			return resourceusage.ConvertMemoryString(volume.Cid), nil
+			return capacitymanager.ConvertMemoryString(volume.Cid), nil
 		}
 
 		_, _, ctrl, cm := SetupTestNoop(
@@ -368,7 +280,7 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		Resources: resourceusage.ResourceUsageConfig{
+		Resources: capacitymanager.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: "100mb",
 		},
@@ -396,7 +308,7 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(t, capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
 func TestDockerResourceLimitsMemory(t *testing.T) {
@@ -409,7 +321,7 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		Resources: resourceusage.ResourceUsageConfig{
+		Resources: capacitymanager.ResourceUsageConfig{
 			CPU:    "100m",
 			Memory: MEMORY_LIMIT,
 		},
@@ -425,7 +337,7 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
 	require.NoError(t, err)
-	require.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.Equal(t, capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
 func TestDockerResourceLimitsDisk(t *testing.T) {
@@ -433,7 +345,7 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 	runTest := func(text, diskSize string, expected bool) {
 		computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: resourceusage.ResourceUsageConfig{
+				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
 					// so we have a compute node with 1 byte of disk space
 					Disk: diskSize,
 				},
@@ -449,7 +361,7 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 			Spec: executor.JobSpec{
 				Engine:   executor.EngineDocker,
 				Verifier: verifier.VerifierNoop,
-				Resources: resourceusage.ResourceUsageConfig{
+				Resources: capacitymanager.ResourceUsageConfig{
 					CPU:    "100m",
 					Memory: "100mb",
 					// we simulate having calculated the disk size here

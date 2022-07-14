@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
@@ -16,7 +17,6 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -146,8 +146,8 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 }
 
 //nolint:unused,deadcode
-func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
-	return resourceusage.ResourceUsageConfig{
+func getResources(c, m, d string) capacitymanager.ResourceUsageConfig {
+	return capacitymanager.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
 		Disk:   d,
@@ -155,8 +155,8 @@ func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
 }
 
 //nolint:unused,deadcode
-func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
-	var res []resourceusage.ResourceUsageConfig
+func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
+	var res []capacitymanager.ResourceUsageConfig
 	for _, d := range data {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}

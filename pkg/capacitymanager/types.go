@@ -1,4 +1,4 @@
-package resourceusage
+package capacitymanager
 
 // a record for the "amount" of compute resources an entity has / can consume / is using
 
