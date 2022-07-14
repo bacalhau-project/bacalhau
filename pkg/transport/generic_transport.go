@@ -70,17 +70,7 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEv
 	defer gt.mutex.Unlock()
 
 	// Keep track of the state of jobs we hear about:
-	gt.ensureJobExists(ctx, event)
-
-	// Passed in for create and update events:
-	if event.JobSpec != nil {
-		gt.jobs[event.JobID].Spec = event.JobSpec
-	}
-
-	// Keep track of job owner so we know who can edit a job:
-	if event.JobDeal != nil {
-		gt.jobs[event.JobID].Deal = event.JobDeal
-	}
+	gt.ensureJobState(ctx, event)
 
 	// if for some reason our event does not contain the spec
 	// then let's read it out of our data store
@@ -216,7 +206,6 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 	jobCtx, _ := gt.newRootSpanForJob(ctx, jobID)
 	gt.jobContexts[jobID] = jobCtx
 
-	// Cache and send the event to other nodes in the network:
 	event := &executor.JobEvent{
 		JobID:     jobID,
 		EventName: executor.JobEventCreated,
@@ -225,7 +214,8 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 		EventTime: time.Now(),
 	}
 
-	gt.ensureJobExists(ctx, event)
+	// Cache and send the event to other nodes in the network:
+	gt.ensureJobState(ctx, event)
 	if err := gt.writeEvent(jobCtx, event); err != nil {
 		return nil, fmt.Errorf("error writing job event: %w", err)
 	}
@@ -447,7 +437,7 @@ func (gt *GenericTransport) newRootSpanForJob(ctx context.Context, jobID string)
 	)
 }
 
-func (gt *GenericTransport) ensureJobExists(ctx context.Context, event *executor.JobEvent) {
+func (gt *GenericTransport) ensureJobState(ctx context.Context, event *executor.JobEvent) {
 	if _, ok := gt.jobs[event.JobID]; !ok {
 		gt.jobs[event.JobID] = &executor.Job{
 			ID:        event.JobID,
@@ -457,5 +447,15 @@ func (gt *GenericTransport) ensureJobExists(ctx context.Context, event *executor
 			State:     make(map[string]*executor.JobState),
 			CreatedAt: time.Now(),
 		}
+	}
+
+	// Passed in for create and update events:
+	if event.JobSpec != nil {
+		gt.jobs[event.JobID].Spec = event.JobSpec
+	}
+
+	// Keep track of job owner so we know who can edit a job:
+	if event.JobDeal != nil {
+		gt.jobs[event.JobID].Deal = event.JobDeal
 	}
 }
