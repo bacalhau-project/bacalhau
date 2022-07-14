@@ -294,6 +294,12 @@ workflows:
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
       - build:
+          name: build-linux-arm64
+          target_os: linux
+          target_arch: arm64
+          filters:
+            <<: *filters_tags_only # this is calling the previously set yaml anchor
+      - build:
           name: build-darwin-amd64
           target_os: darwin
           target_arch: amd64
