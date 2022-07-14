@@ -113,6 +113,10 @@ func (apiClient *APIClient) Submit(
 		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
+	if buildContext != nil {
+		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return executor.Job{}, err
