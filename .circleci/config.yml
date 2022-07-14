@@ -321,8 +321,7 @@ production: # This workflow will only run on tags (specifically starting with 'v
         branches:
           only: /^main$/
         tags:
-          # only: /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
-          only: /^v([0-9]+).([0-9]+).([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?$/
+          only: /^v*/
   - build_release:
       name: build-release-<< matrix.target_os >>-<< matrix.target_arch >>
       requires:
