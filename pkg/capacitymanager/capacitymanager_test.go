@@ -3,6 +3,7 @@ package capacitymanager
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,7 @@ func getResourcesArray(data [][]string) []ResourceUsageConfig {
 }
 
 func TestConstructionErrors(t *testing.T) {
+	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
 
 	testCases := []struct {
 		name        string
@@ -197,6 +199,105 @@ func TestFilter(t *testing.T) {
 			require.Equal(t, expectedResult.CPU, result.CPU)
 			require.Equal(t, expectedResult.Memory, result.Memory)
 			require.Equal(t, expectedResult.Disk, result.Disk)
+		})
+	}
+
+}
+
+func TestGetNextItems(t *testing.T) {
+	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
+
+	// this means we can test "long lived" jobs that use resources
+	// for longer than other jobs
+	type TestJob struct {
+		iterations int
+		usage      ResourceUsageConfig
+	}
+
+	testCases := []struct {
+		name  string
+		limit ResourceUsageConfig
+		jobs  []TestJob
+		// a csv array of the currently running jobs for each iteration
+		// this will be based on the "iterations" setting of the job
+		// as well as the capacity manager's current state in terms of scheduling
+		expectedLogs []string
+	}{
+		{
+			"sanity",
+			getResources("10", "10Gb", "10Gb"),
+			[]TestJob{
+				{
+					1,
+					getResources("2", "2Gb", "2Gb"),
+				},
+			},
+			// a single job on it's own once
+			[]string{
+				"0",
+				"",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mgr, err := NewCapacityManager(Config{
+				ResourceLimitTotal:          tc.limit,
+				ResourceLimitJob:            tc.limit,
+				ResourceRequirementsDefault: getResources("", "", ""),
+			})
+			require.NoError(t, err)
+
+			iterationMap := map[string]int{}
+			counterMap := map[string]int{}
+			logs := []string{}
+
+			for id, job := range tc.jobs {
+				idString := fmt.Sprintf("%d", id)
+				iterationMap[idString] = job.iterations
+				mgr.AddToBacklog(idString, ParseResourceUsageConfig(job.usage))
+			}
+
+			for {
+
+				// get the items we have space to run
+				nextItems := mgr.GetNextItems()
+
+				// mark each new item as active and start it's
+				// iteration counter at zero
+				for _, id := range nextItems {
+					mgr.MoveToActive(id)
+					counterMap[id] = 0
+				}
+
+				running := []string{}
+				toRemove := []string{}
+				// loop over currently active items and increment
+				// the iteration counter and remove them
+				// if they have "completed"
+				mgr.active.Iterate(func(item CapacityManagerItem) {
+					counterMap[item.ID]++
+					if counterMap[item.ID] > iterationMap[item.ID] {
+						toRemove = append(toRemove, item.ID)
+					} else {
+						running = append(running, item.ID)
+					}
+				})
+
+				logs = append(logs, strings.Join(running, ","))
+
+				for _, id := range toRemove {
+					mgr.Remove(id)
+				}
+
+				// this means we've cleared out all the jobs
+				if mgr.backlog.Count() <= 0 && mgr.active.Count() <= 0 {
+					break
+				}
+			}
+
+			require.Equal(t, strings.Join(tc.expectedLogs, "\n"), strings.Join(logs, "\n"))
 		})
 	}
 
