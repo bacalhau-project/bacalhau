@@ -13,8 +13,10 @@ type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume storage.Stora
 type ExecutorHandlerJobHandler func(ctx context.Context, job executor.Job) (string, error)
 
 type ExecutorConfigExternalHooks struct {
-	JobHandler    *func(ctx context.Context, job executor.Job) (string, error)
-	GetVolumeSize *func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
+	IsInstalled       ExecutorHandlerIsInstalled
+	HasStorageLocally ExecutorHandlerHasStorageLocally
+	GetVolumeSize     ExecutorHandlerGetVolumeSize
+	JobHandler        ExecutorHandlerJobHandler
 }
 
 type ExecutorConfig struct {
