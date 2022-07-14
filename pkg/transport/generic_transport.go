@@ -82,11 +82,6 @@ func (gt *GenericTransport) ReadEvent(ctx context.Context, event *executor.JobEv
 		event.JobDeal = gt.jobs[event.JobID].Deal
 	}
 
-	// Jobs have different states on different nodes:
-	if event.JobState != nil && event.NodeID != "" {
-		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
-	}
-
 	jobCtx := gt.getJobNodeContext(ctx, event.JobID)
 	if event.NodeID == gt.NodeID {
 		// Attach metadata to local job lifecycle context:
@@ -208,6 +203,7 @@ func (gt *GenericTransport) SubmitJob(ctx context.Context, spec *executor.JobSpe
 
 	event := &executor.JobEvent{
 		JobID:     jobID,
+		NodeID:    gt.NodeID,
 		EventName: executor.JobEventCreated,
 		JobSpec:   spec,
 		JobDeal:   deal,
@@ -457,5 +453,10 @@ func (gt *GenericTransport) ensureJobState(ctx context.Context, event *executor.
 	// Keep track of job owner so we know who can edit a job:
 	if event.JobDeal != nil {
 		gt.jobs[event.JobID].Deal = event.JobDeal
+	}
+
+	// Jobs have different states on different nodes:
+	if event.JobState != nil && event.NodeID != "" {
+		gt.jobs[event.JobID].State[event.NodeID] = event.JobState
 	}
 }
