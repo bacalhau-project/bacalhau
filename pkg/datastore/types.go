@@ -8,12 +8,12 @@ import (
 
 type Job struct {
 	ID            string
-	Job           executor.Job
+	Data          executor.Job
 	LocalMetadata executor.JobLocalMetadata
 	Events        []executor.JobEvent
 }
 
-type ListQuery struct {
+type JobQuery struct {
 	ID string `json:"id"`
 }
 
@@ -26,7 +26,7 @@ type ListQuery struct {
 // of smart contract implementation (e.g. FVM)
 type DataStore interface {
 	GetJob(ctx context.Context, id string) (Job, error)
-	GetJobs(ctx context.Context, query ListQuery) ([]Job, error)
+	GetJobs(ctx context.Context, query JobQuery) ([]Job, error)
 	AddJob(ctx context.Context, job executor.Job) error
 	AddEvent(ctx context.Context, jobID string, event executor.JobEvent) error
 	UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error

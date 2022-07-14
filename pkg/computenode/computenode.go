@@ -145,7 +145,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			node.capacityManager.Remove(id)
 			continue
 		}
-		err = node.BidOnJob(context.Background(), job)
+		err = node.BidOnJob(context.Background(), job.Data)
 		if err != nil {
 			node.capacityManager.Remove(job.ID)
 			continue
@@ -167,16 +167,21 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 */
 func (node *ComputeNode) subscriptionSetup() {
-	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
+	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
+		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
+		if err != nil {
+			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
+			return
+		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
-			node.subscriptionEventCreated(ctx, jobEvent, job)
+			node.subscriptionEventCreated(ctx, jobEvent, job.Data)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
-			node.subscriptionEventBidAccepted(ctx, jobEvent, job)
+			node.subscriptionEventBidAccepted(ctx, jobEvent, job.Data)
 		// our bid has not been accepted - let's remove this job from our current queue
 		case executor.JobEventBidRejected:
-			node.subscriptionEventBidRejected(ctx, jobEvent, job)
+			node.subscriptionEventBidRejected(ctx, jobEvent, job.Data)
 		}
 	})
 }

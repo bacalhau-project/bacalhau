@@ -15,12 +15,13 @@ func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideom
 }
 
 type jobDescription struct {
-	ID        string                       `yaml:"Id"`
-	Owner     string                       `yaml:"Owner"`
-	Spec      jobSpecDescription           `yaml:"Spec"`
-	Deal      executor.JobDeal             `yaml:"Deal"`
-	State     map[string]executor.JobState `yaml:"State"`
-	CreatedAt time.Time                    `yaml:"Start Time"`
+	ID              string                       `yaml:"Id"`
+	ClientID        string                       `yaml:"ClientID"`
+	RequesterNodeID string                       `yaml:"RequesterNodeId"`
+	Spec            jobSpecDescription           `yaml:"Spec"`
+	Deal            executor.JobDeal             `yaml:"Deal"`
+	State           map[string]executor.JobState `yaml:"State"`
+	CreatedAt       time.Time                    `yaml:"Start Time"`
 }
 
 type jobSpecDescription struct {
@@ -85,7 +86,8 @@ var describeCmd = &cobra.Command{
 
 		jobDesc := jobDescription{}
 		jobDesc.ID = job.ID
-		jobDesc.Owner = job.Owner
+		jobDesc.ClientID = job.ClientID
+		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
 		jobDesc.State = job.State

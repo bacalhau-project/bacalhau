@@ -18,6 +18,12 @@ type InProcessTransport struct {
 	ctx                sync.Mutex
 }
 
+/*
+
+  lifecycle
+
+*/
+
 func NewInprocessTransport() (*InProcessTransport, error) {
 	hostID, err := uuid.NewRandom()
 	if err != nil {
@@ -29,10 +35,6 @@ func NewInprocessTransport() (*InProcessTransport, error) {
 	}
 	return res, nil
 }
-
-/////////////////////////////////////////////////////////////
-/// LIFECYCLE
-/////////////////////////////////////////////////////////////
 
 func (t *InProcessTransport) Start(ctx context.Context) error {
 	if len(t.subscribeFunctions) == 0 {
@@ -49,9 +51,11 @@ func (t *InProcessTransport) HostID(ctx context.Context) (string, error) {
 	return t.id, nil
 }
 
-/////////////////////////////////////////////////////////////
-/// PUB/SUB
-/////////////////////////////////////////////////////////////
+/*
+
+  pub / sub
+
+*/
 
 func (t *InProcessTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
 	t.ctx.Lock()
