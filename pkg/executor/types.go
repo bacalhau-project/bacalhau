@@ -37,9 +37,6 @@ type Job struct {
 	ID string `json:"id"`
 
 	// The ID of the requester node that owns this job.
-	Owner string `json:"owner"`
-
-	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"requester_node_id"`
 
 	// The ID of the client that created this job.
@@ -134,24 +131,17 @@ type JobLocalMetadata struct {
 
 // The deal the client has made with the bacalhau network.
 type JobDeal struct {
-	// The ID of the client that created this job.
-	ClientID string `json:"client_id"`
-
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
-
-	// The compute node bids that have been accepted by the requester node on
-	// behalf of the client. Nodes that do not have accepted bids may still
-	// run and submit results for a job - this could be used to create a
-	// reputation system for new compute nodes.
-	AssignedNodes []string `json:"assigned_nodes"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
 	JobID string `json:"job_id"`
+	// optional clientID if this is an externally triggered event (like create job)
+	ClientID string `json:"client_id"`
 	// the node that emitted this event
 	SourceNodeID string `json:"source_node_id"`
 	// the node that this event is for
@@ -165,6 +155,23 @@ type JobEvent struct {
 	Status    string    `json:"status"`
 	ResultsID string    `json:"results_id"`
 	EventTime time.Time `json:"event_time"`
+}
+
+type JobCreatePayload struct {
+	// the id of the client that is submitting the job
+	ClientID string `json:"client_id"`
+
+	// The job specification:
+	Spec JobSpec `json:"spec"`
+
+	// The deal the client has made with the network, at minimum this should
+	// contain the client's ID for verifying the message authenticity:
+	Deal JobDeal `json:"deal"`
+
+	// Optional base64-encoded tar file that will be pinned to IPFS and
+	// mounted as storage for the job. Not part of the spec so we don't
+	// flood the transport layer with it (potentially very large).
+	Context string `json:"context,omitempty"`
 }
 
 // Version of a bacalhau binary (either client or server)

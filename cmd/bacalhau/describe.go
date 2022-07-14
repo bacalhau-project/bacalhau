@@ -80,7 +80,6 @@ var describeCmd = &cobra.Command{
 
 		jobDealDesc := jobDealDescription{}
 		jobDealDesc.Concurrency = job.Deal.Concurrency
-		jobDealDesc.AssignedNodes = job.Deal.AssignedNodes
 
 		jobSpecDesc.Verifier = job.Spec.Verifier.String()
 		jobSpecDesc.VM = jobVMDesc

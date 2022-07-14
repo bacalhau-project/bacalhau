@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -26,8 +26,8 @@ import (
 
 type DevStackNode struct {
 	ComputeNode   *computenode.ComputeNode
-	RequesterNode *requestornode.RequesterNode
-	Transport     *libp2p.Transport
+	RequesterNode *requesternode.RequesterNode
+	Transport     *libp2p.LibP2PTransport
 
 	IpfsNode   *ipfs.Node
 	IpfsClient *ipfs.Client

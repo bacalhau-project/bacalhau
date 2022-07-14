@@ -54,7 +54,7 @@ func NewController(
 }
 
 func (ctrl *Controller) HostID(ctx context.Context) (string, error) {
-	return ctrl.transport.HostID(ctx)
+	return ctrl.id, nil
 }
 
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (datastore.Job, error) {
@@ -109,7 +109,10 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 	ctrl.subscribeFuncs = append(ctrl.subscribeFuncs, fn)
 }
 
-func (ctrl *Controller) SubmitJob(ctx context.Context, spec executor.JobSpec, deal executor.JobDeal) (executor.Job, error) {
+func (ctrl *Controller) SubmitJob(
+	ctx context.Context,
+	data executor.JobCreatePayload,
+) (executor.Job, error) {
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error creating job id: %w", err)
@@ -122,8 +125,10 @@ func (ctrl *Controller) SubmitJob(ctx context.Context, spec executor.JobSpec, de
 	jobCtx, _ := ctrl.newRootSpanForJob(ctx, jobID)
 
 	ev := ctrl.constructEvent(jobID, executor.JobEventCreated)
-	ev.JobSpec = spec
-	ev.JobDeal = deal
+
+	ev.ClientID = data.ClientID
+	ev.JobSpec = data.Spec
+	ev.JobDeal = data.Deal
 
 	err = ctrl.writeEvent(jobCtx, ev)
 	return constructJob(ev), err
