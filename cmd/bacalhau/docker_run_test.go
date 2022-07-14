@@ -16,12 +16,11 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -30,13 +29,10 @@ import (
 type DockerRunSuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
-	logBuf  *bytes.Buffer
 }
 
 // Before all suite
 func (suite *DockerRunSuite) SetupAllSuite() {
-	var Stdout = struct{ io.Writer }{os.Stdout}
-	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, suite.logBuf))
 }
 
 // Before each test
@@ -220,6 +216,11 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 
 	for i, tc := range tests {
 		func() {
+
+			var logBuf = new(bytes.Buffer)
+			var Stdout = struct{ io.Writer }{os.Stdout}
+			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
+
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
@@ -243,7 +244,7 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			require.True(suite.T(), foundJob, "error getting job")
 			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
 			if tc.errString != "" {
-				o := suite.logBuf.String()
+				o := logBuf.String()
 				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
 		}()
