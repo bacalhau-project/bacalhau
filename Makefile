@@ -113,6 +113,7 @@ build-bacalhau-tgz:
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
 	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
+	@echo "export ARTIFACT_DIR=$(TMPARTIFACTDIR)" >> /tmp/packagevars
 	@echo "export BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> /tmp/packagevars
 	@echo "export BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> /tmp/packagevars
 	@echo "export BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
