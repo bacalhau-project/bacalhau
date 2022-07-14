@@ -64,7 +64,7 @@ func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) (
 	return ctrl.datastore.GetJobs(ctx, query)
 }
 
-func (ctrl *Controller) Start(ctx context.Context) {
+func (ctrl *Controller) Start(ctx context.Context) error {
 	// listen for events from other nodes on the network
 	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) { // ignore events that we broadcast because we have already handled the event
 		// we have already handled this event locally before braodcasting it
@@ -88,6 +88,7 @@ func (ctrl *Controller) Start(ctx context.Context) {
 		return ctrl.Shutdown(ctx)
 	})
 
+	return ctrl.transport.Start(ctx)
 }
 
 func (ctrl *Controller) Shutdown(ctx context.Context) error {

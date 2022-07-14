@@ -226,7 +226,7 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		go func(ctx context.Context) {
-			if err = ctrl.Start(ctx); err != nil {
+			if err = controller.Start(ctx); err != nil {
 				panic(err) // if controller can't run, devstack should stop
 			}
 		}(context.Background())
