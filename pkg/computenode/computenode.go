@@ -315,8 +315,8 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
-func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, resourceusage.ResourceUsageData, error) {
-	requirements := resourceusage.ResourceUsageData{}
+func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, capacitymanager.ResourceUsageData, error) {
+	requirements := capacitymanager.ResourceUsageData{}
 
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)

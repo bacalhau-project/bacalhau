@@ -225,30 +225,6 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 
 	resourceRequirements := capacitymanager.ParseResourceUsageConfig(j.Spec.Resources)
 
-	// Create GPU request if the job requests it
-	var deviceRequests []container.DeviceRequest
-	if resourceRequirements.GPU > 0 {
-		deviceRequests = append(deviceRequests,
-			container.DeviceRequest{
-				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
-				Capabilities: [][]string{{"gpu"}},
-			},
-		)
-		log.Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
-	}
-
-	// Create GPU request if the job requests it
-	var deviceRequests []container.DeviceRequest
-	if resourceRequirements.GPU > 0 {
-		deviceRequests = append(deviceRequests,
-			container.DeviceRequest{
-				DeviceIDs:    []string{"0"}, // TODO: how do we know which device ID to use?
-				Capabilities: [][]string{{"gpu"}},
-			},
-		)
-		log.Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
-	}
-
 	jobContainer, err := e.Client.ContainerCreate(
 		ctx,
 		containerConfig,

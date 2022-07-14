@@ -100,14 +100,33 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 	}
 
 	for _, test := range tests {
+		converted := ParseResourceUsageConfig(test.input)
+		require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
+		require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
+		require.Equal(suite.T(), converted.GPU, test.expected.GPU, "GPU is incorrect")
+	}
 
-		suite.Run(test.name, func() {
-			converted := ParseResourceUsageConfig(test.input)
-			require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
-			require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
-			require.Equal(suite.T(), converted.GPU, test.expected.GPU, "gpu is incorrect")
-		})
+}
 
+func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
+
+	tests := []struct {
+		name     string
+		input    ResourceUsageData
+		expected ResourceUsageConfig
+	}{
+		{
+			name:     "basic",
+			input:    d(0.5, (datasize.MB * 512).Bytes(), 4),
+			expected: c("500m", "512MB", "4"),
+		},
+	}
+
+	for _, test := range tests {
+		converted, err := getResourceUsageConfig(test.input)
+		require.NoError(t, err)
+		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
 	}
 
 }
@@ -156,25 +175,22 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	}
 
 	for _, test := range tests {
+		resources, err := getSystemResources(test.input)
 
-		suite.Run(test.name, func() {
-			resources, err := getSystemResources(test.input)
-
-			if test.shouldError {
-				require.Error(suite.T(), err, "an error was expected")
-			} else {
-				require.NoError(suite.T(), err, "an error was not expected")
-				require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
-				require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
-				require.Equal(suite.T(), test.expected.GPU, resources.GPU, "GPU is incorrect")
-			}
-		})
+		if test.shouldError {
+			require.Error(suite.T(), err, "an error was expected")
+		} else {
+			require.NoError(suite.T(), err, "an error was not expected")
+			require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
+			require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
+			require.Equal(suite.T(), test.expected.GPU, resources.GPU, "GPU is incorrect")
+		}
 
 	}
 }
 
 func TestSubtractResourceUsage(t *testing.T) {
-	res := subtractResourceUsage(
+	res := SubtractResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -199,7 +215,7 @@ func TestSubtractResourceUsage(t *testing.T) {
 
 func TestCheckResourceUsage(t *testing.T) {
 	// Test when resources are ok, should return true
-	ok := checkResourceUsage(
+	ok := CheckResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -212,11 +228,11 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if !ok {
-		t.Error("checkResourceUsage returned false")
+		t.Error("CheckResourceUsage returned false")
 	}
 
 	// test when resources are not ok
-	ok = checkResourceUsage(
+	ok = CheckResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -229,9 +245,9 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("checkResourceUsage returned true")
+		t.Error("CheckResourceUsage returned true")
 	}
-	ok = checkResourceUsage(
+	ok = CheckResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -244,9 +260,9 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("checkResourceUsage returned true")
+		t.Error("CheckResourceUsage returned true")
 	}
-	ok = checkResourceUsage(
+	ok = CheckResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -259,7 +275,7 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("checkResourceUsage returned true")
+		t.Error("CheckResourceUsage returned true")
 	}
 }
 

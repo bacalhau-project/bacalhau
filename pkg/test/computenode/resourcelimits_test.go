@@ -31,93 +31,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestJobResourceLimits(t *testing.T) {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitJob:            jobResourceLimits,
-				ResourceRequirementsDefault: defaultJobResourceLimits,
-			},
-		}, noop_executor.ExecutorConfig{})
-		defer func() {
-			// sleep here otherwise the compute node tries to register cleanup handlers too late
-			time.Sleep(time.Millisecond * 10)
-			cm.Cleanup()
-		}()
-		job := GetProbeData("")
-		job.Spec.Resources = jobResources
-
-		result, _, err := computeNode.SelectJob(context.Background(), job)
-		require.NoError(suite.T(), err)
-
-		require.Equal(suite.T(), expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
-	}
-
-	// the job is half the limit
-	runTest(
-		getResources("1", "500Mb", ""),
-		getResources("2", "1Gb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// the job is on the limit
-	runTest(
-		getResources("1", "500Mb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// the job is over the limit
-	runTest(
-		getResources("2", "1Gb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		false,
-	)
-
-	// test with fractional CPU
-	// the job is less than the limit
-	runTest(
-		getResources("250m", "200Mb", ""),
-		getResources("1", "500Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// test when the limit is empty
-	runTest(
-		getResources("250m", "200Mb", ""),
-		getResources("", "", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	// test when both is empty
-	runTest(
-		getResources("", "", ""),
-		getResources("", "", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	runTest(
-		getResources("", "", ""),
-		getResources("250m", "200Mb", ""),
-		getResources("100m", "100Mb", ""),
-		true,
-	)
-
-	runTest(
-		getResources("300m", "", ""),
-		getResources("250m", "200Mb", ""),
-		getResources("100m", "100Mb", ""),
-		false,
-	)
-
-}
-
 type SeenJobRecord struct {
 	Id          string
 	CurrentJobs int
@@ -397,7 +310,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(suite.T(), capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(t, capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
@@ -425,8 +338,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.NoError(t, err)
+	require.Equal(t, capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {

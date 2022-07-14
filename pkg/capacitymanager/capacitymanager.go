@@ -2,8 +2,6 @@ package capacitymanager
 
 import (
 	"fmt"
-
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 )
 
 const DefaultJobCPU = "100m"
@@ -76,11 +74,7 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 		useConfig.ResourceRequirementsDefault.Memory = DefaultJobMemory
 	}
 
-	if useConfig.ResourceRequirementsDefault.GPU == "" {
-		useConfig.ResourceRequirementsDefault.GPU = DefaultJobGPU
-	}
-
-	resourceLimitsTotal, err := resourceusage.GetSystemResources(useConfig.ResourceLimitTotal)
+	resourceLimitsTotal, err := getSystemResources(useConfig.ResourceLimitTotal)
 	if err != nil {
 		return nil, err
 	}
@@ -194,10 +188,7 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	if requirements.Disk <= 0 {
 		requirements.Disk = manager.resourceRequirementsJobDefault.Disk
 	}
-	if requirements.GPU <= 0 {
-		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
-	}
-	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
+	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements
 }
 
