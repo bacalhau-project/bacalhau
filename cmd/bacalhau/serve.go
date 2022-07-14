@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -181,7 +181,9 @@ var serveCmd = &cobra.Command{
 			ProbeExec:           jobSelectionProbeExec,
 		}
 
-		config := computenode.ComputeNodeConfig{
+		requesterNodeConfig := requesternode.RequesterNodeConfig{}
+
+		computeNodeConfig := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitTotal: totalResourceLimit,
@@ -189,10 +191,11 @@ var serveCmd = &cobra.Command{
 			},
 		}
 
-		requesterNode, err := requestornode.NewRequesterNode(
+		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
-			transport,
+			controller,
 			verifiers,
+			requesterNodeConfig,
 		)
 		if err != nil {
 			return err
@@ -202,16 +205,20 @@ var serveCmd = &cobra.Command{
 			controller,
 			executors,
 			verifiers,
-			config,
+			computeNodeConfig,
 		)
 		if err != nil {
 			return err
 		}
 
 		apiServer := publicapi.NewServer(
-			requesterNode,
+
 			hostAddress,
 			apiPort,
+			controller,
+			func(ctx context.Context, path string) (string, error) {
+				return requesterNode.PinContext(path)
+			},
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:

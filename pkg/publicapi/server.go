@@ -16,9 +16,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
@@ -26,23 +27,28 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+type PinContextHandler func(ctx context.Context, localPath string) (string, error)
+
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Node *requestornode.RequesterNode
-	Host string
-	Port int
+	Controller        *controller.Controller
+	PinContextHandler PinContextHandler
+	Host              string
+	Port              int
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
-	node *requestornode.RequesterNode,
 	host string,
 	port int,
+	c *controller.Controller,
+	p PinContextHandler,
 ) *APIServer {
 	return &APIServer{
-		Node: node,
-		Host: host,
-		Port: port,
+		Controller:        c,
+		PinContextHandler: p,
+		Host:              host,
+		Port:              port,
 	}
 }
 
@@ -53,9 +59,8 @@ func (apiServer *APIServer) GetURI() string {
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	hostID, err := apiServer.Node.Transport.HostID(ctx)
+	hostID, err := apiServer.Controller.HostID(ctx)
 	if err != nil {
-		log.Error().Msgf("Error fetching node's host ID: %s", err)
 		return err
 	}
 	sm := http.NewServeMux()
@@ -113,15 +118,21 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.Node.Transport.List(req.Context())
+	list, err := apiServer.Controller.GetJobs(req.Context(), datastore.JobQuery{})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	rawJobs := map[string]executor.Job{}
+
+	for _, wrappedJob := range list {
+		rawJobs[wrappedJob.Data.ID] = wrappedJob.Data
+	}
+
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
-		Jobs: list.Jobs,
+		Jobs: rawJobs,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -147,23 +158,9 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 	}
 }
 
-type submitData struct {
-	// The job specification:
-	Spec executor.JobSpec `json:"spec"`
-
-	// The deal the client has made with the network, at minimum this should
-	// contain the client's ID for verifying the message authenticity:
-	Deal executor.JobDeal `json:"deal"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"context,omitempty"`
-}
-
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	Data submitData `json:"data"`
+	Data executor.JobCreatePayload `json:"data"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature"`
@@ -220,7 +217,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.Node.PinContext(filepath.Join(tmpDir, "context"))
+		cid, err := apiServer.PinContextHandler(req.Context(), filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -236,8 +233,11 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		})
 	}
 
-	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
-		submitReq.Data.Spec, submitReq.Data.Deal)
+	j, err := apiServer.Controller.SubmitJob(
+		req.Context(),
+		submitReq.Data,
+	)
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -254,7 +254,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 }
 
 func verifySubmitRequest(req *submitRequest) error {
-	if req.Data.Deal.ClientID == "" {
+	if req.Data.ClientID == "" {
 		return errors.New("job deal must contain a client ID")
 	}
 	if req.ClientSignature == "" {
@@ -265,7 +265,7 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the client's public key matches the client ID:
-	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.Deal.ClientID)
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.ClientID)
 	if err != nil {
 		return fmt.Errorf("error verifying client ID: %w", err)
 	}

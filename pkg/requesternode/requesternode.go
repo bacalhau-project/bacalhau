@@ -120,24 +120,24 @@ func (node *RequesterNode) considerBid(job executor.Job, nodeID string) (bidAcce
 	threadLogger.Debug().Msgf("Concurrency for this job: %d", concurrency)
 
 	// we are already over-subscribed
-	if len(job.Deal.AssignedNodes) >= concurrency {
-		// nolint:lll // Error message needs long line
-		threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(job.Deal.AssignedNodes), concurrency)
-		return false, "Job is oversubscribed", nil
-	}
+	// if len(job.Deal.AssignedNodes) >= concurrency {
+	// 	// nolint:lll // Error message needs long line
+	// 	threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(job.Deal.AssignedNodes), concurrency)
+	// 	return false, "Job is oversubscribed", nil
+	// }
 
-	// sanity check to not allow a node to bid on a job twice
-	alreadyAssigned := false
+	// // sanity check to not allow a node to bid on a job twice
+	// alreadyAssigned := false
 
-	for _, assignedNode := range job.Deal.AssignedNodes {
-		if assignedNode == nodeID {
-			alreadyAssigned = true
-		}
-	}
+	// for _, assignedNode := range job.Deal.AssignedNodes {
+	// 	if assignedNode == nodeID {
+	// 		alreadyAssigned = true
+	// 	}
+	// }
 
-	if alreadyAssigned {
-		return false, "This node is already assigned", nil
-	}
+	// if alreadyAssigned {
+	// 	return false, "This node is already assigned", nil
+	// }
 
 	return true, "", nil
 }
