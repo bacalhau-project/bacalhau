@@ -2,6 +2,7 @@ package capacitymanager
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -14,26 +15,6 @@ import (
 	"github.com/pbnjay/memory"
 )
 
-<<<<<<< HEAD:pkg/resourceusage/utils.go
-// NvidiaCLI is the path to the Nvidia helper binary
-const NvidiaCLI = "nvidia-container-cli"
-||||||| parent of c1290fd7 (move resourceusage package into capacity manager):pkg/resourceusage/utils.go
-func NewDefaultResourceUsageConfig() ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    "",
-		Memory: "",
-		Disk:   "",
-	}
-}
-
-func NewResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    cpu,
-		Memory: mem,
-		Disk:   disk,
-	}
-}
-=======
 func newDefaultResourceUsageConfig() ResourceUsageConfig {
 	return ResourceUsageConfig{
 		CPU:    "",
@@ -49,7 +30,6 @@ func newResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
 		Disk:   disk,
 	}
 }
->>>>>>> c1290fd7 (move resourceusage package into capacity manager):pkg/capacitymanager/utils.go
 
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
@@ -183,6 +163,10 @@ func numSystemGPUs() (uint64, error) {
 
 // what resources does this compute node actually have?
 func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+
+	// this is used mainly for tests to be deterministic
+	allowOverCommit := os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
+
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return ResourceUsageData{}, err
@@ -193,7 +177,7 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	}
 
 	// the actual resources we have
-	data := ResourceUsageData{
+	physcialResources := ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.TotalMemory(),
 		Disk:   diskSpace,
@@ -203,46 +187,36 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
 
 	if parsedLimitConfig.CPU > 0 {
-		if parsedLimitConfig.CPU > data.CPU {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.CPU > physcialResources.CPU && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more CPU than you have on this node: configured %f, have %f",
-				parsedLimitConfig.CPU, data.CPU,
+				parsedLimitConfig.CPU, physcialResources.CPU,
 			)
 		}
-		data.CPU = parsedLimitConfig.CPU
+		physcialResources.CPU = parsedLimitConfig.CPU
 	}
 
 	if parsedLimitConfig.Memory > 0 {
-		if parsedLimitConfig.Memory > data.Memory {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.Memory > physcialResources.Memory && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more Memory than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Memory, data.Memory,
+				parsedLimitConfig.Memory, physcialResources.Memory,
 			)
 		}
-		data.Memory = parsedLimitConfig.Memory
+		physcialResources.Memory = parsedLimitConfig.Memory
 	}
 
 	if parsedLimitConfig.Disk > 0 {
-		if parsedLimitConfig.Disk > data.Disk {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.Disk > physcialResources.Disk && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more disk than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Disk, data.Disk,
+				parsedLimitConfig.Disk, physcialResources.Disk,
 			)
 		}
-		data.Disk = parsedLimitConfig.Disk
+		physcialResources.Disk = parsedLimitConfig.Disk
 	}
 
-	if parsedLimitConfig.GPU > 0 {
-		if parsedLimitConfig.GPU > data.GPU {
-			return data, fmt.Errorf(
-				"you cannot configure more GPU than you have on this node: configured %d, have %d",
-				parsedLimitConfig.GPU, data.GPU,
-			)
-		}
-		data.GPU = parsedLimitConfig.GPU
-	}
-
-	return data, nil
+	return physcialResources, nil
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
