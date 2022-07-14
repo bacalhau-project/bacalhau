@@ -59,7 +59,7 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error
 		handler := *e.Config.ExternalHooks.JobHandler
 		return handler(ctx, job)
 	}
-	return "", nil
+	return "/tmp", nil
 }
 
 // Compile-time check that Executor implements the Executor interface.

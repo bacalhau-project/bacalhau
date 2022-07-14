@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,13 +32,15 @@ func SetupTest(
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
-	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
-		map[executor.EngineType]executor.Executor, error) {
+	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[executor.EngineType]executor.Executor, error) {
+		fmt.Printf("-----> IPFS ADDRESS: %s\n", ipfsMultiAddress)
+		ipfsParts := strings.Split(ipfsMultiAddress, "/")
+		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
-			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix))
 	}
-	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (
-		map[verifier.VerifierType]verifier.Verifier, error) {
+	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[verifier.VerifierType]verifier.Verifier, error) {
+		fmt.Printf("-----> IPFS ADDRESS: %s\n", ipfsMultiAddress)
 		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(

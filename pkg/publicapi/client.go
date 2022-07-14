@@ -89,7 +89,6 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job *executo
 	// TODO: make this deterministic, return the first match alphabetically
 	for _, job = range jobs {
 		if strings.HasPrefix(job.ID, jobID) {
-			log.Debug().Msgf("MATCH: %s", job.ID)
 			return job, true, nil
 		}
 	}
@@ -115,6 +114,10 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 		Deal: deal,
 	}
 
+	if buildContext != nil {
+		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -130,9 +133,6 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 		Data:            data,
 		ClientSignature: signature,
 		ClientPublicKey: system.GetClientPublicKey(),
-	}
-	if buildContext != nil {
-		req.Data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {

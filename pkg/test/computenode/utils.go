@@ -38,8 +38,9 @@ func SetupTestDockerIpfs(
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
+	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 	executors, err := executor_util.NewStandardExecutors(
-		cm, apiAddress, "devstacknode0")
+		cm, apiAddress, fmt.Sprintf("devstacknode0-%s", ipfsID))
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)

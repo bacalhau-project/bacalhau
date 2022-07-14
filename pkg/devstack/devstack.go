@@ -10,6 +10,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -225,6 +226,10 @@ func NewDevStack(
 }
 
 func (stack *DevStack) PrintNodeInfo() {
+	if !config.DevstackGetShouldPrintInfo() {
+		return
+	}
+
 	logString := ""
 
 	for nodeIndex, node := range stack.Nodes {
@@ -389,6 +394,7 @@ func (stack *DevStack) WaitForJobWithLogs(
 			if err != nil {
 				return false, err
 			}
+
 			allOk := true
 			for _, checkFunction := range checkJobStateFunctions {
 				stepOk, err := checkFunction(states)
@@ -399,6 +405,20 @@ func (stack *DevStack) WaitForJobWithLogs(
 					allOk = false
 				}
 			}
+
+			// If all the jobs are in terminal states, then nothing is going
+			// to change if we keep polling, so we should exit early.
+			allTerminal := len(states) == len(stack.Nodes)
+			for _, state := range states {
+				if !state.IsTerminal() {
+					allTerminal = false
+					break
+				}
+			}
+			if allTerminal && !allOk {
+				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
+			}
+
 			return allOk, nil
 		},
 	}

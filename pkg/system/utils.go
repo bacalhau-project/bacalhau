@@ -65,6 +65,19 @@ func RunCommandGetResults(command string, args []string) (string, error) {
 	return string(result), err
 }
 
+func RunCommandGetStdoutAndStderr(command string, args []string) (stdout, stderr string, err error) {
+	stdoutBuf := new(bytes.Buffer)
+	stderrBuf := new(bytes.Buffer)
+
+	log.Trace().Msgf("Command: %s %s", command, args)
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = stdoutBuf
+	cmd.Stderr = stderrBuf
+
+	err = cmd.Run()
+	return stdoutBuf.String(), stderrBuf.String(), err
+}
+
 func RunCommandGetResultsEnv(command string, args, env []string) (string, error) {
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
@@ -137,4 +150,11 @@ func GetJobStateStringArray(states []executor.JobStateType) []string {
 		ret = append(ret, state.String())
 	}
 	return ret
+}
+
+func ShortString(s string, n int) string {
+	if len(s) < n {
+		return s
+	}
+	return s[0:n] + "..."
 }
