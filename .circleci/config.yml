@@ -105,6 +105,7 @@ jobs:
                   echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
                   CGO_ENABLED=${CGO} \
+                  LOG_LEVEL=debug \
                   gotestsum \
                     --junitfile unit-tests.xml \
                     --format standard-verbose \

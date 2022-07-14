@@ -130,7 +130,8 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	return files.WriteTo(node, outputPath)
 }
 
-// Put uploads a file or directory to the ipfs network.
+// Put uploads a file or directory to the ipfs network. Timeouts and
+// cancellation should be handled by passing an appropriate context value.
 func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 	ctx, span := newSpan(ctx, "Put")
 	defer span.End()
@@ -150,8 +151,26 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
 
-	// Return just the CID, without the leading "/ipfs/" prefix:
-	return ipfsPath.Cid().String(), nil
+	// There's a delay between calling Unixfs().Add(...) and the file being
+	// added to the ipfs network. We need to wait for the file to be added
+	// before we can return the ipfs path:
+	cid := ipfsPath.Cid().String()
+	for {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+
+		// check if the file is available:
+		ok, err := cl.HasCID(ctx, cid)
+		if err != nil {
+			return "", fmt.Errorf("failed to check if uploaded cid '%s' is available yet: %w", cid, err)
+		}
+		if ok {
+			break
+		}
+	}
+
+	return cid, nil
 }
 
 type IPLDType int
