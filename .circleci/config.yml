@@ -308,14 +308,16 @@ production: # This workflow will only run on tags (specifically starting with 'v
   jobs:
   - build:
       name: build-<< matrix.target_os >>-<< matrix.target_arch >>
-      matrix: &matrix-production
+      matrix: 
+        &matrix-production
         parameters:
           target_os: ["linux", "darwin"]
           target_arch: ["amd64", "arm64"]
         exclude:
           - target_os: "linux"
             target_arch: "arm64"
-      filters: &filters-production # this yaml anchor is setting these values to "filters-filters-production"
+      filters: 
+        &filters-production # this yaml anchor is setting these values to "filters-filters-production"
         branches:
           only: /^main$/
         tags:
