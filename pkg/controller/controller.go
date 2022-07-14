@@ -40,7 +40,6 @@ func NewController(
 	if err != nil {
 		return nil, err
 	}
-
 	ctrl := &Controller{
 		cm:              cm,
 		id:              nodeID,

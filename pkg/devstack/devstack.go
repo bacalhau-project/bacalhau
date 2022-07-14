@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
@@ -31,6 +32,8 @@ type DevStackNode struct {
 	ComputeNode   *computenode.ComputeNode
 	RequesterNode *requesternode.RequesterNode
 	Transport     *libp2p.LibP2PTransport
+	Controller    *controller.Controller
+	Datastore     datastore.Datastore
 
 	IpfsNode   *ipfs.Node
 	IpfsClient *ipfs.Client
@@ -107,12 +110,11 @@ func NewDevStack(
 		libp2pPeer := ""
 
 		if len(nodes) > 0 {
-			var libp2pHostID string
 			// connect the libp2p scheduler node
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostID, err = firstNode.Transport.HostID(ctx)
+			libp2pHostID, err := firstNode.Transport.HostID(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +129,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		ctrl, err := controller.NewController(
+		controller, err := controller.NewController(
 			cm,
 			inmemoryDatastore,
 			transport,
@@ -154,7 +156,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
-			ctrl,
+			controller,
 			verifiers,
 			requesternode.RequesterNodeConfig{},
 		)
@@ -167,7 +169,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
 			cm,
-			ctrl,
+			controller,
 			executors,
 			verifiers,
 			config,
@@ -185,7 +187,14 @@ func NewDevStack(
 			return nil, err
 		}
 
-		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort, transport)
+		apiServer := publicapi.NewServer(
+			"0.0.0.0",
+			apiPort,
+			controller,
+			func(ctx context.Context, path string) (string, error) {
+				return requesterNode.PinContext(path)
+			},
+		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope
 			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {

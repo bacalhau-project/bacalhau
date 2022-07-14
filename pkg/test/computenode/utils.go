@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -107,11 +109,6 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	err = ctrl.Start(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	return computeNode, requestorNode, ctrl, cm
 }
 
@@ -164,6 +161,17 @@ func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}
 	return res
+}
+
+// given a transport interface - run a job from start to end
+// basically acting as an "auto requestor" node
+// that will submit the job and then accept any bids
+// that come in (up until the concurrency)
+func RunJobViaRequestor(
+	requestor requesternode.RequesterNode,
+	job *executor.JobSpec,
+) error {
+	return nil
 }
 
 func RunJobGetStdout(

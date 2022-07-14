@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -30,35 +31,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ComputeNodeResourceLimitsSuite struct {
-	suite.Suite
-}
-
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestComputeNodeResourceLimitsSuite(t *testing.T) {
-	suite.Run(t, new(ComputeNodeResourceLimitsSuite))
-}
-
-// Before all suite
-func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
-
-}
-
-// Before each test
-func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
-}
-
-func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
-}
-
-func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
-
-}
-func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+func TestJobResourceLimits(t *testing.T) {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
+		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
@@ -222,7 +197,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		_, _, ctrl, cm := SetupTestNoop(
-			suite.T(),
+			t,
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
 					ResourceLimitTotal: testCase.totalLimits,
@@ -261,13 +236,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				[]string{},
 			)
 
-			require.NoError(suite.T(), err)
+			require.NoError(t, err)
 			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
 				ClientID: "123",
 				Spec:     spec,
 				Deal:     deal,
 			})
-			require.NoError(suite.T(), err)
+			require.NoError(t, err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
 			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
@@ -518,23 +493,23 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cm := system.NewCleanupManager()
 
 		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 		transport, err := inprocess.NewInprocessTransport()
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		datastore, err := inmemory.NewInMemoryDatastore()
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		ctrl, err := controller.NewController(cm, datastore, transport)
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
-		require.NoError(suite.T(), err)
+		require.NoError(t, err)
 
 		_, err = computenode.NewComputeNode(
 			cm,

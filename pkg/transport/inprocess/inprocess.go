@@ -15,6 +15,7 @@ import (
 type InProcessTransport struct {
 	id                 string
 	subscribeFunctions []transport.SubscribeFn
+	seenEvents         []executor.JobEvent
 	ctx                sync.Mutex
 }
 
@@ -51,6 +52,10 @@ func (t *InProcessTransport) HostID(ctx context.Context) (string, error) {
 	return t.id, nil
 }
 
+func (t *InProcessTransport) GetEvents() []executor.JobEvent {
+	return t.seenEvents
+}
+
 /*
 
   pub / sub
@@ -60,6 +65,7 @@ func (t *InProcessTransport) HostID(ctx context.Context) (string, error) {
 func (t *InProcessTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
 	t.ctx.Lock()
 	defer t.ctx.Unlock()
+	t.seenEvents = append(t.seenEvents, ev)
 	for _, fn := range t.subscribeFunctions {
 		go fn(ctx, ev)
 	}

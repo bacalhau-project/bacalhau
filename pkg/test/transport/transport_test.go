@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
@@ -99,9 +100,6 @@ func setupTest(t *testing.T) (
 	)
 	require.NoError(t, err)
 
-	err = ctrl.Start(context.Background())
-	require.NoError(t, err)
-
 	return transport, noopExecutor, noopVerifier, ctrl, cm
 }
 
@@ -111,11 +109,11 @@ func (suite *TransportSuite) TestTransportSanity() {
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 	_, err = computenode.NewComputeNode(
 		cm,
 		ctrl,
@@ -123,7 +121,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 	_, err = requesternode.NewRequesterNode(
 		cm,
 		ctrl,
@@ -135,7 +133,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 
 func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	ctx := context.Background()
-	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
+	_, noopExecutor, _, ctrl, cm := setupTest(t)
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -164,7 +162,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	}
 
 	jobSelected, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Second * 1)
 	require.Equal(suite.T(), 1, len(noopExecutor.Jobs))
@@ -173,7 +171,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 
 func (suite *TransportSuite) TestTransportEvents() {
 	ctx := context.Background()
-	transport, _, _, ctrl, cm := setupTest(suite.T())
+	transport, _, _, ctrl, cm := setupTest(t)
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -202,7 +200,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 	}
 
 	_, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{

@@ -89,8 +89,9 @@ func dockerExecutorStorageTest(
 		}
 
 		job := executor.Job{
-			ID:    "test-job",
-			Owner: "test-owner",
+			ID:              "test-job",
+			RequesterNodeID: "test-owner",
+			ClientID:        "test-client",
 			Spec: executor.JobSpec{
 				Engine:  executor.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
@@ -98,8 +99,7 @@ func dockerExecutorStorageTest(
 				Outputs: testCase.Outputs,
 			},
 			Deal: executor.JobDeal{
-				Concurrency:   TEST_NODE_COUNT,
-				AssignedNodes: []string{},
+				Concurrency: TEST_NODE_COUNT,
 			},
 			CreatedAt: time.Now(),
 		}
