@@ -32,24 +32,6 @@ jobs:
 
     steps:
       - checkout
-      - run:
-          name: Echos
-          command: |
-            echo "GOOS => $GOOS"
-            echo "GOARCH => $GOARCH"
-            echo "BRANCH => $CIRCLE_BRANCH"
-      - run:
-          name: Install Go
-          command: |
-            curl -s -L -O "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
-            rm -rf /usr/local && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
-            export PATH=$PATH:/usr/local/go/bin
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get ./...
 
       - run:
           name: Install IPFS
