@@ -27,8 +27,6 @@ import (
 //   context mounted in
 
 func TestPythonWasmVolumes(t *testing.T) {
-	time.Sleep(time.Second * 5)
-
 	nodeCount := 1
 	inputPath := "/input"
 	outputPath := "/output"
