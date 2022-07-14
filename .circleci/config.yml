@@ -186,12 +186,21 @@ jobs:
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
-            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
             rm dist/.keep           # Need to remove this file so it's not persisted to github
+            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
+            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+            source /tmp/packagevars
             cp $ARTIFACT_DIR/*.tar.gz dist/
             cp $ARTIFACT_DIR/*.sha256 dist/
             find dist/
