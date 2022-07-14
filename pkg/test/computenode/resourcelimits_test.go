@@ -118,8 +118,8 @@ func TestTotalResourceLimits(t *testing.T) {
 			noop_executor.ExecutorConfig{
 
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					JobHandler:    &jobHandler,
-					GetVolumeSize: &getVolumeSizeHandler,
+					JobHandler:    jobHandler,
+					GetVolumeSize: getVolumeSizeHandler,
 				},
 			},
 		)
