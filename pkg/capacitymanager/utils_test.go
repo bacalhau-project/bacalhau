@@ -100,10 +100,13 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 	}
 
 	for _, test := range tests {
-		converted := ParseResourceUsageConfig(test.input)
-		require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
-		require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
-		require.Equal(suite.T(), converted.GPU, test.expected.GPU, "GPU is incorrect")
+
+		t.Run(test.name, func(t *testing.T) {
+			converted := ParseResourceUsageConfig(test.input)
+			require.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
+			require.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
+		})
+
 	}
 
 }
@@ -123,10 +126,14 @@ func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
 	}
 
 	for _, test := range tests {
-		converted, err := getResourceUsageConfig(test.input)
-		require.NoError(t, err)
-		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
-		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+
+		t.Run(test.name, func(t *testing.T) {
+			converted, err := getResourceUsageConfig(test.input)
+			require.NoError(t, err)
+			require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+			require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+		})
+
 	}
 
 }
@@ -175,16 +182,18 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	}
 
 	for _, test := range tests {
-		resources, err := getSystemResources(test.input)
 
-		if test.shouldError {
-			require.Error(suite.T(), err, "an error was expected")
-		} else {
-			require.NoError(suite.T(), err, "an error was not expected")
-			require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
-			require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
-			require.Equal(suite.T(), test.expected.GPU, resources.GPU, "GPU is incorrect")
-		}
+		t.Run(test.name, func(t *testing.T) {
+			resources, err := getSystemResources(test.input)
+
+			if test.shouldError {
+				require.Error(t, err, "an error was expected")
+			} else {
+				require.NoError(t, err, "an error was not expected")
+				require.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
+				require.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
+			}
+		})
 
 	}
 }

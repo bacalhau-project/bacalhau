@@ -29,6 +29,7 @@ func getResourcesArray(data [][]string) []ResourceUsageConfig {
 
 func TestConstructionErrors(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
+	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
 
 	testCases := []struct {
 		name        string
@@ -108,6 +109,7 @@ func TestConstructionErrors(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
+	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
 
 	testCases := []struct {
 		name           string
@@ -207,6 +209,7 @@ func TestFilter(t *testing.T) {
 
 func TestGetNextItems(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
+	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
 
 	// this means we can test "long lived" jobs that use resources
 	// for longer than other jobs
