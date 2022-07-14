@@ -320,8 +320,6 @@ production: # This workflow will only run on tags (specifically starting with 'v
         &filters-production # this yaml anchor is setting these values to "filters-filters-production"
         branches:
           only: /^main$/
-        tags:
-          only: /^v*/
   - build_release:
       name: build-release-<< matrix.target_os >>-<< matrix.target_arch >>
       requires:
