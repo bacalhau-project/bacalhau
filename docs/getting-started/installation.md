@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Installation' sidebar_position: 2
+sidebar_label: 'Installation' sidebar_position: 1
 ---
 
 # Getting Started with the Public Bacalhau Network
