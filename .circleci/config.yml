@@ -265,9 +265,6 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
-            exclude:
-              - target_os: "linux"
-                target_arch: "arm64"
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
@@ -317,6 +314,14 @@ workflows:
           filters:
             <<: *filters_tags_only
       - build-release:
+          name: build-release-linux-arm64
+          target_os: linux
+          target_arch: arm64
+          requires:
+            - build-linux-arm64
+          filters:
+            <<: *filters_tags_only
+      - build-release:
           name: build-release-darwin-amd64
           target_os: darwin
           target_arch: amd64
@@ -336,6 +341,7 @@ workflows:
           name: create-release-<< pipeline.git.tag >>
           requires:
             - build-release-linux-amd64
+            - build-release-linux-arm64
             - build-release-darwin-amd64
             - build-release-darwin-arm64
           filters:
