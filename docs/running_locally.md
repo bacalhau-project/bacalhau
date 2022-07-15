@@ -97,8 +97,7 @@ Each node has it's own `--api-port` value.  This means you can use the `go run .
 For example - to view the current job list from the perspective of only one of the 3 nodes:
 
 ```bash
-# Note: replace 12345 this with the correct port from the output
-go run . --api-port=$API_PORT_0 --api-host=localhost list
+go run . docker run --api-port=$API_PORT_0 --api-host=localhost list
 ```
 
 ## Submit a simple job
