@@ -148,7 +148,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)
 
-	outputPath := filepath.Join(outputDir, state.ResultsID)
+	outputPath = filepath.Join(outputDir, state.ResultsID)
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
 	require.NoError(t, err)
 
