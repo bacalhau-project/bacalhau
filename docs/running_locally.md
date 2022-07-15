@@ -91,7 +91,7 @@ Each Bacalhau node has it's own `--api-port` value.  This means you can use the 
 For example - to view the current job list from the perspective of only one of the 3 nodes:
 
 ```bash
-go run . docker run --api-port=$API_PORT_0 --api-host=localhost list
+go run . --api-port=$API_PORT_0 --api-host=localhost list
 ```
 
 ## Submit a simple job
