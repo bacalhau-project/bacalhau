@@ -37,13 +37,14 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobVerifier, "verifier", "ipfs",
 		`What verification engine to use to run the job`,
 	)
+
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
 		`cid:path of the input data volumes`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&jobOutputVolumes, "output-volumes", "o", []string{},
-		`name:path of the output data volumes`,
+		&jobOutputVolumes, "output-volumes", "o", []string{"/output"},
+		`name:path of the output data volumes. Defaults to "/output"`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
@@ -76,7 +77,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
-		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
+		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, // nolint:lll // Documentation, ok if long.
 	)
 }
 
@@ -97,7 +98,6 @@ var dockerRunCmd = &cobra.Command{
 		jobLabels = []string{}
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
-
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
@@ -119,8 +119,9 @@ var dockerRunCmd = &cobra.Command{
 			return fmt.Errorf("could not continue with errors")
 		}
 
-		log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
-
+		if len(sanitizationMsgs) > 0 {
+			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
+		}
 		spec, deal, err := job.ConstructDockerJob(
 			engineType,
 			verifierType,
