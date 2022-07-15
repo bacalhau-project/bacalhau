@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -117,10 +118,13 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	ctx, span := newSpan(ctx, "Get")
 	defer span.End()
 
-	// If outputPath already exists as a directory, we download results to
-	// a new outputPath/cid directory instead to mimic `ipfs get`:
-	if s, err := os.Stat(outputPath); err == nil && s.IsDir() {
-		outputPath = fmt.Sprintf("%s/%s", outputPath, cid)
+	// Output path is required to not exist yet:
+	ok, err := system.PathExists(outputPath)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
 	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
@@ -128,7 +132,18 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
-	return files.WriteTo(node, outputPath)
+	baseDir := filepath.Dir(outputPath)
+	tmpPath := filepath.Join(baseDir, system.GetRandomString(10))
+	if err := files.WriteTo(node, tmpPath); err != nil {
+		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
+	}
+	defer os.RemoveAll(tmpPath)
+
+	if err := os.Rename(tmpPath, outputPath); err != nil {
+		return fmt.Errorf("failed to rename '%s' to '%s': %w", tmpPath, outputPath, err)
+	}
+
+	return nil
 }
 
 // Put uploads a file or directory to the ipfs network. Timeouts and
