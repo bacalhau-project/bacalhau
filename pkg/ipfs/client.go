@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
+	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	ft "github.com/ipfs/go-unixfs"
 	icore "github.com/ipfs/interface-go-ipfs-core"
@@ -195,27 +196,9 @@ func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
 
-	// Taken from go-ipfs/core/commands/files.go:
-	var nodeType IPLDType
-	switch n := node.(type) {
-	case *dag.ProtoNode:
-		d, err := ft.FSNodeFromBytes(n.Data())
-		if err != nil {
-			return nil, err
-		}
-
-		switch d.Type() {
-		case ft.TDirectory, ft.THAMTShard:
-			nodeType = IPLDDirectory
-		case ft.TFile, ft.TMetadata, ft.TRaw:
-			nodeType = IPLDFile
-		default:
-			return nil, fmt.Errorf("unrecognized node type: %s", d.Type())
-		}
-	case *dag.RawNode:
-		nodeType = IPLDFile
-	default:
-		return nil, fmt.Errorf("unrecognized node type: %T", node)
+	nodeType, err := getNodeType(node)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node type: %w", err)
 	}
 
 	return &StatResult{
@@ -275,6 +258,33 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func getNodeType(node ipld.Node) (IPLDType, error) {
+	// Taken from go-ipfs/core/commands/files.go:
+	var nodeType IPLDType
+	switch n := node.(type) {
+	case *dag.ProtoNode:
+		d, err := ft.FSNodeFromBytes(n.Data())
+		if err != nil {
+			return IPLDUnknown, err
+		}
+
+		switch d.Type() {
+		case ft.TDirectory, ft.THAMTShard:
+			nodeType = IPLDDirectory
+		case ft.TFile, ft.TMetadata, ft.TRaw:
+			nodeType = IPLDFile
+		default:
+			return IPLDUnknown, fmt.Errorf("unrecognized node type: %s", d.Type())
+		}
+	case *dag.RawNode:
+		nodeType = IPLDFile
+	default:
+		return IPLDUnknown, fmt.Errorf("unrecognized node type: %T", node)
+	}
+
+	return nodeType, nil
 }
 
 func newSpan(ctx context.Context, api string) (context.Context, trace.Span) {
