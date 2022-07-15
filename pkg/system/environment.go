@@ -32,7 +32,7 @@ var env Environment
 
 // Set the global environment cache:
 func init() { // nolint:gochecknoinits
-	env = Environment(os.Getenv("ENVIRONMENT"))
+	env = Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
 	if !env.IsKnown() {
 		// Log as debug since we don't want to spam CLI users:
 		log.Debug().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
