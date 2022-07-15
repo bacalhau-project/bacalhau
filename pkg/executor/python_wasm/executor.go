@@ -56,7 +56,6 @@ func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (
 	} else if job.Spec.Language.ProgramPath != "" {
 		// pass command through to node wasm wrapper
 		job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", job.Spec.Language.ProgramPath)}
-		// job.Spec.Docker.Entrypoint = []string{"tail", "-f", "/dev/null"}
 	}
 	job.Spec.Engine = executor.EngineDocker
 

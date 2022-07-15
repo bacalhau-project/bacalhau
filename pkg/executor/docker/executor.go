@@ -214,7 +214,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 		return "", err
 	}
 
-	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec)))
+	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) // nolint:gocritic
 
 	containerConfig := &container.Config{
 		Image:           j.Spec.Docker.Image,
