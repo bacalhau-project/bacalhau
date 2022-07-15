@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -115,10 +116,11 @@ open("%s/test.txt", "w").write(open("%s").read())
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(t, err)
 
-	err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
+	outputPath := filepath.Join(outputDir, state.ResultsID)
+	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
 	require.NoError(t, err)
 
-	filePath := fmt.Sprintf("%s/%s/output/test.txt", outputDir, state.ResultsID)
+	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 
