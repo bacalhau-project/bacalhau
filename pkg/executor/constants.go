@@ -168,7 +168,7 @@ func ParseJobStateType(str string) (JobStateType, error) {
 	}
 
 	return jobStateUnknown, fmt.Errorf(
-		"executor: unknown job event type '%s'", str)
+		"executor: unknown job typ type '%s'", str)
 }
 
 func JobStateTypes() []JobStateType {

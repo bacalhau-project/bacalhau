@@ -6,7 +6,7 @@ executors:
   linux:
     machine:
       image: ubuntu-2204:2022.04.2
-    resource_class: large
+    resource_class: xlarge
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -32,24 +32,6 @@ jobs:
 
     steps:
       - checkout
-      - run:
-          name: Echos
-          command: |
-            echo "GOOS => $GOOS"
-            echo "GOARCH => $GOARCH"
-            echo "BRANCH => $CIRCLE_BRANCH"
-      - run:
-          name: Install Go
-          command: |
-            curl -s -L -O "https://dl.google.com/go$GOVER.$GOOS-$GOARCH.tar.gz"
-            rm -rf /usr/local && tar -C /usr/local -xzf "go$GOVER.$GOOS-$GOARCH.tar.gz"
-            export PATH=$PATH:/usr/local/go/bin
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-      - run:
-          name: Install Dependencies
-          command: go get ./...
 
       - run:
           name: Install IPFS
@@ -74,10 +56,6 @@ jobs:
                   curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                   golangci-lint --version
 
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
       - when:
           condition:
             and:
@@ -172,46 +150,38 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
-  build-release:
-    environment:
-      GOOS: << parameters.target_os >>
-      GOARCH: << parameters.target_arch >>
-    executor: linux
-    parameters:
-      target_arch:
-        type: string
-        default: ""
-      target_os:
-        type: string
-        default: ""
-    steps:
-      - checkout
-      - run:
-          name: Build tarball
-          command: |
-            make build
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            rm dist/.keep                         # Need to remove this file so it's not persisted
-            cp $BINARY_TARBALL dist
-            cp $BINARY_TARBALL_SIGNATURE dist
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
-          # taken to be the root directory of the workspace.
-          root: .
-          # Must be relative path from root
-          paths:
-            - dist/*
   release:
     executor: linux
     steps:
       - checkout
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: .
+      - run:
+          name: Build tarballs
+          command: |
+            GOOS=linux GOARCH=amd64 make build
+            GOOS=linux GOARCH=arm64 make build
+            GOOS=darwin GOARCH=amd64 make build
+            GOOS=darwin GOARCH=arm64 make build
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            rm dist/.keep           # Need to remove this file so it's not persisted to github
+            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
+            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            find dist/
       - run:
           name: Install gh
           command: |
@@ -226,6 +196,7 @@ jobs:
           command: |
             TAG="<< pipeline.git.tag >>"
             echo "TAG = ${TAG}"
+            find dist/
             gh release upload $TAG dist/*
 
 # Invoke jobs via workflows
@@ -282,10 +253,8 @@ workflows:
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
-      - build:
-          name: build-linux-amd64
-          target_os: linux
-          target_arch: amd64
+      - release:
+          name: release-all-binaries
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -293,62 +262,3 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
-      - build:
-          name: build-linux-arm64
-          target_os: linux
-          target_arch: arm64
-          filters:
-            <<: *filters_tags_only # this is calling the previously set yaml anchor
-      - build:
-          name: build-darwin-amd64
-          target_os: darwin
-          target_arch: amd64
-          filters:
-            <<: *filters_tags_only # this is calling the previously set yaml anchor
-      - build:
-          name: build-darwin-arm64
-          target_os: darwin
-          target_arch: arm64
-          filters:
-            <<: *filters_tags_only # this is calling the previously set yaml anchor
-      - build-release:
-          name: build-release-linux-amd64
-          target_os: linux
-          target_arch: amd64
-          requires:
-            - build-linux-amd64
-          filters:
-            <<: *filters_tags_only
-      - build-release:
-          name: build-release-linux-arm64
-          target_os: linux
-          target_arch: arm64
-          requires:
-            - build-linux-arm64
-          filters:
-            <<: *filters_tags_only
-      - build-release:
-          name: build-release-darwin-amd64
-          target_os: darwin
-          target_arch: amd64
-          requires:
-            - build-darwin-amd64
-          filters:
-            <<: *filters_tags_only
-      - build-release:
-          name: build-release-darwin-arm64
-          target_os: darwin
-          target_arch: arm64
-          requires:
-            - build-darwin-arm64
-          filters:
-            <<: *filters_tags_only
-      - release:
-          name: create-release-<< pipeline.git.tag >>
-          requires:
-            - build-release-linux-amd64
-            - build-release-linux-arm64
-            - build-release-darwin-amd64
-            - build-release-darwin-arm64
-          filters:
-            <<: *filters_tags_only
