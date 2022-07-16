@@ -9,7 +9,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/google/uuid v1.3.0
-	github.com/ipfs/go-ipfs v0.13.0
+	github.com/ipfs/go-ipfs v0.13.1
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipfs-http-client v0.4.0
 	github.com/ipfs/go-ipld-format v0.4.0
@@ -147,8 +147,8 @@ require (
 	github.com/ipfs/go-unixfsnode v1.4.0 // indirect
 	github.com/ipfs/go-verifcid v0.0.1 // indirect
 	github.com/ipfs/tar-utils v0.0.2 // indirect
-	github.com/ipld/go-car v0.3.2 // indirect
-	github.com/ipld/go-car/v2 v2.1.1 // indirect
+	github.com/ipld/go-car v0.4.0 // indirect
+	github.com/ipld/go-car/v2 v2.4.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.4.0 // indirect
 	github.com/ipld/go-ipld-prime v0.16.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
