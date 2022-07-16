@@ -14,6 +14,7 @@ import (
 
 var jobEngine string
 var jobVerifier string
+var jobInputs []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
@@ -37,14 +38,18 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobVerifier, "verifier", "ipfs",
 		`What verification engine to use to run the job`,
 	)
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&jobInputs, "inputs", "i", []string{},
+		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+	)
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
-		`cid:path of the input data volumes`,
+		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&jobOutputVolumes, "output-volumes", "o", []string{"/output"},
-		`name:path of the output data volumes. Defaults to "/output"`,
+		&jobOutputVolumes, "output-volumes", "o", []string{"\"/outputs\""},
+		`name:path of the output data volumes.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
@@ -93,9 +98,15 @@ var dockerRunCmd = &cobra.Command{
 	PostRun: func(cmd *cobra.Command, args []string) {
 		// Can't think of any reason we'd want these to persist.
 		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
-		// but potentially cleaner than making dockerRun or jobsLabel public, which would
+		// but potentially cleaner than making things public, which would
 		// be the other way to attack this.)
+		jobInputs = []string{}
+		jobInputVolumes = []string{}
+		jobOutputVolumes = []string{}
+		jobEnv = []string{}
+
 		jobLabels = []string{}
+
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
@@ -110,6 +121,10 @@ var dockerRunCmd = &cobra.Command{
 		verifierType, err := verifier.ParseVerifierType(jobVerifier)
 		if err != nil {
 			return err
+		}
+
+		for _, i := range jobInputs {
+			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
 		// No error checking, because it will never be an error (for now)
