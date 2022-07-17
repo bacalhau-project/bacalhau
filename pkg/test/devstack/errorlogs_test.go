@@ -113,14 +113,14 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	outputPath := filepath.Join(outputDir, state.ResultsID)
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	stderrBytes, err := os.ReadFile(fmt.Sprintf("%s/stderr", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	exitCodeBytes, err := os.ReadFile(fmt.Sprintf("%s/exitCode", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	require.Equal(suite.T(), stdout, strings.TrimSpace(string(stdoutBytes)))
 	require.Equal(suite.T(), stderr, strings.TrimSpace(string(stderrBytes)))

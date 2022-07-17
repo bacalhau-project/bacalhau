@@ -256,7 +256,7 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			stack.Nodes[nodeIndex].APIServer.Host,
 			nodeIndex,
 			stack.Nodes[nodeIndex].APIServer.Port,
-			nodeIndex,
+			node.IpfsNode.APIPort,
 			node.IpfsNode.APIPort,
 		)
 	}
