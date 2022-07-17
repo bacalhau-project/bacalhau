@@ -50,7 +50,7 @@ var getCmd = &cobra.Command{
 			return fmt.Errorf("job not found")
 		}
 
-		resultCIDs := map[string]bool{}
+		var resultCIDs map[string]bool
 		for _, jobState := range job.State {
 			if jobState.ResultsID != "" {
 				resultCIDs[jobState.ResultsID] = true
