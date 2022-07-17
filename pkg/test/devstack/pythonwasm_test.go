@@ -148,7 +148,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
 	require.NoError(suite.T(), err)
 
-	filePath := fmt.Sprintf("%s/%s/output/test.txt", outputDir, state.ResultsID)
+	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(suite.T(), err)
 
