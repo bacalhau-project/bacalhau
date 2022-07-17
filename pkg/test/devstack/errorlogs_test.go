@@ -109,20 +109,20 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	require.NoError(suite.T(), err)
 
 	node, err := stack.GetNode(ctx, nodeIDs[0])
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	outputPath := filepath.Join(outputDir, state.ResultsID)
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	stderrBytes, err := os.ReadFile(fmt.Sprintf("%s/stderr", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	exitCodeBytes, err := os.ReadFile(fmt.Sprintf("%s/exitCode", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
-	require.Equal(t, stdout, strings.TrimSpace(string(stdoutBytes)))
-	require.Equal(t, stderr, strings.TrimSpace(string(stderrBytes)))
-	require.Equal(t, exitCode, strings.TrimSpace(string(exitCodeBytes)))
+	require.Equal(suite.T(), stdout, strings.TrimSpace(string(stdoutBytes)))
+	require.Equal(suite.T(), stderr, strings.TrimSpace(string(stderrBytes)))
+	require.Equal(suite.T(), exitCode, strings.TrimSpace(string(exitCodeBytes)))
 }

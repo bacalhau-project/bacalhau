@@ -74,10 +74,10 @@ func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 
 	outputPath := filepath.Join(outputDir, resultHash)
 	err = verifier.IPFSClient.Get(ctx, resultHash, outputPath)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	outputContent, err := os.ReadFile(outputPath + "/file.txt")
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	require.Equal(suite.T(), fixtureContent, string(outputContent))
 }
