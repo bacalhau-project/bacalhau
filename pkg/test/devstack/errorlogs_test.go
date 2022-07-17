@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -110,15 +111,16 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	node, err := stack.GetNode(ctx, nodeIDs[0])
 	require.NoError(suite.T(), err)
 
-	err = node.IpfsClient.Get(ctx, state.ResultsID, outputDir)
-	require.NoError(suite.T(), err)
+	outputPath := filepath.Join(outputDir, state.ResultsID)
+	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
+	require.NoError(t, err)
 
-	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/%s/stdout", outputDir, state.ResultsID))
-	require.NoError(suite.T(), err)
-	stderrBytes, err := os.ReadFile(fmt.Sprintf("%s/%s/stderr", outputDir, state.ResultsID))
-	require.NoError(suite.T(), err)
-	exitCodeBytes, err := os.ReadFile(fmt.Sprintf("%s/%s/exitCode", outputDir, state.ResultsID))
-	require.NoError(suite.T(), err)
+	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
+	require.NoError(t, err)
+	stderrBytes, err := os.ReadFile(fmt.Sprintf("%s/stderr", outputPath))
+	require.NoError(t, err)
+	exitCodeBytes, err := os.ReadFile(fmt.Sprintf("%s/exitCode", outputPath))
+	require.NoError(t, err)
 
 	require.Equal(suite.T(), stdout, strings.TrimSpace(string(stdoutBytes)))
 	require.Equal(suite.T(), stderr, strings.TrimSpace(string(stderrBytes)))
