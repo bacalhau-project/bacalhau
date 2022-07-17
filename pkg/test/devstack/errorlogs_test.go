@@ -45,6 +45,7 @@ func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {
 
 }
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
+	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
 
 	stdout := "apples"
 	stderr := "oranges"

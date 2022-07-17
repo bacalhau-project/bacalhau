@@ -57,6 +57,8 @@ func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
 //   context mounted in
 
 func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
+
 	nodeCount := 1
 	inputPath := "/input"
 	outputPath := "/output"

@@ -41,8 +41,7 @@ func (suite *VerifierIPFSSuite) TearDownAllSuite() {
 
 func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 	// TODO: #388 This test seems broken due to existence of output directory
-
-	suite.T().Skip("Unclear why ipfsClient.Get needs directory not to exist. Do we need to give it a prefix when testing?")
+	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
 
 	ctx := context.Background()
 	stack, cm := SetupTest(suite.T(), 1)
