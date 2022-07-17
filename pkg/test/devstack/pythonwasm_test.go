@@ -150,7 +150,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 
 	outputPath = filepath.Join(outputDir, state.ResultsID)
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
-	require.NoError(suite.T(), err)
+	require.NoError(t, err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
 	outputData, err := os.ReadFile(filePath)

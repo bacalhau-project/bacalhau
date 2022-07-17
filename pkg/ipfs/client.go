@@ -133,7 +133,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	}
 
 	baseDir := filepath.Dir(outputPath)
-	tmpPath := filepath.Join(baseDir, system.GetRandomString(10)) // nolint:gomnd // magic number ok
+	tmpPath := filepath.Join(baseDir, system.GetRandomString(10))
 	if err := files.WriteTo(node, tmpPath); err != nil {
 		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
 	}
