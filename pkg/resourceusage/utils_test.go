@@ -8,8 +8,37 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/pbnjay/memory"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
+// Define the suite, and absorb the built-in basic suite
+// functionality from testify - including a T() method which
+// returns the current testing context
+type ResourceUsageUtilsSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestResourceUsageUtilsSuite(t *testing.T) {
+	suite.Run(t, new(ResourceUsageUtilsSuite))
+}
+
+// Before all suite
+func (suite *ResourceUsageUtilsSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *ResourceUsageUtilsSuite) SetupTest() {
+}
+
+func (suite *ResourceUsageUtilsSuite) TearDownTest() {
+}
+
+func (suite *ResourceUsageUtilsSuite) TearDownAllSuite() {
+
+}
 func c(cpu, mem string) ResourceUsageConfig {
 	return ResourceUsageConfig{
 		CPU:    cpu,
@@ -24,7 +53,7 @@ func d(cpu float64, mem uint64) ResourceUsageData {
 	}
 }
 
-func TestParseResourceUsageConfig(t *testing.T) {
+func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 
 	tests := []struct {
 		name     string
@@ -60,13 +89,13 @@ func TestParseResourceUsageConfig(t *testing.T) {
 
 	for _, test := range tests {
 		converted := ParseResourceUsageConfig(test.input)
-		require.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
-		require.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
+		require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
+		require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
 	}
 
 }
 
-func TestGetResourceUsageConfig(t *testing.T) {
+func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
 
 	tests := []struct {
 		name     string
@@ -82,14 +111,14 @@ func TestGetResourceUsageConfig(t *testing.T) {
 
 	for _, test := range tests {
 		converted, err := GetResourceUsageConfig(test.input)
-		require.NoError(t, err)
-		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
-		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+		require.NoError(suite.T(), err)
+		require.Equal(suite.T(), test.expected.CPU, converted.CPU, "cpu is incorrect")
+		require.Equal(suite.T(), test.expected.Memory, converted.Memory, "memory is incorrect")
 	}
 
 }
 
-func TestSystemResources(t *testing.T) {
+func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 
 	tests := []struct {
 		name        string
@@ -131,11 +160,11 @@ func TestSystemResources(t *testing.T) {
 		resources, err := GetSystemResources(test.input)
 
 		if test.shouldError {
-			require.Error(t, err, "an error was expected")
+			require.Error(suite.T(), err, "an error was expected")
 		} else {
-			require.NoError(t, err, "an error was not expected")
-			require.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
-			require.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
+			require.NoError(suite.T(), err, "an error was not expected")
+			require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
+			require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
 		}
 
 	}

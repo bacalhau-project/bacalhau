@@ -4,9 +4,37 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestCleanupManager(t *testing.T) {
+type SystemCleanupSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestSystemCleanupSuite(t *testing.T) {
+	suite.Run(t, new(SystemCleanupSuite))
+}
+
+// Before all suite
+func (suite *SystemCleanupSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *SystemCleanupSuite) SetupTest() {
+	InitConfigForTesting(suite.T())
+}
+
+func (suite *SystemCleanupSuite) TearDownTest() {
+}
+
+func (suite *SystemCleanupSuite) TearDownAllSuite() {
+
+}
+
+func (suite *SystemCleanupSuite) TestCleanupManager() {
 	clean := false
 
 	cm := NewCleanupManager()
@@ -16,5 +44,5 @@ func TestCleanupManager(t *testing.T) {
 	})
 
 	cm.Cleanup()
-	require.True(t, clean, "cleanup handler failed to run registered functions")
+	require.True(suite.T(), clean, "cleanup handler failed to run registered functions")
 }

@@ -162,6 +162,84 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1},
+	}
+
+	for i, tc := range tests {
+		type (
+			OutputVolumes struct {
+				name string
+				path string
+			}
+		)
+
+		testCids := []struct {
+			outputVolumes []OutputVolumes
+			err           error
+		}{
+			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, err: nil}, // Flag not provided
+		}
+
+		_ = i
+		_ = tc
+		_ = testCids
+
+		// for _, tcids := range testCids {
+		// 	func() {
+		// 		ctx := context.Background()
+		// 		c, cm := publicapi.SetupTests(suite.T())
+		// 		defer cm.Cleanup()
+
+		// parsedBasedURI, _ := url.Parse(c.BaseURI)
+		// host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+		// flagsArray := []string{"docker", "run",
+		// 	"--api-host", host,
+		// 	"--api-port", port}
+		// for _, ov := range tcids.outputVolumes {
+		// 	ovString := iv.cid
+		// 	if iv.path != "" {
+		// 		ivString += fmt.Sprintf(":%s", iv.path)
+		// 	}
+		// 	flagsArray = append(flagsArray, iv.flag, ivString)
+		// }
+		// flagsArray = append(flagsArray, "ubuntu cat /inputs/foo.txt") // This doesn't exist, but shouldn't error
+
+		// _, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+		// 	flagsArray...,
+		// )
+		// require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+
+		// job, _, err := c.Get(ctx, strings.TrimSpace(out))
+		// require.NoError(suite.T(), err)
+		// require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+
+		// require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.Inputs), "Number of job inputs != # of test inputs .")
+
+		// // Need to do the below because ordering is not guaranteed
+		// for _, tcidIV := range tcids.inputVolumes {
+		// 	testCIDinJobInputs := false
+		// 	for _, jobInput := range job.Spec.Inputs {
+		// 		if tcidIV.cid == jobInput.Cid {
+		// 			testCIDinJobInputs = true
+		// 			testPath := "/inputs"
+		// 			if tcidIV.path != "" {
+		// 				testPath = tcidIV.path
+		// 			}
+		// 			require.Equal(suite.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
+		// 			break
+		// 		}
+		// 	}
+		// 	require.True(suite.T(), testCIDinJobInputs, "Test CID not in job inputs.")
+		// }
+		// }()
+		// }
+	}
+}
+
 func (suite *DockerRunSuite) TestRun_CreatedAt() {
 	tests := []struct {
 		numberOfJobs int

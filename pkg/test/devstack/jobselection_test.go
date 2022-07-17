@@ -9,16 +9,45 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+type DevstackJobSelectionSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestDevstackJobSelectionSuite(t *testing.T) {
+	suite.Run(t, new(DevstackJobSelectionSuite))
+}
+
+// Before all suite
+func (suite *DevstackJobSelectionSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *DevstackJobSelectionSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *DevstackJobSelectionSuite) TearDownTest() {
+}
+
+func (suite *DevstackJobSelectionSuite) TearDownAllSuite() {
+
+}
 
 // re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
-func TestSelectAllJobs(t *testing.T) {
+func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
-	t.Skip("https://github.com/filecoin-project/bacalhau/issues/361")
+	suite.T().Skip("https://github.com/filecoin-project/bacalhau/issues/361")
 
 	type TestCase struct {
 		name            string
@@ -31,14 +60,14 @@ func TestSelectAllJobs(t *testing.T) {
 	runTest := func(testCase TestCase) {
 		ctx, span := newSpan(testCase.name)
 		defer span.End()
-		scenario := scenario.CatFileToStdout(t)
-		stack, cm := SetupTest(t, testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+		scenario := scenario.CatFileToStdout(suite.T())
+		stack, cm := SetupTest(suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
 		defer TeardownTest(stack, cm)
 
 		nodeIds, err := stack.GetNodeIds()
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
 
@@ -57,7 +86,7 @@ func TestSelectAllJobs(t *testing.T) {
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		// wait for the job to complete across all nodes
 		err = stack.WaitForJobWithLogs(ctx, submittedJob.ID, true,
@@ -69,7 +98,7 @@ func TestSelectAllJobs(t *testing.T) {
 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),
 		)
 
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 	}
 
 	for _, testCase := range []TestCase{
