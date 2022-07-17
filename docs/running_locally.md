@@ -15,7 +15,7 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
 
 ## (Optional) Building Bacalhau from source
 
-```
+```bash
 sudo apt-get update && sudo apt-get install -y make gcc zip
 sudo snap install go --classic
 wget https://github.com/filecoin-project/bacalhau/archive/refs/heads/main.zip
@@ -106,7 +106,7 @@ go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
 
 After a short while - the job should be in `complete` state.
 
-```
+```bash
 kai@xwing:~/projects/bacalhau$ go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
  ID        JOB                                INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE     RESULT                                               
  22b53c20  docker ubuntu grep kiwi /file.txt       1        0            1  QmedX1zE  complete  /ipfs/QmYLFuXZv8h1Bc1cArbs5VXrE4o5hE4tVh55iqtjQWoDtW 
