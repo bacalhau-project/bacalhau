@@ -24,8 +24,6 @@ var jobMemory string
 var skipSyntaxChecking bool
 var jobLabels []string
 
-var flagClearLabels bool
-
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
@@ -48,8 +46,8 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
-		&jobOutputVolumes, "output-volumes", "o", []string{"\"/outputs\""},
-		`name:path of the output data volumes.`,
+		&jobOutputVolumes, "output-volumes", "o", []string{},
+		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
@@ -71,14 +69,6 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-
-	dockerRunCmd.PersistentFlags().BoolVar(&flagClearLabels,
-		"clear-labels", false,
-		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
-	)
-	if err := dockerRunCmd.PersistentFlags().MarkHidden("clear-labels"); err != nil {
-		log.Debug().Msgf("error hiding test flags: %v", err)
-	}
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
@@ -126,6 +116,8 @@ var dockerRunCmd = &cobra.Command{
 		for _, i := range jobInputs {
 			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
+
+		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
 
 		// No error checking, because it will never be an error (for now)
 		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)

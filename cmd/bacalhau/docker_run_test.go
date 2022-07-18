@@ -179,64 +179,87 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 
 		testCids := []struct {
 			outputVolumes []OutputVolumes
-			err           error
+			correctLength int
+			err           string
 		}{
-			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, err: nil}, // Flag not provided
+			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 1, err: ""},                                                                 // Flag not provided
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}}, correctLength: 2, err: ""},                                              // Correct output flag
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}, {name: "OUTPUT_NAME_2", path: "/outputs_2"}}, correctLength: 3, err: ""}, // 2 correct output flags
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: ""}}, correctLength: 0, err: "invalid output volume"},                                 // OV requested but no path (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs"}}, correctLength: 0, err: "invalid output volumes"},                                   // OV requested but no name (should error)
 		}
 
-		_ = i
-		_ = tc
-		_ = testCids
+		for _, tcids := range testCids {
+			func() {
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
 
-		// for _, tcids := range testCids {
-		// 	func() {
-		// 		ctx := context.Background()
-		// 		c, cm := publicapi.SetupTests(suite.T())
-		// 		defer cm.Cleanup()
+				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				flagsArray := []string{"docker", "run",
+					"--api-host", host,
+					"--api-port", port}
+				ovString := ""
+				for _, ov := range tcids.outputVolumes {
+					if ov.name != "" {
+						ovString = ov.name
+					}
+					if ov.path != "" {
+						ovString += fmt.Sprintf(":%s", ov.path)
+					}
+					if ovString != "" {
+						flagsArray = append(flagsArray, "-o", ovString)
+					}
+				}
+				flagsArray = append(flagsArray, "ubuntu echo 'hello world'")
 
-		// parsedBasedURI, _ := url.Parse(c.BaseURI)
-		// host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-		// flagsArray := []string{"docker", "run",
-		// 	"--api-host", host,
-		// 	"--api-port", port}
-		// for _, ov := range tcids.outputVolumes {
-		// 	ovString := iv.cid
-		// 	if iv.path != "" {
-		// 		ivString += fmt.Sprintf(":%s", iv.path)
-		// 	}
-		// 	flagsArray = append(flagsArray, iv.flag, ivString)
-		// }
-		// flagsArray = append(flagsArray, "ubuntu cat /inputs/foo.txt") // This doesn't exist, but shouldn't error
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+					flagsArray...,
+				)
+				if tcids.err != "" {
+					require.Error(suite.T(), err, "Expected an error, but none provided.")
+					require.Contains(suite.T(), err.Error(), "invalid output volume", "Missed detection of invalid output volume.")
+					return // Go to next in loop
+				}
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-		// _, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
-		// 	flagsArray...,
-		// )
-		// require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				require.NoError(suite.T(), err)
+				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-		// job, _, err := c.Get(ctx, strings.TrimSpace(out))
-		// require.NoError(suite.T(), err)
-		// require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.Equal(suite.T(), tcids.correctLength, len(job.Spec.Outputs), "Number of job outputs != correct number.")
 
-		// require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.Inputs), "Number of job inputs != # of test inputs .")
+				// Need to do the below because ordering is not guaranteed
+				for _, tcidOV := range tcids.outputVolumes {
+					testNameinJobOutputs := false
+					testPathinJobOutputs := false
+					for _, jobOutput := range job.Spec.Outputs {
+						if tcidOV.name == "" {
+							if jobOutput.Name == "outputs" {
+								testNameinJobOutputs = true
+							}
+						} else {
+							if tcidOV.name == jobOutput.Name {
+								testNameinJobOutputs = true
+							}
+						}
 
-		// // Need to do the below because ordering is not guaranteed
-		// for _, tcidIV := range tcids.inputVolumes {
-		// 	testCIDinJobInputs := false
-		// 	for _, jobInput := range job.Spec.Inputs {
-		// 		if tcidIV.cid == jobInput.Cid {
-		// 			testCIDinJobInputs = true
-		// 			testPath := "/inputs"
-		// 			if tcidIV.path != "" {
-		// 				testPath = tcidIV.path
-		// 			}
-		// 			require.Equal(suite.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
-		// 			break
-		// 		}
-		// 	}
-		// 	require.True(suite.T(), testCIDinJobInputs, "Test CID not in job inputs.")
-		// }
-		// }()
-		// }
+						if tcidOV.path == "" {
+							if jobOutput.Path == "/outputs" {
+								testPathinJobOutputs = true
+							}
+						} else {
+							if tcidOV.path == jobOutput.Path {
+								testPathinJobOutputs = true
+							}
+						}
+					}
+					require.True(suite.T(), testNameinJobOutputs, "Test OutputVolume Name not in job output names.")
+					require.True(suite.T(), testPathinJobOutputs, "Test OutputVolume Path not in job output paths.")
+				}
+			}()
+		}
 	}
 }
 
