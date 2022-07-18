@@ -128,8 +128,8 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		// No error checking, because it will never be an error (for now)
-		sanitizationMsgs, sanitzationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
-		if sanitzationFatal {
+		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
+		if sanitizationFatal {
 			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
 			return fmt.Errorf("could not continue with errors")
 		}
