@@ -123,8 +123,8 @@ RESULT_PATH=/ipfs/QmYLFuXZv8h1Bc1cArbs5VXrE4o5hE4tVh55iqtjQWoDtW
 Now we can view the results:
 
 ```bash
-IPFS_PATH=$IPFS_PATH_0 ipfs ls $RESULT_PATH
-IPFS_PATH=$IPFS_PATH_0 ipfs cat $RESULT_PATH/stdout
+ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_0} ls $RESULT_PATH
+ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_0} cat $RESULT_PATH/stdout
 ```
 
 ## run 3 node job
@@ -143,4 +143,12 @@ Then we submit the job but with `--concurrency` setting:
 ```bash
 go run . --api-port=$API_PORT_0 --api-host=localhost docker run --concurrency=3 -v $cid:/file.txt ubuntu grep kiwi /file.txt
 go run . --api-port=$API_PORT_0 --api-host=localhost list --wide
+```
+
+And you can see the results from each node using the same method as before:
+
+```bash
+ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_0} cat $RESULT_PATH/stdout
+ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_1} cat $RESULT_PATH/stdout
+ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_2} cat $RESULT_PATH/stdout
 ```
