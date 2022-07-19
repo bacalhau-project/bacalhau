@@ -9,8 +9,8 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
