@@ -17,7 +17,6 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/jedib0t/go-pretty/v6 v6.3.5
-	github.com/jinzhu/copier v0.3.5
 	github.com/libp2p/go-libp2p v0.19.4
 	github.com/libp2p/go-libp2p-core v0.15.1
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
