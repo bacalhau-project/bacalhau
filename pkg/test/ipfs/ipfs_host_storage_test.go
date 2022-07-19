@@ -10,6 +10,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
