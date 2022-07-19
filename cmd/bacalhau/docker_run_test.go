@@ -31,6 +31,12 @@ type DockerRunSuite struct {
 	rootCmd *cobra.Command
 }
 
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestDockerRunSuite(t *testing.T) {
+	suite.Run(t, new(DockerRunSuite))
+}
+
 // Before all suite
 func (suite *DockerRunSuite) SetupAllSuite() {
 }
@@ -69,7 +75,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
@@ -182,11 +188,11 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 			correctLength int
 			err           string
 		}{
-			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 1, err: ""},                                                                 // Flag not provided
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}}, correctLength: 2, err: ""},                                              // Correct output flag
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}, {name: "OUTPUT_NAME_2", path: "/outputs_2"}}, correctLength: 3, err: ""}, // 2 correct output flags
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: ""}}, correctLength: 0, err: "invalid output volume"},                                 // OV requested but no path (should error)
-			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs"}}, correctLength: 0, err: "invalid output volumes"},                                   // OV requested but no name (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 1, err: ""},                                                                     // Flag not provided
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs_1"}}, correctLength: 2, err: ""},                                                // Correct output flag
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volumes"},                                     // OV requested but no name (should error)
 		}
 
 		for _, tcids := range testCids {
@@ -284,7 +290,7 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
@@ -353,8 +359,6 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 				for _, label := range labelTest.Annotations {
 					args = append(args, "-l", label)
 				}
-
-				args = append(args, "--clear-labels")
 
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
 				args = append(args, fmt.Sprintf("ubuntu echo 'hello world - %s'", randNum.String()))
@@ -434,10 +438,4 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}
 		}()
 	}
-}
-
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestDockerRunSuite(t *testing.T) {
-	suite.Run(t, new(DockerRunSuite))
 }
