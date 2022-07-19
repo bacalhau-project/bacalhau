@@ -9,6 +9,23 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
+// return noop for all storage engines
+// func NewNoopStorageDrivers(
+// 	cm *system.CleanupManager,
+// 	config noop_storage.StorageConfig,
+// ) (map[executor.EngineType]executor.Executor, error) {
+// 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return map[executor.EngineType]executor.Executor{
+// 		executor.EngineDocker: noopExecutor,
+// 		executor.EngineNoop:   noopExecutor,
+// 	}, nil
+// }
+
 // return noop executors for all engines
 func NewNoopExecutors(
 	cm *system.CleanupManager,
