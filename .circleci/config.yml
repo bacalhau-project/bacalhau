@@ -29,6 +29,9 @@ jobs:
         type: string
       target_os:
         type: string
+      run_tests:
+        type: bool
+        default: true
 
     steps:
       - checkout
@@ -74,6 +77,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
+              - equal: ["run_tests", true]
           steps:
             - run:
                 name: Test
@@ -262,3 +266,22 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+
+  performance: # This workflow will run on all branches except 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux"]
+              target_arch: ["amd64"]
+              run_tests: [false]
+      - deploy:
+          name: deploy-development-cluster
+          requires:
+            - build-linux-amd64
+          rollout_stage: development
+          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
+          filters:
+            <<: *filters_dev_branches # this is calling the previously set yaml anchor
+
