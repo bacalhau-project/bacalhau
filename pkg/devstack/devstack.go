@@ -170,7 +170,8 @@ func NewDevStack(
 			return nil, err
 		}
 
-		go func(ctx context.Context) {
+		// TODO: #393 Why is ctx unused if it's passed in? Shouldn't cm do something with it?
+		go func(ctx context.Context) { //nolint:unparam // Ok to be unused?
 			var gerr error // don't capture outer scope
 			if gerr = system.ListenAndServeMetrics(cm, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
@@ -231,17 +232,8 @@ func (stack *DevStack) PrintNodeInfo() {
 	}
 
 	logString := ""
-
-	for nodeIndex, node := range stack.Nodes {
-		logString += fmt.Sprintf(`
-export IPFS_PATH_%d=%s
-export API_PORT_%d=%d`,
-			nodeIndex,
-			node.IpfsNode.RepoPath,
-			nodeIndex,
-			stack.Nodes[0].APIServer.Port,
-		)
-	}
+	devStackAPIPort := ""
+	devStackAPIHost := "0.0.0.0"
 
 	for nodeIndex, node := range stack.Nodes {
 		logString += fmt.Sprintf(`
@@ -249,9 +241,10 @@ export API_PORT_%d=%d`,
 node %d
 -------------------------------
 
-export IPFS_API_PORT_%d=%d
-export IPFS_PATH_%d=%s
-export API_PORT_%d=%d
+export BACALHAU_IPFS_API_PORT_%d=%d
+export BACALHAU_IPFS_PATH_%d=%s
+export BACALHAU_API_HOST_%d=%s
+export BACALHAU_API_PORT_%d=%d
 cid=$(ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_%d} add --quiet ./testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:%d/api/v0/id
 `,
@@ -261,12 +254,43 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			nodeIndex,
 			node.IpfsNode.RepoPath,
 			nodeIndex,
-			stack.Nodes[0].APIServer.Port,
+			stack.Nodes[nodeIndex].APIServer.Host,
 			nodeIndex,
+			stack.Nodes[nodeIndex].APIServer.Port,
+			node.IpfsNode.APIPort,
 			node.IpfsNode.APIPort,
 		)
 	}
 
+	logString += `
+-----------------------------------------
+-----------------------------------------
+`
+	for nodeIndex, node := range stack.Nodes {
+		logString += fmt.Sprintf(`
+export BACALHAU_IPFS_PATH_%d=%s
+export BACALHAU_API_HOST_%d=%s
+export BACALHAU_API_PORT_%d=%d`,
+			nodeIndex,
+			node.IpfsNode.RepoPath,
+			nodeIndex,
+			stack.Nodes[nodeIndex].APIServer.Host,
+			nodeIndex,
+			stack.Nodes[nodeIndex].APIServer.Port,
+		)
+
+		// Just setting this to the last one, really doesn't matter
+		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
+		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
+	}
+
+	// Just convenience below - print out the last of the nodes information as the global variable
+	logString += fmt.Sprintf(`
+export BACALHAU_API_HOST=%s
+export BACALHAU_API_PORT=%s`,
+		devStackAPIHost,
+		devStackAPIPort,
+	)
 	log.Info().Msg(logString)
 }
 

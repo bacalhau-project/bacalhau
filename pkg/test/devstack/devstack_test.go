@@ -16,8 +16,36 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type DevStackSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestDevStackSuite(t *testing.T) {
+	suite.Run(t, new(DevStackSuite))
+}
+
+// Before all suite
+func (suite *DevStackSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *DevStackSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *DevStackSuite) TearDownTest() {
+}
+
+func (suite *DevStackSuite) TearDownAllSuite() {
+
+}
 
 func newSpan(name string) (context.Context, trace.Span) {
 	return system.Span(context.Background(), "devstack_test", name)
@@ -94,42 +122,42 @@ func devStackDockerStorageTest(
 	}
 }
 
-func TestCatFileStdout(t *testing.T) {
+func (suite *DevStackSuite) TestCatFileStdout() {
 	devStackDockerStorageTest(
-		t,
-		scenario.CatFileToStdout(t),
+		suite.T(),
+		scenario.CatFileToStdout(suite.T()),
 		3,
 	)
 }
 
-func TestCatFileOutputVolume(t *testing.T) {
+func (suite *DevStackSuite) TestCatFileOutputVolume() {
 	devStackDockerStorageTest(
-		t,
-		scenario.CatFileToVolume(t),
+		suite.T(),
+		scenario.CatFileToVolume(suite.T()),
 		1,
 	)
 }
 
-func TestGrepFile(t *testing.T) {
+func (suite *DevStackSuite) TestGrepFile() {
 	devStackDockerStorageTest(
-		t,
-		scenario.GrepFile(t),
+		suite.T(),
+		scenario.GrepFile(suite.T()),
 		3,
 	)
 }
 
-func TestSedFile(t *testing.T) {
+func (suite *DevStackSuite) TestSedFile() {
 	devStackDockerStorageTest(
-		t,
-		scenario.SedFile(t),
+		suite.T(),
+		scenario.SedFile(suite.T()),
 		3,
 	)
 }
 
-func TestAwkFile(t *testing.T) {
+func (suite *DevStackSuite) TestAwkFile() {
 	devStackDockerStorageTest(
-		t,
-		scenario.AwkFile(t),
+		suite.T(),
+		scenario.AwkFile(suite.T()),
 		3,
 	)
 }

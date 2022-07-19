@@ -6,9 +6,36 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestSubmitSyntaxErrors(t *testing.T) {
+type SystemScriptCheckerSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestSystemScriptCheckerSuite(t *testing.T) {
+	suite.Run(t, new(SystemScriptCheckerSuite))
+}
+
+// Before all suite
+func (suite *SystemScriptCheckerSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *SystemScriptCheckerSuite) SetupTest() {
+	InitConfigForTesting(suite.T())
+}
+
+func (suite *SystemScriptCheckerSuite) TearDownTest() {
+}
+
+func (suite *SystemScriptCheckerSuite) TearDownAllSuite() {
+
+}
+func (suite *SystemScriptCheckerSuite) TestSubmitSyntaxErrors() {
 	tests := map[string]struct {
 		cmds                     []string
 		error_code               int
@@ -21,7 +48,7 @@ func TestSubmitSyntaxErrors(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
+		suite.T().Run(name, func(t *testing.T) {
 			// t.Parallel()
 
 			err := CheckBashSyntax(tc.cmds)

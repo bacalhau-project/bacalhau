@@ -32,8 +32,13 @@ func init() {
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
+		&jobInputs, "inputs", "i", []string{},
+		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+	)
+
+	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
-		`cid:path of the input data volumes`,
+		`CID:path of the input data volumes`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&jobOutputVolumes, "output-volumes", "o", []string{},

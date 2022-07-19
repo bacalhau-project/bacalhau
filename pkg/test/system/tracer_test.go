@@ -5,11 +5,9 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	_ "github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/sdk/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -22,7 +20,7 @@ func TestTracer(t *testing.T) {
 
 	ctx := context.Background()
 	ctx, span1 := system.Span(ctx, "service", "span1")
-	ctx, span2 := system.Span(ctx, "service", "span2")
+	ctx, span2 := system.Span(ctx, "service", "span2") //lint:ignore SA4006 ok to have extra assignment
 	span2.End()
 	span1.End()
 
@@ -34,7 +32,7 @@ func TestTracer(t *testing.T) {
 // SpanRecorder is an implementation of sdktrace.SpanProcessor that records
 // spans as they are created.
 type SpanRecorder struct {
-	traces []trace.ReadWriteSpan
+	traces []sdktrace.ReadWriteSpan
 }
 
 func (sr *SpanRecorder) Shutdown(context.Context) error   { return nil }

@@ -10,11 +10,42 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+type ExecutorDockerExecutorSuite struct {
+	suite.Suite
+	rootCmd *cobra.Command
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestExecutorDockerExecutorSuite(t *testing.T) {
+	suite.Run(t, new(ExecutorDockerExecutorSuite))
+}
+
+// Before all suite
+func (suite *ExecutorDockerExecutorSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *ExecutorDockerExecutorSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
+}
+
+func (suite *ExecutorDockerExecutorSuite) TearDownAllSuite() {
+
+}
 
 const TEST_STORAGE_DRIVER_NAME = "testdriver"
 const TEST_NODE_COUNT = 1
@@ -90,42 +121,42 @@ func dockerExecutorStorageTest(
 	}
 }
 
-func TestCatFileStdout(t *testing.T) {
+func (suite *ExecutorDockerExecutorSuite) TestCatFileStdout() {
 	dockerExecutorStorageTest(
-		t,
-		scenario.CatFileToStdout(t),
+		suite.T(),
+		scenario.CatFileToStdout(suite.T()),
 		scenario.StorageDriverFactories,
 	)
 }
 
-func TestCatFileOutputVolume(t *testing.T) {
+func (suite *ExecutorDockerExecutorSuite) TestCatFileOutputVolume() {
 	dockerExecutorStorageTest(
-		t,
-		scenario.CatFileToVolume(t),
+		suite.T(),
+		scenario.CatFileToVolume(suite.T()),
 		scenario.StorageDriverFactories,
 	)
 }
 
-func TestGrepFile(t *testing.T) {
+func (suite *ExecutorDockerExecutorSuite) TestGrepFile() {
 	dockerExecutorStorageTest(
-		t,
-		scenario.GrepFile(t),
+		suite.T(),
+		scenario.GrepFile(suite.T()),
 		scenario.StorageDriverFactories,
 	)
 }
 
-func TestSedFile(t *testing.T) {
+func (suite *ExecutorDockerExecutorSuite) TestSedFile() {
 	dockerExecutorStorageTest(
-		t,
-		scenario.SedFile(t),
+		suite.T(),
+		scenario.SedFile(suite.T()),
 		scenario.StorageDriverFactories,
 	)
 }
 
-func TestAwkFile(t *testing.T) {
+func (suite *ExecutorDockerExecutorSuite) TestAwkFile() {
 	dockerExecutorStorageTest(
-		t,
-		scenario.AwkFile(t),
+		suite.T(),
+		scenario.AwkFile(suite.T()),
 		scenario.StorageDriverFactories,
 	)
 }

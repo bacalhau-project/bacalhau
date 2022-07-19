@@ -26,11 +26,38 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestJobResourceLimits(t *testing.T) {
+type ComputeNodeResourceLimitsSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestComputeNodeResourceLimitsSuite(t *testing.T) {
+	suite.Run(t, new(ComputeNodeResourceLimitsSuite))
+}
+
+// Before all suite
+func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
+}
+
+func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
+
+}
+func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
@@ -45,9 +72,9 @@ func TestJobResourceLimits(t *testing.T) {
 		job.Spec.Resources = jobResources
 
 		result, _, err := computeNode.SelectJob(context.Background(), job)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
-		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
+		require.Equal(suite.T(), expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
 	}
 
 	// the job is half the limit
@@ -136,7 +163,7 @@ type TotalResourceTestCase struct {
 	checkers    []TotalResourceTestCaseCheck
 }
 
-func TestTotalResourceLimits(t *testing.T) {
+func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 	// for this test we use the transport so the compute_node is calling
 	// the executor in a go-routine and we can test what jobs
@@ -194,7 +221,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		}
 
 		_, requestorNode, cm := SetupTestNoop(
-			t,
+			suite.T(),
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
 					ResourceLimitTotal: testCase.totalLimits,
@@ -232,9 +259,9 @@ func TestTotalResourceLimits(t *testing.T) {
 				[]string{},
 			)
 
-			require.NoError(t, err)
+			require.NoError(suite.T(), err)
 			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
-			require.NoError(t, err)
+			require.NoError(suite.T(), err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
 			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
@@ -253,7 +280,7 @@ func TestTotalResourceLimits(t *testing.T) {
 		}
 
 		err := waiter.Wait()
-		require.NoError(t, err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
+		require.NoError(suite.T(), err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
 		if err != nil {
 			fmt.Printf("error waiting for jobs to have been seen\n")
@@ -269,14 +296,14 @@ func TestTotalResourceLimits(t *testing.T) {
 			if err != nil {
 				errorMessage = fmt.Sprintf("there was an error in the check function: %s %s", checker.name, err.Error())
 			}
-			require.NoError(t, err, errorMessage)
+			require.NoError(suite.T(), err, errorMessage)
 			if !innerCheck {
 				checkOk = false
 				failingCheckMessage = fmt.Sprintf("there was an fail in the check function: %s", checker.name)
 			}
 		}
 
-		require.True(t, checkOk, failingCheckMessage)
+		require.True(suite.T(), checkOk, failingCheckMessage)
 
 		if !checkOk {
 			fmt.Printf("error checking results on seen jobs\n")
@@ -349,17 +376,17 @@ func TestTotalResourceLimits(t *testing.T) {
 
 }
 
-func TestDockerResourceLimitsCPU(t *testing.T) {
+func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 
 	CPU_LIMIT := "100m"
 
-	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
+	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+	result := RunJobGetStdout(suite.T(), computeNode, &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: resourceusage.ResourceUsageConfig{
@@ -379,10 +406,10 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 	values := strings.Fields(result)
 
 	numerator, err := strconv.Atoi(values[0])
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	denominator, err := strconv.Atoi(values[1])
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	var containerCPU float64 = 0
 
@@ -390,17 +417,17 @@ func TestDockerResourceLimitsCPU(t *testing.T) {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(suite.T(), resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
-func TestDockerResourceLimitsMemory(t *testing.T) {
+func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 
 	MEMORY_LIMIT := "100mb"
 
-	computeNode, _, cm := SetupTestDockerIpfs(t, computenode.NewDefaultComputeNodeConfig())
+	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
-	result := RunJobGetStdout(t, computeNode, &executor.JobSpec{
+	result := RunJobGetStdout(suite.T(), computeNode, &executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: resourceusage.ResourceUsageConfig{
@@ -418,14 +445,14 @@ func TestDockerResourceLimitsMemory(t *testing.T) {
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(t, err)
-	require.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
-func TestDockerResourceLimitsDisk(t *testing.T) {
+func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 
 	runTest := func(text, diskSize string, expected bool) {
-		computeNode, ipfsStack, cm := SetupTestDockerIpfs(t, computenode.ComputeNodeConfig{
+		computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitTotal: resourceusage.ResourceUsageConfig{
 					// so we have a compute node with 1 byte of disk space
@@ -467,8 +494,8 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 			},
 		})
 
-		require.NoError(t, err)
-		require.Equal(t, expected, result)
+		require.NoError(suite.T(), err)
+		require.Equal(suite.T(), expected, result)
 	}
 
 	runTest("hello", "1b", false)
@@ -479,7 +506,7 @@ func TestDockerResourceLimitsDisk(t *testing.T) {
 // how many bytes more does ipfs report the file than the actual content?
 const IpfsMetadataSize = 8
 
-func TestGetVolumeSize(t *testing.T) {
+func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 	runTest := func(text string, expected uint64) {
 
@@ -487,24 +514,24 @@ func TestGetVolumeSize(t *testing.T) {
 
 		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
 		if err != nil {
-			t.Fatal(err)
+			suite.T().Fatal(err)
 		}
 
 		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 		transport, err := inprocess.NewInprocessTransport()
 		if err != nil {
-			t.Fatal(err)
+			suite.T().Fatal(err)
 		}
 
 		executors, err := executor_util.NewStandardExecutors(
 			cm, apiAddress, "devstacknode0")
 		if err != nil {
-			t.Fatal(err)
+			suite.T().Fatal(err)
 		}
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
 		if err != nil {
-			t.Fatal(err)
+			suite.T().Fatal(err)
 		}
 
 		_, err = computenode.NewComputeNode(
@@ -514,10 +541,10 @@ func TestGetVolumeSize(t *testing.T) {
 			verifiers,
 			computenode.ComputeNodeConfig{},
 		)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		executor := executors[executor.EngineDocker]
 
@@ -527,8 +554,8 @@ func TestGetVolumeSize(t *testing.T) {
 			Path:   "/",
 		})
 
-		require.NoError(t, err)
-		require.Equal(t, expected+IpfsMetadataSize, result)
+		require.NoError(suite.T(), err)
+		require.Equal(suite.T(), expected+IpfsMetadataSize, result)
 	}
 
 	runTest("hello", 5)

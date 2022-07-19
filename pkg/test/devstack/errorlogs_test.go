@@ -13,11 +13,40 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestErrorContainer(t *testing.T) {
+type DevstackErrorLogsSuite struct {
+	suite.Suite
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestDevstackErrorLogsSuite(t *testing.T) {
+	suite.Run(t, new(DevstackErrorLogsSuite))
+}
+
+// Before all suite
+func (suite *DevstackErrorLogsSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *DevstackErrorLogsSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *DevstackErrorLogsSuite) TearDownTest() {
+}
+
+func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {
+
+}
+func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
+	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
 
 	stdout := "apples"
 	stderr := "oranges"
@@ -27,7 +56,7 @@ func TestErrorContainer(t *testing.T) {
 	defer span.End()
 
 	stack, cm := SetupTest(
-		t,
+		suite.T(),
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -35,7 +64,7 @@ func TestErrorContainer(t *testing.T) {
 	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	jobSpec := &executor.JobSpec{
 		Engine:   executor.EngineDocker,
@@ -57,7 +86,7 @@ func TestErrorContainer(t *testing.T) {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
@@ -67,33 +96,33 @@ func TestErrorContainer(t *testing.T) {
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateError),
 	)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
-	require.True(t, ok)
-	require.NoError(t, err)
+	require.True(suite.T(), ok)
+	require.NoError(suite.T(), err)
 
 	state, ok := loadedJob.State[nodeIDs[0]]
-	require.True(t, ok)
+	require.True(suite.T(), ok)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	node, err := stack.GetNode(ctx, nodeIDs[0])
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	outputPath := filepath.Join(outputDir, state.ResultsID)
 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	stderrBytes, err := os.ReadFile(fmt.Sprintf("%s/stderr", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	exitCodeBytes, err := os.ReadFile(fmt.Sprintf("%s/exitCode", outputPath))
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
-	require.Equal(t, stdout, strings.TrimSpace(string(stdoutBytes)))
-	require.Equal(t, stderr, strings.TrimSpace(string(stderrBytes)))
-	require.Equal(t, exitCode, strings.TrimSpace(string(exitCodeBytes)))
+	require.Equal(suite.T(), stdout, strings.TrimSpace(string(stdoutBytes)))
+	require.Equal(suite.T(), stderr, strings.TrimSpace(string(stderrBytes)))
+	require.Equal(suite.T(), exitCode, strings.TrimSpace(string(exitCodeBytes)))
 }
