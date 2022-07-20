@@ -18,7 +18,6 @@ func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,
 	cpu, memory, gpu string,
-	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
