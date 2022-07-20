@@ -22,7 +22,7 @@ type Controller struct {
 	jobNodeContexts map[string]context.Context // per-node job lifecycle
 	subscribeFuncs  []transport.SubscribeFn
 	contextMutex    sync.RWMutex
-	subscribeMutex  sync.Mutex
+	subscribeMutex  sync.RWMutex
 }
 
 /*
@@ -66,13 +66,7 @@ func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) (
 
 func (ctrl *Controller) Start(ctx context.Context) error {
 	// listen for events from other nodes on the network
-	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) { // ignore events that we broadcast because we have already handled the event
-		// we have already handled this event locally before braodcasting it
-		// so we don't need to process it again
-		if ev.SourceNodeID == ctrl.id {
-			return
-		}
-
+	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
 		// process event will:
 		//   * validate the state transition
 		//   * mutate local state
@@ -80,7 +74,7 @@ func (ctrl *Controller) Start(ctx context.Context) error {
 		err := ctrl.handleEvent(ctx, ev)
 
 		if err != nil {
-			log.Error().Msgf("%s", err)
+			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
 		}
 	})
 
