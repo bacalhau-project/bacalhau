@@ -20,19 +20,8 @@ import (
 func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
 
-	// process the event locally
-	err := ctrl.handleEvent(jobCtx, ev)
-	if err != nil {
-		return err
-	}
-
 	// tell the rest of the network about the event via the transport
-	err = ctrl.transport.Publish(jobCtx, ev)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.transport.Publish(jobCtx, ev)
 }
 
 // this is called both locally and remotely
@@ -77,8 +66,6 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	case executor.JobEventDealUpdated:
 		err = ctrl.datastore.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
 
-	default:
-		err = fmt.Errorf("unhandled event type: %s", ev.EventName)
 	}
 
 	if err != nil {
@@ -97,8 +84,10 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 // we run them in parallel but block on them all finishing
 // otherwise the context would be cancelled
 func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev executor.JobEvent) {
-	ctrl.subscribeMutex.Lock()
-	defer ctrl.subscribeMutex.Unlock()
+	ctrl.subscribeMutex.RLock()
+	defer ctrl.subscribeMutex.RUnlock()
+
+	// run all local subscribers in parallel
 	var wg sync.WaitGroup
 	for _, fn := range ctrl.subscribeFuncs {
 		wg.Add(1)

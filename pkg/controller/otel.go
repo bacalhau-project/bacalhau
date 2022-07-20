@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -11,20 +10,29 @@ import (
 )
 
 func (ctrl *Controller) handleOtelReadEvent(ctx context.Context, ev executor.JobEvent) context.Context {
-	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
-	ctrl.addJobLifecycleEvent(jobCtx, ev.JobID, fmt.Sprintf("read_%s", ev.EventName))
 
-	// If the event is known to be ignorable, end the local lifecycle context:
-	if ev.EventName.IsIgnorable() {
-		ctrl.endJobNodeContext(ev.JobID)
-	}
+	return ctx
+	//jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
+	//ctrl.addJobLifecycleEvent(jobCtx, ev.JobID, fmt.Sprintf("read_%s", ev.EventName))
 
-	// If the event is known to be terminal, end the global lifecycle context:
-	if ev.EventName.IsTerminal() {
-		ctrl.endJobContext(ev.JobID)
-	}
+	// fmt.Printf("ev.EventName --------------------------------------\n")
+	// spew.Dump(ev.EventName.String())
 
-	return jobCtx
+	// // If the event is known to be ignorable, end the local lifecycle context:
+	// if ev.EventName.IsIgnorable() {
+	// 	fmt.Printf("IGNORE\n")
+	// 	spew.Dump(ev.EventName.String())
+	// 	ctrl.endJobNodeContext(ev.JobID)
+	// }
+
+	// // If the event is known to be terminal, end the global lifecycle context:
+	// if ev.EventName.IsTerminal() {
+	// 	fmt.Printf("TERMINAL\n")
+	// 	spew.Dump(ev.EventName.String())
+	// 	ctrl.endJobContext(ev.JobID)
+	// }
+
+	//return jobCtx
 }
 
 func (ctrl *Controller) cleanJobContexts(ctx context.Context) error {
