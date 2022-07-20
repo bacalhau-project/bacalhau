@@ -68,6 +68,16 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 			expected: d(0.5, (datasize.MB * 512).Bytes(), 2),
 		},
 		{
+			name:     "invalid GPU 1",
+			input:    c("500m", "512mb", "-2"),
+			expected: d(0.5, (datasize.MB * 512).Bytes(), 0),
+		},
+		{
+			name:     "invalid GPU 2",
+			input:    c("500m", "512mb", "1.1"),
+			expected: d(0.5, (datasize.MB * 512).Bytes(), 0),
+		},
+		{
 			name:     "with i",
 			input:    c("500m", "512mi", ""),
 			expected: d(0.5, (datasize.MB * 512).Bytes(), 0),
