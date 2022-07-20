@@ -144,6 +144,12 @@ func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
 
 // can only be done by the requestor node that is responsible for the job
 func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
+	if jobID == "" {
+		return fmt.Errorf("AcceptJobBid: jobID cannot be empty")
+	}
+	if nodeID == "" {
+		return fmt.Errorf("AcceptJobBid: nodeID cannot be empty")
+	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidAccepted)
@@ -153,6 +159,12 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 
 // can only be done by the requestor node that is responsible for the job
 func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) error {
+	if jobID == "" {
+		return fmt.Errorf("RejectJobBid: jobID cannot be empty")
+	}
+	if nodeID == "" {
+		return fmt.Errorf("RejectJobBid: nodeID cannot be empty")
+	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidRejected)
@@ -204,6 +216,12 @@ func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID s
 }
 
 func (ctrl *Controller) AcceptResults(ctx context.Context, jobID, nodeID string) error {
+	if jobID == "" {
+		return fmt.Errorf("AcceptResults: jobID cannot be empty")
+	}
+	if nodeID == "" {
+		return fmt.Errorf("AcceptResults: nodeID cannot be empty")
+	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsAccepted)
@@ -212,6 +230,12 @@ func (ctrl *Controller) AcceptResults(ctx context.Context, jobID, nodeID string)
 }
 
 func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string) error {
+	if jobID == "" {
+		return fmt.Errorf("RejectResults: jobID cannot be empty")
+	}
+	if nodeID == "" {
+		return fmt.Errorf("RejectResults: nodeID cannot be empty")
+	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsRejected)
