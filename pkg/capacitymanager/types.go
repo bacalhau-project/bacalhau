@@ -8,8 +8,8 @@ type ResourceUsageConfig struct {
 	// github.com/c2h5oh/datasize string
 	Memory string `json:"memory" yaml:"memory"`
 	// github.com/c2h5oh/datasize string
-	Disk string `json:"disk" yaml:"disk"`
-	GPU  string `json:"gpu" yaml:"gpu"` // unsigned integer string
+	Disk string `json:"disk"`
+	GPU  string `json:"gpu"` // unsigned integer string
 }
 
 // these are the numeric values in bytes for ResourceUsageConfig
