@@ -15,6 +15,6 @@ hyperfine \
 	--export-json="results/run-${RUN_ID}-${iterationid}.json" \
 	--runs "${BATCH_SIZE}" \
 	--ignore-failure \
-	"timeout 30s ./submit.sh"
+	"timeout 30s ./submit.sh $2 $3" 
 
 # --show-output \

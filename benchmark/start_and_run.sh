@@ -15,12 +15,33 @@ wait_file() {
 	test "${wait_seconds}" -ge 0 # equivalent: let ++wait_seconds
 }
 
-go run .. devstack &
+function cleanup {
+	BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
+	kill -2 "${BACALHAU_PID}"
+	rm -f /tmp/bacalhau-devstack.p*
+}
+
+cd ..
+make build
+
+cd benchmark
+BACALHAU_BIN="../bin/linux_amd64/bacalhau"
+
+${BACALHAU_BIN} devstack &
 
 wait_file "/tmp/bacalhau-devstack.pid" 15
 
-./submit.sh
-./explode.sh
+API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
-BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
-kill -2 "${BACALHAU_PID}"
+./submit.sh ${BACALHAU_BIN} ${API_PORT}
+./explode.sh ${BACALHAU_BIN} ${API_PORT}
+
+while : ; do
+	sleep 2
+	CURRENT_STATE=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost list -n 10000 2>&1 | grep -c 'Running')
+	(( ${CURRENT_STATE} > 0 )) || break
+done 
+
+trap cleanup EXIT
+
+exit 0

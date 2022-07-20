@@ -166,16 +166,6 @@ jobs:
           command: |
             cd benchmark
             ./start_and_run.sh
-      - run:
-          name: Upload perf results
-          command: |
-            sudo apt install python3.10 -y
-            python3 -m pip install --upgrade pip
-            pip3 install gsutil
-            export SHA="<< pipeline.git.revision >>"
-            export DATETIME="$(date -u +"%FT%H%MZ")"
-            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-            gsutil cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
 
       - run:
           name: Authenticate to Google Cloud
@@ -183,11 +173,16 @@ jobs:
             gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
 
       - run:
-          name: Deploy cluster
+          name: Upload perf results
           command: |
-            cd ops/terraform && terraform init && \
-                                terraform workspace select << parameters.rollout_stage >> && \
-                                terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+            export PATH="$HOME/.local/bin:${PATH}"
+            sudo apt install python3.10 python3-pip -y
+            sudo python3 -m pip install --upgrade pip
+            pip3 install gsutil
+            export SHA="<< pipeline.git.revision >>"
+            export DATETIME="$(date -u +"%FT%H%MZ")"
+            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
 
   release:
     executor: linux
