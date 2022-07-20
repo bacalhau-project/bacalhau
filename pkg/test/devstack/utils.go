@@ -18,9 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var StorageDriverNames = []string{
-	storage.IPFSFuseDocker,
-	storage.IPFSAPICopy,
+var StorageNames = []storage.StorageSourceType{
+	storage.StorageSourceIPFS,
 }
 
 func SetupTest(

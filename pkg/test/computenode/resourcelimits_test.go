@@ -483,7 +483,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 				},
 				Inputs: []storage.StorageSpec{
 					{
-						Engine: storage.IPFSDefault,
+						Engine: storage.StorageSourceIPFS,
 						Cid:    cid,
 						Path:   "/data/file.txt",
 					},
@@ -551,7 +551,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		executor := executors[executor.EngineDocker]
 
 		result, err := executor.GetVolumeSize(context.Background(), storage.StorageSpec{
-			Engine: storage.IPFSDefault,
+			Engine: storage.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/",
 		})

@@ -35,7 +35,7 @@ type Executor struct {
 	ResultsDir string
 
 	// the storage providers we can implement for a job
-	StorageProviders map[string]storage.StorageProvider
+	StorageProviders map[storage.StorageSourceType]storage.StorageProvider
 
 	Client *dockerclient.Client
 }
@@ -43,7 +43,7 @@ type Executor struct {
 func NewExecutor(
 	cm *system.CleanupManager,
 	id string,
-	storageProviders map[string]storage.StorageProvider,
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -70,7 +70,7 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorageProvider(ctx context.Context, engine string) (storage.StorageProvider, error) {
+func (e *Executor) getStorageProvider(ctx context.Context, engine storage.StorageSourceType) (storage.StorageProvider, error) {
 	return util.GetStorageProvider(ctx, engine, e.StorageProviders)
 }
 
@@ -122,18 +122,12 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 			return "", err
 		}
 
-		var volumeMount *storage.StorageVolume
-		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
+		volumeMount, err := storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}
 
-		if volumeMount == nil {
-			return "", fmt.Errorf(
-				"no volume mount was returned for input: %+v", inputStorage)
-		}
-
-		if volumeMount.Type == storage.StorageVolumeTypeBind {
+		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
 
 			mounts = append(mounts, mount.Mount{

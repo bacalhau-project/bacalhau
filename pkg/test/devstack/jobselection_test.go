@@ -69,7 +69,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		nodeIds, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
 
 		jobSpec := executor.JobSpec{
 			Engine:   executor.EngineDocker,

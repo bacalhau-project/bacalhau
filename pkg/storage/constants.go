@@ -1,39 +1,36 @@
 package storage
 
-//go:generate stringer -type=StorageVolumeType --trimprefix=StorageVolume
-type StorageVolumeType int
+// StorageSourceType is somewhere we can get data from
+// e.g. ipfs / S3 are storage sources
+// there can be multiple drivers for the same source
+// e.g. ipfs fuse vs ipfs api copy
+//go:generate stringer -type=StorageSourceType --trimprefix=StorageSource
+type StorageSourceType int
 
 const (
-	storageVolumeUnknown StorageVolumeType = iota // must be first
-	StorageVolumeBind
-	storageVolumeDone // must be last
+	storageSourceUnknown StorageSourceType = iota // must be first
+	StorageSourceIPFS
+	storageSourceDone // must be last
 )
 
-//go:generate stringer -type=IPFSNodeType --trimprefix=IPFSNode
-type IPFSNodeType int
+// StorageVolumeConnector is how an upstream storage source will present
+// the volume to a job - examples are "bind" or "library"
+//go:generate stringer -type=StorageVolumeConnectorType --trimprefix=StorageVolumeConnector
+type StorageVolumeConnectorType int
 
 const (
-	ipfsNodeUnknown IPFSType = iota // must be first
-	IPFSNodeDirectory
-	IPFSNodeFile
-	ipfsNodeDone // must be last
+	storageVolumeConnectorUnknown StorageVolumeConnectorType = iota // must be first
+	StorageVolumeConnectorBind
+	storageVolumeConnectorDone // must be last
 )
 
-//go:generate stringer -type=IPFSType --trimprefix=IPFS
-type IPFSType int
+// Used to distinquish files from directories
+//go:generate stringer -type=FileSystemNodeType --trimprefix=FileSystemNode
+type FileSystemNodeType int
 
 const (
-	ipfsUnknown IPFSType = iota // must be first
-	IPFSDirectory
-	IPFSFile
-	ipfsDone // must be last
+	fileSystemNodeUnknown FileSystemNodeType = iota // must be first
+	FileSystemNodeDirectory
+	FileSystemNodeFile
+	fileSystemNodeDone // must be last
 )
-
-const StorageVolumeTypeBind = "bind"
-
-const IPFSTypeDirectory = "directory"
-const IPFSTypeFile = "file"
-
-const IPFSFuseDocker = "ipfs_fuse"
-const IPFSAPICopy = "ipfs_copy"
-const IPFSDefault = "ipfs"

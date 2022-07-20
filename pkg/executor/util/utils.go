@@ -28,14 +28,8 @@ func NewStandardExecutors(
 	}
 
 	exDocker, err := docker.NewExecutor(cm, dockerID,
-		map[string]storage.StorageProvider{
-			// fuse driver is disabled so that - in case it poses a security
-			// risk - arbitrary users can't request it
-			// storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
-			storage.IPFSAPICopy: ipfsAPICopyStorage,
-			// we make the copy driver the "default" storage driver for docker
-			// users have to specify the fuse driver explicitly
-			storage.IPFSDefault: ipfsAPICopyStorage,
+		map[storage.StorageSourceType]storage.StorageProvider{
+			storage.StorageSourceIPFS: ipfsAPICopyStorage,
 		})
 	if err != nil {
 		return nil, err
