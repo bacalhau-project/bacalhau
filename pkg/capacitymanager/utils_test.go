@@ -101,7 +101,7 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 
 	for _, test := range tests {
 
-		t.Run(test.name, func(t *testing.T) {
+		suite.Run(test.name, func() {
 			converted := ParseResourceUsageConfig(test.input)
 			require.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
 			require.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
@@ -127,7 +127,7 @@ func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
 
 	for _, test := range tests {
 
-		t.Run(test.name, func(t *testing.T) {
+		suite.Run(test.name, func() {
 			converted, err := getResourceUsageConfig(test.input)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
@@ -183,15 +183,15 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 
 	for _, test := range tests {
 
-		t.Run(test.name, func(t *testing.T) {
+		suite.Run(test.name, func() {
 			resources, err := getSystemResources(test.input)
 
 			if test.shouldError {
 				require.Error(t, err, "an error was expected")
 			} else {
-				require.NoError(t, err, "an error was not expected")
-				require.Equal(t, test.expected.CPU, resources.CPU, "cpu is incorrect")
-				require.Equal(t, test.expected.Memory, resources.Memory, "memory is incorrect")
+				require.NoError(suite.T(), err, "an error was not expected")
+				require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
+				require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
 			}
 		})
 
