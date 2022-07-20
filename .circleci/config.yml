@@ -154,6 +154,41 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
+  run_perf:
+    executor: linux
+    parallelism: 1
+    environment:
+      GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
+    steps:
+      - checkout
+      - run:
+          name: Run Perf
+          command: |
+            cd benchmark
+            ./start_and_run.sh
+      - run:
+          name: Upload perf results
+          command: |
+            sudo apt install python3.10 -y
+            python3 -m pip install --upgrade pip
+            pip3 install gsutil
+            export SHA="<< pipeline.git.revision >>"
+            export DATETIME="$(date -u +"%FT%H%MZ")"
+            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            gsutil cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
+
+      - run:
+          name: Authenticate to Google Cloud
+          command: |
+            gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+
+      - run:
+          name: Deploy cluster
+          command: |
+            cd ops/terraform && terraform init && \
+                                terraform workspace select << parameters.rollout_stage >> && \
+                                terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+
   release:
     executor: linux
     steps:
@@ -276,6 +311,8 @@ workflows:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
+      - run_perf:
+
       - deploy:
           name: deploy-development-cluster
           requires:
