@@ -17,7 +17,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -55,8 +57,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 }
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
@@ -156,8 +158,8 @@ type TotalResourceTestCaseCheck struct {
 
 type TotalResourceTestCase struct {
 	// the total list of jobs to throw at the cluster all at the same time
-	jobs        []resourceusage.ResourceUsageConfig
-	totalLimits resourceusage.ResourceUsageConfig
+	jobs        []capacitymanager.ResourceUsageConfig
+	totalLimits capacitymanager.ResourceUsageConfig
 	wait        TotalResourceTestCaseCheck
 	checkers    []TotalResourceTestCaseCheck
 }
@@ -197,7 +199,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, job *executor.Job) (string, error) {
+		jobHandler := func(ctx context.Context, job executor.Job) (string, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -216,10 +218,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
-			return resourceusage.ConvertMemoryString(volume.Cid), nil
+			return capacitymanager.ConvertMemoryString(volume.Cid), nil
 		}
 
-		_, requestorNode, cm := SetupTestNoop(
+		_, _, ctrl, cm := SetupTestNoop(
 			suite.T(),
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
@@ -230,8 +232,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			noop_executor.ExecutorConfig{
 
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					JobHandler:    &jobHandler,
-					GetVolumeSize: &getVolumeSizeHandler,
+					JobHandler:    jobHandler,
+					GetVolumeSize: getVolumeSizeHandler,
 				},
 			},
 		)
@@ -259,7 +261,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			)
 
 			require.NoError(suite.T(), err)
-			_, err = requestorNode.Transport.SubmitJob(context.Background(), spec, deal)
+			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
+				ClientID: "123",
+				Spec:     spec,
+				Deal:     deal,
+			})
 			require.NoError(suite.T(), err)
 
 			// sleep a bit here to simulate jobs being sumbmitted over time
