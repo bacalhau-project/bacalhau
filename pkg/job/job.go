@@ -87,10 +87,19 @@ func ConstructDockerJob(
 	}
 
 	var jobAnnotations []string
+	var unSafeAnnotations []string
 	for _, a := range annotations {
-		if IsSafeAnnotation(a) {
-			annotations = append(annotations, a)
+		if IsSafeAnnotation(a) && a != "" {
+			jobAnnotations = append(jobAnnotations, a)
+		} else {
+			unSafeAnnotations = append(unSafeAnnotations, a)
 		}
+	}
+
+	if len(unSafeAnnotations) > 0 {
+		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+			RegexString,
+			strings.Join(unSafeAnnotations, ", "))
 	}
 
 	spec := executor.JobSpec{

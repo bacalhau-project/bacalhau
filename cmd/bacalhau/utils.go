@@ -70,6 +70,7 @@ func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) 
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(buf)
+	root.SetArgs([]string{})
 	root.SetArgs(args)
 
 	// Need to check if we're running in debug mode for VSCode

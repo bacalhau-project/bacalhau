@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var TimeToWaitForServerReply = 10 // nolint:mnd // magic number appropriate here
-var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
+var TimeToWaitForServerReply = 10 // nolint:gomnd // magic number appropriate here
+var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate here
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {

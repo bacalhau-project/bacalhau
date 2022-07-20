@@ -20,7 +20,35 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_noop "github.com/filecoin-project/bacalhau/pkg/verifier/noop"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stretchr/testify/suite"
 )
+
+type TransportSuite struct {
+	suite.Suite
+}
+
+// a normal test function and pass our suite to suite.Run
+func TestTransportSuite(t *testing.T) {
+	suite.Run(t, new(TransportSuite))
+}
+
+// Before all suite
+func (suite *TransportSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *TransportSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *TransportSuite) TearDownTest() {
+}
+
+func (suite *TransportSuite) TearDownAllSuite() {
+
+}
 
 func setupTest(t *testing.T) (
 	*inprocess.InProcessTransport,
@@ -74,17 +102,17 @@ func setupTest(t *testing.T) (
 	return transport, noopExecutor, noopVerifier, ctrl, cm
 }
 
-func TestTransportSanity(t *testing.T) {
+func (suite *TransportSuite) TestTransportSanity() {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
 		cm,
 		ctrl,
@@ -92,19 +120,19 @@ func TestTransportSanity(t *testing.T) {
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	_, err = requesternode.NewRequesterNode(
 		cm,
 		ctrl,
 		verifiers,
 		requesternode.RequesterNodeConfig{},
 	)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 }
 
-func TestSchedulerSubmitJob(t *testing.T) {
+func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	ctx := context.Background()
-	_, noopExecutor, _, ctrl, cm := setupTest(t)
+	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -133,16 +161,16 @@ func TestSchedulerSubmitJob(t *testing.T) {
 	}
 
 	jobSelected, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	time.Sleep(time.Second * 1)
-	require.Equal(t, 1, len(noopExecutor.Jobs))
-	require.Equal(t, jobSelected.ID, noopExecutor.Jobs[0].ID)
+	require.Equal(suite.T(), 1, len(noopExecutor.Jobs))
+	require.Equal(suite.T(), jobSelected.ID, noopExecutor.Jobs[0].ID)
 }
 
-func TestTransportEvents(t *testing.T) {
+func (suite *TransportSuite) TestTransportEvents() {
 	ctx := context.Background()
-	transport, _, _, ctrl, cm := setupTest(t)
+	transport, _, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -171,7 +199,7 @@ func TestTransportEvents(t *testing.T) {
 	}
 
 	_, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{
@@ -189,5 +217,5 @@ func TestTransportEvents(t *testing.T) {
 	sort.Strings(expectedEventNames)
 	sort.Strings(actualEventNames)
 
-	require.True(t, reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
+	require.True(suite.T(), reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
 }

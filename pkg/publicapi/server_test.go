@@ -21,6 +21,12 @@ type ServerSuite struct {
 	suite.Suite
 }
 
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestServerSuite(t *testing.T) {
+	suite.Run(t, new(ServerSuite))
+}
+
 // Before all suite
 func (suite *ServerSuite) SetupAllSuite() {
 
@@ -128,10 +134,4 @@ func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
 	require.NoError(t, err, "Could not read %s response body", endpoint)
 	require.Contains(t, string(body), contentToCheck, "%s body does not contain '%s'.", endpoint, contentToCheck)
 	return body
-}
-
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestServerSuite(t *testing.T) {
-	suite.Run(t, new(ServerSuite))
 }
