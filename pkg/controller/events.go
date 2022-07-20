@@ -27,10 +27,10 @@ func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) er
 	}
 
 	// tell the rest of the network about the event via the transport
-	// err := ctrl.transport.Publish(jobCtx, ev)
-	// if err != nil {
-	// 	return err
-	// }
+	err = ctrl.transport.Publish(jobCtx, ev)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
