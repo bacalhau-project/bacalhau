@@ -224,7 +224,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
 	// we only care if the accepted bid is for us
-	if jobEvent.SourceNodeID != node.id {
+	if jobEvent.TargetNodeID != node.id {
 		return
 	}
 
