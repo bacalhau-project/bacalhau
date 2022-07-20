@@ -223,14 +223,12 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
-
 	// we only care if the accepted bid is for us
-	if jobEvent.SourceNodeID != node.id {
+	if jobEvent.TargetNodeID != node.id {
 		return
 	}
 
-	ctx, span = node.newSpanForJob(ctx,
-		job.ID, "JobEventBidAccepted")
+	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventBidAccepted")
 	defer span.End()
 
 	// Increment the number of jobs accepted by this compute node:
@@ -251,7 +249,10 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
 	}
 	if resultFolder == "" {
-		errMessage := fmt.Sprintf("Missing results folder for job %s: %s", job.ID, containerRunError)
+		errMessage := fmt.Sprintf("Missing results folder for job %s", job.ID)
+		if containerRunError != nil {
+			errMessage = fmt.Sprintf("RunJob error %s: %s", job.ID, containerRunError)
+		}
 		log.Error().Msgf(errMessage)
 		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return

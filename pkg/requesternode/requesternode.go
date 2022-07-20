@@ -94,7 +94,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, jobEvent ex
 			Type: "requestor_node:bid_accepted",
 			Job:  job.ID,
 		})
-		err = node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.TargetNodeID)
+		err = node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
@@ -104,7 +104,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, jobEvent ex
 			Type: "requestor_node:bid_rejected",
 			Job:  job.ID,
 		})
-		err = node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.TargetNodeID)
+		err = node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
