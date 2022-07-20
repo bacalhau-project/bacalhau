@@ -29,7 +29,7 @@ type LibP2PTransport struct {
 	cm *system.CleanupManager
 
 	subscribeFunctions   []transport.SubscribeFn
-	ctx                  sync.Mutex
+	ctx                  sync.RWMutex
 	host                 host.Host
 	port                 int
 	peers                []string
@@ -145,7 +145,7 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 }
 
 func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
-	return nil
+	return t.writeJobEvent(ctx, ev)
 }
 
 func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
@@ -216,16 +216,40 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobE
 		return err
 	}
 
-	log.Debug().Msgf("Sending event: %s", string(bs))
+	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
 	return t.jobEventTopic.Publish(ctx, bs)
 }
 
-func (t *LibP2PTransport) callLocalSubscribers(ctx context.Context, ev executor.JobEvent) {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
-	for _, fn := range t.subscribeFunctions {
-		go fn(ctx, ev)
+func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
+	// TODO: we would enforce the claims to SourceNodeID here
+	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
+	payload := jobEventEnvelope{}
+	err := json.Unmarshal(msg.Data, &payload)
+	if err != nil {
+		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+		return
 	}
+	log.Trace().Msgf("Received event: %+v", payload)
+
+	// Notify all the listeners in this process of the event:
+	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
+
+	// overwrite the event.SourceNodeID with the one from the libp2p message
+	ev := payload.JobEvent
+	ev.SourceNodeID = msg.ReceivedFrom.String()
+
+	t.ctx.RLock()
+	defer t.ctx.RUnlock()
+
+	var wg sync.WaitGroup
+	for _, fn := range t.subscribeFunctions {
+		wg.Add(1)
+		go func(f transport.SubscribeFn) {
+			defer wg.Done()
+			f(jobCtx, ev)
+		}(fn)
+	}
+	wg.Wait()
 }
 
 func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
@@ -240,23 +264,7 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 			}
 			return
 		}
-
-		// TODO: we would enforce the claims to SourceNodeID here
-		// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
-		payload := jobEventEnvelope{}
-		if err = json.Unmarshal(msg.Data, &payload); err != nil {
-			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
-			continue
-		}
-		log.Trace().Msgf("Received event: %+v", payload)
-
-		// Notify all the listeners in this process of the event:
-		ctx = otel.GetTextMapPropagator().Extract(ctx, payload.TraceData)
-
-		// overwrite the event.SourceNodeID with the one from the libp2p message
-		ev := payload.JobEvent
-		ev.SourceNodeID = string(msg.ReceivedFrom)
-		t.callLocalSubscribers(ctx, ev)
+		go t.readMessage(msg)
 	}
 }
 

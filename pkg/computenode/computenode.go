@@ -150,7 +150,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			node.capacityManager.Remove(job.ID)
 			continue
 		}
-
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
