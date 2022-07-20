@@ -3,6 +3,7 @@ package job
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -202,7 +203,14 @@ func ConstructLanguageJob(
 }
 
 func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
-	// TODO: actually check these values for errors
+	if reflect.DeepEqual(executor.JobSpec{}, spec) {
+		return fmt.Errorf("job spec is empty")
+	}
+
+	if reflect.DeepEqual(executor.JobDeal{}, deal) {
+		return fmt.Errorf("job spec is empty")
+	}
+
 	return nil
 }
 

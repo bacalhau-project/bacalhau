@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -55,10 +56,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
 func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 }
-
-func TestJobResourceLimits(t *testing.T) {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
