@@ -60,6 +60,23 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuer
 			return result, err
 		}
 		result = append(result, job)
+	} else {
+		for _, job := range d.jobs {
+			events, ok := d.events[job.ID]
+			if !ok {
+				events = []executor.JobEvent{}
+			}
+			metadata, ok := d.localMetadata[job.ID]
+			if !ok {
+				metadata = &executor.JobLocalMetadata{}
+			}
+			result = append(result, datastore.Job{
+				ID:            job.ID,
+				Data:          *job,
+				LocalMetadata: *metadata,
+				Events:        events,
+			})
+		}
 	}
 	return result, nil
 }
