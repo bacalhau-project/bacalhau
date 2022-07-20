@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -260,9 +259,6 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			Path:   "/job",
 		})
 	}
-
-	fmt.Printf("req.Context() --------------------------------------\n")
-	spew.Dump(req.Context())
 
 	j, err := apiServer.Controller.SubmitJob(
 		req.Context(),

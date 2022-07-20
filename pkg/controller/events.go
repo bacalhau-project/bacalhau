@@ -3,9 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 )
 
 /*
@@ -92,12 +94,20 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 }
 
 // trigger the local subscriptions of the compute and requestor nodes
+// we run them in parallel but block on them all finishing
+// otherwise the context would be cancelled
 func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev executor.JobEvent) {
 	ctrl.subscribeMutex.Lock()
 	defer ctrl.subscribeMutex.Unlock()
+	var wg sync.WaitGroup
 	for _, fn := range ctrl.subscribeFuncs {
-		go fn(ctx, ev)
+		wg.Add(1)
+		go func(f transport.SubscribeFn) {
+			defer wg.Done()
+			f(ctx, ev)
+		}(fn)
 	}
+	wg.Wait()
 }
 
 /*
