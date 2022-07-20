@@ -145,7 +145,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFSDefault,
+				Engine: storage.StorageSourceIPFS,
 			},
 		},
 	}
@@ -183,7 +183,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFSDefault,
+				Engine: storage.StorageSourceIPFS,
 			},
 		},
 	}

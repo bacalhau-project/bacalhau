@@ -10,8 +10,8 @@ import (
 type StroageHandlerIsInstalled func(ctx context.Context) (bool, error)
 type StroageHandlerHasStorageLocally func(ctx context.Context, volume storage.StorageSpec) (bool, error)
 type StroageHandlerGetVolumeSize func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
-type StroageHandlerPrepareStorage func(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error)
-type StroageHandlerCleanupStorage func(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error
+type StroageHandlerPrepareStorage func(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error)
+type StroageHandlerCleanupStorage func(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error
 
 type StorageConfigExternalHooks struct {
 	IsInstalled       StroageHandlerIsInstalled
@@ -71,20 +71,20 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Stor
 	return 0, nil
 }
 
-func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	if s.Config.ExternalHooks.PrepareStorage != nil {
 		handler := s.Config.ExternalHooks.PrepareStorage
 		return handler(ctx, storageSpec)
 	}
-	return &storage.StorageVolume{
-		Type:   "test",
+	return storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
 		Source: "test",
 		Target: "test",
 	}, nil
 }
 
 // nolint:lll // Exception to the long rule
-func (s *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
+func (s *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	if s.Config.ExternalHooks.CleanupStorage != nil {
 		handler := s.Config.ExternalHooks.CleanupStorage
 		return handler(ctx, storageSpec, volume)

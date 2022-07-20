@@ -66,7 +66,7 @@ func ConstructDockerJob(
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    slices[0],
 			Path:   slices[1],
 		})
@@ -82,7 +82,7 @@ func ConstructDockerJob(
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Name:   slices[0],
 			Path:   slices[1],
 		})
@@ -157,7 +157,7 @@ func ConstructLanguageJob(
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    slices[0],
 			Path:   slices[1],
 		})
@@ -171,7 +171,7 @@ func ConstructLanguageJob(
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Name:   slices[0],
 			Path:   slices[1],
 		})

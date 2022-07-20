@@ -68,13 +68,13 @@ func dockerExecutorStorageTest(
 		dockerExecutor, err := docker.NewExecutor(
 			cm,
 			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
-			map[string]storage.StorageProvider{
-				TEST_STORAGE_DRIVER_NAME: storageDriver,
+			map[storage.StorageSourceType]storage.StorageProvider{
+				storage.StorageSourceIPFS: storageDriver,
 			})
 		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack, TEST_STORAGE_DRIVER_NAME, TEST_NODE_COUNT)
+			stack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)

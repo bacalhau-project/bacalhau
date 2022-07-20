@@ -117,7 +117,7 @@ func GetJobSpec(cid string) executor.JobSpec {
 	if cid != "" {
 		inputs = []storage.StorageSpec{
 			{
-				Engine: "ipfs",
+				Engine: storage.StorageSourceIPFS,
 				Cid:    cid,
 				Path:   "/test_file.txt",
 			},

@@ -20,7 +20,7 @@ func getProbeDataWithVolume() JobSelectionPolicyProbeData {
 		Spec: executor.JobSpec{
 			Inputs: []storage.StorageSpec{
 				{
-					Engine: storage.IPFSDefault,
+					Engine: storage.StorageSourceIPFS,
 					Cid:    "volume-id",
 				},
 			},

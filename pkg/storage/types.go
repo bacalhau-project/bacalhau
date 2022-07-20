@@ -12,9 +12,9 @@ type StorageProvider interface {
 	// how big is the given volume in terms of resource consumption?
 	GetVolumeSize(context.Context, StorageSpec) (uint64, error)
 
-	PrepareStorage(context.Context, StorageSpec) (*StorageVolume, error)
+	PrepareStorage(context.Context, StorageSpec) (StorageVolume, error)
 
-	CleanupStorage(context.Context, StorageSpec, *StorageVolume) error
+	CleanupStorage(context.Context, StorageSpec, StorageVolume) error
 }
 
 // StorageSpec represents some data on a storage engine. Storage engines are
@@ -22,7 +22,7 @@ type StorageProvider interface {
 // will mount data in different ways.
 type StorageSpec struct {
 	// Engine is the execution engine that can mount the spec's data.
-	Engine string `json:"engine" yaml:"engine"`
+	Engine StorageSourceType `json:"engine"`
 
 	// Name of the spec's data, for reference.
 	Name string `json:"name" yaml:"name"`
@@ -46,7 +46,7 @@ type StorageSpec struct {
 // put simply - the nature of a storage volume depends on it's use by the
 // executor engine
 type StorageVolume struct {
-	Type   string `json:"type"`
-	Source string `json:"source"`
-	Target string `json:"target"`
+	Type   StorageVolumeConnectorType `json:"type"`
+	Source string                     `json:"source"`
+	Target string                     `json:"target"`
 }

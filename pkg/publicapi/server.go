@@ -251,7 +251,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
 		submitReq.Data.Spec.Inputs = append(submitReq.Data.Spec.Inputs, storage.StorageSpec{
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/job",
 		})

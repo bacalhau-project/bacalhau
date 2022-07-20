@@ -72,7 +72,7 @@ func devStackDockerStorageTest(
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack, storage.StorageSourceIPFS, nodeCount)
 	require.NoError(t, err)
 
 	jobSpec := executor.JobSpec{
