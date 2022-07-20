@@ -22,7 +22,7 @@ type StorageProvider interface {
 // will mount data in different ways.
 type StorageSpec struct {
 	// Engine is the execution engine that can mount the spec's data.
-	Engine string `json:"engine" yaml:"engine"`
+	Engine StorageSourceType `json:"engine"`
 
 	// Name of the spec's data, for reference.
 	Name string `json:"name" yaml:"name"`
