@@ -2,6 +2,7 @@ package resourceusage
 
 import (
 	"fmt"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -12,6 +13,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/pbnjay/memory"
 )
+
+// NvidiaCLI is the path to the Nvidia helper binary
+const NvidiaCLI = "nvidia-container-cli"
 
 func NewDefaultResourceUsageConfig() ResourceUsageConfig {
 	return ResourceUsageConfig{
@@ -118,10 +122,45 @@ func getFreeDiskSpace(path string) (uint64, error) {
 	return fs.Bfree * uint64(fs.Bsize), nil
 }
 
-// TODO(Phil): wrap nvidia-smi command to check num CPUs
-// getFreeGPUs wraps nvidia-smi to get the number of free GPUs
-func getFreeGPUs() (uint64, error) {
-	return 0, nil
+// numSystemGPUs wraps nvidia-container-cli to get the number of GPUs
+func numSystemGPUs() (uint64, error) {
+	nvidiaPath, err := exec.LookPath(NvidiaCLI)
+	if err != nil {
+		// If the NVIDIA CLI is not installed, we can't know the number of GPUs, assume zero
+		if (err.(*exec.Error)).Unwrap() == exec.ErrNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	args := []string{
+		"info",
+		"--csv",
+	}
+	cmd := exec.Command(nvidiaPath, args...)
+	resp, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse output of nvidia-container-cli command
+	lines := strings.Split(string(resp), "\n")
+	deviceInfoFlag := false
+	numDevices := uint64(0)
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "Device Index") {
+			deviceInfoFlag = true
+			continue
+		}
+		if deviceInfoFlag {
+			numDevices += 1
+		}
+	}
+
+	fmt.Println(numDevices)
+	return numDevices, nil
 }
 
 // what resources does this compute node actually have?
@@ -130,7 +169,7 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	if err != nil {
 		return ResourceUsageData{}, err
 	}
-	gpus, err := getFreeGPUs()
+	gpus, err := numSystemGPUs()
 	if err != nil {
 		return ResourceUsageData{}, err
 	}

@@ -134,19 +134,19 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 			name:        "should return what the system has",
 			shouldError: false,
 			input:       c("", "", ""),
-			expected:    d(float64(runtime.NumCPU()), memory.TotalMemory(), 0),
+			expected:    d(float64(runtime.NumCPU()), memory.TotalMemory(), numSystemGPUsNoError()),
 		},
 		{
 			name:        "should return the configured CPU amount",
 			shouldError: false,
 			input:       c("100m", "", ""),
-			expected:    d(float64(0.1), memory.TotalMemory(), 0),
+			expected:    d(float64(0.1), memory.TotalMemory(), numSystemGPUsNoError()),
 		},
 		{
 			name:        "should return the configured Memory amount",
 			shouldError: false,
 			input:       c("", "100Mb", ""),
-			expected:    d(float64(runtime.NumCPU()), ConvertMemoryString("100Mb"), 0),
+			expected:    d(float64(runtime.NumCPU()), ConvertMemoryString("100Mb"), numSystemGPUsNoError()),
 		},
 		{
 			name:        "should error with too many CPUs asked for",
@@ -178,5 +178,12 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 		}
 
 	}
+}
 
+func numSystemGPUsNoError() uint64 {
+	numGPUs, err := numSystemGPUs()
+	if err != nil {
+		return 0
+	}
+	return numGPUs
 }
