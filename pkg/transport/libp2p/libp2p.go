@@ -229,7 +229,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
 	}
-	log.Trace().Msgf("Received event: %+v", payload)
+	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 
 	// Notify all the listeners in this process of the event:
 	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
