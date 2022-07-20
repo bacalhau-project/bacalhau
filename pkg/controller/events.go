@@ -25,10 +25,10 @@ func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) er
 	}
 
 	// tell the rest of the network about the event via the transport
-	err = ctrl.transport.Publish(jobCtx, ev)
-	if err != nil {
-		return err
-	}
+	// err := ctrl.transport.Publish(jobCtx, ev)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -45,12 +45,7 @@ func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) er
 func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) error {
 	jobCtx := ctrl.handleOtelReadEvent(ctx, ev)
 
-	err := ctrl.validateStateTransition(jobCtx, ev)
-	if err != nil {
-		return fmt.Errorf("error validateStateTransition: %s", err)
-	}
-
-	err = ctrl.mutateDatastore(jobCtx, ev)
+	err := ctrl.mutateDatastore(jobCtx, ev)
 	if err != nil {
 		return fmt.Errorf("error mutateDatastore: %s", err)
 	}
@@ -66,11 +61,6 @@ func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) e
   process event helpers
 
 */
-
-// check the state transition of the job is allowed based on the current local state
-func (ctrl *Controller) validateStateTransition(ctx context.Context, ev executor.JobEvent) error {
-	return nil
-}
 
 // mutate the datastore with the given event
 func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEvent) error {
