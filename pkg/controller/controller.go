@@ -314,11 +314,13 @@ func (ctrl *Controller) constructEvent(jobID string, eventName executor.JobEvent
 
 func constructJob(ev executor.JobEvent) executor.Job {
 	return executor.Job{
-		ID:        ev.JobID,
-		Spec:      ev.JobSpec,
-		Deal:      ev.JobDeal,
-		State:     map[string]executor.JobState{},
-		CreatedAt: time.Now(),
+		ID:              ev.JobID,
+		RequesterNodeID: ev.SourceNodeID,
+		ClientID:        ev.ClientID,
+		Spec:            ev.JobSpec,
+		Deal:            ev.JobDeal,
+		State:           map[string]executor.JobState{},
+		CreatedAt:       time.Now(),
 	}
 }
 
