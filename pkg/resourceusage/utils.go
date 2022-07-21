@@ -17,22 +17,6 @@ import (
 // NvidiaCLI is the path to the Nvidia helper binary
 const NvidiaCLI = "nvidia-container-cli"
 
-func NewDefaultResourceUsageConfig() ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    "",
-		Memory: "",
-		Disk:   "",
-	}
-}
-
-func NewResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    cpu,
-		Memory: mem,
-		Disk:   disk,
-	}
-}
-
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
 // lowercase
@@ -235,10 +219,10 @@ func CheckResourceUsage(wants, limits ResourceUsageData) bool {
 	}
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
-	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0) {
+	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && wants.GPU <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0 || wants.GPU > 0) {
 		return false
 	}
-	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk
+	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk && wants.GPU <= limits.GPU
 }
 
 func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
@@ -246,5 +230,6 @@ func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 		CPU:    totals.CPU - current.CPU,
 		Memory: totals.Memory - current.Memory,
 		Disk:   totals.Disk - current.Disk,
+		GPU:    totals.GPU - current.GPU,
 	}
 }

@@ -190,6 +190,96 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	}
 }
 
+func TestSubtractResourceUsage(t *testing.T) {
+	res := SubtractResourceUsage(
+		ResourceUsageData{
+			CPU:    0.5,
+			Memory: (datasize.MB * 512).Bytes(),
+			GPU:    2,
+		},
+		ResourceUsageData{
+			CPU:    1,
+			Memory: (datasize.GB * 1).Bytes(),
+			GPU:    4,
+		},
+	)
+	if res.CPU != 0.5 {
+		t.Errorf("CPU was incorrect: %f", res.CPU)
+	}
+	if res.Memory != (datasize.MB * 512).Bytes() {
+		t.Errorf("Memory was incorrect: %d", res.Memory)
+	}
+	if res.GPU != 2 {
+		t.Errorf("GPU was incorrect: %d", res.GPU)
+	}
+}
+
+func TestCheckResourceUsage(t *testing.T) {
+	// Test when resources are ok, should return true
+	ok := CheckResourceUsage(
+		ResourceUsageData{
+			CPU:    0.5,
+			Memory: (datasize.MB * 512).Bytes(),
+			GPU:    2,
+		},
+		ResourceUsageData{
+			CPU:    1,
+			Memory: (datasize.GB * 1).Bytes(),
+			GPU:    4,
+		},
+	)
+	if !ok {
+		t.Error("CheckResourceUsage returned false")
+	}
+
+	// test when resources are not ok
+	ok = CheckResourceUsage(
+		ResourceUsageData{
+			CPU:    0.5,
+			Memory: (datasize.MB * 512).Bytes(),
+			GPU:    2,
+		},
+		ResourceUsageData{
+			CPU:    1,
+			Memory: (datasize.GB * 1).Bytes(),
+			GPU:    0,
+		},
+	)
+	if ok {
+		t.Error("CheckResourceUsage returned true")
+	}
+	ok = CheckResourceUsage(
+		ResourceUsageData{
+			CPU:    0.5,
+			Memory: (datasize.MB * 512).Bytes(),
+			GPU:    2,
+		},
+		ResourceUsageData{
+			CPU:    0,
+			Memory: (datasize.GB * 1).Bytes(),
+			GPU:    4,
+		},
+	)
+	if ok {
+		t.Error("CheckResourceUsage returned true")
+	}
+	ok = CheckResourceUsage(
+		ResourceUsageData{
+			CPU:    0.5,
+			Memory: (datasize.MB * 512).Bytes(),
+			GPU:    2,
+		},
+		ResourceUsageData{
+			CPU:    1,
+			Memory: (datasize.GB * 0).Bytes(),
+			GPU:    4,
+		},
+	)
+	if ok {
+		t.Error("CheckResourceUsage returned true")
+	}
+}
+
 func numSystemGPUsNoError() uint64 {
 	numGPUs, err := numSystemGPUs()
 	if err != nil {

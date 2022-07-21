@@ -194,6 +194,9 @@ func (manager *CapacityManager) FilterRequirements(requirements resourceusage.Re
 	if requirements.Disk <= 0 {
 		requirements.Disk = manager.resourceRequirementsJobDefault.Disk
 	}
+	if requirements.GPU <= 0 {
+		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
+	}
 	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements
 }
@@ -227,6 +230,7 @@ func (manager *CapacityManager) GetFreeSpace() resourceusage.ResourceUsageData {
 		currentResourceUsage.CPU += item.Requirements.CPU
 		currentResourceUsage.Memory += item.Requirements.Memory
 		currentResourceUsage.Disk += item.Requirements.Disk
+		currentResourceUsage.GPU += item.Requirements.GPU
 	})
 
 	return resourceusage.SubtractResourceUsage(currentResourceUsage, manager.resourceLimitsTotal)
