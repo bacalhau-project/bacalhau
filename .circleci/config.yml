@@ -176,7 +176,7 @@ jobs:
           name: Upload perf results
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
-            sudo apt install python3.10 python3-pip -y
+            sudo apt install python3.10 python3-pip hyperfine -y
             sudo python3 -m pip install --upgrade pip
             pip3 install gsutil
             export SHA="<< pipeline.git.revision >>"
