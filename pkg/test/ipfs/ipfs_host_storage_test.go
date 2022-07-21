@@ -12,16 +12,46 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type IPFSHostStorageSuite struct {
+	suite.Suite
+	rootCmd *cobra.Command
+}
+
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestIPFSHostStorageSuite(t *testing.T) {
+	suite.Run(t, new(IPFSHostStorageSuite))
+}
+
+// Before all suite
+func (suite *IPFSHostStorageSuite) SetupAllSuite() {
+
+}
+
+// Before each test
+func (suite *IPFSHostStorageSuite) SetupTest() {
+	system.InitConfigForTesting(suite.T())
+}
+
+func (suite *IPFSHostStorageSuite) TearDownTest() {
+}
+
+func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
+
+}
 
 type getStorageFunc func(cm *system.CleanupManager, api string) (
 	storage.StorageProvider, error)
 
-func TestIpfsApiCopyFile(t *testing.T) {
+func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
-		t,
+		suite.T(),
 		storage.IPFSAPICopy,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
@@ -32,9 +62,9 @@ func TestIpfsApiCopyFile(t *testing.T) {
 
 }
 
-func TestIpfsApiCopyFolder(t *testing.T) {
+func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
-		t,
+		suite.T(),
 		storage.IPFSAPICopy,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
@@ -44,11 +74,11 @@ func TestIpfsApiCopyFolder(t *testing.T) {
 	)
 }
 
-func TestIpfsFuseDockerFile(t *testing.T) {
-	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
+func (suite *IPFSHostStorageSuite) TestIPFSFuseDockerFile() {
+	suite.T().Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
 
 	runFileTest(
-		t,
+		suite.T(),
 		storage.IPFSFuseDocker,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
@@ -58,11 +88,11 @@ func TestIpfsFuseDockerFile(t *testing.T) {
 	)
 }
 
-func TestIpfsFuseDockerFolder(t *testing.T) {
-	t.Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
+func (suite *IPFSHostStorageSuite) TestIPFSFuseDockerFolder() {
+	suite.T().Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
 
 	runFolderTest(
-		t,
+		suite.T(),
 		storage.IPFSFuseDocker,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {

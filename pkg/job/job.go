@@ -37,7 +37,7 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory string,
+	cpu, memory, gpu string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -52,6 +52,7 @@ func ConstructDockerJob(
 	jobResources := resourceusage.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
+		GPU:    gpu,
 	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
@@ -87,10 +88,19 @@ func ConstructDockerJob(
 	}
 
 	var jobAnnotations []string
+	var unSafeAnnotations []string
 	for _, a := range annotations {
-		if IsSafeAnnotation(a) {
-			annotations = append(annotations, a)
+		if IsSafeAnnotation(a) && a != "" {
+			jobAnnotations = append(jobAnnotations, a)
+		} else {
+			unSafeAnnotations = append(unSafeAnnotations, a)
 		}
+	}
+
+	if len(unSafeAnnotations) > 0 {
+		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+			RegexString,
+			strings.Join(unSafeAnnotations, ", "))
 	}
 
 	spec := &executor.JobSpec{

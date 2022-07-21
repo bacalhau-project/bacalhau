@@ -14,15 +14,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	chmodUserAll = 0700          // read, write, execute permissions for user
-	bitsPerKey   = 2048          // number of bits in generated RSA keypairs
-	sigHash      = crypto.SHA256 // hash function to use for sign/verify
+	bitsPerKey = 2048          // number of bits in generated RSA keypairs
+	sigHash    = crypto.SHA256 // hash function to use for sign/verify
 )
 
 var (
@@ -186,7 +186,7 @@ func ensureConfigDir() (string, error) {
 		}
 
 		configDir = fmt.Sprintf("%s/.bacalhau", home)
-		if err = os.MkdirAll(configDir, chmodUserAll); err != nil {
+		if err = os.MkdirAll(configDir, util.OS_USER_RWX); err != nil {
 			return "", fmt.Errorf("failed to create config dir: %w", err)
 		}
 	} else {
@@ -254,7 +254,7 @@ func ensureUserIDKey(configDir string) (string, error) {
 			if err = file.Close(); err != nil {
 				return "", fmt.Errorf("failed to close key file: %w", err)
 			}
-			if err = os.Chmod(keyFile, chmodUserAll); err != nil {
+			if err = os.Chmod(keyFile, util.OS_USER_RWX); err != nil {
 				return "", fmt.Errorf("failed to set permission on key file: %w", err)
 			}
 		} else {

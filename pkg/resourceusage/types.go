@@ -8,7 +8,10 @@ type ResourceUsageConfig struct {
 	// github.com/c2h5oh/datasize string
 	Memory string `json:"memory" yaml:"memory"`
 	// github.com/c2h5oh/datasize string
+
 	Disk string `json:"disk" yaml:"disk"`
+	GPU  string `json:"gpu" yaml:"gpu"` // unsigned integer string
+
 }
 
 // these are the numeric values in bytes for ResourceUsageConfig
@@ -19,6 +22,7 @@ type ResourceUsageData struct {
 	Memory uint64 `json:"memory"`
 	// bytes
 	Disk uint64 `json:"disk"`
+	GPU  uint64 `json:"gpu"` // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
 }
 
 type ResourceUsageProfile struct {

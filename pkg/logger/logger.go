@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -101,6 +102,10 @@ func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 
 func LoggerWithNodeAndJobInfo(nodeID, jobID string) zerolog.Logger {
 	return log.With().Str("N", nodeID).Str("J", jobID).Logger()
+}
+
+func LoggerTestLogger(logBuffer *bytes.Buffer) zerolog.Logger {
+	return zerolog.New(zerolog.MultiLevelWriter(io.MultiWriter(logBuffer, os.Stdout)))
 }
 
 func LogJobEvent(event JobEvent) {

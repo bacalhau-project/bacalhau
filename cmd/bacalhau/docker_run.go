@@ -2,7 +2,7 @@ package bacalhau
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -14,15 +14,16 @@ import (
 
 var jobEngine string
 var jobVerifier string
+var jobInputs []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
 var jobCPU string
 var jobMemory string
+var jobGPU string
 var skipSyntaxChecking bool
 var jobLabels []string
-var flagClearLabels bool
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
@@ -37,12 +38,17 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`What verification engine to use to run the job`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&jobInputs, "inputs", "i", []string{},
+		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
+	)
+
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
-		`cid:path of the input data volumes`,
+		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobOutputVolumes, "output-volumes", "o", []string{},
-		`name:path of the output data volumes`,
+		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobEnv, "env", "e", []string{},
@@ -60,23 +66,19 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobMemory, "memory", "",
 		`Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
+	dockerRunCmd.PersistentFlags().StringVar(
+		&jobGPU, "gpu", "",
+		`Job GPU requirement (e.g. 1, 2, 8).`,
+	)
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&skipSyntaxChecking, "skip-syntax-checking", false,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
+
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
-		`List of labels for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
+		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, // nolint:lll // Documentation, ok if long.
 	)
-
-	// For testing
-	dockerRunCmd.PersistentFlags().BoolVar(&flagClearLabels,
-		"clear-labels", false,
-		`Clear all labels before executing. For testing purposes only, should never be necessary in the real world.`,
-	)
-	if err := dockerRunCmd.PersistentFlags().MarkHidden("clear-labels"); err != nil {
-		log.Debug().Msgf("error hiding test flags: %v", err)
-	}
 }
 
 var dockerCmd = &cobra.Command{
@@ -88,6 +90,19 @@ var dockerRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run a docker job on the network",
 	Args:  cobra.MinimumNArgs(1),
+	PostRun: func(cmd *cobra.Command, args []string) {
+		// Can't think of any reason we'd want these to persist.
+		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
+		// but potentially cleaner than making things public, which would
+		// be the other way to attack this.)
+		jobInputs = []string{}
+		jobInputVolumes = []string{}
+		jobOutputVolumes = []string{}
+		jobEnv = []string{}
+
+		jobLabels = []string{}
+
+	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
@@ -103,43 +118,28 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
-		shells := strings.Split(`/bin/sh
-/bin/bash
-/usr/bin/bash
-/bin/rbash
-/usr/bin/rbash
-/usr/bin/sh
-/bin/dash
-/usr/bin/dash
-/usr/bin/tmux
-/usr/bin/screen
-/bin/zsh
-/usr/bin/zsh`, "/n")
-
-		containsGlob := false
-		for _, entrypointArg := range jobEntrypoint {
-			if strings.ContainsAny(entrypointArg, "*") {
-				containsGlob = true
-			}
+		for _, i := range jobInputs {
+			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
-		if containsGlob {
-			for _, shell := range shells {
-				if strings.Index(strings.TrimSpace(jobEntrypoint[0]), shell) == 0 {
-					containsGlob = false
-					break
-				}
-			}
-			if containsGlob {
-				log.Warn().Msgf("We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>).") // nolint:lll // error message
-			}
+		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
+
+		// No error checking, because it will never be an error (for now)
+		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
+		if sanitizationFatal {
+			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
+			return fmt.Errorf("could not continue with errors")
 		}
 
+		if len(sanitizationMsgs) > 0 {
+			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
+		}
 		spec, deal, err := job.ConstructDockerJob(
 			engineType,
 			verifierType,
 			jobCPU,
 			jobMemory,
+			jobGPU,
 			jobInputVolumes,
 			jobOutputVolumes,
 			jobEnv,

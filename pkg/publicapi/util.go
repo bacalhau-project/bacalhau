@@ -21,8 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var TimeToWaitForServerReply = 10 // nolint:mnd // magic number appropriate here
-var TimeToWaitForHealthy = 50     // nolint:mnd // magic number appropriate here
+var TimeToWaitForServerReply = 10 // nolint:gomnd // magic number appropriate here
+var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate here
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
@@ -48,7 +48,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(rn, host, port)
+	s := NewServer(rn, host, port, ipt)
 	c := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cm))
