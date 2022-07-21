@@ -301,6 +301,8 @@ func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) e
 	// now trigger our local subscribers with this event
 	ctrl.callLocalSubscribers(jobCtx, ev)
 
+	log.Trace().Msgf("handleEvent: %s", ev)
+
 	return nil
 }
 

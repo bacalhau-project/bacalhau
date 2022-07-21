@@ -214,7 +214,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return "", nil
+			return "/tmp", nil
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
@@ -280,7 +280,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			MaxAttempts: 10,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
-				//spew.Dump(seenJobs)
 				return testCase.wait.handler(seenJobs)
 			},
 		}
