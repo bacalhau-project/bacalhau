@@ -52,7 +52,7 @@ func ConstructDockerJob(
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			Engine: "url_download",
-			Url:    parsed_url.String(),
+			URL:    parsed_url.String(),
 			Path:   slices[2],
 		})
 	}
