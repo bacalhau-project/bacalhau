@@ -58,8 +58,12 @@ const (
 	JobEventBidAccepted
 	JobEventBidRejected
 
-	// a compute node cancled a job bid
+	// a compute node cancelled a job bid
 	JobEventBidCancelled
+
+	// TODO: what if a requester node accepts a bid
+	// and the compute node takes too long to start running it?
+	// JobEventBidRevoked
 
 	// a compute node progressed with running a job
 	// this is called periodically for running jobs
@@ -118,7 +122,6 @@ func JobEventTypes() []JobEventType {
 //go:generate stringer -type=JobLocalEventType --trimprefix=JobLocalEvent
 type JobLocalEventType int
 
-// these are the states a job can be in against a single node
 const (
 	jobLocalEventUnknown JobLocalEventType = iota // must be first
 
