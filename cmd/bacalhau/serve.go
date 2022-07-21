@@ -183,6 +183,7 @@ var serveCmd = &cobra.Command{
 			requesterNode,
 			hostAddress,
 			apiPort,
+			transport,
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
