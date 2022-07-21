@@ -11,49 +11,59 @@ import (
 
 type InMemoryDatastore struct {
 	// we keep pointers to these things because we will update them partially
-	jobs          map[string]*executor.Job
-	localMetadata map[string]*executor.JobLocalMetadata
-	// we don't keep pointers to events because they are immutable
-	events map[string][]executor.JobEvent
-	mtx    sync.Mutex
+	jobs        map[string]*executor.Job
+	events      map[string][]executor.JobEvent
+	localEvents map[string][]executor.JobLocalEvent
+	mtx         sync.Mutex
 }
 
 func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	res := &InMemoryDatastore{
-		jobs:          map[string]*executor.Job{},
-		localMetadata: map[string]*executor.JobLocalMetadata{},
-		events:        map[string][]executor.JobEvent{},
+		jobs:        map[string]*executor.Job{},
+		events:      map[string][]executor.JobEvent{},
+		localEvents: map[string][]executor.JobLocalEvent{},
 	}
 	return res, nil
 }
 
-func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (datastore.Job, error) {
+func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (executor.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[id]
 	if !ok {
-		return datastore.Job{}, fmt.Errorf("no job found: %s", id)
+		return executor.Job{}, fmt.Errorf("no job found: %s", id)
 	}
-	events, ok := d.events[id]
-	if !ok {
-		events = []executor.JobEvent{}
-	}
-	localMetadata, ok := d.localMetadata[id]
-	if !ok {
-		localMetadata = &executor.JobLocalMetadata{}
-	}
-	return datastore.Job{
-		ID:            job.ID,
-		Data:          *job,
-		LocalMetadata: *localMetadata,
-		Events:        events,
-	}, nil
+	return *job, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuery) ([]datastore.Job, error) {
+func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
+	_, ok := d.jobs[id]
+	if !ok {
+		return []executor.JobEvent{}, fmt.Errorf("no job found: %s", id)
+	}
+	result, ok := d.events[id]
+	if !ok {
+		result = []executor.JobEvent{}
+	}
+	return result, nil
+}
+
+func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
+	_, ok := d.jobs[id]
+	if !ok {
+		return []executor.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
+	}
+	result, ok := d.localEvents[id]
+	if !ok {
+		result = []executor.JobLocalEvent{}
+	}
+	return result, nil
+}
+
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuery) ([]executor.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	result := []datastore.Job{}
+	result := []executor.Job{}
 	if query.ID != "" {
 		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {
@@ -62,20 +72,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuer
 		result = append(result, job)
 	} else {
 		for _, job := range d.jobs {
-			events, ok := d.events[job.ID]
-			if !ok {
-				events = []executor.JobEvent{}
-			}
-			metadata, ok := d.localMetadata[job.ID]
-			if !ok {
-				metadata = &executor.JobLocalMetadata{}
-			}
-			result = append(result, datastore.Job{
-				ID:            job.ID,
-				Data:          *job,
-				LocalMetadata: *metadata,
-				Events:        events,
-			})
+			result = append(result, *job)
 		}
 	}
 	return result, nil
@@ -104,6 +101,22 @@ func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev execu
 	return nil
 }
 
+func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev executor.JobLocalEvent) error {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	_, ok := d.jobs[jobID]
+	if !ok {
+		return fmt.Errorf("no job found: %s", jobID)
+	}
+	eventArr, ok := d.localEvents[jobID]
+	if !ok {
+		eventArr = []executor.JobLocalEvent{}
+	}
+	eventArr = append(eventArr, ev)
+	d.localEvents[jobID] = eventArr
+	return nil
+}
+
 func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -115,7 +128,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateJobState(ctx context.Context, jobID, nodeID string, state executor.JobState) error {
+func (d *InMemoryDatastore) UpdateExecutionState(ctx context.Context, jobID, nodeID string, state executor.JobState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
@@ -134,17 +147,6 @@ func (d *InMemoryDatastore) UpdateJobState(ctx context.Context, jobID, nodeID st
 		existingState.Status = state.Status
 	}
 	job.State[nodeID] = existingState
-	return nil
-}
-
-func (d *InMemoryDatastore) UpdateLocalMetadata(ctx context.Context, jobID string, data executor.JobLocalMetadata) error {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	_, ok := d.jobs[jobID]
-	if !ok {
-		return fmt.Errorf("no job found: %s", jobID)
-	}
-	d.localMetadata[jobID] = &data
 	return nil
 }
 

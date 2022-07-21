@@ -2,6 +2,7 @@ package requesternode
 
 import (
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -20,6 +21,7 @@ type RequesterNode struct {
 	config     RequesterNodeConfig // nolint:gocritic
 	controller *controller.Controller
 	verifiers  map[verifier.VerifierType]verifier.Verifier
+	bidMutex   sync.Mutex
 }
 
 func NewRequesterNode(
@@ -64,17 +66,20 @@ func (node *RequesterNode) subscriptionSetup() {
 			return
 		}
 		// we only care about jobs that we own
-		if job.Data.RequesterNodeID != node.id {
+		if job.RequesterNodeID != node.id {
 			return
 		}
 		switch jobEvent.EventName {
 		case executor.JobEventBid:
-			node.subscriptionEventBid(ctx, jobEvent, job.Data)
+			node.subscriptionEventBid(ctx, job, jobEvent)
 		}
 	})
 }
 
-func (node *RequesterNode) subscriptionEventBid(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
+func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executor.Job, jobEvent executor.JobEvent) {
+	node.bidMutex.Lock()
+	defer node.bidMutex.Unlock()
+
 	// Need to declare span separately to prevent shadowing
 	var span trace.Span
 	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventBid")
@@ -82,19 +87,47 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, jobEvent ex
 
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 
-	bidAccepted, _, err := node.considerBid(job, jobEvent.TargetNodeID)
-	if err != nil {
-		threadLogger.Warn().Msgf("There was an error considering bid: %s", err)
-		return
-	}
+	accepted := func() bool {
+		concurrency := job.Deal.Concurrency
+		// let's see how many bids we have already accepted
+		// it's important this comes from "local events"
+		// otherwise we are in a race with the network and could
+		// end up accepting many more bids than our concurrency
+		localEvents, err := node.controller.GetJobLocalEvents(ctx, job.ID)
+		if err != nil {
+			threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
+			return false
+		}
 
-	if bidAccepted {
+		acceptedEvents := []executor.JobLocalEvent{}
+
+		for _, localEvent := range localEvents {
+			if localEvent.EventName == executor.JobLocalEventBidAccepted {
+				// have we got a bid for a node we have already accepted a bid for?
+				if localEvent.TargetNodeID == jobEvent.TargetNodeID {
+					threadLogger.Debug().Msgf("Rejected: Job bid already accepted: %s %s", jobEvent.TargetNodeID, jobEvent.JobID)
+					return false
+				}
+				acceptedEvents = append(acceptedEvents, localEvent)
+			}
+		}
+
+		if len(acceptedEvents) >= concurrency {
+			// nolint:lll // Error message needs long line
+			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(acceptedEvents), concurrency)
+			return false
+		}
+
+		return true
+	}()
+
+	if accepted {
 		logger.LogJobEvent(logger.JobEvent{
 			Node: node.id,
 			Type: "requestor_node:bid_accepted",
 			Job:  job.ID,
 		})
-		err = node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
@@ -104,42 +137,11 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, jobEvent ex
 			Type: "requestor_node:bid_rejected",
 			Job:  job.ID,
 		})
-		err = node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
 	}
-}
-
-// a compute node has bid on the job
-// should we accept the bid or not?
-func (node *RequesterNode) considerBid(job executor.Job, nodeID string) (bidAccepted bool, reason string, err error) {
-	threadLogger := logger.LoggerWithNodeAndJobInfo(nodeID, job.ID)
-
-	concurrency := job.Deal.Concurrency
-	threadLogger.Debug().Msgf("Concurrency for this job: %d", concurrency)
-
-	// we are already over-subscribed
-	// if len(job.Deal.AssignedNodes) >= concurrency {
-	// 	// nolint:lll // Error message needs long line
-	// 	threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(job.Deal.AssignedNodes), concurrency)
-	// 	return false, "Job is oversubscribed", nil
-	// }
-
-	// // sanity check to not allow a node to bid on a job twice
-	// alreadyAssigned := false
-
-	// for _, assignedNode := range job.Deal.AssignedNodes {
-	// 	if assignedNode == nodeID {
-	// 		alreadyAssigned = true
-	// 	}
-	// }
-
-	// if alreadyAssigned {
-	// 	return false, "This node is already assigned", nil
-	// }
-
-	return true, "", nil
 }
 
 func (node *RequesterNode) PinContext(buildContext string) (string, error) {

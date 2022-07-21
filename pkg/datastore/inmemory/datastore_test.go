@@ -30,23 +30,30 @@ func TestInMemoryDataStore(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = store.UpdateJobState(context.Background(), jobId, nodeId, executor.JobState{
+	err = store.UpdateExecutionState(context.Background(), jobId, nodeId, executor.JobState{
 		State: executor.JobStateBidding,
 	})
 	require.NoError(t, err)
 
-	err = store.UpdateLocalMetadata(context.Background(), jobId, executor.JobLocalMetadata{
-		ComputeNodeSelected: true,
+	err = store.AddLocalEvent(context.Background(), jobId, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventSelected,
 	})
 	require.NoError(t, err)
 
 	job, err := store.GetJob(context.Background(), jobId)
 	require.NoError(t, err)
 	require.Equal(t, jobId, job.ID)
-	require.Equal(t, 1, len(job.Events))
-	require.Equal(t, executor.JobEventBid, job.Events[0].EventName)
-	require.Equal(t, 1, len(job.Data.State))
-	require.Equal(t, executor.JobStateBidding, job.Data.State[nodeId].State)
-	require.Equal(t, true, job.LocalMetadata.ComputeNodeSelected)
+	require.Equal(t, 1, len(job.State))
+	require.Equal(t, executor.JobStateBidding, job.State[nodeId].State)
+
+	events, err := store.GetJobEvents(context.Background(), jobId)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(events))
+	require.Equal(t, executor.JobEventBid, events[0].EventName)
+
+	localEvents, err := store.GetJobLocalEvents(context.Background(), jobId)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(localEvents))
+	require.Equal(t, executor.JobLocalEventSelected, localEvents[0].EventName)
 
 }
