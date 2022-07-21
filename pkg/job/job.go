@@ -58,21 +58,21 @@ func ConstructDockerJob(
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
 
-	for _, inputUrl := range inputUrls {
-		slices := strings.Split(inputUrl, ":")
+	for _, inputURL := range inputUrls {
+		slices := strings.Split(inputURL, ":")
 		if len(slices) != 3 {
-			return nil, nil, fmt.Errorf("invalid input URL: %s", inputUrl)
+			return nil, nil, fmt.Errorf("invalid input URL: %s", inputURL)
 		}
-		raw_url := slices[0] + ":" + slices[1]
+		rawURL := slices[0] + ":" + slices[1]
 		// The string url is assumed not to have a #fragment suffix
 		// The valid form is: [scheme:][//[userinfo@]host][/]path[?query]
-		parsed_url, err := url.ParseRequestURI(raw_url)
+		parsedURL, err := url.ParseRequestURI(rawURL)
 		if err != nil {
 			return nil, nil, err
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			Engine: "url_download",
-			URL:    parsed_url.String(),
+			URL:    parsedURL.String(),
 			Path:   slices[2],
 		})
 	}
