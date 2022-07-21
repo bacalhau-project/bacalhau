@@ -8,3 +8,5 @@ const IPFSTypeFile = "file"
 const IPFSFuseDocker = "ipfs_fuse"
 const IPFSAPICopy = "ipfs_copy"
 const IPFSDefault = "ipfs"
+
+const URLDownload = "url_download"
