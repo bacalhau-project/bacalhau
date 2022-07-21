@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -57,23 +56,19 @@ type Job struct {
 type JobSpec struct {
 	APIVersion APIVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
-	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
-	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"engine_name" yaml:"engine_name"`
+	Engine EngineType `json:"engine" yaml:"engine"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
-	// allow the verifier to be provided as a string for yaml and JSON job specs
-	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
-	Language JobSpecLanguage `json:"job_spec_language,omitempty" yaml:"job_spec_language,omitempty"`
+	Docker   JobSpecDocker   `json:"job_spec_docker" yaml:"job_spec_docker"`
+	Language JobSpecLanguage `json:"job_spec_language" yaml:"job_spec_language"`
 
 	// the compute (cpy, ram) resources this job requires
-	Resources capacitymanager.ResourceUsageConfig `json:"resources"`
+	Resources resourceusage.ResourceUsageConfig `json:"resources" yaml:"resources"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"

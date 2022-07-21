@@ -52,14 +52,12 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			assert.NoError(suite.T(), err)
-
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
 				"--api-host", host,
 				"--api-port", port,
-				"-f", "../../testdata/job.json",
+				"-f", "../testdata/job.json",
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
@@ -79,35 +77,27 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 	}
 
 	for i, tc := range tests {
+		func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
 
-		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
+				"--api-host", host,
+				"--api-port", port,
+				"-f", "../testdata/job.yaml",
+			)
+			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-		for _, testFile := range testFiles {
-			func() {
-				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
-				defer cm.Cleanup()
-
-				parsedBasedURI, err := url.Parse(c.BaseURI)
-				assert.NoError(suite.T(), err)
-
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
-					"--api-host", host,
-					"--api-port", port,
-					"-f", testFile,
-				)
-
-				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
-				assert.NoError(suite.T(), err)
-				assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-			}()
-		}
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
+			assert.NoError(suite.T(), err)
+			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+		}()
 	}
 }
 
 func TestApplySuite(t *testing.T) {
-	suite.Run(t, new(ApplySuite))
+	suite.Run(t, new(RunSuite))
 }

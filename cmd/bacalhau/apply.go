@@ -3,16 +3,16 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -20,31 +20,32 @@ import (
 var jobspec *executor.JobSpec
 var filename string
 var jobfConcurrency int
-var jobfInputUrls []string
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
 
-func init() { // nolint:gochecknoinits
+func init() {
+
 	applyCmd.PersistentFlags().StringVarP(
 		&filename, "filename", "f", "",
-		`Path to the job file`,
+		`Whats the path of the job file`,
 	)
 
 	applyCmd.PersistentFlags().IntVarP(
 		&jobfConcurrency, "concurrency", "c", 1,
-		`How many nodes should run the job in parallel`,
+		`How many nodes should run the same job parallely`,
 	)
 
 	applyCmd.PersistentFlags().StringSliceVarP(&jobTags,
 		"labels", "l", []string{},
 		`List of jobTags for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
+
 }
 
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "Submit a job.json or job.yaml file and run it on the network",
+	Short: "Submit a job.json file and run it on the network",
 	Args:  cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
@@ -58,75 +59,80 @@ var applyCmd = &cobra.Command{
 
 		defer fileContent.Close()
 
-		byteResult, err := io.ReadAll(fileContent)
-
-		if err != nil {
-			return err
-		}
+		byteResult, _ := ioutil.ReadAll(fileContent)
 
 		if fileextension == ".json" {
-			err = json.Unmarshal(byteResult, &jobspec)
-			if err != nil {
-				return err
-			}
+			json.Unmarshal(byteResult, &jobspec)
 		}
 
-		if fileextension == ".yaml" || fileextension == ".yml" {
-			err = yaml.Unmarshal(byteResult, &jobspec)
-			if err != nil {
-				return err
-			}
+		if fileextension == ".yaml" || fileextension == "yml" {
+			yaml.Unmarshal(byteResult, &jobspec)
 		}
+
+		jobfEngine := jobspec.Engine.String()
+
+		jobfVerifier := jobspec.Verifier.String()
 
 		jobImage := jobspec.Docker.Image
 
 		jobEntrypoint := jobspec.Docker.Entrypoint
 
 		if len(jobspec.Inputs) != 0 {
-			for _, jobspecInput := range jobspec.Inputs {
-				var storageSpecEngineType storage.StorageSourceType
-				storageSpecEngineType, err = storage.ParseStorageSourceType(jobspecInput.EngineName)
-				if err != nil {
-					return err
-				}
-				if jobspecInput.Path == "" {
-					return fmt.Errorf("empty volume mount point %+v", jobspecInput)
-				}
-				if storageSpecEngineType == storage.StorageSourceIPFS {
-					if jobspecInput.Cid == "" {
-						return fmt.Errorf("empty ipfs volume cid %+v", jobspecInput)
-					}
-					is := jobspecInput.Cid + ":" + jobspecInput.Path
-					jobfInputVolumes = append(jobfInputVolumes, is)
-				} else if storageSpecEngineType == storage.StorageSourceURLDownload {
-					if jobspecInput.URL == "" {
-						return fmt.Errorf("empty url volume url %+v", jobspecInput)
-					}
-					is := jobspecInput.URL + ":" + jobspecInput.Path
-					jobfInputUrls = append(jobfInputUrls, is)
-				} else {
-					return fmt.Errorf("unknown storage source type %s", jobspecInput.EngineName)
-				}
+			for _, jobspecsInputs := range jobspec.Inputs {
+				is := jobspecsInputs.Cid + ":" + jobspecsInputs.Path
+				jobfInputVolumes = append(jobfInputVolumes, is)
+
 			}
 		}
-
 		if len(jobspec.Outputs) != 0 {
 			for _, jobspecsOutputs := range jobspec.Outputs {
 				is := jobspecsOutputs.Name + ":" + jobspecsOutputs.Path
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
+
 			}
 		}
 
-		engineType, err := executor.ParseEngineType(jobspec.EngineName)
+		engineType, err := executor.ParseEngineType(jobfEngine)
 		if err != nil {
-			cmd.Printf("Error parsing engine type: %s", err)
+			cmd.Print("error here")
 			return err
 		}
 
-		verifierType, err := verifier.ParseVerifierType(jobspec.VerifierName)
+		verifierType, err := verifier.ParseVerifierType(jobfVerifier)
 		if err != nil {
-			cmd.Printf("Error parsing engine type: %s", err)
 			return err
+		}
+
+		shells := strings.Split(`/bin/sh
+		/bin/bash
+		/usr/bin/bash
+		/bin/rbash
+		/usr/bin/rbash
+		/usr/bin/sh
+		/bin/dash
+		/usr/bin/dash
+		/usr/bin/tmux
+		/usr/bin/screen
+		/bin/zsh
+		/usr/bin/zsh`, "/n")
+
+		containsGlob := false
+		for _, entrypointArg := range jobEntrypoint {
+			if strings.ContainsAny(entrypointArg, "*") {
+				containsGlob = true
+			}
+		}
+
+		if containsGlob {
+			for _, shell := range shells {
+				if strings.Index(strings.TrimSpace(jobEntrypoint[0]), shell) == 0 {
+					containsGlob = false
+					break
+				}
+			}
+			if containsGlob {
+				log.Warn().Msgf("We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>).") // nolint:lll // error message
+			}
 		}
 
 		spec, deal, err := job.ConstructDockerJob(
@@ -134,8 +140,6 @@ var applyCmd = &cobra.Command{
 			verifierType,
 			jobspec.Resources.CPU,
 			jobspec.Resources.Memory,
-			jobspec.Resources.GPU,
-			jobfInputUrls,
 			jobfInputVolumes,
 			jobfOutputVolumes,
 			jobspec.Docker.Env,
@@ -160,6 +164,8 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
+		cmd.Printf("spec %#v, \n deal %v", spec, deal)
+		cmd.Printf("cmdArgs %v", cmdArgs)
 		cmd.Printf("%s\n", job.ID)
 		return nil
 
