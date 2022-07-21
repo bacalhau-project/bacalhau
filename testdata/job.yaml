@@ -21,6 +21,7 @@ job_spec_language:
   requirements_path: ''
 resources:
   cpu: ''
+  gpu: ''
   memory: ''
   disk: ''
 inputs:

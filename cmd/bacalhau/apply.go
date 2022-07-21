@@ -161,6 +161,7 @@ var applyCmd = &cobra.Command{
 			engineType,
 			verifierType,
 			jobspec.Resources.CPU,
+			jobspec.Resources.GPU,
 			jobspec.Resources.Memory,
 			jobfInputVolumes,
 			jobfOutputVolumes,
