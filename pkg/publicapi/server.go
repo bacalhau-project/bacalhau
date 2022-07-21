@@ -150,8 +150,8 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	rawJobs := map[string]executor.Job{}
 
-	for _, wrappedJob := range list {
-		rawJobs[wrappedJob.Data.ID] = wrappedJob.Data
+	for _, listJob := range list {
+		rawJobs[listJob.ID] = listJob
 	}
 
 	res.WriteHeader(http.StatusOK)

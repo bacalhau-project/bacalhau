@@ -91,12 +91,19 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
   READ API
 
 */
-
-func (ctrl *Controller) GetJob(ctx context.Context, id string) (datastore.Job, error) {
+func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
 	return ctrl.datastore.GetJob(ctx, id)
 }
 
-func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) ([]datastore.Job, error) {
+func (ctrl *Controller) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
+	return ctrl.datastore.GetJobEvents(ctx, id)
+}
+
+func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
+	return ctrl.datastore.GetJobLocalEvents(ctx, id)
+}
+
+func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) ([]executor.Job, error) {
 	return ctrl.datastore.GetJobs(ctx, query)
 }
 
@@ -329,7 +336,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-		err = ctrl.datastore.UpdateJobState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
+		err = ctrl.datastore.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
 			State:     executionState,
 			Status:    ev.Status,
 			ResultsID: ev.ResultsID,

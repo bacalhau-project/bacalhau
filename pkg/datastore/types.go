@@ -6,13 +6,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
-type Job struct {
-	ID            string
-	Data          executor.Job
-	LocalMetadata executor.JobLocalMetadata
-	Events        []executor.JobEvent
-}
-
 type JobQuery struct {
 	ID string `json:"id"`
 }
@@ -25,11 +18,13 @@ type JobQuery struct {
 // The Datastore and Transport interfaces could be swapped out for some kind
 // of smart contract implementation (e.g. FVM)
 type DataStore interface {
-	GetJob(ctx context.Context, id string) (Job, error)
-	GetJobs(ctx context.Context, query JobQuery) ([]Job, error)
+	GetJob(ctx context.Context, id string) (executor.Job, error)
+	GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error)
+	GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error)
+	GetJobs(ctx context.Context, query JobQuery) ([]executor.Job, error)
 	AddJob(ctx context.Context, job executor.Job) error
 	AddEvent(ctx context.Context, jobID string, event executor.JobEvent) error
+	AddLocalEvent(ctx context.Context, jobID string, event executor.JobLocalEvent) error
 	UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error
-	UpdateJobState(ctx context.Context, jobID, nodeID string, state executor.JobState) error
-	UpdateLocalMetadata(ctx context.Context, jobID string, data executor.JobLocalMetadata) error
+	UpdateExecutionState(ctx context.Context, jobID, nodeID string, state executor.JobState) error
 }
