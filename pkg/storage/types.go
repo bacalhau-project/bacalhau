@@ -32,6 +32,9 @@ type StorageSpec struct {
 	// IPFS storage spec this will be the data's CID).
 	Cid string `json:"cid" yaml:"cid"`
 
+	// Source URL of the data
+	URL string `json:"url"`
+
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
