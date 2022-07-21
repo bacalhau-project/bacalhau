@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
+type ApiVersion string
+
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
 type Executor interface {
@@ -74,6 +76,7 @@ func (j *Job) Copy() Job {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
+	ApiVersion ApiVersion `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
 	// e.g. docker or language
 	Engine EngineType `json:"engine" yaml:"engine"`
 
@@ -112,18 +115,18 @@ type JobSpecDocker struct {
 
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
-	Language        string `json:"language" yaml:"language"`                 // e.g. python
-	LanguageVersion string `json:"language_version" yaml:"language_version"` // e.g. 3.8
+	Language        string `json:"language,omitempty" yaml:"language,omitempty"`                 // e.g. python
+	LanguageVersion string `json:"language_version,omitempty" yaml:"language_version,omitempty"` // e.g. 3.8
 	// must this job be run in a deterministic context?
-	Deterministic bool `json:"deterministic" yaml:"deterministic"`
+	Deterministic bool `json:"deterministic,omitempty" yaml:"deterministic,omitempty"`
 	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context storage.StorageSpec `json:"context" yaml:"context"`
+	Context storage.StorageSpec `json:"context,omitempty" yaml:"context,omitempty"`
 	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"command" yaml:"command"`
+	Command string `json:"command,omitempty" yaml:"command,omitempty"`
 	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"program_path" yaml:"program_path"`
+	ProgramPath string `json:"program_path,omitempty" yaml:"program_path,omitempty"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"requirements_path" yaml:"requirements_path"`
+	RequirementsPath string `json:"requirements_path,omitempty" yaml:"requirements_path,omitempty"`
 }
 
 // The state of a job on a particular compute node. Note that the job will

@@ -1,6 +1,6 @@
 {
-    "engine": 2,
-    "verifier": 2,
+    "engine": "Docker",
+    "verifier": "Ipfs",
     "job_spec_docker": {
         "image": "gromacs/gromacs",
         "entrypoint": [
@@ -46,5 +46,5 @@
         }
     ],
     
-    "Annotations": null
+    "annotations": null
 }

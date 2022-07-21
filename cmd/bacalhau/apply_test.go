@@ -52,7 +52,9 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			parsedBasedURI, err := url.Parse(c.BaseURI)
+			assert.NoError(suite.T(), err)
+
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
 				"--api-host", host,
@@ -82,7 +84,9 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			parsedBasedURI, err := url.Parse(c.BaseURI)
+			assert.NoError(suite.T(), err)
+
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
 				"--api-host", host,
