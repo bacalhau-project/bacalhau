@@ -15,6 +15,7 @@ import (
 var jobEngine string
 var jobVerifier string
 var jobInputs []string
+var jobInputUrls []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
@@ -40,7 +41,10 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobInputs, "inputs", "i", []string{},
 		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
 	)
-
+	dockerRunCmd.PersistentFlags().StringSliceVarP(
+		&jobInputUrls, "input-urls", "u", []string{},
+		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '--input-urls http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz').`, // nolint:lll // Documentation, ok if long.
+	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
 		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
@@ -91,6 +95,7 @@ var dockerRunCmd = &cobra.Command{
 		// but potentially cleaner than making things public, which would
 		// be the other way to attack this.)
 		jobInputs = []string{}
+		jobInputUrls = []string{}
 		jobInputVolumes = []string{}
 		jobOutputVolumes = []string{}
 		jobEnv = []string{}
@@ -134,6 +139,7 @@ var dockerRunCmd = &cobra.Command{
 			verifierType,
 			jobCPU,
 			jobMemory,
+			jobInputUrls,
 			jobInputVolumes,
 			jobOutputVolumes,
 			jobEnv,
