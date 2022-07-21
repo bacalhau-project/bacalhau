@@ -3,6 +3,7 @@ package job
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 
@@ -16,7 +17,8 @@ import (
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory, gpu string,
+	cpu, memory string,
+	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -35,6 +37,25 @@ func ConstructDockerJob(
 	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
+
+	for _, inputUrl := range inputUrls {
+		slices := strings.Split(inputUrl, ":")
+		if len(slices) != 3 {
+			return nil, nil, fmt.Errorf("invalid input URL: %s", inputUrl)
+		}
+		raw_url := slices[0] + ":" + slices[1]
+		// The string url is assumed not to have a #fragment suffix
+		// The valid form is: [scheme:][//[userinfo@]host][/]path[?query]
+		parsed_url, err := url.ParseRequestURI(raw_url)
+		if err != nil {
+			return nil, nil, err
+		}
+		jobInputs = append(jobInputs, storage.StorageSpec{
+			Engine: "url_download",
+			Url:    parsed_url.String(),
+			Path:   slices[2],
+		})
+	}
 
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
