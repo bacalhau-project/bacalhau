@@ -9,12 +9,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
-func ConstructDockerJob( //nolint:funlen
+func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
 	cpu, memory, gpu string,
