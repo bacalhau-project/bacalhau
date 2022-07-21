@@ -103,5 +103,5 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 }
 
 func TestApplySuite(t *testing.T) {
-	suite.Run(t, new(RunSuite))
+	suite.Run(t, new(ApplySuite))
 }
