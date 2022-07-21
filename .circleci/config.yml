@@ -165,6 +165,10 @@ jobs:
           name: Run Perf
           command: |
             cd benchmark
+            sudo apt install build-essential -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            source $HOME/.cargo/env
+            cargo install hyperfine
             ./start_and_run.sh
 
       - run:
@@ -176,7 +180,7 @@ jobs:
           name: Upload perf results
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
-            sudo apt install python3.10 python3-pip hyperfine -y
+            sudo apt install python3.10 python3-pip -y
             sudo python3 -m pip install --upgrade pip
             pip3 install gsutil
             export SHA="<< pipeline.git.revision >>"
