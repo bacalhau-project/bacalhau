@@ -59,7 +59,7 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
 				"--api-host", host,
 				"--api-port", port,
-				"-f", "../testdata/job.json",
+				"-f", "../../testdata/job.json",
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
@@ -91,8 +91,9 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
 				"--api-host", host,
 				"--api-port", port,
-				"-f", "../testdata/job.yaml",
+				"-f", "../../testdata/job.yaml",
 			)
+
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
