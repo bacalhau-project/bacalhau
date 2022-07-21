@@ -30,7 +30,7 @@ jobs:
       target_os:
         type: string
       run_tests:
-        type: bool
+        type: boolean
         default: true
 
     steps:
