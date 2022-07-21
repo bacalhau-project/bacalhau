@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -105,6 +104,11 @@ func SetupTestNoop(
 		verifiers,
 		computeNodeconfig,
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctrl.Start(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
