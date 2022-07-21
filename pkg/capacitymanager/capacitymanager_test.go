@@ -83,3 +83,72 @@ func TestNewCapacityManager(t *testing.T) {
 		t.Fatal("job GPU limit should fail when less than the default limit")
 	}
 }
+
+func TestFilterRequirements(t *testing.T) {
+	m, err := NewCapacityManager(Config{
+		ResourceLimitTotal: resourceusage.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
+		},
+		ResourceRequirementsDefault: resourceusage.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, req := m.FilterRequirements(
+		resourceusage.ResourceUsageData{},
+	)
+	if !ok {
+		t.Error("Should be ok, but is not")
+	}
+	if req.CPU != 1 {
+		t.Errorf("CPU should be 1, but got %f", req.CPU)
+	}
+	if req.Memory != 1073741824 {
+		t.Errorf("Memory should be 1073741824, but got %d", req.Memory)
+	}
+	if req.GPU != 0 {
+		t.Errorf("GPU should be 0, but got %d", req.GPU)
+	}
+}
+
+func TestGetFreeSpace(t *testing.T) {
+	m, err := NewCapacityManager(Config{
+		ResourceLimitTotal: resourceusage.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
+		},
+		ResourceRequirementsDefault: resourceusage.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.active.Add(CapacityManagerItem{
+		ID: "test",
+		Requirements: resourceusage.ResourceUsageData{
+			CPU:    1,
+			Memory: 1073741824,
+			GPU:    0,
+		},
+	})
+	res := m.GetFreeSpace()
+	if res.CPU != 0 {
+		t.Errorf("Should be using all CPU, but got %f", res.CPU)
+	}
+	if res.Memory != 0 {
+		t.Errorf("Should be using all Memory, but got %d", res.Memory)
+	}
+	if res.GPU != 0 {
+		t.Errorf("Should be using all GPU, but got %d", res.GPU)
+	}
+}
