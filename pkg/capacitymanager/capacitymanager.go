@@ -197,7 +197,7 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	if requirements.GPU <= 0 {
 		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
-	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
+	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements
 }
 
