@@ -307,13 +307,4 @@ workflows:
               target_arch: ["amd64"]
               run_tests: [false]
       - run_perf:
-
-      - deploy:
-          name: deploy-development-cluster
-          requires:
-            - build-linux-amd64
-          rollout_stage: development
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
-          filters:
-            <<: *filters_dev_branches # this is calling the previously set yaml anchor
-
+          name: Running perf
