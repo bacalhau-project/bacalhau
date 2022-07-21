@@ -9,31 +9,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
-
-func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
-	results := []types.ResultsList{}
-
-	log.Debug().Msgf("All job states: %+v", job)
-
-	log.Debug().Msgf("Number of job states created: %d", len(job.State))
-
-	for node := range job.State {
-		results = append(results, types.ResultsList{
-			Node:   node,
-			Cid:    job.State[node].ResultsID,
-			Folder: system.GetResultsDirectory(job.ID, node),
-		})
-	}
-
-	log.Debug().Msgf("Number of results created: %d", len(results))
-
-	return &results, nil
-}
 
 func ConstructDockerJob(
 	engine executor.EngineType,

@@ -78,9 +78,17 @@ func (ctrl *Controller) HostID(ctx context.Context) (string, error) {
 	return ctrl.id, nil
 }
 
+// called by compute nodes and requestor nodes
+// they will hear about job events once the datastore has been updated
+func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
+	ctrl.subscribeMutex.Lock()
+	defer ctrl.subscribeMutex.Unlock()
+	ctrl.subscribeFuncs = append(ctrl.subscribeFuncs, fn)
+}
+
 /*
 
-  public API
+  READ API
 
 */
 
@@ -92,14 +100,11 @@ func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) (
 	return ctrl.datastore.GetJobs(ctx, query)
 }
 
-// called by compute nodes and requestor nodes
-// they will hear about job events once the datastore has been updated
-func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
-	ctrl.subscribeMutex.Lock()
-	defer ctrl.subscribeMutex.Unlock()
-	ctrl.subscribeFuncs = append(ctrl.subscribeFuncs, fn)
-}
+/*
 
+  REQUESTER NODE
+
+*/
 func (ctrl *Controller) SubmitJob(
 	ctx context.Context,
 	data executor.JobCreatePayload,
@@ -134,14 +139,6 @@ func (ctrl *Controller) UpdateDeal(ctx context.Context, jobID string, deal execu
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-// done by compute nodes when they hear about the job
-func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_BidJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventBid)
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
 // can only be done by the requestor node that is responsible for the job
 func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
 	if jobID == "" {
@@ -153,6 +150,8 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidAccepted)
+	// the target node is the "nodeID" because the requester node calls this
+	// function and so knows which node it is accepting the bid for
 	ev.TargetNodeID = nodeID
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -168,50 +167,9 @@ func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) 
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidRejected)
+	// the target node is the "nodeID" because the requester node calls this
+	// function and so knows which node it is rejecting the bid for
 	ev.TargetNodeID = nodeID
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
-// called by a compute node who has already bid
-func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CancelJobBid")
-	ev := ctrl.constructEvent(jobID, executor.JobEventBidCancelled)
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
-func (ctrl *Controller) PrepareJob(ctx context.Context, jobID, status string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_PrepareJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventPreparing)
-	ev.Status = status
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
-func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RunJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventRunning)
-	ev.Status = status
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
-func (ctrl *Controller) CompleteJob(ctx context.Context, jobID, status, resultsID string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
-	ev.Status = status
-	ev.ResultsID = resultsID
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
-// can only be called by a compute node who is current assigned to the job
-func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventError)
-	ev.Status = status
-	ev.ResultsID = resultsID
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -225,6 +183,8 @@ func (ctrl *Controller) AcceptResults(ctx context.Context, jobID, nodeID string)
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsAccepted)
+	// the target node is the "nodeID" because the requester node calls this
+	// function and so knows which node it is rejecting the bid for
 	ev.TargetNodeID = nodeID
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -239,7 +199,75 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsRejected)
+	// the target node is the "nodeID" because the requester node calls this
+	// function and so knows which node it is rejecting the bid for
 	ev.TargetNodeID = nodeID
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+/*
+
+  COMPUTE NODE
+
+*/
+
+// done by compute nodes when they hear about the job
+func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_BidJob")
+	ev := ctrl.constructEvent(jobID, executor.JobEventBid)
+	// the target node is "us" because it is "us" who is bidding
+	// and so the job state should be updated against our node id
+	ev.TargetNodeID = ctrl.id
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+// called by a compute node who has already bid
+func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CancelJobBid")
+	ev := ctrl.constructEvent(jobID, executor.JobEventBidCancelled)
+	// the target node is "us" because it is "us" who is cancelling our bid
+	// and so the job state should be updated against our node id
+	ev.TargetNodeID = ctrl.id
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+// this can be used both to indicate the job has started to run
+// and also to update the status half way through running it
+func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RunJob")
+	ev := ctrl.constructEvent(jobID, executor.JobEventRunning)
+	ev.Status = status
+	// the target node is "us" because it is "us" who is running the job
+	// and so the job state should be updated against our node id
+	ev.TargetNodeID = ctrl.id
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+func (ctrl *Controller) CompleteJob(ctx context.Context, jobID, status, resultsID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
+	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
+	ev.Status = status
+	ev.ResultsID = resultsID
+	// the target node is "us" because it is "us" who has completed the job
+	// and so the job state should be updated against our node id
+	ev.TargetNodeID = ctrl.id
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+// can only be called by a compute node who is current assigned to the job
+func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
+	ev := ctrl.constructEvent(jobID, executor.JobEventError)
+	ev.Status = status
+	ev.ResultsID = resultsID
+	// the target node is "us" because it is "us" who has errored the job
+	// and so the job state should be updated against our node id
+	ev.TargetNodeID = ctrl.id
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -256,7 +284,7 @@ func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) er
 }
 
 func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) error {
-	jobCtx := ctrl.handleOtelReadEvent(ctx, ev)
+	jobCtx := ctrl.getEventJobContext(ctx, ev)
 
 	err := ctrl.mutateDatastore(jobCtx, ev)
 	if err != nil {
@@ -298,6 +326,15 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	if err != nil {
 		return err
 	}
+
+	// if ev.TargetNodeID != "" {
+	// 	err = ctrl.datastore.UpdateJobState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
+	// 		State: ev.EventName
+	// 	})
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -354,7 +391,7 @@ func constructJob(ev executor.JobEvent) executor.Job {
 
 */
 
-func (ctrl *Controller) handleOtelReadEvent(ctx context.Context, ev executor.JobEvent) context.Context {
+func (ctrl *Controller) getEventJobContext(ctx context.Context, ev executor.JobEvent) context.Context {
 	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
 
 	ctrl.addJobLifecycleEvent(jobCtx, ev.JobID, fmt.Sprintf("read_%s", ev.EventName))

@@ -1,0 +1,5 @@
+package statemachine
+
+func test() {
+
+}
