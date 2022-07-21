@@ -23,8 +23,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -35,18 +37,17 @@ type PinContextHandler func(ctx context.Context, localPath string) (string, erro
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Controller        *controller.Controller
-	PinContextHandler PinContextHandler
-	Host              string
-	Port              int
+	Node      *requestornode.RequesterNode
+	Host      string
+	Port      int
+	Transport transport.Transport // so we can report on the libp2p peers
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
 	host string,
 	port int,
-	c *controller.Controller,
-	p PinContextHandler,
+	transport transport.Transport,
 ) *APIServer {
 	return &APIServer{
 		Controller:        c,
@@ -69,7 +70,6 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
-	sm.Handle("/states", instrument("states", apiServer.states))
 	sm.Handle("/peers", instrument("peers", apiServer.peers))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
 	sm.Handle("/version", instrument("version", apiServer.version))
@@ -128,19 +128,17 @@ type versionResponse struct {
 }
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
+	response := map[string][]peer.ID{}
 	// switch on apiTransport type to get the right method
-	// we need to use a switch here because we want to look at .(type)
-	// ^ that is a note for you gocritic
-	switch apiTransport := apiServer.Controller.GetTransport().(type) { //nolint:gocritic
-	case *libp2p.LibP2PTransport:
-		peers, err := apiTransport.GetPeers(context.Background())
-		if err != nil {
-			http.Error(res, fmt.Sprintf("Error getting peers: %s", err.Error()), http.StatusInternalServerError)
-			return
+	switch apiTransport := apiServer.Node.Transport.(type) {
+	case *libp2p.Transport:
+		for _, topic := range apiTransport.PubSub.GetTopics() {
+			peers := apiTransport.PubSub.ListPeers(topic)
+			response[topic] = peers
 		}
 		// write response to res
 		res.WriteHeader(http.StatusOK)
-		err = json.NewEncoder(res).Encode(peers)
+		err := json.NewEncoder(res).Encode(response)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

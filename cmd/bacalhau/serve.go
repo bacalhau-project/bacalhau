@@ -228,10 +228,7 @@ var serveCmd = &cobra.Command{
 		apiServer := publicapi.NewServer(
 			hostAddress,
 			apiPort,
-			controller,
-			func(ctx context.Context, path string) (string, error) {
-				return requesterNode.PinContext(path)
-			},
+			transport,
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
