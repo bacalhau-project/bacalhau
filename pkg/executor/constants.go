@@ -61,10 +61,6 @@ const (
 	// a compute node cancled a job bid
 	JobEventBidCancelled
 
-	// a compute node is preparing to run a job
-	// (e.g. preparing storage volumes and downloading docker images)
-	JobEventPreparing
-
 	// a compute node progressed with running a job
 	// this is called periodically for running jobs
 	// to give the client confidence the job is still running
@@ -129,10 +125,16 @@ const (
 	jobStateUnknown JobStateType = iota // must be first
 
 	// a compute node has selected a job and has bid on it
+	// we are currently waiting to hear back from the requester
+	// node whether our bid was accepted or not
 	JobStateBidding
 
 	// a requester node has either rejected the bid or the compute node has cancelled the bid
+	// either way - this node will not progress with this job any more
 	JobStateCancelled
+
+	// the bid has been accepted but we have not yet started the job
+	JobStateWaiting
 
 	// the job is in the process of running
 	JobStateRunning
@@ -144,11 +146,8 @@ const (
 	// we got back from the compute node
 	JobStateComplete
 
-	// these are 2 end states of a job
-	// the requestor node has made a decision about the results
-	// submitted by this node
-	JobStateResultsAccepted
-	JobStateResultsRejected
+	// our results have been processed
+	JobStateFinalized
 
 	jobStateDone // must be last
 )
@@ -184,4 +183,48 @@ func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)
 	return strings.EqualFold(a, b)
+}
+
+// given an event name - return a job state
+func GetStateFromEvent(eventType JobEventType) JobStateType {
+	switch eventType {
+
+	// we have bid and are waiting to hear if that has been accepted
+	case JobEventBid:
+		return JobStateBidding
+
+	// our bid has been accepted but we've not yet started the job
+	case JobEventBidAccepted:
+		return JobStateWaiting
+
+	// out bid got rejected so we are cancelled
+	case JobEventBidRejected:
+		return JobStateCancelled
+
+	// we cancelled our bid so we are cancelled
+	case JobEventBidCancelled:
+		return JobStateCancelled
+
+	// we are running
+	case JobEventRunning:
+		return JobStateRunning
+
+	// we are complete
+	case JobEventCompleted:
+		return JobStateComplete
+
+	// we are complete
+	case JobEventError:
+		return JobStateError
+
+	// both of these are "finalized"
+	case JobEventResultsAccepted:
+		return JobStateFinalized
+
+	case JobEventResultsRejected:
+		return JobStateFinalized
+
+	default:
+		return jobStateUnknown
+	}
 }
