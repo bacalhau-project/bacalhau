@@ -166,7 +166,7 @@ jobs:
           command: |
             cd benchmark
             sudo apt install build-essential -y
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             source $HOME/.cargo/env
             cargo install hyperfine
             ./start_and_run.sh
