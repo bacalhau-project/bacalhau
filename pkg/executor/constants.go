@@ -194,6 +194,11 @@ func (state JobStateType) IsTerminal() bool {
 >>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 }
 
+// tells you if this event is a valid one
+func IsValidJobState(state JobStateType) bool {
+	return state > jobStateUnknown && state < jobStateDone
+}
+
 func ParseJobStateType(str string) (JobStateType, error) {
 	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
 		if equal(typ.String(), str) {

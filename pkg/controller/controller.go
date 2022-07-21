@@ -327,14 +327,17 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
-	// if ev.TargetNodeID != "" {
-	// 	err = ctrl.datastore.UpdateJobState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
-	// 		State: ev.EventName
-	// 	})
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	executionState := executor.GetStateFromEvent(ev.EventName)
+	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
+		err = ctrl.datastore.UpdateJobState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
+			State:     executionState,
+			Status:    ev.Status,
+			ResultsID: ev.ResultsID,
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

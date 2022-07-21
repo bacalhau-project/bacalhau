@@ -122,7 +122,18 @@ func (d *InMemoryDatastore) UpdateJobState(ctx context.Context, jobID, nodeID st
 	if !ok {
 		return fmt.Errorf("no job found: %s", jobID)
 	}
-	job.State[nodeID] = state
+	existingState, ok := job.State[nodeID]
+	if !ok {
+		existingState = state
+	}
+	existingState.State = state.State
+	if state.ResultsID != "" {
+		existingState.ResultsID = state.ResultsID
+	}
+	if state.Status != "" {
+		existingState.Status = state.Status
+	}
+	job.State[nodeID] = existingState
 	return nil
 }
 
