@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,6 +24,20 @@ var jobfConcurrency int
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
+
+func getExecutorVeriferString(data []byte, fileextension string) (string, string) {
+	var objmap map[string]interface{}
+	if fileextension == ".json" {
+		json.Unmarshal(data, &objmap)
+	}
+	if fileextension == ".yaml" || fileextension == ".yml" {
+		yaml.Unmarshal(data, &objmap)
+	}
+	executor := fmt.Sprintf("%v", objmap["engine"])
+	verifier := fmt.Sprintf("%v", objmap["verifier"])
+
+	return executor, verifier
+}
 
 func init() {
 
@@ -59,19 +74,26 @@ var applyCmd = &cobra.Command{
 
 		defer fileContent.Close()
 
-		byteResult, _ := ioutil.ReadAll(fileContent)
+		byteResult, err := ioutil.ReadAll(fileContent)
+
+		if err != nil {
+			return err
+		}
 
 		if fileextension == ".json" {
 			json.Unmarshal(byteResult, &jobspec)
 		}
 
-		if fileextension == ".yaml" || fileextension == "yml" {
+		if fileextension == ".yaml" || fileextension == ".yml" {
 			yaml.Unmarshal(byteResult, &jobspec)
 		}
 
-		jobfEngine := jobspec.Engine.String()
+		jobspecenginestring, jobspecverifierstring := getExecutorVeriferString(byteResult, fileextension)
 
-		jobfVerifier := jobspec.Verifier.String()
+		jobfEngine := jobspecenginestring
+		// jobfEngine := jobspec.Engine.String()
+		jobfVerifier := jobspecverifierstring
+		// jobfVerifier := jobspec.Verifier.String()
 
 		jobImage := jobspec.Docker.Image
 
@@ -164,8 +186,6 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
-		cmd.Printf("spec %#v, \n deal %v", spec, deal)
-		cmd.Printf("cmdArgs %v", cmdArgs)
 		cmd.Printf("%s\n", job.ID)
 		return nil
 
