@@ -4,11 +4,11 @@ package resourceusage
 
 type ResourceUsageConfig struct {
 	// https://github.com/BTBurke/k8sresource string
-	CPU string `json:"cpu"`
+	CPU string `json:"cpu" yaml:"cpu"`
 	// github.com/c2h5oh/datasize string
-	Memory string `json:"memory"`
+	Memory string `json:"memory" yaml:"memory"`
 	// github.com/c2h5oh/datasize string
-	Disk string `json:"disk"`
+	Disk string `json:"disk" yaml:"disk"`
 }
 
 // these are the numeric values in bytes for ResourceUsageConfig
