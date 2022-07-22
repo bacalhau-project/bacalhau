@@ -2,7 +2,9 @@ package resourceusage
 
 import (
 	"fmt"
+	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -12,21 +14,8 @@ import (
 	"github.com/pbnjay/memory"
 )
 
-func NewDefaultResourceUsageConfig() ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    "",
-		Memory: "",
-		Disk:   "",
-	}
-}
-
-func NewResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    cpu,
-		Memory: mem,
-		Disk:   disk,
-	}
-}
+// NvidiaCLI is the path to the Nvidia helper binary
+const NvidiaCLI = "nvidia-container-cli"
 
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
@@ -76,11 +65,20 @@ func ConvertMemoryString(val string) uint64 {
 	return ret
 }
 
+func ConvertGPUString(val string) uint64 {
+	ret, err := strconv.ParseUint(val, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return ret
+}
+
 func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertMemoryString(usage.Memory),
 		Disk:   ConvertMemoryString(usage.Disk),
+		GPU:    ConvertGPUString(usage.GPU),
 	}
 }
 
@@ -92,6 +90,7 @@ func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error
 	c.CPU = cpu.ToString()
 	c.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
 	c.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
+	c.GPU = fmt.Sprintf("%d", usage.GPU)
 
 	return c, nil
 }
@@ -107,9 +106,54 @@ func getFreeDiskSpace(path string) (uint64, error) {
 	return fs.Bfree * uint64(fs.Bsize), nil
 }
 
+// numSystemGPUs wraps nvidia-container-cli to get the number of GPUs
+func numSystemGPUs() (uint64, error) {
+	nvidiaPath, err := exec.LookPath(NvidiaCLI)
+	if err != nil {
+		// If the NVIDIA CLI is not installed, we can't know the number of GPUs, assume zero
+		if (err.(*exec.Error)).Unwrap() == exec.ErrNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	args := []string{
+		"info",
+		"--csv",
+	}
+	cmd := exec.Command(nvidiaPath, args...)
+	resp, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse output of nvidia-container-cli command
+	lines := strings.Split(string(resp), "\n")
+	deviceInfoFlag := false
+	numDevices := uint64(0)
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "Device Index") {
+			deviceInfoFlag = true
+			continue
+		}
+		if deviceInfoFlag {
+			numDevices += 1
+		}
+	}
+
+	fmt.Println(numDevices)
+	return numDevices, nil
+}
+
 // what resources does this compute node actually have?
 func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
+	if err != nil {
+		return ResourceUsageData{}, err
+	}
+	gpus, err := numSystemGPUs()
 	if err != nil {
 		return ResourceUsageData{}, err
 	}
@@ -119,6 +163,7 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.TotalMemory(),
 		Disk:   diskSpace,
+		GPU:    gpus,
 	}
 
 	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
@@ -153,21 +198,31 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 		data.Disk = parsedLimitConfig.Disk
 	}
 
+	if parsedLimitConfig.GPU > 0 {
+		if parsedLimitConfig.GPU > data.GPU {
+			return data, fmt.Errorf(
+				"you cannot configure more GPU than you have on this node: configured %d, have %d",
+				parsedLimitConfig.GPU, data.GPU,
+			)
+		}
+		data.GPU = parsedLimitConfig.GPU
+	}
+
 	return data, nil
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
 func CheckResourceUsage(wants, limits ResourceUsageData) bool {
 	// if there are no limits then everything goes
-	if limits.CPU <= 0 && limits.Memory <= 0 && limits.Disk <= 0 {
+	if limits.CPU <= 0 && limits.Memory <= 0 && limits.Disk <= 0 && limits.GPU <= 0 {
 		return true
 	}
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
-	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0) {
+	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && wants.GPU <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0 || wants.GPU > 0) {
 		return false
 	}
-	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk
+	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk && wants.GPU <= limits.GPU
 }
 
 func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
@@ -175,5 +230,6 @@ func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 		CPU:    totals.CPU - current.CPU,
 		Memory: totals.Memory - current.Memory,
 		Disk:   totals.Disk - current.Disk,
+		GPU:    totals.GPU - current.GPU,
 	}
 }

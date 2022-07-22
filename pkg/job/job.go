@@ -38,8 +38,8 @@ func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory string,
-	inputUrls []string,
+  cpu, memory, gpu string,
+  inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -54,6 +54,7 @@ func ConstructDockerJob(
 	jobResources := resourceusage.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
+		GPU:    gpu,
 	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}

@@ -151,7 +151,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort)
+		apiServer := publicapi.NewServer(requesterNode, "0.0.0.0", apiPort, transport)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope
 			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
