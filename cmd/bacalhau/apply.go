@@ -18,6 +18,7 @@ import (
 var jobspec *executor.JobSpec
 var filename string
 var jobfConcurrency int
+var jobfInputUrls []string
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
@@ -110,8 +111,9 @@ var applyCmd = &cobra.Command{
 			engineType,
 			verifierType,
 			jobspec.Resources.CPU,
-			jobspec.Resources.GPU,
 			jobspec.Resources.Memory,
+			jobspec.Resources.GPU,
+			jobfInputUrls,
 			jobfInputVolumes,
 			jobfOutputVolumes,
 			jobspec.Docker.Env,
