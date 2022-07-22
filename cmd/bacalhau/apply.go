@@ -60,7 +60,7 @@ func init() {
 
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "Submit a job.json file and run it on the network",
+	Short: "Submit a job.json or job.yaml file and run it on the network",
 	Args:  cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
