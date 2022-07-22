@@ -76,7 +76,7 @@ func (j *Job) Copy() Job {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	ApiVersion ApiVersion `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	ApiVersion ApiVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
 	Engine EngineType `json:"engine" yaml:"engine"`
 
@@ -86,8 +86,8 @@ type JobSpec struct {
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"job_spec_docker" yaml:"job_spec_docker"`
-	Language JobSpecLanguage `json:"job_spec_language" yaml:"job_spec_language"`
+	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
+	Language JobSpecLanguage `json:"job_spec_language,omitempty" yaml:"job_spec_language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
 	Resources resourceusage.ResourceUsageConfig `json:"resources" yaml:"resources"`
@@ -100,7 +100,7 @@ type JobSpec struct {
 	Outputs []storage.StorageSpec `json:"outputs" yaml:"outputs"`
 
 	// Annotations on the job - could be user or machine assigned
-	Annotations []string
+	Annotations []string `json:"annotations" yaml:"annotations"`
 }
 
 // for VM style executors
@@ -115,18 +115,18 @@ type JobSpecDocker struct {
 
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
-	Language        string `json:"language,omitempty" yaml:"language,omitempty"`                 // e.g. python
-	LanguageVersion string `json:"language_version,omitempty" yaml:"language_version,omitempty"` // e.g. 3.8
+	Language        string `json:"language" yaml:"language"`                 // e.g. python
+	LanguageVersion string `json:"language_version" yaml:"language_version"` // e.g. 3.8
 	// must this job be run in a deterministic context?
-	Deterministic bool `json:"deterministic,omitempty" yaml:"deterministic,omitempty"`
+	Deterministic bool `json:"deterministic" yaml:"deterministic"`
 	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context storage.StorageSpec `json:"context,omitempty" yaml:"context,omitempty"`
+	Context storage.StorageSpec `json:"context" yaml:"context"`
 	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"command,omitempty" yaml:"command,omitempty"`
+	Command string `json:"command" yaml:"command"`
 	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"program_path,omitempty" yaml:"program_path,omitempty"`
+	ProgramPath string `json:"program_path" yaml:"program_path"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"requirements_path,omitempty" yaml:"requirements_path,omitempty"`
+	RequirementsPath string `json:"requirements_path" yaml:"requirements_path"`
 }
 
 // The state of a job on a particular compute node. Note that the job will
