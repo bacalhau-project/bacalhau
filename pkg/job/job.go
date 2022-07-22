@@ -3,13 +3,14 @@ package job
 import (
 	"errors"
 	"fmt"
-	"net/url"
-	"reflect"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
@@ -39,21 +40,23 @@ func ConstructDockerJob(
 	jobOutputs := []storage.StorageSpec{}
 
 	for _, inputURL := range inputUrls {
-		slices := strings.Split(inputURL, ":")
-		if len(slices) != 3 {
-			return nil, nil, fmt.Errorf("invalid input URL: %s", inputURL)
-		}
-		rawURL := slices[0] + ":" + slices[1]
-		// The string url is assumed not to have a #fragment suffix
-		// The valid form is: [scheme:][//[userinfo@]host][/]path[?query]
-		parsedURL, err := url.ParseRequestURI(rawURL)
+		// slices := strings.Split(inputURL, ":")
+		lastInd := strings.LastIndex(inputURL, ":")
+		// if len(slices) != 3 {
+		// 	return nil, nil, fmt.Errorf("invalid input URL: %s", inputURL)
+		// }
+		// rawURL := slices[0] + ":" + slices[1]
+		rawURL := inputURL[:lastInd]
+		path := inputURL[lastInd+1:]
+		// TODO should loop through available storage providers?
+		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
 			return nil, nil, err
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			Engine: "url_download",
-			URL:    parsedURL.String(),
-			Path:   slices[2],
+			URL:    rawURL,
+			Path:   path,
 		})
 	}
 

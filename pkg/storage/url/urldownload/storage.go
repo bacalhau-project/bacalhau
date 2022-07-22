@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/url"
+	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -24,14 +26,13 @@ type StorageProvider struct {
 }
 
 func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
-	client := resty.New()
-
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {
 		return nil, err
 	}
-	
+
+	client := resty.New()
 	// Setting output directory path, If directory not exists then resty creates one
 	client.SetOutputDirectory(dir)
 
@@ -45,37 +46,32 @@ func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
 }
 
 func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
+	_, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 	return true, nil
 }
 
-// TODO: @enricorotundo check if file has been downloaded already?
 func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorageLocally")
+	_, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 	return false, nil
 }
 
-// TODO: could do HEAD request but how to deal with chucked transfer/compressed responses?
+// Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
 func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
-// TODO: @enricorotundo add timeouts etc.
-// turns StorageSpec into StorageVolume
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
-	ctx, span := newSpan(ctx, "PrepareStorage")
+	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
 	outputPath, err := ioutil.TempDir(sp.LocalDir, "*")
 	if err != nil {
 		return nil, err
 	}
-	
-	header, err := sp.HTTPClient.R().Head(storageSpec.URL)
-	fmt.Printf("header: %s\n\n", header)
 
+	sp.HTTPClient.SetTimeout(config.GetDownloadURLRequestTimeout())
 	_, err = sp.HTTPClient.R().
 		SetOutput(outputPath + "/file").
 		Get(storageSpec.URL)
@@ -92,10 +88,26 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 	return volume, nil
 }
 
-// TODO: @enricorotundo
 // nolint:lll // Exception to the long rule
 func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
-	return system.RunCommand("date", []string{})
+	pathToCleanup := filepath.Dir(volume.Source)
+	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
+	return system.RunCommand("sudo", []string{
+		"rm", "-rf", pathToCleanup,
+	})
+}
+
+func IsURLSupported(rawURL string) (bool, error) {
+	// The string url is assumed NOT to have a #fragment suffix
+	// thus the valid form is: [scheme:][//[userinfo@]host][/]path[?query]
+	parsedURL, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return false, err
+	}
+	if (parsedURL.Scheme == "http") || (parsedURL.Scheme == "https") {
+		return true, nil
+	}
+	return false, fmt.Errorf("protocol scheme in URL not supported: %s", rawURL)
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
