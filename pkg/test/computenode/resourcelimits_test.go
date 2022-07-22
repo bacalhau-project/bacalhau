@@ -247,6 +247,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				verifier.VerifierNoop,
 				jobResources.CPU,
 				jobResources.Memory,
+				[]string{},
 				// pass the disk requirement of the job resources into the volume
 				// name so it can be returned from the GetVolumeSize function
 				[]string{
