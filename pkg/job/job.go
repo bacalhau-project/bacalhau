@@ -40,15 +40,11 @@ func ConstructDockerJob(
 	jobOutputs := []storage.StorageSpec{}
 
 	for _, inputURL := range inputUrls {
-		// slices := strings.Split(inputURL, ":")
+		// split using LastIndex to support port numbers in URL
 		lastInd := strings.LastIndex(inputURL, ":")
-		// if len(slices) != 3 {
-		// 	return nil, nil, fmt.Errorf("invalid input URL: %s", inputURL)
-		// }
-		// rawURL := slices[0] + ":" + slices[1]
 		rawURL := inputURL[:lastInd]
 		path := inputURL[lastInd+1:]
-		// TODO should loop through available storage providers?
+		// should loop through all available storage providers?
 		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
 			return nil, nil, err
