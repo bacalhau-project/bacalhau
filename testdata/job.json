@@ -1,0 +1,52 @@
+{
+    "apiVersion": "v1alpha1",
+    "engine": "Docker",
+    "verifier": "Ipfs",
+    "job_spec_docker": {
+        "image": "gromacs/gromacs",
+        "entrypoint": [
+            "/bin/bash",
+            "-c",
+            "echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc"
+        ],
+        "env": []
+    },
+    "job_spec_language": {
+        "language": "",
+        "language_version": "",
+        "deterministic": false,
+        "context": {
+            "engine": "",
+            "name": "",
+            "cid": "",
+            "path": ""
+        },
+        "command": "",
+        "program_path": "",
+        "requirements_path": ""
+    },
+    "resources": {
+        "cpu": "",
+        "gpu":"",
+        "memory": "",
+        "disk": ""
+    },
+    "inputs": [
+        {
+            "engine": "ipfs",
+            "name": "",
+            "cid": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
+            "path": "/input"
+        }
+    ],
+    "outputs": [
+        {
+            "engine": "ipfs",
+            "name": "output",
+            "cid": "",
+            "path": "/output"
+        }
+    ],
+    
+    "annotations": null
+}
