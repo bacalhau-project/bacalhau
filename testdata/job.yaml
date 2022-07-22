@@ -1,3 +1,4 @@
+apiVersion: v1alpha1
 engine: Docker
 verifier: Ipfs
 job_spec_docker:
