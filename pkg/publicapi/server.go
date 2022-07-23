@@ -122,7 +122,7 @@ func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 	case *libp2p.LibP2PTransport:
 		peers, err := apiTransport.GetPeers(context.Background())
 		if err != nil {
-			http.Error(res, fmt.Sprint("Error getting peers: %s"), http.StatusInternalServerError)
+			http.Error(res, fmt.Sprintf("Error getting peers: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 		// write response to res
