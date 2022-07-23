@@ -22,7 +22,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -65,6 +67,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
+	sm.Handle("/peers", instrument("peers", apiServer.peers))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
 	sm.Handle("/version", instrument("version", apiServer.version))
 	sm.Handle("/healthz", instrument("healthz", apiServer.healthz))
@@ -109,6 +112,27 @@ type versionRequest struct {
 }
 type versionResponse struct {
 	VersionInfo *executor.VersionInfo `json:"version_info"`
+}
+
+func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
+	response := map[string][]peer.ID{}
+	// switch on apiTransport type to get the right method
+	switch apiTransport := apiServer.Node.Transport.(type) {
+	case *libp2p.Transport:
+		for _, topic := range apiTransport.PubSub.GetTopics() {
+			peers := apiTransport.PubSub.ListPeers(topic)
+			response[topic] = peers
+		}
+		// write response to res
+		res.WriteHeader(http.StatusOK)
+		err := json.NewEncoder(res).Encode(response)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	http.Error(res, "Not a libp2p transport", http.StatusInternalServerError)
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {

@@ -54,6 +54,8 @@ func (suite *DockerRunSuite) TearDownAllSuite() {
 
 }
 
+// TODO: Refactor all of these tests to use common functionality; they're all very similar
+
 func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
@@ -436,6 +438,54 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 				o := logBuf.String()
 				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
+		}()
+	}
+}
+
+func (suite *DockerRunSuite) TestRun_GPURequests() {
+	tests := []struct {
+		submitArgs []string
+		fatalErr   bool
+		errString  string
+		numGPUs    string
+	}{
+		{submitArgs: []string{"--gpu=1", "nvidia/cuda:11.0.3-base-ubuntu20.04", "nvidia-smi"}, fatalErr: false, errString: "", numGPUs: "1"},
+	}
+
+	for i, tc := range tests {
+		func() {
+
+			var logBuf = new(bytes.Buffer)
+			var Stdout = struct{ io.Writer }{os.Stdout}
+			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
+
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
+			allArgs = append(allArgs, tc.submitArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+
+			if tc.fatalErr {
+				require.Contains(suite.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
+				return
+			} else {
+				require.NoError(suite.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
+			}
+
+			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
+
+			job, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
+			require.True(suite.T(), foundJob, "error getting job")
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
+			if tc.errString != "" {
+				o := logBuf.String()
+				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
+			}
+			require.Equal(suite.T(), tc.numGPUs, job.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, job.Spec.Resources.GPU)
 		}()
 	}
 }

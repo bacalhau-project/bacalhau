@@ -30,8 +30,10 @@ var jobSelectionProbeExec string
 var metricsPort = 2112
 var limitTotalCPU string
 var limitTotalMemory string
+var limitTotalGPU string
 var limitJobCPU string
 var limitJobMemory string
+var limitJobGPU string
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -86,12 +88,20 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
+		&limitTotalGPU, "limit-total-gpu", "",
+		`Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
+	)
+	serveCmd.PersistentFlags().StringVar(
 		&limitJobCPU, "limit-job-cpu", "",
 		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
 	)
 	serveCmd.PersistentFlags().StringVar(
 		&limitJobMemory, "limit-job-memory", "",
 		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&limitJobGPU, "limit-job-gpu", "",
+		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
 	)
 }
 
@@ -165,12 +175,14 @@ var serveCmd = &cobra.Command{
 		totalResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitTotalCPU,
 			Memory: limitTotalMemory,
+			GPU:    limitTotalGPU,
 		}
 
 		// the per job CPU / Memory limits
 		jobResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitJobCPU,
 			Memory: limitJobMemory,
+			GPU:    limitJobGPU,
 		}
 
 		jobSelectionPolicy := computenode.JobSelectionPolicy{

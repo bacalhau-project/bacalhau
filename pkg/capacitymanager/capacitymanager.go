@@ -6,6 +6,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
+const DefaultJobGPU = "0"
 
 // configures our maximum allowance for all items,
 // single item and defaults for single item
@@ -73,6 +74,10 @@ func NewCapacityManager(
 		useConfig.ResourceRequirementsDefault.Memory = DefaultJobMemory
 	}
 
+	if useConfig.ResourceRequirementsDefault.GPU == "" {
+		useConfig.ResourceRequirementsDefault.GPU = DefaultJobGPU
+	}
+
 	resourceLimitsTotal, err := getSystemResources(useConfig.ResourceLimitTotal)
 	if err != nil {
 		return nil, err
@@ -101,6 +106,10 @@ func NewCapacityManager(
 		resourceLimitsJob.Disk = resourceLimitsTotal.Disk
 	}
 
+	if resourceLimitsJob.GPU <= 0 {
+		resourceLimitsJob.GPU = resourceLimitsTotal.GPU
+	}
+
 	// we can't have one job that uses more than we have
 	if resourceLimitsJob.CPU > resourceLimitsTotal.CPU {
 		return nil, fmt.Errorf("job resource limit CPU %f is greater than total system limit %f",
@@ -119,6 +128,13 @@ func NewCapacityManager(
 		return nil, fmt.Errorf(
 			"job resource limit disk %d is greater than total system limit %d",
 			resourceLimitsJob.Disk, resourceLimitsTotal.Disk,
+		)
+	}
+
+	if resourceLimitsJob.GPU > resourceLimitsTotal.GPU {
+		return nil, fmt.Errorf(
+			"job resource limit GPU %d is greater than total system limit %d",
+			resourceLimitsJob.GPU, resourceLimitsTotal.GPU,
 		)
 	}
 
@@ -145,6 +161,13 @@ func NewCapacityManager(
 		)
 	}
 
+	if resourceRequirementsJobDefault.GPU > resourceLimitsJob.GPU {
+		return nil, fmt.Errorf(
+			"default job resource GPU %d is greater than limit %d",
+			resourceRequirementsJobDefault.GPU, resourceLimitsJob.GPU,
+		)
+	}
+
 	return &CapacityManager{
 		config:                         useConfig,
 		resourceLimitsTotal:            resourceLimitsTotal,
@@ -168,6 +191,9 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	}
 	if requirements.Disk <= 0 {
 		requirements.Disk = manager.resourceRequirementsJobDefault.Disk
+	}
+	if requirements.GPU <= 0 {
+		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
 	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements
@@ -202,6 +228,7 @@ func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
 		currentResourceUsage.CPU += item.Requirements.CPU
 		currentResourceUsage.Memory += item.Requirements.Memory
 		currentResourceUsage.Disk += item.Requirements.Disk
+		currentResourceUsage.GPU += item.Requirements.GPU
 	})
 
 	return subtractResourceUsage(currentResourceUsage, manager.resourceLimitsTotal)

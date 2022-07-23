@@ -25,16 +25,16 @@ type StorageSpec struct {
 	Engine StorageSourceType `json:"engine"`
 
 	// Name of the spec's data, for reference.
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
-	Cid string `json:"cid"`
+	Cid string `json:"cid" yaml:"cid"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
-	Path string `json:"path"`
+	Path string `json:"path" yaml:"path"`
 }
 
 // a storage entity that is consumed are produced by a job

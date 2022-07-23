@@ -23,6 +23,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)
+	RootCmd.AddCommand(applyCmd)
 
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)

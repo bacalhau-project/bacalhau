@@ -16,7 +16,7 @@ import (
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory string,
+	cpu, memory, gpu string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -31,6 +31,7 @@ func ConstructDockerJob(
 	jobResources := capacitymanager.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
+		GPU:    gpu,
 	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}

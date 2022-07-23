@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
+type ApiVersion string
+
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
 type Executor interface {
@@ -56,56 +58,57 @@ type Job struct {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
+	ApiVersion ApiVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
-	Engine EngineType `json:"engine"`
+	Engine EngineType `json:"engine" yaml:"engine"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
-	Verifier verifier.VerifierType `json:"verifier"`
+	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"job_spec_docker"`
-	Language JobSpecLanguage `json:"job_spec_language"`
+	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
+	Language JobSpecLanguage `json:"job_spec_language,omitempty" yaml:"job_spec_language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
-	Resources capacitymanager.ResourceUsageConfig `json:"resources"`
+	Resources capacitymanager.ResourceUsageConfig `json:"resources" yaml:"resources"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	Inputs []storage.StorageSpec `json:"inputs"`
+	Inputs []storage.StorageSpec `json:"inputs" yaml:"inputs"`
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []storage.StorageSpec `json:"outputs"`
+	Outputs []storage.StorageSpec `json:"outputs" yaml:"outputs"`
 
 	// Annotations on the job - could be user or machine assigned
-	Annotations []string
+	Annotations []string `json:"annotations" yaml:"annotations"`
 }
 
 // for VM style executors
 type JobSpecDocker struct {
 	// this should be pullable by docker
-	Image string `json:"image"`
+	Image string `json:"image" yaml:"image"`
 	// optionally override the default entrypoint
-	Entrypoint []string `json:"entrypoint"`
+	Entrypoint []string `json:"entrypoint" yaml:"entrypoint"`
 	// a map of env to run the container with
-	Env []string `json:"env"`
+	Env []string `json:"env" yaml:"env"`
 }
 
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
-	Language        string `json:"language"`         // e.g. python
-	LanguageVersion string `json:"language_version"` // e.g. 3.8
+	Language        string `json:"language" yaml:"language"`                 // e.g. python
+	LanguageVersion string `json:"language_version" yaml:"language_version"` // e.g. 3.8
 	// must this job be run in a deterministic context?
-	Deterministic bool `json:"deterministic"`
+	Deterministic bool `json:"deterministic" yaml:"deterministic"`
 	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context storage.StorageSpec `json:"context"`
+	Context storage.StorageSpec `json:"context" yaml:"context"`
 	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"command"`
+	Command string `json:"command" yaml:"command"`
 	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"program_path"`
+	ProgramPath string `json:"program_path" yaml:"program_path"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"requirements_path"`
+	RequirementsPath string `json:"requirements_path" yaml:"requirements_path"`
 }
 
 // The state of a job on a particular compute node. Note that the job will
