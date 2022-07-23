@@ -55,6 +55,14 @@ func NewController(
 	return ctrl, nil
 }
 
+func (ctrl *Controller) GetTransport() transport.Transport {
+	return ctrl.transport
+}
+
+func (ctrl *Controller) GetDatastore() datastore.DataStore {
+	return ctrl.datastore
+}
+
 func (ctrl *Controller) Start(ctx context.Context) error {
 	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
 		err := ctrl.handleEvent(ctx, ev)
