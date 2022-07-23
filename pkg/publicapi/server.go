@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -118,17 +117,17 @@ type versionResponse struct {
 }
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
-	response := map[string][]peer.ID{}
 	// switch on apiTransport type to get the right method
-	switch apiTransport := apiServer.Node.Transport.(type) {
-	case *libp2p.Transport:
-		for _, topic := range apiTransport.PubSub.GetTopics() {
-			peers := apiTransport.PubSub.ListPeers(topic)
-			response[topic] = peers
+	switch apiTransport := apiServer.Controller.GetTransport().(type) {
+	case *libp2p.LibP2PTransport:
+		peers, err := apiTransport.GetPeers(context.Background())
+		if err != nil {
+			http.Error(res, fmt.Sprint("Error getting peers: %s"), http.StatusInternalServerError)
+			return
 		}
 		// write response to res
 		res.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(res).Encode(response)
+		err = json.NewEncoder(res).Encode(peers)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

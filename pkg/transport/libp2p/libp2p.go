@@ -111,6 +111,15 @@ func (t *LibP2PTransport) HostID(ctx context.Context) (string, error) {
 	return t.host.ID().String(), nil
 }
 
+func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
+	response := map[string][]peer.ID{}
+	for _, topic := range t.pubSub.GetTopics() {
+		peers := t.pubSub.ListPeers(topic)
+		response[topic] = peers
+	}
+	return response, nil
+}
+
 func (t *LibP2PTransport) Start(ctx context.Context) error {
 	if len(t.subscribeFunctions) == 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
