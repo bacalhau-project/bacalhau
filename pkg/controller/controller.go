@@ -141,8 +141,16 @@ func (ctrl *Controller) SubmitJob(
 	ev.JobSpec = data.Spec
 	ev.JobDeal = data.Deal
 
+	job := constructJob(ev)
+
+	// first write the job to our local data store
+	// so clients have consistency when they ask for the job by id
+	err = ctrl.datastore.AddJob(ctx, job)
+	if err != nil {
+		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
+	}
 	err = ctrl.writeEvent(jobCtx, ev)
-	return constructJob(ev), err
+	return job, err
 }
 
 // can only be done by the requestor node that is responsible for the job
