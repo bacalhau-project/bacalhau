@@ -172,11 +172,6 @@ jobs:
             ./start_and_run.sh
 
       - run:
-          name: Authenticate to Google Cloud
-          command: |
-            gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
-
-      - run:
           name: Upload perf results
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
