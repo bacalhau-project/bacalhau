@@ -16,6 +16,6 @@ while true; do
 		echo "JOB ${ID} FAILED"
 	else
 		echo "JOB ${ID} succeeded"
-		exit 0
 	fi
+	exit 0 # Always exiting zero, if we need to record it, we should do it elsewhere.
 done

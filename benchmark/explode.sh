@@ -11,3 +11,5 @@ mkdir -p results
 
 (for ((i=0; i<$XARGS_LOOPS; i++)); do echo $i; done) | xargs -P $CONCURRENCY -I{} \
   bash single_explode.sh {} $1 $2
+
+exit 0

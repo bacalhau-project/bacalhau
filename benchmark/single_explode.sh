@@ -18,3 +18,5 @@ hyperfine \
 	"timeout 30s ./submit.sh $2 $3" 
 
 # --show-output \
+
+exit 0
