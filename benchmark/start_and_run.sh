@@ -16,10 +16,14 @@ wait_file() {
 }
 
 function cleanup {
+	echo "Done. Exiting normally."
 	BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
 	kill -2 "${BACALHAU_PID}"
 	rm -f /tmp/bacalhau-devstack.p*
+	exit 0 
 }
+
+trap cleanup EXIT
 
 cd ..
 make build
@@ -42,6 +46,4 @@ while : ; do
 	(( ${CURRENT_STATE} > 0 )) || break
 done 
 
-trap cleanup EXIT
-
-exit 0
+echo "Finished. Cleaning up..."
