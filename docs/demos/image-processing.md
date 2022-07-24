@@ -28,14 +28,20 @@ bacalhau docker run \
 ```
 
 ```bash
-bacalhau list --sort-by=id --reverse --id-filter= JOB_ID
+bacalhau describe JOB_ID
 ```
 
 Replace `JOB_ID` with the first part of the job id from the last step.
 
 ```bash
- ID        JOB          INPUTS  OUTPUTS  CONCURRENCY  NODE      STATE         RESULT
- eb9e5f9e  docker d...       1        1               QmdZQ7Zb  complete      /ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532
+State:
+    QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
+        state: Complete
+        status: 'Got job result: QmPbxtMKtz5LyFGSvsExSX6FwDaPBo1Lpnsek3LBAjsTfk'
+        resultsid: QmPbxtMKtz5LyFGSvsExSX6FwDaPBo1Lpnsek3LBAjsTfk
+Start Time: 2022-07-21T11:27:39.404800912Z
 ```
-
-Go look at the [output](http://cloudflare-ipfs.com/ipfs/QmWngMTGcn4rM81ePQjMvAEm7rMT4brWh2DXTxD71Le532)!
+since the job state is complete, the job result can be downloaded using
+```bash
+bacalhau get JOB_ID
+```
