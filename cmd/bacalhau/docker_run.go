@@ -387,8 +387,16 @@ var dockerRunCmd = &cobra.Command{
 		jobInputVolumes = []string{}
 		jobOutputVolumes = []string{}
 		jobEnv = []string{}
-
 		jobLabels = []string{}
+
+		jobEngine = "docker"
+		jobVerifier = "ipfs"
+		jobConcurrency = 1
+		jobCPU = ""
+		jobMemory = ""
+		jobGPU = ""
+		skipSyntaxChecking = false
+		waitForJobToFinishAndPrintOutput = false
 
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
@@ -437,6 +445,7 @@ var dockerRunCmd = &cobra.Command{
 			jobConcurrency,
 			jobLabels,
 		)
+
 		if err != nil {
 			return err
 		}
