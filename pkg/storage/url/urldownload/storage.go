@@ -66,6 +66,11 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
+	_, err := IsURLSupported(storageSpec.URL)
+	if err != nil {
+		return nil, err
+	}
+
 	outputPath, err := ioutil.TempDir(sp.LocalDir, "*")
 	if err != nil {
 		return nil, err
@@ -90,6 +95,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 
 // nolint:lll // Exception to the long rule
 func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
+	// Need to remove the whole dir instead of just a single file
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 	return system.RunCommand("sudo", []string{
