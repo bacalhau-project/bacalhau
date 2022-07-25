@@ -3,13 +3,15 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -120,13 +122,42 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTracer)
 		defer cm.Cleanup()
 
-		transport, err := libp2p.NewTransport(cm, hostPort)
+		peers := DefaultBootstrapAddresses
+
+		if peerConnect != "" && peerConnect != "none" {
+			peers = []string{peerConnect}
+		}
+
+		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
+
+		datastore, err := inmemory.NewInMemoryDatastore()
 		if err != nil {
 			return err
 		}
 
-		executors, err := executor_util.NewStandardExecutors(cm, ipfsConnect,
-			fmt.Sprintf("bacalhau-%s", transport.Host.ID().String()))
+		transport, err := libp2p.NewTransport(cm, hostPort, peers)
+		if err != nil {
+			return err
+		}
+
+		controller, err := controller.NewController(
+			cm,
+			datastore,
+			transport,
+		)
+		if err != nil {
+			return err
+		}
+
+		hostID, err := transport.HostID(context.Background())
+		if err != nil {
+			return err
+		}
+		executors, err := executor_util.NewStandardExecutors(
+			cm,
+			ipfsConnect,
+			fmt.Sprintf("bacalhau-%s", hostID),
+		)
 		if err != nil {
 			return err
 		}
@@ -144,14 +175,14 @@ var serveCmd = &cobra.Command{
 		}
 
 		// the total amount of CPU / Memory the system can be using at one time
-		totalResourceLimit := resourceusage.ResourceUsageConfig{
+		totalResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitTotalCPU,
 			Memory: limitTotalMemory,
 			GPU:    limitTotalGPU,
 		}
 
 		// the per job CPU / Memory limits
-		jobResourceLimit := resourceusage.ResourceUsageConfig{
+		jobResourceLimit := capacitymanager.ResourceUsageConfig{
 			CPU:    limitJobCPU,
 			Memory: limitJobMemory,
 			GPU:    limitJobGPU,
@@ -164,7 +195,9 @@ var serveCmd = &cobra.Command{
 			ProbeExec:           jobSelectionProbeExec,
 		}
 
-		config := computenode.ComputeNodeConfig{
+		requesterNodeConfig := requesternode.RequesterNodeConfig{}
+
+		computeNodeConfig := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitTotal: totalResourceLimit,
@@ -172,30 +205,33 @@ var serveCmd = &cobra.Command{
 			},
 		}
 
-		requesterNode, err := requestornode.NewRequesterNode(
+		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
-			transport,
+			controller,
 			verifiers,
+			requesterNodeConfig,
 		)
 		if err != nil {
 			return err
 		}
 		_, err = computenode.NewComputeNode(
 			cm,
-			transport,
+			controller,
 			executors,
 			verifiers,
-			config,
+			computeNodeConfig,
 		)
 		if err != nil {
 			return err
 		}
 
 		apiServer := publicapi.NewServer(
-			requesterNode,
 			hostAddress,
 			apiPort,
-			transport,
+			controller,
+			func(ctx context.Context, path string) (string, error) {
+				return requesterNode.PinContext(path)
+			},
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
@@ -223,22 +259,7 @@ var serveCmd = &cobra.Command{
 
 		log.Debug().Msgf("libp2p server started: %d", hostPort)
 
-		if peerConnect == "" {
-			for _, addr := range DefaultBootstrapAddresses {
-				err = transport.Connect(ctx, addr)
-				if err != nil {
-					return err
-				}
-			}
-		} else if peerConnect != "none" {
-			err = transport.Connect(ctx, peerConnect)
-			if err != nil {
-				return err
-			}
-			log.Debug().Msgf("libp2p connecting to: %s", peerConnect)
-		}
-
-		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", transport.Host.ID().String())
+		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
 
 		<-ctx.Done() // block until killed
 		return nil

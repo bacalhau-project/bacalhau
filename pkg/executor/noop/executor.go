@@ -7,9 +7,16 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
+type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
+type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume storage.StorageSpec) (bool, error)
+type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, job executor.Job) (string, error)
+
 type ExecutorConfigExternalHooks struct {
-	JobHandler    *func(ctx context.Context, job *executor.Job) (string, error)
-	GetVolumeSize *func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
+	IsInstalled       ExecutorHandlerIsInstalled
+	HasStorageLocally ExecutorHandlerHasStorageLocally
+	GetVolumeSize     ExecutorHandlerGetVolumeSize
+	JobHandler        ExecutorHandlerJobHandler
 }
 
 type ExecutorConfig struct {
@@ -17,13 +24,13 @@ type ExecutorConfig struct {
 }
 
 type Executor struct {
-	Jobs   []*executor.Job
+	Jobs   []executor.Job
 	Config ExecutorConfig
 }
 
 func NewExecutor() (*Executor, error) {
 	Executor := &Executor{
-		Jobs: []*executor.Job{},
+		Jobs: []executor.Job{},
 	}
 	return Executor, nil
 }
@@ -38,25 +45,33 @@ func NewExecutorWithConfig(config ExecutorConfig) (*Executor, error) {
 }
 
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
+	if e.Config.ExternalHooks.IsInstalled != nil {
+		handler := e.Config.ExternalHooks.IsInstalled
+		return handler(ctx)
+	}
 	return true, nil
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+	if e.Config.ExternalHooks.HasStorageLocally != nil {
+		handler := e.Config.ExternalHooks.HasStorageLocally
+		return handler(ctx, volume)
+	}
 	return true, nil
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
 	if e.Config.ExternalHooks.GetVolumeSize != nil {
-		handler := *e.Config.ExternalHooks.GetVolumeSize
+		handler := e.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)
 	}
 	return 0, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error) {
 	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
-		handler := *e.Config.ExternalHooks.JobHandler
+		handler := e.Config.ExternalHooks.JobHandler
 		return handler(ctx, job)
 	}
 	return "/tmp", nil

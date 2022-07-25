@@ -58,8 +58,6 @@ func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
 //   context mounted in
 
 func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
-	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
-
 	nodeCount := 1
 	inputPath := "/input"
 	outputPath := "/output"
@@ -124,7 +122,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	time.Sleep(time.Second * 5)
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
@@ -187,7 +185,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
@@ -246,7 +244,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	time.Sleep(time.Second * 5)
 	err = stack.WaitForJob(ctx, jobId,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),

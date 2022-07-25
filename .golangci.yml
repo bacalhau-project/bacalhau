@@ -26,6 +26,7 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
+      - hugeParam
   gocyclo:
     min-complexity: 15
   goimports:

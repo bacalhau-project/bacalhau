@@ -14,10 +14,10 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -35,7 +35,7 @@ type Executor struct {
 	ResultsDir string
 
 	// the storage providers we can implement for a job
-	StorageProviders map[string]storage.StorageProvider
+	StorageProviders map[storage.StorageSourceType]storage.StorageProvider
 
 	Client *dockerclient.Client
 }
@@ -43,7 +43,7 @@ type Executor struct {
 func NewExecutor(
 	cm *system.CleanupManager,
 	id string,
-	storageProviders map[string]storage.StorageProvider,
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -70,7 +70,7 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorageProvider(ctx context.Context, engine string) (storage.StorageProvider, error) {
+func (e *Executor) getStorageProvider(ctx context.Context, engine storage.StorageSourceType) (storage.StorageProvider, error) {
 	return util.GetStorageProvider(ctx, engine, e.StorageProviders)
 }
 
@@ -101,14 +101,9 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) {
+func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
-
-	spec := j.Spec
-	if spec == nil {
-		return "", fmt.Errorf("no job spec provided to docker executor")
-	}
 
 	jobResultsDir, err := e.ensureJobResultsDir(j)
 	if err != nil {
@@ -122,23 +117,18 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range j.Spec.Inputs {
 		var storageProvider storage.StorageProvider
+		var volumeMount storage.StorageVolume
 		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
 
-		var volumeMount *storage.StorageVolume
 		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}
 
-		if volumeMount == nil {
-			return "", fmt.Errorf(
-				"no volume mount was returned for input: %+v", inputStorage)
-		}
-
-		if volumeMount.Type == storage.StorageVolumeTypeBind {
+		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
 
 			mounts = append(mounts, mount.Mount{
@@ -227,7 +217,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
-	resourceRequirements := resourceusage.ParseResourceUsageConfig(j.Spec.Resources)
+	resourceRequirements := capacitymanager.ParseResourceUsageConfig(j.Spec.Resources)
 
 	// Create GPU request if the job requests it
 	var deviceRequests []container.DeviceRequest
@@ -343,7 +333,7 @@ func (e *Executor) RunJob(ctx context.Context, j *executor.Job) (string, error) 
 	return jobResultsDir, containerError
 }
 
-func (e *Executor) cleanupJob(job *executor.Job) {
+func (e *Executor) cleanupJob(job executor.Job) {
 	if config.ShouldKeepStack() {
 		return
 	}
@@ -376,22 +366,22 @@ func (e *Executor) cleanupAll() {
 	}
 }
 
-func (e *Executor) jobContainerName(job *executor.Job) string {
+func (e *Executor) jobContainerName(job executor.Job) string {
 	return fmt.Sprintf("bacalhau-%s-%s", e.ID, job.ID)
 }
 
-func (e *Executor) jobContainerLabels(job *executor.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
 		"bacalhau-jobID":    job.ID,
 	}
 }
 
-func (e *Executor) jobResultsDir(job *executor.Job) string {
+func (e *Executor) jobResultsDir(job executor.Job) string {
 	return fmt.Sprintf("%s/%s", e.ResultsDir, job.ID)
 }
 
-func (e *Executor) ensureJobResultsDir(job *executor.Job) (string, error) {
+func (e *Executor) ensureJobResultsDir(job executor.Job) (string, error) {
 	dir := e.jobResultsDir(job)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	info, _ := os.Stat(dir)

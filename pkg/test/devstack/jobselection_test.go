@@ -69,9 +69,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		nodeIds, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, storage.IPFSAPICopy, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
 
-		jobSpec := &executor.JobSpec{
+		jobSpec := executor.JobSpec{
 			Engine:   executor.EngineDocker,
 			Verifier: verifier.VerifierIpfs,
 			Docker:   scenario.GetJobSpec(),
@@ -79,7 +79,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			Outputs:  scenario.Outputs,
 		}
 
-		jobDeal := &executor.JobDeal{
+		jobDeal := executor.JobDeal{
 			Concurrency: testCase.nodeCount,
 		}
 
@@ -92,7 +92,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		err = stack.WaitForJobWithLogs(ctx, submittedJob.ID, true,
 			devstack.WaitDontExceedCount(testCase.expectedAccepts),
 			devstack.WaitForJobThrowErrors([]executor.JobStateType{
-				executor.JobStateBidRejected,
+				executor.JobStateCancelled,
 				executor.JobStateError,
 			}),
 			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),

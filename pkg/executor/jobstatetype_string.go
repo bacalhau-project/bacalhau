@@ -10,16 +10,18 @@ func _() {
 	var x [1]struct{}
 	_ = x[jobStateUnknown-0]
 	_ = x[JobStateBidding-1]
-	_ = x[JobStateBidRejected-2]
-	_ = x[JobStateRunning-3]
-	_ = x[JobStateError-4]
-	_ = x[JobStateComplete-5]
-	_ = x[jobStateDone-6]
+	_ = x[JobStateCancelled-2]
+	_ = x[JobStateWaiting-3]
+	_ = x[JobStateRunning-4]
+	_ = x[JobStateError-5]
+	_ = x[JobStateComplete-6]
+	_ = x[JobStateFinalized-7]
+	_ = x[jobStateDone-8]
 }
 
-const _JobStateType_name = "jobStateUnknownBiddingBidRejectedRunningErrorCompletejobStateDone"
+const _JobStateType_name = "jobStateUnknownBiddingCancelledWaitingRunningErrorCompleteFinalizedjobStateDone"
 
-var _JobStateType_index = [...]uint8{0, 15, 22, 33, 40, 45, 53, 65}
+var _JobStateType_index = [...]uint8{0, 15, 22, 31, 38, 45, 50, 58, 67, 79}
 
 func (i JobStateType) String() string {
 	if i < 0 || i >= JobStateType(len(_JobStateType_index)-1) {

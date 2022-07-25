@@ -2,19 +2,15 @@ package libp2p
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
+	"sync"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -27,118 +23,49 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
-const BitsForKeyPair = 2048
 
-type Transport struct {
+type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
 	cm *system.CleanupManager
 
-	// Writer we emit events through.
-	genericTransport     *transport.GenericTransport
-	Host                 host.Host
-	Port                 int
-	PubSub               *pubsub.PubSub
-	JobEventTopic        *pubsub.Topic
-	JobEventSubscription *pubsub.Subscription
+	subscribeFunctions   []transport.SubscribeFn
+	ctx                  sync.RWMutex
+	host                 host.Host
+	port                 int
+	peers                []string
+	pubSub               *pubsub.PubSub
+	jobEventTopic        *pubsub.Topic
+	jobEventSubscription *pubsub.Subscription
 }
 
-func getConfigPath() string {
-	suffix := "/.bacalhau"
-	env := os.Getenv("BACALHAU_PATH")
-	var d string
-	if env == "" {
-		// e.g. /home/francesca/.bacalhau
-		dirname, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal().Err(err)
-		}
-		d = dirname + suffix
-	} else {
-		// e.g. /data/.bacalhau
-		d = env + suffix
-	}
-	// create dir if not exists
-	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
-		log.Fatal().Err(err)
-	}
-	return d
-}
+func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
+	usePeers := []string{}
 
-func makeLibp2pHost(port int) (host.Host, error) {
-	configPath := getConfigPath()
-
-	// We include the port in the filename so that in devstack multiple nodes
-	// running on the same host get different identities
-	privKeyPath := fmt.Sprintf("%s/private_key.%d", configPath, port)
-
-	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
-		// Private key does not exist - create and write it
-
-		// Creates a new RSA key pair for this host.
-		prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, BitsForKeyPair, rand.Reader)
-		if err != nil {
-			log.Error().Err(err)
-			return nil, err
+	for _, p := range peers {
+		if p != "" {
+			usePeers = append(usePeers, p)
 		}
-
-		keyOut, err := os.OpenFile(privKeyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, util.OS_USER_RW)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open key.pem for writing: %v", err)
-		}
-		privBytes, err := crypto.MarshalPrivateKey(prvKey)
-		if err != nil {
-			return nil, fmt.Errorf("unable to marshal private key: %v", err)
-		}
-		// base64 encode privBytes
-		b64 := base64.StdEncoding.EncodeToString(privBytes)
-		_, err = keyOut.WriteString(b64 + "\n")
-		if err != nil {
-			return nil, fmt.Errorf("failed to write to key file: %v", err)
-		}
-		if err := keyOut.Close(); err != nil {
-			return nil, fmt.Errorf("error closing key file: %v", err)
-		}
-		log.Printf("wrote %s", privKeyPath)
 	}
 
-	// Now that we've ensured the private key is written to disk, read it! This
-	// ensures that loading it works even in the case where we've just created
-	// it.
-
-	// read the private key
-	keyBytes, err := os.ReadFile(privKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %v", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %v", err)
-	}
-	// parse the private key
-	prvKey, err := crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
-	}
-
-	// 0.0.0.0 will listen on any interface device.
-	sourceMultiAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
-
-	// libp2p.New constructs a new libp2p Host.
-	// Other options can be added here.
-	return libp2p.New(
-		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(prvKey),
-	)
-}
-
-func NewTransport(cm *system.CleanupManager, port int) (*Transport, error) {
-	h, err := makeLibp2pHost(port)
+	prvKey, err := config.GetPrivateKey(fmt.Sprintf("private_key.%d", port))
 	if err != nil {
 		return nil, err
 	}
 
-	// libp2p uses contexts for lifecycle management
+	// 0.0.0.0 will listen on any interface device.
+	sourceMultiAddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := libp2p.New(
+		libp2p.ListenAddrs(sourceMultiAddr),
+		libp2p.Identity(prvKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cm.RegisterCallback(func() error {
 		cancel()
@@ -160,196 +87,137 @@ func NewTransport(cm *system.CleanupManager, port int) (*Transport, error) {
 		return nil, err
 	}
 
-	libp2pTransport := &Transport{
+	libp2pTransport := &LibP2PTransport{
 		cm:                   cm,
-		Host:                 h,
-		Port:                 port,
-		PubSub:               ps,
-		JobEventTopic:        jobEventTopic,
-		JobEventSubscription: jobEventSubscription,
+		subscribeFunctions:   []transport.SubscribeFn{},
+		host:                 h,
+		port:                 port,
+		peers:                usePeers,
+		pubSub:               ps,
+		jobEventTopic:        jobEventTopic,
+		jobEventSubscription: jobEventSubscription,
 	}
-
-	// setup the event writer
-	libp2pTransport.genericTransport = transport.NewGenericTransport(
-		h.ID().String(),
-		func(ctx context.Context, event *executor.JobEvent) error {
-			return libp2pTransport.writeJobEvent(ctx, event)
-		},
-	)
 
 	return libp2pTransport, nil
 }
 
-/////////////////////////////////////////////////////////////
-/// LIFECYCLE
-/////////////////////////////////////////////////////////////
+/*
 
-func (t *Transport) HostID(ctx context.Context) (string, error) {
-	return t.Host.ID().String(), nil
+  public api
+
+*/
+
+func (t *LibP2PTransport) HostID(ctx context.Context) (string, error) {
+	return t.host.ID().String(), nil
 }
 
-func (t *Transport) Start(ctx context.Context) error {
-	if len(t.genericTransport.SubscribeFuncs) == 0 {
+func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
+	response := map[string][]peer.ID{}
+	for _, topic := range t.pubSub.GetTopics() {
+		peers := t.pubSub.ListPeers(topic)
+		response[topic] = peers
+	}
+	return response, nil
+}
+
+func (t *LibP2PTransport) Start(ctx context.Context) error {
+	if len(t.subscribeFunctions) == 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
 
-	go t.readLoopJobEvents(ctx)
-	log.Debug().Msg("Libp2p transport has started")
-
 	t.cm.RegisterCallback(func() error {
-		t.Host.Close()
-		log.Debug().Msg("Libp2p transport has stopped")
-
 		return t.Shutdown(ctx)
 	})
 
-	log.Debug().Msg("libp2p transport is starting...")
-	t.readLoopJobEvents(ctx) // blocking
+	err := t.connectToPeers(ctx)
+	if err != nil {
+		return err
+	}
+
+	go t.listenForEvents(ctx)
+
+	log.Info().Msg("Libp2p transport has started")
 
 	return nil
 }
 
-func (t *Transport) Shutdown(ctx context.Context) error {
-	return t.genericTransport.Shutdown(ctx)
-}
+func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
+	closeErr := t.host.Close()
 
-/////////////////////////////////////////////////////////////
-/// READ OPERATIONS
-/////////////////////////////////////////////////////////////
+	if closeErr != nil {
+		log.Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
+	} else {
+		log.Debug().Msg("Libp2p transport has stopped")
+	}
 
-func (t *Transport) List(ctx context.Context) (transport.ListResponse, error) {
-	ctx, span := newSpan(ctx, "List")
-	defer span.End()
-
-	return t.genericTransport.List(ctx)
-}
-
-func (t *Transport) Get(ctx context.Context, id string) (*executor.Job, error) {
-	ctx, span := newSpan(ctx, "Get")
-	defer span.End()
-
-	return t.genericTransport.Get(ctx, id)
-}
-
-func (t *Transport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	ctx, span := newSpan(ctx, "Subscribe")
-	defer span.End()
-
-	t.genericTransport.Subscribe(ctx, fn)
-}
-
-/////////////////////////////////////////////////////////////
-/// WRITE OPERATIONS - "CLIENT" / REQUESTER
-/////////////////////////////////////////////////////////////
-
-func (t *Transport) SubmitJob(ctx context.Context, spec *executor.JobSpec, deal *executor.JobDeal) (*executor.Job, error) {
-	ctx, span := newSpan(ctx, "SubmitJob")
-	defer span.End()
-
-	return t.genericTransport.SubmitJob(ctx, spec, deal)
-}
-
-func (t *Transport) UpdateDeal(ctx context.Context, jobID string, deal *executor.JobDeal) error {
-	ctx, span := newSpan(ctx, "UpdateDeal")
-	defer span.End()
-
-	return t.genericTransport.UpdateDeal(ctx, jobID, deal)
-}
-
-func (t *Transport) CancelJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
-func (t *Transport) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
-	ctx, span := newSpan(ctx, "AcceptJobBid")
-	defer span.End()
-
-	return t.genericTransport.AcceptJobBid(ctx, jobID, nodeID)
+func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
+	return t.writeJobEvent(ctx, ev)
 }
 
-func (t *Transport) RejectJobBid(ctx context.Context, jobID, nodeID, message string) error {
-	ctx, span := newSpan(ctx, "RejectJobBid")
-	defer span.End()
-
-	return t.genericTransport.RejectJobBid(ctx, jobID, nodeID, message)
+func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
+	t.ctx.Lock()
+	defer t.ctx.Unlock()
+	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
-/////////////////////////////////////////////////////////////
-/// WRITE OPERATIONS - "SERVER" / COMPUTE NODE
-/////////////////////////////////////////////////////////////
+/*
 
-func (t *Transport) BidJob(ctx context.Context, jobID string) error {
-	ctx, span := newSpan(ctx, "BidJob")
-	defer span.End()
+  libp2p
 
-	return t.genericTransport.BidJob(ctx, jobID)
-}
+*/
 
-func (t *Transport) SubmitResult(ctx context.Context, jobID, status, resultsID string) error {
-	ctx, span := newSpan(ctx, "SubmitResult")
-	defer span.End()
-
-	return t.genericTransport.SubmitResult(ctx, jobID, status, resultsID)
-}
-
-func (t *Transport) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
-	ctx, span := newSpan(ctx, "ErrorJob")
-	defer span.End()
-
-	return t.genericTransport.ErrorJob(ctx, jobID, status, resultsID)
-}
-
-// this is when the requester node needs to error the status for a node
-// for example - results have been given by the compute node
-// and in checking the results, the requester node came across some kind of error
-// we need to flag that error against the node that submitted the results
-// (but we are the requester node) - so we need this util function
-func (t *Transport) ErrorJobForNode(ctx context.Context, jobID, nodeID, status, resultsID string) error {
-	ctx, span := newSpan(ctx, "ErrorJobForNode")
-	defer span.End()
-
-	return t.genericTransport.ErrorJobForNode(ctx, jobID, nodeID, status, resultsID)
-}
-
-/////////////////////////////////////////////////////////////
-/// INTERNAL IMPLEMENTATION
-/////////////////////////////////////////////////////////////
-
-func (t *Transport) Connect(ctx context.Context, peerConnect string) error {
+func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 	ctx, span := newSpan(ctx, "Connect")
 	defer span.End()
 
-	if peerConnect == "" {
+	if len(t.peers) == 0 {
 		return nil
 	}
 
-	maddr, err := multiaddr.NewMultiaddr(peerConnect)
-	if err != nil {
-		return err
+	for _, peerAddress := range t.peers {
+		maddr, err := multiaddr.NewMultiaddr(peerAddress)
+		if err != nil {
+			return err
+		}
+
+		// Extract the peer ID from the multiaddr.
+		info, err := peer.AddrInfoFromP2pAddr(maddr)
+		if err != nil {
+			return err
+		}
+
+		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+		err = t.host.Connect(ctx, *info)
+		if err != nil {
+			return err
+		}
+		log.Info().Msgf("Libp2p transport connected to: %s", peerAddress)
 	}
 
-	// Extract the peer ID from the multiaddr.
-	info, err := peer.AddrInfoFromP2pAddr(maddr)
-	if err != nil {
-		return err
-	}
-
-	t.Host.Peerstore().AddAddrs(
-		info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-
-	return t.Host.Connect(ctx, *info)
+	return nil
 }
 
-type jobEventData struct {
-	JobEvent  *executor.JobEvent     `json:"job_event"`
+/*
+
+  pub / sub
+
+*/
+
+// we wrap our events on the wire in this envelope so
+// we can pass our tracing context to remote peers
+type jobEventEnvelope struct {
+	JobEvent  executor.JobEvent      `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent) error {
+func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 
-	bs, err := json.Marshal(jobEventData{
+	bs, err := json.Marshal(jobEventEnvelope{
 		JobEvent:  event,
 		TraceData: traceData,
 	})
@@ -357,13 +225,45 @@ func (t *Transport) writeJobEvent(ctx context.Context, event *executor.JobEvent)
 		return err
 	}
 
-	log.Debug().Msgf("Sending event: %s", string(bs))
-	return t.JobEventTopic.Publish(ctx, bs)
+	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	return t.jobEventTopic.Publish(ctx, bs)
 }
 
-func (t *Transport) readLoopJobEvents(ctx context.Context) {
+func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
+	// TODO: we would enforce the claims to SourceNodeID here
+	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
+	payload := jobEventEnvelope{}
+	err := json.Unmarshal(msg.Data, &payload)
+	if err != nil {
+		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+		return
+	}
+	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
+
+	// Notify all the listeners in this process of the event:
+	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
+
+	// overwrite the event.SourceNodeID with the one from the libp2p message
+	ev := payload.JobEvent
+	ev.SourceNodeID = msg.ReceivedFrom.String()
+
+	t.ctx.RLock()
+	defer t.ctx.RUnlock()
+
+	var wg sync.WaitGroup
+	for _, fn := range t.subscribeFunctions {
+		wg.Add(1)
+		go func(f transport.SubscribeFn) {
+			defer wg.Done()
+			f(jobCtx, ev)
+		}(fn)
+	}
+	wg.Wait()
+}
+
+func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 	for {
-		msg, err := t.JobEventSubscription.Next(ctx)
+		msg, err := t.jobEventSubscription.Next(ctx)
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
 				log.Info().Msgf("libp2p transport shutting down: %v", err)
@@ -371,20 +271,9 @@ func (t *Transport) readLoopJobEvents(ctx context.Context) {
 				log.Error().Msgf(
 					"libp2p encountered an unexpected error, shutting down: %v", err)
 			}
-
 			return
 		}
-
-		jed := jobEventData{}
-		if err = json.Unmarshal(msg.Data, &jed); err != nil {
-			log.Error().Msgf("error unmarshalling libp2p event: %v", err)
-			continue
-		}
-		log.Trace().Msgf("Received event: %+v", jed)
-
-		// Notify all the listeners in this process of the event:
-		ctx = otel.GetTextMapPropagator().Extract(ctx, jed.TraceData)
-		t.genericTransport.ReadEvent(ctx, jed.JobEvent)
+		go t.readMessage(msg)
 	}
 }
 
@@ -393,4 +282,4 @@ func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) 
 }
 
 // Compile-time interface check:
-var _ transport.Transport = (*Transport)(nil)
+var _ transport.Transport = (*LibP2PTransport)(nil)

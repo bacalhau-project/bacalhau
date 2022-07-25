@@ -9,8 +9,7 @@ import (
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -52,7 +51,7 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
-		storage.IPFSAPICopy,
+		storage.StorageSourceIPFS,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
@@ -65,7 +64,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
-		storage.IPFSAPICopy,
+		storage.StorageSourceIPFS,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
@@ -74,38 +73,9 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	)
 }
 
-func (suite *IPFSHostStorageSuite) TestIPFSFuseDockerFile() {
-	suite.T().Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
-
-	runFileTest(
-		suite.T(),
-		storage.IPFSFuseDocker,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return fusedocker.NewStorageProvider(cm, api)
-		},
-	)
-}
-
-func (suite *IPFSHostStorageSuite) TestIPFSFuseDockerFolder() {
-	suite.T().Skip("fuse tests disabled for now since we care about being able to run the tests on macOS, and aren't using the fuse driver anyway.")
-
-	runFolderTest(
-		suite.T(),
-		storage.IPFSFuseDocker,
-		func(cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
-
-			return fusedocker.NewStorageProvider(cm, api)
-		},
-	)
-
-}
-
-func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
+func runFileTest(t *testing.T, engine storage.StorageSourceType, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
-	ctx, span := newSpan(engine)
+	ctx, span := newSpan(engine.String())
 	defer span.End()
 
 	stack, cm := SetupTest(t, 1)
@@ -150,8 +120,8 @@ func runFileTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
 	require.NoError(t, err)
 }
 
-func runFolderTest(t *testing.T, engine string, getStorageDriver getStorageFunc) {
-	ctx, span := newSpan(engine)
+func runFolderTest(t *testing.T, engine storage.StorageSourceType, getStorageDriver getStorageFunc) {
+	ctx, span := newSpan(engine.String())
 	defer span.End()
 
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")

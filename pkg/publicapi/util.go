@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -37,10 +39,17 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
 	require.NoError(t, err)
 
-	rn, err := requestornode.NewRequesterNode(
+	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	c, err := controller.NewController(cm, inmemoryDatastore, ipt)
+	require.NoError(t, err)
+
+	rn, err := requesternode.NewRequesterNode(
 		cm,
-		ipt,
+		c,
 		noopVerifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
@@ -48,12 +57,14 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(rn, host, port, ipt)
-	c := NewAPIClient(s.GetURI())
+	s := NewServer(host, port, c, func(ctx context.Context, path string) (string, error) {
+		return rn.PinContext(path)
+	})
+	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
-	require.NoError(t, waitForHealthy(c))
+	require.NoError(t, waitForHealthy(cl))
 
 	return NewAPIClient(s.GetURI()), cm
 }
@@ -112,15 +123,15 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeGenericJob() (*executor.JobSpec, *executor.JobDeal) {
+func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
 	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs)
 }
 
-func MakeNoopJob() (*executor.JobSpec, *executor.JobDeal) {
+func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
 	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
 }
 
-func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (*executor.JobSpec, *executor.JobDeal) {
+func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (executor.JobSpec, executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
@@ -139,5 +150,5 @@ func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType)
 		Concurrency: 1,
 	}
 
-	return &jobSpec, &jobDeal
+	return jobSpec, jobDeal
 }
