@@ -118,7 +118,9 @@ type versionResponse struct {
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 	// switch on apiTransport type to get the right method
-	switch apiTransport := apiServer.Controller.GetTransport().(type) {
+	// we need to use a switch here because we want to look at .(type)
+	// ^ that is a note for you gocritic
+	switch apiTransport := apiServer.Controller.GetTransport().(type) { //nolint:gocritic
 	case *libp2p.LibP2PTransport:
 		peers, err := apiTransport.GetPeers(context.Background())
 		if err != nil {
@@ -152,7 +154,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	rawJobs := map[string]executor.Job{}
 
-	for _, listJob := range list {
+	for _, listJob := range list { //nolint:gocritic
 		rawJobs[listJob.ID] = listJob
 	}
 

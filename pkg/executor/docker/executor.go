@@ -123,7 +123,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 			return "", err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(ctx, inputStorage)
+		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}

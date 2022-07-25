@@ -109,11 +109,12 @@ func NewDevStack(
 		libp2pPeer := ""
 
 		if len(nodes) > 0 {
+			var libp2pHostID string
 			// connect the libp2p scheduler node
 			firstNode := nodes[0]
 
 			// get the libp2p id of the first scheduler node
-			libp2pHostID, err := firstNode.Transport.HostID(ctx)
+			libp2pHostID, err = firstNode.Transport.HostID(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -128,7 +129,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		controller, err := controller.NewController(
+		ctrl, err := controller.NewController(
 			cm,
 			inmemoryDatastore,
 			transport,
@@ -155,7 +156,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
-			controller,
+			ctrl,
 			verifiers,
 			requesternode.RequesterNodeConfig{},
 		)
@@ -168,7 +169,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
 			cm,
-			controller,
+			ctrl,
 			executors,
 			verifiers,
 			config,
@@ -189,7 +190,7 @@ func NewDevStack(
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",
 			apiPort,
-			controller,
+			ctrl,
 			func(ctx context.Context, path string) (string, error) {
 				return requesterNode.PinContext(path)
 			},
@@ -225,7 +226,7 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		go func(ctx context.Context) {
-			if err = controller.Start(ctx); err != nil {
+			if err = ctrl.Start(ctx); err != nil {
 				panic(err) // if controller can't run, devstack should stop
 			}
 		}(context.Background())

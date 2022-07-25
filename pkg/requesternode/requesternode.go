@@ -69,8 +69,7 @@ func (node *RequesterNode) subscriptionSetup() {
 		if job.RequesterNodeID != node.id {
 			return
 		}
-		switch jobEvent.EventName {
-		case executor.JobEventBid:
+		if jobEvent.EventName == executor.JobEventBid {
 			node.subscriptionEventBid(ctx, job, jobEvent)
 		}
 	})
