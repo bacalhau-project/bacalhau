@@ -166,17 +166,6 @@ func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
 	return res
 }
 
-// given a transport interface - run a job from start to end
-// basically acting as an "auto requestor" node
-// that will submit the job and then accept any bids
-// that come in (up until the concurrency)
-func RunJobViaRequestor(
-	requestor requesternode.RequesterNode,
-	job *executor.JobSpec,
-) error {
-	return nil
-}
-
 func RunJobGetStdout(
 	t *testing.T,
 	computeNode *computenode.ComputeNode,

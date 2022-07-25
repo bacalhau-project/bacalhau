@@ -111,42 +111,6 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 
 }
 
-func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
-
-	tests := []struct {
-		name     string
-		input    ResourceUsageData
-		expected ResourceUsageConfig
-	}{
-		{
-			name:     "basic",
-			input:    d(0.5, (datasize.MB * 512).Bytes(), 4),
-			expected: c("500m", "512MB", "4"),
-		},
-	}
-
-	for _, test := range tests {
-		converted, err := GetResourceUsageConfig(test.input)
-		require.NoError(suite.T(), err)
-		require.Equal(suite.T(), test.expected.CPU, converted.CPU, "cpu is incorrect")
-		require.Equal(suite.T(), test.expected.Memory, converted.Memory, "memory is incorrect")
-		require.Equal(suite.T(), test.expected.GPU, converted.GPU, "GPU is incorrect")
-		converted, err := getResourceUsageConfig(test.input)
-		require.NoError(t, err)
-		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
-		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
-
-		suite.Run(test.name, func() {
-			converted, err := getResourceUsageConfig(test.input)
-			require.NoError(t, err)
-			require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
-			require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
-		})
-
-	}
-
-}
-
 func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 
 	tests := []struct {

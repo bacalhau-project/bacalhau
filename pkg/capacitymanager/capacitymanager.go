@@ -58,7 +58,7 @@ type CapacityManager struct {
 	active *ItemMap
 }
 
-func NewCapacityManager(
+func NewCapacityManager( //nolint:funlen,gocyclo
 	config Config, //nolint:gocritic
 ) (*CapacityManager, error) {
 	// assign the default config values

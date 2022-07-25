@@ -24,7 +24,7 @@ const (
 	storageVolumeConnectorDone // must be last
 )
 
-// Used to distinquish files from directories
+// Used to distinguish files from directories
 //go:generate stringer -type=FileSystemNodeType --trimprefix=FileSystemNode
 type FileSystemNodeType int
 

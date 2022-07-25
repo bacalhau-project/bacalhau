@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -23,22 +23,27 @@ var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
 
-func getExecutorVeriferString(data []byte, fileextension string) (string, string) {
+func getExecutorVeriferString(data []byte, fileextension string) (string, string, error) { //nolint:gocritic
 	var objmap map[string]interface{}
 	if fileextension == ".json" {
-		json.Unmarshal(data, &objmap)
+		err := json.Unmarshal(data, &objmap)
+		if err != nil {
+			return "", "", err
+		}
 	}
 	if fileextension == ".yaml" || fileextension == ".yml" {
-		yaml.Unmarshal(data, &objmap)
+		err := yaml.Unmarshal(data, &objmap)
+		if err != nil {
+			return "", "", err
+		}
 	}
-	executor := fmt.Sprintf("%v", objmap["engine"])
-	verifier := fmt.Sprintf("%v", objmap["verifier"])
+	exe := fmt.Sprintf("%v", objmap["engine"])
+	ver := fmt.Sprintf("%v", objmap["verifier"])
 
-	return executor, verifier
+	return exe, ver, nil
 }
 
-func init() {
-
+func init() { // nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(
 		&filename, "filename", "f", "",
 		`Path to the job file`,
@@ -53,7 +58,6 @@ func init() {
 		"labels", "l", []string{},
 		`List of jobTags for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
-
 }
 
 var applyCmd = &cobra.Command{
@@ -72,21 +76,31 @@ var applyCmd = &cobra.Command{
 
 		defer fileContent.Close()
 
-		byteResult, err := ioutil.ReadAll(fileContent)
+		byteResult, err := io.ReadAll(fileContent)
 
 		if err != nil {
 			return err
 		}
 
 		if fileextension == ".json" {
-			json.Unmarshal(byteResult, &jobspec)
+			err = json.Unmarshal(byteResult, &jobspec)
+			if err != nil {
+				return err
+			}
 		}
 
 		if fileextension == ".yaml" || fileextension == ".yml" {
-			yaml.Unmarshal(byteResult, &jobspec)
+			err = yaml.Unmarshal(byteResult, &jobspec)
+			if err != nil {
+				return err
+			}
 		}
 
-		jobSpecEngineString, jobSpecVerifierString := getExecutorVeriferString(byteResult, fileextension)
+		jobSpecEngineString, jobSpecVerifierString, err := getExecutorVeriferString(byteResult, fileextension)
+
+		if err != nil {
+			return err
+		}
 
 		jobEngine := jobSpecEngineString
 

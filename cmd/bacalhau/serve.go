@@ -145,6 +145,9 @@ var serveCmd = &cobra.Command{
 			datastore,
 			transport,
 		)
+		if err != nil {
+			return err
+		}
 
 		hostID, err := transport.HostID(context.Background())
 		if err != nil {
