@@ -6,15 +6,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -38,6 +39,12 @@ func SetupTestDockerIpfs(
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
+	require.NoError(t, err)
+
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 	executors, err := executor_util.NewStandardExecutors(
 		cm, apiAddress, fmt.Sprintf("devstacknode0-%s", ipfsID))
@@ -48,7 +55,7 @@ func SetupTestDockerIpfs(
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		config,
@@ -63,10 +70,16 @@ func SetupTestNoop(
 	//nolint:gocritic
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
-) (*computenode.ComputeNode, *requestornode.RequesterNode, *system.CleanupManager) {
+) (*computenode.ComputeNode, *requesternode.RequesterNode, *controller.Controller, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(t, err)
 
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
@@ -75,40 +88,45 @@ func SetupTestNoop(
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
 	require.NoError(t, err)
 
-	requestorNode, err := requestornode.NewRequesterNode(
+	requestorNode, err := requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computeNodeconfig,
 	)
 	if err != nil {
-		spew.Dump(computeNodeconfig)
 		t.Fatal(err)
 	}
 
-	return computeNode, requestorNode, cm
+	err = ctrl.Start(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return computeNode, requestorNode, ctrl, cm
 }
 
-func GetJobSpec(cid string) *executor.JobSpec {
+func GetJobSpec(cid string) executor.JobSpec {
 	inputs := []storage.StorageSpec{}
 	if cid != "" {
 		inputs = []storage.StorageSpec{
 			{
-				Engine: "ipfs",
+				Engine: storage.StorageSourceIPFS,
 				Cid:    cid,
 				Path:   "/test_file.txt",
 			},
 		}
 	}
-	return &executor.JobSpec{
+	return executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -131,8 +149,8 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 }
 
 //nolint:unused,deadcode
-func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
-	return resourceusage.ResourceUsageConfig{
+func getResources(c, m, d string) capacitymanager.ResourceUsageConfig {
+	return capacitymanager.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
 		Disk:   d,
@@ -140,31 +158,20 @@ func getResources(c, m, d string) resourceusage.ResourceUsageConfig {
 }
 
 //nolint:unused,deadcode
-func getResourcesArray(data [][]string) []resourceusage.ResourceUsageConfig {
-	var res []resourceusage.ResourceUsageConfig
+func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
+	var res []capacitymanager.ResourceUsageConfig
 	for _, d := range data {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}
 	return res
 }
 
-// given a transport interface - run a job from start to end
-// basically acting as an "auto requestor" node
-// that will submit the job and then accept any bids
-// that come in (up until the concurrency)
-func RunJobViaRequestor(
-	requestor requestornode.RequesterNode,
-	job *executor.JobSpec,
-) error {
-	return nil
-}
-
 func RunJobGetStdout(
 	t *testing.T,
 	computeNode *computenode.ComputeNode,
-	spec *executor.JobSpec,
+	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.RunJob(context.Background(), &executor.Job{
+	result, err := computeNode.RunJob(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
 	})

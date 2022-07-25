@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -40,7 +39,7 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig // nolint:gocritic
 
-	transport       transport.Transport
+	controller      *controller.Controller
 	executors       map[executor.EngineType]executor.Executor
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
@@ -55,12 +54,12 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 
 func NewComputeNode(
 	cm *system.CleanupManager,
-	t transport.Transport,
+	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
-	computeNode, err := constructComputeNode(t, executors, verifiers, config)
+	computeNode, err := constructComputeNode(c, executors, verifiers, config)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +72,14 @@ func NewComputeNode(
 
 // process the arguments and return a valid compoute node
 func constructComputeNode(
-	t transport.Transport,
+	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 	config ComputeNodeConfig, // nolint:gocritic
 ) (*ComputeNode, error) {
+	// TODO: instrument with trace
 	ctx := context.Background()
-	nodeID, err := t.HostID(ctx)
+	nodeID, err := c.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func constructComputeNode(
 	computeNode := &ComputeNode{
 		id:              nodeID,
 		config:          config,
-		transport:       t,
+		controller:      c,
 		executors:       executors,
 		verifiers:       verifiers,
 		capacityManager: capacityManager,
@@ -140,7 +140,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 func (node *ComputeNode) controlLoopBidOnJobs() {
 	bidJobIds := node.capacityManager.GetNextItems()
 	for _, id := range bidJobIds {
-		job, err := node.transport.Get(context.Background(), id)
+		job, err := node.controller.GetJob(context.Background(), id)
 		if err != nil {
 			node.capacityManager.Remove(id)
 			continue
@@ -150,7 +150,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			node.capacityManager.Remove(job.ID)
 			continue
 		}
-
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
@@ -168,7 +167,12 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 */
 func (node *ComputeNode) subscriptionSetup() {
-	node.transport.Subscribe(context.Background(), func(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
+		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
+		if err != nil {
+			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
+			return
+		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
 			node.subscriptionEventCreated(ctx, jobEvent, job)
@@ -187,7 +191,7 @@ func (node *ComputeNode) subscriptionSetup() {
   subscriptions -> created
 
 */
-func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
 	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventCreated")
 	defer span.End()
@@ -217,16 +221,14 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
   subscriptions -> bid accepted
 
 */
-func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
-
 	// we only care if the accepted bid is for us
-	if jobEvent.NodeID != node.id {
+	if jobEvent.TargetNodeID != node.id {
 		return
 	}
 
-	ctx, span = node.newSpanForJob(ctx,
-		job.ID, "JobEventBidAccepted")
+	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventBidAccepted")
 	defer span.End()
 
 	// Increment the number of jobs accepted by this compute node:
@@ -247,9 +249,12 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
 	}
 	if resultFolder == "" {
-		errMessage := fmt.Sprintf("Missing results folder for job %s: %s", job.ID, containerRunError)
+		errMessage := fmt.Sprintf("Missing results folder for job %s", job.ID)
+		if containerRunError != nil {
+			errMessage = fmt.Sprintf("RunJob error %s: %s", job.ID, containerRunError)
+		}
 		log.Error().Msgf(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -257,7 +262,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if err != nil {
 		errMessage := fmt.Sprintf("Error getting verifier: %s %+v", err, job)
 		log.Error().Msgf(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -265,7 +270,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if err != nil {
 		errMessage := fmt.Sprintf("Error verifying results: %s %+v", err, job)
 		log.Error().Msg(errMessage)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
 	}
 
@@ -276,7 +281,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 			Job:  job.ID,
 			Data: resultValue,
 		})
-		err = node.transport.SubmitResult(
+		err = node.controller.CompleteJob(
 			ctx,
 			job.ID,
 			fmt.Sprintf("Got job result: %s", resultValue),
@@ -285,11 +290,11 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		if err != nil {
 			errMessage := fmt.Sprintf("Error submitting results: %s %+v", err, job)
 			log.Error().Msgf(errMessage)
-			_ = node.transport.ErrorJob(ctx, job.ID, errMessage, "")
+			_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		}
 	} else {
 		errMessage := fmt.Sprintf("Error running job: %s %+v", containerRunError.Error(), job)
-		_ = node.transport.ErrorJob(ctx, job.ID, errMessage, resultValue)
+		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, resultValue)
 	}
 }
 
@@ -298,7 +303,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
   subscriptions -> bid rejected
 
 */
-func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent *executor.JobEvent, job *executor.Job) {
+func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	node.capacityManager.Remove(job.ID)
 	node.controlLoopBidOnJobs()
 }
@@ -310,11 +315,8 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 */
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
-func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, resourceusage.ResourceUsageData, error) {
-	requirements := resourceusage.ResourceUsageData{}
-	if data.Spec == nil {
-		return false, requirements, fmt.Errorf("job spec is nil")
-	}
+func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, capacitymanager.ResourceUsageData, error) {
+	requirements := capacitymanager.ResourceUsageData{}
 
 	// check that we have the executor and it's installed
 	e, err := node.getExecutor(ctx, data.Spec.Engine)
@@ -330,7 +332,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 	// caculate resource requirements for this job
 	// this is just parsing strings to ints
-	requirements = resourceusage.ParseResourceUsageConfig(data.Spec.Resources)
+	requirements = capacitymanager.ParseResourceUsageConfig(data.Spec.Resources)
 
 	// calculate the disk space we would require if we ran this job
 	// this is asking the executor for GetVolumeSize
@@ -374,7 +376,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
-func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error {
+func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
 	// TODO: Why do we have two different kinds of loggers?
 	logger.LogJobEvent(logger.JobEvent{
 		Node: node.id,
@@ -384,7 +386,7 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
 
 	log.Debug().Msgf("compute node %s bidding on: %+v", node.id, job.Spec)
 
-	return node.transport.BidJob(ctx, job.ID)
+	return node.controller.BidJob(ctx, job.ID)
 }
 
 /*
@@ -392,17 +394,13 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job *executor.Job) error 
   run job
 
 */
-func (node *ComputeNode) RunJob(ctx context.Context, job *executor.Job) (string, error) {
+func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, error) {
 	// whatever happens here (either completion or error)
 	// we will want to free up the capacity manager from this job
 	defer func() {
 		node.capacityManager.Remove(job.ID)
 		node.controlLoopBidOnJobs()
 	}()
-
-	if job.Spec == nil {
-		return "", fmt.Errorf("job spec is nil")
-	}
 
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
@@ -467,7 +465,7 @@ func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) 
 	)
 }
 
-func (node *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec *executor.JobSpec) (uint64, error) {
+func (node *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec executor.JobSpec) (uint64, error) {
 	e, err := node.getExecutor(context.Background(), spec.Engine)
 	if err != nil {
 		return 0, err

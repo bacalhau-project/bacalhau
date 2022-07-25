@@ -61,7 +61,7 @@ func (apiClient *APIClient) Alive() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context) (map[string]executor.Job, error) {
 	req := listRequest{
 		ClientID: system.GetClientID(),
 	}
@@ -76,42 +76,37 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]*executor.Job,
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 // TODO(optimisation): implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job *executor.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor.Job, foundJob bool, err error) {
 	if jobID == "" {
-		return nil, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return executor.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
-		return nil, false, err
+		return executor.Job{}, false, err
 	}
 
 	// TODO: make this deterministic, return the first match alphabetically
-	for _, job = range jobs {
+	for _, job = range jobs { //nolint:gocritic
 		if strings.HasPrefix(job.ID, jobID) {
 			return job, true, nil
 		}
 	}
 
-	return nil, false, nil
+	return executor.Job{}, false, nil
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
-	deal *executor.JobDeal, buildContext *bytes.Buffer) (*executor.Job,
-	error) {
-	if spec == nil {
-		return nil, fmt.Errorf("publicapi: spec is nil")
-	}
-
-	if deal == nil {
-		return nil, fmt.Errorf("publicapi: deal is nil")
-	}
-
-	deal.ClientID = system.GetClientID() // ensure we have a client ID
-	data := submitData{
-		Spec: spec,
-		Deal: deal,
+func (apiClient *APIClient) Submit(
+	ctx context.Context,
+	spec executor.JobSpec,
+	deal executor.JobDeal,
+	buildContext *bytes.Buffer,
+) (executor.Job, error) {
+	data := executor.JobCreatePayload{
+		ClientID: system.GetClientID(),
+		Spec:     spec,
+		Deal:     deal,
 	}
 
 	if buildContext != nil {
@@ -120,12 +115,12 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return nil, err
+		return executor.Job{}, err
 	}
 
 	signature, err := system.SignForClient(jsonData)
 	if err != nil {
-		return nil, err
+		return executor.Job{}, err
 	}
 
 	var res submitResponse
@@ -136,7 +131,7 @@ func (apiClient *APIClient) Submit(ctx context.Context, spec *executor.JobSpec,
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
-		return nil, err
+		return executor.Job{}, err
 	}
 
 	return res.Job, nil

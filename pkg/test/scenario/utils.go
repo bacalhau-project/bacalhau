@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/fusedocker"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
+	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fusedocker"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +37,7 @@ const (
 )
 
 type IGetStorageDriver func(stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
-type ISetupStorage func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error)
+type ISetupStorage func(stack devstack.IDevStack, driverName storage.StorageSourceType, nodeCount int) ([]storage.StorageSpec, error)
 type ICheckResults func(resultsDir string)
 type IGetJobSpec func() executor.JobSpecDocker
 
@@ -90,7 +90,7 @@ func singleFileSetupStorageWithData(
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName storage.StorageSourceType, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
 		require.NoError(t, err)
 		inputStorageSpecs := []storage.StorageSpec{
@@ -109,7 +109,7 @@ func singleFileSetupStorageWithFile(
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName string, nodeCount int) ([]storage.StorageSpec, error) {
+	return func(stack devstack.IDevStack, driverName storage.StorageSourceType, nodeCount int) ([]storage.StorageSpec, error) {
 		fileCid, err := stack.AddFileToNodes(nodeCount, filePath)
 		require.NoError(t, err)
 		inputStorageSpecs := []storage.StorageSpec{

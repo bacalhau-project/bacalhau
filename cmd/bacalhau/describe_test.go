@@ -66,7 +66,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
 			func() {
-				var submittedJob *executor.Job
+				var submittedJob executor.Job
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()

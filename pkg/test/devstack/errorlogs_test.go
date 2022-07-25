@@ -66,7 +66,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	jobSpec := &executor.JobSpec{
+	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
 		Docker: executor.JobSpecDocker{
@@ -79,7 +79,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		},
 	}
 
-	jobDeal := &executor.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: 1,
 	}
 
@@ -91,7 +91,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateComplete,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateError),

@@ -112,22 +112,22 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Sto
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
-	storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+	storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
 	err := sp.ensureSidecar(storageSpec.Cid)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
 	cidMountPath, err := sp.getCidMountPath(storageSpec.Cid)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
-	volume := &storage.StorageVolume{
-		Type:   storage.StorageVolumeTypeBind,
+	volume := storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
 		Source: cidMountPath,
 		Target: storageSpec.Path,
 	}
@@ -138,7 +138,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
+	storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 

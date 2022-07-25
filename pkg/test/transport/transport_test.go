@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -49,9 +51,10 @@ func (suite *TransportSuite) TearDownAllSuite() {
 }
 
 func setupTest(t *testing.T) (
-	*inprocess.Transport,
+	*inprocess.InProcessTransport,
 	*executorNoop.Executor,
 	*verifier_noop.Verifier,
+	*controller.Controller,
 	*system.CleanupManager,
 ) {
 	cm := system.NewCleanupManager()
@@ -70,26 +73,36 @@ func setupTest(t *testing.T) (
 		verifier.VerifierNoop: noopVerifier,
 	}
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
 
-	_, err = requestornode.NewRequesterNode(
+	_, err = requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
-	return transport, noopExecutor, noopVerifier, cm
+	err = ctrl.Start(context.Background())
+	require.NoError(t, err)
+
+	return transport, noopExecutor, noopVerifier, ctrl, cm
 }
 
 func (suite *TransportSuite) TestTransportSanity() {
@@ -97,30 +110,35 @@ func (suite *TransportSuite) TestTransportSanity() {
 	defer cm.Cleanup()
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(suite.T(), err)
+	ctrl, err := controller.NewController(cm, datastore, transport)
 	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
 		cm,
-		transport,
+		ctrl,
 		executors,
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(suite.T(), err)
-	_, err = requestornode.NewRequesterNode(
+	_, err = requesternode.NewRequesterNode(
 		cm,
-		transport,
+		ctrl,
 		verifiers,
+		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(suite.T(), err)
 }
 
 func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	ctx := context.Background()
-	transport, noopExecutor, _, cm := setupTest(suite.T())
+	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -130,16 +148,22 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFSDefault,
+				Engine: storage.StorageSourceIPFS,
 			},
 		},
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: 1,
 	}
 
-	jobSelected, err := transport.SubmitJob(ctx, spec, deal)
+	payload := executor.JobCreatePayload{
+		ClientID: "123",
+		Spec:     spec,
+		Deal:     deal,
+	}
+
+	jobSelected, err := ctrl.SubmitJob(ctx, payload)
 	require.NoError(suite.T(), err)
 
 	time.Sleep(time.Second * 1)
@@ -149,10 +173,10 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 
 func (suite *TransportSuite) TestTransportEvents() {
 	ctx := context.Background()
-	transport, _, _, cm := setupTest(suite.T())
+	transport, _, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine:   executor.EngineNoop,
 		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
@@ -162,16 +186,22 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 		Inputs: []storage.StorageSpec{
 			{
-				Engine: storage.IPFSDefault,
+				Engine: storage.StorageSourceIPFS,
 			},
 		},
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: 1,
 	}
 
-	_, err := transport.SubmitJob(ctx, spec, deal)
+	payload := executor.JobCreatePayload{
+		ClientID: "123",
+		Spec:     spec,
+		Deal:     deal,
+	}
+
+	_, err := ctrl.SubmitJob(ctx, payload)
 	require.NoError(suite.T(), err)
 	time.Sleep(time.Second * 1)
 
@@ -179,11 +209,11 @@ func (suite *TransportSuite) TestTransportEvents() {
 		executor.JobEventCreated.String(),
 		executor.JobEventBid.String(),
 		executor.JobEventBidAccepted.String(),
-		executor.JobEventResults.String(),
+		executor.JobEventCompleted.String(),
 	}
 	actualEventNames := []string{}
 
-	for _, event := range transport.Events {
+	for _, event := range transport.GetEvents() {
 		actualEventNames = append(actualEventNames, event.EventName.String())
 	}
 

@@ -2,10 +2,7 @@ package executor
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 //go:generate stringer -type=EngineType --trimprefix=Engine
@@ -46,22 +43,53 @@ type JobEventType int
 
 const (
 	jobEventUnknown JobEventType = iota // must be first
+
+	// the job was created by a client
 	JobEventCreated
+
+	// the concurrency or other mutable properties of the job were
+	// changed by the client
 	JobEventDealUpdated
+
+	// a compute node bid on a job
 	JobEventBid
+
+	// a requester node accepted for rejected a job bid
 	JobEventBidAccepted
 	JobEventBidRejected
-	JobEventResults
-	JobEventResultsAccepted
-	JobEventResultsRejected
+
+	// a compute node canceled a job bid
+	JobEventBidCancelled
+
+	// TODO: what if a requester node accepts a bid
+	// and the compute node takes too long to start running it?
+	// JobEventBidRevoked
+
+	// a compute node progressed with running a job
+	// this is called periodically for running jobs
+	// to give the client confidence the job is still running
+	// this is like a heartbeat for running jobs
+	JobEventRunning
+
+	// a compute node completed running a job
+	JobEventCompleted
+
+	// a compute node had an error running a job
 	JobEventError
+
+	// a requestor node accepted the results from a node for a job
+	JobEventResultsAccepted
+
+	// a requestor node rejected the results from a node for a job
+	JobEventResultsRejected
+
 	jobEventDone // must be last
 )
 
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (event JobEventType) IsTerminal() bool {
-	return event == JobEventError || event == JobEventResults
+	return event == JobEventError || event == JobEventCompleted
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
@@ -91,50 +119,65 @@ func JobEventTypes() []JobEventType {
 	return res
 }
 
+//go:generate stringer -type=JobLocalEventType --trimprefix=JobLocalEvent
+type JobLocalEventType int
+
+const (
+	jobLocalEventUnknown JobLocalEventType = iota // must be first
+
+	JobLocalEventSelected
+	JobLocalEventBidAccepted
+
+	jobLocalEventDone // must be last
+)
+
 //go:generate stringer -type=JobStateType --trimprefix=JobState
 // JobStateType is the state of a job on a particular node. Note that the job
 // will typically have different states on different nodes.
 type JobStateType int
 
+// these are the states a job can be in against a single node
 const (
 	jobStateUnknown JobStateType = iota // must be first
+
+	// a compute node has selected a job and has bid on it
+	// we are currently waiting to hear back from the requester
+	// node whether our bid was accepted or not
 	JobStateBidding
-	JobStateBidRejected
+
+	// a requester node has either rejected the bid or the compute node has canceled the bid
+	// either way - this node will not progress with this job any more
+	JobStateCancelled
+
+	// the bid has been accepted but we have not yet started the job
+	JobStateWaiting
+
+	// the job is in the process of running
 	JobStateRunning
+
+	// the job had an error - this is an end state
 	JobStateError
+
+	// the requestor node is verifying the results
+	// we got back from the compute node
 	JobStateComplete
+
+	// our results have been processed
+	JobStateFinalized
+
 	jobStateDone // must be last
 )
 
 // IsTerminal returns true if the given job type signals the end of the
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
-func (typ JobStateType) IsTerminal() bool {
-	return typ == JobStateComplete || typ == JobStateError || typ == JobStateBidRejected
+func (state JobStateType) IsTerminal() bool {
+	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
 }
 
-// MarshalYAML encodes a JobStateType as a string for readability.
-func (typ JobStateType) MarshalYAML() (interface{}, error) {
-	return typ.String(), nil
-}
-
-// UnmarshalYAML decodes a JobStateType from a string or an int.
-func (typ *JobStateType) UnmarshalYAML(value *yaml.Node) error {
-	// First try and parse value.Value as an int:
-	i, err := strconv.ParseInt(value.Value, 10, 32) // nolint:gomnd
-	if err == nil {
-		*typ = JobStateType(i)
-		return nil
-	}
-
-	// If that fails, try to parse value.Value as a string:
-	t, err := ParseJobStateType(value.Value)
-	if err != nil {
-		return err
-	}
-
-	*typ = t
-	return nil
+// tells you if this event is a valid one
+func IsValidJobState(state JobStateType) bool {
+	return state > jobStateUnknown && state < jobStateDone
 }
 
 func ParseJobStateType(str string) (JobStateType, error) {
@@ -161,4 +204,47 @@ func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)
 	return strings.EqualFold(a, b)
+}
+
+// given an event name - return a job state
+func GetStateFromEvent(eventType JobEventType) JobStateType {
+	switch eventType {
+	// we have bid and are waiting to hear if that has been accepted
+	case JobEventBid:
+		return JobStateBidding
+
+	// our bid has been accepted but we've not yet started the job
+	case JobEventBidAccepted:
+		return JobStateWaiting
+
+	// out bid got rejected so we are canceled
+	case JobEventBidRejected:
+		return JobStateCancelled
+
+	// we canceled our bid so we are canceled
+	case JobEventBidCancelled:
+		return JobStateCancelled
+
+	// we are running
+	case JobEventRunning:
+		return JobStateRunning
+
+	// we are complete
+	case JobEventCompleted:
+		return JobStateComplete
+
+	// we are complete
+	case JobEventError:
+		return JobStateError
+
+	// both of these are "finalized"
+	case JobEventResultsAccepted:
+		return JobStateFinalized
+
+	case JobEventResultsRejected:
+		return JobStateFinalized
+
+	default:
+		return jobStateUnknown
+	}
 }
