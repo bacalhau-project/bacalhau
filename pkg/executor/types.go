@@ -60,12 +60,16 @@ type Job struct {
 type JobSpec struct {
 	APIVersion APIVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
-	Engine EngineType `json:"engine" yaml:"engine"`
+	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
+	// allow the engine to be provided as a string for yaml and JSON job specs
+	EngineName string `json:"engine_name" yaml:"engine_name"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
+	// allow the verifier to be provided as a string for yaml and JSON job specs
+	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`

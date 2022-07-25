@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,26 +21,6 @@ var jobfConcurrency int
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
-
-func getExecutorVeriferString(data []byte, fileextension string) (string, string, error) { //nolint:gocritic
-	var objmap map[string]interface{}
-	if fileextension == ".json" {
-		err := json.Unmarshal(data, &objmap)
-		if err != nil {
-			return "", "", err
-		}
-	}
-	if fileextension == ".yaml" || fileextension == ".yml" {
-		err := yaml.Unmarshal(data, &objmap)
-		if err != nil {
-			return "", "", err
-		}
-	}
-	exe := fmt.Sprintf("%v", objmap["engine"])
-	ver := fmt.Sprintf("%v", objmap["verifier"])
-
-	return exe, ver, nil
-}
 
 func init() { // nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(
@@ -96,16 +75,6 @@ var applyCmd = &cobra.Command{
 			}
 		}
 
-		jobSpecEngineString, jobSpecVerifierString, err := getExecutorVeriferString(byteResult, fileextension)
-
-		if err != nil {
-			return err
-		}
-
-		jobEngine := jobSpecEngineString
-
-		jobfVerifier := jobSpecVerifierString
-
 		jobImage := jobspec.Docker.Image
 
 		jobEntrypoint := jobspec.Docker.Entrypoint
@@ -125,13 +94,13 @@ var applyCmd = &cobra.Command{
 			}
 		}
 
-		engineType, err := executor.ParseEngineType(jobEngine)
+		engineType, err := executor.ParseEngineType(jobspec.EngineName)
 		if err != nil {
 			cmd.Printf("Error parsing engine type: %s", err)
 			return err
 		}
 
-		verifierType, err := verifier.ParseVerifierType(jobfVerifier)
+		verifierType, err := verifier.ParseVerifierType(jobspec.VerifierName)
 		if err != nil {
 			cmd.Printf("Error parsing engine type: %s", err)
 			return err
