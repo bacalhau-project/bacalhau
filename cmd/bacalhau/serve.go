@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/datastore/inmemory"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"

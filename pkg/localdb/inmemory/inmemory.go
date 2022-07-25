@@ -12,7 +12,6 @@ import (
 type InMemoryDatastore struct {
 	// we keep pointers to these things because we will update them partially
 	jobs        map[string]*executor.Job
-	states      map[string]map[string]*executor.JobState
 	events      map[string][]executor.JobEvent
 	localEvents map[string][]executor.JobLocalEvent
 	mtx         sync.Mutex
@@ -21,7 +20,6 @@ type InMemoryDatastore struct {
 func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	res := &InMemoryDatastore{
 		jobs:        map[string]*executor.Job{},
-		states:      map[string]map[string]*executor.JobState{},
 		events:      map[string][]executor.JobEvent{},
 		localEvents: map[string][]executor.JobLocalEvent{},
 	}
@@ -130,44 +128,25 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	return nil
 }
 
-func (d *InMemoryDatastore) GetExecutionStates(ctx context.Context, jobID string) (map[string]executor.JobState, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
-	states := map[string]executor.JobState{}
-	jobStates, ok := d.states[jobID]
-	if !ok {
-		return states, nil
-	}
-	for nodeID, state := range jobStates {
-		states[nodeID] = *state
-	}
-	return states, nil
-}
-
 func (d *InMemoryDatastore) UpdateExecutionState(ctx context.Context, jobID, nodeID string, state executor.JobState) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	_, ok := d.jobs[jobID]
+	job, ok := d.jobs[jobID]
 	if !ok {
 		return fmt.Errorf("no job found: %s", jobID)
 	}
-	jobStates, ok := d.states[jobID]
+	existingState, ok := job.State[nodeID]
 	if !ok {
-		jobStates = map[string]*executor.JobState{}
+		existingState = state
 	}
-	nodeState, ok := jobStates[nodeID]
-	if !ok {
-		nodeState = &state
-	}
-	nodeState.State = state.State
+	existingState.State = state.State
 	if state.ResultsID != "" {
-		nodeState.ResultsID = state.ResultsID
+		existingState.ResultsID = state.ResultsID
 	}
 	if state.Status != "" {
-		nodeState.Status = state.Status
+		existingState.Status = state.Status
 	}
-	jobStates[nodeID] = nodeState
-	d.states[jobID] = jobStates
+	job.State[nodeID] = existingState
 	return nil
 }
 

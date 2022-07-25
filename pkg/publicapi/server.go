@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -144,7 +144,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.Controller.GetJobs(req.Context(), datastore.JobQuery{})
+	list, err := apiServer.Controller.GetJobs(req.Context(), localdb.JobQuery{})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
