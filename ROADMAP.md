@@ -41,4 +41,4 @@
 1. *(nondeterminism)* Extend that system to work with execution runtimes that are non-deterministic, e.g. arbitrary user-provided container images, to support workloads such ML training. In particular, this would prove out that the system is pluggable in terms of verification strategies, this lays the groundwork for future support for other strategies in the triad of trustless compute, such as cryptographic verifiability, secrecy and optimistic verifiability.
     1. **Example:** Nondeterministic workloads, or ones that can’t be expressed as deterministic WASM binaries, can now be run on the network, for example training ML models.
 
-To be continued in [master plan part two]([url](https://hackmd.io/i-UdANDVSwycXtVacIPgEg))
+To be continued in [master plan part two](https://hackmd.io/i-UdANDVSwycXtVacIPgEg)
