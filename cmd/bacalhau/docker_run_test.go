@@ -15,10 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -89,54 +87,6 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_GPURequests() {
-	tests := []struct {
-		submitArgs []string
-		fatalErr   bool
-		errString  string
-		numGPUs    string
-	}{
-		{submitArgs: []string{"--gpu=1", "nvidia/cuda:11.0.3-base-ubuntu20.04", "nvidia-smi"}, fatalErr: false, errString: "", numGPUs: "1"},
-	}
-
-	for i, tc := range tests {
-		func() {
-
-			var logBuf = new(bytes.Buffer)
-			var Stdout = struct{ io.Writer }{os.Stdout}
-			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
-
-			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
-			defer cm.Cleanup()
-
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
-			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
-
-			if tc.fatalErr {
-				require.Contains(suite.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
-				return
-			} else {
-				require.NoError(suite.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
-			}
-
-			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
-
-			job, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
-			require.True(suite.T(), foundJob, "error getting job")
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
-			if tc.errString != "" {
-				o := logBuf.String()
-				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
-			}
-			require.Equal(suite.T(), tc.numGPUs, job.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, job.Spec.Resources.GPU)
-		}()
-	}
-}
-
 func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	tests := []struct {
 		numberOfJobs int
@@ -147,25 +97,20 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
+			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
-			require.NoError(suite.T(), err)
-			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
-
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
-				"--api-host", devstack.Nodes[0].APIServer.Host,
-				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
+				"--api-host", host,
+				"--api-port", port,
+				"ubuntu echo 'hello'",
 				"--wait",
-				"ubuntu",
-				"--",
-				"echo", "hello",
 			)
 			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			client := publicapi.NewAPIClient(devstack.Nodes[0].APIServer.GetURI())
-			job, _, err := client.Get(ctx, strings.TrimSpace(out))
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
 			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
