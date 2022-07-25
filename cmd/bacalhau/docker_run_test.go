@@ -142,7 +142,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 					flagsArray...,
 				)
 				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-				
+
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
@@ -188,7 +188,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 
 		testURLs := []struct {
 			inputURLs []InputURL
-			err          error
+			err       error
 		}{
 			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", path: "/app/data.tar.gz", flag: "-u"}}, err: nil},
 			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
