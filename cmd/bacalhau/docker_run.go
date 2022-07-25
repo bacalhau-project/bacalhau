@@ -63,7 +63,7 @@ func WaitForJobWithLogs(
 	ctx context.Context,
 	jobID string,
 	shouldLog bool,
-	finalJobState *executor.JobState,
+	finalJobState executor.JobState,
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
 	waiter := &system.FunctionWaiter{
@@ -154,7 +154,7 @@ func WaitForJobWithLogs(
 func WaitForJob(
 	ctx context.Context,
 	jobID string,
-	job *executor.Job,
+	job executor.Job,
 
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
@@ -201,7 +201,7 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 	}
 }
 
-func WaitForJobThrowErrors(job *executor.Job, errorStates []executor.JobStateType) CheckJobStatesFunction {
+func WaitForJobThrowErrors(job executor.Job, errorStates []executor.JobStateType) CheckJobStatesFunction {
 
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		var Status string
@@ -481,7 +481,7 @@ var dockerRunCmd = &cobra.Command{
 		if waitForJobToFinishAndPrintOutput {
 			err = WaitForJob(ctx, job.ID, job,
 				WaitForJobThrowErrors(job, []executor.JobStateType{
-					executor.JobStateBidRejected,
+					executor.JobStateCancelled,
 					executor.JobStateError,
 				}),
 				WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
