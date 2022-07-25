@@ -62,13 +62,13 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Sto
 	return 0, nil
 }
 
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
 	outputPath, err := ioutil.TempDir(sp.LocalDir, "*")
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
 	sp.HTTPClient.SetTimeout(config.GetDownloadURLRequestTimeout())
@@ -76,11 +76,11 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 		SetOutput(outputPath + "/file").
 		Get(storageSpec.URL)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
-	volume := &storage.StorageVolume{
-		Type:   "bind",
+	volume := storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath + "/file",
 		Target: storageSpec.Path,
 	}
@@ -89,7 +89,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 }
 
 // nolint:lll // Exception to the long rule
-func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
+func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 	return system.RunCommand("sudo", []string{

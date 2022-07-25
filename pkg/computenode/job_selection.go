@@ -36,9 +36,9 @@ type JobSelectionPolicy struct {
 
 // the JSON data we send to http or exec probes
 type JobSelectionPolicyProbeData struct {
-	NodeID string            `json:"node_id"`
-	JobID  string            `json:"job_id"`
-	Spec   *executor.JobSpec `json:"spec"`
+	NodeID string           `json:"node_id"`
+	JobID  string           `json:"job_id"`
+	Spec   executor.JobSpec `json:"spec"`
 }
 
 // generate a default empty job selection policy
@@ -50,7 +50,7 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 func applyJobSelectionPolicyExecProbe(
 	ctx context.Context,
 	command string,
-	data JobSelectionPolicyProbeData,
+	data JobSelectionPolicyProbeData, //nolint:gocritic
 ) (bool, error) {
 	// TODO: Use context to trace exec call
 
@@ -104,7 +104,7 @@ func applyJobSelectionPolicySettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
 	e executor.Executor,
-	job *executor.JobSpec,
+	job executor.JobSpec,
 ) (bool, error) {
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job

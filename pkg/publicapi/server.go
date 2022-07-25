@@ -16,38 +16,40 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/requestornode"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+type PinContextHandler func(ctx context.Context, localPath string) (string, error)
+
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Node      *requestornode.RequesterNode
-	Host      string
-	Port      int
-	Transport transport.Transport // so we can report on the libp2p peers
+	Controller        *controller.Controller
+	PinContextHandler PinContextHandler
+	Host              string
+	Port              int
 }
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
-	node *requestornode.RequesterNode,
 	host string,
 	port int,
-	transport transport.Transport,
+	c *controller.Controller,
+	p PinContextHandler,
 ) *APIServer {
 	return &APIServer{
-		Node: node,
-		Host: host,
-		Port: port,
+		Controller:        c,
+		PinContextHandler: p,
+		Host:              host,
+		Port:              port,
 	}
 }
 
@@ -58,9 +60,8 @@ func (apiServer *APIServer) GetURI() string {
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	hostID, err := apiServer.Node.Transport.HostID(ctx)
+	hostID, err := apiServer.Controller.HostID(ctx)
 	if err != nil {
-		log.Error().Msgf("Error fetching node's host ID: %s", err)
 		return err
 	}
 	sm := http.NewServeMux()
@@ -102,7 +103,7 @@ type listRequest struct {
 }
 
 type listResponse struct {
-	Jobs map[string]*executor.Job `json:"jobs"`
+	Jobs map[string]executor.Job `json:"jobs"`
 }
 
 type versionRequest struct {
@@ -113,17 +114,19 @@ type versionResponse struct {
 }
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
-	response := map[string][]peer.ID{}
 	// switch on apiTransport type to get the right method
-	switch apiTransport := apiServer.Node.Transport.(type) {
-	case *libp2p.Transport:
-		for _, topic := range apiTransport.PubSub.GetTopics() {
-			peers := apiTransport.PubSub.ListPeers(topic)
-			response[topic] = peers
+	// we need to use a switch here because we want to look at .(type)
+	// ^ that is a note for you gocritic
+	switch apiTransport := apiServer.Controller.GetTransport().(type) { //nolint:gocritic
+	case *libp2p.LibP2PTransport:
+		peers, err := apiTransport.GetPeers(context.Background())
+		if err != nil {
+			http.Error(res, fmt.Sprintf("Error getting peers: %s", err.Error()), http.StatusInternalServerError)
+			return
 		}
 		// write response to res
 		res.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(res).Encode(response)
+		err = json.NewEncoder(res).Encode(peers)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -140,15 +143,21 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.Node.Transport.List(req.Context())
+	list, err := apiServer.Controller.GetJobs(req.Context(), localdb.JobQuery{})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	rawJobs := map[string]executor.Job{}
+
+	for _, listJob := range list { //nolint:gocritic
+		rawJobs[listJob.ID] = listJob
+	}
+
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
-		Jobs: list.Jobs,
+		Jobs: rawJobs,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -174,23 +183,9 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 	}
 }
 
-type submitData struct {
-	// The job specification:
-	Spec *executor.JobSpec `json:"spec"`
-
-	// The deal the client has made with the network, at minimum this should
-	// contain the client's ID for verifying the message authenticity:
-	Deal *executor.JobDeal `json:"deal"`
-
-	// Optional base64-encoded tar file that will be pinned to IPFS and
-	// mounted as storage for the job. Not part of the spec so we don't
-	// flood the transport layer with it (potentially very large).
-	Context string `json:"context,omitempty"`
-}
-
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	Data submitData `json:"data"`
+	Data executor.JobCreatePayload `json:"data"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature"`
@@ -200,7 +195,7 @@ type submitRequest struct {
 }
 
 type submitResponse struct {
-	Job *executor.Job `json:"job"`
+	Job executor.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
@@ -247,7 +242,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.Node.PinContext(filepath.Join(tmpDir, "context"))
+		cid, err := apiServer.PinContextHandler(req.Context(), filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -257,14 +252,17 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
 		submitReq.Data.Spec.Inputs = append(submitReq.Data.Spec.Inputs, storage.StorageSpec{
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/job",
 		})
 	}
 
-	j, err := apiServer.Node.Transport.SubmitJob(req.Context(),
-		submitReq.Data.Spec, submitReq.Data.Deal)
+	j, err := apiServer.Controller.SubmitJob(
+		req.Context(),
+		submitReq.Data,
+	)
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -281,13 +279,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 }
 
 func verifySubmitRequest(req *submitRequest) error {
-	if req.Data.Spec == nil {
-		return errors.New("job spec is required")
-	}
-	if req.Data.Deal == nil {
-		return errors.New("job deal is required")
-	}
-	if req.Data.Deal.ClientID == "" {
+	if req.Data.ClientID == "" {
 		return errors.New("job deal must contain a client ID")
 	}
 	if req.ClientSignature == "" {
@@ -298,7 +290,7 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the client's public key matches the client ID:
-	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.Deal.ClientID)
+	ok, err := system.PublicKeyMatchesID(req.ClientPublicKey, req.Data.ClientID)
 	if err != nil {
 		return fmt.Errorf("error verifying client ID: %w", err)
 	}

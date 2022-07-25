@@ -72,10 +72,10 @@ func devStackDockerStorageTest(
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.IPFSAPICopy, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(stack, storage.StorageSourceIPFS, nodeCount)
 	require.NoError(t, err)
 
-	jobSpec := &executor.JobSpec{
+	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
 		Docker:   testCase.GetJobSpec(),
@@ -83,7 +83,7 @@ func devStackDockerStorageTest(
 		Outputs:  testCase.Outputs,
 	}
 
-	jobDeal := &executor.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -95,7 +95,7 @@ func devStackDockerStorageTest(
 	// wait for the job to complete across all nodes
 	err = stack.WaitForJob(ctx, submittedJob.ID,
 		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateBidRejected,
+			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
 		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),

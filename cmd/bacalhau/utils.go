@@ -54,7 +54,7 @@ func shortID(id string) string {
 	return id[:8]
 }
 
-func getJobResult(job *executor.Job, state *executor.JobState) string {
+func getJobResult(job executor.Job, state executor.JobState) string {
 	if state.ResultsID == "" {
 		return "-"
 	}

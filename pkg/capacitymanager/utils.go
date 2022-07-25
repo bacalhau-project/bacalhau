@@ -1,7 +1,8 @@
-package resourceusage
+package capacitymanager
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -27,7 +28,7 @@ func convertBytesString(st string) string {
 	return st
 }
 
-func ConvertCPUStringWithError(val string) (float64, error) {
+func convertCPUStringWithError(val string) (float64, error) {
 	if val == "" {
 		return 0, nil
 	}
@@ -39,14 +40,14 @@ func ConvertCPUStringWithError(val string) (float64, error) {
 }
 
 func ConvertCPUString(val string) float64 {
-	ret, err := ConvertCPUStringWithError(val)
+	ret, err := convertCPUStringWithError(val)
 	if err != nil {
 		return 0
 	}
 	return ret
 }
 
-func ConvertMemoryStringWithError(val string) (uint64, error) {
+func convertMemoryStringWithError(val string) (uint64, error) {
 	if val == "" {
 		return 0, nil
 	}
@@ -58,7 +59,7 @@ func ConvertMemoryStringWithError(val string) (uint64, error) {
 }
 
 func ConvertMemoryString(val string) uint64 {
-	ret, err := ConvertMemoryStringWithError(val)
+	ret, err := convertMemoryStringWithError(val)
 	if err != nil {
 		return 0
 	}
@@ -66,7 +67,7 @@ func ConvertMemoryString(val string) uint64 {
 }
 
 func ConvertGPUString(val string) uint64 {
-	ret, err := strconv.ParseUint(val, 10, 64)
+	ret, err := strconv.ParseUint(val, 10, 64) // nolint:gomnd
 	if err != nil {
 		return 0
 	}
@@ -80,19 +81,6 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 		Disk:   ConvertMemoryString(usage.Disk),
 		GPU:    ConvertGPUString(usage.GPU),
 	}
-}
-
-func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
-	c := ResourceUsageConfig{}
-
-	cpu := k8sresource.NewCPUFromFloat(usage.CPU)
-
-	c.CPU = cpu.ToString()
-	c.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
-	c.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
-	c.GPU = fmt.Sprintf("%d", usage.GPU)
-
-	return c, nil
 }
 
 // get free disk space for storage path
@@ -148,7 +136,10 @@ func numSystemGPUs() (uint64, error) {
 }
 
 // what resources does this compute node actually have?
-func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+	// this is used mainly for tests to be deterministic
+	allowOverCommit := os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
+
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return ResourceUsageData{}, err
@@ -159,7 +150,7 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	}
 
 	// the actual resources we have
-	data := ResourceUsageData{
+	physcialResources := ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.TotalMemory(),
 		Disk:   diskSpace,
@@ -169,63 +160,73 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
 
 	if parsedLimitConfig.CPU > 0 {
-		if parsedLimitConfig.CPU > data.CPU {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.CPU > physcialResources.CPU && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more CPU than you have on this node: configured %f, have %f",
-				parsedLimitConfig.CPU, data.CPU,
+				parsedLimitConfig.CPU, physcialResources.CPU,
 			)
 		}
-		data.CPU = parsedLimitConfig.CPU
+		physcialResources.CPU = parsedLimitConfig.CPU
 	}
 
 	if parsedLimitConfig.Memory > 0 {
-		if parsedLimitConfig.Memory > data.Memory {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.Memory > physcialResources.Memory && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more Memory than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Memory, data.Memory,
+				parsedLimitConfig.Memory, physcialResources.Memory,
 			)
 		}
-		data.Memory = parsedLimitConfig.Memory
+		physcialResources.Memory = parsedLimitConfig.Memory
 	}
 
 	if parsedLimitConfig.Disk > 0 {
-		if parsedLimitConfig.Disk > data.Disk {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.Disk > physcialResources.Disk && !allowOverCommit {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more disk than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Disk, data.Disk,
+				parsedLimitConfig.Disk, physcialResources.Disk,
 			)
 		}
-		data.Disk = parsedLimitConfig.Disk
+		physcialResources.Disk = parsedLimitConfig.Disk
 	}
 
 	if parsedLimitConfig.GPU > 0 {
-		if parsedLimitConfig.GPU > data.GPU {
-			return data, fmt.Errorf(
+		if parsedLimitConfig.GPU > physcialResources.GPU {
+			return physcialResources, fmt.Errorf(
 				"you cannot configure more GPU than you have on this node: configured %d, have %d",
-				parsedLimitConfig.GPU, data.GPU,
+				parsedLimitConfig.GPU, physcialResources.GPU,
 			)
 		}
-		data.GPU = parsedLimitConfig.GPU
+		physcialResources.GPU = parsedLimitConfig.GPU
 	}
 
-	return data, nil
+	return physcialResources, nil
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
-func CheckResourceUsage(wants, limits ResourceUsageData) bool {
-	// if there are no limits then everything goes
-	if limits.CPU <= 0 && limits.Memory <= 0 && limits.Disk <= 0 && limits.GPU <= 0 {
-		return true
-	}
+func checkResourceUsage(wants, limits ResourceUsageData) bool {
+	zeroWants := wants.CPU <= 0 &&
+		wants.Memory <= 0 &&
+		wants.Disk <= 0 &&
+		wants.GPU <= 0
+
+	limitOverZero := limits.CPU > 0 ||
+		limits.Memory > 0 ||
+		limits.Disk > 0 ||
+		wants.GPU > 0
+
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
-	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && wants.GPU <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0 || wants.GPU > 0) {
+	if zeroWants && limitOverZero {
 		return false
 	}
-	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk && wants.GPU <= limits.GPU
+
+	return wants.CPU <= limits.CPU &&
+		wants.Memory <= limits.Memory &&
+		wants.Disk <= limits.Disk &&
+		wants.GPU <= limits.GPU
 }
 
-func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
+func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    totals.CPU - current.CPU,
 		Memory: totals.Memory - current.Memory,

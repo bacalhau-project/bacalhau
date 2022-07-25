@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
-type ApiVersion string
+type APIVersion string
 
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
@@ -28,7 +28,7 @@ type Executor interface {
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
-	RunJob(context.Context, *Job) (string, error)
+	RunJob(context.Context, Job) (string, error)
 }
 
 // Job contains data about a job in the bacalhau network.
@@ -37,60 +37,46 @@ type Job struct {
 	ID string `json:"id"`
 
 	// The ID of the requester node that owns this job.
-	Owner string `json:"owner"`
+	RequesterNodeID string `json:"requester_node_id"`
+
+	// The ID of the client that created this job.
+	ClientID string `json:"client_id"`
 
 	// The specification of this job.
-	Spec *JobSpec `json:"spec"`
+	Spec JobSpec `json:"spec"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal *JobDeal `json:"deal"`
+	Deal JobDeal `json:"deal"`
 
 	// The states of the job on different compute nodes indexed by node ID.
-	State map[string]*JobState `json:"state"`
+	State map[string]JobState `json:"state"`
 
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Copy returns a deep copy of the given job.
-// TODO: use a library for deepcopies, this is tedious and likely to be
-//       fragile to changes in the Job type.
-func (j *Job) Copy() Job {
-	jc := *j
-	jc.State = make(map[string]*JobState)
-	for k, v := range j.State {
-		jc.State[k] = v
-	}
-	if j.Spec != nil {
-		sc := *j.Spec
-		jc.Spec = &sc
-	}
-	if j.Deal != nil {
-		dc := *j.Deal
-		jc.Deal = &dc
-	}
-
-	return jc
-}
-
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	ApiVersion ApiVersion `json:"apiVersion" yaml:"apiVersion"`
+	APIVersion APIVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
-	Engine EngineType `json:"engine" yaml:"engine"`
+	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
+	// allow the engine to be provided as a string for yaml and JSON job specs
+	EngineName string `json:"engine_name" yaml:"engine_name"`
 
 	// e.g. ipfs or localfs
 	// these verifiers both just copy the results
 	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
+	// allow the verifier to be provided as a string for yaml and JSON job specs
+	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
 	Language JobSpecLanguage `json:"job_spec_language,omitempty" yaml:"job_spec_language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
-	Resources resourceusage.ResourceUsageConfig `json:"resources" yaml:"resources"`
+	Resources capacitymanager.ResourceUsageConfig `json:"resources" yaml:"resources"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
@@ -139,35 +125,59 @@ type JobState struct {
 	ResultsID string       `json:"results_id"`
 }
 
+// gives us a way to keep local data against a job
+// so our compute node and requester node control loops
+// can keep state against a job without broadcasting it
+// to the rest of the network
+type JobLocalEvent struct {
+	EventName    JobLocalEventType `json:"event_name"`
+	JobID        string            `json:"job_id"`
+	TargetNodeID string            `json:"target_node_id"`
+}
+
 // The deal the client has made with the bacalhau network.
 type JobDeal struct {
-	// The ID of the client that created this job.
-	ClientID string `json:"client_id"`
-
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
-
-	// The compute node bids that have been accepted by the requester node on
-	// behalf of the client. Nodes that do not have accepted bids may still
-	// run and submit results for a job - this could be used to create a
-	// reputation system for new compute nodes.
-	AssignedNodes []string `json:"assigned_nodes"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobID     string       `json:"job_id"`
-	NodeID    string       `json:"node_id"`
-	EventName JobEventType `json:"event_name"`
+	JobID string `json:"job_id"`
+	// optional clientID if this is an externally triggered event (like create job)
+	ClientID string `json:"client_id"`
+	// the node that emitted this event
+	SourceNodeID string `json:"source_node_id"`
+	// the node that this event is for
+	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
+	TargetNodeID string       `json:"target_node_id"`
+	EventName    JobEventType `json:"event_name"`
 	// this is only defined in "create" events
-	JobSpec *JobSpec `json:"job_spec"`
+	JobSpec JobSpec `json:"job_spec"`
 	// this is only defined in "update_deal" events
-	JobDeal *JobDeal `json:"job_deal"`
-	// most other events are a case of a client<->node state change
-	JobState  *JobState `json:"job_state"`
+	JobDeal   JobDeal   `json:"job_deal"`
+	Status    string    `json:"status"`
+	ResultsID string    `json:"results_id"`
 	EventTime time.Time `json:"event_time"`
+}
+
+type JobCreatePayload struct {
+	// the id of the client that is submitting the job
+	ClientID string `json:"client_id"`
+
+	// The job specification:
+	Spec JobSpec `json:"spec"`
+
+	// The deal the client has made with the network, at minimum this should
+	// contain the client's ID for verifying the message authenticity:
+	Deal JobDeal `json:"deal"`
+
+	// Optional base64-encoded tar file that will be pinned to IPFS and
+	// mounted as storage for the job. Not part of the spec so we don't
+	// flood the transport layer with it (potentially very large).
+	Context string `json:"context,omitempty"`
 }
 
 // Version of a bacalhau binary (either client or server)

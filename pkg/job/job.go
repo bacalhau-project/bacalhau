@@ -3,43 +3,22 @@ package job
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
-func ProcessJobIntoResults(job *executor.Job) (*[]types.ResultsList, error) {
-	results := []types.ResultsList{}
-
-	log.Debug().Msgf("All job states: %+v", job)
-
-	log.Debug().Msgf("Number of job states created: %d", len(job.State))
-
-	for node := range job.State {
-		results = append(results, types.ResultsList{
-			Node:   node,
-			Cid:    job.State[node].ResultsID,
-			Folder: system.GetResultsDirectory(job.ID, node),
-		})
-	}
-
-	log.Debug().Msgf("Number of results created: %d", len(results))
-
-	return &results, nil
-}
-
 func ConstructDockerJob(
 	engine executor.EngineType,
 	v verifier.VerifierType,
-  cpu, memory, gpu string,
-  inputUrls []string,
+	cpu, memory, gpu string,
+	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -47,11 +26,11 @@ func ConstructDockerJob(
 	image string,
 	concurrency int,
 	annotations []string,
-) (*executor.JobSpec, *executor.JobDeal, error) {
+) (executor.JobSpec, executor.JobDeal, error) {
 	if concurrency <= 0 {
-		return nil, nil, fmt.Errorf("concurrency must be >= 1")
+		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
-	jobResources := resourceusage.ResourceUsageConfig{
+	jobResources := capacitymanager.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
 		GPU:    gpu,
@@ -67,10 +46,10 @@ func ConstructDockerJob(
 		// should loop through all available storage providers?
 		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
-			return nil, nil, err
+			return executor.JobSpec{}, executor.JobDeal{}, err
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
-			Engine: "url_download",
+			Engine: storage.StorageSourceURLDownload,
 			URL:    rawURL,
 			Path:   path,
 		})
@@ -79,12 +58,12 @@ func ConstructDockerJob(
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("invalid input volume: %s", inputVolume)
+			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    slices[0],
 			Path:   slices[1],
 		})
@@ -95,12 +74,12 @@ func ConstructDockerJob(
 		if len(slices) != 2 {
 			msg := fmt.Sprintf("invalid output volume: %s", outputVolume)
 			log.Error().Msgf(msg)
-			return nil, nil, errors.New(msg)
+			return executor.JobSpec{}, executor.JobDeal{}, errors.New(msg)
 		}
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Name:   slices[0],
 			Path:   slices[1],
 		})
@@ -122,7 +101,7 @@ func ConstructDockerJob(
 			strings.Join(unSafeAnnotations, ", "))
 	}
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine:   engine,
 		Verifier: v,
 		Docker: executor.JobSpecDocker{
@@ -137,7 +116,7 @@ func ConstructDockerJob(
 		Annotations: jobAnnotations,
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: concurrency,
 	}
 
@@ -157,11 +136,11 @@ func ConstructLanguageJob(
 	requirementsPath string,
 	contextPath string, // we have to tar this up and POST it to the requestor node
 	deterministic bool,
-) (*executor.JobSpec, *executor.JobDeal, error) {
+) (executor.JobSpec, executor.JobDeal, error) {
 	// TODO refactor this wrt ConstructDockerJob
 
 	if concurrency <= 0 {
-		return nil, nil, fmt.Errorf("concurrency must be >= 1")
+		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
 
 	jobInputs := []storage.StorageSpec{}
@@ -170,12 +149,12 @@ func ConstructLanguageJob(
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("invalid input volume: %s", inputVolume)
+			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Cid:    slices[0],
 			Path:   slices[1],
 		})
@@ -184,18 +163,18 @@ func ConstructLanguageJob(
 	for _, outputVolume := range outputVolumes {
 		slices := strings.Split(outputVolume, ":")
 		if len(slices) != 2 {
-			return nil, nil, fmt.Errorf("invalid output volume: %s", outputVolume)
+			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid output volume: %s", outputVolume)
 		}
 		jobOutputs = append(jobOutputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: "ipfs",
+			Engine: storage.StorageSourceIPFS,
 			Name:   slices[0],
 			Path:   slices[1],
 		})
 	}
 
-	spec := &executor.JobSpec{
+	spec := executor.JobSpec{
 		Engine: executor.EngineLanguage,
 		// TODO: should this always be ipfs?
 		Verifier: verifier.VerifierIpfs,
@@ -213,25 +192,27 @@ func ConstructLanguageJob(
 		Outputs: jobOutputs,
 	}
 
-	deal := &executor.JobDeal{
+	deal := executor.JobDeal{
 		Concurrency: concurrency,
 	}
 
 	return spec, deal, nil
 }
 
-func VerifyJob(spec *executor.JobSpec, deal *executor.JobDeal) error {
-	if spec == nil {
-		return fmt.Errorf("job spec is required")
+func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
+	if reflect.DeepEqual(executor.JobSpec{}, spec) {
+		return fmt.Errorf("job spec is empty")
 	}
-	if deal == nil {
-		return fmt.Errorf("job deal is required")
+
+	if reflect.DeepEqual(executor.JobDeal{}, deal) {
+		return fmt.Errorf("job spec is empty")
 	}
+
 	return nil
 }
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
-func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
+func GetCurrentJobState(job executor.Job) (string, executor.JobState) {
 	// Returns Node Id, JobState
 
 	// Combine the list of jobs down to just those that matter
@@ -244,7 +225,7 @@ func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	// 	 one that has the non-bid-rejected result.
 
 	finalNodeID := ""
-	finalJobState := &executor.JobState{}
+	finalJobState := executor.JobState{}
 
 	for nodeID, jobState := range job.State {
 		if finalNodeID == "" {
@@ -259,20 +240,6 @@ func GetCurrentJobState(job *executor.Job) (string, *executor.JobState) {
 	return finalNodeID, finalJobState
 }
 
-func JobStateValue(jobState *executor.JobState) int {
-	switch jobState.State {
-	case executor.JobStateRunning:
-		return 100 // nolint:gomnd // magic number appropriate
-	case executor.JobStateComplete:
-		return 90 // nolint:gomnd // magic number appropriate
-	case executor.JobStateError:
-		return 80 // nolint:gomnd // magic number appropriate
-	case executor.JobStateBidding:
-		return 70 // nolint:gomnd // magic number appropriate
-	case executor.JobStateBidRejected:
-		return 60 // nolint:gomnd // magic number appropriate
-	default:
-		log.Error().Msgf("Asking value with unknown state. State: %+v", jobState.State.String())
-		return 0
-	}
+func JobStateValue(jobState executor.JobState) int {
+	return int(executor.JobStateRunning)
 }

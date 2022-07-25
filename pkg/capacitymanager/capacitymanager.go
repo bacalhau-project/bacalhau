@@ -2,8 +2,6 @@ package capacitymanager
 
 import (
 	"fmt"
-
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 )
 
 const DefaultJobCPU = "100m"
@@ -15,17 +13,17 @@ const DefaultJobGPU = "0"
 type Config struct {
 	// the total amount of CPU and RAM we want to
 	// give to running bacalhau jobs
-	ResourceLimitTotal resourceusage.ResourceUsageConfig
+	ResourceLimitTotal ResourceUsageConfig
 	// limit the max CPU / Memory usage for any single job
-	ResourceLimitJob resourceusage.ResourceUsageConfig
+	ResourceLimitJob ResourceUsageConfig
 	// if a job does not state how much CPU or Memory is used
 	// what values should we assume?
-	ResourceRequirementsDefault resourceusage.ResourceUsageConfig
+	ResourceRequirementsDefault ResourceUsageConfig
 }
 
 type CapacityManagerItem struct {
 	ID           string
-	Requirements resourceusage.ResourceUsageData
+	Requirements ResourceUsageData
 }
 
 type CapacityManager struct {
@@ -38,9 +36,9 @@ type CapacityManager struct {
 	// amounts we will get an error
 	// if job resource limit is more than total resource limit
 	// then we will error (in the case both values are supplied)
-	resourceLimitsTotal            resourceusage.ResourceUsageData
-	resourceLimitsJob              resourceusage.ResourceUsageData
-	resourceRequirementsJobDefault resourceusage.ResourceUsageData
+	resourceLimitsTotal            ResourceUsageData
+	resourceLimitsJob              ResourceUsageData
+	resourceRequirementsJobDefault ResourceUsageData
 
 	// A map of jobs the compute node has decided to bid on according to
 	// the JobSelectionPolicy, but which have not yet been accepted by the
@@ -60,7 +58,7 @@ type CapacityManager struct {
 	active *ItemMap
 }
 
-func NewCapacityManager(
+func NewCapacityManager( //nolint:funlen,gocyclo
 	config Config, //nolint:gocritic
 ) (*CapacityManager, error) {
 	// assign the default config values
@@ -80,19 +78,19 @@ func NewCapacityManager(
 		useConfig.ResourceRequirementsDefault.GPU = DefaultJobGPU
 	}
 
-	resourceLimitsTotal, err := resourceusage.GetSystemResources(useConfig.ResourceLimitTotal)
+	resourceLimitsTotal, err := getSystemResources(useConfig.ResourceLimitTotal)
 	if err != nil {
 		return nil, err
 	}
 
 	// this is the per job resource limit - i.e. no job can use more than this
 	// if no values are given - then we will use the system available resources
-	resourceLimitsJob := resourceusage.ParseResourceUsageConfig(useConfig.ResourceLimitJob)
+	resourceLimitsJob := ParseResourceUsageConfig(useConfig.ResourceLimitJob)
 
 	// the default value for how much CPU / RAM one job says it needs
 	// this is for when a job is submitted with no values for CPU & RAM
 	// we will assign these values to it
-	resourceRequirementsJobDefault := resourceusage.ParseResourceUsageConfig(useConfig.ResourceRequirementsDefault)
+	resourceRequirementsJobDefault := ParseResourceUsageConfig(useConfig.ResourceRequirementsDefault)
 
 	// if we don't have a limit on job size
 	// then let's use the total resources we have on the system
@@ -151,14 +149,14 @@ func NewCapacityManager(
 
 	if resourceRequirementsJobDefault.Memory > resourceLimitsJob.Memory {
 		return nil, fmt.Errorf(
-			"default job resource Memory %d is greater than limit %d",
+			"default job resource memory %d is greater than limit %d",
 			resourceRequirementsJobDefault.Memory, resourceLimitsJob.Memory,
 		)
 	}
 
 	if resourceRequirementsJobDefault.Disk > resourceLimitsJob.Disk {
 		return nil, fmt.Errorf(
-			"default job resource Disk %d is greater than limit %d",
+			"default job resource disk %d is greater than limit %d",
 			resourceRequirementsJobDefault.Disk, resourceLimitsJob.Disk,
 		)
 	}
@@ -184,7 +182,7 @@ func NewCapacityManager(
 // we fill in defaults along the way and return the "processed version"
 // to ever run - this is based on the "resourceLimitsJob" not the total
 // because we might be busy now but could run the job later
-func (manager *CapacityManager) FilterRequirements(requirements resourceusage.ResourceUsageData) (bool, resourceusage.ResourceUsageData) {
+func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageData) (bool, ResourceUsageData) {
 	if requirements.CPU <= 0 {
 		requirements.CPU = manager.resourceRequirementsJobDefault.CPU
 	}
@@ -197,11 +195,11 @@ func (manager *CapacityManager) FilterRequirements(requirements resourceusage.Re
 	if requirements.GPU <= 0 {
 		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
-	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
+	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements
 }
 
-func (manager *CapacityManager) AddToBacklog(id string, requirements resourceusage.ResourceUsageData) {
+func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsageData) {
 	manager.backlog.Add(CapacityManagerItem{
 		ID:           id,
 		Requirements: requirements,
@@ -223,8 +221,8 @@ func (manager *CapacityManager) Remove(id string) {
 	manager.active.Remove(id)
 }
 
-func (manager *CapacityManager) GetFreeSpace() resourceusage.ResourceUsageData {
-	currentResourceUsage := resourceusage.ResourceUsageData{}
+func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
+	currentResourceUsage := ResourceUsageData{}
 
 	manager.active.Iterate(func(item CapacityManagerItem) {
 		currentResourceUsage.CPU += item.Requirements.CPU
@@ -233,7 +231,7 @@ func (manager *CapacityManager) GetFreeSpace() resourceusage.ResourceUsageData {
 		currentResourceUsage.GPU += item.Requirements.GPU
 	})
 
-	return resourceusage.SubtractResourceUsage(currentResourceUsage, manager.resourceLimitsTotal)
+	return subtractResourceUsage(currentResourceUsage, manager.resourceLimitsTotal)
 }
 
 // get the jobs we have capacity to bid on
@@ -251,9 +249,9 @@ func (manager *CapacityManager) GetNextItems() []string {
 	freeSpace := manager.GetFreeSpace()
 
 	manager.backlog.Iterate(func(item CapacityManagerItem) {
-		if resourceusage.CheckResourceUsage(item.Requirements, freeSpace) {
+		if checkResourceUsage(item.Requirements, freeSpace) {
 			ids = append(ids, item.ID)
-			freeSpace = resourceusage.SubtractResourceUsage(item.Requirements, freeSpace)
+			freeSpace = subtractResourceUsage(item.Requirements, freeSpace)
 		}
 	})
 
