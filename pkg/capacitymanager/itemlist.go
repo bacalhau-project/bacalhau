@@ -44,6 +44,12 @@ func (l *ItemList) Get(id string) *CapacityManagerItem {
 	return nil
 }
 
+func (l *ItemList) Count() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.items)
+}
+
 func (l *ItemList) Iterate(handler func(item CapacityManagerItem)) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

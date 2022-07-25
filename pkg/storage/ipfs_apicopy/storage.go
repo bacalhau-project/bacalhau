@@ -84,36 +84,36 @@ func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume sto
 	}
 }
 
-func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
 	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.Cid)
 	if err != nil {
-		return nil, fmt.Errorf("failed to stat %s: %w", storageSpec.Cid, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.Cid, err)
 	}
 
 	if stat.Type != ipfs.IPLDFile && stat.Type != ipfs.IPLDDirectory {
-		return nil, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.Cid, stat.Type)
+		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.Cid, stat.Type)
 	}
 
-	var volume *storage.StorageVolume
+	var volume storage.StorageVolume
 	volume, err = dockerIPFS.copyFile(ctx, storageSpec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
 	}
 
 	return volume, nil
 }
 
 // nolint:lll // Exception to the long rule
-func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
+func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	return system.RunCommand("sudo", []string{
 		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
 	})
 }
 
-func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid)
 
 	// If the output path already exists, we already have the data, as
@@ -121,20 +121,20 @@ func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec sto
 	// finished downloading the CID.
 	ok, err := system.PathExists(outputPath)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 	if !ok {
 		_, err := system.Timeout(config.GetDownloadCidRequestTimeout(), func() (interface{}, error) {
 			innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, outputPath)
-			return nil, innerErr
+			return storage.StorageVolume{}, innerErr
 		})
 		if err != nil {
-			return nil, err
+			return storage.StorageVolume{}, err
 		}
 	}
 
-	volume := &storage.StorageVolume{
-		Type:   "bind",
+	volume := storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
 		Target: storageSpec.Path,
 	}

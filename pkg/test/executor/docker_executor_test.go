@@ -68,13 +68,13 @@ func dockerExecutorStorageTest(
 		dockerExecutor, err := docker.NewExecutor(
 			cm,
 			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
-			map[string]storage.StorageProvider{
-				TEST_STORAGE_DRIVER_NAME: storageDriver,
+			map[storage.StorageSourceType]storage.StorageProvider{
+				storage.StorageSourceIPFS: storageDriver,
 			})
 		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack, TEST_STORAGE_DRIVER_NAME, TEST_NODE_COUNT)
+			stack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
@@ -88,18 +88,18 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := &executor.Job{
-			ID:    "test-job",
-			Owner: "test-owner",
-			Spec: &executor.JobSpec{
+		job := executor.Job{
+			ID:              "test-job",
+			RequesterNodeID: "test-owner",
+			ClientID:        "test-client",
+			Spec: executor.JobSpec{
 				Engine:  executor.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: &executor.JobDeal{
-				Concurrency:   TEST_NODE_COUNT,
-				AssignedNodes: []string{},
+			Deal: executor.JobDeal{
+				Concurrency: TEST_NODE_COUNT,
 			},
 			CreatedAt: time.Now(),
 		}
