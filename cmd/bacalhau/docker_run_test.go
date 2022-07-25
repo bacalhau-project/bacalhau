@@ -228,7 +228,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 					flagsArray...,
 				)
 				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
-
+				
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
@@ -250,6 +250,84 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 						}
 					}
 					require.True(suite.T(), testCIDinJobInputs, "Test CID not in job inputs.")
+				}
+			}()
+		}
+	}
+}
+
+func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1},
+	}
+
+	for i, tc := range tests {
+		type (
+			InputURL struct {
+				url  string
+				path string
+				flag string
+			}
+		)
+
+		testURLs := []struct {
+			inputURLs []InputURL
+			err          error
+		}{
+			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", path: "/app/data.tar.gz", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
+		}
+
+		for _, turls := range testURLs {
+			func() {
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
+
+				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				flagsArray := []string{"docker", "run",
+					"--api-host", host,
+					"--api-port", port}
+
+				for _, iurl := range turls.inputURLs {
+					iurlString := iurl.url
+					if iurl.path != "" {
+						iurlString += fmt.Sprintf(":%s", iurl.path)
+					}
+					flagsArray = append(flagsArray, iurl.flag, iurlString)
+				}
+				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
+
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+					flagsArray...,
+				)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+
+				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				require.NoError(suite.T(), err)
+				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+
+				require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
+
+				// Need to do the below because ordering is not guaranteed
+				for _, turlIU := range turls.inputURLs {
+					testURLinJobInputs := false
+					for _, jobInput := range job.Spec.Inputs {
+						if turlIU.url == jobInput.URL {
+							testURLinJobInputs = true
+							testPath := "/app2"
+							if turlIU.path != "" {
+								testPath = turlIU.path
+							}
+							require.Equal(suite.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
+							break
+						}
+					}
+					require.True(suite.T(), testURLinJobInputs, "Test CID not in job inputs.")
 				}
 			}()
 		}
