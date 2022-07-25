@@ -194,6 +194,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
 			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
 		}
+		jobOutputVolumes = []string{} // TODO reset all cli variables
 
 		for _, turls := range testURLs {
 			func() {
@@ -241,7 +242,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 							break
 						}
 					}
-					require.True(suite.T(), testURLinJobInputs, "Test CID not in job inputs.")
+					require.True(suite.T(), testURLinJobInputs, "Test URL not in job inputs.")
 				}
 			}()
 		}
