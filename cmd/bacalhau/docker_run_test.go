@@ -86,6 +86,36 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1}, // Test for one
+	}
+
+	for i, tc := range tests {
+		func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+				"--api-host", host,
+				"--api-port", port,
+				"ubuntu echo 'hello'",
+				"--wait",
+			)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+		}()
+	}
+}
+
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int
