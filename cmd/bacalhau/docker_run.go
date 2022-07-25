@@ -405,7 +405,7 @@ var dockerRunCmd = &cobra.Command{
 		jobGPU = ""
 		skipSyntaxChecking = false
 		waitForJobToFinishAndPrintOutput = false
-		jobIpfsGetTimeOut = 10
+
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
