@@ -50,7 +50,7 @@ func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
 func applyJobSelectionPolicyExecProbe(
 	ctx context.Context,
 	command string,
-	data JobSelectionPolicyProbeData,
+	data JobSelectionPolicyProbeData, //nolint:gocritic
 ) (bool, error) {
 	// TODO: Use context to trace exec call
 

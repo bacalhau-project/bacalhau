@@ -58,7 +58,7 @@ const (
 	JobEventBidAccepted
 	JobEventBidRejected
 
-	// a compute node cancelled a job bid
+	// a compute node canceled a job bid
 	JobEventBidCancelled
 
 	// TODO: what if a requester node accepts a bid
@@ -145,7 +145,7 @@ const (
 	// node whether our bid was accepted or not
 	JobStateBidding
 
-	// a requester node has either rejected the bid or the compute node has cancelled the bid
+	// a requester node has either rejected the bid or the compute node has canceled the bid
 	// either way - this node will not progress with this job any more
 	JobStateCancelled
 
@@ -209,7 +209,6 @@ func equal(a, b string) bool {
 // given an event name - return a job state
 func GetStateFromEvent(eventType JobEventType) JobStateType {
 	switch eventType {
-
 	// we have bid and are waiting to hear if that has been accepted
 	case JobEventBid:
 		return JobStateBidding
@@ -218,11 +217,11 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 	case JobEventBidAccepted:
 		return JobStateWaiting
 
-	// out bid got rejected so we are cancelled
+	// out bid got rejected so we are canceled
 	case JobEventBidRejected:
 		return JobStateCancelled
 
-	// we cancelled our bid so we are cancelled
+	// we canceled our bid so we are canceled
 	case JobEventBidCancelled:
 		return JobStateCancelled
 

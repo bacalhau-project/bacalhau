@@ -87,7 +87,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 	}
 
 	// TODO: make this deterministic, return the first match alphabetically
-	for _, job = range jobs {
+	for _, job = range jobs { //nolint:gocritic
 		if strings.HasPrefix(job.ID, jobID) {
 			return job, true, nil
 		}

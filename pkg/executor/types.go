@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
-type ApiVersion string
+type APIVersion string
 
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
@@ -58,7 +58,7 @@ type Job struct {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	ApiVersion ApiVersion `json:"apiVersion" yaml:"apiVersion"`
+	APIVersion APIVersion `json:"apiVersion" yaml:"apiVersion"`
 	// e.g. docker or language
 	Engine EngineType `json:"engine" yaml:"engine"`
 

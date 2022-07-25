@@ -18,22 +18,6 @@ import (
 // NvidiaCLI is the path to the Nvidia helper binary
 const NvidiaCLI = "nvidia-container-cli"
 
-func newDefaultResourceUsageConfig() ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    "",
-		Memory: "",
-		Disk:   "",
-	}
-}
-
-func newResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
-	return ResourceUsageConfig{
-		CPU:    cpu,
-		Memory: mem,
-		Disk:   disk,
-	}
-}
-
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
 // lowercase
@@ -83,7 +67,7 @@ func ConvertMemoryString(val string) uint64 {
 }
 
 func ConvertGPUString(val string) uint64 {
-	ret, err := strconv.ParseUint(val, 10, 64)
+	ret, err := strconv.ParseUint(val, 10, 64) // nolint:gomnd
 	if err != nil {
 		return 0
 	}
@@ -97,19 +81,6 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 		Disk:   ConvertMemoryString(usage.Disk),
 		GPU:    ConvertGPUString(usage.GPU),
 	}
-}
-
-func getResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
-	c := ResourceUsageConfig{}
-
-	cpu := k8sresource.NewCPUFromFloat(usage.CPU)
-
-	c.CPU = cpu.ToString()
-	c.Memory = (datasize.ByteSize(usage.Memory) * datasize.B).String()
-	c.Disk = (datasize.ByteSize(usage.Disk) * datasize.B).String()
-	c.GPU = fmt.Sprintf("%d", usage.GPU)
-
-	return c, nil
 }
 
 // get free disk space for storage path
@@ -166,7 +137,6 @@ func numSystemGPUs() (uint64, error) {
 
 // what resources does this compute node actually have?
 func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
-
 	// this is used mainly for tests to be deterministic
 	allowOverCommit := os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
 
@@ -234,12 +204,26 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
 func checkResourceUsage(wants, limits ResourceUsageData) bool {
+	zeroWants := wants.CPU <= 0 &&
+		wants.Memory <= 0 &&
+		wants.Disk <= 0 &&
+		wants.GPU <= 0
+
+	limitOverZero := limits.CPU > 0 ||
+		limits.Memory > 0 ||
+		limits.Disk > 0 ||
+		wants.GPU > 0
+
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
-	if wants.CPU <= 0 && wants.Memory <= 0 && wants.Disk <= 0 && wants.GPU <= 0 && (limits.CPU > 0 || limits.Memory > 0 || limits.Disk > 0 || wants.GPU > 0) {
+	if zeroWants && limitOverZero {
 		return false
 	}
-	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk && wants.GPU <= limits.GPU
+
+	return wants.CPU <= limits.CPU &&
+		wants.Memory <= limits.Memory &&
+		wants.Disk <= limits.Disk &&
+		wants.GPU <= limits.GPU
 }
 
 func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {

@@ -117,12 +117,13 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	// loop over the job storage inputs and prepare them
 	for _, inputStorage := range j.Spec.Inputs {
 		var storageProvider storage.StorageProvider
+		var volumeMount storage.StorageVolume
 		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
 		if err != nil {
 			return "", err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(ctx, inputStorage)
+		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
 		if err != nil {
 			return "", err
 		}

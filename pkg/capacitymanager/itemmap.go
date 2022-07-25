@@ -38,10 +38,10 @@ func (m *ItemMap) Get(id string) *CapacityManagerItem {
 	}
 }
 
-func (l *ItemMap) Count() int {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return len(l.items)
+func (m *ItemMap) Count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.items)
 }
 
 func (m *ItemMap) Iterate(handler func(item CapacityManagerItem)) {

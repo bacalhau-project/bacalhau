@@ -173,7 +173,7 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 	ctx, span := newSpan(ctx, "Connect")
 	defer span.End()
 
-	if len(t.peers) <= 0 {
+	if len(t.peers) == 0 {
 		return nil
 	}
 
