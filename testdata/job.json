@@ -1,7 +1,7 @@
 {
     "apiVersion": "v1alpha1",
-    "engine": "Docker",
-    "verifier": "Ipfs",
+    "engine_name": "docker",
+    "verifier_name": "ipfs",
     "job_spec_docker": {
         "image": "gromacs/gromacs",
         "entrypoint": [
@@ -11,20 +11,6 @@
         ],
         "env": []
     },
-    "job_spec_language": {
-        "language": "",
-        "language_version": "",
-        "deterministic": false,
-        "context": {
-            "engine": "",
-            "name": "",
-            "cid": "",
-            "path": ""
-        },
-        "command": "",
-        "program_path": "",
-        "requirements_path": ""
-    },
     "resources": {
         "cpu": "",
         "gpu":"",
@@ -33,7 +19,7 @@
     },
     "inputs": [
         {
-            "engine": "ipfs",
+            "engine_name": "ipfs",
             "name": "",
             "cid": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
             "path": "/input"
@@ -41,7 +27,7 @@
     ],
     "outputs": [
         {
-            "engine": "ipfs",
+            "engine_name": "ipfs",
             "name": "output",
             "cid": "",
             "path": "/output"
