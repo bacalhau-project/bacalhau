@@ -452,7 +452,7 @@ var dockerRunCmd = &cobra.Command{
 			verifierType,
 			jobCPU,
 			jobMemory,
-      		jobGPU,
+			jobGPU,
 			jobInputUrls,
 			jobInputVolumes,
 			jobOutputVolumes,

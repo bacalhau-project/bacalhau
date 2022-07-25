@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func ConstructDockerJob(
+func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,
 	cpu, memory string,
