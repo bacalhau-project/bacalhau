@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/google/uuid"
@@ -19,7 +19,7 @@ import (
 type Controller struct {
 	cm              *system.CleanupManager
 	id              string
-	datastore       datastore.DataStore
+	localdb         localdb.LocalDB
 	transport       transport.Transport
 	jobContexts     map[string]context.Context // total job lifecycle
 	jobNodeContexts map[string]context.Context // per-node job lifecycle
@@ -36,7 +36,7 @@ type Controller struct {
 
 func NewController(
 	cm *system.CleanupManager,
-	datastore datastore.DataStore,
+	localdb localdb.LocalDB,
 	transport transport.Transport,
 ) (*Controller, error) {
 	nodeID, err := transport.HostID(context.Background())
@@ -46,7 +46,7 @@ func NewController(
 	ctrl := &Controller{
 		cm:              cm,
 		id:              nodeID,
-		datastore:       datastore,
+		localdb:         localdb,
 		transport:       transport,
 		jobContexts:     make(map[string]context.Context),
 		jobNodeContexts: make(map[string]context.Context),
@@ -59,8 +59,8 @@ func (ctrl *Controller) GetTransport() transport.Transport {
 	return ctrl.transport
 }
 
-func (ctrl *Controller) GetDatastore() datastore.DataStore {
-	return ctrl.datastore
+func (ctrl *Controller) GetDatastore() localdb.LocalDB {
+	return ctrl.localdb
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
@@ -100,19 +100,19 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 
 */
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
-	return ctrl.datastore.GetJob(ctx, id)
+	return ctrl.localdb.GetJob(ctx, id)
 }
 
 func (ctrl *Controller) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
-	return ctrl.datastore.GetJobEvents(ctx, id)
+	return ctrl.localdb.GetJobEvents(ctx, id)
 }
 
 func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
-	return ctrl.datastore.GetJobLocalEvents(ctx, id)
+	return ctrl.localdb.GetJobLocalEvents(ctx, id)
 }
 
-func (ctrl *Controller) GetJobs(ctx context.Context, query datastore.JobQuery) ([]executor.Job, error) {
-	return ctrl.datastore.GetJobs(ctx, query)
+func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
+	return ctrl.localdb.GetJobs(ctx, query)
 }
 
 /*
@@ -145,7 +145,7 @@ func (ctrl *Controller) SubmitJob(
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
-	err = ctrl.datastore.AddJob(ctx, job)
+	err = ctrl.localdb.AddJob(ctx, job)
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
@@ -336,10 +336,10 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	switch ev.EventName {
 
 	case executor.JobEventCreated:
-		err = ctrl.datastore.AddJob(ctx, constructJob(ev))
+		err = ctrl.localdb.AddJob(ctx, constructJob(ev))
 
 	case executor.JobEventDealUpdated:
-		err = ctrl.datastore.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
+		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
 
 	}
 
@@ -347,14 +347,14 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
-	err = ctrl.datastore.AddEvent(ctx, ev.JobID, ev)
+	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
 	if err != nil {
 		return err
 	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-		err = ctrl.datastore.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
+		err = ctrl.localdb.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
 			State:     executionState,
 			Status:    ev.Status,
 			ResultsID: ev.ResultsID,

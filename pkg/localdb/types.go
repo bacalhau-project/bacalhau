@@ -1,4 +1,4 @@
-package datastore
+package localdb
 
 import (
 	"context"
@@ -10,14 +10,14 @@ type JobQuery struct {
 	ID string `json:"id"`
 }
 
-// A Datastore will persist jobs and their state to the underlying storage.
+// A LocalDB will persist jobs and their state to the underlying storage.
 // It also gives an efficiernt way to retrieve jobs using queries.
-// The Datastore is the local view of the world and the transport
+// The LocalDB is the local view of the world and the transport
 // will get events to other nodes that will update their datastore.
 //
-// The Datastore and Transport interfaces could be swapped out for some kind
+// The LocalDB and Transport interfaces could be swapped out for some kind
 // of smart contract implementation (e.g. FVM)
-type DataStore interface {
+type LocalDB interface {
 	GetJob(ctx context.Context, id string) (executor.Job, error)
 	GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error)

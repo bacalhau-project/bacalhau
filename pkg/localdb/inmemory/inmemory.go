@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/bacalhau/pkg/datastore"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 )
 
 type InMemoryDatastore struct {
@@ -60,7 +60,7 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query datastore.JobQuery) ([]executor.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	result := []executor.Job{}
@@ -151,4 +151,4 @@ func (d *InMemoryDatastore) UpdateExecutionState(ctx context.Context, jobID, nod
 }
 
 // Static check to ensure that Transport implements Transport:
-var _ datastore.DataStore = (*InMemoryDatastore)(nil)
+var _ localdb.LocalDB = (*InMemoryDatastore)(nil)
