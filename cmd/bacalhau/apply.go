@@ -82,9 +82,18 @@ var applyCmd = &cobra.Command{
 
 		if len(jobspec.Inputs) != 0 {
 			for _, jobspecsInputs := range jobspec.Inputs {
-				is := jobspecsInputs.Cid + ":" + jobspecsInputs.Path
-				jobfInputVolumes = append(jobfInputVolumes, is)
-
+				if jobspecsInputs.Cid != "" {
+					is := jobspecsInputs.Cid + ":" + jobspecsInputs.Path
+					jobfInputVolumes = append(jobfInputVolumes, is)
+				}
+			}
+		}
+		if len(jobspec.Inputs) != 0 {
+			for _, jobspecsInputs := range jobspec.Inputs {
+				if jobspecsInputs.URL != "" {
+					is := jobspecsInputs.URL + ":" + jobspecsInputs.Path
+					jobfInputUrls = append(jobfInputUrls, is)
+				}
 			}
 		}
 		if len(jobspec.Outputs) != 0 {
