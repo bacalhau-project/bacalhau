@@ -331,7 +331,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputUrls, "input-urls", "u", []string{},
-		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '--input-urls http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz').`, // nolint:lll // Documentation, ok if long.
+		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz').`, // nolint:lll // Documentation, ok if long.
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
