@@ -27,6 +27,7 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobEnv []string
 var jobConcurrency int
+var jobIpfsGetTimeOut int
 var jobCPU string
 var jobMemory string
 var jobGPU string
@@ -74,8 +75,8 @@ func WaitForJobWithLogs(
 			// count++
 
 			// time.Sleep(time.Second * 15)
-			// sleep till state is there
 
+			// sleep till states are there
 			for {
 				time.Sleep(time.Second * 5)
 				states, err := GetJobStates(ctx, jobID)
@@ -231,7 +232,8 @@ func WaitForJobThrowErrors(job executor.Job, errorStates []executor.JobStateType
 	}
 }
 
-func Get(jobID string) map[string]bool {
+func Get(jobID string, timeout int) map[string]bool {
+	fmt.Print(timeout)
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
@@ -292,13 +294,14 @@ func Get(jobID string) map[string]bool {
 			cid, outputDir)
 
 		ctx, cancel := context.WithDeadline(context.Background(),
-			time.Now().Add(time.Second*time.Duration(15)))
+			time.Now().Add(time.Second*time.Duration(timeout)))
 		defer cancel()
 
 		err = cl.Get(ctx, cid, outputDir)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				log.Error().Msg("Timed out while downloading result.")
+				msg := fmt.Sprintf("Timed out while downloading result %v", timeout)
+				log.Error().Msg(msg)
 			}
 
 		}
@@ -367,6 +370,12 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Wait For Job To Finish And Print Output`,
 	)
 
+	// ipfs get wait time
+	dockerRunCmd.PersistentFlags().IntVarP(
+		&jobIpfsGetTimeOut, "gettimeout", "g", 10,
+		`Timeout for getting the results of a job in --wait`,
+	)
+
 }
 
 var dockerCmd = &cobra.Command{
@@ -397,7 +406,7 @@ var dockerRunCmd = &cobra.Command{
 		jobGPU = ""
 		skipSyntaxChecking = false
 		waitForJobToFinishAndPrintOutput = false
-
+		jobIpfsGetTimeOut = 10
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
@@ -477,7 +486,7 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 
-			cidl := Get(job.ID)
+			cidl := Get(job.ID, jobIpfsGetTimeOut)
 			var cidv string
 			for cid := range cidl {
 				cidv = cid
