@@ -18,8 +18,8 @@ go install
 ```
 
 copy paste export commands, e.g.
-```bash
-export BACALHAU_API_PORT=35601
+```
+export BACALHAU_API_PORT_0=35601
 ```
 
 test one job
