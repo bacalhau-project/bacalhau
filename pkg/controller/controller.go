@@ -475,6 +475,8 @@ func (ctrl *Controller) cleanJobContexts(ctx context.Context) error {
 func (ctrl *Controller) endJobContext(jobID string) {
 	ctx := ctrl.getJobContext(jobID)
 	trace.SpanFromContext(ctx).End()
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	delete(ctrl.jobContexts, jobID)
 }
 
@@ -482,6 +484,8 @@ func (ctrl *Controller) endJobContext(jobID string) {
 func (ctrl *Controller) endJobNodeContext(jobID string) {
 	ctx := ctrl.getJobNodeContext(context.Background(), jobID)
 	trace.SpanFromContext(ctx).End()
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	delete(ctrl.jobNodeContexts, jobID)
 }
 
@@ -541,6 +545,8 @@ func (ctrl *Controller) newRootSpanForJob(ctx context.Context, jobID string) (co
 		),
 	)
 
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	ctrl.jobContexts[jobID] = jobCtx
 
 	return jobCtx, span

@@ -3,6 +3,11 @@
 ```
 make devstack
 ```
+or to test without actually running docker jobs
+
+```
+make devstack-noop
+```
 
 ```
 go install
@@ -10,16 +15,16 @@ go install
 
 copy paste export commands, e.g.
 ```
-export API_PORT_0=35601
+export BACALHAU_API_PORT_0=35601
 ```
 
 test one job
 
 ```
-cd benchmark_hack
-./submit.sh
+cd benchmark
+bash submit.sh
 ```
 
 ```
-./explode.sh
+bash explode.sh
 ```

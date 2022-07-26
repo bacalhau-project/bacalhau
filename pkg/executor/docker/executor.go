@@ -184,16 +184,22 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
 		// TODO: #283 work out why this does not work in github actions
 		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
-
-		stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
-			"docker",
-			[]string{"pull", j.Spec.Docker.Image},
-		)
-		if err != nil {
-			return "", fmt.Errorf("error pulling %s: %s, %s", j.Spec.Docker.Image, err, stdout)
+		var im dockertypes.ImageInspect
+		im, _, err = e.Client.ImageInspectWithRaw(ctx, j.Spec.Docker.Image)
+		if err == nil {
+			log.Debug().Msgf("Not pulling image %s, already have %+v", j.Spec.Docker.Image, im)
+		} else if dockerclient.IsErrNotFound(err) {
+			stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+				"docker",
+				[]string{"pull", j.Spec.Docker.Image},
+			)
+			if err != nil {
+				return "", fmt.Errorf("error pulling %s: %s, %s", j.Spec.Docker.Image, err, stdout)
+			}
+			log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.Docker.Image, stdout)
+		} else {
+			return "", fmt.Errorf("error checking if we have %s locally: %s", j.Spec.Docker.Image, err)
 		}
-
-		log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.Docker.Image, stdout)
 	}
 
 	// json the job spec and pass it into all containers

@@ -37,3 +37,13 @@ Bacalhau's CI pipeline performs a variety of linting and formatting checks on ne
 ```bash
 git config core.hooksPath ./githooks
 ```
+
+If you want to run the linter manually:
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin
+golangci-lint --version
+make lint
+```
+
+The config lives in `.golangci.yml`

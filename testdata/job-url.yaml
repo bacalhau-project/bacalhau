@@ -1,0 +1,26 @@
+apiVersion: v1alpha1
+engine_name: docker
+verifier_name: ipfs
+job_spec_docker:
+  image: ubuntu
+  entrypoint:
+    - /bin/bash
+    - -c
+    - cat /app/foo_data_1.txt
+  env: []
+resources:
+  cpu: ''
+  gpu: ''
+  memory: ''
+  disk: ''
+inputs:
+  - engine_name: URLDownload
+    name: ''
+    url: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
+    path: /app/foo_data_1.txt
+outputs:
+  - engine_name: ipfs
+    name: output
+    cid: ''
+    path: /output
+annotations: null
