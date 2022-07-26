@@ -56,6 +56,11 @@ jobs:
                   curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
                   golangci-lint --version
 
+            - run:
+                name: Run linter
+                command: |
+                  make lint
+
       - when:
           condition:
             and:
