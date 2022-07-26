@@ -3,6 +3,11 @@
 ```
 make devstack
 ```
+or to test without actually running docker jobs
+
+```
+make devstack-noop
+```
 
 ```
 go install
