@@ -30,7 +30,7 @@ Leverage an IPFS “pinning service” such as [Web3.Storage](https://web3.stora
 bacalhau docker run -v CID:/container-input-location/ \
     -o output-folder-name:/container-output-location/ IMAGENAME
 
-bacalhau list
+bacalhau list 
 
 bacalhau get JOB_ID
 ```
