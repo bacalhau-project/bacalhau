@@ -453,6 +453,8 @@ func (ctrl *Controller) cleanJobContexts(ctx context.Context) error {
 func (ctrl *Controller) endJobContext(jobID string) {
 	ctx := ctrl.getJobContext(jobID)
 	trace.SpanFromContext(ctx).End()
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	delete(ctrl.jobContexts, jobID)
 }
 
