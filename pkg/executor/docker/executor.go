@@ -184,8 +184,8 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
 		// TODO: #283 work out why this does not work in github actions
 		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
-
-		im, _, err := e.Client.ImageInspectWithRaw(ctx, j.Spec.Docker.Image)
+		var im dockertypes.ImageInspect
+		im, _, err = e.Client.ImageInspectWithRaw(ctx, j.Spec.Docker.Image)
 		if err == nil {
 			log.Debug().Msgf("Not pulling image %s, already have %+v", j.Spec.Docker.Image, im)
 		} else if dockerclient.IsErrNotFound(err) {
@@ -200,7 +200,6 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		} else {
 			return "", fmt.Errorf("error checking if we have %s locally: %s", j.Spec.Docker.Image, err)
 		}
-
 	}
 
 	// json the job spec and pass it into all containers
