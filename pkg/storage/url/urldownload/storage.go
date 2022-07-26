@@ -93,9 +93,12 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 	return volume, nil
 }
 
-// nolint:lll // Exception to the long rule
-func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume *storage.StorageVolume) error {
-	// Need to remove the whole dir instead of just a single file
+// func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
+func (sp *StorageProvider) CleanupStorage(
+	ctx context.Context,
+	storageSpec storage.StorageSpec,
+	volume storage.StorageVolume,
+) error {
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 	return system.RunCommand("sudo", []string{
