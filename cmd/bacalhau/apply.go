@@ -84,7 +84,8 @@ var applyCmd = &cobra.Command{
 
 		if len(jobspec.Inputs) != 0 {
 			for _, jobspecInput := range jobspec.Inputs {
-				storageSpecEngineType, err := storage.ParseStorageSourceType(jobspecInput.EngineName)
+				var storageSpecEngineType storage.StorageSourceType
+				storageSpecEngineType, err = storage.ParseStorageSourceType(jobspecInput.EngineName)
 				if err != nil {
 					return err
 				}

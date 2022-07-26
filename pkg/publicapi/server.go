@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -27,6 +28,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
+
+const ServerReadHeaderTimeout = 10 * time.Second
 
 type PinContextHandler func(ctx context.Context, localPath string) (string, error)
 
@@ -76,8 +79,9 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle("/readyz", instrument("readyz", apiServer.readyz))
 
 	srv := http.Server{
-		Handler: sm,
-		Addr:    fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
+		Handler:           sm,
+		Addr:              fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
+		ReadHeaderTimeout: ServerReadHeaderTimeout,
 	}
 
 	log.Debug().Msgf(
