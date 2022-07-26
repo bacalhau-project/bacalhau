@@ -20,7 +20,7 @@ import (
 	/**\/*.txt = [/a/file1.txt, /a/file2.txt, /b/file1.txt, /b/file2.txt]
 
 */
-func Group(files []string, pattern string) ([]string, error) {
+func ApplyGlobPattern(files []string, pattern string) ([]string, error) {
 	var result []string
 	for _, file := range files {
 		matches, err := doublestar.Match(pattern, file)

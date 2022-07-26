@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGrouping(t *testing.T) {
+func TestApplyGlobPattern(t *testing.T) {
 
 	simpleFileList := []string{
 		"/a",
@@ -51,7 +51,7 @@ func TestGrouping(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		results, err := Group(testCase.files, testCase.pattern)
+		results, err := ApplyGlobPattern(testCase.files, testCase.pattern)
 		require.NoError(t, err)
 		require.Equal(t, strings.Join(testCase.outputs, ","), strings.Join(results, ","), fmt.Sprintf("%s: %s did not result in correct answer", testCase.name, testCase.pattern))
 	}
