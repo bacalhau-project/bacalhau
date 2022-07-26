@@ -28,14 +28,11 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-type PinContextHandler func(ctx context.Context, localPath string) (string, error)
-
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Controller        *controller.Controller
-	PinContextHandler PinContextHandler
-	Host              string
-	Port              int
+	Controller *controller.Controller
+	Host       string
+	Port       int
 }
 
 // NewServer returns a new API server for a requester node.
@@ -43,13 +40,11 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
-	p PinContextHandler,
 ) *APIServer {
 	return &APIServer{
-		Controller:        c,
-		PinContextHandler: p,
-		Host:              host,
-		Port:              port,
+		Controller: c,
+		Host:       host,
+		Port:       port,
 	}
 }
 
@@ -242,7 +237,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.PinContextHandler(req.Context(), filepath.Join(tmpDir, "context"))
+		cid, err := apiServer.Controller.PinContext(req.Context(), filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)

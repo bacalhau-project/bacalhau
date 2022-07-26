@@ -229,9 +229,6 @@ var serveCmd = &cobra.Command{
 			hostAddress,
 			apiPort,
 			controller,
-			func(ctx context.Context, path string) (string, error) {
-				return requesterNode.PinContext(path)
-			},
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:

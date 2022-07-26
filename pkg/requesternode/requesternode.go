@@ -143,12 +143,6 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	}
 }
 
-func (node *RequesterNode) PinContext(buildContext string) (string, error) {
-	ipfsVerifier := node.verifiers[verifier.VerifierIpfs]
-	// TODO: we should have a method specifically for this not just piggybacking on the ipfs verifier
-	return ipfsVerifier.ProcessResultsFolder(context.Background(), "", buildContext)
-}
-
 func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
 	return system.Span(ctx, "requestor_node/requester_node", name,
 		trace.WithSpanKind(trace.SpanKindInternal),

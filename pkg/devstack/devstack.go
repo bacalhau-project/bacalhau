@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -44,6 +45,9 @@ type DevStack struct {
 	Nodes []*DevStackNode
 }
 
+type GetStorageProvidersFunc func(ipfsMultiAddress string, nodeIndex int) (
+	map[storage.StorageSourceType]storage.StorageProvider, error)
+
 type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
 	map[executor.EngineType]executor.Executor, error)
 
@@ -54,6 +58,7 @@ type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 func NewDevStack(
 	cm *system.CleanupManager,
 	count, badActors int, // nolint:unparam // Incorrectly assumed as unused
+	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
 	//nolint:gocritic
@@ -129,24 +134,33 @@ func NewDevStack(
 			return nil, err
 		}
 
-		ctrl, err := controller.NewController(
-			cm,
-			inmemoryDatastore,
-			transport,
-		)
+		//////////////////////////////////////
+		// Storage, executors and verifiers
+		//////////////////////////////////////
+		storageProviders, err := getStorageProviders(ipfsAPIAddrs[0], i)
 		if err != nil {
 			return nil, err
 		}
 
-		//////////////////////////////////////
-		// Executors and verifiers
-		//////////////////////////////////////
 		executors, err := getExecutors(ipfsAPIAddrs[0], i)
 		if err != nil {
 			return nil, err
 		}
 
 		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i)
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
+		// Controller
+		//////////////////////////////////////
+		ctrl, err := controller.NewController(
+			cm,
+			inmemoryDatastore,
+			transport,
+			storageProviders,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -191,9 +205,6 @@ func NewDevStack(
 			"0.0.0.0",
 			apiPort,
 			ctrl,
-			func(ctx context.Context, path string) (string, error) {
-				return requesterNode.PinContext(path)
-			},
 		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope

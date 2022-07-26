@@ -15,6 +15,13 @@ type StorageProvider interface {
 	PrepareStorage(context.Context, StorageSpec) (StorageVolume, error)
 
 	CleanupStorage(context.Context, StorageSpec, StorageVolume) error
+
+	// given a local file path - "store" it and return a StorageSpec
+	Upload(context.Context, string) (StorageSpec, error)
+
+	// given a StorageSpec - explode it into a list of file paths it contains
+	// each file path will be appended to the "path" of the storage spec
+	Explode(context.Context, StorageSpec) ([]string, error)
 }
 
 // StorageSpec represents some data on a storage engine. Storage engines are

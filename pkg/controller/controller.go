@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/google/uuid"
@@ -17,15 +18,16 @@ import (
 )
 
 type Controller struct {
-	cm              *system.CleanupManager
-	id              string
-	db              localdb.LocalDB
-	tx              transport.Transport
-	jobContexts     map[string]context.Context // total job lifecycle
-	jobNodeContexts map[string]context.Context // per-node job lifecycle
-	subscribeFuncs  []transport.SubscribeFn
-	contextMutex    sync.RWMutex
-	subscribeMutex  sync.RWMutex
+	cleanupManager   *system.CleanupManager
+	id               string
+	datastore        localdb.LocalDB
+	transport        transport.Transport
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider
+	jobContexts      map[string]context.Context // total job lifecycle
+	jobNodeContexts  map[string]context.Context // per-node job lifecycle
+	subscribeFuncs   []transport.SubscribeFn
+	contextMutex     sync.RWMutex
+	subscribeMutex   sync.RWMutex
 }
 
 /*
@@ -38,44 +40,46 @@ func NewController(
 	cm *system.CleanupManager,
 	db localdb.LocalDB,
 	tx transport.Transport,
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) (*Controller, error) {
 	nodeID, err := tx.HostID(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	ctrl := &Controller{
-		cm:              cm,
-		id:              nodeID,
-		db:              db,
-		tx:              tx,
-		jobContexts:     make(map[string]context.Context),
-		jobNodeContexts: make(map[string]context.Context),
+		cleanupManager:   cm,
+		id:               nodeID,
+		datastore:        db,
+		transport:        tx,
+		storageProviders: storageProviders,
+		jobContexts:      make(map[string]context.Context),
+		jobNodeContexts:  make(map[string]context.Context),
 	}
 
 	return ctrl, nil
 }
 
 func (ctrl *Controller) GetTransport() transport.Transport {
-	return ctrl.tx
+	return ctrl.transport
 }
 
 func (ctrl *Controller) GetDatastore() localdb.LocalDB {
-	return ctrl.db
+	return ctrl.datastore
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
-	ctrl.tx.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
+	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
 		err := ctrl.handleEvent(ctx, ev)
 		if err != nil {
 			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
 		}
 	})
 
-	ctrl.cm.RegisterCallback(func() error {
+	ctrl.cleanupManager.RegisterCallback(func() error {
 		return ctrl.Shutdown(ctx)
 	})
 
-	return ctrl.tx.Start(ctx)
+	return ctrl.transport.Start(ctx)
 }
 
 func (ctrl *Controller) Shutdown(ctx context.Context) error {
@@ -100,19 +104,19 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 
 */
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
-	return ctrl.db.GetJob(ctx, id)
+	return ctrl.datastore.GetJob(ctx, id)
 }
 
 func (ctrl *Controller) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
-	return ctrl.db.GetJobEvents(ctx, id)
+	return ctrl.datastore.GetJobEvents(ctx, id)
 }
 
 func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
-	return ctrl.db.GetJobLocalEvents(ctx, id)
+	return ctrl.datastore.GetJobLocalEvents(ctx, id)
 }
 
 func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
-	return ctrl.db.GetJobs(ctx, query)
+	return ctrl.datastore.GetJobs(ctx, query)
 }
 
 /*
@@ -145,7 +149,7 @@ func (ctrl *Controller) SubmitJob(
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
-	err = ctrl.db.AddJob(ctx, job)
+	err = ctrl.datastore.AddJob(ctx, job)
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
@@ -296,6 +300,24 @@ func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID s
 
 /*
 
+  MISC FUNCTIONS
+
+*/
+
+// write the "context" for a job to storage
+// this is used to upload code files
+// we presently just fix on ipfs to do this
+func (ctrl *Controller) PinContext(ctx context.Context, buildContext string) (string, error) {
+	ipfsStorage := ctrl.storageProviders[storage.StorageSourceIPFS]
+	result, err := ipfsStorage.Upload(ctx, buildContext)
+	if err != nil {
+		return "", err
+	}
+	return result.Cid, nil
+}
+
+/*
+
   event handlers
 
 */
@@ -303,7 +325,7 @@ func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID s
 // tell the rest of the network about the event via the transport
 func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
-	return ctrl.tx.Publish(jobCtx, ev)
+	return ctrl.transport.Publish(jobCtx, ev)
 }
 
 func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) error {
@@ -335,24 +357,24 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	// work out which internal handler function based on the event type
 	switch ev.EventName {
 	case executor.JobEventCreated:
-		err = ctrl.db.AddJob(ctx, constructJob(ev))
+		err = ctrl.datastore.AddJob(ctx, constructJob(ev))
 
 	case executor.JobEventDealUpdated:
-		err = ctrl.db.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
+		err = ctrl.datastore.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	err = ctrl.db.AddEvent(ctx, ev.JobID, ev)
+	err = ctrl.datastore.AddEvent(ctx, ev.JobID, ev)
 	if err != nil {
 		return err
 	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-		err = ctrl.db.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
+		err = ctrl.datastore.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
 			State:     executionState,
 			Status:    ev.Status,
 			ResultsID: ev.ResultsID,
