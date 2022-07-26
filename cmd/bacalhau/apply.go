@@ -3,12 +3,14 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
@@ -81,26 +83,36 @@ var applyCmd = &cobra.Command{
 		jobEntrypoint := jobspec.Docker.Entrypoint
 
 		if len(jobspec.Inputs) != 0 {
-			for _, jobspecsInputs := range jobspec.Inputs {
-				if jobspecsInputs.Cid != "" {
-					is := jobspecsInputs.Cid + ":" + jobspecsInputs.Path
+			for _, jobspecInput := range jobspec.Inputs {
+				storageSpecEngineType, err := storage.ParseStorageSourceType(jobspecInput.EngineName)
+				if err != nil {
+					return err
+				}
+				if jobspecInput.Path == "" {
+					return fmt.Errorf("empty volume mount point %+v", jobspecInput)
+				}
+				if storageSpecEngineType == storage.StorageSourceIPFS {
+					if jobspecInput.Cid == "" {
+						return fmt.Errorf("empty ipfs volume cid %+v", jobspecInput)
+					}
+					is := jobspecInput.Cid + ":" + jobspecInput.Path
 					jobfInputVolumes = append(jobfInputVolumes, is)
-				}
-			}
-		}
-		if len(jobspec.Inputs) != 0 {
-			for _, jobspecsInputs := range jobspec.Inputs {
-				if jobspecsInputs.URL != "" {
-					is := jobspecsInputs.URL + ":" + jobspecsInputs.Path
+				} else if storageSpecEngineType == storage.StorageSourceURLDownload {
+					if jobspecInput.URL == "" {
+						return fmt.Errorf("empty url volume url %+v", jobspecInput)
+					}
+					is := jobspecInput.URL + ":" + jobspecInput.Path
 					jobfInputUrls = append(jobfInputUrls, is)
+				} else {
+					return fmt.Errorf("unknown storage source type %s", jobspecInput.EngineName)
 				}
 			}
 		}
+
 		if len(jobspec.Outputs) != 0 {
 			for _, jobspecsOutputs := range jobspec.Outputs {
 				is := jobspecsOutputs.Name + ":" + jobspecsOutputs.Path
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
-
 			}
 		}
 
