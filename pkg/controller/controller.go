@@ -521,6 +521,8 @@ func (ctrl *Controller) newRootSpanForJob(ctx context.Context, jobID string) (co
 		),
 	)
 
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	ctrl.jobContexts[jobID] = jobCtx
 
 	return jobCtx, span
