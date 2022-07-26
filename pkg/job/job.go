@@ -9,14 +9,16 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
-func ConstructDockerJob(
+func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,
 	cpu, memory, gpu string,
+	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
@@ -35,6 +37,23 @@ func ConstructDockerJob(
 	}
 	jobInputs := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
+
+	for _, inputURL := range inputUrls {
+		// split using LastIndex to support port numbers in URL
+		lastInd := strings.LastIndex(inputURL, ":")
+		rawURL := inputURL[:lastInd]
+		path := inputURL[lastInd+1:]
+		// should loop through all available storage providers?
+		_, err := urldownload.IsURLSupported(rawURL)
+		if err != nil {
+			return executor.JobSpec{}, executor.JobDeal{}, err
+		}
+		jobInputs = append(jobInputs, storage.StorageSpec{
+			Engine: storage.StorageSourceURLDownload,
+			URL:    rawURL,
+			Path:   path,
+		})
+	}
 
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")

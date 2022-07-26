@@ -248,6 +248,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				jobResources.CPU,
 				jobResources.Memory,
 				"0", // zero GPU for now
+				[]string{},
 				// pass the disk requirement of the job resources into the volume
 				// name so it can be returned from the GetVolumeSize function
 				[]string{
