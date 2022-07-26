@@ -14,10 +14,8 @@ resources:
   memory: ""
   disk: ""
 inputs:
-  #- engine_name: URLDownload
-  # TODO: work out if we need upper case or not
-  - engine_name: urldownload
-    name: ""
+  - engine_name: URLDownload
+    name: ''
     url: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
     path: /app/foo_data_1.txt
 outputs:
