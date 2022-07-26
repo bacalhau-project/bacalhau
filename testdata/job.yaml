@@ -18,10 +18,6 @@ inputs:
     name: ''
     cid: QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9
     path: /input
-  - engine_name: ipfs
-    name: ''
-    url: http://foo.bar.com/foo_data.txt
-    path: /data
 outputs:
   - engine_name: ipfs
     name: output

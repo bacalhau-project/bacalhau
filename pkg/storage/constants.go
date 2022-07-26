@@ -25,7 +25,7 @@ func ParseStorageSourceType(str string) (StorageSourceType, error) {
 			return typ, nil
 		}
 	}
-
+	
 	return storageSourceUnknown, fmt.Errorf(
 		"executor: unknown engine type '%s'", str)
 }

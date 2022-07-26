@@ -79,27 +79,32 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 	}
 
 	for i, tc := range tests {
-		func() {
-			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
-			defer cm.Cleanup()
 
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			assert.NoError(suite.T(), err)
+		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
 
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
-				"--api-host", host,
-				"--api-port", port,
-				"-f", "../../testdata/job.yaml",
-			)
+		for _, testFile := range testFiles {
+			func() {
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(suite.T())
+				defer cm.Cleanup()
 
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				parsedBasedURI, err := url.Parse(c.BaseURI)
+				assert.NoError(suite.T(), err)
 
-			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-		}()
+				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
+					"--api-host", host,
+					"--api-port", port,
+					"-f", testFile,
+				)
+
+				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+
+				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				assert.NoError(suite.T(), err)
+				assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			}()
+		}
 	}
 }
 
