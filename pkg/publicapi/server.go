@@ -30,6 +30,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+const ServerReadHeaderTimeout = 10 * time.Second
+
 type PinContextHandler func(ctx context.Context, localPath string) (string, error)
 
 // APIServer configures a node's public REST API.
