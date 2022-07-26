@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,6 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
+
+const CompleteStatus = "Complete"
 
 var jobEngine string
 var jobVerifier string
@@ -39,7 +41,6 @@ var jobLabels []string
 type CheckJobStatesFunction func(map[string]executor.JobStateType) (bool, error)
 
 func GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
-
 	job, ok, err := getAPIClient().Get(ctx, jobID)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -57,6 +58,7 @@ func GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobSta
 	return states, nil
 }
 
+// nolint:gocyclo
 func WaitForJobWithLogs(
 	ctx context.Context,
 	jobID string,
@@ -69,17 +71,9 @@ func WaitForJobWithLogs(
 		MaxAttempts: 100,
 		Delay:       time.Second * 1,
 		Handler: func() (bool, error) {
-
-			// count := 0
-			// if count < 1 {
-			// }
-			// count++
-
-			// time.Sleep(time.Second * 15)
-
 			// sleep till states are there
 			for {
-				time.Sleep(time.Second * 5)
+				time.Sleep(time.Second * 5) //nolint: gomnd
 				states, err := GetJobStates(ctx, jobID)
 				if err != nil {
 					fmt.Printf("error is : %v", err)
@@ -95,13 +89,12 @@ func WaitForJobWithLogs(
 			}
 			var Status string
 			for _, status := range states {
-				if status.String() == "Complete" {
-					Status = "Complete"
+				if status.String() == CompleteStatus {
+					Status = CompleteStatus
 				}
 			}
-			if Status == "Complete" {
+			if Status == CompleteStatus {
 				return true, nil
-
 			}
 
 			if shouldLog {
@@ -113,7 +106,6 @@ func WaitForJobWithLogs(
 			fmt.Printf("Waiter %#v\n", checkJobStateFunctions)
 			fmt.Printf("Waiter States %#v\n", states)
 			for _, checkFunction := range checkJobStateFunctions {
-
 				stepOk, err := checkFunction(states)
 				if err != nil {
 					return false, err
@@ -125,12 +117,12 @@ func WaitForJobWithLogs(
 
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
-			allTerminal := finalJobState.State.String() != "Complete"
+			allTerminal := finalJobState.State.String() != CompleteStatus
 
 			for _, state := range states {
 				terminate := !state.IsTerminal() || allTerminal
 				fmt.Print(terminate, finalJobState.Status)
-				if Status == "Complete" {
+				if Status == CompleteStatus {
 					return allOk, nil
 				}
 				if allTerminal {
@@ -143,7 +135,6 @@ func WaitForJobWithLogs(
 			}
 
 			return allOk, nil
-
 		},
 	}
 	return waiter.Wait()
@@ -157,22 +148,19 @@ func WaitForJob(
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
 	_, finalJobState := pjob.GetCurrentJobState(job)
-	if finalJobState.Status == "Complete" {
+	if finalJobState.Status == CompleteStatus {
 		return nil
 	}
 
-	if finalJobState.Status != "Complete" {
-
+	if finalJobState.Status != CompleteStatus {
 		return WaitForJobWithLogs(ctx, jobID, false, finalJobState, checkJobStateFunctions...)
 	}
 	return nil
 }
 
 func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) CheckJobStatesFunction {
-
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
-		if states[0].String() != "Complete" {
-
+		if states[0].String() != CompleteStatus {
 			log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIDs, states, jobStates)
 			fmt.Printf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIDs, states[0], jobStates)
 			if len(jobStates) != len(nodeIDs) {
@@ -182,7 +170,7 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 			for _, nodeID := range nodeIDs {
 				seenState, ok := jobStates[nodeID]
 				isComplete := states[0].String()
-				if isComplete == "Complete" {
+				if isComplete == CompleteStatus {
 					break
 				}
 				if !ok {
@@ -193,35 +181,30 @@ func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) C
 				}
 			}
 			return seenAll, nil
-
 		}
 		return false, nil
 	}
 }
 
 func WaitForJobThrowErrors(job executor.Job, errorStates []executor.JobStateType) CheckJobStatesFunction {
-
 	return func(jobStates map[string]executor.JobStateType) (bool, error) {
 		var Status string
 		for _, status := range jobStates {
-			if status.String() == "Complete" {
-				Status = "Complete"
+			if status.String() == CompleteStatus {
+				Status = CompleteStatus
 			}
 		}
 		fmt.Printf("\nStatus %s\n", Status)
-		if Status == "Complete" {
+		if Status == CompleteStatus {
 			return true, nil
-
 		}
-		if Status != "Complete" {
-
+		if Status != CompleteStatus {
 			log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
 			fmt.Printf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
 			for id, state := range jobStates {
 				fmt.Printf("WaitForJobThrowErrors loop: %#v\n %#v\n ", state, state.String())
-				if state.String() == "Complete" {
+				if state.String() == CompleteStatus {
 					break
-
 				}
 				if system.StringArrayContains(system.GetJobStateStringArray(errorStates), state.String()) && state.String() != "BidRejected" {
 					return false, fmt.Errorf("job %s has error state: %s", id, state.String())
@@ -229,7 +212,6 @@ func WaitForJobThrowErrors(job executor.Job, errorStates []executor.JobStateType
 			}
 		}
 		return true, nil
-
 	}
 }
 
@@ -279,6 +261,10 @@ func Get(jobID string, timeout int) map[string]bool {
 		fmt.Printf("%s", err)
 	}
 
+	ctx, cancel := context.WithDeadline(context.Background(),
+		time.Now().Add(time.Second*time.Duration(timeout)))
+	defer cancel()
+
 	// NOTE: this will run in non-deterministic order
 	for cid := range resultCIDs {
 		outputDir := filepath.Join(".", cid)
@@ -294,17 +280,12 @@ func Get(jobID string, timeout int) map[string]bool {
 		log.Info().Msgf("Downloading result CID '%s' to '%s'...",
 			cid, outputDir)
 
-		ctx, cancel := context.WithDeadline(context.Background(),
-			time.Now().Add(time.Second*time.Duration(timeout)))
-		defer cancel()
-
 		err = cl.Get(ctx, cid, outputDir)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				msg := fmt.Sprintf("Timed out while downloading result %v", timeout)
 				log.Error().Msg(msg)
 			}
-
 		}
 	}
 
@@ -376,10 +357,9 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	// ipfs get wait time
 	dockerRunCmd.PersistentFlags().IntVarP(
-		&jobIpfsGetTimeOut, "gettimeout", "g", 10,
+		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
 		`Timeout for getting the results of a job in --wait`,
 	)
-
 }
 
 var dockerCmd = &cobra.Command{
@@ -497,7 +477,7 @@ var dockerRunCmd = &cobra.Command{
 			for cid := range cidl {
 				cidv = cid
 			}
-			body, err := ioutil.ReadFile(cidv + "/stdout")
+			body, err := os.ReadFile(cidv + "/stdout")
 			if err != nil {
 				return err
 			}
