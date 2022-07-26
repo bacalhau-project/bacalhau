@@ -3,12 +3,14 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
@@ -18,6 +20,7 @@ import (
 var jobspec *executor.JobSpec
 var filename string
 var jobfConcurrency int
+var jobfInputUrls []string
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
 var jobTags []string
@@ -80,17 +83,36 @@ var applyCmd = &cobra.Command{
 		jobEntrypoint := jobspec.Docker.Entrypoint
 
 		if len(jobspec.Inputs) != 0 {
-			for _, jobspecsInputs := range jobspec.Inputs {
-				is := jobspecsInputs.Cid + ":" + jobspecsInputs.Path
-				jobfInputVolumes = append(jobfInputVolumes, is)
-
+			for _, jobspecInput := range jobspec.Inputs {
+				storageSpecEngineType, err := storage.ParseStorageSourceType(jobspecInput.EngineName)
+				if err != nil {
+					return err
+				}
+				if jobspecInput.Path == "" {
+					return fmt.Errorf("empty volume mount point %+v", jobspecInput)
+				}
+				if storageSpecEngineType == storage.StorageSourceIPFS {
+					if jobspecInput.Cid == "" {
+						return fmt.Errorf("empty ipfs volume cid %+v", jobspecInput)
+					}
+					is := jobspecInput.Cid + ":" + jobspecInput.Path
+					jobfInputVolumes = append(jobfInputVolumes, is)
+				} else if storageSpecEngineType == storage.StorageSourceURLDownload {
+					if jobspecInput.URL == "" {
+						return fmt.Errorf("empty url volume url %+v", jobspecInput)
+					}
+					is := jobspecInput.URL + ":" + jobspecInput.Path
+					jobfInputUrls = append(jobfInputUrls, is)
+				} else {
+					return fmt.Errorf("unknown storage source type %s", jobspecInput.EngineName)
+				}
 			}
 		}
+
 		if len(jobspec.Outputs) != 0 {
 			for _, jobspecsOutputs := range jobspec.Outputs {
 				is := jobspecsOutputs.Name + ":" + jobspecsOutputs.Path
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
-
 			}
 		}
 
@@ -110,8 +132,9 @@ var applyCmd = &cobra.Command{
 			engineType,
 			verifierType,
 			jobspec.Resources.CPU,
-			jobspec.Resources.GPU,
 			jobspec.Resources.Memory,
+			jobspec.Resources.GPU,
+			jobfInputUrls,
 			jobfInputVolumes,
 			jobfOutputVolumes,
 			jobspec.Docker.Env,
