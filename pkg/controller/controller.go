@@ -460,6 +460,8 @@ func (ctrl *Controller) endJobContext(jobID string) {
 func (ctrl *Controller) endJobNodeContext(jobID string) {
 	ctx := ctrl.getJobNodeContext(context.Background(), jobID)
 	trace.SpanFromContext(ctx).End()
+	ctrl.contextMutex.Lock()
+	defer ctrl.contextMutex.Unlock()
 	delete(ctrl.jobNodeContexts, jobID)
 }
 

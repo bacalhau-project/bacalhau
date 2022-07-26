@@ -21,10 +21,10 @@ export BACALHAU_API_PORT_0=35601
 test one job
 
 ```
-cd benchmark_hack
-./submit.sh
+cd benchmark
+bash submit.sh
 ```
 
 ```
-./explode.sh
+bash explode.sh
 ```
