@@ -106,6 +106,14 @@ func (sp *StorageProvider) CleanupStorage(
 	})
 }
 
+func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+}
+
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
+	return []string{}, fmt.Errorf("not implemented")
+}
+
 func IsURLSupported(rawURL string) (bool, error) {
 	// The string url is assumed NOT to have a #fragment suffix
 	// thus the valid form is: [scheme:][//[userinfo@]host][/]path[?query]

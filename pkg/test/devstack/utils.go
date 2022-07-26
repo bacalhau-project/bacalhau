@@ -31,6 +31,12 @@ func SetupTest(
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+		ipfsParts := strings.Split(ipfsMultiAddress, "/")
+		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
+		return executor_util.NewStandardExecutors(
+			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix))
+	}
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[executor.EngineType]executor.Executor, error) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]

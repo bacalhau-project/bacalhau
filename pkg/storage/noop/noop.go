@@ -99,6 +99,14 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 	}, nil
 }
 
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
+	if s.Config.ExternalHooks.Explode != nil {
+		handler := s.Config.ExternalHooks.Explode
+		return handler(ctx, spec)
+	}
+	return []string{}, nil
+}
+
 // nolint:lll // Exception to the long rule
 func (s *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	if s.Config.ExternalHooks.CleanupStorage != nil {

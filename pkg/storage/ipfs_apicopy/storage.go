@@ -113,6 +113,14 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 	})
 }
 
+func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	return storage.StorageSpec{}, fmt.Errorf("tbc")
+}
+
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
+	return []string{}, fmt.Errorf("tbc")
+}
+
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid)
 
