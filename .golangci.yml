@@ -27,6 +27,7 @@ linters-settings:
       - whyNoLint
       - wrapperFunc
       - hugeParam
+      - importShadow
   gocyclo:
     min-complexity: 15
   goimports:
