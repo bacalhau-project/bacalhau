@@ -15,7 +15,6 @@ jobs:
     parallelism: 1
     environment:
       GOVER: 1.18.3
-      GOLANGCILINT_VERSION: v1.46.2
       IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
@@ -51,9 +50,9 @@ jobs:
             - run:
                 name: Install golangci-lint
                 command: |
-                  echo "Installing GOLANGCILINT: $GOLANGCILINT_VERSION"
+                  echo "Installing GOLANGCILINT"
                   # binary will be /usr/local/go/bin/bin/golangci-lint
-                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin $GOLANGCILINT_VER
+                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin
                   golangci-lint --version
 
             - run:
