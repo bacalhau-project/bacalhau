@@ -75,6 +75,10 @@ func Execute() {
 		}
 	}
 
+	// Use stdout, not stderr for cmd.Print output, so that
+	// e.g. ID=$(bacalhau run) works
+	RootCmd.SetOutput(system.Stdout)
+
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
