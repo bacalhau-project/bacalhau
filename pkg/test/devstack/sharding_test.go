@@ -86,7 +86,9 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
-				`for f in /input/*; do echo "hello $f"; done`,
+				// loop over each input file and write the filename to an output file named the same
+				// thing in the results folder
+				`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//'); echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
 			},
 		},
 		Inputs: []storage.StorageSpec{
@@ -102,6 +104,10 @@ func (suite *ShardingSuite) TestEndToEnd() {
 				Name:   "results",
 				Path:   "/output",
 			},
+		},
+		Sharding: executor.JobShardingConfig{
+			GlobPattern: "/*",
+			BatchSize:   100,
 		},
 	}
 

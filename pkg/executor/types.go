@@ -87,6 +87,10 @@ type JobSpec struct {
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"annotations" yaml:"annotations"`
+
+	// the sharding config for this job
+	// describes how the job might be split up into parallel shards
+	Sharding JobShardingConfig `json:"sharding" yaml:"sharding"`
 }
 
 // for VM style executors
@@ -193,4 +197,28 @@ type VersionInfo struct {
 	BuildDate  time.Time `json:"builddate" yaml:"builddate"`
 	GOOS       string    `json:"goos" yaml:"goos"`
 	GOARCH     string    `json:"goarch" yaml:"goarch"`
+}
+
+// describe how we chunk a job up into shards
+type JobShardingConfig struct {
+	// divide the inputs up into the smallest possible unit
+	// for example /* would mean "all top level files or folders"
+	// this being an empty string means "no sharding"
+	GlobPattern string `json:"glob_pattern" yaml:"glob_pattern"`
+	// how many "items" are to be processed in each shard
+	// we first apply the glob pattern which will result in a flat list of items
+	// this number decides how to group that flat list into actual shards run by compute nodes
+	BatchSize int `json:"batch_size" yaml:"batch_size"`
+	// when using multiple input volumes
+	// what path do we treat as the common mount path to apply the glob pattern to
+	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
+}
+
+// this is passed between requester and compute nodes
+// as they bid on different job shards
+type JobShard struct {
+	// how many shards are there in total?
+	Count int `json:"batch_count" yaml:"batch_count"`
+	// what shard are we currently talking about?
+	Index int `json:"batch_index" yaml:"batch_index"`
 }
