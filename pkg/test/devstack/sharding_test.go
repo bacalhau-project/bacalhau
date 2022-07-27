@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -76,6 +77,8 @@ func prepareFolderWithFiles(folderCount, fileCount int) (string, error) {
 func (suite *ShardingSuite) TestExplodeCid() {
 
 	const nodeCount = 1
+	const folderCount = 10
+	const fileCount = 10
 	ctx, span := newSpan("sharding_explodecid")
 	defer span.End()
 	system.InitConfigForTesting(suite.T())
@@ -88,7 +91,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	node := stack.Nodes[0]
 
 	// make 10 folders each with 10 files
-	dirPath, err := prepareFolderWithFiles(10, 10)
+	dirPath, err := prepareFolderWithFiles(folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -103,9 +106,21 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	})
 	require.NoError(suite.T(), err)
 
-	fmt.Printf("results --------------------------------------\n")
-	spew.Dump(results)
+	// the top level node is en empty path
+	expectedFilePaths := []string{"/"}
+	for i := 0; i < folderCount; i++ {
+		expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/folder%d", i))
+		for j := 0; j < fileCount; j++ {
+			expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/folder%d/%d.txt", i, j))
+		}
+	}
 
+	require.Equal(
+		suite.T(),
+		strings.Join(expectedFilePaths, ","),
+		strings.Join(results, ","),
+		"the exploded file paths do not match the expected ones",
+	)
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {

@@ -275,28 +275,16 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	return false, nil
 }
 
-// recurse down into a cid and return a flat list of all links that were found
-// this can be used to construct a file tree to do glob pattern matching
-func (cl *Client) GetAllLinks(ctx context.Context, cid string) ([]*ipld.Link, error) {
-	ctx, span := newSpan(ctx, "GetFileTree")
+func (cl *Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
+	ctx, span := newSpan(ctx, "GetTreeNode")
 	defer span.End()
 
-	node, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	ipldNode, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
 
-	navigableNode := ipld.NewNavigableIPLDNode(node, cl.api.Dag())
-	walker := ipld.NewWalker(ctx, navigableNode)
-
-	links := []*ipld.Link{}
-
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		links = append(links, node.GetIPLDNode().Links()...)
-		return nil
-	})
-
-	return links, nil
+	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.api.Dag()), []string{})
 }
 
 func getNodeType(node ipld.Node) (IPLDType, error) {

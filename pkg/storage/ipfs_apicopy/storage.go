@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -125,7 +126,19 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 }
 
 func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
-	return s.IPFSClient.GetFileTree(ctx, spec.Cid)
+	treeNode, err := s.IPFSClient.GetTreeNode(ctx, spec.Cid)
+	if err != nil {
+		return []string{}, err
+	}
+	flatNodes, err := ipfs.FlattenTreeNode(ctx, treeNode)
+	if err != nil {
+		return []string{}, err
+	}
+	paths := []string{}
+	for _, node := range flatNodes {
+		paths = append(paths, "/"+strings.Join(node.Path, "/"))
+	}
+	return paths, nil
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
