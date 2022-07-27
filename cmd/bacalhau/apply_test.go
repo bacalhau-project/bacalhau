@@ -19,6 +19,11 @@ type ApplySuite struct {
 	rootCmd *cobra.Command
 }
 
+func TestApplySuite(t *testing.T) {
+	suite.Run(t, new(ApplySuite))
+}
+
+
 //before all the suite
 func (suite *ApplySuite) SetupAllSuite() {
 
@@ -108,6 +113,3 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 	}
 }
 
-func TestApplySuite(t *testing.T) {
-	suite.Run(t, new(ApplySuite))
-}
