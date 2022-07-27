@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -30,23 +31,31 @@ var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate he
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
+	cleanupManager := system.NewCleanupManager()
+	cleanupManager.RegisterCallback(system.CleanupTracer)
 
-	ipt, err := inprocess.NewInprocessTransport()
+	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cleanupManager)
 	require.NoError(t, err)
 
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	c, err := controller.NewController(cm, inmemoryDatastore, ipt)
+	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager)
 	require.NoError(t, err)
 
-	rn, err := requesternode.NewRequesterNode(
-		cm,
+	c, err := controller.NewController(
+		cleanupManager,
+		inmemoryDatastore,
+		inprocessTransport,
+		noopStorageProviders,
+	)
+	require.NoError(t, err)
+
+	_, err = requesternode.NewRequesterNode(
+		cleanupManager,
 		c,
 		noopVerifiers,
 		requesternode.RequesterNodeConfig{},
@@ -60,11 +69,11 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	s := NewServer(host, port, c)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
 	}()
 	require.NoError(t, waitForHealthy(cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return NewAPIClient(s.GetURI()), cleanupManager
 }
 
 func waitForHealthy(c *APIClient) error {

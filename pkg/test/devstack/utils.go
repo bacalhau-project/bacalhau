@@ -32,16 +32,16 @@ func SetupTest(
 
 	cm := system.NewCleanupManager()
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-		ipfsParts := strings.Split(ipfsMultiAddress, "/")
-		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
-		return executor_util.NewStandardExecutors(
-			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix))
+		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
 	}
 	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[executor.EngineType]executor.Executor, error) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
-			cm, ipfsMultiAddress, fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix))
+			cm,
+			ipfsMultiAddress,
+			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+		)
 	}
 	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[verifier.VerifierType]verifier.Verifier, error) {
 		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
@@ -50,6 +50,7 @@ func SetupTest(
 		cm,
 		nodes,
 		badActors,
+		getStorageProviders,
 		getExecutors,
 		getVerifiers,
 		config,

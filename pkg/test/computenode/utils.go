@@ -42,15 +42,21 @@ func SetupTestDockerIpfs(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
-
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
+
+	storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+	require.NoError(t, err)
 	executors, err := executor_util.NewStandardExecutors(
-		cm, apiAddress, fmt.Sprintf("devstacknode0-%s", ipfsID))
+		cm,
+		apiAddress,
+		fmt.Sprintf("devstacknode0-%s", ipfsID),
+	)
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
@@ -79,13 +85,16 @@ func SetupTestNoop(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
-
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
+	require.NoError(t, err)
+
+	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(

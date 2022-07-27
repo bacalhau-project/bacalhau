@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -56,6 +57,16 @@ var devstackCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
+		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
+			map[storage.StorageSourceType]storage.StorageProvider, error) {
+
+			if devStackNoop {
+				return executor_util.NewNoopStorageProviders(cm)
+			}
+
+			return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+		}
+
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
 			map[executor.EngineType]executor.Executor, error) {
 
@@ -81,6 +92,7 @@ var devstackCmd = &cobra.Command{
 			cm,
 			devStackNodes,
 			devStackBadActors,
+			getStorageProviders,
 			getExecutors,
 			getVerifiers,
 			computenode.NewDefaultComputeNodeConfig(),

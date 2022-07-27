@@ -140,16 +140,15 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		controller, err := controller.NewController(
-			cm,
-			datastore,
-			transport,
-		)
+		hostID, err := transport.HostID(context.Background())
 		if err != nil {
 			return err
 		}
 
-		hostID, err := transport.HostID(context.Background())
+		storageProviders, err := executor_util.NewStandardStorageProviders(
+			cm,
+			ipfsConnect,
+		)
 		if err != nil {
 			return err
 		}
@@ -163,6 +162,16 @@ var serveCmd = &cobra.Command{
 		}
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect)
+		if err != nil {
+			return err
+		}
+
+		controller, err := controller.NewController(
+			cm,
+			datastore,
+			transport,
+			storageProviders,
+		)
 		if err != nil {
 			return err
 		}
@@ -205,7 +214,7 @@ var serveCmd = &cobra.Command{
 			},
 		}
 
-		requesterNode, err := requesternode.NewRequesterNode(
+		_, err = requesternode.NewRequesterNode(
 			cm,
 			controller,
 			verifiers,

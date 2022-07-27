@@ -528,13 +528,16 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		datastore, err := inmemory.NewInMemoryDatastore()
 		require.NoError(suite.T(), err)
 
-		ctrl, err := controller.NewController(cm, datastore, transport)
+		storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
 		require.NoError(suite.T(), err)
 
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
 		require.NoError(suite.T(), err)
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+		require.NoError(suite.T(), err)
+
+		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 		require.NoError(suite.T(), err)
 
 		_, err = computenode.NewComputeNode(
