@@ -136,7 +136,7 @@ func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec)
 	}
 	paths := []string{}
 	for _, node := range flatNodes {
-		paths = append(paths, "/"+strings.Join(node.Path, "/"))
+		paths = append(paths, spec.Path+"/"+strings.Join(node.Path, "/"))
 	}
 	return paths, nil
 }
