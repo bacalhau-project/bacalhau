@@ -14,6 +14,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
@@ -47,6 +48,58 @@ func (suite *ShardingSuite) TearDownAllSuite() {
 
 }
 
+func prepareFolderWithFiles(count int) (string, error) {
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < count; i++ {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%d.txt", dirPath, i),
+			[]byte(fmt.Sprintf("hello %d", i)),
+			0644,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+	return dirPath, nil
+}
+
+func (suite *ShardingSuite) TestExplodeCid() {
+
+	const nodeCount = 1
+	ctx, span := newSpan("sharding_explodecid")
+	defer span.End()
+	system.InitConfigForTesting(suite.T())
+
+	cm := system.NewCleanupManager()
+
+	stack, err := devstack.NewDevStackIPFS(cm, nodeCount)
+	require.NoError(suite.T(), err)
+
+	node := stack.Nodes[0]
+
+	dirPath, err := prepareFolderWithFiles(100)
+	require.NoError(suite.T(), err)
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
+	require.NoError(suite.T(), err)
+
+	results, err := ipfsProvider.Explode(ctx, storage.StorageSpec{
+		Engine: storage.StorageSourceIPFS,
+		Cid:    directoryCid,
+	})
+	require.NoError(suite.T(), err)
+
+	fmt.Printf("results --------------------------------------\n")
+	spew.Dump(results)
+
+}
+
 func (suite *ShardingSuite) TestEndToEnd() {
 
 	const nodeCount = 1
@@ -64,17 +117,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	dirPath, err := os.MkdirTemp("", "sharding-test")
+	dirPath, err := prepareFolderWithFiles(100)
 	require.NoError(suite.T(), err)
-
-	for i := 0; i < 100; i++ {
-		err = os.WriteFile(
-			fmt.Sprintf("%s/%d.txt", dirPath, i),
-			[]byte(fmt.Sprintf("hello %d", i)),
-			0644,
-		)
-		require.NoError(suite.T(), err)
-	}
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
 	require.NoError(suite.T(), err)
