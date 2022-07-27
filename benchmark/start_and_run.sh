@@ -29,13 +29,14 @@ cd ..
 make build
 
 cd benchmark
-BACALHAU_BIN="../bin/linux_amd64/bacalhau"
+export BACALHAU_BIN="../bin/linux_amd64/bacalhau"
 
 ${BACALHAU_BIN} devstack &
 
 wait_file "/tmp/bacalhau-devstack.pid" 15
 
-API_PORT="$(cat /tmp/bacalhau-devstack.port)"
+# trunk-ignore(shellcheck/SC2155)
+export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
 ./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
 ./explode.sh "${BACALHAU_BIN}" "${API_PORT}"

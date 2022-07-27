@@ -5,8 +5,8 @@ export TOTAL_JOBS=${TOTAL_JOBS:-"50"}
 export BATCH_SIZE=${BATCH_SIZE:-"10"}
 export CONCURRENCY=${CONCURRENCY:-"2"}
 export XARGS_LOOPS=$(( TOTAL_JOBS / BATCH_SIZE ))
-export RUN_ID
-RUN_ID=$(date +%s%N)
+# trunk-ignore(shellcheck/SC2155)
+export RUN_ID=$(date +%s%N)
 
 mkdir -p results
 
