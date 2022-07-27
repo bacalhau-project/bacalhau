@@ -107,7 +107,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 		Sharding: executor.JobShardingConfig{
 			GlobPattern: "/*",
-			BatchSize:   100,
+			BatchSize:   10,
 		},
 	}
 
