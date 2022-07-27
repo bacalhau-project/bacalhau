@@ -74,6 +74,10 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 		useConfig.ResourceRequirementsDefault.Memory = DefaultJobMemory
 	}
 
+	if useConfig.ResourceRequirementsDefault.GPU == "" {
+		useConfig.ResourceRequirementsDefault.GPU = DefaultJobGPU
+	}
+
 	resourceLimitsTotal, err := getSystemResources(useConfig.ResourceLimitTotal)
 	if err != nil {
 		return nil, err
@@ -187,6 +191,9 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	}
 	if requirements.Disk <= 0 {
 		requirements.Disk = manager.resourceRequirementsJobDefault.Disk
+	}
+	if requirements.GPU <= 0 {
+		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
 	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
 	return isOk, requirements

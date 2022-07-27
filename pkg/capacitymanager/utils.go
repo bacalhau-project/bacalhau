@@ -17,6 +17,7 @@ import (
 
 // NvidiaCLI is the path to the Nvidia helper binary
 const NvidiaCLI = "nvidia-container-cli"
+
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
 // lowercase
@@ -186,6 +187,16 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 			)
 		}
 		physcialResources.Disk = parsedLimitConfig.Disk
+	}
+
+	if parsedLimitConfig.GPU > 0 {
+		if parsedLimitConfig.GPU > physcialResources.GPU {
+			return physcialResources, fmt.Errorf(
+				"you cannot configure more GPU than you have on this node: configured %d, have %d",
+				parsedLimitConfig.GPU, physcialResources.GPU,
+			)
+		}
+		physcialResources.GPU = parsedLimitConfig.GPU
 	}
 
 	return physcialResources, nil

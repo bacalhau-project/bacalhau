@@ -9,6 +9,10 @@ or to test without actually running docker jobs
 make devstack-noop
 ```
 
+```
+make devstack-noop
+```
+
 ```bash
 make devstack-noop
 ```

@@ -9,10 +9,10 @@ job_spec_docker:
     - cat /app/foo_data_1.txt
   env: []
 resources:
-  cpu: ""
-  gpu: ""
-  memory: ""
-  disk: ""
+  cpu: ''
+  gpu: ''
+  memory: ''
+  disk: ''
 inputs:
   - engine_name: URLDownload
     name: ''
@@ -21,6 +21,6 @@ inputs:
 outputs:
   - engine_name: ipfs
     name: output
-    cid: ""
+    cid: ''
     path: /output
 annotations: null
