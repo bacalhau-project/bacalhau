@@ -212,7 +212,7 @@ func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
 }
 
 // TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
-func GetCurrentJobState(job executor.Job) (string, executor.JobState) {
+func GetCurrentJobState(states map[string]executor.JobState) (string, executor.JobState) {
 	// Returns Node Id, JobState
 
 	// Combine the list of jobs down to just those that matter
@@ -227,7 +227,7 @@ func GetCurrentJobState(job executor.Job) (string, executor.JobState) {
 	finalNodeID := ""
 	finalJobState := executor.JobState{}
 
-	for nodeID, jobState := range job.State {
+	for nodeID, jobState := range states {
 		if finalNodeID == "" {
 			finalNodeID = nodeID
 			finalJobState = jobState

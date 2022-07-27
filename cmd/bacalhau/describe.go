@@ -67,6 +67,12 @@ var describeCmd = &cobra.Command{
 			return fmt.Errorf("no job found with ID: %s", jobID)
 		}
 
+		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job states '%s': %s", jobID, err)
+			return err
+		}
+
 		jobVMDesc := jobSpecVMDescription{}
 		jobVMDesc.Image = job.Spec.Docker.Image
 		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
@@ -90,7 +96,7 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-		jobDesc.State = job.State
+		jobDesc.State = states
 		jobDesc.CreatedAt = job.CreatedAt
 
 		bytes, _ := yaml.Marshal(jobDesc)
