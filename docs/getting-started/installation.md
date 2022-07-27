@@ -61,13 +61,14 @@ hello
 ```
 
 Hooray, you have just run a job on the Bacalhau network!
-<!-- 
+
+
 ## Demo Video
 
 Here is an example of running a job live on the Bacalhau network:
 
-<ReactPlayer playing controls url='../../static/video/bacalhau-july-fast-noface.mp4' />
--->
+<ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' />
+
 
 ## Support
 
