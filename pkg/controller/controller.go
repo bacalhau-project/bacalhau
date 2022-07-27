@@ -179,7 +179,7 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 		return fmt.Errorf("AcceptJobBid: nodeID cannot be empty")
 	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	err := ctrl.db.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+	err := ctrl.datastore.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
 		EventName:    executor.JobLocalEventBidAccepted,
 		JobID:        jobID,
 		TargetNodeID: nodeID,
