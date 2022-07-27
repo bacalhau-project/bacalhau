@@ -1,7 +1,7 @@
 ---
 sidebar_label: 'Onboard Your Workload' sidebar_position: 2
 ---
-
+import ReactPlayer from 'react-player'
 
 # Onboarding Your Workloads
 
@@ -46,7 +46,11 @@ bacalhau get JOB_ID
 
 
 ## Example Onboarded Workload
-Here is an example of an onboarded python script to Bacalhau: [SOCAT Test](https://github.com/wesfloyd/bacalhau_socat_test)
+
+Here is an [example of an onboarded workload leveraging the Surface Ocean CO₂ Atlas (SOCAT)](https://github.com/wesfloyd/bacalhau_socat_test) to Bacalhau: 
+
+<ReactPlayer playing controls url='https://www.youtube.com/watch?v=t2AHD8yJhLY' playing='false'/>
+
 
 
 ## Support

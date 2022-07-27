@@ -67,7 +67,7 @@ Hooray, you have just run a job on the Bacalhau network!
 
 Here is an example of running a job live on the Bacalhau network:
 
-<ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' />
+<ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' playing='false'/>
 
 
 ## Support
