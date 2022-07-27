@@ -74,17 +74,11 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 		useConfig.ResourceRequirementsDefault.Memory = DefaultJobMemory
 	}
 
-<<<<<<< HEAD
 	if useConfig.ResourceRequirementsDefault.GPU == "" {
 		useConfig.ResourceRequirementsDefault.GPU = DefaultJobGPU
 	}
 
-	resourceLimitsTotal, err := resourceusage.GetSystemResources(useConfig.ResourceLimitTotal)
-||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
-	resourceLimitsTotal, err := resourceusage.GetSystemResources(useConfig.ResourceLimitTotal)
-=======
 	resourceLimitsTotal, err := getSystemResources(useConfig.ResourceLimitTotal)
->>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 	if err != nil {
 		return nil, err
 	}
@@ -198,16 +192,10 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	if requirements.Disk <= 0 {
 		requirements.Disk = manager.resourceRequirementsJobDefault.Disk
 	}
-<<<<<<< HEAD
 	if requirements.GPU <= 0 {
 		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
-	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
-||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
-	isOk := resourceusage.CheckResourceUsage(requirements, manager.resourceLimitsJob)
-=======
 	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
->>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 	return isOk, requirements
 }
 
