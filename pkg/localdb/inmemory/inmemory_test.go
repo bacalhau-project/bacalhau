@@ -18,8 +18,7 @@ func TestInMemoryDataStore(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.AddJob(context.Background(), executor.Job{
-		ID:    jobId,
-		State: map[string]executor.JobState{},
+		ID: jobId,
 	})
 	require.NoError(t, err)
 
@@ -43,8 +42,6 @@ func TestInMemoryDataStore(t *testing.T) {
 	job, err := store.GetJob(context.Background(), jobId)
 	require.NoError(t, err)
 	require.Equal(t, jobId, job.ID)
-	require.Equal(t, 1, len(job.State))
-	require.Equal(t, executor.JobStateBidding, job.State[nodeId].State)
 
 	events, err := store.GetJobEvents(context.Background(), jobId)
 	require.NoError(t, err)

@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -42,16 +41,14 @@ var getCmd = &cobra.Command{
 		defer cm.Cleanup()
 
 		log.Info().Msgf("Fetching results of job '%s'...", args[0])
-		job, ok, err := getAPIClient().Get(context.Background(), args[0])
+
+		states, err := getAPIClient().GetExecutionStates(context.Background(), args[0])
 		if err != nil {
 			return err
 		}
-		if !ok {
-			return fmt.Errorf("job not found")
-		}
 
 		resultCIDs := map[string]bool{}
-		for _, jobState := range job.State {
+		for _, jobState := range states {
 			if jobState.ResultsID != "" {
 				resultCIDs[jobState.ResultsID] = true
 			}

@@ -115,6 +115,10 @@ func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]exe
 	return ctrl.datastore.GetJobLocalEvents(ctx, id)
 }
 
+func (ctrl *Controller) GetExecutionStates(ctx context.Context, id string) (map[string]executor.JobState, error) {
+	return ctrl.db.GetExecutionStates(ctx, id)
+}
+
 func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
 	return ctrl.datastore.GetJobs(ctx, query)
 }
@@ -428,7 +432,6 @@ func constructJob(ev executor.JobEvent) executor.Job {
 		ClientID:        ev.ClientID,
 		Spec:            ev.JobSpec,
 		Deal:            ev.JobDeal,
-		State:           map[string]executor.JobState{},
 		CreatedAt:       time.Now(),
 	}
 }

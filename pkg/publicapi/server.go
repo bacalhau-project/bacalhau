@@ -64,6 +64,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
+	sm.Handle("/states", instrument("states", apiServer.states))
 	sm.Handle("/peers", instrument("peers", apiServer.peers))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
 	sm.Handle("/version", instrument("version", apiServer.version))
@@ -103,6 +104,15 @@ type listRequest struct {
 
 type listResponse struct {
 	Jobs map[string]executor.Job `json:"jobs"`
+}
+
+type statesRequest struct {
+	ClientID string `json:"client_id"`
+	JobID    string `json:"job_id"`
+}
+
+type statesResponse struct {
+	States map[string]executor.JobState `json:"states"`
 }
 
 type versionRequest struct {
@@ -157,6 +167,29 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: rawJobs,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
+	var statesReq statesRequest
+	if err := json.NewDecoder(req.Body).Decode(&statesReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	states, err := apiServer.Controller.GetExecutionStates(req.Context(), statesReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(statesResponse{
+		States: states,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

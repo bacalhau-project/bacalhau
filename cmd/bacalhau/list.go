@@ -145,7 +145,12 @@ var listCmd = &cobra.Command{
 				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
 			}
 
-			if len(j.State) == 0 {
+			states, err := getAPIClient().GetExecutionStates(context.Background(), j.ID)
+			if err != nil {
+				return err
+			}
+
+			if len(states) == 0 {
 				t.AppendRows([]table.Row{
 					{
 						j.CreatedAt.Format("06-01-02-15:04:05"),
@@ -156,7 +161,7 @@ var listCmd = &cobra.Command{
 					},
 				})
 			} else {
-				_, currentJobState := job.GetCurrentJobState(j)
+				_, currentJobState := job.GetCurrentJobState(states)
 				t.AppendRows([]table.Row{
 					{
 						shortenTime(j.CreatedAt),
