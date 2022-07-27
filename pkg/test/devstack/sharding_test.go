@@ -48,22 +48,29 @@ func (suite *ShardingSuite) TearDownAllSuite() {
 
 }
 
-func prepareFolderWithFiles(count int) (string, error) {
-	dirPath, err := os.MkdirTemp("", "sharding-test")
+func prepareFolderWithFiles(folderCount, fileCount int) (string, error) {
+	basePath, err := os.MkdirTemp("", "sharding-test")
 	if err != nil {
 		return "", err
 	}
-	for i := 0; i < count; i++ {
-		err = os.WriteFile(
-			fmt.Sprintf("%s/%d.txt", dirPath, i),
-			[]byte(fmt.Sprintf("hello %d", i)),
-			0644,
-		)
+	for i := 0; i < folderCount; i++ {
+		subfolderPath := fmt.Sprintf("%s/folder%d", basePath, i)
+		err = os.Mkdir(subfolderPath, 0700)
 		if err != nil {
 			return "", err
 		}
+		for j := 0; j < fileCount; j++ {
+			err = os.WriteFile(
+				fmt.Sprintf("%s/%d.txt", subfolderPath, j),
+				[]byte(fmt.Sprintf("hello %d %d", i, j)),
+				0644,
+			)
+			if err != nil {
+				return "", err
+			}
+		}
 	}
-	return dirPath, nil
+	return basePath, nil
 }
 
 func (suite *ShardingSuite) TestExplodeCid() {
@@ -80,7 +87,8 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 	node := stack.Nodes[0]
 
-	dirPath, err := prepareFolderWithFiles(100)
+	// make 10 folders each with 10 files
+	dirPath, err := prepareFolderWithFiles(10, 10)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -117,7 +125,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	dirPath, err := prepareFolderWithFiles(100)
+	dirPath, err := prepareFolderWithFiles(10, 10)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)

@@ -125,7 +125,7 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 }
 
 func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
-	return []string{}, nil
+	return s.IPFSClient.GetFileTree(ctx, spec.Cid)
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {

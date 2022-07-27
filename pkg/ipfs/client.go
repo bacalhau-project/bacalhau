@@ -275,6 +275,30 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	return false, nil
 }
 
+// recurse down into a cid and return a flat list of all links that were found
+// this can be used to construct a file tree to do glob pattern matching
+func (cl *Client) GetAllLinks(ctx context.Context, cid string) ([]*ipld.Link, error) {
+	ctx, span := newSpan(ctx, "GetFileTree")
+	defer span.End()
+
+	node, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+	}
+
+	navigableNode := ipld.NewNavigableIPLDNode(node, cl.api.Dag())
+	walker := ipld.NewWalker(ctx, navigableNode)
+
+	links := []*ipld.Link{}
+
+	err = walker.Iterate(func(node ipld.NavigableNode) error {
+		links = append(links, node.GetIPLDNode().Links()...)
+		return nil
+	})
+
+	return links, nil
+}
+
 func getNodeType(node ipld.Node) (IPLDType, error) {
 	// Taken from go-ipfs/core/commands/files.go:
 	var nodeType IPLDType
