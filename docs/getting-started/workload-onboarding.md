@@ -20,8 +20,13 @@ docker run -v /host-mount-location:/container-input-location/  \
 IMAGENAME
 ```
 
-4. Migrate input data for the workload to IPFS. All networking is disabled from within the Bacalhau cluster
-Leverage an IPFS “pinning service” such as [Web3.Storage](https://web3.storage/account/), [Estuary](https://estuary.tech/sign-in) or [manually pin the files to IPFS](https://docs.ipfs.io/how-to/pin-files/) with your own IPFS server. If uploading a folder of input files, consider [uploading with this script](https://web3.storage/docs/#create-the-upload-script).
+4. Migrate input data for the workload to IPFS. All ingres/egres networking is disabled from the Bacalhau cluster.
+- Leverage an IPFS “pinning service” such as:
+ -[Web3.Storage](https://web3.storage/account/)
+ - [Estuary](https://estuary.tech/sign-in)
+ - [Manually pin your files to IPFS](https://docs.ipfs.io/how-to/pin-files/) with your own IPFS server.
+- If uploading a folder of input files, consider [uploading with this script](https://web3.storage/docs/#create-the-upload-script). However, please note that any content uploaded to Web3.storage is [also wrapped in a parent directory](https://web3.storage/docs/how-tos/store/#directory-wrapping). You will need to take care to reference the inner directory CID in your bacalhau command.
+
 
 5. Run the workload on Bacalhau:
 
