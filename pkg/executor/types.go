@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -72,7 +72,13 @@ type JobSpec struct {
 	Language JobSpecLanguage `json:"job_spec_language,omitempty" yaml:"job_spec_language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
+<<<<<<< HEAD
 	Resources resourceusage.ResourceUsageConfig `json:"resources" yaml:"resources"`
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
+	Resources resourceusage.ResourceUsageConfig `json:"resources"`
+=======
+	Resources capacitymanager.ResourceUsageConfig `json:"resources"`
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"

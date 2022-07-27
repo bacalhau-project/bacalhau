@@ -1,4 +1,4 @@
-package resourceusage
+package capacitymanager
 
 import (
 	"fmt"
@@ -14,8 +14,42 @@ import (
 	"github.com/pbnjay/memory"
 )
 
+<<<<<<< HEAD:pkg/resourceusage/utils.go
 // NvidiaCLI is the path to the Nvidia helper binary
 const NvidiaCLI = "nvidia-container-cli"
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager):pkg/resourceusage/utils.go
+func NewDefaultResourceUsageConfig() ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    "",
+		Memory: "",
+		Disk:   "",
+	}
+}
+
+func NewResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    cpu,
+		Memory: mem,
+		Disk:   disk,
+	}
+}
+=======
+func newDefaultResourceUsageConfig() ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    "",
+		Memory: "",
+		Disk:   "",
+	}
+}
+
+func newResourceUsageConfig(cpu, mem, disk string) ResourceUsageConfig {
+	return ResourceUsageConfig{
+		CPU:    cpu,
+		Memory: mem,
+		Disk:   disk,
+	}
+}
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager):pkg/capacitymanager/utils.go
 
 // allow Mi, Gi to mean Mb, Gb
 // remove spaces
@@ -27,7 +61,7 @@ func convertBytesString(st string) string {
 	return st
 }
 
-func ConvertCPUStringWithError(val string) (float64, error) {
+func convertCPUStringWithError(val string) (float64, error) {
 	if val == "" {
 		return 0, nil
 	}
@@ -39,14 +73,14 @@ func ConvertCPUStringWithError(val string) (float64, error) {
 }
 
 func ConvertCPUString(val string) float64 {
-	ret, err := ConvertCPUStringWithError(val)
+	ret, err := convertCPUStringWithError(val)
 	if err != nil {
 		return 0
 	}
 	return ret
 }
 
-func ConvertMemoryStringWithError(val string) (uint64, error) {
+func convertMemoryStringWithError(val string) (uint64, error) {
 	if val == "" {
 		return 0, nil
 	}
@@ -58,7 +92,7 @@ func ConvertMemoryStringWithError(val string) (uint64, error) {
 }
 
 func ConvertMemoryString(val string) uint64 {
-	ret, err := ConvertMemoryStringWithError(val)
+	ret, err := convertMemoryStringWithError(val)
 	if err != nil {
 		return 0
 	}
@@ -82,7 +116,7 @@ func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
 	}
 }
 
-func GetResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
+func getResourceUsageConfig(usage ResourceUsageData) (ResourceUsageConfig, error) {
 	c := ResourceUsageConfig{}
 
 	cpu := k8sresource.NewCPUFromFloat(usage.CPU)
@@ -148,7 +182,7 @@ func numSystemGPUs() (uint64, error) {
 }
 
 // what resources does this compute node actually have?
-func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return ResourceUsageData{}, err
@@ -212,7 +246,7 @@ func GetSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
-func CheckResourceUsage(wants, limits ResourceUsageData) bool {
+func checkResourceUsage(wants, limits ResourceUsageData) bool {
 	// if there are no limits then everything goes
 	if limits.CPU <= 0 && limits.Memory <= 0 && limits.Disk <= 0 && limits.GPU <= 0 {
 		return true
@@ -225,7 +259,7 @@ func CheckResourceUsage(wants, limits ResourceUsageData) bool {
 	return wants.CPU <= limits.CPU && wants.Memory <= limits.Memory && wants.Disk <= limits.Disk && wants.GPU <= limits.GPU
 }
 
-func SubtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
+func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
 	return ResourceUsageData{
 		CPU:    totals.CPU - current.CPU,
 		Memory: totals.Memory - current.Memory,

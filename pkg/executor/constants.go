@@ -159,6 +159,7 @@ const (
 // IsTerminal returns true if the given job type signals the end of the
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
+<<<<<<< HEAD
 func (typ JobStateType) IsTerminal() bool {
 	return typ == JobStateComplete || typ == JobStateError || typ == JobStateBidRejected
 }
@@ -185,6 +186,13 @@ func (typ *JobStateType) UnmarshalYAML(value *yaml.Node) error {
 
 	*typ = t
 	return nil
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
+func (event JobStateType) IsTerminal() bool {
+	return event == JobStateComplete || event == JobStateError || event == JobStateBidRejected
+=======
+func (state JobStateType) IsTerminal() bool {
+	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 }
 
 func ParseJobStateType(str string) (JobStateType, error) {

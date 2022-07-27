@@ -1,4 +1,4 @@
-package resourceusage
+package capacitymanager
 
 import (
 	"fmt"
@@ -123,11 +123,23 @@ func (suite *ResourceUsageUtilsSuite) TestGetResourceUsageConfig() {
 	}
 
 	for _, test := range tests {
+<<<<<<< HEAD:pkg/resourceusage/utils_test.go
 		converted, err := GetResourceUsageConfig(test.input)
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), test.expected.CPU, converted.CPU, "cpu is incorrect")
 		require.Equal(suite.T(), test.expected.Memory, converted.Memory, "memory is incorrect")
 		require.Equal(suite.T(), test.expected.GPU, converted.GPU, "GPU is incorrect")
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager):pkg/resourceusage/utils_test.go
+		converted, err := GetResourceUsageConfig(test.input)
+		require.NoError(t, err)
+		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+=======
+		converted, err := getResourceUsageConfig(test.input)
+		require.NoError(t, err)
+		require.Equal(t, test.expected.CPU, converted.CPU, "cpu is incorrect")
+		require.Equal(t, test.expected.Memory, converted.Memory, "memory is incorrect")
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager):pkg/capacitymanager/utils_test.go
 	}
 
 }
@@ -176,7 +188,7 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	}
 
 	for _, test := range tests {
-		resources, err := GetSystemResources(test.input)
+		resources, err := getSystemResources(test.input)
 
 		if test.shouldError {
 			require.Error(suite.T(), err, "an error was expected")

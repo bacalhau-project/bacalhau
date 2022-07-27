@@ -21,7 +21,6 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/resourceusage"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -31,6 +30,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+<<<<<<< HEAD
 type ComputeNodeResourceLimitsSuite struct {
 	suite.Suite
 }
@@ -144,6 +144,96 @@ func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 
 }
 
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
+func TestJobResourceLimits(t *testing.T) {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits resourceusage.ResourceUsageConfig, expectedResult bool) {
+		computeNode, _, _, cm := SetupTestNoop(t, computenode.ComputeNodeConfig{
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitJob:            jobResourceLimits,
+				ResourceRequirementsDefault: defaultJobResourceLimits,
+			},
+		}, noop_executor.ExecutorConfig{})
+		defer func() {
+			// sleep here otherwise the compute node tries to register cleanup handlers too late
+			time.Sleep(time.Millisecond * 10)
+			cm.Cleanup()
+		}()
+		job := GetProbeData("")
+		job.Spec.Resources = jobResources
+
+		result, _, err := computeNode.SelectJob(context.Background(), job)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
+	}
+
+	// the job is half the limit
+	runTest(
+		getResources("1", "500Mb", ""),
+		getResources("2", "1Gb", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	// the job is on the limit
+	runTest(
+		getResources("1", "500Mb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	// the job is over the limit
+	runTest(
+		getResources("2", "1Gb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
+		false,
+	)
+
+	// test with fractional CPU
+	// the job is less than the limit
+	runTest(
+		getResources("250m", "200Mb", ""),
+		getResources("1", "500Mb", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	// test when the limit is empty
+	runTest(
+		getResources("250m", "200Mb", ""),
+		getResources("", "", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	// test when both is empty
+	runTest(
+		getResources("", "", ""),
+		getResources("", "", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	runTest(
+		getResources("", "", ""),
+		getResources("250m", "200Mb", ""),
+		getResources("100m", "100Mb", ""),
+		true,
+	)
+
+	runTest(
+		getResources("300m", "", ""),
+		getResources("250m", "200Mb", ""),
+		getResources("100m", "100Mb", ""),
+		false,
+	)
+
+}
+
+=======
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 type SeenJobRecord struct {
 	Id          string
 	CurrentJobs int
@@ -159,8 +249,8 @@ type TotalResourceTestCaseCheck struct {
 
 type TotalResourceTestCase struct {
 	// the total list of jobs to throw at the cluster all at the same time
-	jobs        []resourceusage.ResourceUsageConfig
-	totalLimits resourceusage.ResourceUsageConfig
+	jobs        []capacitymanager.ResourceUsageConfig
+	totalLimits capacitymanager.ResourceUsageConfig
 	wait        TotalResourceTestCaseCheck
 	checkers    []TotalResourceTestCaseCheck
 }
@@ -219,7 +309,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
-			return resourceusage.ConvertMemoryString(volume.Cid), nil
+			return capacitymanager.ConvertMemoryString(volume.Cid), nil
 		}
 
 		_, _, ctrl, cm := SetupTestNoop(
@@ -396,7 +486,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	result := RunJobGetStdout(suite.T(), computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		Resources: resourceusage.ResourceUsageConfig{
+		Resources: capacitymanager.ResourceUsageConfig{
 			CPU:    CPU_LIMIT,
 			Memory: "100mb",
 		},
@@ -424,7 +514,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
+<<<<<<< HEAD
 	require.Equal(suite.T(), resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
+	require.Equal(t, resourceusage.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+=======
+	require.Equal(t, capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
@@ -437,7 +533,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	result := RunJobGetStdout(suite.T(), computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
-		Resources: resourceusage.ResourceUsageConfig{
+		Resources: capacitymanager.ResourceUsageConfig{
 			CPU:    "100m",
 			Memory: MEMORY_LIMIT,
 		},
@@ -452,8 +548,16 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
+<<<<<<< HEAD
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
+	require.NoError(t, err)
+	require.Equal(t, resourceusage.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+=======
+	require.NoError(t, err)
+	require.Equal(t, capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+>>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
@@ -461,7 +565,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 	runTest := func(text, diskSize string, expected bool) {
 		computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: resourceusage.ResourceUsageConfig{
+				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
 					// so we have a compute node with 1 byte of disk space
 					Disk: diskSize,
 				},
@@ -477,7 +581,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 			Spec: executor.JobSpec{
 				Engine:   executor.EngineDocker,
 				Verifier: verifier.VerifierNoop,
-				Resources: resourceusage.ResourceUsageConfig{
+				Resources: capacitymanager.ResourceUsageConfig{
 					CPU:    "100m",
 					Memory: "100mb",
 					// we simulate having calculated the disk size here
