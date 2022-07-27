@@ -20,6 +20,7 @@ type JobQuery struct {
 type LocalDB interface {
 	GetJob(ctx context.Context, id string) (executor.Job, error)
 	GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error)
+	GetExecutionStates(ctx context.Context, jobID string) (map[string]executor.JobState, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]executor.Job, error)
 	AddJob(ctx context.Context, job executor.Job) error

@@ -41,21 +41,17 @@ var jobLabels []string
 type CheckJobStatesFunction func(map[string]executor.JobStateType) (bool, error)
 
 func GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
-	job, ok, err := getAPIClient().Get(ctx, jobID)
+	states, err := getAPIClient().GetExecutionStates(ctx, jobID)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error fetching job %s: %v", jobID, err)
+			"error fetching job states %s: %v", jobID, err)
 	}
-	if !ok {
-		return nil, nil
-	}
-
-	states := map[string]executor.JobStateType{}
-	for id, state := range job.State {
-		states[id] = state.State
+	ret := map[string]executor.JobStateType{}
+	for id, state := range states {
+		ret[id] = state.State
 	}
 
-	return states, nil
+	return ret, nil
 }
 
 // nolint:gocyclo
@@ -147,7 +143,11 @@ func WaitForJob(
 
 	checkJobStateFunctions ...CheckJobStatesFunction,
 ) error {
-	_, finalJobState := pjob.GetCurrentJobState(job)
+	states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+	if err != nil {
+		return err
+	}
+	_, finalJobState := pjob.GetCurrentJobState(states)
 	if finalJobState.Status == CompleteStatus {
 		return nil
 	}
@@ -221,16 +221,13 @@ func Get(jobID string, timeout int) map[string]bool {
 	defer cm.Cleanup()
 
 	log.Info().Msgf("Fetching results of job '%s'...", jobID)
-	job, ok, err := getAPIClient().Get(context.Background(), jobID)
+	states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
 	if err != nil {
 		fmt.Printf("%s", err)
 	}
-	if !ok {
-		fmt.Print("job not found")
-	}
 
 	resultCIDs := map[string]bool{}
-	for _, jobState := range job.State {
+	for _, jobState := range states {
 		if jobState.ResultsID != "" {
 			resultCIDs[jobState.ResultsID] = true
 		}
@@ -463,7 +460,7 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		cmd.Printf("%s\n", job.ID)
-		currentNodeID, _ := pjob.GetCurrentJobState(job)
+		currentNodeID, _ := pjob.GetCurrentJobState(states)
 		nodeIds := []string{currentNodeID}
 		if waitForJobToFinishAndPrintOutput {
 			err = WaitForJob(ctx, job.ID, job,

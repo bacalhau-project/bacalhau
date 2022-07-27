@@ -48,9 +48,6 @@ type Job struct {
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal JobDeal `json:"deal"`
 
-	// The states of the job on different compute nodes indexed by node ID.
-	State map[string]JobState `json:"state"`
-
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
 }
