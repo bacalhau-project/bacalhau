@@ -392,7 +392,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
+	result := RunJobGetStdout(suite.T(), computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: capacitymanager.ResourceUsageConfig{
@@ -423,7 +423,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 		containerCPU = float64(numerator) / float64(denominator)
 	}
 
-	require.Equal(t, capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
+	require.Equal(suite.T(), capacitymanager.ConvertCPUString(CPU_LIMIT), containerCPU, "the container reported CPU does not equal the configured limit")
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
@@ -433,7 +433,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
-	result := RunJobGetStdout(t, computeNode, executor.JobSpec{
+	result := RunJobGetStdout(suite.T(), computeNode, executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierNoop,
 		Resources: capacitymanager.ResourceUsageConfig{
@@ -451,8 +451,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	})
 
 	intVar, err := strconv.Atoi(strings.TrimSpace(result))
-	require.NoError(t, err)
-	require.Equal(t, capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), capacitymanager.ConvertMemoryString(MEMORY_LIMIT), uint64(intVar), "the container reported memory does not equal the configured limit")
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
@@ -519,23 +519,23 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cm := system.NewCleanupManager()
 
 		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 		transport, err := inprocess.NewInprocessTransport()
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		datastore, err := inmemory.NewInMemoryDatastore()
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		ctrl, err := controller.NewController(cm, datastore, transport)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
-		require.NoError(t, err)
+		require.NoError(suite.T(), err)
 
 		_, err = computenode.NewComputeNode(
 			cm,

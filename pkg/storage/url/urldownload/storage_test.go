@@ -3,15 +3,15 @@ package urldownload
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
-	"net/http"
-	"net/http/httptest"
-	"io/ioutil"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 func TestNewStorageProvider(t *testing.T) {

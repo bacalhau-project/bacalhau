@@ -15,6 +15,7 @@ type StorageSourceType int
 const (
 	storageSourceUnknown StorageSourceType = iota // must be first
 	StorageSourceIPFS
+	StorageSourceURLDownload
 	storageSourceDone // must be last
 )
 
@@ -40,4 +41,19 @@ func equal(a, b string) bool {
 //go:generate stringer -type=StorageVolumeConnectorType --trimprefix=StorageVolumeConnector
 type StorageVolumeConnectorType int
 
-const URLDownload = "url_download"
+const (
+	storageVolumeConnectorUnknown StorageVolumeConnectorType = iota // must be first
+	StorageVolumeConnectorBind
+	storageVolumeConnectorDone // must be last
+)
+
+// Used to distinguish files from directories
+//go:generate stringer -type=FileSystemNodeType --trimprefix=FileSystemNode
+type FileSystemNodeType int
+
+const (
+	fileSystemNodeUnknown FileSystemNodeType = iota // must be first
+	FileSystemNodeDirectory
+	FileSystemNodeFile
+	fileSystemNodeDone // must be last
+)

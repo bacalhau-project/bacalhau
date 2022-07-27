@@ -111,11 +111,11 @@ func (suite *TransportSuite) TestTransportSanity() {
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
 		cm,
 		ctrl,
@@ -123,7 +123,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 		verifiers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	_, err = requesternode.NewRequesterNode(
 		cm,
 		ctrl,
@@ -135,7 +135,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 
 func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	ctx := context.Background()
-	_, noopExecutor, _, ctrl, cm := setupTest(t)
+	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -164,7 +164,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	}
 
 	jobSelected, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 
 	time.Sleep(time.Second * 1)
 	require.Equal(suite.T(), 1, len(noopExecutor.Jobs))
@@ -173,7 +173,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 
 func (suite *TransportSuite) TestTransportEvents() {
 	ctx := context.Background()
-	transport, _, _, ctrl, cm := setupTest(t)
+	transport, _, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
@@ -202,7 +202,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 	}
 
 	_, err := ctrl.SubmitJob(ctx, payload)
-	require.NoError(t, err)
+	require.NoError(suite.T(), err)
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{

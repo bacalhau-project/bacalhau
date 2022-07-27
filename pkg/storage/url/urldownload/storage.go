@@ -62,18 +62,18 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Sto
 	return 0, nil
 }
 
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (*storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
 	_, err := IsURLSupported(storageSpec.URL)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
 	outputPath, err := ioutil.TempDir(sp.LocalDir, "*")
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
 	sp.HTTPClient.SetTimeout(config.GetDownloadURLRequestTimeout())
@@ -81,11 +81,11 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 		SetOutput(outputPath + "/file").
 		Get(storageSpec.URL)
 	if err != nil {
-		return nil, err
+		return storage.StorageVolume{}, err
 	}
 
-	volume := &storage.StorageVolume{
-		Type:   "bind",
+	volume := storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath + "/file",
 		Target: storageSpec.Path,
 	}

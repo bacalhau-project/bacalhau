@@ -25,22 +25,8 @@ func TestComputeNodeRunJobSuite(t *testing.T) {
 	suite.Run(t, new(ComputeNodeRunJobSuite))
 }
 
-	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
-	require.NoError(t, err)
-
-	result, err := computeNode.RunJob(context.Background(), executor.Job{
-		ID:   "test",
-		Spec: GetJobSpec(cid),
-	})
-	require.NoError(t, err)
-
-	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	require.DirExists(t, result, "The job result folder exists")
-	require.FileExists(t, stdoutPath, "The stdout file exists")
-
-	dat, err := os.ReadFile(stdoutPath)
-	require.NoError(t, err)
-	require.Equal(t, EXAMPLE_TEXT, string(dat), "The stdout file contained the correct result from the job")
+// Before all suite
+func (suite *ComputeNodeRunJobSuite) SetupAllSuite() {
 
 }
 

@@ -1,6 +1,6 @@
 version: 0.1
 cli:
-  version: 0.15.0-beta
+  version: 0.15.1-beta
 lint:
   enabled:
     - actionlint@1.6.15

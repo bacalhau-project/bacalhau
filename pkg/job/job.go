@@ -3,14 +3,13 @@ package job
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
@@ -18,7 +17,7 @@ import (
 func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory string,
+	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
@@ -47,10 +46,10 @@ func ConstructDockerJob( //nolint:funlen
 		// should loop through all available storage providers?
 		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
-			return nil, nil, err
+			return executor.JobSpec{}, executor.JobDeal{}, err
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
-			Engine: "url_download",
+			Engine: storage.StorageSourceURLDownload,
 			URL:    rawURL,
 			Path:   path,
 		})
@@ -94,6 +93,12 @@ func ConstructDockerJob( //nolint:funlen
 		} else {
 			unSafeAnnotations = append(unSafeAnnotations, a)
 		}
+	}
+
+	if len(unSafeAnnotations) > 0 {
+		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+			RegexString,
+			strings.Join(unSafeAnnotations, ", "))
 	}
 
 	spec := executor.JobSpec{

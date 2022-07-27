@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"

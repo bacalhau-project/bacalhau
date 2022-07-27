@@ -7,7 +7,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/ipfs/apicopy"
+	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
@@ -34,15 +34,14 @@ func NewStandardExecutors(
 	}
 
 	exDocker, err := docker.NewExecutor(cm, dockerID,
-		map[string]storage.StorageProvider{
+		map[storage.StorageSourceType]storage.StorageProvider{
 			// fuse driver is disabled so that - in case it poses a security
 			// risk - arbitrary users can't request it
 			// storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
-			storage.IPFSAPICopy: ipfsAPICopyStorage,
+			storage.StorageSourceIPFS: ipfsAPICopyStorage,
 			// we make the copy driver the "default" storage driver for docker
 			// users have to specify the fuse driver explicitly
-			storage.IPFSDefault: ipfsAPICopyStorage,
-			storage.URLDownload: urlDownloadStorage,
+			storage.StorageSourceURLDownload: urlDownloadStorage,
 		})
 	if err != nil {
 		return nil, err
