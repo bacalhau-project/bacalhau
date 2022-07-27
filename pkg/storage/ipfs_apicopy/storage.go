@@ -125,20 +125,25 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 	}, nil
 }
 
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	treeNode, err := s.IPFSClient.GetTreeNode(ctx, spec.Cid)
 	if err != nil {
-		return []string{}, err
+		return []storage.StorageSpec{}, err
 	}
 	flatNodes, err := ipfs.FlattenTreeNode(ctx, treeNode)
 	if err != nil {
-		return []string{}, err
+		return []storage.StorageSpec{}, err
 	}
-	paths := []string{}
+	basePath := strings.TrimPrefix(spec.Path, "/")
+	specs := []storage.StorageSpec{}
 	for _, node := range flatNodes {
-		paths = append(paths, spec.Path+"/"+strings.Join(node.Path, "/"))
+		specs = append(specs, storage.StorageSpec{
+			Engine: storage.StorageSourceIPFS,
+			Cid:    node.Cid.String(),
+			Path:   basePath + "/" + strings.Join(node.Path, "/"),
+		})
 	}
-	return paths, nil
+	return specs, nil
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {

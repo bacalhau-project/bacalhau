@@ -116,7 +116,7 @@ func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]exe
 }
 
 func (ctrl *Controller) GetExecutionStates(ctx context.Context, id string) (map[string]executor.JobState, error) {
-	return ctrl.db.GetExecutionStates(ctx, id)
+	return ctrl.datastore.GetExecutionStates(ctx, id)
 }
 
 func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {

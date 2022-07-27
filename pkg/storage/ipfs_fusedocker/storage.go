@@ -149,8 +149,8 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 	return storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
-	return []string{}, fmt.Errorf("not implemented")
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
 func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {

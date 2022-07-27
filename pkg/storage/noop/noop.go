@@ -13,7 +13,7 @@ type StroageHandlerGetVolumeSize func(ctx context.Context, volume storage.Storag
 type StroageHandlerPrepareStorage func(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error)
 type StroageHandlerCleanupStorage func(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error
 type StroageHandlerUpload func(ctx context.Context, localPath string) (storage.StorageSpec, error)
-type StroageHandlerExplode func(ctx context.Context, storageSpec storage.StorageSpec) ([]string, error)
+type StroageHandlerExplode func(ctx context.Context, storageSpec storage.StorageSpec) ([]storage.StorageSpec, error)
 
 type StorageConfigExternalHooks struct {
 	IsInstalled       StroageHandlerIsInstalled
@@ -99,12 +99,12 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 	}, nil
 }
 
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	if s.Config.ExternalHooks.Explode != nil {
 		handler := s.Config.ExternalHooks.Explode
 		return handler(ctx, spec)
 	}
-	return []string{}, nil
+	return []storage.StorageSpec{}, nil
 }
 
 // nolint:lll // Exception to the long rule

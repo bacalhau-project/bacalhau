@@ -113,9 +113,13 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 
 // for the url download - explode will always result in a single item
 // mounted at the path specified in the spec
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
-	return []string{
-		spec.Path,
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{
+		{
+			Engine: storage.StorageSourceURLDownload,
+			Path:   spec.Path,
+			URL:    spec.URL,
+		},
 	}, nil
 }
 

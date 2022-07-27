@@ -19,9 +19,9 @@ type StorageProvider interface {
 	// given a local file path - "store" it and return a StorageSpec
 	Upload(context.Context, string) (StorageSpec, error)
 
-	// given a StorageSpec - explode it into a list of file paths it contains
+	// given a StorageSpec - explode it into a list of storage specs it contains
 	// each file path will be appended to the "path" of the storage spec
-	Explode(context.Context, StorageSpec) ([]string, error)
+	Explode(context.Context, StorageSpec) ([]StorageSpec, error)
 }
 
 // StorageSpec represents some data on a storage engine. Storage engines are
