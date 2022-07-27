@@ -66,7 +66,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	jobSpec := &executor.JobSpec{
+	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
 		Verifier: verifier.VerifierIpfs,
 		Docker: executor.JobSpecDocker{
@@ -79,7 +79,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		},
 	}
 
-	jobDeal := &executor.JobDeal{
+	jobDeal := executor.JobDeal{
 		Concurrency: 1,
 	}
 

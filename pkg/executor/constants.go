@@ -2,10 +2,7 @@ package executor
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 //go:generate stringer -type=EngineType --trimprefix=Engine
@@ -174,40 +171,8 @@ const (
 // IsTerminal returns true if the given job type signals the end of the
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
-<<<<<<< HEAD
-func (typ JobStateType) IsTerminal() bool {
-	return typ == JobStateComplete || typ == JobStateError || typ == JobStateBidRejected
-}
-
-// MarshalYAML encodes a JobStateType as a string for readability.
-func (typ JobStateType) MarshalYAML() (interface{}, error) {
-	return typ.String(), nil
-}
-
-// UnmarshalYAML decodes a JobStateType from a string or an int.
-func (typ *JobStateType) UnmarshalYAML(value *yaml.Node) error {
-	// First try and parse value.Value as an int:
-	i, err := strconv.ParseInt(value.Value, 10, 32) // nolint:gomnd
-	if err == nil {
-		*typ = JobStateType(i)
-		return nil
-	}
-
-	// If that fails, try to parse value.Value as a string:
-	t, err := ParseJobStateType(value.Value)
-	if err != nil {
-		return err
-	}
-
-	*typ = t
-	return nil
-||||||| parent of c1290fd7 (move resourceusage package into capacity manager)
-func (event JobStateType) IsTerminal() bool {
-	return event == JobStateComplete || event == JobStateError || event == JobStateBidRejected
-=======
 func (state JobStateType) IsTerminal() bool {
 	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
->>>>>>> c1290fd7 (move resourceusage package into capacity manager)
 }
 
 // tells you if this event is a valid one

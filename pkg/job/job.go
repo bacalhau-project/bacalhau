@@ -17,7 +17,7 @@ import (
 func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,
-	cpu, memory string,
+	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
 	outputVolumes []string,
@@ -46,10 +46,10 @@ func ConstructDockerJob( //nolint:funlen
 		// should loop through all available storage providers?
 		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
-			return nil, nil, err
+			return executor.JobSpec{}, executor.JobDeal{}, err
 		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
-			Engine: "url_download",
+			Engine: storage.StorageSourceURLDownload,
 			URL:    rawURL,
 			Path:   path,
 		})

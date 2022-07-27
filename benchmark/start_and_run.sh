@@ -37,13 +37,13 @@ wait_file "/tmp/bacalhau-devstack.pid" 15
 
 API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
-./submit.sh ${BACALHAU_BIN} ${API_PORT}
-./explode.sh ${BACALHAU_BIN} ${API_PORT}
+./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
+./explode.sh "${BACALHAU_BIN}" "${API_PORT}"
 
 while : ; do
 	sleep 2
 	CURRENT_STATE=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost list -n 10000 2>&1 | grep -c 'Running')
-	(( ${CURRENT_STATE} > 0 )) || break
+	(( CURRENT_STATE > 0 )) || break
 done 
 
 echo "Finished. Cleaning up..."

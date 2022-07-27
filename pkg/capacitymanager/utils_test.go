@@ -103,8 +103,9 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 
 		suite.Run(test.name, func() {
 			converted := ParseResourceUsageConfig(test.input)
-			require.Equal(t, converted.CPU, test.expected.CPU, "cpu is incorrect")
-			require.Equal(t, converted.Memory, test.expected.Memory, "memory is incorrect")
+			require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
+			require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
+			require.Equal(suite.T(), converted.GPU, test.expected.GPU, "gpu is incorrect")
 		})
 
 	}
@@ -160,11 +161,12 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 			resources, err := getSystemResources(test.input)
 
 			if test.shouldError {
-				require.Error(t, err, "an error was expected")
+				require.Error(suite.T(), err, "an error was expected")
 			} else {
 				require.NoError(suite.T(), err, "an error was not expected")
 				require.Equal(suite.T(), test.expected.CPU, resources.CPU, "cpu is incorrect")
 				require.Equal(suite.T(), test.expected.Memory, resources.Memory, "memory is incorrect")
+				require.Equal(suite.T(), test.expected.GPU, resources.GPU, "GPU is incorrect")
 			}
 		})
 
@@ -172,7 +174,7 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 }
 
 func TestSubtractResourceUsage(t *testing.T) {
-	res := SubtractResourceUsage(
+	res := subtractResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -197,7 +199,7 @@ func TestSubtractResourceUsage(t *testing.T) {
 
 func TestCheckResourceUsage(t *testing.T) {
 	// Test when resources are ok, should return true
-	ok := CheckResourceUsage(
+	ok := checkResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -210,11 +212,11 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if !ok {
-		t.Error("CheckResourceUsage returned false")
+		t.Error("checkResourceUsage returned false")
 	}
 
 	// test when resources are not ok
-	ok = CheckResourceUsage(
+	ok = checkResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -227,9 +229,9 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("CheckResourceUsage returned true")
+		t.Error("checkResourceUsage returned true")
 	}
-	ok = CheckResourceUsage(
+	ok = checkResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -242,9 +244,9 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("CheckResourceUsage returned true")
+		t.Error("checkResourceUsage returned true")
 	}
-	ok = CheckResourceUsage(
+	ok = checkResourceUsage(
 		ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
@@ -257,7 +259,7 @@ func TestCheckResourceUsage(t *testing.T) {
 		},
 	)
 	if ok {
-		t.Error("CheckResourceUsage returned true")
+		t.Error("checkResourceUsage returned true")
 	}
 }
 

@@ -150,7 +150,7 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	}
 
 	// the actual resources we have
-	physcialResources := ResourceUsageData{
+	physicalResources := ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.TotalMemory(),
 		Disk:   diskSpace,
@@ -160,36 +160,46 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
 
 	if parsedLimitConfig.CPU > 0 {
-		if parsedLimitConfig.CPU > physcialResources.CPU && !allowOverCommit {
-			return physcialResources, fmt.Errorf(
+		if parsedLimitConfig.CPU > physicalResources.CPU && !allowOverCommit {
+			return physicalResources, fmt.Errorf(
 				"you cannot configure more CPU than you have on this node: configured %f, have %f",
-				parsedLimitConfig.CPU, physcialResources.CPU,
+				parsedLimitConfig.CPU, physicalResources.CPU,
 			)
 		}
-		physcialResources.CPU = parsedLimitConfig.CPU
+		physicalResources.CPU = parsedLimitConfig.CPU
 	}
 
 	if parsedLimitConfig.Memory > 0 {
-		if parsedLimitConfig.Memory > physcialResources.Memory && !allowOverCommit {
-			return physcialResources, fmt.Errorf(
+		if parsedLimitConfig.Memory > physicalResources.Memory && !allowOverCommit {
+			return physicalResources, fmt.Errorf(
 				"you cannot configure more Memory than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Memory, physcialResources.Memory,
+				parsedLimitConfig.Memory, physicalResources.Memory,
 			)
 		}
-		physcialResources.Memory = parsedLimitConfig.Memory
+		physicalResources.Memory = parsedLimitConfig.Memory
 	}
 
 	if parsedLimitConfig.Disk > 0 {
-		if parsedLimitConfig.Disk > physcialResources.Disk && !allowOverCommit {
-			return physcialResources, fmt.Errorf(
+		if parsedLimitConfig.Disk > physicalResources.Disk && !allowOverCommit {
+			return physicalResources, fmt.Errorf(
 				"you cannot configure more disk than you have on this node: configured %d, have %d",
-				parsedLimitConfig.Disk, physcialResources.Disk,
+				parsedLimitConfig.Disk, physicalResources.Disk,
 			)
 		}
-		physcialResources.Disk = parsedLimitConfig.Disk
+		physicalResources.Disk = parsedLimitConfig.Disk
 	}
 
-	return physcialResources, nil
+	if parsedLimitConfig.GPU > 0 {
+		if parsedLimitConfig.GPU > physicalResources.GPU {
+			return physicalResources, fmt.Errorf(
+				"you cannot configure more GPU than you have on this node: configured %d, have %d",
+				parsedLimitConfig.GPU, physicalResources.GPU,
+			)
+		}
+		physicalResources.GPU = parsedLimitConfig.GPU
+	}
+
+	return physicalResources, nil
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
