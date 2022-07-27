@@ -11,4 +11,6 @@ Bacalhau was created to bring useful Compute to data stored in Filecoin. The sam
 
 Initially, the Bacalhau project will focus on serving data processing and analytics use cases. Over time Bacalhau will expand to other compute workloads.
 
-![image](../../static/img/architecture/bacalhau-high-level-view.png)
+# High Level Network View
+
+![image](../../static/img/bacalhau-high-level-view.png)
