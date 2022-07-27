@@ -175,6 +175,11 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 		return fmt.Errorf("AcceptJobBid: nodeID cannot be empty")
 	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.db.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName:    executor.JobLocalEventBidAccepted,
+		JobID:        jobID,
+		TargetNodeID: nodeID,
+	})
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidAccepted)
 	// the target node is the "nodeID" because the requester node calls this
