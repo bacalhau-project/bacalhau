@@ -355,22 +355,16 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 
 func (stack *DevStack) GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
 	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
-
-	job, ok, err := apiClient.Get(ctx, jobID)
+	states, err := apiClient.GetExecutionStates(ctx, jobID)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"devstack: error fetching job %s: %v", jobID, err)
+			"devstack: error fetching job states %s: %v", jobID, err)
 	}
-	if !ok {
-		return nil, nil
+	ret := map[string]executor.JobStateType{}
+	for id, state := range states {
+		ret[id] = state.State
 	}
-
-	states := map[string]executor.JobStateType{}
-	for id, state := range job.State {
-		states[id] = state.State
-	}
-
-	return states, nil
+	return ret, nil
 }
 
 // a function that is given a map of nodeid -> job states

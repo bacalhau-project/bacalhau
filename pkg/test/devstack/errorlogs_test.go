@@ -98,11 +98,10 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	)
 	require.NoError(suite.T(), err)
 
-	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
-	require.True(suite.T(), ok)
+	jobstates, err := apiClient.GetExecutionStates(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
 
-	state, ok := loadedJob.State[nodeIDs[0]]
+	state, ok := jobstates[nodeIDs[0]]
 	require.True(suite.T(), ok)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")

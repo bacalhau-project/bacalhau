@@ -102,12 +102,10 @@ func devStackDockerStorageTest(
 	)
 	require.NoError(t, err)
 
-	loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
-	require.True(t, ok)
-	require.NoError(t, err)
+	jobStates, err := apiClient.GetExecutionStates(ctx, submittedJob.ID)
 
 	// now we check the actual results produced by the ipfs verifier
-	for nodeID, state := range loadedJob.State {
+	for nodeID, state := range jobStates {
 		node, err := stack.GetNode(ctx, nodeID)
 		require.NoError(t, err)
 

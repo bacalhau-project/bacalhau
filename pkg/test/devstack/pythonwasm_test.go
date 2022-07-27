@@ -136,11 +136,10 @@ open("%s/test.txt", "w").write(open("%s").read())
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	loadedJob, ok, err := apiClient.Get(ctx, jobId)
-	require.True(suite.T(), ok)
+	jobStates, err := apiClient.GetExecutionStates(ctx, jobId)
 	require.NoError(suite.T(), err)
 
-	state, ok := loadedJob.State[nodeID]
+	state, ok := jobStates[nodeID]
 	require.True(suite.T(), ok)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
