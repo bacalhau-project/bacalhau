@@ -82,7 +82,7 @@ var describeCmd = &cobra.Command{
 		jobVMDesc.Memory = job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
+		jobSpecDesc.Engine = job.Spec.Engine.String()
 
 		jobDealDesc := jobDealDescription{}
 		jobDealDesc.Concurrency = job.Deal.Concurrency
