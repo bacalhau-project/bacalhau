@@ -138,8 +138,8 @@ func (d *InMemoryDatastore) GetExecutionStates(ctx context.Context, jobID string
 	if !ok {
 		return states, nil
 	}
-	for nodeId, state := range jobStates {
-		states[nodeId] = *state
+	for nodeID, state := range jobStates {
+		states[nodeID] = *state
 	}
 	return states, nil
 }
