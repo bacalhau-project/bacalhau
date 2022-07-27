@@ -114,7 +114,14 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 }
 
 func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
-	return storage.StorageSpec{}, fmt.Errorf("tbc")
+	cid, err := s.IPFSClient.Put(ctx, localPath)
+	if err != nil {
+		return storage.StorageSpec{}, err
+	}
+	return storage.StorageSpec{
+		Engine: storage.StorageSourceIPFS,
+		Cid:    cid,
+	}, nil
 }
 
 func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]string, error) {
