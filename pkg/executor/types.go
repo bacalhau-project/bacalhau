@@ -103,7 +103,7 @@ type JobShardState struct {
 type JobDeal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
-	Concurrency int `json:"concurrency"`
+	Concurrency uint `json:"concurrency"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
