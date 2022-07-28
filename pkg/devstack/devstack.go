@@ -6,9 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -362,130 +360,6 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 	}
 
 	return stack.AddFileToNodes(nodeCount, testFilePath)
-}
-
-func (stack *DevStack) GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobStateType, error) {
-	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
-	states, err := apiClient.GetExecutionStates(ctx, jobID)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"devstack: error fetching job states %s: %v", jobID, err)
-	}
-	ret := map[string]executor.JobStateType{}
-	for id, state := range states {
-		ret[id] = state.State
-	}
-	return ret, nil
-}
-
-// a function that is given a map of nodeid -> job states
-// and will throw an error if anything about that is wrong
-type CheckJobStatesFunction func(map[string]executor.JobStateType) (bool, error)
-
-// there should be zero errors with any job
-func WaitForJobThrowErrors(errorStates []executor.JobStateType) CheckJobStatesFunction {
-	return func(jobStates map[string]executor.JobStateType) (bool, error) {
-		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobStates)
-		for id, state := range jobStates {
-			if system.StringArrayContains(system.GetJobStateStringArray(errorStates), state.String()) {
-				return false, fmt.Errorf("job %s has error state: %s", id, state.String())
-			}
-		}
-		return true, nil
-	}
-}
-
-// there must be exactly len(nodeIds)
-// each state must be the given type
-// each seen node id must be present in the presented array
-// this is useful for testing (did only the nodes that should have completed the job run it)
-func WaitForJobAllHaveState(nodeIDs []string, states ...executor.JobStateType) CheckJobStatesFunction {
-	return func(jobStates map[string]executor.JobStateType) (bool, error) {
-		log.Trace().Msgf("WaitForJobShouldHaveStates:\nnodeIds = %+v,\nstate = %s\njobStates = %+v", nodeIDs, states, jobStates)
-		if len(jobStates) != len(nodeIDs) {
-			return false, nil
-		}
-		seenAll := true
-		for _, nodeID := range nodeIDs {
-			seenState, ok := jobStates[nodeID]
-			if !ok {
-				seenAll = false
-			} else if !system.StringArrayContains(
-				system.GetJobStateStringArray(states), seenState.String()) {
-				seenAll = false
-			}
-		}
-		return seenAll, nil
-	}
-}
-
-// if there are > X states then error
-func WaitDontExceedCount(count int) CheckJobStatesFunction {
-	return func(jobStates map[string]executor.JobStateType) (bool, error) {
-		if len(jobStates) > count {
-			return false, fmt.Errorf("there are more states: %d than expected: %d", len(jobStates), count)
-		}
-		return true, nil
-	}
-}
-
-func (stack *DevStack) WaitForJobWithLogs(
-	ctx context.Context,
-	jobID string,
-	shouldLog bool,
-	checkJobStateFunctions ...CheckJobStatesFunction,
-) error {
-	waiter := &system.FunctionWaiter{
-		Name:        "wait for job",
-		MaxAttempts: 100,
-		Delay:       time.Second * 1,
-		Handler: func() (bool, error) {
-			// load the current states of the job
-			states, err := stack.GetJobStates(ctx, jobID)
-			if shouldLog {
-				spew.Dump(states)
-			}
-			if err != nil {
-				return false, err
-			}
-
-			allOk := true
-			for _, checkFunction := range checkJobStateFunctions {
-				stepOk, err := checkFunction(states)
-				if err != nil {
-					return false, err
-				}
-				if !stepOk {
-					allOk = false
-				}
-			}
-
-			// If all the jobs are in terminal states, then nothing is going
-			// to change if we keep polling, so we should exit early.
-			allTerminal := len(states) == len(stack.Nodes)
-			for _, state := range states {
-				if !state.IsTerminal() {
-					allTerminal = false
-					break
-				}
-			}
-			if allTerminal && !allOk {
-				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
-			}
-
-			return allOk, nil
-		},
-	}
-
-	return waiter.Wait()
-}
-
-func (stack *DevStack) WaitForJob(
-	ctx context.Context,
-	jobID string,
-	checkJobStateFunctions ...CheckJobStatesFunction,
-) error {
-	return stack.WaitForJobWithLogs(ctx, jobID, false, checkJobStateFunctions...)
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
