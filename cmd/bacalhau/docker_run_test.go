@@ -152,7 +152,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
 
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,

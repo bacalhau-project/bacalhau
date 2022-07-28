@@ -2,14 +2,18 @@ package bacalhau
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -54,13 +58,6 @@ func shortID(id string) string {
 	return id[:8]
 }
 
-func getJobResult(job executor.Job, state executor.JobState) string {
-	if state.ResultsID == "" {
-		return "-"
-	}
-	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsID
-}
-
 func getAPIClient() *publicapi.APIClient {
 	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 }
@@ -102,11 +99,85 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-// func RandInt(i int) int {
-// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
-// 	if err != nil {
-// 		log.Fatal().Msg("could not generate random number")
-// 	}
+type downloadSettings struct {
+	timeoutSecs    int
+	outputDir      string
+	ipfsSwarmAddrs string
+}
 
-// 	return int(n.Int64())
-// }
+func setupDownloadFlags(cmd *cobra.Command, settings downloadSettings) {
+	cmd.Flags().IntVar(&settings.timeoutSecs, "timeout-secs",
+		settings.timeoutSecs, "Timeout duration for IPFS downloads.")
+	cmd.Flags().StringVar(&settings.outputDir, "output-dir",
+		settings.outputDir, "Directory to write the output to.")
+	cmd.Flags().StringVar(&settings.ipfsSwarmAddrs, "ipfs-swarm-addrs",
+		settings.ipfsSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+}
+
+func downloadJobResults(
+	cm *system.CleanupManager,
+	resultCIDs []string,
+	settings downloadSettings,
+) error {
+	// resolver, err := getAPIClient().GetJobStateResolver(context.Background(), id)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// resultCIDs, err := resolver.GetResultCIDs()
+	// if err != nil {
+	// 	return err
+	// }
+
+	log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
+
+	if len(resultCIDs) == 0 {
+		log.Info().Msg("Job has no results.")
+		return nil
+	}
+
+	// NOTE: we have to spin up a temporary IPFS node as we don't
+	// generally have direct access to a remote node's API server.
+	log.Debug().Msg("Spinning up IPFS node...")
+	n, err := ipfs.NewNode(cm, strings.Split(settings.ipfsSwarmAddrs, ","))
+	if err != nil {
+		return err
+	}
+
+	log.Debug().Msg("Connecting client to new IPFS node...")
+	cl, err := n.Client()
+	if err != nil {
+		return err
+	}
+
+	// NOTE: this will run in non-deterministic order
+	for _, cid := range resultCIDs {
+		outputDir := filepath.Join(settings.outputDir, cid)
+		ok, err := system.PathExists(outputDir)
+		if err != nil {
+			return err
+		}
+		if ok {
+			log.Warn().Msgf("Output directory '%s' already exists, skipping CID '%s'.", outputDir, cid)
+			continue
+		}
+
+		log.Info().Msgf("Downloading result CID '%s' to '%s'...",
+			cid, outputDir)
+
+		ctx, cancel := context.WithDeadline(context.Background(),
+			time.Now().Add(time.Second*time.Duration(settings.timeoutSecs)))
+		defer cancel()
+
+		err = cl.Get(ctx, cid, outputDir)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				log.Error().Msg("Timed out while downloading result.")
+			}
+
+			return err
+		}
+	}
+
+	return nil
+}
