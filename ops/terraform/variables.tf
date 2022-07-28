@@ -8,14 +8,14 @@ variable "bacalhau_port" {
 # IMPORTANT - only use this for test clusters or stress test clusters
 # it will result in node0 having an unsafe private key
 variable "bacalhau_unsafe_cluster" {
-  type = bool
+  type    = bool
   default = false
 }
 # connect to a known node0 id
 # this is used for long lived clusters that have already been bootstrapped
 # and the node0 id is derived from a persisted known private key
 variable "bacalhau_connect_node0" {
-  type = string
+  type    = string
   default = ""
 }
 variable "ipfs_version" {
@@ -34,7 +34,7 @@ variable "volume_size_gb" {
   type = number
 }
 variable "boot_disk_size_gb" {
-  type = number
+  type    = number
   default = 10
 }
 // should we add delete protection to public ip addresses and disks?
@@ -71,6 +71,32 @@ variable "ssh_access_cidrs" {
 // on the node's persistent data disk. This is useful for initialising stuff
 // like API keys that shouldn't go in the public repo.
 variable "honeycomb_api_key" {
-  type = string
+  type    = string
   default = ""
+}
+
+
+// Out of a total of var.instance_count machines, how many do you want to be GPU machines?
+// I chose this, rather than making a new pool of machines, to maintain configuration parity
+variable "num_gpu_machines" {
+  type    = number
+  default = 0
+}
+
+// Number of GPUs attached to each machine
+variable "num_gpus_per_machine" {
+  type    = number
+  default = 1
+}
+
+// The sku of the GPU
+variable "gpu_type" {
+  type    = string
+  default = "nvidia-tesla-t4"
+}
+
+// The machine type to attach the GPU to. Unfortunately not all machines support attaching GPUs. I suggest using the UI to figure this out.
+variable "gpu_machine_type" {
+  type    = string
+  default = "n1-standard-4"
 }
