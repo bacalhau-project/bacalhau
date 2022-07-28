@@ -106,13 +106,13 @@ type listResponse struct {
 	Jobs map[string]executor.Job `json:"jobs"`
 }
 
-type statesRequest struct {
+type stateRequest struct {
 	ClientID string `json:"client_id"`
 	JobID    string `json:"job_id"`
 }
 
-type statesResponse struct {
-	States map[string]executor.JobState `json:"states"`
+type stateResponse struct {
+	State executor.JobState `json:"state"`
 }
 
 type versionRequest struct {
@@ -175,21 +175,21 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 }
 
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
-	var statesReq statesRequest
-	if err := json.NewDecoder(req.Body).Decode(&statesReq); err != nil {
+	var stateReq stateRequest
+	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	states, err := apiServer.Controller.GetExecutionStates(req.Context(), statesReq.JobID)
+	jobState, err := apiServer.Controller.GetJobState(req.Context(), stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(statesResponse{
-		States: states,
+	err = json.NewEncoder(res).Encode(stateResponse{
+		State: jobState,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -96,22 +97,35 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 	return executor.Job{}, false, nil
 }
 
-func (apiClient *APIClient) GetExecutionStates(ctx context.Context, jobID string) (states map[string]executor.JobState, err error) {
+func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states executor.JobState, err error) {
 	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
+		return executor.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
-	req := statesRequest{
+	req := stateRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 	}
 
-	var res statesResponse
+	var res stateResponse
 	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return nil, err
+		return executor.JobState{}, err
 	}
 
-	return res.States, nil
+	return res.State, nil
+}
+
+func (apiClient *APIClient) GetJobStateResolver(ctx context.Context, jobID string) (*job.StateResolver, error) {
+	loadedJob, foundJob, err := apiClient.Get(ctx, jobID)
+	if !foundJob {
+		return nil, fmt.Errorf("job not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return job.NewStateResolver(loadedJob, func(id string) (executor.JobState, error) {
+		return apiClient.GetJobState(ctx, id)
+	}), nil
 }
 
 // Submit submits a new job to the node's transport.
