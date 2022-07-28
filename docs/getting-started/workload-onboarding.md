@@ -47,9 +47,15 @@ bacalhau get JOB_ID
 
 ## Example Onboarded Workload
 
-Here is an [example of an onboarded workload leveraging the Surface Ocean CO₂ Atlas (SOCAT)](https://github.com/wesfloyd/bacalhau_socat_test) to Bacalhau: 
+Here is an example of an onboarded workload leveraging the Surface Ocean CO₂ Atlas (SOCAT) to Bacalhau:
+- [Youtube: Bacalhau SOCAT Workload Demo](https://www.youtube.com/watch?v=t2AHD8yJhLY)
+- [Github: bacalhau_socat_test](https://github.com/wesfloyd/bacalhau_socat_test)
 
-<ReactPlayer playing controls url='https://www.youtube.com/watch?v=t2AHD8yJhLY' playing='false'/>
+<!-- <ReactPlayer playing controls url='https://www.youtube.com/watch?v=t2AHD8yJhLY' playing='false'/> -->
+
+Here is an example of running a job live on the Bacalhau network: [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
+
+
 
 
 
