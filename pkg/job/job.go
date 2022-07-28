@@ -60,6 +60,9 @@ func ConstructDockerJob( //nolint:funlen
 		if len(slices) != 2 {
 			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
+		if strings.Contains(slices[0], "/") {
+			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("forward slash in CID not (yet) supported: %s", slices[0])
+		}
 		jobInputs = append(jobInputs, storage.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
