@@ -1,5 +1,5 @@
 ---
-sidebar_label: 'Development' sidebar_position: 100
+sidebar_label: 'Development' sidebar_position: 10
 ---
 
 # Development
