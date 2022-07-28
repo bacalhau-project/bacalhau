@@ -184,6 +184,10 @@ func (state JobStateType) IsComplete() bool {
 	return state == JobStateComplete || state == JobStateError
 }
 
+func (state JobStateType) IsError() bool {
+	return state == JobStateError
+}
+
 // tells you if this event is a valid one
 func IsValidJobState(state JobStateType) bool {
 	return state > jobStateUnknown && state < jobStateDone
