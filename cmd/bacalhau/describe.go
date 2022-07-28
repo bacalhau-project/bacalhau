@@ -43,7 +43,7 @@ type jobSpecVMDescription struct {
 }
 
 type jobDealDescription struct {
-	Concurrency   int      `yaml:"Concurrency"`
+	Concurrency   uint     `yaml:"Concurrency"`
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 

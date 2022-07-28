@@ -34,7 +34,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		resultCIDs, err := resolver.GetResultCIDs()
+		resultCIDs, err := resolver.GetResults()
 		if err != nil {
 			return err
 		}

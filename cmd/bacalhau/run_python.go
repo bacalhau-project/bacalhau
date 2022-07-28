@@ -50,7 +50,7 @@ func init() {
 	)
 	// TODO: concurrency should be factored out (at least up to run, maybe
 	// shared with docker and wasm raw commands too)
-	runPythonCmd.PersistentFlags().IntVar(
+	runPythonCmd.PersistentFlags().UintVar(
 		&jobConcurrency, "concurrency", 1,
 		`How many nodes should run the job`,
 	)
