@@ -47,6 +47,7 @@ func SetupTest(
 		getExecutors,
 		getVerifiers,
 		config,
+		"",
 	)
 	require.NoError(t, err)
 

@@ -58,6 +58,7 @@ func NewDevStack(
 	getVerifiers GetVerifiersFunc,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
+	peer string,
 ) (*DevStack, error) {
 	ctx, span := newSpan("NewDevStack")
 	defer span.End()
@@ -108,7 +109,13 @@ func NewDevStack(
 
 		libp2pPeer := ""
 
-		if len(nodes) > 0 {
+		if i == 0 {
+			if peer != "" {
+				// connect 0'th node to external peer if specified
+				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", peer)
+				libp2pPeer = peer
+			}
+		} else {
 			var libp2pHostID string
 			// connect the libp2p scheduler node
 			firstNode := nodes[0]
@@ -121,7 +128,7 @@ func NewDevStack(
 
 			// connect this scheduler to the first
 			libp2pPeer = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Libp2pPort, libp2pHostID)
-			log.Debug().Msgf("Connectint to first libp2p scheduler node: %s", libp2pPeer)
+			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
 		transport, err := libp2p.NewTransport(cm, libp2pPort, []string{libp2pPeer})

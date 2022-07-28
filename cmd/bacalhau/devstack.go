@@ -20,6 +20,7 @@ import (
 var devStackNodes int
 var devStackBadActors int
 var devStackNoop bool
+var devStackPeer string
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
@@ -33,6 +34,10 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	devstackCmd.PersistentFlags().BoolVar(
 		&devStackNoop, "noop", false,
 		`Use the noop executor and verifier for all jobs`,
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&devStackPeer, "peer", "",
+		`Connect node 0 to another network node`,
 	)
 }
 
@@ -84,6 +89,7 @@ var devstackCmd = &cobra.Command{
 			getExecutors,
 			getVerifiers,
 			computenode.NewDefaultComputeNodeConfig(),
+			devStackPeer,
 		)
 		if err != nil {
 			return err
