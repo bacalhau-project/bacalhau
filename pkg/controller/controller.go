@@ -20,7 +20,7 @@ import (
 type Controller struct {
 	cleanupManager   *system.CleanupManager
 	id               string
-	datastore        localdb.LocalDB
+	localdb          localdb.LocalDB
 	transport        transport.Transport
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider
 	jobContexts      map[string]context.Context // total job lifecycle
@@ -49,7 +49,7 @@ func NewController(
 	ctrl := &Controller{
 		cleanupManager:   cm,
 		id:               nodeID,
-		datastore:        db,
+		localdb:          db,
 		transport:        tx,
 		storageProviders: storageProviders,
 		jobContexts:      make(map[string]context.Context),
@@ -63,8 +63,8 @@ func (ctrl *Controller) GetTransport() transport.Transport {
 	return ctrl.transport
 }
 
-func (ctrl *Controller) GetDatastore() localdb.LocalDB {
-	return ctrl.datastore
+func (ctrl *Controller) GetLocalDB() localdb.LocalDB {
+	return ctrl.localdb
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
@@ -104,23 +104,24 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 
 */
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
-	return ctrl.datastore.GetJob(ctx, id)
+	return ctrl.localdb.GetJob(ctx, id)
 }
 
 func (ctrl *Controller) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
-	return ctrl.datastore.GetJobEvents(ctx, id)
+	return ctrl.localdb.GetJobEvents(ctx, id)
 }
 
 func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
-	return ctrl.datastore.GetJobLocalEvents(ctx, id)
+	return ctrl.localdb.GetJobLocalEvents(ctx, id)
 }
 
-func (ctrl *Controller) GetExecutionStates(ctx context.Context, id string) (map[string]executor.JobState, error) {
-	return ctrl.datastore.GetExecutionStates(ctx, id)
+// we return an array of job states against each job - one for each shard
+func (ctrl *Controller) GetJobState(ctx context.Context, id string) (executor.JobState, error) {
+	return ctrl.localdb.GetJobState(ctx, id)
 }
 
 func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
-	return ctrl.datastore.GetJobs(ctx, query)
+	return ctrl.localdb.GetJobs(ctx, query)
 }
 
 /*
@@ -153,7 +154,7 @@ func (ctrl *Controller) SubmitJob(
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
-	err = ctrl.datastore.AddJob(ctx, job)
+	err = ctrl.localdb.AddJob(ctx, job)
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
@@ -179,7 +180,7 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 		return fmt.Errorf("AcceptJobBid: nodeID cannot be empty")
 	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	err := ctrl.datastore.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
 		EventName:    executor.JobLocalEventBidAccepted,
 		JobID:        jobID,
 		TargetNodeID: nodeID,
@@ -369,28 +370,38 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	// work out which internal handler function based on the event type
 	switch ev.EventName {
 	case executor.JobEventCreated:
-		err = ctrl.datastore.AddJob(ctx, constructJob(ev))
+		err = ctrl.localdb.AddJob(ctx, constructJob(ev))
 
 	case executor.JobEventDealUpdated:
-		err = ctrl.datastore.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
+		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	err = ctrl.datastore.AddEvent(ctx, ev.JobID, ev)
+	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
 	if err != nil {
 		return err
 	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-		err = ctrl.datastore.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
-			State:     executionState,
-			Status:    ev.Status,
-			ResultsID: ev.ResultsID,
-		})
+
+		// update the state for this job shard
+		err = ctrl.localdb.UpdateShardState(
+			ctx,
+			ev.JobID,
+			ev.TargetNodeID,
+			ev.ShardIndex,
+			executor.JobShardState{
+				NodeID:     ev.TargetNodeID,
+				ShardIndex: ev.ShardIndex,
+				State:      executionState,
+				Status:     ev.Status,
+				ResultsID:  ev.ResultsID,
+			},
+		)
 		if err != nil {
 			return err
 		}
