@@ -182,10 +182,8 @@ func NewDevStack(
 		// JSON RPC
 		//////////////////////////////////////
 
-		apiPort, err := freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
+		// predictable port for API
+		apiPort := 10000 + i
 
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",

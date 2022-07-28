@@ -105,7 +105,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.VM.Entrypoint[0],
+					returnedJobDescription.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -121,7 +121,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.VM.Entrypoint[0],
+					returnedJobDescription.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()

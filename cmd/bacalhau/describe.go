@@ -14,24 +14,30 @@ import (
 func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
+type stateDescription struct {
+	State     string `yaml:"State"`
+	Status    string `yaml:"Status"`
+	ResultsID string `yaml:"Result CID"`
+}
+
 type jobDescription struct {
-	ID              string                       `yaml:"Id"`
-	ClientID        string                       `yaml:"ClientID"`
-	RequesterNodeID string                       `yaml:"RequesterNodeId"`
-	Spec            jobSpecDescription           `yaml:"Spec"`
-	Deal            executor.JobDeal             `yaml:"Deal"`
-	State           map[string]executor.JobState `yaml:"State"`
-	CreatedAt       time.Time                    `yaml:"Start Time"`
+	ID              string                      `yaml:"Id"`
+	ClientID        string                      `yaml:"ClientID"`
+	RequesterNodeID string                      `yaml:"RequesterNodeId"`
+	Spec            jobSpecDescription          `yaml:"Spec"`
+	Deal            executor.JobDeal            `yaml:"Deal"`
+	State           map[string]stateDescription `yaml:"State"`
+	CreatedAt       time.Time                   `yaml:"Start Time"`
 }
 
 type jobSpecDescription struct {
-	Engine     string               `yaml:"Engine"`
-	Verifier   string               `yaml:"Verifier"`
-	VM         jobSpecVMDescription `yaml:"VM"`
-	Deployment jobDealDescription   `yaml:"Deployment"`
+	Engine     string                   `yaml:"Engine"`
+	Verifier   string                   `yaml:"Verifier"`
+	Docker     jobSpecDockerDescription `yaml:"Docker"`
+	Deployment jobDealDescription       `yaml:"Deployment"`
 }
 
-type jobSpecVMDescription struct {
+type jobSpecDockerDescription struct {
 	Image       string   `yaml:"Image"`
 	Entrypoint  []string `yaml:"Entrypoint Command"`
 	Env         []string `yaml:"Submitted Env Variables"`
@@ -73,13 +79,13 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		jobVMDesc := jobSpecVMDescription{}
-		jobVMDesc.Image = job.Spec.Docker.Image
-		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
-		jobVMDesc.Env = job.Spec.Docker.Env
+		jobDockerDesc := jobSpecDockerDescription{}
+		jobDockerDesc.Image = job.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = job.Spec.Docker.Env
 
-		jobVMDesc.CPU = job.Spec.Resources.CPU
-		jobVMDesc.Memory = job.Spec.Resources.Memory
+		jobDockerDesc.CPU = job.Spec.Resources.CPU
+		jobDockerDesc.Memory = job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
 		jobSpecDesc.Engine = executor.EngineTypes()[job.Spec.Engine].String()
@@ -88,7 +94,7 @@ var describeCmd = &cobra.Command{
 		jobDealDesc.Concurrency = job.Deal.Concurrency
 
 		jobSpecDesc.Verifier = job.Spec.Verifier.String()
-		jobSpecDesc.VM = jobVMDesc
+		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
 		jobDesc.ID = job.ID
@@ -96,7 +102,14 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-		jobDesc.State = states
+		jobDesc.State = map[string]stateDescription{}
+		for id, state := range states {
+			jobDesc.State[id] = stateDescription{
+				State:     state.State.String(),
+				Status:    state.Status,
+				ResultsID: state.ResultsID,
+			}
+		}
 		jobDesc.CreatedAt = job.CreatedAt
 
 		bytes, _ := yaml.Marshal(jobDesc)

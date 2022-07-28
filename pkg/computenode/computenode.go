@@ -175,6 +175,7 @@ func (node *ComputeNode) subscriptionSetup() {
 		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
+			log.Debug().Msgf("[%s] APPLES ARE SICK job created: %s", node.id, job.ID)
 			node.subscriptionEventCreated(ctx, jobEvent, job)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:

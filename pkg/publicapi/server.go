@@ -70,6 +70,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/states", instrument("states", apiServer.states))
+	sm.Handle("/id", instrument("id", apiServer.id))
 	sm.Handle("/peers", instrument("peers", apiServer.peers))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
 	sm.Handle("/version", instrument("version", apiServer.version))
@@ -125,6 +126,24 @@ type versionRequest struct {
 }
 type versionResponse struct {
 	VersionInfo *executor.VersionInfo `json:"version_info"`
+}
+
+func (apiServer *APIServer) id(res http.ResponseWriter, req *http.Request) {
+	switch apiTransport := apiServer.Controller.GetTransport().(type) { //nolint:gocritic
+	case *libp2p.LibP2PTransport:
+		id, err := apiTransport.HostID(context.Background())
+		if err != nil {
+			http.Error(res, fmt.Sprintf("Error getting id: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		res.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(res).Encode(id)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 }
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {

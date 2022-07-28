@@ -412,8 +412,10 @@ func (ctrl *Controller) constructEvent(jobID string, eventName executor.JobEvent
 }
 
 func constructJob(ev executor.JobEvent) executor.Job {
+	log.Debug().Msgf("Constructing job from event: %+v", ev)
 	return executor.Job{
-		ID:              ev.JobID,
+		ID: ev.JobID,
+		// TODO: add logging here
 		RequesterNodeID: ev.SourceNodeID,
 		ClientID:        ev.ClientID,
 		Spec:            ev.JobSpec,

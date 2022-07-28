@@ -72,7 +72,11 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		return nil
 	})
 
-	ps, err := pubsub.NewGossipSub(ctx, h)
+	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true))
+	// ps, err := pubsub.NewGossipSub(ctx, h)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

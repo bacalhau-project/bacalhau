@@ -167,9 +167,21 @@ test-pythonwasm:
 devstack:
 	go run . devstack
 
+.PHONY: devstack-100
+devstack-100:
+	go run . devstack --nodes 100
+
+.PHONY: devstack-20
+devstack-20:
+	go run . devstack --nodes 20
+
 .PHONY: devstack-noop
 devstack-noop:
 	go run . devstack --noop
+
+.PHONY: devstack-noop-100
+devstack-noop-100:
+	go run . devstack --noop --nodes 100
 
 .PHONY: devstack-race
 devstack-race:
