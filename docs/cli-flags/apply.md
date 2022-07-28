@@ -51,6 +51,10 @@ inputs:
     name: ''
     cid: QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9
     path: /input
+  - engine_name: urldownload
+    name: ''
+    url: https://foo.bar.io/foo_data.txt
+    path: /app/foo_data_1.txt
 outputs:
   - engine: ipfs
     name: output
