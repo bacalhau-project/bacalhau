@@ -2,7 +2,7 @@
 set -e
 
 echo "Running golangci-lint checker..."
-$GOBIN/golangci-lint run
+"${GOBIN}"/golangci-lint run
 echo "No linting issues found."
 
 echo "Running go.mod checker..."

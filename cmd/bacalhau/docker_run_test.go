@@ -6,6 +6,7 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"net/url"
@@ -154,13 +155,17 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			require.NoError(suite.T(), err)
 			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
 
+			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
+			require.NoError(suite.T(), err)
+
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
+				"--localoutput", outputDir,
 				"ubuntu",
 				"--",
-				"echo", "hello",
+				"echo", "hello from docker submit wait",
 			)
 			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 

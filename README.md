@@ -1,6 +1,6 @@
 <!-- commenting out until we can fix the image logo [![CircleCI](https://dl.circleci.com/status-badge/img/null/filecoin-project/bacalhau/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/null/filecoin-project/bacalhau/tree/main)
 -->
-
+# The Filecoin Distributed Computation Framework  
 <p align="center">
   <img src="docs/images/bacalhau-fish.jpg" alt="Bacalhau Logo" width="400" />
 </p>
@@ -11,8 +11,6 @@
 </p>
   
 <br>
-
-# The Filecoin Distributed Computation Framework  
 
 * [Website](https://www.bacalhau.org/)
 * [Documentation](https://docs.bacalhau.org/)
