@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -88,21 +88,27 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
 
-	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, submittedJob.ID,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
+	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
+	require.NoError(suite.T(), err)
+
+	err = resolver.Wait(
+		ctx,
+		uint(len(nodeIDs)),
+		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
-			executor.JobStateComplete,
+			executor.JobStateError,
 		}),
-		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateError),
+		job.WaitForJobStates(map[executor.JobStateType]uint{
+			executor.JobStateError: uint(len(nodeIDs)),
+		}),
 	)
 	require.NoError(suite.T(), err)
 
-	jobstates, err := apiClient.GetExecutionStates(ctx, submittedJob.ID)
+	shards, err := resolver.GetShards()
 	require.NoError(suite.T(), err)
+	require.True(suite.T(), len(shards) > 0)
 
-	state, ok := jobstates[nodeIDs[0]]
-	require.True(suite.T(), ok)
+	state := shards[0]
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)

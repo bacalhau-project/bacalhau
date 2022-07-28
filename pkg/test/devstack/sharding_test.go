@@ -139,9 +139,6 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	)
 	defer TeardownTest(stack, cm)
 
-	nodeIDs, err := stack.GetNodeIds()
-	require.NoError(suite.T(), err)
-
 	dirPath, err := prepareFolderWithFiles(10, 10)
 	require.NoError(suite.T(), err)
 
@@ -189,32 +186,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
 
-	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, submittedJob.ID,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
-		}),
-		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
-	)
+	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
-
-	// loadedJob, ok, err := apiClient.Get(ctx, submittedJob.ID)
-	// require.True(suite.T(), ok)
-	// require.NoError(suite.T(), err)
-
-	// for nodeID, state := range loadedJob.State {
-	// 	node, err := stack.GetNode(ctx, nodeID)
-	// 	require.NoError(suite.T(), err)
-
-	// 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-	// 	require.NoError(suite.T(), err)
-
-	// 	outputPath := filepath.Join(outputDir, state.ResultsID)
-	// 	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
-	// 	require.NoError(suite.T(), err)
-	// 	fmt.Printf("FOLDER --------------------------------------\n")
-	// 	spew.Dump(outputPath)
-
-	// }
+	err = resolver.WaitUntilComplete(ctx)
+	require.NoError(suite.T(), err)
 }
