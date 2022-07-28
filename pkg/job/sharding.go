@@ -2,6 +2,7 @@ package job
 
 import (
 	doublestar "github.com/bmatcuk/doublestar/v4"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 )
 
 /*
@@ -32,4 +33,8 @@ func ApplyGlobPattern(files []string, pattern string) ([]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func GetTotalJobShards(job executor.Job) uint {
+	return job.Deal.Concurrency * job.ExecutionPlan.TotalShards
 }
