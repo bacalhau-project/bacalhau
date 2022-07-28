@@ -19,13 +19,18 @@ type JobQuery struct {
 // of smart contract implementation (e.g. FVM)
 type LocalDB interface {
 	GetJob(ctx context.Context, id string) (executor.Job, error)
+	GetJobState(ctx context.Context, jobID string) (executor.JobState, error)
 	GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error)
-	GetExecutionStates(ctx context.Context, jobID string) (map[string]executor.JobState, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]executor.Job, error)
 	AddJob(ctx context.Context, job executor.Job) error
 	AddEvent(ctx context.Context, jobID string, event executor.JobEvent) error
 	AddLocalEvent(ctx context.Context, jobID string, event executor.JobLocalEvent) error
 	UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error
-	UpdateExecutionState(ctx context.Context, jobID, nodeID string, state executor.JobState) error
+	UpdateShardState(
+		ctx context.Context,
+		jobID, nodeID string,
+		shardIndex uint,
+		state executor.JobShardState,
+	) error
 }

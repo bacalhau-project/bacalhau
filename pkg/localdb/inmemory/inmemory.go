@@ -12,7 +12,7 @@ import (
 type InMemoryDatastore struct {
 	// we keep pointers to these things because we will update them partially
 	jobs        map[string]*executor.Job
-	states      map[string]map[string]*executor.JobState
+	states      map[string]*executor.JobState
 	events      map[string][]executor.JobEvent
 	localEvents map[string][]executor.JobLocalEvent
 	mtx         sync.Mutex
@@ -21,7 +21,7 @@ type InMemoryDatastore struct {
 func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	res := &InMemoryDatastore{
 		jobs:        map[string]*executor.Job{},
-		states:      map[string]map[string]*executor.JobState{},
+		states:      map[string]*executor.JobState{},
 		events:      map[string][]executor.JobEvent{},
 		localEvents: map[string][]executor.JobLocalEvent{},
 	}
@@ -130,44 +130,64 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	return nil
 }
 
-func (d *InMemoryDatastore) GetExecutionStates(ctx context.Context, jobID string) (map[string]executor.JobState, error) {
+func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (executor.JobState, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	states := map[string]executor.JobState{}
-	jobStates, ok := d.states[jobID]
+	_, ok := d.jobs[jobID]
 	if !ok {
-		return states, nil
+		return executor.JobState{}, fmt.Errorf("no job found: %s", jobID)
 	}
-	for nodeID, state := range jobStates {
-		states[nodeID] = *state
+	state, ok := d.states[jobID]
+	if !ok {
+		return executor.JobState{}, nil
 	}
-	return states, nil
+	return *state, nil
 }
 
-func (d *InMemoryDatastore) UpdateExecutionState(ctx context.Context, jobID, nodeID string, state executor.JobState) error {
+func (d *InMemoryDatastore) UpdateShardState(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex uint,
+	update executor.JobShardState,
+) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
 		return fmt.Errorf("no job found: %s", jobID)
 	}
-	jobStates, ok := d.states[jobID]
+	jobState, ok := d.states[jobID]
 	if !ok {
-		jobStates = map[string]*executor.JobState{}
+		jobState = &executor.JobState{
+			Nodes: map[string]executor.JobNodeState{},
+		}
 	}
-	nodeState, ok := jobStates[nodeID]
+	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
-		nodeState = &state
+		nodeState = executor.JobNodeState{
+			Shards: map[uint]executor.JobShardState{},
+		}
 	}
-	nodeState.State = state.State
-	if state.ResultsID != "" {
-		nodeState.ResultsID = state.ResultsID
+	shardSate, ok := nodeState.Shards[shardIndex]
+	if !ok {
+		shardSate = executor.JobShardState{
+			NodeID:     nodeID,
+			ShardIndex: shardIndex,
+		}
 	}
-	if state.Status != "" {
-		nodeState.Status = state.Status
+
+	shardSate.State = update.State
+	if update.Status != "" {
+		shardSate.Status = update.Status
 	}
-	jobStates[nodeID] = nodeState
-	d.states[jobID] = jobStates
+
+	if update.ResultsID != "" {
+		shardSate.ResultsID = update.ResultsID
+	}
+
+	nodeState.Shards[shardIndex] = shardSate
+	jobState.Nodes[nodeID] = nodeState
+	d.states[jobID] = jobState
 	return nil
 }
 
