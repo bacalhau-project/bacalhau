@@ -11,3 +11,5 @@ boot_disk_size_gb      = 500
 machine_type           = "e2-standard-16"
 protect_resources      = true
 auto_subnets           = true
+ingress_cidrs          = ["0.0.0.0/0"]
+ssh_access_cidrs       = ["0.0.0.0/0"]
