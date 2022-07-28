@@ -67,7 +67,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 
 	// get the CID so we can use it in the tests below but without it actually being
 	// added to the server (so we can test locality anywhere)
-	EXAMPLE_TEXT := "hello"
+	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := (func() (string, error) {
 		_, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())

@@ -12,8 +12,6 @@
   
 <br>
 
-# The Filecoin Distributed Computation Framework  
-
 * [Website](https://www.bacalhau.org/)
 * [Documentation](https://docs.bacalhau.org/)
 * [Twitter](https://twitter.com/BacalhauProject)
