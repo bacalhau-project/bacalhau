@@ -6,6 +6,7 @@ sidebar_position: 1
 # CLI Commands
 
 ```bash
+  apply       Submit a job.json or job.yaml file and run it on the network
   completion  Generate the autocompletion script for the specified shell
   describe    Describe a job on the network
   devstack    Start a cluster of bacalhau nodes for testing and development
@@ -21,8 +22,8 @@ sidebar_position: 1
 ## Top level flags
 
 ```bash
-      --api-host string   The host for the client and server to communicate on (via REST). (default "bootstrap.production.bacalhau.org")
-      --api-port int      The port for the client and server to communicate on (via REST). (default 1234)
+      --api-host string   The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set. (default "bootstrap.production.bacalhau.org")
+      --api-port int      The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set. (default 1234)
   -h, --help              help for bacalhau
 ```
 
@@ -39,8 +40,10 @@ sidebar_position: 1
       --cpu string               Job CPU cores (e.g. 500m, 2, 8).
       --engine string            What executor engine to use to run the job (default "docker")
   -e, --env strings              The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
+  -g, --gettimeout int           Timeout for getting the results of a job in --wait (default 10)
       --gpu string               Job GPU requirement (e.g. 1, 2, 8).
   -h, --help                     help for run
+  -u, --input-urls strings       URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz') and supports HTTP and HTTPS.
   -v, --input-volumes strings    CID:path of the input data volumes, if you need to set the path of the mounted data.
   -i, --inputs strings           CIDs to use on the job. Mounts them at '/inputs' in the execution.
   -l, --labels strings           List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
@@ -48,6 +51,7 @@ sidebar_position: 1
   -o, --output-volumes strings   name:path of the output data volumes. 'outputs:/outputs' is always added.
       --skip-syntax-checking     Skip having 'shellchecker' verify syntax of the command
       --verifier string          What verification engine to use to run the job (default "ipfs")
+  -w, --wait                     Wait For Job To Finish And Print Output
 ```
 
 ### List
