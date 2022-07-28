@@ -35,13 +35,21 @@ func NewStateResolver(
 	}
 }
 
+func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
+	jobState, err := resolver.loader(resolver.job.ID)
+	if err != nil {
+		return []executor.JobShardState{}, err
+	}
+	return FlattenShardStates(jobState), nil
+}
+
 func (resolver *StateResolver) GetResults() ([]string, error) {
 	ret := []string{}
 	jobState, err := resolver.loader(resolver.job.ID)
 	if err != nil {
 		return ret, err
 	}
-	allShardStates := flattenShardStates(jobState)
+	allShardStates := FlattenShardStates(jobState)
 	for _, shard := range allShardStates {
 		if shard.ResultsID != "" {
 			ret = append(ret, shard.ResultsID)
@@ -99,7 +107,7 @@ func (resolver *StateResolver) Wait(
 			// some of the check functions returned false
 			// let's see if we can quiet early because all expectedd states are
 			// in terminal state
-			allShardStates := flattenShardStates(jobState)
+			allShardStates := FlattenShardStates(jobState)
 
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
@@ -127,14 +135,17 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
 	return resolver.Wait(
 		ctx,
 		totalShards,
-		WaitThrowErrors([]executor.JobStateType{executor.JobStateError}),
+		WaitThrowErrors([]executor.JobStateType{
+			executor.JobStateCancelled,
+			executor.JobStateError,
+		}),
 		WaitForJobStates(map[executor.JobStateType]uint{
 			executor.JobStateComplete: totalShards,
 		}),
 	)
 }
 
-func flattenShardStates(jobState executor.JobState) []executor.JobShardState {
+func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 	ret := []executor.JobShardState{}
 	for _, nodeState := range jobState.Nodes {
 		for _, shardState := range nodeState.Shards {
@@ -144,11 +155,19 @@ func flattenShardStates(jobState executor.JobState) []executor.JobShardState {
 	return ret
 }
 
+func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobStateType]uint {
+	discoveredStateCount := map[executor.JobStateType]uint{}
+	for _, shardState := range shardStates {
+		discoveredStateCount[shardState.State]++
+	}
+	return discoveredStateCount
+}
+
 // error if there are any errors in any of the states
 func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
 		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobState)
-		allShardStates := flattenShardStates(jobState)
+		allShardStates := FlattenShardStates(jobState)
 		for _, shard := range allShardStates {
 			if shard.State.IsError() {
 				return false, fmt.Errorf("job has error state %s on node %s", shard.State.String(), shard.NodeID)
@@ -161,12 +180,9 @@ func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 // wait for the given number of different states to occur
 func WaitForJobStates(requiredStateCounts map[executor.JobStateType]uint) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
-		allShardStates := flattenShardStates(jobState)
+		allShardStates := FlattenShardStates(jobState)
 		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %s\njobStates = %+v", requiredStateCounts, allShardStates)
-		discoveredStateCount := map[executor.JobStateType]uint{}
-		for _, shardState := range allShardStates {
-			discoveredStateCount[shardState.State]++
-		}
+		discoveredStateCount := GetShardStateTotals(allShardStates)
 		for requiredStateType, requiredStateCount := range requiredStateCounts {
 			discoveredCount, ok := discoveredStateCount[requiredStateType]
 			if !ok {
@@ -183,7 +199,7 @@ func WaitForJobStates(requiredStateCounts map[executor.JobStateType]uint) CheckS
 // if there are > X states then error
 func WaitDontExceedCount(count int) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
-		allShardStates := flattenShardStates(jobState)
+		allShardStates := FlattenShardStates(jobState)
 		if len(allShardStates) > count {
 			return false, fmt.Errorf("there are more states: %d than expected: %d", len(allShardStates), count)
 		}
