@@ -36,5 +36,9 @@ func ApplyGlobPattern(files []string, pattern string) ([]string, error) {
 }
 
 func GetTotalJobShards(job executor.Job) uint {
-	return job.Deal.Concurrency * job.ExecutionPlan.TotalShards
+	shardCount := job.ExecutionPlan.TotalShards
+	if shardCount == 0 {
+		shardCount = 1
+	}
+	return job.Deal.Concurrency * shardCount
 }
