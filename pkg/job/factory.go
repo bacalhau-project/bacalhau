@@ -3,7 +3,6 @@ package job
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -197,49 +196,4 @@ func ConstructLanguageJob(
 	}
 
 	return spec, deal, nil
-}
-
-func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
-	if reflect.DeepEqual(executor.JobSpec{}, spec) {
-		return fmt.Errorf("job spec is empty")
-	}
-
-	if reflect.DeepEqual(executor.JobDeal{}, deal) {
-		return fmt.Errorf("job spec is empty")
-	}
-
-	return nil
-}
-
-// TODO: #259 We need to rename this - what does it mean to be "furthest along" for a job? Closest to final?
-func GetCurrentJobState(states map[string]executor.JobState) (string, executor.JobState) {
-	// Returns Node Id, JobState
-
-	// Combine the list of jobs down to just those that matter
-	// Strategy here is assuming the following:
-	// - All created times are the same (we'll choose the biggest, but it shouldn't matter)
-	// - All Job IDs are the same (we'll use it as the anchor to combine)
-	// - If a job has all "bid_rejected", then that's the answer for state
-	// - If a job has anything BUT bid rejected, then that's the answer for state
-	// - Everything else SHOULD be equivalent, but doesn't matter (really), so we'll just show the
-	// 	 one that has the non-bid-rejected result.
-
-	finalNodeID := ""
-	finalJobState := executor.JobState{}
-
-	for nodeID, jobState := range states {
-		if finalNodeID == "" {
-			finalNodeID = nodeID
-			finalJobState = jobState
-		} else if JobStateValue(jobState) > JobStateValue(finalJobState) {
-			// Overwrite any states that are there with a new state - so we only have one
-			finalNodeID = nodeID
-			finalJobState = jobState
-		}
-	}
-	return finalNodeID, finalJobState
-}
-
-func JobStateValue(jobState executor.JobState) int {
-	return int(executor.JobStateRunning)
 }
