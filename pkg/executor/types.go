@@ -48,12 +48,62 @@ type Job struct {
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal JobDeal `json:"deal"`
 
-	// the requester node has calcualted what the sharding
-	// setup is for this job and has saved it here
-	ShardCount uint `json:"shard_count"`
+	// how will this job be executed by nodes on the network
+	ExecutionPlan JobExecutionPlan `json:"execution_plan"`
 
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type JobExecutionPlan struct {
+	// how many shards are there in total for this job
+	// we are expecting this number x concurrency total
+	// JobShardState objects for this job
+	TotalShards uint `json:"shards_total"`
+}
+
+// The state of a job across the whole network
+// generally be in different states on different nodes - one node may be
+// ignoring a job as its bid was rejected, while another node may be
+// submitting results for the job to the requester node.
+// Each node will produce an array of JobShardState one for each shard
+// (jobs without a sharding config will still have sharded job
+// states - just with a shard count of 1). Any code that is determining
+// the current "state" of a job must look at both
+// the ShardCount of the JobExecutionPlan and the
+// collection of JobShardState to determine the current state.
+
+// JobState itself is not mutable - the JobExecutionPlan and
+// JobShardState are updatable and the JobState is queried by the rest
+// of the system
+type JobState struct {
+	Nodes map[string]JobNodeState `json:"nodes"`
+}
+
+type JobNodeState struct {
+	Shards map[uint]JobShardState `json:"shards"`
+}
+
+type JobShardState struct {
+	// which node is running this shard
+	NodeID string `json:"node_id"`
+	// what shard is this we are running
+	ShardIndex uint `json:"shard_index"`
+	// what is the state of the shard on this node
+	State JobStateType `json:"state"`
+	// an arbitrary status message
+	Status string `json:"status"`
+	// the ID of the results for this shard
+	// this will be resolved by the verifier somehow
+	ResultsID string `json:"results_id"`
+}
+
+// The deal the client has made with the bacalhau network.
+// This is updateable by the client who submitted the job
+type JobDeal struct {
+	// The maximum number of concurrent compute node bids that will be
+	// accepted by the requester node on behalf of the client.
+	Concurrency int `json:"concurrency"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -94,6 +144,21 @@ type JobSpec struct {
 	Sharding JobShardingConfig `json:"sharding" yaml:"sharding"`
 }
 
+// describe how we chunk a job up into shards
+type JobShardingConfig struct {
+	// divide the inputs up into the smallest possible unit
+	// for example /* would mean "all top level files or folders"
+	// this being an empty string means "no sharding"
+	GlobPattern string `json:"glob_pattern" yaml:"glob_pattern"`
+	// how many "items" are to be processed in each shard
+	// we first apply the glob pattern which will result in a flat list of items
+	// this number decides how to group that flat list into actual shards run by compute nodes
+	BatchSize int `json:"batch_size" yaml:"batch_size"`
+	// when using multiple input volumes
+	// what path do we treat as the common mount path to apply the glob pattern to
+	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
+}
+
 // for VM style executors
 type JobSpecDocker struct {
 	// this should be pullable by docker
@@ -120,23 +185,6 @@ type JobSpecLanguage struct {
 	RequirementsPath string `json:"requirements_path" yaml:"requirements_path"`
 }
 
-// The state of a job on a particular compute node. Note that the job will
-// generally be in different states on different nodes - one node may be
-// ignoring a job as its bid was rejected, while another node may be
-// submitting results for the job to the requester node.
-// Each node will produce an array of jobstates one for each shard
-// jobs without a sharding config will still have sharsded job
-// states (just with a shard count of 1) to keep the data model
-// consistent - any code that is determining the current "state"
-// of a job must look at both the ShardCount of the job and the
-// collection of job states to determine the current state.
-type JobState struct {
-	State      JobStateType `json:"state"`
-	ShardIndex uint         `json:"shard_index"`
-	Status     string       `json:"status"`
-	ResultsID  string       `json:"results_id"`
-}
-
 // gives us a way to keep local data against a job
 // so our compute node and requester node control loops
 // can keep state against a job without broadcasting it
@@ -146,13 +194,6 @@ type JobLocalEvent struct {
 	JobID        string            `json:"job_id"`
 	ShardIndex   uint              `json:"shard_index"`
 	TargetNodeID string            `json:"target_node_id"`
-}
-
-// The deal the client has made with the bacalhau network.
-type JobDeal struct {
-	// The maximum number of concurrent compute node bids that will be
-	// accepted by the requester node on behalf of the client.
-	Concurrency int `json:"concurrency"`
 }
 
 // we emit these to other nodes so they update their
@@ -171,6 +212,8 @@ type JobEvent struct {
 	EventName    JobEventType `json:"event_name"`
 	// this is only defined in "create" events
 	JobSpec JobSpec `json:"job_spec"`
+	// this is only defined in "create" events
+	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
 	JobDeal   JobDeal   `json:"job_deal"`
 	Status    string    `json:"status"`
@@ -208,19 +251,4 @@ type VersionInfo struct {
 	BuildDate  time.Time `json:"builddate" yaml:"builddate"`
 	GOOS       string    `json:"goos" yaml:"goos"`
 	GOARCH     string    `json:"goarch" yaml:"goarch"`
-}
-
-// describe how we chunk a job up into shards
-type JobShardingConfig struct {
-	// divide the inputs up into the smallest possible unit
-	// for example /* would mean "all top level files or folders"
-	// this being an empty string means "no sharding"
-	GlobPattern string `json:"glob_pattern" yaml:"glob_pattern"`
-	// how many "items" are to be processed in each shard
-	// we first apply the glob pattern which will result in a flat list of items
-	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"batch_size" yaml:"batch_size"`
-	// when using multiple input volumes
-	// what path do we treat as the common mount path to apply the glob pattern to
-	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
 }
