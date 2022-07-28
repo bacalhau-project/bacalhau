@@ -65,9 +65,9 @@ Hooray, you have just run a job on the Bacalhau network!
 
 ## Demo Video
 
-Here is an example of running a job live on the Bacalhau network:
+Here is an example of running a job live on the Bacalhau network: [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
-<ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' playing='false'/>
+<!-- <ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' playing='false'/> -->
 
 
 ## Support
