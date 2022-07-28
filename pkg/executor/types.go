@@ -48,6 +48,10 @@ type Job struct {
 	// The deal the client has made, such as which job bids they have accepted.
 	Deal JobDeal `json:"deal"`
 
+	// the requester node has calcualted what the sharding
+	// setup is for this job and has saved it here
+	ShardCount uint `json:"shard_count"`
+
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -120,10 +124,17 @@ type JobSpecLanguage struct {
 // generally be in different states on different nodes - one node may be
 // ignoring a job as its bid was rejected, while another node may be
 // submitting results for the job to the requester node.
+// Each node will produce an array of jobstates one for each shard
+// jobs without a sharding config will still have sharsded job
+// states (just with a shard count of 1) to keep the data model
+// consistent - any code that is determining the current "state"
+// of a job must look at both the ShardCount of the job and the
+// collection of job states to determine the current state.
 type JobState struct {
-	State     JobStateType `json:"state"`
-	Status    string       `json:"status"`
-	ResultsID string       `json:"results_id"`
+	State      JobStateType `json:"state"`
+	ShardIndex uint         `json:"shard_index"`
+	Status     string       `json:"status"`
+	ResultsID  string       `json:"results_id"`
 }
 
 // gives us a way to keep local data against a job
@@ -133,6 +144,7 @@ type JobState struct {
 type JobLocalEvent struct {
 	EventName    JobLocalEventType `json:"event_name"`
 	JobID        string            `json:"job_id"`
+	ShardIndex   uint              `json:"shard_index"`
 	TargetNodeID string            `json:"target_node_id"`
 }
 
@@ -147,6 +159,8 @@ type JobDeal struct {
 // state locally and can emit events locally
 type JobEvent struct {
 	JobID string `json:"job_id"`
+	// what shard is this event for
+	ShardIndex uint `json:"shard_index"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"client_id"`
 	// the node that emitted this event
@@ -209,13 +223,4 @@ type JobShardingConfig struct {
 	// when using multiple input volumes
 	// what path do we treat as the common mount path to apply the glob pattern to
 	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
-}
-
-// this is passed between requester and compute nodes
-// as they bid on different job shards
-type JobShard struct {
-	// how many shards are there in total?
-	Count int `json:"batch_count" yaml:"batch_count"`
-	// what shard are we currently talking about?
-	Index int `json:"batch_index" yaml:"batch_index"`
 }
