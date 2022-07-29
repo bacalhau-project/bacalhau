@@ -44,6 +44,7 @@ type ComputeNode struct {
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
 	componentMu     sync.Mutex
+	bidMu           sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -138,6 +139,8 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
+	node.bidMu.Lock()
+	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 	for _, id := range bidJobIds {
 		job, err := node.controller.GetJob(context.Background(), id)
