@@ -122,10 +122,11 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTracer)
 		defer cm.Cleanup()
 
-		peers := DefaultBootstrapAddresses
-
-		if peerConnect != "" && peerConnect != "none" {
-			peers = []string{peerConnect}
+		peers := DefaultBootstrapAddresses // Default to connecting to defaults
+		if peerConnect == "none" {
+			peers = []string{} // Only connect to peers if not none
+		} else if peerConnect != "" {
+			peers = []string{peerConnect} // Otherwise set peers according to the user options
 		}
 
 		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
