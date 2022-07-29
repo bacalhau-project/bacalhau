@@ -8,7 +8,25 @@ import ReactPlayer from 'react-player'
 ## Steps to onboard your workload
 
 ### 1. Modify your workload scripts
-Modify your workload (scripts) so that any input files are read from a [local directory](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes) within the Docker container. All ingres/egres networking is disabled from the Bacalhau cluster.
+
+#### Inputs
+
+Note: all ingres/egres networking is disabled from the Bacalhau cluster, which will impact your workload if it pulls input data via HTTP.
+
+**Option 1) Embed input data in the Docker image**  
+The simplest (fastest) option is to embed your workload's input data within the docker image. As a result, your ```bacalhau docker run``` command will not require an input volume mount from IPFS.
+
+**Option 2) Mount input data folder via Docker mount & IPFS**  
+Use docker mounts for inputs if your data needs to be consumed from IPFS and your workload allows directory paths as inputs. Note: some python functions such as ```open()``` will fail when given a directory path.
+* Modify your workload (scripts) so that any input files are read from a [local directory](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes) mounted to the Docker container.
+* Any input files in your script, must be modified to read from files in an "input" folder in your project that can be mounted via IPFS.
+
+#### Outputs
+
+Modify your workload so that any output files are written to an "output/" folder. This will allow for the clear/specific mounting of the output folder when the "bacalhau docker run" command is executed. 
+
+Please see this [modified script example here](https://github.com/wesfloyd/bacalhau_socat_test/blob/9e51e48d6f9efa4adc8125fe97004c204e387fe5/main.py#L31).
+
 
 ### 2. Build the docker container
 Build a an **x86_64 / amd64** based docker image for your workload ([example here](https://docs.docker.com/language/python/build-images/)) and push the image to a [public docker registry](https://codefresh.io/docs/docs/integrations/docker-registries/). Please note: do not build your docker image on a arm64 (Apple Silicon) Mac, the Bacalhau testnet is running x86_64 servers, so the docker images must be built on the same CPU architecture. You may execute bacalhau jobs from the CLI on a Mac, but please avoid building your docker images there.
