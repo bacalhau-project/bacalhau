@@ -190,7 +190,7 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// predictable port for API
-		apiPort := 10000 + i
+		apiPort := 20000 + i
 
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",
