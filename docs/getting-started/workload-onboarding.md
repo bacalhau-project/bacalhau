@@ -13,9 +13,11 @@ import ReactPlayer from 'react-player'
 
 Note: all ingres/egres networking is disabled from the Bacalhau cluster, which will impact your workload if it pulls input data via HTTP.
 
-Option 1) The simplest (fastest) option is to embed your workload's input data within the docker image. As a result, your ```bacalhau docker run``` command will require no input volume mounts from IPFS.
+**Option 1) Embed input data in the Docker image**  
+The simplest (fastest) option is to embed your workload's input data within the docker image. As a result, your ```bacalhau docker run``` command will not require an input volume mount from IPFS.
 
-Option 2) Use docker mounts for inputs if your data needs to be consumed from IPFS and your workload allows directory paths as inputs. Note: some python functions such as ```open()``` will fail when given a directory path.
+**Option 2) Mount input data folder via Docker mount & IPFS**  
+Use docker mounts for inputs if your data needs to be consumed from IPFS and your workload allows directory paths as inputs. Note: some python functions such as ```open()``` will fail when given a directory path.
 * Modify your workload (scripts) so that any input files are read from a [local directory](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes) mounted to the Docker container.
 * Any input files in your script, must be modified to read from files in an "input" folder in your project that can be mounted via IPFS.
 
