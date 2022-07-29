@@ -14,6 +14,19 @@ import (
 func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
+type eventDescription struct {
+	Event       string `yaml:"Event"`
+	Time        string `yaml:"Time"`
+	Concurrency int    `yaml:"Concurrency"`
+	SourceNode  string `yaml:"SourceNode"`
+	TargetNode  string `yaml:"TargetNode"`
+}
+
+type localEventDescription struct {
+	Event      string `yaml:"Event"`
+	TargetNode string `yaml:"TargetNode"`
+}
+
 type stateDescription struct {
 	State     string `yaml:"State"`
 	Status    string `yaml:"Status"`
@@ -27,8 +40,8 @@ type jobDescription struct {
 	Spec            jobSpecDescription          `yaml:"Spec"`
 	Deal            executor.JobDeal            `yaml:"Deal"`
 	State           map[string]stateDescription `yaml:"State"`
-	Events          []executor.JobEvent         `yaml:"Events"`
-	LocalEvents     []executor.JobLocalEvent    `yaml:"Local Events"`
+	Events          []eventDescription          `yaml:"Events"`
+	LocalEvents     []localEventDescription     `yaml:"Local Events"`
 	CreatedAt       time.Time                   `yaml:"Start Time"`
 }
 
@@ -81,6 +94,18 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
+		events, err := getAPIClient().GetEvents(context.Background(), jobID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			return err
+		}
+
+		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), jobID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			return err
+		}
+
 		jobDockerDesc := jobSpecDockerDescription{}
 		jobDockerDesc.Image = job.Spec.Docker.Image
 		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
@@ -113,6 +138,24 @@ var describeCmd = &cobra.Command{
 			}
 		}
 		jobDesc.CreatedAt = job.CreatedAt
+		jobDesc.Events = []eventDescription{}
+		for _, event := range events {
+			jobDesc.Events = append(jobDesc.Events, eventDescription{
+				Event:       event.EventName.String(),
+				Time:        event.EventTime.String(),
+				Concurrency: event.JobDeal.Concurrency,
+				SourceNode:  event.SourceNodeID,
+				TargetNode:  event.TargetNodeID,
+			})
+		}
+
+		jobDesc.LocalEvents = []localEventDescription{}
+		for _, event := range localEvents {
+			jobDesc.LocalEvents = append(jobDesc.LocalEvents, localEventDescription{
+				Event:      event.EventName.String(),
+				TargetNode: event.TargetNodeID,
+			})
+		}
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
