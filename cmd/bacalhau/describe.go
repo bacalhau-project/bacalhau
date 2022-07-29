@@ -21,12 +21,14 @@ type stateDescription struct {
 }
 
 type jobDescription struct {
-	ID              string                      `yaml:"Id"`
+	ID              string                      `yaml:"ID"`
 	ClientID        string                      `yaml:"ClientID"`
-	RequesterNodeID string                      `yaml:"RequesterNodeId"`
+	RequesterNodeID string                      `yaml:"RequesterNodeID"`
 	Spec            jobSpecDescription          `yaml:"Spec"`
 	Deal            executor.JobDeal            `yaml:"Deal"`
 	State           map[string]stateDescription `yaml:"State"`
+	Events          []executor.JobEvent         `yaml:"Events"`
+	LocalEvents     []executor.JobLocalEvent    `yaml:"Local Events"`
 	CreatedAt       time.Time                   `yaml:"Start Time"`
 }
 
@@ -112,7 +114,12 @@ var describeCmd = &cobra.Command{
 		}
 		jobDesc.CreatedAt = job.CreatedAt
 
-		bytes, _ := yaml.Marshal(jobDesc)
+		bytes, err := yaml.Marshal(jobDesc)
+		if err != nil {
+			log.Error().Msgf("Failure marshalling job description '%s': %s", jobID, err)
+			return err
+		}
+
 		cmd.Print(string(bytes))
 
 		return nil
