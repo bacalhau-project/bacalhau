@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -205,6 +206,8 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
+		cmd.Printf("%s\n", job.ID)
+
 		if waitForJobToFinishAndPrintOutput {
 			resolver, err := getAPIClient().GetJobStateResolver(ctx, job.ID)
 			if err != nil {
@@ -229,14 +232,12 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			body, err := os.ReadFile(resultCIDs[0] + "/stdout")
+			body, err := os.ReadFile(filepath.Join(runDownloadFlags.outputDir, resultCIDs[0], "stdout"))
 			if err != nil {
 				return err
 			}
 			fmt.Println()
 			fmt.Println(string(body))
-		} else {
-			cmd.Printf("%s\n", job.ID)
 		}
 
 		return nil
