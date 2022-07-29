@@ -20,6 +20,7 @@ type eventDescription struct {
 	Concurrency int    `yaml:"Concurrency"`
 	SourceNode  string `yaml:"SourceNode"`
 	TargetNode  string `yaml:"TargetNode"`
+	Status      string `yaml:"Status"`
 }
 
 type localEventDescription struct {
@@ -142,6 +143,7 @@ var describeCmd = &cobra.Command{
 		for _, event := range events {
 			jobDesc.Events = append(jobDesc.Events, eventDescription{
 				Event:       event.EventName.String(),
+				Status:      event.Status,
 				Time:        event.EventTime.String(),
 				Concurrency: event.JobDeal.Concurrency,
 				SourceNode:  event.SourceNodeID,
