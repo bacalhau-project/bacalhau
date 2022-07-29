@@ -145,11 +145,11 @@ func (sp *StorageProvider) CleanupStorage(ctx context.Context,
 	return nil
 }
 
-func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
 	return storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 

@@ -107,13 +107,13 @@ func (sp *StorageProvider) CleanupStorage(
 }
 
 // we don't "upload" anything to a URL
-func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
 	return storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
 // for the url download - explode will always result in a single item
 // mounted at the path specified in the spec
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{
 		{
 			Engine: storage.StorageSourceURLDownload,

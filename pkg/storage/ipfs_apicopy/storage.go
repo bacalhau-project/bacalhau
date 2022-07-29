@@ -114,8 +114,8 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 	})
 }
 
-func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
-	cid, err := s.IPFSClient.Put(ctx, localPath)
+func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
 	if err != nil {
 		return storage.StorageSpec{}, err
 	}
@@ -125,8 +125,8 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage
 	}, nil
 }
 
-func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	treeNode, err := s.IPFSClient.GetTreeNode(ctx, spec.Cid)
+func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.Cid)
 	if err != nil {
 		return []storage.StorageSpec{}, err
 	}

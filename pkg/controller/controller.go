@@ -387,7 +387,6 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-
 		// update the state for this job shard
 		err = ctrl.localdb.UpdateShardState(
 			ctx,

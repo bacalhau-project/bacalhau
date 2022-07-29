@@ -170,7 +170,6 @@ func downloadJobResults(
 
 			return err
 		}
-
 	}
 
 	return nil

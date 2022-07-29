@@ -21,6 +21,9 @@ func GetTreeNode(ctx context.Context, navNode ipld.NavigableNode, path []string)
 			return IPLDTreeNode{}, err
 		}
 		childTreeNode, err := GetTreeNode(ctx, childNavNode, append(path, link.Name))
+		if err != nil {
+			return IPLDTreeNode{}, err
+		}
 		children = append(children, childTreeNode)
 	}
 	node := IPLDTreeNode{
