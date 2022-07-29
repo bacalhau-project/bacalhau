@@ -245,6 +245,9 @@ var serveCmd = &cobra.Command{
 		}(ctx)
 
 		go func(ctx context.Context) {
+			if err = controller.Start(ctx); err != nil {
+				log.Fatal().Msgf("Controller can't run, bacalhau should stop: %+v", err)
+			}
 			if err = transport.Start(ctx); err != nil {
 				log.Fatal().Msgf("Transport can't run, bacalhau should stop: %+v", err)
 			}
