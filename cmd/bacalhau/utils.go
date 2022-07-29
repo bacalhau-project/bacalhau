@@ -119,16 +119,6 @@ func downloadJobResults(
 	resultCIDs []string,
 	settings downloadSettings,
 ) error {
-	// resolver, err := getAPIClient().GetJobStateResolver(context.Background(), id)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// resultCIDs, err := resolver.GetResultCIDs()
-	// if err != nil {
-	// 	return err
-	// }
-
 	log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
 
 	if len(resultCIDs) == 0 {
@@ -162,14 +152,17 @@ func downloadJobResults(
 			continue
 		}
 
-		log.Info().Msgf("Downloading result CID '%s' to '%s'...",
-			cid, outputDir)
+		err = func() error {
+			log.Info().Msgf("Downloading result CID '%s' to '%s'...",
+				cid, outputDir)
 
-		ctx, cancel := context.WithDeadline(context.Background(),
-			time.Now().Add(time.Second*time.Duration(settings.timeoutSecs)))
-		defer cancel()
+			ctx, cancel := context.WithDeadline(context.Background(),
+				time.Now().Add(time.Second*time.Duration(settings.timeoutSecs)))
+			defer cancel()
 
-		err = cl.Get(ctx, cid, outputDir)
+			return cl.Get(ctx, cid, outputDir)
+		}()
+
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				log.Error().Msg("Timed out while downloading result.")
@@ -177,6 +170,7 @@ func downloadJobResults(
 
 			return err
 		}
+
 	}
 
 	return nil
