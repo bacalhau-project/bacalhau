@@ -249,7 +249,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 
 	// overwrite the event.SourceNodeID with the one from the libp2p message
 	ev := payload.JobEvent
-	ev.SourceNodeID = msg.ReceivedFrom.String()
+	// ev.SourceNodeID = msg.ReceivedFrom.String()
 
 	t.ctx.RLock()
 	defer t.ctx.RUnlock()
