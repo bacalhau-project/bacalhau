@@ -21,6 +21,7 @@ jobs:
       GOARCH: << parameters.target_arch >>
       CGO: 0
       GCS_TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
+      METADATA_FILENAME: LAST-PERFORMANCE-RESULT-METADATA-OBJECT
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -114,6 +115,12 @@ jobs:
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
                   gsutil cp "$TEST_RESULTS_FILENAME" "$GCS_TEST_RESULTS_BUCKET"
+
+                  gsutil -m setmeta -h "Content-Type:text/plain" \
+                    -h "Cache-Control:public, max-age=0, no-cache, no-store" \
+                    -h "Content-Disposition" gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}
+
+                  gsutil setmeta -h "x-goog-meta-performance-results-last-updated:$(date -u +'%FT%H%MZ')" "gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}"
 
   deploy:
     docker:
