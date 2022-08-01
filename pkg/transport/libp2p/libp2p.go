@@ -72,7 +72,11 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		return nil
 	})
 
-	ps, err := pubsub.NewGossipSub(ctx, h)
+	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true))
+	// ps, err := pubsub.NewGossipSub(ctx, h)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +249,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 
 	// overwrite the event.SourceNodeID with the one from the libp2p message
 	ev := payload.JobEvent
-	ev.SourceNodeID = msg.ReceivedFrom.String()
+	// ev.SourceNodeID = msg.ReceivedFrom.String()
 
 	t.ctx.RLock()
 	defer t.ctx.RUnlock()

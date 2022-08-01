@@ -14,6 +14,26 @@ import (
 func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
+type eventDescription struct {
+	Event       string `yaml:"Event"`
+	Time        string `yaml:"Time"`
+	Concurrency int    `yaml:"Concurrency"`
+	SourceNode  string `yaml:"SourceNode"`
+	TargetNode  string `yaml:"TargetNode"`
+	Status      string `yaml:"Status"`
+}
+
+type localEventDescription struct {
+	Event      string `yaml:"Event"`
+	TargetNode string `yaml:"TargetNode"`
+}
+
+type stateDescription struct {
+	State     string `yaml:"State"`
+	Status    string `yaml:"Status"`
+	ResultsID string `yaml:"Result CID"`
+}
+
 type jobDescription struct {
 	ID              string             `yaml:"Id"`
 	ClientID        string             `yaml:"ClientID"`
@@ -25,13 +45,13 @@ type jobDescription struct {
 }
 
 type jobSpecDescription struct {
-	Engine     string               `yaml:"Engine"`
-	Verifier   string               `yaml:"Verifier"`
-	VM         jobSpecVMDescription `yaml:"VM"`
-	Deployment jobDealDescription   `yaml:"Deployment"`
+	Engine     string                   `yaml:"Engine"`
+	Verifier   string                   `yaml:"Verifier"`
+	Docker     jobSpecDockerDescription `yaml:"Docker"`
+	Deployment jobDealDescription       `yaml:"Deployment"`
 }
 
-type jobSpecVMDescription struct {
+type jobSpecDockerDescription struct {
 	Image       string   `yaml:"Image"`
 	Entrypoint  []string `yaml:"Entrypoint Command"`
 	Env         []string `yaml:"Submitted Env Variables"`
@@ -73,13 +93,25 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		jobVMDesc := jobSpecVMDescription{}
-		jobVMDesc.Image = job.Spec.Docker.Image
-		jobVMDesc.Entrypoint = job.Spec.Docker.Entrypoint
-		jobVMDesc.Env = job.Spec.Docker.Env
+		events, err := getAPIClient().GetEvents(context.Background(), jobID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			return err
+		}
 
-		jobVMDesc.CPU = job.Spec.Resources.CPU
-		jobVMDesc.Memory = job.Spec.Resources.Memory
+		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), jobID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			return err
+		}
+
+		jobDockerDesc := jobSpecDockerDescription{}
+		jobDockerDesc.Image = job.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = job.Spec.Docker.Env
+
+		jobDockerDesc.CPU = job.Spec.Resources.CPU
+		jobDockerDesc.Memory = job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
 		jobSpecDesc.Engine = job.Spec.Engine.String()
@@ -88,7 +120,7 @@ var describeCmd = &cobra.Command{
 		jobDealDesc.Concurrency = job.Deal.Concurrency
 
 		jobSpecDesc.Verifier = job.Spec.Verifier.String()
-		jobSpecDesc.VM = jobVMDesc
+		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
 		jobDesc.ID = job.ID
@@ -96,10 +128,45 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
+<<<<<<< HEAD
 		jobDesc.State = state
+=======
+		jobDesc.State = map[string]stateDescription{}
+		for id, state := range states {
+			jobDesc.State[id] = stateDescription{
+				State:     state.State.String(),
+				Status:    state.Status,
+				ResultsID: state.ResultsID,
+			}
+		}
+>>>>>>> scale-test-and-viz
 		jobDesc.CreatedAt = job.CreatedAt
+		jobDesc.Events = []eventDescription{}
+		for _, event := range events {
+			jobDesc.Events = append(jobDesc.Events, eventDescription{
+				Event:       event.EventName.String(),
+				Status:      event.Status,
+				Time:        event.EventTime.String(),
+				Concurrency: event.JobDeal.Concurrency,
+				SourceNode:  event.SourceNodeID,
+				TargetNode:  event.TargetNodeID,
+			})
+		}
 
-		bytes, _ := yaml.Marshal(jobDesc)
+		jobDesc.LocalEvents = []localEventDescription{}
+		for _, event := range localEvents {
+			jobDesc.LocalEvents = append(jobDesc.LocalEvents, localEventDescription{
+				Event:      event.EventName.String(),
+				TargetNode: event.TargetNodeID,
+			})
+		}
+
+		bytes, err := yaml.Marshal(jobDesc)
+		if err != nil {
+			log.Error().Msgf("Failure marshalling job description '%s': %s", jobID, err)
+			return err
+		}
+
 		cmd.Print(string(bytes))
 
 		return nil

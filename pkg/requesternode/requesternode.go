@@ -57,6 +57,9 @@ func NewRequesterNode(
 
   subscriptions
 
+1. requestor node gets 100 bids at same time and tries to process those bids at the same time so race
+2. are we not filtering requestor node id should be me
+
 */
 func (node *RequesterNode) subscriptionSetup() {
 	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
@@ -66,6 +69,7 @@ func (node *RequesterNode) subscriptionSetup() {
 			return
 		}
 		// we only care about jobs that we own
+		// log.Debug().Msgf("job.RequesterNodeID: %s, node.id: %s", job.RequesterNodeID, node.id)
 		if job.RequesterNodeID != node.id {
 			return
 		}
@@ -76,7 +80,10 @@ func (node *RequesterNode) subscriptionSetup() {
 }
 
 func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executor.Job, jobEvent executor.JobEvent) {
+	// TODO: add logging here
+	log.Debug().Msgf("acquiring Lock for processing bid %+v on %+v", jobEvent, job)
 	node.bidMutex.Lock()
+	log.Debug().Msgf("acquired Lock for processing bid %+v on %+v", jobEvent, job)
 	defer node.bidMutex.Unlock()
 
 	// Need to declare span separately to prevent shadowing
@@ -113,7 +120,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 
 		if len(acceptedEvents) >= int(concurrency) {
 			// nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(acceptedEvents), concurrency)
+			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d)", len(acceptedEvents), concurrency)
 			return false
 		}
 

@@ -44,6 +44,7 @@ type ComputeNode struct {
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
 	componentMu     sync.Mutex
+	bidMu           sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -138,8 +139,32 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   * add each bid on job to the "projected resources"
 //   * repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
+	node.bidMu.Lock()
+	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 	for _, id := range bidJobIds {
+		// CHECK WE DON@T HAVE A BID EVENT LOCALLY
+		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), id)
+		if err != nil {
+			node.capacityManager.Remove(id)
+			continue
+		}
+
+		hasAlreadyBid := false
+
+		for _, localEvent := range jobLocalEvents {
+			if localEvent.EventName == executor.JobLocalEventBid {
+				hasAlreadyBid = true
+				break
+			}
+		}
+
+		if hasAlreadyBid {
+			log.Info().Msgf("node %s has already bid on job %s", node.id, id)
+			node.capacityManager.Remove(id)
+			continue
+		}
+
 		job, err := node.controller.GetJob(context.Background(), id)
 		if err != nil {
 			node.capacityManager.Remove(id)
@@ -175,6 +200,7 @@ func (node *ComputeNode) subscriptionSetup() {
 		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
+			log.Debug().Msgf("[%s] APPLES ARE SICK job created: %s", node.id, job.ID)
 			node.subscriptionEventCreated(ctx, jobEvent, job)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
@@ -211,7 +237,11 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	}
 
 	if selected {
-		node.capacityManager.AddToBacklog(job.ID, processedRequirements)
+		err = node.capacityManager.AddToBacklog(job.ID, processedRequirements)
+		if err != nil {
+			log.Info().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
+			return
+		}
 		node.controlLoopBidOnJobs()
 	}
 }
