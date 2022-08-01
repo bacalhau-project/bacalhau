@@ -39,7 +39,7 @@ func ConstructDockerJob( //nolint:funlen
 	env []string,
 	entrypoint []string,
 	image string,
-	concurrency uint,
+	concurrency int,
 	annotations []string,
 ) (executor.JobSpec, executor.JobDeal, error) {
 	if concurrency <= 0 {
@@ -145,7 +145,7 @@ func ConstructLanguageJob(
 	inputVolumes []string,
 	outputVolumes []string,
 	env []string,
-	concurrency uint,
+	concurrency int,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,

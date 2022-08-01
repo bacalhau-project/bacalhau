@@ -13,7 +13,7 @@ func TestInMemoryDataStore(t *testing.T) {
 
 	jobId := "123"
 	nodeId := "456"
-	shardIndex := uint(1)
+	shardIndex := 1
 
 	store, err := NewInMemoryDatastore()
 	require.NoError(t, err)

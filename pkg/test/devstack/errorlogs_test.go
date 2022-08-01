@@ -93,13 +93,13 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	err = resolver.Wait(
 		ctx,
-		uint(len(nodeIDs)),
+		len(nodeIDs),
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]uint{
-			executor.JobStateError: uint(len(nodeIDs)),
+		job.WaitForJobStates(map[executor.JobStateType]int{
+			executor.JobStateError: len(nodeIDs),
 		}),
 	)
 	require.NoError(suite.T(), err)

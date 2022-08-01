@@ -17,7 +17,7 @@ func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideom
 type eventDescription struct {
 	Event       string `yaml:"Event"`
 	Time        string `yaml:"Time"`
-	Concurrency uint   `yaml:"Concurrency"`
+	Concurrency int    `yaml:"Concurrency"`
 	SourceNode  string `yaml:"SourceNode"`
 	TargetNode  string `yaml:"TargetNode"`
 	Status      string `yaml:"Status"`
@@ -65,7 +65,7 @@ type jobSpecDockerDescription struct {
 }
 
 type jobDealDescription struct {
-	Concurrency   uint     `yaml:"Concurrency"`
+	Concurrency   int      `yaml:"Concurrency"`
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 

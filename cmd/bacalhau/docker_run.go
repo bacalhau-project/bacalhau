@@ -26,7 +26,7 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobLocalOutput string
 var jobEnv []string
-var jobConcurrency uint
+var jobConcurrency int
 var jobCPU string
 var jobMemory string
 var jobGPU string
@@ -72,7 +72,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&jobEnv, "env", "e", []string{},
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
-	dockerRunCmd.PersistentFlags().UintVarP(
+	dockerRunCmd.PersistentFlags().IntVarP(
 		&jobConcurrency, "concurrency", "c", 1,
 		`How many nodes should run the job`,
 	)

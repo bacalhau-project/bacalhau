@@ -19,7 +19,7 @@ import (
 
 var jobspec *executor.JobSpec
 var filename string
-var jobfConcurrency uint
+var jobfConcurrency int
 var jobfInputUrls []string
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
@@ -31,7 +31,7 @@ func init() { // nolint:gochecknoinits
 		`Path to the job file`,
 	)
 
-	applyCmd.PersistentFlags().UintVarP(
+	applyCmd.PersistentFlags().IntVarP(
 		&jobfConcurrency, "concurrency", "c", 1,
 		`How many nodes should run the job in parallel`,
 	)

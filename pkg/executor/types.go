@@ -59,7 +59,7 @@ type JobExecutionPlan struct {
 	// how many shards are there in total for this job
 	// we are expecting this number x concurrency total
 	// JobShardState objects for this job
-	TotalShards uint `json:"shards_total"`
+	TotalShards int `json:"shards_total"`
 }
 
 // describe how we chunk a job up into shards
@@ -71,7 +71,7 @@ type JobShardingConfig struct {
 	// how many "items" are to be processed in each shard
 	// we first apply the glob pattern which will result in a flat list of items
 	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize uint `json:"batch_size" yaml:"batch_size"`
+	BatchSize int `json:"batch_size" yaml:"batch_size"`
 	// when using multiple input volumes
 	// what path do we treat as the common mount path to apply the glob pattern to
 	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
@@ -96,14 +96,14 @@ type JobState struct {
 }
 
 type JobNodeState struct {
-	Shards map[uint]JobShardState `json:"shards"`
+	Shards map[int]JobShardState `json:"shards"`
 }
 
 type JobShardState struct {
 	// which node is running this shard
 	NodeID string `json:"node_id"`
 	// what shard is this we are running
-	ShardIndex uint `json:"shard_index"`
+	ShardIndex int `json:"shard_index"`
 	// what is the state of the shard on this node
 	State JobStateType `json:"state"`
 	// an arbitrary status message
@@ -118,7 +118,7 @@ type JobShardState struct {
 type JobDeal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
-	Concurrency uint `json:"concurrency"`
+	Concurrency int `json:"concurrency"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -192,7 +192,7 @@ type JobSpecLanguage struct {
 type JobLocalEvent struct {
 	EventName    JobLocalEventType `json:"event_name"`
 	JobID        string            `json:"job_id"`
-	ShardIndex   uint              `json:"shard_index"`
+	ShardIndex   int               `json:"shard_index"`
 	TargetNodeID string            `json:"target_node_id"`
 }
 
@@ -201,7 +201,7 @@ type JobLocalEvent struct {
 type JobEvent struct {
 	JobID string `json:"job_id"`
 	// what shard is this event for
-	ShardIndex uint `json:"shard_index"`
+	ShardIndex int `json:"shard_index"`
 	// optional clientID if this is an externally triggered event (like create job)
 	ClientID string `json:"client_id"`
 	// the node that emitted this event

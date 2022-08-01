@@ -80,7 +80,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		}
 
 		jobDeal := executor.JobDeal{
-			Concurrency: uint(testCase.nodeCount),
+			Concurrency: testCase.nodeCount,
 		}
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()
@@ -93,14 +93,14 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		err = resolver.Wait(
 			ctx,
-			uint(len(nodeIDs)),
+			len(nodeIDs),
 			job.WaitDontExceedCount(testCase.expectedAccepts),
 			job.WaitThrowErrors([]executor.JobStateType{
 				executor.JobStateCancelled,
 				executor.JobStateError,
 			}),
-			job.WaitForJobStates(map[executor.JobStateType]uint{
-				executor.JobStateComplete: uint(testCase.expectedAccepts),
+			job.WaitForJobStates(map[executor.JobStateType]int{
+				executor.JobStateComplete: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

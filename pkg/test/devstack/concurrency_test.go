@@ -86,7 +86,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]uint{
+		job.WaitForJobStates(map[executor.JobStateType]int{
 			executor.JobStateComplete:  2,
 			executor.JobStateCancelled: 1,
 		}),

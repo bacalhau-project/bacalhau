@@ -49,7 +49,7 @@ func ApplyGlobPattern(
 	return result, nil
 }
 
-func GetTotalJobShards(job executor.Job) uint {
+func GetTotalJobShards(job executor.Job) int {
 	shardCount := job.ExecutionPlan.TotalShards
 	if shardCount == 0 {
 		shardCount = 1
@@ -168,7 +168,7 @@ func ProcessJobSharding(
 		return job, err
 	}
 	job.ExecutionPlan = executor.JobExecutionPlan{
-		TotalShards: uint(len(shards)),
+		TotalShards: len(shards),
 	}
 	return job, nil
 }

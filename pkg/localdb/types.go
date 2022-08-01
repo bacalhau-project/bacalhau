@@ -30,7 +30,7 @@ type LocalDB interface {
 	UpdateShardState(
 		ctx context.Context,
 		jobID, nodeID string,
-		shardIndex uint,
+		shardIndex int,
 		state executor.JobShardState,
 	) error
 }

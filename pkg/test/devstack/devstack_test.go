@@ -84,7 +84,7 @@ func devStackDockerStorageTest(
 	}
 
 	jobDeal := executor.JobDeal{
-		Concurrency: uint(nodeCount),
+		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
@@ -97,13 +97,13 @@ func devStackDockerStorageTest(
 
 	err = resolver.Wait(
 		ctx,
-		uint(len(nodeIDs)),
+		len(nodeIDs),
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]uint{
-			executor.JobStateComplete: uint(len(nodeIDs)),
+		job.WaitForJobStates(map[executor.JobStateType]int{
+			executor.JobStateComplete: len(nodeIDs),
 		}),
 	)
 	require.NoError(t, err)

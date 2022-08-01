@@ -147,7 +147,7 @@ func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (exec
 func (d *InMemoryDatastore) UpdateShardState(
 	ctx context.Context,
 	jobID, nodeID string,
-	shardIndex uint,
+	shardIndex int,
 	update executor.JobShardState,
 ) error {
 	d.mtx.Lock()
@@ -165,7 +165,7 @@ func (d *InMemoryDatastore) UpdateShardState(
 	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
 		nodeState = executor.JobNodeState{
-			Shards: map[uint]executor.JobShardState{},
+			Shards: map[int]executor.JobShardState{},
 		}
 	}
 	shardSate, ok := nodeState.Shards[shardIndex]

@@ -76,7 +76,7 @@ func (resolver *StateResolver) Wait(
 	// used to quit early if we've not matched our checkJobStateFunctions
 	// but all of the loaded states are terminal
 	// this number is concurrency * total batches
-	totalShards uint,
+	totalShards int,
 	checkJobStateFunctions ...CheckStatesFunction,
 ) error {
 	waiter := &system.FunctionWaiter{
@@ -111,7 +111,7 @@ func (resolver *StateResolver) Wait(
 
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
-			allTerminal := uint(len(allShardStates)) == totalShards
+			allTerminal := len(allShardStates) == totalShards
 			for _, shard := range allShardStates {
 				if !shard.State.IsTerminal() {
 					allTerminal = false
@@ -139,7 +139,7 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
 			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
-		WaitForJobStates(map[executor.JobStateType]uint{
+		WaitForJobStates(map[executor.JobStateType]int{
 			executor.JobStateComplete: totalShards,
 		}),
 	)
@@ -155,8 +155,8 @@ func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 	return ret
 }
 
-func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobStateType]uint {
-	discoveredStateCount := map[executor.JobStateType]uint{}
+func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobStateType]int {
+	discoveredStateCount := map[executor.JobStateType]int{}
 	for _, shardState := range shardStates {
 		discoveredStateCount[shardState.State]++
 	}
@@ -178,7 +178,7 @@ func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 }
 
 // wait for the given number of different states to occur
-func WaitForJobStates(requiredStateCounts map[executor.JobStateType]uint) CheckStatesFunction {
+func WaitForJobStates(requiredStateCounts map[executor.JobStateType]int) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, allShardStates)
