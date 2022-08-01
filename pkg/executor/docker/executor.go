@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -105,7 +106,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
-	jobResultsDir, err := e.ensureJobResultsDir(j)
+	jobResultsDir, err := e.ensureShardResultsDir(j, shardIndex)
 	if err != nil {
 		return "", err
 	}
@@ -114,8 +115,13 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	// these are paths for both input and output data
 	mounts := []mount.Mount{}
 
+	shard, err := jobutils.GetShard(ctx, j.Spec, e.StorageProviders, shardIndex)
+	if err != nil {
+		return "", err
+	}
+
 	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range j.Spec.Inputs {
+	for _, inputStorage := range shard {
 		var storageProvider storage.StorageProvider
 		var volumeMount storage.StorageVolume
 		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
@@ -250,7 +256,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		},
 		&network.NetworkingConfig{},
 		nil,
-		e.jobContainerName(j),
+		e.jobContainerName(j, shardIndex),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
@@ -264,7 +270,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	if err != nil {
 		return "", fmt.Errorf("failed to start container: %w", err)
 	}
-	defer e.cleanupJob(j)
+	defer e.cleanupJob(j, shardIndex)
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -339,12 +345,12 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	return jobResultsDir, containerError
 }
 
-func (e *Executor) cleanupJob(job executor.Job) {
+func (e *Executor) cleanupJob(job executor.Job, shardIndex int) {
 	if config.ShouldKeepStack() {
 		return
 	}
 
-	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
+	err := docker.RemoveContainer(e.Client, e.jobContainerName(job, shardIndex))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
 		debug.PrintStack()
@@ -372,8 +378,8 @@ func (e *Executor) cleanupAll() {
 	}
 }
 
-func (e *Executor) jobContainerName(job executor.Job) string {
-	return fmt.Sprintf("bacalhau-%s-%s", e.ID, job.ID)
+func (e *Executor) jobContainerName(job executor.Job, shardIndex int) string {
+	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, job.ID, shardIndex)
 }
 
 func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
@@ -383,12 +389,12 @@ func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
 	}
 }
 
-func (e *Executor) jobResultsDir(job executor.Job) string {
-	return fmt.Sprintf("%s/%s", e.ResultsDir, job.ID)
+func (e *Executor) shardResultsDir(job executor.Job, shardIndex int) string {
+	return fmt.Sprintf("%s/%s/%d", e.ResultsDir, job.ID, shardIndex)
 }
 
-func (e *Executor) ensureJobResultsDir(job executor.Job) (string, error) {
-	dir := e.jobResultsDir(job)
+func (e *Executor) ensureShardResultsDir(job executor.Job, shardIndex int) (string, error) {
+	dir := e.shardResultsDir(job, shardIndex)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	info, _ := os.Stat(dir)
 	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
