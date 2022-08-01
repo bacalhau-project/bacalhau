@@ -166,7 +166,6 @@ func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobS
 // error if there are any errors in any of the states
 func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
-		log.Trace().Msgf("WaitForJobThrowErrors:\nerrorStates = %+v,\njobStates = %+v", errorStates, jobState)
 		allShardStates := FlattenShardStates(jobState)
 		for _, shard := range allShardStates {
 			if shard.State.IsError() {
@@ -181,8 +180,8 @@ func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 func WaitForJobStates(requiredStateCounts map[executor.JobStateType]int) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
-		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, allShardStates)
 		discoveredStateCount := GetShardStateTotals(allShardStates)
+		log.Debug().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, discoveredStateCount)
 		for requiredStateType, requiredStateCount := range requiredStateCounts {
 			discoveredCount, ok := discoveredStateCount[requiredStateType]
 			if !ok {

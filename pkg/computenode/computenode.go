@@ -206,7 +206,7 @@ func (node *ComputeNode) subscriptionSetup() {
 		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
-			log.Debug().Msgf("[%s] APPLES ARE SICK job created: %s", node.id, job.ID)
+			log.Debug().Msgf("[%s] job created: %s", node.id, job.ID)
 			node.subscriptionEventCreated(ctx, jobEvent, job)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
@@ -381,8 +381,8 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 	}
 
 	if !acceptedByPolicy {
-		log.Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %+v",
-			node.id, data.Spec)
+		log.Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %s",
+			node.id, data.JobID)
 		return false, processedRequirements, nil
 	}
 
@@ -399,7 +399,7 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIn
 		Job:  job.ID,
 	})
 
-	log.Debug().Msgf("compute node %s bidding on: %+v", node.id, job.Spec)
+	log.Debug().Msgf("compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
 
 	return node.controller.BidJob(ctx, job.ID, shardIndex)
 }
