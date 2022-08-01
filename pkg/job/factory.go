@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -13,6 +14,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
+	log.Debug().Msgf("Constructing job from event: %+v", ev)
+	return executor.Job{
+		ID:              ev.JobID,
+		RequesterNodeID: ev.SourceNodeID,
+		ClientID:        ev.ClientID,
+		Spec:            ev.JobSpec,
+		Deal:            ev.JobDeal,
+		CreatedAt:       time.Now(),
+	}
+}
+
+// these are util methods for the CLI
+// to pass in the collection of CLI args as strings
+// and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
 	engine executor.EngineType,
 	v verifier.VerifierType,

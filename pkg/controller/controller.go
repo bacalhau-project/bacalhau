@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -150,7 +151,12 @@ func (ctrl *Controller) SubmitJob(
 	ev.JobSpec = data.Spec
 	ev.JobDeal = data.Deal
 
-	job := constructJob(ev)
+	job := jobutils.ConstructJobFromEvent(ev)
+
+	job, err = jobutils.ProcessJobSharding(ctx, job, ctrl.storageProviders)
+	if err != nil {
+		return executor.Job{}, fmt.Errorf("error processing job sharding: %s", err)
+	}
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
@@ -158,6 +164,7 @@ func (ctrl *Controller) SubmitJob(
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
+
 	err = ctrl.writeEvent(jobCtx, ev)
 	return job, err
 }
@@ -377,7 +384,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	// work out which internal handler function based on the event type
 	switch ev.EventName {
 	case executor.JobEventCreated:
-		err = ctrl.localdb.AddJob(ctx, constructJob(ev))
+		err = ctrl.localdb.AddJob(ctx, jobutils.ConstructJobFromEvent(ev))
 
 	case executor.JobEventDealUpdated:
 		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
@@ -447,19 +454,6 @@ func (ctrl *Controller) constructEvent(jobID string, eventName executor.JobEvent
 		JobID:        jobID,
 		EventName:    eventName,
 		EventTime:    time.Now(),
-	}
-}
-
-func constructJob(ev executor.JobEvent) executor.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
-	return executor.Job{
-		ID: ev.JobID,
-		// TODO: add logging here
-		RequesterNodeID: ev.SourceNodeID,
-		ClientID:        ev.ClientID,
-		Spec:            ev.JobSpec,
-		Deal:            ev.JobDeal,
-		CreatedAt:       time.Now(),
 	}
 }
 
