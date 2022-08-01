@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -83,7 +84,6 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	// TODO: add logging here
 	log.Debug().Msgf("acquiring Lock for processing bid %+v on %+v", jobEvent, job)
 	node.bidMutex.Lock()
-	log.Debug().Msgf("acquired Lock for processing bid %+v on %+v", jobEvent, job)
 	defer node.bidMutex.Unlock()
 
 	// Need to declare span separately to prevent shadowing
@@ -94,7 +94,8 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 
 	accepted := func() bool {
-		concurrency := job.Deal.Concurrency
+		totalExecutionCount := jobutils.GetTotalExecutionCount(job)
+
 		// let's see how many bids we have already accepted
 		// it's important this comes from "local events"
 		// otherwise we are in a race with the network and could
@@ -118,9 +119,9 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 			}
 		}
 
-		if len(acceptedEvents) >= int(concurrency) {
+		if len(acceptedEvents) >= totalExecutionCount {
 			// nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d)", len(acceptedEvents), concurrency)
+			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Total Shards: %d)", len(acceptedEvents), totalExecutionCount)
 			return false
 		}
 
@@ -133,7 +134,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 			Type: "requestor_node:bid_accepted",
 			Job:  job.ID,
 		})
-		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, 0)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
