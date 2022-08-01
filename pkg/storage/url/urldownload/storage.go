@@ -116,6 +116,7 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storag
 func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{
 		{
+			Name:   spec.Name,
 			Engine: storage.StorageSourceURLDownload,
 			Path:   spec.Path,
 			URL:    spec.URL,
