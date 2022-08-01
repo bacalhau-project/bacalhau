@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -203,11 +204,14 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), uint(10), submittedJob.ExecutionPlan.TotalShards)
+	fmt.Printf("submittedJob --------------------------------------\n")
+	spew.Dump(submittedJob)
 
-	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx)
-	require.NoError(suite.T(), err)
+	// resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
+	// require.NoError(suite.T(), err)
+	// err = resolver.WaitUntilComplete(ctx)
+	// require.NoError(suite.T(), err)
 
 	// jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
 	// require.NoError(suite.T(), err)
