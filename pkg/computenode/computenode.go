@@ -143,7 +143,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 	for _, id := range bidJobIds {
-		// CHECK WE DON@T HAVE A BID EVENT LOCALLY
 		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), id)
 		if err != nil {
 			node.capacityManager.Remove(id)
@@ -227,9 +226,10 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
-		NodeID: node.id,
-		JobID:  jobEvent.JobID,
-		Spec:   jobEvent.JobSpec,
+		NodeID:        node.id,
+		JobID:         jobEvent.JobID,
+		Spec:          jobEvent.JobSpec,
+		ExecutionPlan: jobEvent.JobExecutionPlan,
 	})
 	if err != nil {
 		log.Error().Msgf("Error checking job policy: %v", err)

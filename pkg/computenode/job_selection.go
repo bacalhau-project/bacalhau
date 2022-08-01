@@ -36,9 +36,10 @@ type JobSelectionPolicy struct {
 
 // the JSON data we send to http or exec probes
 type JobSelectionPolicyProbeData struct {
-	NodeID string           `json:"node_id"`
-	JobID  string           `json:"job_id"`
-	Spec   executor.JobSpec `json:"spec"`
+	NodeID        string                    `json:"node_id"`
+	JobID         string                    `json:"job_id"`
+	Spec          executor.JobSpec          `json:"spec"`
+	ExecutionPlan executor.JobExecutionPlan `json:"execution_plan"`
 }
 
 // generate a default empty job selection policy
