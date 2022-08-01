@@ -21,6 +21,7 @@ jobs:
       GOARCH: << parameters.target_arch >>
       CGO: 0
       GCS_TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
+      METADATA_FILENAME: LAST-PERFORMANCE-RESULT-METADATA-OBJECT
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -28,6 +29,9 @@ jobs:
         type: string
       target_os:
         type: string
+      run_tests:
+        type: boolean
+        default: true
 
     steps:
       - checkout
@@ -78,6 +82,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
+              - equal: ["run_tests", true]
           steps:
             - run:
                 name: Test
@@ -110,6 +115,12 @@ jobs:
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
                   gsutil cp "$TEST_RESULTS_FILENAME" "$GCS_TEST_RESULTS_BUCKET"
+
+                  gsutil -m setmeta -h "Content-Type:text/plain" \
+                    -h "Cache-Control:public, max-age=0, no-cache, no-store" \
+                    -h "Content-Disposition" gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}
+
+                  gsutil setmeta -h "x-goog-meta-performance-results-last-updated:$(date -u +'%FT%H%MZ')" "gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}"
 
   deploy:
     docker:
@@ -153,6 +164,35 @@ jobs:
             cd ops/terraform && terraform init && \
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+
+  run_perf:
+    executor: linux
+    parallelism: 1
+    environment:
+      GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
+    steps:
+      - checkout
+      - run:
+          name: Run Perf
+          command: |
+            cd benchmark
+            sudo apt install build-essential -y
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source $HOME/.cargo/env
+            cargo install hyperfine
+            ./start_and_run.sh
+
+      - run:
+          name: Upload perf results
+          command: |
+            export PATH="$HOME/.local/bin:${PATH}"
+            sudo apt install python3.10 python3-pip -y
+            sudo python3 -m pip install --upgrade pip
+            pip3 install gsutil
+            export SHA="<< pipeline.git.revision >>"
+            export DATETIME="$(date -u +"%FT%H%MZ")"
+            echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
 
   release:
     executor: linux
@@ -266,3 +306,15 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+
+  performance: # This workflow will run on all branches except 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux"]
+              target_arch: ["amd64"]
+              run_tests: [false]
+      - run_perf:
+          name: Running perf

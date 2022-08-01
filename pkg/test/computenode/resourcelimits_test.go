@@ -504,8 +504,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		require.Equal(suite.T(), expected, result)
 	}
 
-	runTest("hello", "1b", false)
-	runTest("hello", "1k", true)
+	runTest("hello from 1b test", "1b", false)
+	runTest("hello from 1k test", "1k", true)
 
 }
 
@@ -564,7 +564,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		require.Equal(suite.T(), expected+IpfsMetadataSize, result)
 	}
 
-	runTest("hello", 5)
+	runTest("hello from test volume size", 27)
 	runTest("hello world", 11)
 
 }

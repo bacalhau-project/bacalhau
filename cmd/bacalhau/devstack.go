@@ -3,6 +3,8 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
@@ -14,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
 )
@@ -102,6 +105,39 @@ var devstackCmd = &cobra.Command{
 		}
 
 		stack.PrintNodeInfo()
+
+		portFileName := "/tmp/bacalhau-devstack.port"
+		_, err = os.Stat(portFileName)
+		if err == nil {
+			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+		}
+		f, err := os.Create(portFileName)
+		if err != nil {
+			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
+		}
+		defer os.Remove(portFileName)
+		firstNode := stack.Nodes[0]
+		_, err = f.WriteString(strconv.Itoa(firstNode.APIServer.Port))
+		if err != nil {
+			log.Fatal().Msgf("Error writing out port file: %v", portFileName)
+		}
+
+		pidFileName := "/tmp/bacalhau-devstack.pid"
+		_, err = os.Stat(pidFileName)
+		if err == nil {
+			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+		}
+		fPid, err := os.Create(pidFileName)
+		if err != nil {
+			log.Fatal().Msgf("Error writing out pid file to %v", pidFileName)
+		}
+		defer os.Remove(pidFileName)
+
+		_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
+		if err != nil {
+			log.Fatal().Msgf("Error writing out pid file: %v", pidFileName)
+		}
+
 		<-ctx.Done() // block until killed
 		return nil
 	},

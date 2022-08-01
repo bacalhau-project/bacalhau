@@ -13,28 +13,32 @@ runRemote() {
   script=$1; shift
 
 # generate eval-safe quoted version of current argument list
+# shellcheck disable=SC2034 
   printf -v args '%q ' "$@"
 
 # pass that through on the command line to bash -s
 # note that $args is parsed remotely by /bin/sh, not by bash!
-  ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$remote_addr" "sudo $script"
+  ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"${remote_addr}" "sudo ${script}"
   # ssh -o LogLevel=ERROR -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" ubuntu@"$remote_addr" "sudo bash -s -x -- $args" < "$script"
 }
 
 all_nodes_public=()
-while IFS='' read -r line; do all_nodes_public+=("$line"); done <  <(terraform output -json | jq -r '.instance_public_dns.value | .[] ')
+# trunk-ignore(shellcheck/SC2312)
+while IFS='' read -r line; do all_nodes_public+=("${line}"); done <  <(terraform output -json | jq -r '.instance_public_dns.value | .[] ')
 
 all_nodes_private=()
-while IFS='' read -r line; do all_nodes_private+=("$line"); done <  <(terraform output -json | jq -r '.instance_private_ips.value | .[] ')
+# trunk-ignore(shellcheck/SC2312)
+while IFS='' read -r line; do all_nodes_private+=("${line}"); done <  <(terraform output -json | jq -r '.instance_private_ips.value | .[] ')
 
 first_node="${all_nodes_public[1]}"
-echo "Connecting to: ubuntu@$first_node"
-runRemote "$first_node" "/usr/local/bin/scripts/setup_node.sh"
-runRemote "$first_node" "touch /tmp/remote_peer_string"
+echo "Connecting to: ubuntu@${first_node}"
+runRemote "${first_node}" "/usr/local/bin/scripts/setup_node.sh"
+runRemote "${first_node}" "touch /tmp/remote_peer_string"
 
 while true ; do
-  peer_string=$(curl -s "$first_node/peer_token.html" | head -1)
-  if [[ "$peer_string" == *"html"* ]]; then
+  # trunk-ignore(shellcheck/SC2312)
+  peer_string=$(curl -s "${first_node}/peer_token.html" | head -1)
+  if [[ "${peer_string}" == *"html"* ]]; then
     sleep 5
   else
     break
@@ -51,12 +55,13 @@ for i in "${!all_nodes_public[@]}"; do
     fi
 
     this_node_public="${all_nodes_public[((i+1))]}"
+    # trunk-ignore(shellcheck/SC2034)
     last_node_private="${all_nodes_private[((i))]}"
 
-    echo "Peer string: $peer_string"
+    echo "Peer string: ${peer_string}"
 
-    echo "Connecting to: ubuntu@$this_node_public"
-    runRemote "$this_node_public" "echo \"$peer_string\" > /tmp/remote_peer_string"
-    runRemote "$this_node_public" "/usr/local/bin/scripts/setup_node.sh"
+    echo "Connecting to: ubuntu@${this_node_public}"
+    runRemote "${this_node_public}" "echo \"${peer_string}\" > /tmp/remote_peer_string"
+    runRemote "${this_node_public}" "/usr/local/bin/scripts/setup_node.sh"
     ((index=index+1))
 done

@@ -24,6 +24,7 @@ var jobInputs []string
 var jobInputUrls []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
+var jobLocalOutput string
 var jobEnv []string
 var jobConcurrency uint
 var jobCPU string
@@ -207,7 +208,6 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		cmd.Printf("%s\n", job.ID)
-
 		if waitForJobToFinishAndPrintOutput {
 			resolver, err := getAPIClient().GetJobStateResolver(ctx, job.ID)
 			if err != nil {
