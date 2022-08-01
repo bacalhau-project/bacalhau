@@ -34,7 +34,7 @@ Please see this [modified script example here](https://github.com/wesfloyd/bacal
 Build a an **x86_64 / amd64** based docker image for your workload ([example here](https://docs.docker.com/language/python/build-images/)) and push the image to a [public docker registry](https://codefresh.io/docs/docs/integrations/docker-registries/). 
 
 Tips:
-- Create your image via Dockerfile for the workload if you need to set the current working directory (-w) within the Docker container ([example here]([url](https://github.com/wesfloyd/bacalhau_socat_test/blob/main/Dockerfile))). Bacalhau does not yet support this functionality.
+- Create your image via Dockerfile for the workload if you need to set the current working directory (-w) within the Docker container ([example here](https://github.com/wesfloyd/bacalhau_socat_test/blob/main/Dockerfile)). Bacalhau does not yet support this functionality.
 - x86 Platform: do not build your docker image on a arm64 (Apple Silicon) Mac, the Bacalhau testnet is running x86_64 servers, so the docker images must be built on the same CPU architecture. You may execute bacalhau jobs from the CLI on a Mac, but please avoid building your docker images there._
 
 
