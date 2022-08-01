@@ -5,8 +5,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/stretchr/testify/require"
 )
+
+func explodeStringArray(arr []string) []storage.StorageSpec {
+	results := []storage.StorageSpec{}
+	for _, str := range arr {
+		results = append(results, storage.StorageSpec{
+			Engine: storage.StorageSourceIPFS,
+			Path:   str,
+		})
+	}
+	return results
+}
+
+func joinStringArray(arr []storage.StorageSpec) []string {
+	results := []string{}
+	for _, str := range arr {
+		results = append(results, str.Path)
+	}
+	return results
+}
 
 func TestApplyGlobPattern(t *testing.T) {
 
@@ -51,9 +71,14 @@ func TestApplyGlobPattern(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		results, err := ApplyGlobPattern(testCase.files, testCase.pattern)
+		results, err := ApplyGlobPattern(explodeStringArray(testCase.files), testCase.pattern)
 		require.NoError(t, err)
-		require.Equal(t, strings.Join(testCase.outputs, ","), strings.Join(results, ","), fmt.Sprintf("%s: %s did not result in correct answer", testCase.name, testCase.pattern))
+		require.Equal(
+			t,
+			strings.Join(testCase.outputs, ","),
+			strings.Join(joinStringArray(results), ","),
+			fmt.Sprintf("%s: %s did not result in correct answer", testCase.name, testCase.pattern),
+		)
 	}
 
 }

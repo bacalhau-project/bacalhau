@@ -3,6 +3,7 @@ package job
 import (
 	doublestar "github.com/bmatcuk/doublestar/v4"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 /*
@@ -21,10 +22,10 @@ import (
 	/**\/*.txt = [/a/file1.txt, /a/file2.txt, /b/file1.txt, /b/file2.txt]
 
 */
-func ApplyGlobPattern(files []string, pattern string) ([]string, error) {
-	var result []string
+func ApplyGlobPattern(files []storage.StorageSpec, pattern string) ([]storage.StorageSpec, error) {
+	var result []storage.StorageSpec
 	for _, file := range files {
-		matches, err := doublestar.Match(pattern, file)
+		matches, err := doublestar.Match(pattern, file.Path)
 		if err != nil {
 			return result, err
 		}
