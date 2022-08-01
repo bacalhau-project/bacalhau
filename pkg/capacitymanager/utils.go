@@ -234,3 +234,19 @@ func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 		GPU:    totals.GPU - current.GPU,
 	}
 }
+
+func FlattenShardId(jobId string, shardIndex int) string {
+	return fmt.Sprintf("%s:%d", jobId, shardIndex)
+}
+
+func ExplodeShardId(id string) (string, int, error) {
+	parts := strings.Split(id, ":")
+	if len(parts) != 2 {
+		return "", 0, fmt.Errorf("invalid shard id: %s", id)
+	}
+	intVar, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", 0, err
+	}
+	return parts[0], intVar, nil
+}

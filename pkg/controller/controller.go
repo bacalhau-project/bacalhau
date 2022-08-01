@@ -278,11 +278,12 @@ func (ctrl *Controller) SelectJob(ctx context.Context, jobID string) error {
 }
 
 // done by compute nodes when they hear about the job
-func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
+func (ctrl *Controller) BidJob(ctx context.Context, jobID string, shardIndex int) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
-		EventName: executor.JobLocalEventBid,
-		JobID:     jobID,
+		EventName:  executor.JobLocalEventBid,
+		JobID:      jobID,
+		ShardIndex: shardIndex,
 	})
 	if err != nil {
 		return err
@@ -292,6 +293,7 @@ func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
 	// the target node is "us" because it is "us" who is bidding
 	// and so the job state should be updated against our node id
 	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 

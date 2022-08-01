@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -142,44 +143,50 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
-	for _, id := range bidJobIds {
-		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), id)
+
+	for _, flatId := range bidJobIds {
+		jobId, shardIndex, err := capacitymanager.ExplodeShardId(flatId)
 		if err != nil {
-			node.capacityManager.Remove(id)
+			node.capacityManager.Remove(flatId)
+			continue
+		}
+		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobId)
+		if err != nil {
+			node.capacityManager.Remove(flatId)
 			continue
 		}
 
 		hasAlreadyBid := false
 
 		for _, localEvent := range jobLocalEvents {
-			if localEvent.EventName == executor.JobLocalEventBid {
+			if localEvent.EventName == executor.JobLocalEventBid && localEvent.ShardIndex == shardIndex {
 				hasAlreadyBid = true
 				break
 			}
 		}
 
 		if hasAlreadyBid {
-			log.Info().Msgf("node %s has already bid on job %s", node.id, id)
-			node.capacityManager.Remove(id)
+			log.Info().Msgf("node %s has already bid on job shard %s %d", node.id, jobId, shardIndex)
+			node.capacityManager.Remove(flatId)
 			continue
 		}
 
-		job, err := node.controller.GetJob(context.Background(), id)
+		job, err := node.controller.GetJob(context.Background(), jobId)
 		if err != nil {
-			node.capacityManager.Remove(id)
+			node.capacityManager.Remove(flatId)
 			continue
 		}
-		err = node.BidOnJob(context.Background(), job)
+		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
-			node.capacityManager.Remove(job.ID)
+			node.capacityManager.Remove(flatId)
 			continue
 		}
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
-		err = node.capacityManager.MoveToActive(job.ID)
+		err = node.capacityManager.MoveToActive(flatId)
 		if err != nil {
-			node.capacityManager.Remove(job.ID)
+			node.capacityManager.Remove(flatId)
 			continue
 		}
 	}
@@ -242,7 +249,9 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			log.Info().Msgf("Error selecting job on host %s: %v", node.id, err)
 			return
 		}
-		err = node.capacityManager.AddToBacklog(job.ID, processedRequirements)
+
+		// now explode the job into shards and add each shard to the backlog
+		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
 		if err != nil {
 			log.Info().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
@@ -267,9 +276,12 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	defer span.End()
 
 	// Increment the number of jobs accepted by this compute node:
-	jobsAccepted.With(prometheus.Labels{"node_id": node.id}).Inc()
+	jobsAccepted.With(prometheus.Labels{
+		"node_id":     node.id,
+		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
+	}).Inc()
 
-	log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", node.id, job.ID)
+	log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s) - Shard (index: %d)", node.id, job.ID, jobEvent.ShardIndex)
 	logger.LogJobEvent(logger.JobEvent{
 		Node: node.id,
 		Type: "compute_node:run",
@@ -277,59 +289,19 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		Data: job,
 	})
 
-	resultFolder, containerRunError := node.RunJob(ctx, job)
-	if containerRunError != nil {
-		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
-	} else {
-		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
-	}
-	if resultFolder == "" {
-		errMessage := fmt.Sprintf("Missing results folder for job %s", job.ID)
-		if containerRunError != nil {
-			errMessage = fmt.Sprintf("RunJob error %s: %s", job.ID, containerRunError)
-		}
+	// once we've finished this shard - let's see if we should
+	// bid on another shard or if we've finished the job
+	defer func() {
+		node.capacityManager.Remove(capacitymanager.FlattenShardId(job.ID, jobEvent.ShardIndex))
+		node.controlLoopBidOnJobs()
+	}()
+
+	err := node.RunShard(ctx, job, jobEvent.ShardIndex)
+	if err != nil {
+		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
 		log.Error().Msgf(errMessage)
 		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
 		return
-	}
-
-	v, err := node.getVerifier(ctx, job.Spec.Verifier)
-	if err != nil {
-		errMessage := fmt.Sprintf("Error getting verifier: %s %+v", err, job)
-		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		return
-	}
-
-	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
-	if err != nil {
-		errMessage := fmt.Sprintf("Error verifying results: %s %+v", err, job)
-		log.Error().Msg(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		return
-	}
-
-	if containerRunError == nil {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "compute_node:result",
-			Job:  job.ID,
-			Data: resultValue,
-		})
-		err = node.controller.CompleteJob(
-			ctx,
-			job.ID,
-			fmt.Sprintf("Got job result: %s", resultValue),
-			resultValue,
-		)
-		if err != nil {
-			errMessage := fmt.Sprintf("Error submitting results: %s %+v", err, job)
-			log.Error().Msgf(errMessage)
-			_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		}
-	} else {
-		errMessage := fmt.Sprintf("Error running job: %s %+v", containerRunError.Error(), job)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, resultValue)
 	}
 }
 
@@ -417,7 +389,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
-func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
+func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIndex int) error {
 	// TODO: Why do we have two different kinds of loggers?
 	logger.LogJobEvent(logger.JobEvent{
 		Node: node.id,
@@ -427,7 +399,7 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
 
 	log.Debug().Msgf("compute node %s bidding on: %+v", node.id, job.Spec)
 
-	return node.controller.BidJob(ctx, job.ID)
+	return node.controller.BidJob(ctx, job.ID, shardIndex)
 }
 
 /*
@@ -436,13 +408,6 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
 
 */
 func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, error) {
-	// whatever happens here (either completion or error)
-	// we will want to free up the capacity manager from this job
-	defer func() {
-		node.capacityManager.Remove(job.ID)
-		node.controlLoopBidOnJobs()
-	}()
-
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
@@ -450,6 +415,43 @@ func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, 
 	}
 
 	return e.RunJob(ctx, job)
+}
+
+func (node *ComputeNode) RunShard(
+	ctx context.Context,
+	job executor.Job,
+	shardIndex int,
+) error {
+	resultFolder, containerRunError := node.RunJob(ctx, job)
+	if containerRunError != nil {
+		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
+	} else {
+		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
+	}
+	if resultFolder == "" {
+		err := fmt.Errorf("Missing results folder for job %s", job.ID)
+		if containerRunError != nil {
+			err = fmt.Errorf("RunJob error %s: %s", job.ID, containerRunError)
+		}
+		return err
+	}
+	v, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		return err
+	}
+	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
+	if err != nil {
+		return err
+	}
+	if containerRunError != nil {
+		return fmt.Errorf("RunJob error %s: %s", job.ID, containerRunError)
+	}
+	return node.controller.CompleteJob(
+		ctx,
+		job.ID,
+		fmt.Sprintf("Got job result: %s", resultValue),
+		resultValue,
+	)
 }
 
 // nolint:dupl // methods are not duplicates

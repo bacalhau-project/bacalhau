@@ -211,6 +211,16 @@ func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsa
 	return nil
 }
 
+func (manager *CapacityManager) AddShardsToBacklog(id string, shardCount int, requirements ResourceUsageData) error {
+	for i := 0; i < shardCount; i++ {
+		err := manager.AddToBacklog(FlattenShardId(id, i), requirements)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (manager *CapacityManager) MoveToActive(id string) error {
 	item := manager.backlog.Get(id)
 	if item == nil {
