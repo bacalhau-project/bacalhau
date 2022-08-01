@@ -145,6 +145,9 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 func (suite *ShardingSuite) TestEndToEnd() {
 
+	const totalFiles = 10
+	const batchSize = 5
+	const batchCount = totalFiles / batchSize
 	const nodeCount = 1
 	ctx, span := newSpan("sharding_endtoend")
 	defer span.End()
@@ -157,7 +160,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	)
 	defer TeardownTest(stack, cm)
 
-	dirPath, err := prepareFolderWithFiles(10)
+	dirPath, err := prepareFolderWithFiles(totalFiles)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -191,7 +194,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 		Sharding: executor.JobShardingConfig{
 			GlobPattern: "/input/*",
-			BatchSize:   5,
+			BatchSize:   batchSize,
 		},
 	}
 
@@ -203,7 +206,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), 2, submittedJob.ExecutionPlan.TotalShards)
+	require.Equal(suite.T(), batchCount, submittedJob.ExecutionPlan.TotalShards)
 
 	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
