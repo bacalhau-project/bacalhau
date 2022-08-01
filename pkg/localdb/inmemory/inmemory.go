@@ -83,6 +83,10 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 func (d *InMemoryDatastore) AddJob(ctx context.Context, job executor.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+	_, ok := d.jobs[job.ID]
+	if ok {
+		return nil
+	}
 	d.jobs[job.ID] = &job
 	return nil
 }
