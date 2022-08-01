@@ -145,7 +145,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 func (suite *ShardingSuite) TestEndToEnd() {
 
-	const nodeCount = 1
+	const nodeCount = 3
 	ctx, span := newSpan("sharding_endtoend")
 	defer span.End()
 
