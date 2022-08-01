@@ -137,10 +137,11 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.Sto
 	basePath := strings.TrimPrefix(spec.Path, "/")
 	specs := []storage.StorageSpec{}
 	for _, node := range flatNodes {
+		usePath := strings.TrimSuffix("/"+basePath+"/"+strings.Join(node.Path, "/"), "/")
 		specs = append(specs, storage.StorageSpec{
 			Engine: storage.StorageSourceIPFS,
 			Cid:    node.Cid.String(),
-			Path:   basePath + "/" + strings.Join(node.Path, "/"),
+			Path:   usePath,
 		})
 	}
 	return specs, nil

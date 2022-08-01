@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -116,6 +115,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, storage.StorageSpec{
+		Path:   "/input",
 		Engine: storage.StorageSourceIPFS,
 		Cid:    directoryCid,
 	})
@@ -127,11 +127,11 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	}
 
 	// the top level node is en empty path
-	expectedFilePaths := []string{"/"}
+	expectedFilePaths := []string{"/input"}
 	for i := 0; i < folderCount; i++ {
-		expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/folder%d", i))
+		expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/input/folder%d", i))
 		for j := 0; j < fileCount; j++ {
-			expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/folder%d/%d.txt", i, j))
+			expectedFilePaths = append(expectedFilePaths, fmt.Sprintf("/input/folder%d/%d.txt", i, j))
 		}
 	}
 
@@ -190,7 +190,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			},
 		},
 		Sharding: executor.JobShardingConfig{
-			GlobPattern: "/*",
+			GlobPattern: "/input/*",
 			BatchSize:   10,
 		},
 	}
@@ -209,9 +209,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	err = resolver.WaitUntilComplete(ctx)
 	require.NoError(suite.T(), err)
 
-	jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
+	// jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
+	// require.NoError(suite.T(), err)
 
-	fmt.Printf("jobState --------------------------------------\n")
-	spew.Dump(jobState)
 }

@@ -71,7 +71,7 @@ type JobShardingConfig struct {
 	// how many "items" are to be processed in each shard
 	// we first apply the glob pattern which will result in a flat list of items
 	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"batch_size" yaml:"batch_size"`
+	BatchSize uint `json:"batch_size" yaml:"batch_size"`
 	// when using multiple input volumes
 	// what path do we treat as the common mount path to apply the glob pattern to
 	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
