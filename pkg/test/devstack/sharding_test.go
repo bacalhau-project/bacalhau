@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -46,7 +47,7 @@ func (suite *ShardingSuite) TearDownAllSuite() {
 
 }
 
-func prepareFolderWithFiles(folderCount, fileCount int) (string, error) {
+func prepareFolderWithFoldersAndFiles(folderCount, fileCount int) (string, error) {
 	basePath, err := os.MkdirTemp("", "sharding-test")
 	if err != nil {
 		return "", err
@@ -71,8 +72,25 @@ func prepareFolderWithFiles(folderCount, fileCount int) (string, error) {
 	return basePath, nil
 }
 
-func (suite *ShardingSuite) TestExplodeCid() {
+func prepareFolderWithFiles(fileCount int) (string, error) {
+	basePath, err := os.MkdirTemp("", "sharding-test")
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < fileCount; i++ {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%d.txt", basePath, i),
+			[]byte(fmt.Sprintf("hello %d", i)),
+			0644,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+	return basePath, nil
+}
 
+func (suite *ShardingSuite) TestExplodeCid() {
 	const nodeCount = 1
 	const folderCount = 10
 	const fileCount = 10
@@ -88,7 +106,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	node := stack.Nodes[0]
 
 	// make 10 folders each with 10 files
-	dirPath, err := prepareFolderWithFiles(folderCount, fileCount)
+	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -139,7 +157,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	)
 	defer TeardownTest(stack, cm)
 
-	dirPath, err := prepareFolderWithFiles(10, 10)
+	dirPath, err := prepareFolderWithFiles(100)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -190,4 +208,10 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 	err = resolver.WaitUntilComplete(ctx)
 	require.NoError(suite.T(), err)
+
+	jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
+	require.NoError(suite.T(), err)
+
+	fmt.Printf("jobState --------------------------------------\n")
+	spew.Dump(jobState)
 }
