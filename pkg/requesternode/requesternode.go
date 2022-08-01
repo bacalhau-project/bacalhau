@@ -140,7 +140,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 		}
 	} else {
 		log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
-		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}

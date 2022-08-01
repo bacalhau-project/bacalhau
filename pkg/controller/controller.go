@@ -215,7 +215,11 @@ func (ctrl *Controller) AcceptJobBid(
 }
 
 // can only be done by the requestor node that is responsible for the job
-func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) RejectJobBid(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("RejectJobBid: jobID cannot be empty")
 	}
@@ -228,6 +232,7 @@ func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) 
 	// the target node is the "nodeID" because the requester node calls this
 	// function and so knows which node it is rejecting the bid for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -290,9 +295,6 @@ func (ctrl *Controller) BidJob(ctx context.Context, jobID string, shardIndex int
 	}
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_BidJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBid)
-	// the target node is "us" because it is "us" who is bidding
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -302,9 +304,6 @@ func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CancelJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidCancelled)
-	// the target node is "us" because it is "us" who is canceling our bid
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -315,9 +314,6 @@ func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error 
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RunJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventRunning)
 	ev.Status = status
-	// the target node is "us" because it is "us" who is running the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -333,9 +329,6 @@ func (ctrl *Controller) CompleteJob(
 	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
 	ev.Status = status
 	ev.ResultsID = resultsID
-	// the target node is "us" because it is "us" who has completed the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -353,9 +346,6 @@ func (ctrl *Controller) ErrorJob(
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
 	ev.ResultsID = resultsID
-	// the target node is "us" because it is "us" who has errored the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -435,15 +425,24 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
-	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
+
+	// in most cases - the source node is the id of the state
+	// we are updating - there are a few events where the target node id
+	// overrides this (e.g. BidAccepted)
+	useNodeId := ev.SourceNodeID
+	if ev.TargetNodeID != "" {
+		useNodeId = ev.TargetNodeID
+	}
+
+	if executor.IsValidJobState(executionState) {
 		// update the state for this job shard
 		err = ctrl.localdb.UpdateShardState(
 			ctx,
 			ev.JobID,
-			ev.TargetNodeID,
+			useNodeId,
 			ev.ShardIndex,
 			executor.JobShardState{
-				NodeID:     ev.TargetNodeID,
+				NodeID:     useNodeId,
 				ShardIndex: ev.ShardIndex,
 				State:      executionState,
 				Status:     ev.Status,
