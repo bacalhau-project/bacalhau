@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
@@ -148,19 +147,21 @@ func (ctrl *Controller) SubmitJob(
 
 	ev := ctrl.constructEvent(jobID, executor.JobEventCreated)
 
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Spec, ctrl.storageProviders)
+	if err != nil {
+		return executor.Job{}, fmt.Errorf("error generating execution plan: %s", err)
+	}
+
 	ev.ClientID = data.ClientID
 	ev.JobSpec = data.Spec
 	ev.JobDeal = data.Deal
+	ev.JobExecutionPlan = executionPlan
 
 	job := jobutils.ConstructJobFromEvent(ev)
 
-	job, err = jobutils.ProcessJobSharding(ctx, job, ctrl.storageProviders)
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error processing job sharding: %s", err)
 	}
-
-	fmt.Printf("job --------------------------------------\n")
-	spew.Dump(job)
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id

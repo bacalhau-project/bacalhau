@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	doublestar "github.com/bmatcuk/doublestar/v4"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
@@ -63,7 +62,7 @@ func GetTotalJobShards(job executor.Job) int {
 // we group into batches using job.Spec.Sharding.BatchSize
 func ExplodeShardedVolumes(
 	ctx context.Context,
-	job executor.Job,
+	spec executor.JobSpec,
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) ([]storage.StorageSpec, error) {
 	// this is an exploded list of all storage inodes
@@ -71,7 +70,7 @@ func ExplodeShardedVolumes(
 	// we will filter these using the glob pattern
 	// and then group them based on batch size
 	allVolumes := []storage.StorageSpec{}
-	config := job.Spec.Sharding
+	config := spec.Sharding
 
 	// this means there is no sharding and we use the input volumes as is
 	if config.GlobPattern == "" {
@@ -79,7 +78,7 @@ func ExplodeShardedVolumes(
 	}
 
 	// loop over each input volume and explode it using the storage driver
-	for _, volume := range job.Spec.Inputs {
+	for _, volume := range spec.Inputs {
 		storageProvider, ok := storageProviders[volume.Engine]
 		if !ok {
 			return allVolumes, fmt.Errorf("storage provider not found for engine %s", volume.Engine)
@@ -90,10 +89,6 @@ func ExplodeShardedVolumes(
 		}
 		allVolumes = append(allVolumes, explodedVolumes...)
 	}
-
-	fmt.Printf("allVolumes --------------------------------------\n")
-	spew.Dump(len(allVolumes))
-
 	// let's filter all of the combined volumes down using the glob pattern
 	return ApplyGlobPattern(allVolumes, config.GlobPattern, config.BasePath)
 }
@@ -101,21 +96,19 @@ func ExplodeShardedVolumes(
 // given an exploded set of volumes - we now group them based on batch size
 func GetShards(
 	ctx context.Context,
-	job executor.Job,
+	spec executor.JobSpec,
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) ([][]storage.StorageSpec, error) {
-	config := job.Spec.Sharding
+	config := spec.Sharding
 	batchSize := config.BatchSize
 	if batchSize <= 0 {
 		batchSize = 1
 	}
 	results := [][]storage.StorageSpec{}
-	filteredVolumes, err := ExplodeShardedVolumes(ctx, job, storageProviders)
+	filteredVolumes, err := ExplodeShardedVolumes(ctx, spec, storageProviders)
 	if err != nil {
 		return results, err
 	}
-	fmt.Printf("filteredVolumes --------------------------------------\n")
-	spew.Dump(len(filteredVolumes))
 	currentArray := []storage.StorageSpec{}
 	for _, volume := range filteredVolumes {
 		currentArray = append(currentArray, volume)
@@ -135,11 +128,11 @@ func GetShards(
 // has been applied to a volume and a single shard is now running
 func GetShard(
 	ctx context.Context,
-	job executor.Job,
+	spec executor.JobSpec,
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 	shard int,
 ) ([]storage.StorageSpec, error) {
-	shards, err := GetShards(ctx, job, storageProviders)
+	shards, err := GetShards(ctx, spec, storageProviders)
 	if err != nil {
 		return []storage.StorageSpec{}, err
 	}
@@ -150,25 +143,23 @@ func GetShard(
 }
 
 // we explode each sharded volume and calculate the batch size
-func ProcessJobSharding(
+func GenerateExecutionPlan(
 	ctx context.Context,
-	job executor.Job,
+	spec executor.JobSpec,
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
-) (executor.Job, error) {
-	config := job.Spec.Sharding
+) (executor.JobExecutionPlan, error) {
+	config := spec.Sharding
 	// this means there is no sharding and we use the input volumes as is
 	if config.GlobPattern == "" {
-		job.ExecutionPlan = executor.JobExecutionPlan{
+		return executor.JobExecutionPlan{
 			TotalShards: 1,
-		}
-		return job, nil
+		}, nil
 	}
-	shards, err := GetShards(ctx, job, storageProviders)
+	shards, err := GetShards(ctx, spec, storageProviders)
 	if err != nil {
-		return job, err
+		return executor.JobExecutionPlan{}, err
 	}
-	job.ExecutionPlan = executor.JobExecutionPlan{
+	return executor.JobExecutionPlan{
 		TotalShards: len(shards),
-	}
-	return job, nil
+	}, nil
 }

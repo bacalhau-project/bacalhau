@@ -22,6 +22,7 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 		ClientID:        ev.ClientID,
 		Spec:            ev.JobSpec,
 		Deal:            ev.JobDeal,
+		ExecutionPlan:   ev.JobExecutionPlan,
 		CreatedAt:       time.Now(),
 	}
 }
