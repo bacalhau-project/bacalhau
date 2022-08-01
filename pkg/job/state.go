@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -132,9 +131,7 @@ func (resolver *StateResolver) Wait(
 // this is an auto wait where we auto calculate how many shard
 // sates we expect to see and we use that to pass to WaitForJobStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
-	totalShards := GetTotalJobShards(resolver.job)
-	fmt.Printf("totalShards --------------------------------------\n")
-	spew.Dump(totalShards)
+	totalShards := GetTotalExecutionCount(resolver.job)
 	return resolver.Wait(
 		ctx,
 		totalShards,
