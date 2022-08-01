@@ -184,7 +184,11 @@ func (ctrl *Controller) UpdateDeal(ctx context.Context, jobID string, deal execu
 }
 
 // can only be done by the requestor node that is responsible for the job
-func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) AcceptJobBid(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("AcceptJobBid: jobID cannot be empty")
 	}
@@ -196,6 +200,7 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 		EventName:    executor.JobLocalEventBidAccepted,
 		JobID:        jobID,
 		TargetNodeID: nodeID,
+		ShardIndex:   shardIndex,
 	})
 	if err != nil {
 		return err
@@ -205,6 +210,7 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 	// the target node is the "nodeID" because the requester node calls this
 	// function and so knows which node it is accepting the bid for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -262,6 +268,14 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
   COMPUTE NODE
 
 */
+func (ctrl *Controller) SelectJob(ctx context.Context, jobID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventSelected,
+		JobID:     jobID,
+	})
+	return err
+}
 
 // done by compute nodes when they hear about the job
 func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
