@@ -145,10 +145,10 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 func (suite *ShardingSuite) TestEndToEnd() {
 
-	const totalFiles = 10
-	const batchSize = 5
+	const totalFiles = 100
+	const batchSize = 10
 	const batchCount = totalFiles / batchSize
-	const nodeCount = 1
+	const nodeCount = 3
 	ctx, span := newSpan("sharding_endtoend")
 	defer span.End()
 
