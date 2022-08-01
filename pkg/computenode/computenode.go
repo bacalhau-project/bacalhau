@@ -229,7 +229,9 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	defer span.End()
 
 	// Increment the number of jobs seen by this compute node:
-	jobsReceived.With(prometheus.Labels{"node_id": node.id}).Inc()
+	jobsReceived.With(prometheus.Labels{
+		"node_id": node.id,
+	}).Inc()
 
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
@@ -424,9 +426,15 @@ func (node *ComputeNode) RunShard(
 ) error {
 	resultFolder, containerRunError := node.RunJob(ctx, job)
 	if containerRunError != nil {
-		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
+		jobsFailed.With(prometheus.Labels{
+			"node_id":     node.id,
+			"shard_index": strconv.Itoa(shardIndex),
+		}).Inc()
 	} else {
-		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
+		jobsCompleted.With(prometheus.Labels{
+			"node_id":     node.id,
+			"shard_index": strconv.Itoa(shardIndex),
+		}).Inc()
 	}
 	if resultFolder == "" {
 		err := fmt.Errorf("Missing results folder for job %s", job.ID)

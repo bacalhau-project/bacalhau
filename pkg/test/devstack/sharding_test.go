@@ -157,7 +157,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	)
 	defer TeardownTest(stack, cm)
 
-	dirPath, err := prepareFolderWithFiles(100)
+	dirPath, err := prepareFolderWithFiles(10)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
@@ -191,7 +191,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 		Sharding: executor.JobShardingConfig{
 			GlobPattern: "/input/*",
-			BatchSize:   10,
+			BatchSize:   5,
 		},
 	}
 
