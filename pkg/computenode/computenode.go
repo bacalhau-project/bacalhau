@@ -282,7 +282,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
 	}).Inc()
 
-	log.Debug().Msgf("compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
+	log.Debug().Msgf("Compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
 
 	// once we've finished this shard - let's see if we should
 	// bid on another shard or if we've finished the job
@@ -295,7 +295,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	if err != nil {
 		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
 		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
+		_ = node.controller.ErrorJob(ctx, job.ID, jobEvent.ShardIndex, errMessage, "")
 		return
 	}
 }
@@ -385,7 +385,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
 func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIndex int) error {
-	log.Debug().Msgf("compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
+	log.Debug().Msgf("Compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
 	return node.controller.BidJob(ctx, job.ID, shardIndex)
 }
 
@@ -442,6 +442,7 @@ func (node *ComputeNode) RunShard(
 	return node.controller.CompleteJob(
 		ctx,
 		job.ID,
+		shardIndex,
 		fmt.Sprintf("Got job result: %s", resultValue),
 		resultValue,
 	)

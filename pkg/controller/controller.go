@@ -321,7 +321,13 @@ func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error 
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) CompleteJob(ctx context.Context, jobID, status, resultsID string) error {
+func (ctrl *Controller) CompleteJob(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	status string,
+	resultsID string,
+) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
@@ -330,11 +336,18 @@ func (ctrl *Controller) CompleteJob(ctx context.Context, jobID, status, resultsI
 	// the target node is "us" because it is "us" who has completed the job
 	// and so the job state should be updated against our node id
 	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
 // can only be called by a compute node who is current assigned to the job
-func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
+func (ctrl *Controller) ErrorJob(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	status string,
+	resultsID string,
+) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
@@ -343,6 +356,7 @@ func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID s
 	// the target node is "us" because it is "us" who has errored the job
 	// and so the job state should be updated against our node id
 	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
