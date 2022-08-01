@@ -17,7 +17,7 @@ func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideom
 type eventDescription struct {
 	Event       string `yaml:"Event"`
 	Time        string `yaml:"Time"`
-	Concurrency int    `yaml:"Concurrency"`
+	Concurrency uint   `yaml:"Concurrency"`
 	SourceNode  string `yaml:"SourceNode"`
 	TargetNode  string `yaml:"TargetNode"`
 	Status      string `yaml:"Status"`
@@ -35,13 +35,15 @@ type stateDescription struct {
 }
 
 type jobDescription struct {
-	ID              string             `yaml:"Id"`
-	ClientID        string             `yaml:"ClientID"`
-	RequesterNodeID string             `yaml:"RequesterNodeId"`
-	Spec            jobSpecDescription `yaml:"Spec"`
-	Deal            executor.JobDeal   `yaml:"Deal"`
-	State           executor.JobState  `yaml:"State"`
-	CreatedAt       time.Time          `yaml:"Start Time"`
+	ID              string                  `yaml:"Id"`
+	ClientID        string                  `yaml:"ClientID"`
+	RequesterNodeID string                  `yaml:"RequesterNodeId"`
+	Spec            jobSpecDescription      `yaml:"Spec"`
+	Deal            executor.JobDeal        `yaml:"Deal"`
+	State           executor.JobState       `yaml:"State"`
+	CreatedAt       time.Time               `yaml:"Start Time"`
+	Events          []eventDescription      `yaml:"Events"`
+	LocalEvents     []localEventDescription `yaml:"LocalEvents"`
 }
 
 type jobSpecDescription struct {
@@ -128,18 +130,7 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-<<<<<<< HEAD
 		jobDesc.State = state
-=======
-		jobDesc.State = map[string]stateDescription{}
-		for id, state := range states {
-			jobDesc.State[id] = stateDescription{
-				State:     state.State.String(),
-				Status:    state.Status,
-				ResultsID: state.ResultsID,
-			}
-		}
->>>>>>> scale-test-and-viz
 		jobDesc.CreatedAt = job.CreatedAt
 		jobDesc.Events = []eventDescription{}
 		for _, event := range events {
