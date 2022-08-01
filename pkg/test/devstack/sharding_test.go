@@ -204,7 +204,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	apiClient := publicapi.NewAPIClient(apiUri)
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), uint(10), submittedJob.ExecutionPlan.TotalShards)
+	require.Equal(suite.T(), 10, submittedJob.ExecutionPlan.TotalShards)
 	fmt.Printf("submittedJob --------------------------------------\n")
 	spew.Dump(submittedJob)
 
