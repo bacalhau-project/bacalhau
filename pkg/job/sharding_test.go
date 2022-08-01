@@ -40,27 +40,31 @@ func TestApplyGlobPattern(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name    string
-		files   []string
-		pattern string
-		outputs []string
+		name     string
+		files    []string
+		pattern  string
+		basePath string
+		outputs  []string
 	}{
 		{
 			"top level folders",
 			simpleFileList,
 			"/*",
+			"",
 			[]string{"/a", "/b"},
 		},
 		{
 			"everything",
 			simpleFileList,
 			"/**/*",
+			"",
 			simpleFileList,
 		},
 		{
 			"only files in folders",
 			simpleFileList,
 			"/**/*.*",
+			"",
 			[]string{
 				"/a/file1.txt",
 				"/a/file2.txt",
@@ -68,10 +72,29 @@ func TestApplyGlobPattern(t *testing.T) {
 				"/b/file2.txt",
 			},
 		},
+		{
+			"base path",
+			[]string{
+				"/a",
+				"/a/file1.txt",
+				"/a/file2.txt",
+				"/a/file3.txt",
+				"/a/file4.txt",
+				"/a/apples.txt",
+			},
+			"/file*.txt",
+			"/a",
+			[]string{
+				"/a/file1.txt",
+				"/a/file2.txt",
+				"/a/file3.txt",
+				"/a/file4.txt",
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
-		results, err := ApplyGlobPattern(explodeStringArray(testCase.files), testCase.pattern)
+		results, err := ApplyGlobPattern(explodeStringArray(testCase.files), testCase.pattern, testCase.basePath)
 		require.NoError(t, err)
 		require.Equal(
 			t,
