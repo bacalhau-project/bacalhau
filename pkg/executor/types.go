@@ -62,6 +62,21 @@ type JobExecutionPlan struct {
 	TotalShards uint `json:"shards_total"`
 }
 
+// describe how we chunk a job up into shards
+type JobShardingConfig struct {
+	// divide the inputs up into the smallest possible unit
+	// for example /* would mean "all top level files or folders"
+	// this being an empty string means "no sharding"
+	GlobPattern string `json:"glob_pattern" yaml:"glob_pattern"`
+	// how many "items" are to be processed in each shard
+	// we first apply the glob pattern which will result in a flat list of items
+	// this number decides how to group that flat list into actual shards run by compute nodes
+	BatchSize int `json:"batch_size" yaml:"batch_size"`
+	// when using multiple input volumes
+	// what path do we treat as the common mount path to apply the glob pattern to
+	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
+}
+
 // The state of a job across the whole network
 // generally be in different states on different nodes - one node may be
 // ignoring a job as its bid was rejected, while another node may be
@@ -142,21 +157,6 @@ type JobSpec struct {
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
 	Sharding JobShardingConfig `json:"sharding" yaml:"sharding"`
-}
-
-// describe how we chunk a job up into shards
-type JobShardingConfig struct {
-	// divide the inputs up into the smallest possible unit
-	// for example /* would mean "all top level files or folders"
-	// this being an empty string means "no sharding"
-	GlobPattern string `json:"glob_pattern" yaml:"glob_pattern"`
-	// how many "items" are to be processed in each shard
-	// we first apply the glob pattern which will result in a flat list of items
-	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"batch_size" yaml:"batch_size"`
-	// when using multiple input volumes
-	// what path do we treat as the common mount path to apply the glob pattern to
-	BasePath string `json:"glob_pattern_base_path" yaml:"glob_pattern_base_path"`
 }
 
 // for VM style executors
