@@ -28,7 +28,7 @@ type Executor interface {
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
-	RunJob(context.Context, Job) (string, error)
+	RunShard(ctx context.Context, job Job, shardIndex int) (string, error)
 }
 
 // Job contains data about a job in the bacalhau network.

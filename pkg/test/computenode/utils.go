@@ -180,10 +180,10 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.RunJob(context.Background(), executor.Job{
+	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
-	})
+	}, 0)
 	assert.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

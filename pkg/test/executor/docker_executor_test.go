@@ -104,7 +104,7 @@ func dockerExecutorStorageTest(
 			CreatedAt: time.Now(),
 		}
 
-		resultsDirectory, err := dockerExecutor.RunJob(ctx, job)
+		resultsDirectory, err := dockerExecutor.RunShard(ctx, job, 0)
 		require.NoError(t, err)
 
 		if err != nil {

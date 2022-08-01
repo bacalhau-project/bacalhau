@@ -394,14 +394,13 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIn
   run job
 
 */
-func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, error) {
+func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
 		return "", err
 	}
-
-	return e.RunJob(ctx, job)
+	return e.RunShard(ctx, job, shardIndex)
 }
 
 func (node *ComputeNode) RunShard(
@@ -409,7 +408,7 @@ func (node *ComputeNode) RunShard(
 	job executor.Job,
 	shardIndex int,
 ) error {
-	resultFolder, containerRunError := node.RunJob(ctx, job)
+	resultFolder, containerRunError := node.ExecuteJobShard(ctx, job, shardIndex)
 	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     node.id,

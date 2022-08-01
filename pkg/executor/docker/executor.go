@@ -101,7 +101,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
+func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
