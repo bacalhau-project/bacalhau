@@ -291,11 +291,25 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		node.controlLoopBidOnJobs()
 	}()
 
-	err := node.RunShard(ctx, job, jobEvent.ShardIndex)
-	if err != nil {
+	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
+	if err == nil {
+		node.controller.CompleteJob(
+			ctx,
+			job.ID,
+			jobEvent.ShardIndex,
+			fmt.Sprintf("Got job result: %s", results),
+			results,
+		)
+	} else {
 		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
 		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, jobEvent.ShardIndex, errMessage, "")
+		_ = node.controller.ErrorJob(
+			ctx,
+			job.ID,
+			jobEvent.ShardIndex,
+			errMessage,
+			results,
+		)
 		return
 	}
 }
@@ -407,7 +421,7 @@ func (node *ComputeNode) RunShard(
 	ctx context.Context,
 	job executor.Job,
 	shardIndex int,
-) error {
+) (string, error) {
 	resultFolder, containerRunError := node.ExecuteJobShard(ctx, job, shardIndex)
 	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{
@@ -425,26 +439,17 @@ func (node *ComputeNode) RunShard(
 		if containerRunError != nil {
 			err = fmt.Errorf("RunJob error %s: %s", job.ID, containerRunError)
 		}
-		return err
+		return "", err
 	}
 	v, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
-		return err
+		return "", err
 	}
 	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if containerRunError != nil {
-		return fmt.Errorf("RunJob error %s: %s", job.ID, containerRunError)
-	}
-	return node.controller.CompleteJob(
-		ctx,
-		job.ID,
-		shardIndex,
-		fmt.Sprintf("Got job result: %s", resultValue),
-		resultValue,
-	)
+	return resultValue, containerRunError
 }
 
 // nolint:dupl // methods are not duplicates

@@ -74,7 +74,7 @@ func ExplodeShardedVolumes(
 
 	// this means there is no sharding and we use the input volumes as is
 	if config.GlobPattern == "" {
-		return allVolumes, nil
+		return spec.Inputs, nil
 	}
 
 	// loop over each input volume and explode it using the storage driver
