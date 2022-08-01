@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -283,13 +282,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
 	}).Inc()
 
-	log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s) - Shard (index: %d)", node.id, job.ID, jobEvent.ShardIndex)
-	logger.LogJobEvent(logger.JobEvent{
-		Node: node.id,
-		Type: "compute_node:run",
-		Job:  job.ID,
-		Data: job,
-	})
+	log.Debug().Msgf("compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
 
 	// once we've finished this shard - let's see if we should
 	// bid on another shard or if we've finished the job
@@ -392,15 +385,7 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
 func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIndex int) error {
-	// TODO: Why do we have two different kinds of loggers?
-	logger.LogJobEvent(logger.JobEvent{
-		Node: node.id,
-		Type: "compute_node:bid",
-		Job:  job.ID,
-	})
-
 	log.Debug().Msgf("compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
-
 	return node.controller.BidJob(ctx, job.ID, shardIndex)
 }
 

@@ -91,6 +91,8 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 
+	log.Debug().Msgf("requester node %s processing bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
+
 	accepted := func() bool {
 		// let's see how many bids we have already accepted
 		// it's important this comes from "local events"
@@ -133,21 +135,11 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	}()
 
 	if accepted {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "requestor_node:bid_accepted",
-			Job:  job.ID,
-		})
-		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, 0)
+		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
 	} else {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "requestor_node:bid_rejected",
-			Job:  job.ID,
-		})
 		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
 		if err != nil {
 			threadLogger.Error().Err(err)

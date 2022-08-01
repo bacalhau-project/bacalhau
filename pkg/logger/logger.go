@@ -2,14 +2,12 @@ package logger
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -106,38 +104,4 @@ func LoggerWithNodeAndJobInfo(nodeID, jobID string) zerolog.Logger {
 
 func LoggerTestLogger(logBuffer *bytes.Buffer) zerolog.Logger {
 	return zerolog.New(zerolog.MultiLevelWriter(io.MultiWriter(logBuffer, os.Stdout)))
-}
-
-func LogJobEvent(event JobEvent) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in LogJobEvent. Error:\n", r)
-		}
-	}()
-
-	event.Node = event.Node[:8]
-	event.Job = event.Job[:8]
-	eventBytes, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-
-	if os.Getenv("LOG_EVENT_FILE") != "" {
-		f, err := os.OpenFile(os.Getenv("LOG_EVENT_FILE"),
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY, util.OS_ALL_R|util.OS_USER_RW)
-		if err != nil {
-			return
-		}
-		defer f.Close()
-		if _, err := f.WriteString(fmt.Sprintf("%s\n", string(eventBytes))); err != nil {
-			return
-		}
-	}
-
-	logType := strings.ToLower(os.Getenv("LOG_TYPE"))
-	if logType != "event" && logType != "combined" {
-		return
-	}
-
-	fmt.Println(string(eventBytes))
 }
