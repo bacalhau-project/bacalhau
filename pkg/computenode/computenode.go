@@ -237,6 +237,11 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	}
 
 	if selected {
+		err = node.controller.SelectJob(ctx, jobEvent.JobID)
+		if err != nil {
+			log.Info().Msgf("Error selecting job on host %s: %v", node.id, err)
+			return
+		}
 		err = node.capacityManager.AddToBacklog(job.ID, processedRequirements)
 		if err != nil {
 			log.Info().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
@@ -371,8 +376,14 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		return false, requirements, fmt.Errorf("error getting job disk space requirements: %v", err)
 	}
 
+	// TODO: think about the fact that each shard might be different sizes
+	// this is probably good enough for now
+	totalShards := data.ExecutionPlan.TotalShards
+	if totalShards == 0 {
+		totalShards = 1
+	}
 	// update the job requirements disk space with what we calculated
-	requirements.Disk = diskSpace
+	requirements.Disk = diskSpace / uint64(totalShards)
 
 	withinCapacityLimits, processedRequirements := node.capacityManager.FilterRequirements(requirements)
 
