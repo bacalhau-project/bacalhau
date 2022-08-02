@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -45,15 +46,48 @@ func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]e
 }
 
 func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
-	_, err := resolver.stateLoader(ctx, jobID)
+	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
-	return "state summary", nil
+	jobState, err := resolver.stateLoader(ctx, jobID)
+	if err != nil {
+		return "", err
+	}
+	stateTotals := GetShardStateTotals(FlattenShardStates(jobState))
+
+	pluralTitle := ""
+	if GetJobTotalShards(job) != 1 {
+		pluralTitle = "s"
+	}
+
+	parts := []string{
+		fmt.Sprintf("%d Shard%s x %d", GetJobTotalShards(job), pluralTitle, GetJobConcurrency(job)),
+	}
+
+	for stateType, stateTotal := range stateTotals {
+		parts = append(parts, fmt.Sprintf("%d %s", stateTotal, stateType.String()))
+	}
+	return strings.Join(parts, "\n"), nil
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
-	return "result summary", nil
+	job, err := resolver.jobLoader(ctx, jobID)
+	if err != nil {
+		return "", err
+	}
+	if GetJobTotalShards(job) > 1 {
+		return "", nil
+	}
+	jobState, err := resolver.stateLoader(ctx, jobID)
+	if err != nil {
+		return "", err
+	}
+	completedShards := GetCompletedShardStates(jobState)
+	if len(completedShards) <= 0 {
+		return "", nil
+	}
+	return fmt.Sprintf("/ipfs/%s", completedShards[0].ResultsID), nil
 }
 
 func (resolver *StateResolver) Wait(

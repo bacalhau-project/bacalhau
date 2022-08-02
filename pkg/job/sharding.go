@@ -56,8 +56,16 @@ func GetJobTotalShards(job executor.Job) int {
 	return shardCount
 }
 
+func GetJobConcurrency(job executor.Job) int {
+	concurrency := job.Deal.Concurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	return concurrency
+}
+
 func GetJobTotalExecutionCount(job executor.Job) int {
-	return job.Deal.Concurrency * GetJobTotalShards(job)
+	return GetJobConcurrency(job) * GetJobTotalShards(job)
 }
 
 // given a sharding config and storage drivers
