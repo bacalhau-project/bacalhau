@@ -239,6 +239,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		Entrypoint:      j.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(j),
 		NetworkDisabled: true,
+		WorkingDir:      j.Spec.Docker.WorkingDir,
 	}
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

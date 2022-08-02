@@ -173,6 +173,8 @@ type JobSpecDocker struct {
 	Entrypoint []string `json:"entrypoint" yaml:"entrypoint"`
 	// a map of env to run the container with
 	Env []string `json:"env" yaml:"env"`
+	// working directory inside the container
+	WorkingDir string `json:"workdir" yaml:"workdir"`
 }
 
 // for language style executors (can target docker or wasm)

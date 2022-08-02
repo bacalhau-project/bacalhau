@@ -260,6 +260,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				"",
 				1,
 				[]string{},
+				"",
 			)
 
 			require.NoError(suite.T(), err)

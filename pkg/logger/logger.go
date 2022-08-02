@@ -42,7 +42,7 @@ func init() { // nolint:gochecknoinits // init with zerolog is idiomatic
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	textWriter := zerolog.ConsoleWriter{Out: Stdout, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
+	textWriter := zerolog.ConsoleWriter{Out: Stderr, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,

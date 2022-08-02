@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
@@ -42,6 +43,7 @@ func ConstructDockerJob( //nolint:funlen
 	image string,
 	concurrency int,
 	annotations []string,
+	workingDir string,
 ) (executor.JobSpec, executor.JobDeal, error) {
 	if concurrency <= 0 {
 		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
@@ -121,6 +123,14 @@ func ConstructDockerJob( //nolint:funlen
 			strings.Join(unSafeAnnotations, ", "))
 	}
 
+	if len(workingDir) > 0 {
+		err := system.ValidateWorkingDir(workingDir)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return executor.JobSpec{}, executor.JobDeal{}, err
+		}
+	}
+
 	spec := executor.JobSpec{
 		Engine:   engine,
 		Verifier: v,
@@ -135,6 +145,11 @@ func ConstructDockerJob( //nolint:funlen
 		Contexts:    jobContexts,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,
+	}
+
+	// override working dir if provided
+	if len(workingDir) > 0 {
+		spec.Docker.WorkingDir = workingDir
 	}
 
 	deal := executor.JobDeal{

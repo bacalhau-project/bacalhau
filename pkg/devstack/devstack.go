@@ -219,7 +219,7 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// predictable port for API
-		apiPort := 10000 + i
+		apiPort := 20000 + i
 
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",
@@ -230,7 +230,7 @@ func NewDevStack(
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope
 			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
-				panic(err) // if api server can't run, devstack should stop
+				panic(gerr) // if api server can't run, devstack should stop
 			}
 		}(context.Background())
 
