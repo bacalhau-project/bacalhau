@@ -105,6 +105,7 @@ func main() {
 						log.Print(err)
 						continue
 					}
+					resp.Body.Close()
 
 					resp, err = http.Get(addr + "/peers")
 					if err != nil {
@@ -117,6 +118,7 @@ func main() {
 						log.Print(err)
 						continue
 					}
+					resp.Body.Close()
 
 					func() {
 						theMutex.Lock()
