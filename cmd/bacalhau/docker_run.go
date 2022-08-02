@@ -346,7 +346,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().StringVarP(
 		&jobWorkingDir, "workdir", "w", "",
-		`Working directory inside the container. Overrides the WORKDIR shipped with the image.`,
+		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
 	)
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
