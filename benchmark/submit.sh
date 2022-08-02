@@ -5,7 +5,7 @@ set -xeuo pipefail
 # /bin/true
 
 ID=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost docker run --concurrency=3 busybox -- /bin/true)
-COUNTER=0
+COUNTER=1
 while true; do
     sleep 0.1
     # trunk-ignore(shellcheck/SC2312)
