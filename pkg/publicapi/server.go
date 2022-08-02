@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -35,10 +36,11 @@ const ServerReadHeaderTimeout = 10 * time.Second
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Controller *controller.Controller
-	Verifiers  map[verifier.VerifierType]verifier.Verifier
-	Host       string
-	Port       int
+	Controller  *controller.Controller
+	Verifiers   map[verifier.VerifierType]verifier.Verifier
+	Host        string
+	Port        int
+	componentMu sync.Mutex
 }
 
 // NewServer returns a new API server for a requester node.
@@ -70,6 +72,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/states", instrument("states", apiServer.states))
+	sm.Handle("/results", instrument("results", apiServer.results))
 	sm.Handle("/events", instrument("events", apiServer.events))
 	sm.Handle("/local_events", instrument("local_events", apiServer.localEvents))
 	sm.Handle("/id", instrument("id", apiServer.id))
@@ -122,6 +125,15 @@ type stateRequest struct {
 
 type stateResponse struct {
 	State executor.JobState `json:"state"`
+}
+
+type resultsRequest struct {
+	ClientID string `json:"client_id"`
+	JobID    string `json:"job_id"`
+}
+
+type resultsResponse struct {
+	Results []storage.StorageSpec `json:"results"`
 }
 
 type eventsRequest struct {
@@ -220,8 +232,6 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// TODO: add list events into describe
-
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	var stateReq stateRequest
 	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
@@ -238,6 +248,40 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(stateResponse{
 		State: jobState,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
+	var stateReq stateRequest
+	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	job, err := apiServer.Controller.GetJob(req.Context(), stateReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	verifier, err := apiServer.getVerifier(req.Context(), job.Spec.Verifier)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	results, err := verifier.GetJobResultSet(req.Context(), stateReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(resultsResponse{
+		Results: results,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -402,6 +446,27 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (apiServer *APIServer) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
+	apiServer.componentMu.Lock()
+	defer apiServer.componentMu.Unlock()
+
+	if _, ok := apiServer.Verifiers[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching verifier found on this server: %s", typ.String())
+	}
+
+	v := apiServer.Verifiers[typ]
+	installed, err := v.IsInstalled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !installed {
+		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
+	}
+
+	return v, nil
 }
 
 func verifySubmitRequest(req *submitRequest) error {
