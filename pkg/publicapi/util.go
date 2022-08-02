@@ -66,7 +66,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c)
+	s := NewServer(host, port, c, noopVerifiers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))

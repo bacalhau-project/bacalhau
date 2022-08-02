@@ -225,6 +225,7 @@ func NewDevStack(
 			"0.0.0.0",
 			apiPort,
 			ctrl,
+			verifiers,
 		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope

@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -35,6 +36,7 @@ const ServerReadHeaderTimeout = 10 * time.Second
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	Controller *controller.Controller
+	Verifiers  map[verifier.VerifierType]verifier.Verifier
 	Host       string
 	Port       int
 }
@@ -44,9 +46,11 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
+	verifiers map[verifier.VerifierType]verifier.Verifier,
 ) *APIServer {
 	return &APIServer{
 		Controller: c,
+		Verifiers:  verifiers,
 		Host:       host,
 		Port:       port,
 	}
