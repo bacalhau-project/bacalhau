@@ -62,10 +62,21 @@ func (v *Verifier) GetJobResultSet(
 	ctx context.Context,
 	jobID string,
 ) ([]storage.StorageSpec, error) {
+	results := []storage.StorageSpec{}
 	ctx, span := newSpan(ctx, "GetJobResultSet")
 	defer span.End()
-	//resolver := v.getStateResolver(ctx, jobID)
-	return []storage.StorageSpec{}, nil
+	resolver := v.getStateResolver()
+	cids, err := resolver.GetResults(ctx, jobID)
+	if err != nil {
+		return results, nil
+	}
+	for _, cid := range cids {
+		results = append(results, storage.StorageSpec{
+			Engine: storage.StorageSourceIPFS,
+			Cid:    cid,
+		})
+	}
+	return results, nil
 }
 
 func (v *Verifier) getStateResolver() *job.StateResolver {
