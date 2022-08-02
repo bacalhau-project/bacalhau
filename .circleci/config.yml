@@ -191,6 +191,7 @@ jobs:
             export SHA="<< pipeline.git.revision >>"
             export DATETIME="$(date -u +"%FT%H%MZ")"
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+            tree benchmark
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
 
   release:
