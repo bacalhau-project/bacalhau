@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -66,14 +67,16 @@ func (v *Verifier) GetJobResultSet(
 	ctx, span := newSpan(ctx, "GetJobResultSet")
 	defer span.End()
 	resolver := v.getStateResolver()
-	cids, err := resolver.GetResults(ctx, jobID)
+	shardResults, err := resolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, nil
 	}
-	for _, cid := range cids {
+	for _, shardResult := range shardResults {
 		results = append(results, storage.StorageSpec{
+			Name:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
+			Path:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
 			Engine: storage.StorageSourceIPFS,
-			Cid:    cid,
+			Cid:    shardResult.ResultsID,
 		})
 	}
 	return results, nil

@@ -137,8 +137,13 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 	)
 }
 
-func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]string, error) {
-	results := []string{}
+type ResultsShard struct {
+	ShardIndex int
+	ResultsID  string
+}
+
+func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
+	results := []ResultsShard{}
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return results, err
@@ -186,7 +191,10 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 			)
 		}
 
-		results = append(results, shardResult.ResultsID)
+		results = append(results, ResultsShard{
+			ShardIndex: shardIndex,
+			ResultsID:  shardResult.ResultsID,
+		})
 	}
 	return results, nil
 }
