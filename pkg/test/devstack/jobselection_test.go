@@ -88,11 +88,11 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		require.NoError(suite.T(), err)
 
-		resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
-		require.NoError(suite.T(), err)
+		resolver := apiClient.GetJobStateResolver()
 
 		err = resolver.Wait(
 			ctx,
+			submittedJob.ID,
 			len(nodeIDs),
 			job.WaitDontExceedCount(testCase.expectedAccepts),
 			job.WaitThrowErrors([]executor.JobStateType{

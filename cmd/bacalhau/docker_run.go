@@ -210,15 +210,12 @@ var dockerRunCmd = &cobra.Command{
 
 		cmd.Printf("%s\n", job.ID)
 		if waitForJobToFinishAndPrintOutput {
-			resolver, err := getAPIClient().GetJobStateResolver(ctx, job.ID)
+			resolver := getAPIClient().GetJobStateResolver()
+			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-			err = resolver.WaitUntilComplete(ctx)
-			if err != nil {
-				return err
-			}
-			resultCIDs, err := resolver.GetResults(ctx)
+			resultCIDs, err := resolver.GetResults(ctx, job.ID)
 			if err != nil {
 				return err
 			}

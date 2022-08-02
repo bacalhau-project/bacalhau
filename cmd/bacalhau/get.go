@@ -28,14 +28,11 @@ var getCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		log.Info().Msgf("Fetching results of job '%s'...", args[0])
+		jobID := args[0]
 
-		resolver, err := getAPIClient().GetJobStateResolver(context.Background(), args[0])
-		if err != nil {
-			return err
-		}
-
-		resultCIDs, err := resolver.GetResults(context.Background())
+		log.Info().Msgf("Fetching results of job '%s'...", jobID)
+		resolver := getAPIClient().GetJobStateResolver()
+		resultCIDs, err := resolver.GetResults(context.Background(), jobID)
 		if err != nil {
 			return err
 		}

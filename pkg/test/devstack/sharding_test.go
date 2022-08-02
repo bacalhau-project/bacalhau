@@ -209,9 +209,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), batchCount, submittedJob.ExecutionPlan.TotalShards)
 
-	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx)
+	resolver := apiClient.GetJobStateResolver()
+	err = resolver.WaitUntilComplete(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
 
 	jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)

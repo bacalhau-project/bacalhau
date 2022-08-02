@@ -92,11 +92,11 @@ func devStackDockerStorageTest(
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(t, err)
 
-	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
-	require.NoError(t, err)
+	resolver := apiClient.GetJobStateResolver()
 
 	err = resolver.Wait(
 		ctx,
+		submittedJob.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
@@ -108,7 +108,7 @@ func devStackDockerStorageTest(
 	)
 	require.NoError(t, err)
 
-	shards, err := resolver.GetShards()
+	shards, err := resolver.GetShards(ctx, submittedJob.ID)
 	require.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier

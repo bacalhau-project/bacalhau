@@ -77,11 +77,11 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	createdJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
 
-	resolver, err := apiClient.GetJobStateResolver(ctx, createdJob.ID)
-	require.NoError(suite.T(), err)
+	resolver := apiClient.GetJobStateResolver()
 
 	err = resolver.Wait(
 		ctx,
+		createdJob.ID,
 		3,
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateError,

@@ -120,12 +120,12 @@ open("%s/test.txt", "w").write(open("%s").read())
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	resolver, err := apiClient.GetJobStateResolver(ctx, jobId)
+	resolver := apiClient.GetJobStateResolver()
 	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx)
+	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(suite.T(), err)
 
-	shards, err := resolver.GetShards()
+	shards, err := resolver.GetShards(ctx, jobId)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), len(shards) > 0)
 
@@ -171,9 +171,9 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	resolver, err := apiClient.GetJobStateResolver(ctx, jobId)
+	resolver := apiClient.GetJobStateResolver()
 	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx)
+	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(suite.T(), err)
 
 }
@@ -224,9 +224,9 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	resolver, err := apiClient.GetJobStateResolver(ctx, jobId)
+	resolver := apiClient.GetJobStateResolver()
 	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx)
+	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(suite.T(), err)
 }
 

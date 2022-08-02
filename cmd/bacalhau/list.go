@@ -144,17 +144,14 @@ var listCmd = &cobra.Command{
 				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
 			}
 
-			resolver, err := getAPIClient().GetJobStateResolver(context.Background(), j.ID)
+			resolver := getAPIClient().GetJobStateResolver()
+
+			stateSummary, err := resolver.StateSummary(context.Background(), j.ID)
 			if err != nil {
 				return err
 			}
 
-			stateSummary, err := resolver.StateSummary()
-			if err != nil {
-				return err
-			}
-
-			resultSummary, err := resolver.ResultSummary()
+			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
 			if err != nil {
 				return err
 			}

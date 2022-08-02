@@ -68,13 +68,8 @@ func (v *Verifier) GetJobResultSet(
 	return []storage.StorageSpec{}, nil
 }
 
-func (v *Verifier) getStateResolver(
-	ctx context.Context,
-	jobID string,
-) *job.StateResolver {
+func (v *Verifier) getStateResolver() *job.StateResolver {
 	return job.NewStateResolver(
-		ctx,
-		jobID,
 		v.JobLoader,
 		v.StateLoader,
 	)

@@ -116,25 +116,18 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (stat
 	return res.State, nil
 }
 
-func (apiClient *APIClient) GetJobStateResolver(ctx context.Context, jobID string) (*job.StateResolver, error) {
-	_, foundJob, err := apiClient.Get(ctx, jobID)
-	if !foundJob {
-		return nil, fmt.Errorf("job not found")
-	}
-	if err != nil {
-		return nil, err
-	}
-	jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-		job, ok, err := apiClient.Get(ctx, id)
+func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
+	jobLoader := func(ctx context.Context, jobID string) (executor.Job, error) {
+		job, ok, err := apiClient.Get(ctx, jobID)
 		if !ok {
-			return executor.Job{}, fmt.Errorf("no job found with id %s", id)
+			return executor.Job{}, fmt.Errorf("no job found with id %s", jobID)
 		}
 		return job, err
 	}
-	stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-		return apiClient.GetJobState(ctx, id)
+	stateLoader := func(ctx context.Context, jobID string) (executor.JobState, error) {
+		return apiClient.GetJobState(ctx, jobID)
 	}
-	return job.NewStateResolver(ctx, jobID, jobLoader, stateLoader), nil
+	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
 func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []executor.JobEvent, err error) {

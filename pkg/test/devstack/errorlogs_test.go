@@ -88,11 +88,11 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
 
-	resolver, err := apiClient.GetJobStateResolver(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
+	resolver := apiClient.GetJobStateResolver()
 
 	err = resolver.Wait(
 		ctx,
+		submittedJob.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
@@ -104,7 +104,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	)
 	require.NoError(suite.T(), err)
 
-	shards, err := resolver.GetShards()
+	shards, err := resolver.GetShards(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), len(shards) > 0)
 

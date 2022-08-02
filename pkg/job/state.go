@@ -18,8 +18,6 @@ type StateLoader func(ctx context.Context, id string) (executor.JobState, error)
 type CheckStatesFunction func(executor.JobState) (bool, error)
 
 type StateResolver struct {
-	jobID           string
-	ctx             context.Context
 	jobLoader       JobLoader
 	stateLoader     StateLoader
 	maxWaitAttempts int
@@ -27,14 +25,10 @@ type StateResolver struct {
 }
 
 func NewStateResolver(
-	ctx context.Context,
-	jobID string,
 	jobLoader JobLoader,
 	stateLoader StateLoader,
 ) *StateResolver {
 	return &StateResolver{
-		jobID:           jobID,
-		ctx:             ctx,
 		jobLoader:       jobLoader,
 		stateLoader:     stateLoader,
 		maxWaitAttempts: 100,
@@ -42,28 +36,29 @@ func NewStateResolver(
 	}
 }
 
-func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
-	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
+func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]executor.JobShardState, error) {
+	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return []executor.JobShardState{}, err
 	}
 	return FlattenShardStates(jobState), nil
 }
 
-func (resolver *StateResolver) StateSummary() (string, error) {
-	_, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
+func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
+	_, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
 	return "state summary", nil
 }
 
-func (resolver *StateResolver) ResultSummary() (string, error) {
+func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
 	return "result summary", nil
 }
 
 func (resolver *StateResolver) Wait(
 	ctx context.Context,
+	jobID string,
 	// this is the total number of expected states
 	// used to quit early if we've not matched our checkJobStateFunctions
 	// but all of the loaded states are terminal
@@ -76,7 +71,7 @@ func (resolver *StateResolver) Wait(
 		MaxAttempts: resolver.maxWaitAttempts,
 		Delay:       resolver.waitDelay,
 		Handler: func() (bool, error) {
-			jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
+			jobState, err := resolver.stateLoader(ctx, jobID)
 			if err != nil {
 				return false, err
 			}
@@ -122,14 +117,15 @@ func (resolver *StateResolver) Wait(
 
 // this is an auto wait where we auto calculate how many shard
 // sates we expect to see and we use that to pass to WaitForJobStates
-func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
-	job, err := resolver.jobLoader(resolver.ctx, resolver.jobID)
+func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID string) error {
+	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return err
 	}
 	totalShards := GetJobTotalExecutionCount(job)
 	return resolver.Wait(
 		ctx,
+		jobID,
 		totalShards,
 		WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
@@ -141,13 +137,13 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
 	)
 }
 
-func (resolver *StateResolver) GetResults(ctx context.Context) ([]string, error) {
+func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]string, error) {
 	results := []string{}
-	job, err := resolver.jobLoader(resolver.ctx, resolver.jobID)
+	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
-	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
+	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
@@ -160,7 +156,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context) ([]string, error)
 	if len(groupedShardResults) < totalShards {
 		return results, fmt.Errorf(
 			"job (%s) has not completed yet - %d shards out of %d are complete",
-			resolver.jobID,
+			jobID,
 			len(groupedShardResults),
 			totalShards,
 		)
@@ -173,7 +169,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context) ([]string, error)
 		if len(shardResults) == 0 {
 			return results, fmt.Errorf(
 				"job (%s) has an empty shard result map at shard index %d",
-				resolver.jobID,
+				jobID,
 				shardIndex,
 			)
 		}
@@ -185,7 +181,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context) ([]string, error)
 		if shardResult.ResultsID == "" {
 			return results, fmt.Errorf(
 				"job (%s) has a missing results id at shard index %d",
-				resolver.jobID,
+				jobID,
 				shardIndex,
 			)
 		}
