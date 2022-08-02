@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -230,6 +232,24 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	jobResults, err := apiClient.GetResults(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
 
-	fmt.Printf("jobResults --------------------------------------\n")
-	spew.Dump(jobResults)
+	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
+	require.NoError(suite.T(), err)
+
+	swarmAddresses, err := stack.Nodes[0].IpfsNode.SwarmAddresses()
+	require.NoError(suite.T(), err)
+
+	err = ipfs.DownloadJob(
+		cm,
+		submittedJob,
+		jobResults,
+		ipfs.DownloadSettings{
+			TimeoutSecs:    10,
+			OutputDir:      downloadFolder,
+			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
+		},
+	)
+	require.NoError(suite.T(), err)
+
+	fmt.Printf("downloadFolder --------------------------------------\n")
+	spew.Dump(downloadFolder)
 }
