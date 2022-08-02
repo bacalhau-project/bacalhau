@@ -31,6 +31,24 @@ type Executor interface {
 	RunShard(ctx context.Context, job Job, shardIndex int) (string, error)
 }
 
+type Local interface {
+	// tells you if the required software is installed on this machine
+	// this is used in job selection
+	IsInstalled(context.Context) (bool, error)
+
+	// used to filter and select jobs
+	//    tells us if the storage resource is "close" i.e. cheap to access
+	HasStorageLocally(context.Context, storage.StorageSpec) (bool, error)
+	//    tells us how much storage the given volume would consume
+	//    which we then use to calculate if there is capacity
+	//    alongside cpu & memory usage
+	GetVolumeSize(context.Context, storage.StorageSpec) (uint64, error)
+
+	// run the given job - it's expected that we have already prepared the job
+	// this will return a local filesystem path to the jobs results
+	RunJobLocally(context.Context, JobSpec) (string, error)
+}
+
 // Job contains data about a job in the bacalhau network.
 type Job struct {
 	// The unique global ID of this job in the bacalhau network.

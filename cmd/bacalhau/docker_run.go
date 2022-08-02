@@ -10,10 +10,18 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+<<<<<<< HEAD
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
+||||||| parent of 4cb0c182 (bacalhau --local)
+	pjob "github.com/filecoin-project/bacalhau/pkg/job"
+
+=======
+	pjob "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/local"
+>>>>>>> 4cb0c182 (bacalhau --local)
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -24,10 +32,47 @@ import (
 const CompleteStatus = "Complete"
 const DefaultDockerRunWaitSeconds = 100
 
+<<<<<<< HEAD
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
 		Runs a job using the Docker executor on the node.
 		`))
+||||||| parent of 4cb0c182 (bacalhau --local)
+var jobEngine string
+var jobVerifier string
+var jobInputs []string
+var jobInputUrls []string
+var jobInputVolumes []string
+var jobOutputVolumes []string
+var jobLocalOutput string
+var jobEnv []string
+var jobConcurrency int
+var jobIpfsGetTimeOut int
+var jobCPU string
+var jobMemory string
+var jobGPU string
+var skipSyntaxChecking bool
+var waitForJobToFinishAndPrintOutput bool
+var jobLabels []string
+=======
+var jobEngine string
+var jobVerifier string
+var jobInputs []string
+var jobInputUrls []string
+var jobInputVolumes []string
+var jobOutputVolumes []string
+var jobLocalOutput string
+var jobEnv []string
+var jobConcurrency int
+var jobIpfsGetTimeOut int
+var jobCPU string
+var jobMemory string
+var jobGPU string
+var skipSyntaxChecking bool
+var isLocal bool
+var waitForJobToFinishAndPrintOutput bool
+var jobLabels []string
+>>>>>>> 4cb0c182 (bacalhau --local)
 
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
@@ -144,9 +189,26 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
+<<<<<<< HEAD
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.WaitForJobToFinish, "wait", false,
 		`Wait for the job to finish.`,
+||||||| parent of 4cb0c182 (bacalhau --local)
+	// ipfs get wait time
+	dockerRunCmd.PersistentFlags().IntVarP(
+		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
+		`Timeout for getting the results of a job in --wait`,
+=======
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&isLocal, "local", false,
+		`Run the job locally. Docker is required`,
+	)
+
+	// ipfs get wait time
+	dockerRunCmd.PersistentFlags().IntVarP(
+		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
+		`Timeout for getting the results of a job in --wait`,
+>>>>>>> 4cb0c182 (bacalhau --local)
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
@@ -277,20 +339,53 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
+		if isLocal {
+			client, err := local.NewDockerClient()
+			if err != nil {
+				cmd.Printf("%t\n", local.IsInstalled(client))
+				return err
+			}
+			std, err := local.RunJobLocally(ctx, spec)
+			cmd.Printf("%v", std)
 
+<<<<<<< HEAD
 		cmd.Printf("%s\n", job.ID)
 		if ODR.WaitForJobToFinish {
 			resolver := getAPIClient().GetJobStateResolver()
 			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
+||||||| parent of 4cb0c182 (bacalhau --local)
+		states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+		if err != nil {
+			return err
+		}
+
+		cmd.Printf("%s\n", job.ID)
+		currentNodeID, _ := pjob.GetCurrentJobState(states)
+		nodeIds := []string{currentNodeID}
+
+		// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
+		// feels like we're overloading the surface of the CLI command a lot.
+		if waitForJobToFinishAndPrintOutput {
+			err = WaitForJob(ctx, job.ID, job,
+				WaitForJobThrowErrors(job, []executor.JobStateType{
+					executor.JobStateCancelled,
+					executor.JobStateError,
+				}),
+				WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+			)
+=======
+			if err != nil {
+				return err
+			}
+		} else {
+			job, err := getAPIClient().Submit(ctx, spec, deal, nil)
+>>>>>>> 4cb0c182 (bacalhau --local)
 			if err != nil {
 				return err
 			}
 
+<<<<<<< HEAD
 			if ODR.WaitForJobToFinishAndPrintOutput {
 				results, err := getAPIClient().GetResults(ctx, job.ID)
 				if err != nil {
@@ -315,6 +410,59 @@ var dockerRunCmd = &cobra.Command{
 				fmt.Println()
 				fmt.Println(string(body))
 			}
+||||||| parent of 4cb0c182 (bacalhau --local)
+			cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
+
+			// TODO: #425 Can you explain what the below is doing? Please comment.
+			var cidv string
+			for cid := range cidl {
+				cidv = filepath.Join(jobLocalOutput, cid)
+			}
+			body, err := os.ReadFile(cidv + "/stdout")
+			if err != nil {
+				return err
+			}
+			fmt.Println()
+			fmt.Println(string(body))
+=======
+			states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("%s\n", job.ID)
+			currentNodeID, _ := pjob.GetCurrentJobState(states)
+			nodeIds := []string{currentNodeID}
+
+			// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
+			// feels like we're overloading the surface of the CLI command a lot.
+			if waitForJobToFinishAndPrintOutput {
+				err = WaitForJob(ctx, job.ID, job,
+					WaitForJobThrowErrors(job, []executor.JobStateType{
+						executor.JobStateCancelled,
+						executor.JobStateError,
+					}),
+					WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+				)
+				if err != nil {
+					return err
+				}
+
+				cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
+
+				// TODO: #425 Can you explain what the below is doing? Please comment.
+				var cidv string
+				for cid := range cidl {
+					cidv = filepath.Join(jobLocalOutput, cid)
+				}
+				body, err := os.ReadFile(cidv + "/stdout")
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				fmt.Println(string(body))
+			}
+>>>>>>> 4cb0c182 (bacalhau --local)
 		}
 
 		return nil
