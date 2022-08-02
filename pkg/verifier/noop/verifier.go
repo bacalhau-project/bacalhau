@@ -27,9 +27,9 @@ func (v *Verifier) ProcessShardResults(
 	return resultsFolder, nil
 }
 
-func (v *Verifier) CombineShards(
+func (v *Verifier) GetJobResultSet(
 	ctx context.Context,
-	jobState string,
+	jobId string,
 ) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{}, nil
 }

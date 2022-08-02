@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -53,7 +54,7 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress, job.NewNoopStateLoader())
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

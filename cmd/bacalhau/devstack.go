@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -75,7 +76,7 @@ var devstackCmd = &cobra.Command{
 			return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
 		}
 
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
 			map[executor.EngineType]executor.Executor, error) {
 
 			if devStackNoop {
@@ -86,14 +87,15 @@ var devstackCmd = &cobra.Command{
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) ( //nolint:unparam // nodeIndex will be used in the future
+		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam // nodeIndex will be used in the future
 			map[verifier.VerifierType]verifier.Verifier, error) {
 
 			if devStackNoop {
 				return verifier_util.NewNoopVerifiers(cm)
 			}
-
-			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
+			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, func(ctx context.Context, id string) (executor.JobState, error) {
+				return ctrl.GetJobState(ctx, id)
+			})
 		}
 
 		stack, err := devstack.NewDevStack(

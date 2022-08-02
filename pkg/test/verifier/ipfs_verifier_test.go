@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
@@ -60,8 +61,7 @@ func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 	err = os.WriteFile(inputDir+"/file.txt", []byte(fixtureContent), 0644)
 	require.NoError(suite.T(), err)
 
-	verifier, err := ipfs.NewVerifier(
-		cm, stack.Nodes[0].IpfsClient.APIAddress())
+	verifier, err := ipfs.NewVerifier(cm, stack.Nodes[0].IpfsClient.APIAddress(), job.NewNoopStateLoader())
 	require.NoError(suite.T(), err)
 
 	installed, err := verifier.IsInstalled(ctx)

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -153,6 +154,17 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		controller, err := controller.NewController(
+			cm,
+			datastore,
+			transport,
+			storageProviders,
+		)
+		if err != nil {
+			return err
+		}
+
 		executors, err := executor_util.NewStandardExecutors(
 			cm,
 			ipfsConnect,
@@ -162,17 +174,9 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect)
-		if err != nil {
-			return err
-		}
-
-		controller, err := controller.NewController(
-			cm,
-			datastore,
-			transport,
-			storageProviders,
-		)
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect, func(ctx context.Context, id string) (executor.JobState, error) {
+			return controller.GetJobState(ctx, id)
+		})
 		if err != nil {
 			return err
 		}

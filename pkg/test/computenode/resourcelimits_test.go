@@ -534,7 +534,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
 		require.NoError(suite.T(), err)
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress, job.NewNoopStateLoader())
 		require.NoError(suite.T(), err)
 
 		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

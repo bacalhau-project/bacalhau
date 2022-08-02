@@ -43,14 +43,31 @@ type DevStack struct {
 	Nodes []*DevStackNode
 }
 
-type GetStorageProvidersFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[storage.StorageSourceType]storage.StorageProvider, error)
+type GetStorageProvidersFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+) (
+	map[storage.StorageSourceType]storage.StorageProvider,
+	error,
+)
 
-type GetExecutorsFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[executor.EngineType]executor.Executor, error)
+type GetExecutorsFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+	ctrl *controller.Controller,
+) (
+	map[executor.EngineType]executor.Executor,
+	error,
+)
 
-type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
-	map[verifier.VerifierType]verifier.Verifier, error)
+type GetVerifiersFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+	ctrl *controller.Controller,
+) (
+	map[verifier.VerifierType]verifier.Verifier,
+	error,
+)
 
 //nolint:funlen,gocyclo
 func NewDevStack(
@@ -147,16 +164,6 @@ func NewDevStack(
 			return nil, err
 		}
 
-		executors, err := getExecutors(ipfsAPIAddrs[0], i)
-		if err != nil {
-			return nil, err
-		}
-
-		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i)
-		if err != nil {
-			return nil, err
-		}
-
 		//////////////////////////////////////
 		// Controller
 		//////////////////////////////////////
@@ -166,6 +173,16 @@ func NewDevStack(
 			transport,
 			storageProviders,
 		)
+		if err != nil {
+			return nil, err
+		}
+
+		executors, err := getExecutors(ipfsAPIAddrs[0], i, ctrl)
+		if err != nil {
+			return nil, err
+		}
+
+		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i, ctrl)
 		if err != nil {
 			return nil, err
 		}

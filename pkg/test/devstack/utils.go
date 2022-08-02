@@ -1,12 +1,14 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -34,7 +36,14 @@ func SetupTest(
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
 	}
-	getExecutors := func(ipfsMultiAddress string, nodeIndex int) (map[executor.EngineType]executor.Executor, error) {
+	getExecutors := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[executor.EngineType]executor.Executor,
+		error,
+	) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
@@ -43,8 +52,17 @@ func SetupTest(
 			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
 		)
 	}
-	getVerifiers := func(ipfsMultiAddress string, nodeIndex int) (map[verifier.VerifierType]verifier.Verifier, error) {
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
+	getVerifiers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[verifier.VerifierType]verifier.Verifier,
+		error,
+	) {
+		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, func(ctx context.Context, id string) (executor.JobState, error) {
+			return ctrl.GetJobState(ctx, id)
+		})
 	}
 	stack, err := devstack.NewDevStack(
 		cm,

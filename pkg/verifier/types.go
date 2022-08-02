@@ -31,8 +31,8 @@ type Verifier interface {
 	// if the job is deemed to not be finished - this will error
 	// individual shards might have errored but if all shards have run,
 	// then this will attempt to combine them into a complete result set
-	CombineShards(
+	GetJobResultSet(
 		ctx context.Context,
-		jobState string,
+		jobId string,
 	) ([]storage.StorageSpec, error)
 }

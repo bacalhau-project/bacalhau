@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -12,10 +13,15 @@ import (
 )
 
 type Verifier struct {
-	IPFSClient *ipfs.Client
+	IPFSClient  *ipfs.Client
+	StateLoader job.StateLoader
 }
 
-func NewVerifier(cm *system.CleanupManager, ipfsAPIAddr string) (*Verifier, error) {
+func NewVerifier(
+	cm *system.CleanupManager,
+	ipfsAPIAddr string,
+	stateLoader job.StateLoader,
+) (*Verifier, error) {
 	cl, err := ipfs.NewClient(ipfsAPIAddr)
 	if err != nil {
 		return nil, err
@@ -48,9 +54,9 @@ func (v *Verifier) ProcessShardResults(
 	return v.IPFSClient.Put(ctx, resultsFolder)
 }
 
-func (v *Verifier) CombineShards(
+func (v *Verifier) GetJobResultSet(
 	ctx context.Context,
-	jobState string,
+	jobId string,
 ) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{}, nil
 }

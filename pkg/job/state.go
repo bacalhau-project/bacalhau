@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type StateLoader func(id string) (executor.JobState, error)
+type StateLoader func(ctx context.Context, id string) (executor.JobState, error)
 
 // a function that is given a map of nodeid -> job states
 // and will throw an error if anything about that is wrong
@@ -18,6 +18,7 @@ type CheckStatesFunction func(executor.JobState) (bool, error)
 
 type StateResolver struct {
 	job             executor.Job
+	ctx             context.Context
 	loader          StateLoader
 	maxWaitAttempts int
 	waitDelay       time.Duration
@@ -25,10 +26,12 @@ type StateResolver struct {
 
 func NewStateResolver(
 	job executor.Job,
+	ctx context.Context,
 	stateLoader StateLoader,
 ) *StateResolver {
 	return &StateResolver{
 		job:             job,
+		ctx:             ctx,
 		loader:          stateLoader,
 		maxWaitAttempts: 100,
 		waitDelay:       time.Second * 1,
@@ -36,7 +39,7 @@ func NewStateResolver(
 }
 
 func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
-	jobState, err := resolver.loader(resolver.job.ID)
+	jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
 	if err != nil {
 		return []executor.JobShardState{}, err
 	}
@@ -51,7 +54,7 @@ func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
 // TODO: this should probably be part of the verifier interface
 func (resolver *StateResolver) GetResults() ([]string, error) {
 	ret := []string{}
-	jobState, err := resolver.loader(resolver.job.ID)
+	jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
 	if err != nil {
 		return ret, err
 	}
@@ -65,7 +68,7 @@ func (resolver *StateResolver) GetResults() ([]string, error) {
 }
 
 func (resolver *StateResolver) StateSummary() (string, error) {
-	_, err := resolver.loader(resolver.job.ID)
+	_, err := resolver.loader(resolver.ctx, resolver.job.ID)
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +93,7 @@ func (resolver *StateResolver) Wait(
 		MaxAttempts: resolver.maxWaitAttempts,
 		Delay:       resolver.waitDelay,
 		Handler: func() (bool, error) {
-			jobState, err := resolver.loader(resolver.job.ID)
+			jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
 			if err != nil {
 				return false, err
 			}

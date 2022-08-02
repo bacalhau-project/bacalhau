@@ -123,7 +123,7 @@ func (apiClient *APIClient) GetJobStateResolver(ctx context.Context, jobID strin
 	if err != nil {
 		return nil, err
 	}
-	return job.NewStateResolver(loadedJob, func(id string) (executor.JobState, error) {
+	return job.NewStateResolver(loadedJob, ctx, func(ctx context.Context, id string) (executor.JobState, error) {
 		return apiClient.GetJobState(ctx, id)
 	}), nil
 }
