@@ -25,7 +25,6 @@ var jobInputs []string
 var jobInputUrls []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
-var jobLocalOutput string
 var jobEnv []string
 var jobConcurrency int
 var jobCPU string

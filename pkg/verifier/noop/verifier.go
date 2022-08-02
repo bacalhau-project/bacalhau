@@ -29,7 +29,7 @@ func (v *Verifier) ProcessShardResults(
 
 func (v *Verifier) GetJobResultSet(
 	ctx context.Context,
-	jobId string,
+	jobID string,
 ) ([]storage.StorageSpec, error) {
 	return []storage.StorageSpec{}, nil
 }

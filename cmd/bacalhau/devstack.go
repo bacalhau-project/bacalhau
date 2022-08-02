@@ -87,7 +87,8 @@ var devstackCmd = &cobra.Command{
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam // nodeIndex will be used in the future
+		// nodeIndex will be used in the future
+		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam,lll
 			map[verifier.VerifierType]verifier.Verifier, error) {
 
 			if devStackNoop {

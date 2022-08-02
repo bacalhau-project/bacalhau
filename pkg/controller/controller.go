@@ -429,9 +429,9 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	// in most cases - the source node is the id of the state
 	// we are updating - there are a few events where the target node id
 	// overrides this (e.g. BidAccepted)
-	useNodeId := ev.SourceNodeID
+	useNodeID := ev.SourceNodeID
 	if ev.TargetNodeID != "" {
-		useNodeId = ev.TargetNodeID
+		useNodeID = ev.TargetNodeID
 	}
 
 	if executor.IsValidJobState(executionState) {
@@ -439,10 +439,10 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		err = ctrl.localdb.UpdateShardState(
 			ctx,
 			ev.JobID,
-			useNodeId,
+			useNodeID,
 			ev.ShardIndex,
 			executor.JobShardState{
-				NodeID:     useNodeId,
+				NodeID:     useNodeID,
 				ShardIndex: ev.ShardIndex,
 				State:      executionState,
 				Status:     ev.Status,

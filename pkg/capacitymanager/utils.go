@@ -235,11 +235,11 @@ func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 	}
 }
 
-func FlattenShardId(jobId string, shardIndex int) string {
-	return fmt.Sprintf("%s:%d", jobId, shardIndex)
+func FlattenShardID(jobID string, shardIndex int) string {
+	return fmt.Sprintf("%s:%d", jobID, shardIndex)
 }
 
-func ExplodeShardId(id string) (string, int, error) {
+func ExplodeShardID(id string) (jobID string, shardIndex int, err error) {
 	parts := strings.Split(id, ":")
 	if len(parts) != 2 {
 		return "", 0, fmt.Errorf("invalid shard id: %s", id)

@@ -143,15 +143,15 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 
-	for _, flatId := range bidJobIds {
-		jobId, shardIndex, err := capacitymanager.ExplodeShardId(flatId)
+	for _, flatID := range bidJobIds {
+		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
-			node.capacityManager.Remove(flatId)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
-		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobId)
+		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobID)
 		if err != nil {
-			node.capacityManager.Remove(flatId)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 
@@ -165,27 +165,27 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		}
 
 		if hasAlreadyBid {
-			log.Info().Msgf("node %s has already bid on job shard %s %d", node.id, jobId, shardIndex)
-			node.capacityManager.Remove(flatId)
+			log.Info().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 
-		job, err := node.controller.GetJob(context.Background(), jobId)
+		job, err := node.controller.GetJob(context.Background(), jobID)
 		if err != nil {
-			node.capacityManager.Remove(flatId)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
-			node.capacityManager.Remove(flatId)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
-		err = node.capacityManager.MoveToActive(flatId)
+		err = node.capacityManager.MoveToActive(flatID)
 		if err != nil {
-			node.capacityManager.Remove(flatId)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 	}
@@ -287,30 +287,36 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	// once we've finished this shard - let's see if we should
 	// bid on another shard or if we've finished the job
 	defer func() {
-		node.capacityManager.Remove(capacitymanager.FlattenShardId(job.ID, jobEvent.ShardIndex))
+		node.capacityManager.Remove(capacitymanager.FlattenShardID(job.ID, jobEvent.ShardIndex))
 		node.controlLoopBidOnJobs()
 	}()
 
 	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
 	if err == nil {
-		node.controller.CompleteJob(
+		err = node.controller.CompleteJob(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,
 			fmt.Sprintf("Got job result: %s", results),
 			results,
 		)
+
+		if err != nil {
+			log.Error().Msgf("Error completing job: %s %s %s", node.id, job.ID, err.Error())
+		}
 	} else {
 		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
 		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(
+		err = node.controller.ErrorJob(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,
 			errMessage,
 			results,
 		)
-		return
+		if err != nil {
+			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
+		}
 	}
 }
 
@@ -435,9 +441,9 @@ func (node *ComputeNode) RunShard(
 		}).Inc()
 	}
 	if resultFolder == "" {
-		err := fmt.Errorf("Missing results folder for job %s", job.ID)
+		err := fmt.Errorf("missing results folder for job %s", job.ID)
 		if containerRunError != nil {
-			err = fmt.Errorf("RunJob error %s: %s", job.ID, containerRunError)
+			err = fmt.Errorf("runJob error %s: %s", job.ID, containerRunError)
 		}
 		return "", err
 	}

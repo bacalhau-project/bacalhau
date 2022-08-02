@@ -92,8 +92,6 @@ func main() {
 	go func() {
 		for {
 			for _, server := range servers {
-				// fmt.Printf("server spec %+v\n", server)
-
 				for port := server.StartPort; port <= server.EndPort; port++ {
 					addr := fmt.Sprintf("http://%s:%d/", server.Address, port)
 					resp, err := http.Get(addr + "/id")
@@ -101,8 +99,8 @@ func main() {
 						log.Print(err)
 						continue
 					}
-					newId := ""
-					err = json.NewDecoder(resp.Body).Decode(&newId)
+					newID := ""
+					err = json.NewDecoder(resp.Body).Decode(&newID)
 					if err != nil {
 						log.Print(err)
 						continue
@@ -123,11 +121,10 @@ func main() {
 					func() {
 						theMutex.Lock()
 						defer theMutex.Unlock()
-						theMap[newId] = newList["bacalhau-job-event"]
-						sort.Strings(theMap[newId])
+						theMap[newID] = newList["bacalhau-job-event"]
+						sort.Strings(theMap[newID])
 
 						theResult = updateResult(theMap)
-						// fmt.Printf("theMap: %+v\n", theMap)
 					}()
 				}
 			}
@@ -142,7 +139,10 @@ func main() {
 	http.Handle("/api/map", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		theMutex.Lock()
 		defer theMutex.Unlock()
-		json.NewEncoder(w).Encode(theResult)
+		err := json.NewEncoder(w).Encode(theResult)
+		if err != nil {
+			log.Print(err)
+		}
 	}))
 
 	log.Print("Listening on :31337...")
@@ -150,5 +150,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

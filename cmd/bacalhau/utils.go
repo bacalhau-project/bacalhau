@@ -94,12 +94,6 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-type downloadSettings struct {
-	timeoutSecs    int
-	outputDir      string
-	ipfsSwarmAddrs string
-}
-
 func setupDownloadFlags(cmd *cobra.Command, settings ipfs.DownloadSettings) {
 	cmd.Flags().IntVar(&settings.TimeoutSecs, "timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")

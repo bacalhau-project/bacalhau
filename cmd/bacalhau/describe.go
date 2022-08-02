@@ -28,12 +28,6 @@ type localEventDescription struct {
 	TargetNode string `yaml:"TargetNode"`
 }
 
-type stateDescription struct {
-	State     string `yaml:"State"`
-	Status    string `yaml:"Status"`
-	ResultsID string `yaml:"Result CID"`
-}
-
 type jobDescription struct {
 	ID              string                  `yaml:"Id"`
 	ClientID        string                  `yaml:"ClientID"`
@@ -154,7 +148,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshalling job description '%s': %s", jobID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", jobID, err)
 			return err
 		}
 

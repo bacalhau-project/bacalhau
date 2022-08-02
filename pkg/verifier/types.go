@@ -33,6 +33,6 @@ type Verifier interface {
 	// then this will attempt to combine them into a complete result set
 	GetJobResultSet(
 		ctx context.Context,
-		jobId string,
+		jobID string,
 	) ([]storage.StorageSpec, error)
 }

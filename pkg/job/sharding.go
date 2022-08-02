@@ -116,7 +116,7 @@ func GetShards(
 	currentArray := []storage.StorageSpec{}
 	for _, volume := range filteredVolumes {
 		currentArray = append(currentArray, volume)
-		if len(currentArray) == int(batchSize) {
+		if len(currentArray) == batchSize {
 			results = append(results, currentArray)
 			currentArray = []storage.StorageSpec{}
 		}
@@ -140,7 +140,7 @@ func GetShard(
 	if err != nil {
 		return []storage.StorageSpec{}, err
 	}
-	if len(shards) <= int(shard) {
+	if len(shards) <= shard {
 		return []storage.StorageSpec{}, fmt.Errorf("shard %d is out of range", shard)
 	}
 	return shards[shard], nil

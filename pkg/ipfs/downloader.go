@@ -32,7 +32,7 @@ type DownloadSettings struct {
 // * iterate over each output volume
 //   * make new folder for output volume
 //   * iterate over each shard and merge files in output folder to results dir
-func DownloadJob(
+func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
 	job executor.Job,
 	results []storage.StorageSpec,
@@ -129,7 +129,10 @@ func DownloadJob(
 
 		shardOutputDir := filepath.Join(settings.OutputDir, "shards", result.Name)
 		// make a directory for the individual shard logs
-		os.MkdirAll(shardOutputDir, os.ModePerm)
+		err = os.MkdirAll(shardOutputDir, os.ModePerm)
+		if err != nil {
+			return err
+		}
 
 		// move the stdout, stderr, and exit code to the shard results dir
 		for _, filename := range []string{
@@ -145,7 +148,6 @@ func DownloadJob(
 				return err
 			}
 		}
-
 	}
 
 	return nil
