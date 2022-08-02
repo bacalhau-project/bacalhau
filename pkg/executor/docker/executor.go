@@ -193,7 +193,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		var im dockertypes.ImageInspect
 		im, _, err = e.Client.ImageInspectWithRaw(ctx, j.Spec.Docker.Image)
 		if err == nil {
-			log.Debug().Msgf("Not pulling image %s, already have %+v", j.Spec.Docker.Image, im)
+			log.Debug().Msgf("Not pulling image %s, already have %s", j.Spec.Docker.Image, im.ID)
 		} else if dockerclient.IsErrNotFound(err) {
 			stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
 				"docker",
