@@ -23,6 +23,7 @@ var jobfConcurrency int
 var jobfInputUrls []string
 var jobfInputVolumes []string
 var jobfOutputVolumes []string
+var jobfWorkingDir string
 var jobTags []string
 
 func init() { // nolint:gochecknoinits
@@ -125,8 +126,15 @@ var applyCmd = &cobra.Command{
 
 		verifierType, err := verifier.ParseVerifierType(jobspec.VerifierName)
 		if err != nil {
-			cmd.Printf("Error parsing engine type: %s", err)
+			cmd.Printf("Error parsing verifier type: %s", err)
 			return err
+		}
+
+		if len(jobfWorkingDir) > 0 {
+			err = system.ValidateWorkingDir(jobfWorkingDir)
+			if err != nil {
+				return err
+			}
 		}
 
 		spec, deal, err := job.ConstructDockerJob(
@@ -143,6 +151,7 @@ var applyCmd = &cobra.Command{
 			jobImage,
 			jobfConcurrency,
 			jobTags,
+			jobfWorkingDir,
 		)
 		if err != nil {
 			return err
