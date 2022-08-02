@@ -52,6 +52,7 @@ func ConstructDockerJob( //nolint:funlen
 		GPU:    gpu,
 	}
 	jobInputs := []storage.StorageSpec{}
+	jobContexts := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
 
 	for _, inputURL := range inputUrls {
@@ -131,6 +132,7 @@ func ConstructDockerJob( //nolint:funlen
 
 		Resources:   jobResources,
 		Inputs:      jobInputs,
+		Contexts:    jobContexts,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,
 	}
@@ -163,6 +165,7 @@ func ConstructLanguageJob(
 	}
 
 	jobInputs := []storage.StorageSpec{}
+	jobContexts := []storage.StorageSpec{}
 	jobOutputs := []storage.StorageSpec{}
 
 	for _, inputVolume := range inputVolumes {
@@ -207,8 +210,9 @@ func ConstructLanguageJob(
 			RequirementsPath: requirementsPath,
 		},
 
-		Inputs:  jobInputs,
-		Outputs: jobOutputs,
+		Inputs:   jobInputs,
+		Contexts: jobContexts,
+		Outputs:  jobOutputs,
 	}
 
 	deal := executor.JobDeal{

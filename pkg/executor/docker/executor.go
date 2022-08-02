@@ -120,34 +120,48 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		return "", err
 	}
 
-	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range shard {
+	// reusable between the input shards and the input context
+	addInputStorageHandler := func(spec storage.StorageSpec) error {
 		var storageProvider storage.StorageProvider
 		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
+		storageProvider, err = e.getStorageProvider(ctx, spec.Engine)
 		if err != nil {
-			return "", err
+			return err
 		}
 
-		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
+		volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
-
+			log.Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
 				Type: "bind",
-
 				// this is an input volume so is read only
 				ReadOnly: true,
 				Source:   volumeMount.Source,
 				Target:   volumeMount.Target,
 			})
 		} else {
-			return "", fmt.Errorf(
-				"unknown storage volume type: %s", volumeMount.Type)
+			return fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
+		}
+		return nil
+	}
+
+	// loop over the job contexts and prepare them
+	for _, contextStorage := range j.Spec.Contexts {
+		err = addInputStorageHandler(contextStorage)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// loop over the job storage inputs and prepare them
+	for _, inputStorage := range shard {
+		err = addInputStorageHandler(inputStorage)
+		if err != nil {
+			return "", err
 		}
 	}
 

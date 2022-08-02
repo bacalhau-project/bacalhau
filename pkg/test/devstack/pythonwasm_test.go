@@ -90,12 +90,8 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 import os
 print("LIST /")
 print(os.listdir("/"))
-#print("LIST /input")
-#print(os.listdir("/input"))
 print("LIST /output")
 print(os.listdir("/output"))
-print("LIST /job")
-print(os.listdir("/job"))
 open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, inputPath))
 

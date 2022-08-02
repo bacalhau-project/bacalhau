@@ -64,6 +64,10 @@ func (e *Executor) RunShard(ctx context.Context, job executor.Job, shardIndex in
 		job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
+	for idx, v := range job.Spec.Contexts {
+		job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	}
+
 	for idx, v := range job.Spec.Outputs {
 		job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
 	}

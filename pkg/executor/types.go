@@ -147,6 +147,12 @@ type JobSpec struct {
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	Inputs []storage.StorageSpec `json:"inputs" yaml:"inputs"`
+
+	// Input volumes that will not be sharded
+	// for example to upload code into a base image
+	// every shard will get the full range of context volumes
+	Contexts []storage.StorageSpec `json:"contexts" yaml:"contexts"`
+
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
 	Outputs []storage.StorageSpec `json:"outputs" yaml:"outputs"`
