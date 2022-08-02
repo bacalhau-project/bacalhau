@@ -244,5 +244,5 @@ func GetCurrentJobState(states map[string]executor.JobState) (string, executor.J
 }
 
 func JobStateValue(jobState executor.JobState) int {
-	return int(executor.JobStateRunning)
+	return int(jobState.State)
 }
