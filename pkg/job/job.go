@@ -111,9 +111,9 @@ func ConstructDockerJob( //nolint:funlen
 		if err != nil {
 			log.Error().Msg(err.Error())
 			return executor.JobSpec{}, executor.JobDeal{}, err
-		}	
+		}
 	}
-	
+
 	spec := executor.JobSpec{
 		Engine:   engine,
 		Verifier: v,
