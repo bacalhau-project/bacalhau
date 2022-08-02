@@ -11,12 +11,13 @@ func _() {
 	_ = x[jobLocalEventUnknown-0]
 	_ = x[JobLocalEventSelected-1]
 	_ = x[JobLocalEventBidAccepted-2]
-	_ = x[jobLocalEventDone-3]
+	_ = x[JobLocalEventBid-3]
+	_ = x[jobLocalEventDone-4]
 }
 
-const _JobLocalEventType_name = "jobLocalEventUnknownSelectedBidAcceptedjobLocalEventDone"
+const _JobLocalEventType_name = "jobLocalEventUnknownSelectedBidAcceptedBidjobLocalEventDone"
 
-var _JobLocalEventType_index = [...]uint8{0, 20, 28, 39, 56}
+var _JobLocalEventType_index = [...]uint8{0, 20, 28, 39, 42, 59}
 
 func (i JobLocalEventType) String() string {
 	if i < 0 || i >= JobLocalEventType(len(_JobLocalEventType_index)-1) {

@@ -98,7 +98,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 
 func (apiClient *APIClient) GetExecutionStates(ctx context.Context, jobID string) (states map[string]executor.JobState, err error) {
 	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
+		return nil, fmt.Errorf("jobID must be non-empty in a GetExecutionStates call")
 	}
 
 	req := statesRequest{
@@ -112,6 +112,42 @@ func (apiClient *APIClient) GetExecutionStates(ctx context.Context, jobID string
 	}
 
 	return res.States, nil
+}
+
+func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []executor.JobEvent, err error) {
+	if jobID == "" {
+		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
+	}
+
+	req := eventsRequest{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+	}
+
+	var res eventsResponse
+	if err := apiClient.post(ctx, "events", req, &res); err != nil {
+		return nil, err
+	}
+
+	return res.Events, nil
+}
+
+func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []executor.JobLocalEvent, err error) {
+	if jobID == "" {
+		return nil, fmt.Errorf("jobID must be non-empty in a GetLocalEvents call")
+	}
+
+	req := localEventsRequest{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+	}
+
+	var res localEventsResponse
+	if err := apiClient.post(ctx, "local_events", req, &res); err != nil {
+		return nil, err
+	}
+
+	return res.LocalEvents, nil
 }
 
 // Submit submits a new job to the node's transport.

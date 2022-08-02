@@ -113,7 +113,7 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 
 		if len(acceptedEvents) >= concurrency {
 			// nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d", len(acceptedEvents), concurrency)
+			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d)", len(acceptedEvents), concurrency)
 			return false
 		}
 
