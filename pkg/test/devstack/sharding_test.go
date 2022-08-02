@@ -19,6 +19,7 @@ import (
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -238,6 +239,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	swarmAddresses, err := stack.Nodes[0].IpfsNode.SwarmAddresses()
 	require.NoError(suite.T(), err)
+
+	log.Info().Msgf("Downloading results to %s", downloadFolder)
 
 	err = ipfs.DownloadJob(
 		cm,
