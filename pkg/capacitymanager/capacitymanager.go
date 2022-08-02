@@ -2,6 +2,7 @@ package capacitymanager
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 const DefaultJobCPU = "100m"
@@ -211,9 +212,19 @@ func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsa
 	return nil
 }
 
+// add the shards in random order so we get some kind of general coverage across
+// the network - otherwise all nodes are racing each other for the same shards
 func (manager *CapacityManager) AddShardsToBacklog(id string, shardCount int, requirements ResourceUsageData) error {
+	shardIndexes := []int{}
 	for i := 0; i < shardCount; i++ {
-		err := manager.AddToBacklog(FlattenShardId(id, i), requirements)
+		shardIndexes = append(shardIndexes, i)
+	}
+	for i := range shardIndexes {
+		j := rand.Intn(i + 1)
+		shardIndexes[i], shardIndexes[j] = shardIndexes[j], shardIndexes[i]
+	}
+	for _, shardIndex := range shardIndexes {
+		err := manager.AddToBacklog(FlattenShardId(id, shardIndex), requirements)
 		if err != nil {
 			return err
 		}
