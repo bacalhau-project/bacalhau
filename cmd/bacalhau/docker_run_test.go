@@ -166,7 +166,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
-				"--localoutput", outputDir,
+				"--output-dir", outputDir,
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -190,12 +189,12 @@ func RunJobGetStdout(
 		ID:   "test",
 		Spec: spec,
 	}, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	assert.DirExists(t, result, "The job result folder exists")
-	assert.FileExists(t, stdoutPath, "The stdout file exists")
+	require.DirExists(t, result, "The job result folder exists")
+	require.FileExists(t, stdoutPath, "The stdout file exists")
 	dat, err := os.ReadFile(stdoutPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return string(dat)
 }

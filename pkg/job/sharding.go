@@ -140,6 +140,11 @@ func GetShard(
 	if err != nil {
 		return []storage.StorageSpec{}, err
 	}
+	// if we have no volumes at all - we are still processing
+	// shard #0 so just return empty array
+	if len(shards) == 0 {
+		return []storage.StorageSpec{}, nil
+	}
 	if len(shards) <= shard {
 		return []storage.StorageSpec{}, fmt.Errorf("shard %d is out of range", shard)
 	}
