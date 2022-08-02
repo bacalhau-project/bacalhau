@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -34,10 +35,10 @@ var skipSyntaxChecking bool
 var waitForJobToFinishAndPrintOutput bool
 var jobLabels []string
 
-var runDownloadFlags = downloadSettings{
-	timeoutSecs:    10,
-	outputDir:      ".",
-	ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+var runDownloadFlags = ipfs.DownloadSettings{
+	TimeoutSecs:    10,
+	OutputDir:      ".",
+	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -135,10 +136,10 @@ var dockerRunCmd = &cobra.Command{
 		jobGPU = ""
 		skipSyntaxChecking = false
 		waitForJobToFinishAndPrintOutput = false
-		runDownloadFlags = downloadSettings{
-			timeoutSecs:    10,
-			outputDir:      ".",
-			ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+		runDownloadFlags = ipfs.DownloadSettings{
+			TimeoutSecs:    10,
+			OutputDir:      ".",
+			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
@@ -224,7 +225,7 @@ var dockerRunCmd = &cobra.Command{
 			if len(resultCIDs) == 0 {
 				return fmt.Errorf("no result CIDs found")
 			}
-			err = downloadJobResults(
+			err = ipfs.DownloadCIDs(
 				cm,
 				[]string{resultCIDs[0]},
 				runDownloadFlags,
@@ -232,7 +233,7 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			body, err := os.ReadFile(filepath.Join(runDownloadFlags.outputDir, resultCIDs[0], "stdout"))
+			body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, resultCIDs[0], "stdout"))
 			if err != nil {
 				return err
 			}

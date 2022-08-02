@@ -156,8 +156,8 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			runDownloadFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
-			runDownloadFlags.outputDir = dir
+			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)

@@ -4,15 +4,16 @@ import (
 	"context"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-var getDownloadFlags = downloadSettings{
-	timeoutSecs:    10,
-	outputDir:      ".",
-	ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+var getDownloadFlags = ipfs.DownloadSettings{
+	TimeoutSecs:    10,
+	OutputDir:      ".",
+	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
 func init() { // nolint:gochecknoinits
@@ -39,7 +40,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		err = downloadJobResults(
+		err = ipfs.DownloadCIDs(
 			cm,
 			resultCIDs,
 			getDownloadFlags,
