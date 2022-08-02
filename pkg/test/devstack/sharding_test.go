@@ -260,6 +260,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	}
 
 	sort.Strings(expectedStdoutArray)
+	sort.Strings(expectedResultsFiles)
 
 	require.FileExists(suite.T(), filepath.Join(downloadFolder, "stdout"))
 	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, "stdout"))
@@ -271,11 +272,17 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.Equal(suite.T(), "\n"+strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
 
 	// check that we have a "results" output volume with all the files inside
-	// require.DirExists(suite.T(), filepath.Join(downloadFolder, "results"))
-	// files, err := ioutil.ReadDir(filepath.Join(downloadFolder, "results"))
-	// require.NoError(suite.T(), err)
+	require.DirExists(suite.T(), filepath.Join(downloadFolder, "volumes", "results"))
+	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, "volumes", "results"))
+	require.NoError(suite.T(), err)
 
-	// fmt.Printf("files --------------------------------------\n")
-	// spew.Dump(files)
+	actualResultsFiles := []string{}
 
+	for _, foundFile := range files {
+		actualResultsFiles = append(actualResultsFiles, foundFile.Name())
+	}
+
+	sort.Strings(actualResultsFiles)
+
+	require.Equal(suite.T(), strings.Join(expectedResultsFiles, "\n"), strings.Join(actualResultsFiles, "\n"), "the merged list of files is not correct")
 }
