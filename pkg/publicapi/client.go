@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -170,6 +171,24 @@ func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (l
 	}
 
 	return res.LocalEvents, nil
+}
+
+func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []storage.StorageSpec, err error) {
+	if jobID == "" {
+		return nil, fmt.Errorf("jobID must be non-empty in a GetResults call")
+	}
+
+	req := resultsRequest{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+	}
+
+	var res resultsResponse
+	if err := apiClient.post(ctx, "results", req, &res); err != nil {
+		return nil, err
+	}
+
+	return res.Results, nil
 }
 
 // Submit submits a new job to the node's transport.
