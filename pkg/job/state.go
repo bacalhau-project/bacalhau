@@ -84,7 +84,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 		return "", err
 	}
 	completedShards := GetCompletedShardStates(jobState)
-	if len(completedShards) <= 0 {
+	if len(completedShards) == 0 {
 		return "", nil
 	}
 	return fmt.Sprintf("/ipfs/%s", completedShards[0].ResultsID), nil
