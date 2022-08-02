@@ -213,7 +213,17 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	err = resolver.WaitUntilComplete(ctx)
 	require.NoError(suite.T(), err)
 
-	// jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
-	// require.NoError(suite.T(), err)
+	jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
+	require.NoError(suite.T(), err)
 
+	// each node should have run 10 shards because we have 3 nodes
+	// and concurrency is 3
+	nodeIDs, err := stack.GetNodeIds()
+	require.NoError(suite.T(), err)
+
+	for _, nodeID := range nodeIDs {
+		nodeState, ok := jobState.Nodes[nodeID]
+		require.True(suite.T(), ok)
+		require.Equal(suite.T(), batchCount, len(nodeState.Shards))
+	}
 }
