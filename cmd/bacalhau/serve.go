@@ -174,9 +174,15 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect, func(ctx context.Context, id string) (executor.JobState, error) {
+		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+			return controller.GetJob(ctx, id)
+		}
+
+		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
 			return controller.GetJobState(ctx, id)
-		})
+		}
+
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect, jobLoader, stateLoader)
 		if err != nil {
 			return err
 		}

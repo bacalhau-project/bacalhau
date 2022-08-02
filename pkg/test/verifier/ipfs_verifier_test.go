@@ -61,7 +61,12 @@ func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 	err = os.WriteFile(inputDir+"/file.txt", []byte(fixtureContent), 0644)
 	require.NoError(suite.T(), err)
 
-	verifier, err := ipfs.NewVerifier(cm, stack.Nodes[0].IpfsClient.APIAddress(), job.NewNoopStateLoader())
+	verifier, err := ipfs.NewVerifier(
+		cm,
+		stack.Nodes[0].IpfsClient.APIAddress(),
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
 	require.NoError(suite.T(), err)
 
 	installed, err := verifier.IsInstalled(ctx)

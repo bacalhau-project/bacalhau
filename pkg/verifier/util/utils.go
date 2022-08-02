@@ -11,6 +11,7 @@ import (
 func NewIPFSVerifiers(
 	cm *system.CleanupManager,
 	ipfsMultiAddress string,
+	jobLoader job.JobLoader,
 	stateLoader job.StateLoader,
 ) (map[verifier.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewVerifier()
@@ -18,7 +19,7 @@ func NewIPFSVerifiers(
 		return nil, err
 	}
 
-	ipfsVerifier, err := ipfs.NewVerifier(cm, ipfsMultiAddress, stateLoader)
+	ipfsVerifier, err := ipfs.NewVerifier(cm, ipfsMultiAddress, jobLoader, stateLoader)
 	if err != nil {
 		return nil, err
 	}

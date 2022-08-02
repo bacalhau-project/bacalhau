@@ -14,12 +14,14 @@ import (
 
 type Verifier struct {
 	IPFSClient  *ipfs.Client
+	JobLoader   job.JobLoader
 	StateLoader job.StateLoader
 }
 
 func NewVerifier(
 	cm *system.CleanupManager,
 	ipfsAPIAddr string,
+	jobLoader job.JobLoader,
 	stateLoader job.StateLoader,
 ) (*Verifier, error) {
 	cl, err := ipfs.NewClient(ipfsAPIAddr)
@@ -29,7 +31,9 @@ func NewVerifier(
 
 	log.Debug().Msgf("IPFS verifier initialized for node: %s", ipfsAPIAddr)
 	return &Verifier{
-		IPFSClient: cl,
+		IPFSClient:  cl,
+		JobLoader:   jobLoader,
+		StateLoader: stateLoader,
 	}, nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type JobLoader func(ctx context.Context, id string) (executor.Job, error)
 type StateLoader func(ctx context.Context, id string) (executor.JobState, error)
 
 // a function that is given a map of nodeid -> job states
@@ -17,29 +18,32 @@ type StateLoader func(ctx context.Context, id string) (executor.JobState, error)
 type CheckStatesFunction func(executor.JobState) (bool, error)
 
 type StateResolver struct {
-	job             executor.Job
+	jobID           string
 	ctx             context.Context
-	loader          StateLoader
+	jobLoader       JobLoader
+	stateLoader     StateLoader
 	maxWaitAttempts int
 	waitDelay       time.Duration
 }
 
 func NewStateResolver(
-	job executor.Job,
+	jobID string,
 	ctx context.Context,
+	jobLoader JobLoader,
 	stateLoader StateLoader,
 ) *StateResolver {
 	return &StateResolver{
-		job:             job,
+		jobID:           jobID,
 		ctx:             ctx,
-		loader:          stateLoader,
+		jobLoader:       jobLoader,
+		stateLoader:     stateLoader,
 		maxWaitAttempts: 100,
 		waitDelay:       time.Second * 1,
 	}
 }
 
 func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
-	jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
+	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
 	if err != nil {
 		return []executor.JobShardState{}, err
 	}
@@ -54,7 +58,7 @@ func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
 // TODO: this should probably be part of the verifier interface
 func (resolver *StateResolver) GetResults() ([]string, error) {
 	ret := []string{}
-	jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
+	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
 	if err != nil {
 		return ret, err
 	}
@@ -68,7 +72,7 @@ func (resolver *StateResolver) GetResults() ([]string, error) {
 }
 
 func (resolver *StateResolver) StateSummary() (string, error) {
-	_, err := resolver.loader(resolver.ctx, resolver.job.ID)
+	_, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
 	if err != nil {
 		return "", err
 	}
@@ -93,7 +97,7 @@ func (resolver *StateResolver) Wait(
 		MaxAttempts: resolver.maxWaitAttempts,
 		Delay:       resolver.waitDelay,
 		Handler: func() (bool, error) {
-			jobState, err := resolver.loader(resolver.ctx, resolver.job.ID)
+			jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
 			if err != nil {
 				return false, err
 			}
@@ -140,7 +144,11 @@ func (resolver *StateResolver) Wait(
 // this is an auto wait where we auto calculate how many shard
 // sates we expect to see and we use that to pass to WaitForJobStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
-	totalShards := GetJobTotalExecutionCount(resolver.job)
+	job, err := resolver.jobLoader(resolver.ctx, resolver.jobID)
+	if err != nil {
+		return err
+	}
+	totalShards := GetJobTotalExecutionCount(job)
 	return resolver.Wait(
 		ctx,
 		totalShards,

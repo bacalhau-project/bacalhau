@@ -93,9 +93,14 @@ var devstackCmd = &cobra.Command{
 			if devStackNoop {
 				return verifier_util.NewNoopVerifiers(cm)
 			}
-			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, func(ctx context.Context, id string) (executor.JobState, error) {
+
+			jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+				return ctrl.GetJob(ctx, id)
+			}
+			stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
 				return ctrl.GetJobState(ctx, id)
-			})
+			}
+			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
 		}
 
 		stack, err := devstack.NewDevStack(

@@ -54,7 +54,12 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress, job.NewNoopStateLoader())
+	verifiers, err := verifier_util.NewIPFSVerifiers(
+		cm,
+		apiAddress,
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

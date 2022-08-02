@@ -25,6 +25,13 @@ func SafeAnnotationRegex() *regexp.Regexp {
 	return r
 }
 
+func NewNoopJobLoader() JobLoader {
+	jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+		return executor.Job{}, nil
+	}
+	return jobLoader
+}
+
 func NewNoopStateLoader() StateLoader {
 	stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
 		return executor.JobState{}, nil
