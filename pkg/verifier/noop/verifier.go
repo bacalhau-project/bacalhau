@@ -3,6 +3,7 @@ package noop
 import (
 	"context"
 
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
@@ -24,6 +25,13 @@ func (v *Verifier) ProcessShardResults(
 	resultsFolder string,
 ) (string, error) {
 	return resultsFolder, nil
+}
+
+func (v *Verifier) CombineShards(
+	ctx context.Context,
+	jobState string,
+) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{}, nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

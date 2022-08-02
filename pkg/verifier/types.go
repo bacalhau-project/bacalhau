@@ -2,6 +2,8 @@ package verifier
 
 import (
 	"context"
+
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 // Verifier is an interface representing something that can verify the results
@@ -21,4 +23,16 @@ type Verifier interface {
 		shardIndex int,
 		resultsPath string,
 	) (string, error)
+
+	// once we've decided that everything is completed, decide which shards
+	// to combine to form a complete result set
+	// we will have a list of storage specs that can be downloaded by a client
+	// using the appropriate storage driver
+	// if the job is deemed to not be finished - this will error
+	// individual shards might have errored but if all shards have run,
+	// then this will attempt to combine them into a complete result set
+	CombineShards(
+		ctx context.Context,
+		jobState string,
+	) ([]storage.StorageSpec, error)
 }

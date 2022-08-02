@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -45,6 +46,13 @@ func (v *Verifier) ProcessShardResults(
 
 	log.Debug().Msgf("Uploading results folder to ipfs: %s %s", jobID, resultsFolder)
 	return v.IPFSClient.Put(ctx, resultsFolder)
+}
+
+func (v *Verifier) CombineShards(
+	ctx context.Context,
+	jobState string,
+) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{}, nil
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
