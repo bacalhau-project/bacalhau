@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor/language"
+	"github.com/filecoin-project/bacalhau/pkg/executor/local"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -64,6 +65,48 @@ func NewStandardExecutors(
 		return nil, err
 	}
 	return executors, nil
+}
+
+func NewLocalStandardExecutors(
+	cm *system.CleanupManager,
+	ipfsMultiAddress,
+	dockerID string,
+) (*local.Local, error) {
+	// Don't allow user to choose the fuse driver in case it has security issues.
+	// ipfsFuseStorage, err := fusedocker.NewStorageProvider(cm, ipfsMultiAddress)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, ipfsMultiAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	urlDownloadStorage, err := urldownload.NewStorageProvider(cm)
+	if err != nil {
+		return nil, err
+	}
+
+	exDocker, err := local.NewExecutor(cm, dockerID,
+		map[storage.StorageSourceType]storage.StorageProvider{
+			// fuse driver is disabled so that - in case it poses a security
+			// risk - arbitrary users can't request it
+			// storage.IPFS_FUSE_DOCKER: ipfsFuseStorage,
+			storage.StorageSourceIPFS: ipfsAPICopyStorage,
+			// we make the copy driver the "default" storage driver for docker
+			// users have to specify the fuse driver explicitly
+			storage.StorageSourceURLDownload: urlDownloadStorage,
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	// executors := map[executor.EngineType]local.Local{
+	// 	executor.EngineDocker: exDocker,
+	// }
+
+	return exDocker, nil
 }
 
 // return noop executors for all engines

@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	pjob "github.com/filecoin-project/bacalhau/pkg/job"
-
+	"github.com/filecoin-project/bacalhau/pkg/local"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -36,6 +36,7 @@ var jobCPU string
 var jobMemory string
 var jobGPU string
 var skipSyntaxChecking bool
+var isLocal bool
 var waitForJobToFinishAndPrintOutput bool
 var jobLabels []string
 
@@ -353,6 +354,11 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Wait For Job To Finish And Print Output`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&isLocal, "local", false,
+		`Run the job locally. Docker is required`,
+	)
+
 	// ipfs get wait time
 	dockerRunCmd.PersistentFlags().IntVarP(
 		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
@@ -454,47 +460,61 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
+		if isLocal {
+			client, err := local.NewDockerClient()
+			if err != nil {
+				cmd.Printf("%t\n", local.IsInstalled(client))
+				return err
+			}
+			std, err := local.RunJobLocally(ctx, spec)
+			cmd.Printf("%v", std)
 
-		states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("%s\n", job.ID)
-		currentNodeID, _ := pjob.GetCurrentJobState(states)
-		nodeIds := []string{currentNodeID}
-
-		// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
-		// feels like we're overloading the surface of the CLI command a lot.
-		if waitForJobToFinishAndPrintOutput {
-			err = WaitForJob(ctx, job.ID, job,
-				WaitForJobThrowErrors(job, []executor.JobStateType{
-					executor.JobStateCancelled,
-					executor.JobStateError,
-				}),
-				WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-			)
+			if err != nil {
+				return err
+			}
+		} else {
+			job, err := getAPIClient().Submit(ctx, spec, deal, nil)
 			if err != nil {
 				return err
 			}
 
-			cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
-
-			// TODO: #425 Can you explain what the below is doing? Please comment.
-			var cidv string
-			for cid := range cidl {
-				cidv = filepath.Join(jobLocalOutput, cid)
-			}
-			body, err := os.ReadFile(cidv + "/stdout")
+			states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-			fmt.Println()
-			fmt.Println(string(body))
+
+			cmd.Printf("%s\n", job.ID)
+			currentNodeID, _ := pjob.GetCurrentJobState(states)
+			nodeIds := []string{currentNodeID}
+
+			// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
+			// feels like we're overloading the surface of the CLI command a lot.
+			if waitForJobToFinishAndPrintOutput {
+				err = WaitForJob(ctx, job.ID, job,
+					WaitForJobThrowErrors(job, []executor.JobStateType{
+						executor.JobStateCancelled,
+						executor.JobStateError,
+					}),
+					WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
+				)
+				if err != nil {
+					return err
+				}
+
+				cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
+
+				// TODO: #425 Can you explain what the below is doing? Please comment.
+				var cidv string
+				for cid := range cidl {
+					cidv = filepath.Join(jobLocalOutput, cid)
+				}
+				body, err := os.ReadFile(cidv + "/stdout")
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				fmt.Println(string(body))
+			}
 		}
 
 		return nil
