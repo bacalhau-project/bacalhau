@@ -161,7 +161,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshalling job description '%s': %s", jobID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", jobID, err)
 			return err
 		}
 

@@ -221,8 +221,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// TODO: add list events into describe
-
+//nolint:dupl
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	var statesReq statesRequest
 	if err := json.NewDecoder(req.Body).Decode(&statesReq); err != nil {
@@ -246,6 +245,7 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//nolint:dupl
 func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 	var eventsReq eventsRequest
 	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
@@ -269,6 +269,7 @@ func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//nolint:dupl
 func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Request) {
 	var eventsReq localEventsRequest
 	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {

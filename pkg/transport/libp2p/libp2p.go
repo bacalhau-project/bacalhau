@@ -73,7 +73,6 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 	})
 
 	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true))
-	// ps, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
 		return nil, err
 	}
@@ -247,9 +246,10 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// Notify all the listeners in this process of the event:
 	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
 
-	// overwrite the event.SourceNodeID with the one from the libp2p message
 	ev := payload.JobEvent
-	// ev.SourceNodeID = msg.ReceivedFrom.String()
+	// NOTE: Do not use msg.ReceivedFrom as the original sender, it's not. It's
+	// the node which gossiped the message to us, which might be different.
+	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
 
 	t.ctx.RLock()
 	defer t.ctx.RUnlock()
