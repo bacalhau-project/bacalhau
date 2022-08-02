@@ -219,6 +219,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		Entrypoint:      j.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(j),
 		NetworkDisabled: true,
+		WorkingDir:      j.Spec.Docker.WorkingDir,
 	}
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

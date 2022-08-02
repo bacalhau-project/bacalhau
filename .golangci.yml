@@ -28,7 +28,7 @@ linters-settings:
       - wrapperFunc
       - hugeParam
   gocyclo:
-    min-complexity: 15
+    min-complexity: 18
   goimports:
     local-prefixes: github.com/golangci/golangci-lint
   gomnd:
