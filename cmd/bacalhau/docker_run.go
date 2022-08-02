@@ -215,22 +215,23 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			resultCIDs, err := resolver.GetResults(ctx, job.ID)
+			results, err := getAPIClient().GetResults(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-			if len(resultCIDs) == 0 {
-				return fmt.Errorf("no result CIDs found")
+			if len(results) == 0 {
+				return fmt.Errorf("no results found")
 			}
-			err = ipfs.DownloadCIDs(
+			err = ipfs.DownloadJob(
 				cm,
-				[]string{resultCIDs[0]},
+				job,
+				results,
 				runDownloadFlags,
 			)
 			if err != nil {
 				return err
 			}
-			body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, resultCIDs[0], "stdout"))
+			body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
 			if err != nil {
 				return err
 			}

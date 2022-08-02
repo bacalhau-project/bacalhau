@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -17,13 +19,14 @@ type DownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
-func DownloadCIDs(
+func DownloadJob(
 	cm *system.CleanupManager,
-	cids []string,
+	job executor.Job,
+	results []storage.StorageSpec,
 	settings DownloadSettings,
 ) error {
-	if len(cids) == 0 {
-		log.Debug().Msg("No cids to download")
+	if len(results) == 0 {
+		log.Debug().Msg("No results to download")
 		return nil
 	}
 
@@ -41,27 +44,26 @@ func DownloadCIDs(
 		return err
 	}
 
-	// NOTE: this will run in non-deterministic order
-	for _, cid := range cids {
-		outputDir := filepath.Join(settings.OutputDir, cid)
+	for _, result := range results {
+		outputDir := filepath.Join(settings.OutputDir, result.Cid)
 		ok, err := system.PathExists(outputDir)
 		if err != nil {
 			return err
 		}
 		if ok {
-			log.Warn().Msgf("Output directory '%s' already exists, skipping CID '%s'.", outputDir, cid)
+			log.Warn().Msgf("Output directory '%s' already exists, skipping CID '%s'.", outputDir, result.Cid)
 			continue
 		}
 
 		err = func() error {
 			log.Info().Msgf("Downloading result CID '%s' to '%s'...",
-				cid, outputDir)
+				result.Cid, outputDir)
 
 			ctx, cancel := context.WithDeadline(context.Background(),
 				time.Now().Add(time.Second*time.Duration(settings.TimeoutSecs)))
 			defer cancel()
 
-			return cl.Get(ctx, cid, outputDir)
+			return cl.Get(ctx, result.Cid, outputDir)
 		}()
 
 		if err != nil {

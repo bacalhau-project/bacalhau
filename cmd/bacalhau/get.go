@@ -2,10 +2,12 @@ package bacalhau
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -31,17 +33,34 @@ var getCmd = &cobra.Command{
 		jobID := args[0]
 
 		log.Info().Msgf("Fetching results of job '%s'...", jobID)
-		resolver := getAPIClient().GetJobStateResolver()
-		resultCIDs, err := resolver.GetResults(context.Background(), jobID)
+
+		job, ok, err := getAPIClient().Get(context.Background(), jobID)
+
+		if !ok {
+			return fmt.Errorf("job not found: %s", jobID)
+		}
+
 		if err != nil {
 			return err
 		}
 
-		err = ipfs.DownloadCIDs(
+		// todo: deal with jobs with a different verifier
+		if job.Spec.Verifier != verifier.VerifierIpfs {
+			return fmt.Errorf("job verifier not found: %s", job.Spec.Verifier)
+		}
+
+		results, err := getAPIClient().GetResults(context.Background(), jobID)
+		if err != nil {
+			return err
+		}
+
+		err = ipfs.DownloadJob(
 			cm,
-			resultCIDs,
+			job,
+			results,
 			getDownloadFlags,
 		)
+
 		if err != nil {
 			return err
 		}
