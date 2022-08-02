@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -226,4 +227,10 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		require.True(suite.T(), ok)
 		require.Equal(suite.T(), batchCount, len(nodeState.Shards))
 	}
+
+	jobResults, err := apiClient.GetResults(ctx, submittedJob.ID)
+	require.NoError(suite.T(), err)
+
+	fmt.Printf("jobResults --------------------------------------\n")
+	spew.Dump(jobResults)
 }

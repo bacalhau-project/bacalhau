@@ -60,9 +60,24 @@ func (v *Verifier) ProcessShardResults(
 
 func (v *Verifier) GetJobResultSet(
 	ctx context.Context,
-	jobId string,
+	jobID string,
 ) ([]storage.StorageSpec, error) {
+	ctx, span := newSpan(ctx, "GetJobResultSet")
+	defer span.End()
+	//resolver := v.getStateResolver(ctx, jobID)
 	return []storage.StorageSpec{}, nil
+}
+
+func (v *Verifier) getStateResolver(
+	ctx context.Context,
+	jobID string,
+) *job.StateResolver {
+	return job.NewStateResolver(
+		ctx,
+		jobID,
+		v.JobLoader,
+		v.StateLoader,
+	)
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

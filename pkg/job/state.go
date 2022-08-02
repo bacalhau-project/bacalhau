@@ -27,8 +27,8 @@ type StateResolver struct {
 }
 
 func NewStateResolver(
-	jobID string,
 	ctx context.Context,
+	jobID string,
 	jobLoader JobLoader,
 	stateLoader StateLoader,
 ) *StateResolver {
@@ -48,27 +48,6 @@ func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
 		return []executor.JobShardState{}, err
 	}
 	return FlattenShardStates(jobState), nil
-}
-
-// this will return a list of results groups by shard index
-// it will pick the first "complete" state for each shard
-// if there are any shards missing (because they errored or are not ready yet)
-// then this will error so it's important that you check the job has completed
-// before calling this
-// TODO: this should probably be part of the verifier interface
-func (resolver *StateResolver) GetResults() ([]string, error) {
-	ret := []string{}
-	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
-	if err != nil {
-		return ret, err
-	}
-	allShardStates := FlattenShardStates(jobState)
-	for _, shard := range allShardStates {
-		if shard.ResultsID != "" {
-			ret = append(ret, shard.ResultsID)
-		}
-	}
-	return ret, nil
 }
 
 func (resolver *StateResolver) StateSummary() (string, error) {
@@ -160,6 +139,60 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
 			executor.JobStateComplete: totalShards,
 		}),
 	)
+}
+
+func (resolver *StateResolver) GetResults(ctx context.Context) ([]string, error) {
+	results := []string{}
+	job, err := resolver.jobLoader(resolver.ctx, resolver.jobID)
+	if err != nil {
+		return results, err
+	}
+	jobState, err := resolver.stateLoader(resolver.ctx, resolver.jobID)
+	if err != nil {
+		return results, err
+	}
+	totalShards := GetJobTotalShards(job)
+	groupedShardResults := GroupShardStates(GetCompletedShardStates(jobState))
+
+	// we have already filtered down to complete results
+	// so there must be totalShards entries in the groupedShardResults
+	// and it means we have a complete result set
+	if len(groupedShardResults) < totalShards {
+		return results, fmt.Errorf(
+			"job (%s) has not completed yet - %d shards out of %d are complete",
+			resolver.jobID,
+			len(groupedShardResults),
+			totalShards,
+		)
+	}
+
+	// now let's pluck the first result from each shard
+	for shardIndex, shardResults := range groupedShardResults {
+		// this is a sanity check - there should never be an empty
+		// array in the groupedShardResults but just in case
+		if len(shardResults) == 0 {
+			return results, fmt.Errorf(
+				"job (%s) has an empty shard result map at shard index %d",
+				resolver.jobID,
+				shardIndex,
+			)
+		}
+
+		shardResult := shardResults[0]
+
+		// again this should never happen but just in case
+		// a shard result with an empty CID has made it through somehow
+		if shardResult.ResultsID == "" {
+			return results, fmt.Errorf(
+				"job (%s) has a missing results id at shard index %d",
+				resolver.jobID,
+				shardIndex,
+			)
+		}
+
+		results = append(results, shardResult.ResultsID)
+	}
+	return results, nil
 }
 
 func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {

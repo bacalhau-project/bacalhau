@@ -218,7 +218,7 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			resultCIDs, err := resolver.GetResults()
+			resultCIDs, err := resolver.GetResults(ctx)
 			if err != nil {
 				return err
 			}

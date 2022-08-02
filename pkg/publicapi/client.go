@@ -134,7 +134,7 @@ func (apiClient *APIClient) GetJobStateResolver(ctx context.Context, jobID strin
 	stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
 		return apiClient.GetJobState(ctx, id)
 	}
-	return job.NewStateResolver(jobID, ctx, jobLoader, stateLoader), nil
+	return job.NewStateResolver(ctx, jobID, jobLoader, stateLoader), nil
 }
 
 func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []executor.JobEvent, err error) {
