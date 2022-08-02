@@ -43,6 +43,12 @@ func (resolver *StateResolver) GetShards() ([]executor.JobShardState, error) {
 	return FlattenShardStates(jobState), nil
 }
 
+// this will return a list of results groups by shard index
+// it will pick the first "complete" state for each shard
+// if there are any shards missing (because they errored or are not ready yet)
+// then this will error so it's important that you check the job has completed
+// before calling this
+// TODO: this should probably be part of the verifier interface
 func (resolver *StateResolver) GetResults() ([]string, error) {
 	ret := []string{}
 	jobState, err := resolver.loader(resolver.job.ID)
@@ -131,7 +137,7 @@ func (resolver *StateResolver) Wait(
 // this is an auto wait where we auto calculate how many shard
 // sates we expect to see and we use that to pass to WaitForJobStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context) error {
-	totalShards := GetTotalExecutionCount(resolver.job)
+	totalShards := GetJobTotalExecutionCount(resolver.job)
 	return resolver.Wait(
 		ctx,
 		totalShards,
@@ -151,6 +157,34 @@ func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 		for _, shardState := range nodeState.Shards {
 			ret = append(ret, shardState)
 		}
+	}
+	return ret
+}
+
+func GetFilteredShardStates(jobState executor.JobState, filterState executor.JobStateType) []executor.JobShardState {
+	ret := []executor.JobShardState{}
+	for _, shardState := range FlattenShardStates(jobState) {
+		if shardState.State == filterState {
+			ret = append(ret, shardState)
+		}
+	}
+	return ret
+}
+
+func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
+	return GetFilteredShardStates(jobState, executor.JobStateComplete)
+}
+
+// group states by shard index so we can easily iterate over a whole set of them
+func GroupShardStates(flatShards []executor.JobShardState) map[int][]executor.JobShardState {
+	ret := map[int][]executor.JobShardState{}
+	for _, shardState := range flatShards {
+		arr, ok := ret[shardState.ShardIndex]
+		if !ok {
+			arr = []executor.JobShardState{}
+		}
+		arr = append(arr, shardState)
+		ret[shardState.ShardIndex] = arr
 	}
 	return ret
 }

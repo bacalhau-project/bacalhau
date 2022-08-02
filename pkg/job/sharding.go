@@ -48,12 +48,16 @@ func ApplyGlobPattern(
 	return result, nil
 }
 
-func GetTotalExecutionCount(job executor.Job) int {
+func GetJobTotalShards(job executor.Job) int {
 	shardCount := job.ExecutionPlan.TotalShards
 	if shardCount == 0 {
 		shardCount = 1
 	}
-	return job.Deal.Concurrency * shardCount
+	return shardCount
+}
+
+func GetJobTotalExecutionCount(job executor.Job) int {
+	return job.Deal.Concurrency * GetJobTotalShards(job)
 }
 
 // given a sharding config and storage drivers
