@@ -15,7 +15,7 @@ type Verifier interface {
 	// that will be broadcast back to the network
 	// For example, the IPFS verifier publishes a local folder to IPFS and
 	// returns the CID
-	ProcessShardResultsFolder(
+	ProcessShardResults(
 		ctx context.Context,
 		jobID string,
 		shardIndex int,

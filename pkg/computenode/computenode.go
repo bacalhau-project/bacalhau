@@ -445,7 +445,7 @@ func (node *ComputeNode) RunShard(
 	if err != nil {
 		return "", err
 	}
-	resultValue, err := verifier.ProcessShardResultsFolder(ctx, job.ID, shardIndex, resultFolder)
+	resultValue, err := verifier.ProcessShardResults(ctx, job.ID, shardIndex, resultFolder)
 	if err != nil {
 		return "", err
 	}

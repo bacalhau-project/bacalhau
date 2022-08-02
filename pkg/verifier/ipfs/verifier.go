@@ -34,7 +34,7 @@ func (v *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (v *Verifier) ProcessShardResultsFolder(
+func (v *Verifier) ProcessShardResults(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
