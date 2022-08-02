@@ -61,6 +61,7 @@ func DownloadJob(
 	if err != nil {
 		return err
 	}
+	log.Debug().Msgf("Created download scratch folder: %s", scratchFolder)
 
 	// loop over each result directory
 	// each result is a storage spec representing a single shards output
@@ -71,7 +72,7 @@ func DownloadJob(
 		shardDownloadDir := filepath.Join(scratchFolder, result.Cid)
 
 		err = func() error {
-			log.Info().Msgf("Downloading result CID '%s' to '%s'...", result.Cid, shardDownloadDir)
+			log.Info().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
 
 			ctx, cancel := context.WithDeadline(context.Background(),
 				time.Now().Add(time.Second*time.Duration(settings.TimeoutSecs)))
@@ -91,14 +92,35 @@ func DownloadJob(
 		// we move all the contents of the output volume to the global results dir
 		// for this output volume
 		for _, outputVolume := range job.Spec.Outputs {
+			volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 			volumeOutputDir := filepath.Join(settings.OutputDir, "volumes", outputVolume.Name)
 			err = os.MkdirAll(volumeOutputDir, os.ModePerm)
 			if err != nil {
 				return err
 			}
-			err = system.RunCommand("mv", []string{
-				fmt.Sprintf("%s/*", filepath.Join(shardDownloadDir, outputVolume.Name)),
-				volumeOutputDir,
+			log.Info().Msgf("Copying output volume %s", outputVolume.Name)
+			// find $SOURCE_DIR -name '*' -type f -exec mv -f {} $TARGET_DIR \;
+			err = system.RunCommand("bash", []string{
+				"-c",
+				fmt.Sprintf("find %s -name '*' -type f -exec mv -f {} %s \\;", volumeSourceDir, volumeOutputDir),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		// append all stdout and stderr to a global concatenated log
+		for _, filename := range []string{
+			"stdout",
+			"stderr",
+		} {
+			err = system.RunCommand("bash", []string{
+				"-c",
+				fmt.Sprintf(
+					"cat %s >> %s",
+					filepath.Join(shardDownloadDir, filename),
+					filepath.Join(settings.OutputDir, filename),
+				),
 			})
 			if err != nil {
 				return err
@@ -118,24 +140,6 @@ func DownloadJob(
 			err = system.RunCommand("mv", []string{
 				filepath.Join(shardDownloadDir, filename),
 				shardOutputDir,
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		// append all stdout and stderr to a global concatenated log
-		for _, filename := range []string{
-			"stdout",
-			"stderr",
-		} {
-			err = system.RunCommand("bash", []string{
-				"-c",
-				fmt.Sprintf(
-					"cat %s >> %s",
-					filepath.Join(shardDownloadDir, filename),
-					filepath.Join(settings.OutputDir, filename),
-				),
 			})
 			if err != nil {
 				return err
