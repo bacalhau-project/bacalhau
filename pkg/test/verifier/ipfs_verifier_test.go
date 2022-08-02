@@ -68,8 +68,7 @@ func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), installed)
 
-	resultHash, err := verifier.ProcessResultsFolder(ctx,
-		"fake-job-id", inputDir)
+	resultHash, err := verifier.ProcessShardResultsFolder(ctx, "fake-job-id", 0, inputDir)
 	require.NoError(suite.T(), err)
 
 	outputPath := filepath.Join(outputDir, resultHash)

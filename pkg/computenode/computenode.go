@@ -441,11 +441,11 @@ func (node *ComputeNode) RunShard(
 		}
 		return "", err
 	}
-	v, err := node.getVerifier(ctx, job.Spec.Verifier)
+	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
 		return "", err
 	}
-	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
+	resultValue, err := verifier.ProcessShardResultsFolder(ctx, job.ID, shardIndex, resultFolder)
 	if err != nil {
 		return "", err
 	}

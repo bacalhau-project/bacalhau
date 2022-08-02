@@ -34,7 +34,12 @@ func (v *Verifier) IsInstalled(ctx context.Context) (bool, error) {
 	return err == nil, err
 }
 
-func (v *Verifier) ProcessResultsFolder(ctx context.Context, jobID, resultsFolder string) (string, error) {
+func (v *Verifier) ProcessShardResultsFolder(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	resultsFolder string,
+) (string, error) {
 	ctx, span := newSpan(ctx, "ProcessResultsFolder")
 	defer span.End()
 
