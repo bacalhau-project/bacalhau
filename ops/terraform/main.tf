@@ -17,7 +17,7 @@ terraform {
 resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
-  machine_type = var.machine_type
+  machine_type = count.index < var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
   zone         = var.zone
 
   boot_disk {
@@ -52,6 +52,7 @@ export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
 export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
+export GPU_NODE="${count.index < var.num_gpu_machines ? "true" : "false"}"
 EOI
 
 ##############################
@@ -140,6 +141,16 @@ EOF
   #   }
   allow_stopping_for_update = true
 
+  scheduling {
+    // Required for GPU. See https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_instance#guest_accelerator
+    on_host_maintenance = count.index < var.num_gpu_machines ? "TERMINATE" : ""
+  }
+
+  // GPUs are accelerators
+  guest_accelerator {
+    type  = count.index < var.num_gpu_machines ? var.gpu_type : ""
+    count = count.index < var.num_gpu_machines ? var.num_gpus_per_machine : 0
+  }
 }
 
 resource "google_compute_address" "ipv4_address" {
@@ -263,7 +274,7 @@ resource "google_compute_firewall" "bacalhau_ssh_firewall" {
 resource "google_compute_network" "bacalhau_network" {
   name                    = "bacalhau-network-${terraform.workspace}"
   auto_create_subnetworks = true
-  count         = var.auto_subnets ? 1 : 0
+  count                   = var.auto_subnets ? 1 : 0
 }
 
 // these are used for short lived clusters where we only make
@@ -271,7 +282,7 @@ resource "google_compute_network" "bacalhau_network" {
 resource "google_compute_network" "bacalhau_network_manual" {
   name                    = "bacalhau-network-manual-${terraform.workspace}"
   auto_create_subnetworks = false
-  count         = var.auto_subnets ? 0 : 1
+  count                   = var.auto_subnets ? 0 : 1
 }
 
 resource "google_compute_subnetwork" "bacalhau_subnetwork_manual" {

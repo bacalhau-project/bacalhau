@@ -28,6 +28,7 @@ var jobInputs []string
 var jobInputUrls []string
 var jobInputVolumes []string
 var jobOutputVolumes []string
+var jobLocalOutput string
 var jobEnv []string
 var jobConcurrency int
 var jobIpfsGetTimeOut int
@@ -215,7 +216,7 @@ func WaitForJobThrowErrors(job executor.Job, errorStates []executor.JobStateType
 	}
 }
 
-func Get(jobID string, timeout int) map[string]bool {
+func Get(jobID string, timeout int, downloadDirectory string) map[string]bool {
 	fmt.Print(timeout)
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
@@ -264,7 +265,7 @@ func Get(jobID string, timeout int) map[string]bool {
 
 	// NOTE: this will run in non-deterministic order
 	for cid := range resultCIDs {
-		outputDir := filepath.Join(".", cid)
+		outputDir := filepath.Join(downloadDirectory, cid)
 		ok, err := system.PathExists(outputDir)
 		if err != nil {
 			fmt.Printf("%s", err)
@@ -356,6 +357,10 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	dockerRunCmd.PersistentFlags().IntVarP(
 		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
 		`Timeout for getting the results of a job in --wait`,
+	)
+	dockerRunCmd.PersistentFlags().StringVar(
+		&jobLocalOutput, "localoutput", ".",
+		`When using --wait, assign a specific directory to download output.`,
 	)
 }
 
@@ -462,6 +467,9 @@ var dockerRunCmd = &cobra.Command{
 		cmd.Printf("%s\n", job.ID)
 		currentNodeID, _ := pjob.GetCurrentJobState(states)
 		nodeIds := []string{currentNodeID}
+
+		// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
+		// feels like we're overloading the surface of the CLI command a lot.
 		if waitForJobToFinishAndPrintOutput {
 			err = WaitForJob(ctx, job.ID, job,
 				WaitForJobThrowErrors(job, []executor.JobStateType{
@@ -474,10 +482,12 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 
-			cidl := Get(job.ID, jobIpfsGetTimeOut)
+			cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
+
+			// TODO: #425 Can you explain what the below is doing? Please comment.
 			var cidv string
 			for cid := range cidl {
-				cidv = cid
+				cidv = filepath.Join(jobLocalOutput, cid)
 			}
 			body, err := os.ReadFile(cidv + "/stdout")
 			if err != nil {
