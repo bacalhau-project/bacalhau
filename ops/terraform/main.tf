@@ -246,6 +246,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
       "2112",  // bacalhau metrics
+      "9090",  // prometheus service
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts
     ]
