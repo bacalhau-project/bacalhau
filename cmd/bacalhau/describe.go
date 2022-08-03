@@ -140,7 +140,6 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-		//jobDesc.State = state
 		jobDesc.CreatedAt = job.CreatedAt
 		jobDesc.Events = []eventDescription{}
 
