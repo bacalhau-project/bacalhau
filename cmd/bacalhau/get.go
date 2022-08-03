@@ -30,7 +30,7 @@ var getCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		jobID := args[0]
+		jobID := cmdArgs[0]
 
 		log.Info().Msgf("Fetching results of job '%s'...", jobID)
 
