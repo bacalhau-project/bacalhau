@@ -192,6 +192,23 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
+	args := []string{"docker", "run", "ubuntu", "echo", "hello", "--local"}
+	expectedStdout := "hello"
+	done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), trimmedStdout, expectedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+}
+
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int
