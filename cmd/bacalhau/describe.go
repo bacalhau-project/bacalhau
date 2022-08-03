@@ -28,10 +28,6 @@ type localEventDescription struct {
 	TargetNode string `yaml:"TargetNode"`
 }
 
-type jobShardDescription struct {
-	ShardIndex int `yaml:"ShardIndex"`
-}
-
 type jobDescription struct {
 	ID              string                  `yaml:"Id"`
 	ClientID        string                  `yaml:"ClientID"`
