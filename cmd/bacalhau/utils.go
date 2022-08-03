@@ -142,6 +142,7 @@ func ReverseList(s []string) []string {
 	return s
 }
 
+//nolint:unused,deadcode
 func capture() func() (string, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
