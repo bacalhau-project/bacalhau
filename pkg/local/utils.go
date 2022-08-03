@@ -248,5 +248,4 @@ func RunJobLocally(ctx context.Context, jobspec executor.JobSpec) (string, error
 	}
 	e, _ := executor_util.NewLocalStandardExecutors(cm, addr.String(), fmt.Sprintf("bacalhau-%s", hostID))
 	return e.RunJobLocally(ctx, jobspec)
-
 }
