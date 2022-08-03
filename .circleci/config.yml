@@ -195,7 +195,7 @@ jobs:
       - heroku/install
       - run:
           command: >
-            heroku run build # Updates dashboard data with latest from GCS
+            heroku run build --app bacalhau-dashboards # Updates dashboard data with latest from GCS
 
   release:
     executor: linux
