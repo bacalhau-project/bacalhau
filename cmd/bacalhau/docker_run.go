@@ -260,6 +260,26 @@ var dockerRunCmd = &cobra.Command{
 	Example: dockerRunExample,
 	Args:    cobra.MinimumNArgs(1),
 	PostRun: func(cmd *cobra.Command, args []string) {
+		// Can't think of any reason we'd want these to persist.
+		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
+		// but potentially cleaner than making things public, which would
+		// be the other way to attack this.)
+		jobInputs = []string{}
+		jobInputUrls = []string{}
+		jobInputVolumes = []string{}
+		jobOutputVolumes = []string{}
+		jobEnv = []string{}
+		jobLabels = []string{}
+
+		jobEngine = "docker"
+		jobVerifier = "ipfs"
+		jobConcurrency = 1
+		jobCPU = ""
+		jobMemory = ""
+		jobGPU = ""
+		skipSyntaxChecking = false
+		waitForJobToFinishAndPrintOutput = false
+		jobIpfsGetTimeOut = 10
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()

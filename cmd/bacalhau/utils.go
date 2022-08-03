@@ -142,6 +142,15 @@ func ReverseList(s []string) []string {
 	return s
 }
 
+// this function captures the output of all functions running in it between capture() and done()
+// example:
+// 	done := capture()
+//	fmt.Println("hello")
+//	s, _ := done()
+// after trimming str := strings.TrimSpace(s) it will return "hello"
+// so if we want to compare the output in the console with a expected output like "hello" we could do that
+// this is mainly used in testing --local
+// go playground link https://go.dev/play/p/cuGIaIorWfD
 //nolint:unused,deadcode
 func capture() func() (string, error) {
 	r, w, err := os.Pipe()
