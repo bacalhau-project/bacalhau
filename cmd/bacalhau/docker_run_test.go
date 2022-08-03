@@ -632,7 +632,6 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 	}
 
 	// TODO reset all cli variables
-	jobWorkingDir = ""
 	jobOutputVolumes = []string{}
 
 	for _, tc := range tests {

@@ -37,7 +37,7 @@ type ComputeNode struct {
 	id string
 
 	// The configuration used to create this compute node.
-	config ComputeNodeConfig // nolint:gocritic
+	config ComputeNodeConfig
 
 	controller      *controller.Controller
 	executors       map[executor.EngineType]executor.Executor
@@ -76,7 +76,7 @@ func constructComputeNode(
 	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
-	config ComputeNodeConfig, // nolint:gocritic
+	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	// TODO: instrument with trace
 	ctx := context.Background()

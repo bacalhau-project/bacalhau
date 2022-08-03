@@ -23,10 +23,10 @@ func init() { // nolint:gochecknoinits
 }
 
 var getCmd = &cobra.Command{
-	Use:   "get",
+	Use:   "get [id]",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 

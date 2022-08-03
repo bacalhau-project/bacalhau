@@ -28,6 +28,10 @@ type localEventDescription struct {
 	TargetNode string `yaml:"TargetNode"`
 }
 
+type jobShardDescription struct {
+	ShardIndex int `yaml:"ShardIndex"`
+}
+
 type jobDescription struct {
 	ID              string                  `yaml:"Id"`
 	ClientID        string                  `yaml:"ClientID"`
@@ -70,34 +74,36 @@ var describeCmd = &cobra.Command{
 	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		// TODO: can cobra do validation on args, check this is a valid id?
-		jobID := cmdArgs[0]
+		inputJobID := cmdArgs[0]
 
-		job, ok, err := getAPIClient().Get(context.Background(), jobID)
+		job, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job ID '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
 			return err
 		}
+
 		if !ok {
-			log.Error().Msgf("No job found with ID '%s'.", jobID)
-			return fmt.Errorf("no job found with ID: %s", jobID)
-		}
-
-		state, err := getAPIClient().GetJobState(context.Background(), jobID)
-		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", jobID, err)
+			err = fmt.Errorf("no job found with ID: %s", inputJobID)
+			log.Error().Msgf(err.Error())
 			return err
 		}
 
-		events, err := getAPIClient().GetEvents(context.Background(), jobID)
+		state, err := getAPIClient().GetJobState(context.Background(), job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job states '%s': %s", job.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), jobID)
+		events, err := getAPIClient().GetEvents(context.Background(), job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
+			return err
+		}
+
+		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), job.ID)
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
 			return err
 		}
 
@@ -148,7 +154,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshaling job description '%s': %s", jobID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", job.ID, err)
 			return err
 		}
 
