@@ -184,9 +184,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 	out, _ := done()
 
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	require.NoError(suite.T(), err)
 	trimmedStdout := strings.TrimSpace(string(out))
 	fmt.Println(trimmedStdout)
 
