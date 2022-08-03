@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -46,29 +45,19 @@ func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]e
 }
 
 func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
-	job, err := resolver.jobLoader(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
-	stateTotals := GetShardStateTotals(FlattenShardStates(jobState))
 
-	pluralTitle := ""
-	if GetJobTotalShards(job) != 1 {
-		pluralTitle = "s"
+	var currentJobState executor.JobStateType
+	for _, shardState := range FlattenShardStates(jobState) {
+		if shardState.State > currentJobState {
+			currentJobState = shardState.State
+		}
 	}
 
-	parts := []string{
-		fmt.Sprintf("%d Shard%s x %d", GetJobTotalShards(job), pluralTitle, GetJobConcurrency(job)),
-	}
-
-	for stateType, stateTotal := range stateTotals {
-		parts = append(parts, fmt.Sprintf("%d %s", stateTotal, stateType.String()))
-	}
-	return strings.Join(parts, "\n"), nil
+	return currentJobState.String(), nil
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
