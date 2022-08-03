@@ -3,9 +3,11 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -28,13 +30,25 @@ type localEventDescription struct {
 	TargetNode string `yaml:"TargetNode"`
 }
 
+type shardNodeStateDescription struct {
+	Node     string `yaml:"Node"`
+	State    string `yaml:"State"`
+	Status   string `yaml:"Status"`
+	ResultID string `yaml:"ResultID"`
+}
+
+type shardStateDescription struct {
+	ShardIndex int                         `yaml:"ShardIndex"`
+	Nodes      []shardNodeStateDescription `yaml:"Nodes"`
+}
+
 type jobDescription struct {
 	ID              string                  `yaml:"Id"`
 	ClientID        string                  `yaml:"ClientID"`
 	RequesterNodeID string                  `yaml:"RequesterNodeId"`
 	Spec            jobSpecDescription      `yaml:"Spec"`
 	Deal            executor.JobDeal        `yaml:"Deal"`
-	State           executor.JobState       `yaml:"State"`
+	Shards          []shardStateDescription `yaml:"Shards"`
 	CreatedAt       time.Time               `yaml:"Start Time"`
 	Events          []eventDescription      `yaml:"Events"`
 	LocalEvents     []localEventDescription `yaml:"LocalEvents"`
@@ -126,9 +140,44 @@ var describeCmd = &cobra.Command{
 		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
 		jobDesc.Deal = job.Deal
-		jobDesc.State = state
+		//jobDesc.State = state
 		jobDesc.CreatedAt = job.CreatedAt
 		jobDesc.Events = []eventDescription{}
+
+		shardDescriptions := map[int]shardStateDescription{}
+
+		for _, shard := range jobutils.FlattenShardStates(state) {
+			shardDescription, ok := shardDescriptions[shard.ShardIndex]
+			if !ok {
+				shardDescription = shardStateDescription{
+					ShardIndex: shard.ShardIndex,
+					Nodes:      []shardNodeStateDescription{},
+				}
+			}
+			shardDescription.Nodes = append(shardDescription.Nodes, shardNodeStateDescription{
+				Node:     shard.NodeID,
+				State:    shard.State.String(),
+				Status:   shard.Status,
+				ResultID: shard.ResultsID,
+			})
+			shardDescriptions[shard.ShardIndex] = shardDescription
+		}
+
+		shardIndexes := []int{}
+		for shardIndex := range shardDescriptions {
+			shardIndexes = append(shardIndexes, shardIndex)
+		}
+
+		sort.Ints(shardIndexes)
+
+		finalDescriptions := []shardStateDescription{}
+
+		for _, shardIndex := range shardIndexes {
+			finalDescriptions = append(finalDescriptions, shardDescriptions[shardIndex])
+		}
+
+		jobDesc.Shards = finalDescriptions
+
 		for _, event := range events {
 			jobDesc.Events = append(jobDesc.Events, eventDescription{
 				Event:       event.EventName.String(),
