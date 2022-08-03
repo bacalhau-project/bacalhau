@@ -173,18 +173,13 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Run Perf
+          name: Run Perf and Upload Results
           command: |
             cd benchmark
             sudo apt install build-essential -y
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source $HOME/.cargo/env
-            cargo install hyperfine
+            wget https://github.com/sharkdp/hyperfine/releases/download/v1.13.0/hyperfine_1.13.0_amd64.deb
+            sudo dpkg -i hyperfine_1.13.0_amd64.deb
             ./start_and_run.sh
-
-      - run:
-          name: Upload perf results
-          command: |
             export PATH="$HOME/.local/bin:${PATH}"
             sudo apt install python3.10 python3-pip -y
             pip3 install gsutil
@@ -194,6 +189,7 @@ jobs:
             ls -la benchmark
             ls -la benchmark/results
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
+
       - heroku/install
       - run:
           command: >
