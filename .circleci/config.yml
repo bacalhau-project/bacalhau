@@ -191,10 +191,11 @@ jobs:
             ls -la benchmark/results
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
 
-      # - heroku/install
-      # - run:
-      #     command: >
-      #       heroku run build # Updates dashboard data with latest from GCS
+      - heroku/install
+      - run:
+          command: >
+            # Updates dashboard data with latest from GCS
+            heroku run build --app bacalhau-dashboards
 
   release:
     executor: linux
