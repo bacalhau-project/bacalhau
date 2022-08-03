@@ -47,11 +47,13 @@ sidebar_position: 1
   -v, --input-volumes strings    CID:path of the input data volumes, if you need to set the path of the mounted data.
   -i, --inputs strings           CIDs to use on the job. Mounts them at '/inputs' in the execution.
   -l, --labels strings           List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.
+      --localoutput string       When using --wait, assign a specific directory to download output. (default ".")
       --memory string            Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
   -o, --output-volumes strings   name:path of the output data volumes. 'outputs:/outputs' is always added.
       --skip-syntax-checking     Skip having 'shellchecker' verify syntax of the command
       --verifier string          What verification engine to use to run the job (default "ipfs")
-  -w, --wait                     Wait For Job To Finish And Print Output
+      --wait                     Wait For Job To Finish And Print Output
+  -w, --workdir string           Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).
 ```
 
 ### List
