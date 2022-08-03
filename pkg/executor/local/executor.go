@@ -50,7 +50,7 @@ func NewExecutor(
 	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) (*Local, error) {
 	dockerClient, err := docker.NewDockerClient()
-	jobID := genId()
+	jobID := genID()
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +408,7 @@ func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) 
 	return system.Span(ctx, "executor/local", apiName)
 }
 
-func genId() string {
+func genID() string {
 	jobUUID, err := uuid.NewRandom()
 	jobID := jobUUID.String()
 	if err != nil {

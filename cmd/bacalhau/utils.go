@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -100,6 +101,33 @@ func ReverseList(s []string) []string {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
+}
+
+func capture() func() (string, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+
+	done := make(chan error, 1)
+
+	save := os.Stdout
+	os.Stdout = w
+
+	var buf strings.Builder
+
+	go func() {
+		_, err := io.Copy(&buf, r)
+		r.Close()
+		done <- err
+	}()
+
+	return func() (string, error) {
+		os.Stdout = save
+		w.Close()
+		err := <-done
+		return buf.String(), err
+	}
 }
 
 // func RandInt(i int) int {

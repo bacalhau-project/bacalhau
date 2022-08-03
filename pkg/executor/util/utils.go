@@ -102,10 +102,6 @@ func NewLocalStandardExecutors(
 		return nil, err
 	}
 
-	// executors := map[executor.EngineType]local.Local{
-	// 	executor.EngineDocker: exDocker,
-	// }
-
 	return exDocker, nil
 }
 
