@@ -76,18 +76,22 @@ var describeCmd = &cobra.Command{
 	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		// TODO: can cobra do validation on args, check this is a valid id?
-		jobID := cmdArgs[0]
+		inputJobID := cmdArgs[0]
 
-		job, ok, err := getAPIClient().Get(context.Background(), jobID)
+		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job ID '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
 			return err
 		}
+
 		if !ok {
-			log.Error().Msgf("No job found with ID '%s'.", jobID)
-			return fmt.Errorf("no job found with ID: %s", jobID)
+			err = fmt.Errorf("no job found with ID: %s", inputJobID)
+			log.Error().Msgf(err.Error())
+			return err
 		}
+
+		jobID := j.ID
 
 		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
 		if err != nil {
@@ -108,28 +112,28 @@ var describeCmd = &cobra.Command{
 		}
 
 		jobDockerDesc := jobSpecDockerDescription{}
-		jobDockerDesc.Image = job.Spec.Docker.Image
-		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
-		jobDockerDesc.Env = job.Spec.Docker.Env
+		jobDockerDesc.Image = j.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = j.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = j.Spec.Docker.Env
 
-		jobDockerDesc.CPU = job.Spec.Resources.CPU
-		jobDockerDesc.Memory = job.Spec.Resources.Memory
+		jobDockerDesc.CPU = j.Spec.Resources.CPU
+		jobDockerDesc.Memory = j.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = job.Spec.Engine.String()
+		jobSpecDesc.Engine = j.Spec.Engine.String()
 
 		jobDealDesc := jobDealDescription{}
-		jobDealDesc.Concurrency = job.Deal.Concurrency
+		jobDealDesc.Concurrency = j.Deal.Concurrency
 
-		jobSpecDesc.Verifier = job.Spec.Verifier.String()
+		jobSpecDesc.Verifier = j.Spec.Verifier.String()
 		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
-		jobDesc.ID = job.ID
-		jobDesc.ClientID = job.ClientID
-		jobDesc.RequesterNodeID = job.RequesterNodeID
+		jobDesc.ID = j.ID
+		jobDesc.ClientID = j.ClientID
+		jobDesc.RequesterNodeID = j.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
-		jobDesc.Deal = job.Deal
+		jobDesc.Deal = j.Deal
 		jobDesc.State = map[string]stateDescription{}
 		for id, state := range states {
 			jobDesc.State[id] = stateDescription{
@@ -138,7 +142,7 @@ var describeCmd = &cobra.Command{
 				ResultsID: state.ResultsID,
 			}
 		}
-		jobDesc.CreatedAt = job.CreatedAt
+		jobDesc.CreatedAt = j.CreatedAt
 		jobDesc.Events = []eventDescription{}
 		for _, event := range events {
 			jobDesc.Events = append(jobDesc.Events, eventDescription{

@@ -51,6 +51,9 @@ func shortenString(st string) string {
 }
 
 func shortID(id string) string {
+	if tableOutputWide {
+		return id
+	}
 	return id[:8]
 }
 
