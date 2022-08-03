@@ -397,6 +397,7 @@ var dockerRunCmd = &cobra.Command{
 		jobCPU = ""
 		jobMemory = ""
 		jobGPU = ""
+		isLocal = false
 		skipSyntaxChecking = false
 		waitForJobToFinishAndPrintOutput = false
 		jobIpfsGetTimeOut = 10
