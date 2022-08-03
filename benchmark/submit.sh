@@ -10,7 +10,7 @@ while true; do
     sleep 0.1
     # trunk-ignore(shellcheck/SC2312)
     # TODO: get the shard state to not be a number (which is brittle to test against)
-    if [[ $(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost describe "${ID}" 2>&1|grep "state: 6"|wc -l) -ne 3 ]]; then
+    if [[ $(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost describe "${ID}" 2>&1|grep "State: Complete"|wc -l) -ne 3 ]]; then
         echo "JOB ${ID} FAILED"
         (( COUNTER++ ))
         if (( COUNTER > 300 )); then
