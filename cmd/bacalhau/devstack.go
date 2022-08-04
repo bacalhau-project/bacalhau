@@ -92,23 +92,23 @@ var devstackCmd = &cobra.Command{
 		cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
 		f, err := os.Create(cpuprofile)
 		if err != nil {
-			log.Fatal().Msgf("could not create CPU profile: ", err)
+			log.Fatal().Msgf("could not create CPU profile: %s", err)
 		}
 		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal().Msgf("could not start CPU profile: ", err)
+			log.Fatal().Msgf("could not start CPU profile: %s", err)
 		}
 		defer pprof.StopCPUProfile()
 
 		memprofile := "/tmp/bacalhau-devstack-mem.prof"
 		f, err = os.Create(memprofile)
 		if err != nil {
-			log.Fatal().Msgf("could not create memory profile: ", err)
+			log.Fatal().Msgf("could not create memory profile: %s", err)
 		}
 		defer f.Close() // error handling omitted for example
 		runtime.GC()    // get up-to-date statistics
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal().Msgf("could not write memory profile: ", err)
+			log.Fatal().Msgf("could not write memory profile: %s", err)
 		}
 
 		config.DevstackSetShouldPrintInfo()
