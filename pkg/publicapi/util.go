@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var TimeToWaitForServerReply = 10 // nolint:gomnd // magic number appropriate here
-var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate here
+const TimeToWaitForServerReply = 10
+const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
@@ -114,7 +114,7 @@ const (
 
 // use "-1" as count for just last line
 func TailFile(count int, path string) ([]byte, error) {
-	c := exec.Command("tail", strconv.Itoa(count), path) // nolint:gosec // subprocess not at risk
+	c := exec.Command("tail", strconv.Itoa(count), path) //nolint:gosec // subprocess not at risk
 	output, err := c.Output()
 	if err != nil {
 		log.Warn().Msgf("Could not find file at %s", path)

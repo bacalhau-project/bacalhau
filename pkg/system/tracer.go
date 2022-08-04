@@ -29,7 +29,7 @@ type cleanupFn func() error
 // remaining traces to the exporter before the process ends.
 var CleanupTracer cleanupFn
 
-func init() { // nolint:gochecknoinits // use of init here is idomatic
+func init() { //nolint:gochecknoinits // use of init here is idomatic
 	tp, cleanup, err := hcProvider()
 	if err != nil {
 		// don't error here because for CLI users they get a red message
@@ -57,7 +57,8 @@ func init() { // nolint:gochecknoinits // use of init here is idomatic
 
 // Span creates and starts a new span, and a context containing it.
 // For more information see the otel.Tracer.Start(...) docs:
-//   https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
+//
+//	https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
 func Span(ctx context.Context, svcName, spanName string,
 	opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	svc := fmt.Sprintf("bacalhau.org/%s", svcName)
@@ -92,7 +93,8 @@ func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 
 // httpProvider provides traces that are exported over GRPC to Honeycomb. It
 // should be configured by setting the following environment variable:
-//   export HONEYCOMB_KEY="<honeycomb api key>"
+//
+//	export HONEYCOMB_KEY="<honeycomb api key>"
 func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	if os.Getenv("HONEYCOMB_KEY") == "" {
 		return nil, nil, fmt.Errorf(
@@ -166,7 +168,8 @@ func jsonLogger() io.Writer {
 // cleanupFor returns a cleanup function that flushes remaining spans in
 // memory to the exporter and releases any tracing resources.
 // TODO: #288 Use trace to close out span
-// nolintunparam // will add tracing
+//
+//nolint:unparam // will add tracing
 func cleanupFor(name string, tp *sdktrace.TracerProvider, exp sdktrace.SpanExporter) cleanupFn {
 	return func() error {
 		if err := tp.Shutdown(context.Background()); err != nil {

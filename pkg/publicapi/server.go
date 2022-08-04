@@ -448,6 +448,7 @@ func instrument(name string, fn http.HandlerFunc) http.Handler {
 }
 
 // check for path traversal and correct forward slashes
+//
 //nolint:deadcode,unused
 func validRelPath(p string) bool {
 	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {

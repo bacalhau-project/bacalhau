@@ -53,7 +53,8 @@ func NewClient(apiAddr string) (*Client, error) {
 // test networks. WaitUntilAvailable will respect context deadlines/cancels,
 // and will propagate context cancellations back to the caller.
 // NOTE: if you do not pass a context with a deadline/cancel in to this
-//       function, it may attempt to call the api server forever.
+//
+//	function, it may attempt to call the api server forever.
 func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 	for {
 		if err := ctx.Err(); err != nil {
@@ -133,7 +134,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	}
 
 	baseDir := filepath.Dir(outputPath)
-	tmpPath := filepath.Join(baseDir, system.GetRandomString(10)) // nolint:gomnd // magic number ok for string
+	tmpPath := filepath.Join(baseDir, system.GetRandomString(10)) //nolint:gomnd // magic number ok for string
 	if err := files.WriteTo(node, tmpPath); err != nil {
 		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
 	}
