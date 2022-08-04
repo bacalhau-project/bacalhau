@@ -508,8 +508,7 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println()
-			fmt.Println(string(body))
+			cmd.Println(string(body))
 		}
 
 		return nil
