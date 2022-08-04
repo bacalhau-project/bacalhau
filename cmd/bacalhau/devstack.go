@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -86,6 +88,29 @@ var devstackCmd = &cobra.Command{
 	Long:    devStackLong,
 	Example: devstackExample,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrect lint that is not used
+		// devstack always records a cpu profile, it will be generally useful.
+		cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal().Msgf("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal().Msgf("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+
+		memprofile := "/tmp/bacalhau-devstack-mem.prof"
+		f, err = os.Create(memprofile)
+		if err != nil {
+			log.Fatal().Msgf("could not create memory profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal().Msgf("could not write memory profile: ", err)
+		}
+
 		config.DevstackSetShouldPrintInfo()
 
 		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
@@ -172,7 +197,7 @@ var devstackCmd = &cobra.Command{
 		if err == nil {
 			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
 		}
-		f, err := os.Create(portFileName)
+		f, err = os.Create(portFileName)
 		if err != nil {
 			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
 		}
