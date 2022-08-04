@@ -62,31 +62,3 @@ done
 
 ls -la /tmp/scratch
 ls -la "$outputFolder"
-
-
-# #! /bin/sh
-# pref="`basename $0 .sh`"
-# vleft="zzz_Drifting with Cars.mp4"  # outname of the above script
-# vright="Drifting with Cars.mp4"
-
-# #
-# fac=${1:-90}
-# cx=$((16 * ${fac}))
-# cy=$((9 * ${fac}))
-# ox=$((1920 - 16 * ${fac}))
-# oy=$((1080 - 9 * ${fac}))
-# #
-# ffmpeg -y -i "${vleft}" -i "${vright}" -filter_complex "
-# [0:v]scale=${cx}:${cy},setsar=1,split[0v_1][0v_2];
-# [1:v]scale=${cx}:${cy},setsar=1,split[1v_1][1v_2];
-
-# [0v_1]pad=1920:1080:0:0[0v_p];
-# [0v_p][1v_1]overlay=x=W-w:y=H-h[v_ov];
-
-# [0v_2]crop=${cx}-${ox}:${cy}-${oy}:${ox}:${oy}[0v_c];
-# [1v_2]crop=${cx}-${ox}:${cy}-${oy}:0:0[1v_c];
-# [0v_c][1v_c]blend=all_mode=average[v_c];
-
-# [v_ov][v_c]overlay=x=${ox}:y=${oy}[v]" \
-#     -map '[v]' -an \
-#     "${pref}.mp4"
