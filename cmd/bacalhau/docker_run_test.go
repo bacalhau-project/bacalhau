@@ -627,3 +627,51 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 		}()
 	}
 }
+
+func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
+	tests := []struct {
+		workdir    string
+		error_code int
+	}{
+		{workdir: "", error_code: 0},
+		{workdir: "/", error_code: 0},
+		{workdir: "./mydir", error_code: 1},
+		{workdir: "../mydir", error_code: 1},
+		{workdir: "http://foo.com", error_code: 1},
+		{workdir: "/foo//", error_code: 0}, // double forward slash is allowed in unix
+		{workdir: "/foo//bar", error_code: 0},
+	}
+
+	// TODO reset all cli variables
+	jobOutputVolumes = []string{}
+
+	for _, tc := range tests {
+		func() {
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			flagsArray := []string{"docker", "run",
+				"--api-host", host,
+				"--api-port", port}
+			flagsArray = append(flagsArray, "-w", tc.workdir)
+			flagsArray = append(flagsArray, "ubuntu pwd")
+
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				flagsArray...,
+			)
+
+			if tc.error_code != 0 {
+				require.Error(suite.T(), err)
+			} else {
+				require.NoError(suite.T(), err, "Error submitting job.")
+				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.Equal(suite.T(), tc.workdir, job.Spec.Docker.WorkingDir, "Job workdir != test workdir.")
+				require.NoError(suite.T(), err, "Error in running command.")
+			}
+		}()
+	}
+}

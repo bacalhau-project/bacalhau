@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -70,6 +71,9 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/states", instrument("states", apiServer.states))
+	sm.Handle("/events", instrument("events", apiServer.events))
+	sm.Handle("/local_events", instrument("local_events", apiServer.localEvents))
+	sm.Handle("/id", instrument("id", apiServer.id))
 	sm.Handle("/peers", instrument("peers", apiServer.peers))
 	sm.Handle("/submit", instrument("submit", apiServer.submit))
 	sm.Handle("/version", instrument("version", apiServer.version))
@@ -78,6 +82,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle("/varz", instrument("varz", apiServer.varz))
 	sm.Handle("/livez", instrument("livez", apiServer.livez))
 	sm.Handle("/readyz", instrument("readyz", apiServer.readyz))
+	sm.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
 		Handler:           sm,
@@ -120,11 +125,48 @@ type statesResponse struct {
 	States map[string]executor.JobState `json:"states"`
 }
 
+type eventsRequest struct {
+	ClientID string `json:"client_id"`
+	JobID    string `json:"job_id"`
+}
+
+type eventsResponse struct {
+	Events []executor.JobEvent `json:"events"`
+}
+
+type localEventsRequest struct {
+	ClientID string `json:"client_id"`
+	JobID    string `json:"job_id"`
+}
+
+type localEventsResponse struct {
+	LocalEvents []executor.JobLocalEvent `json:"localEvents"`
+}
+
 type versionRequest struct {
 	ClientID string `json:"client_id"`
 }
+
 type versionResponse struct {
 	VersionInfo *executor.VersionInfo `json:"version_info"`
+}
+
+func (apiServer *APIServer) id(res http.ResponseWriter, req *http.Request) {
+	switch apiTransport := apiServer.Controller.GetTransport().(type) { //nolint:gocritic
+	case *libp2p.LibP2PTransport:
+		id, err := apiTransport.HostID(context.Background())
+		if err != nil {
+			http.Error(res, fmt.Sprintf("Error getting id: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		res.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(res).Encode(id)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 }
 
 func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
@@ -179,6 +221,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//nolint:dupl
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	var statesReq statesRequest
 	if err := json.NewDecoder(req.Body).Decode(&statesReq); err != nil {
@@ -195,6 +238,54 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(statesResponse{
 		States: states,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+//nolint:dupl
+func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
+	var eventsReq eventsRequest
+	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	events, err := apiServer.Controller.GetJobEvents(req.Context(), eventsReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(eventsResponse{
+		Events: events,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+//nolint:dupl
+func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Request) {
+	var eventsReq localEventsRequest
+	if err := json.NewDecoder(req.Body).Decode(&eventsReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	events, err := apiServer.Controller.GetJobLocalEvents(req.Context(), eventsReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(localEventsResponse{
+		LocalEvents: events,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

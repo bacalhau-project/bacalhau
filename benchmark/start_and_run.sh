@@ -29,7 +29,7 @@ cd ..
 make build
 
 cd benchmark
-export BACALHAU_BIN="../bin/linux_amd64/bacalhau"
+export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
 
 ${BACALHAU_BIN} devstack &
 
@@ -43,7 +43,7 @@ export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
 while : ; do
 	sleep 2
-	CURRENT_STATE=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost list -n 10000 2>&1 | grep -c 'Running')
+	CURRENT_STATE=$(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost list -n 10000 2>&1 | grep -c -E 'Running|Waiting')
 	(( CURRENT_STATE > 0 )) || break
 done 
 

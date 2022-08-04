@@ -199,11 +199,16 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	return isOk, requirements
 }
 
-func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsageData) {
+func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsageData) error {
+	existingItem := manager.backlog.Get(id)
+	if existingItem != nil {
+		return fmt.Errorf("job %s already in backlog", id)
+	}
 	manager.backlog.Add(CapacityManagerItem{
 		ID:           id,
 		Requirements: requirements,
 	})
+	return nil
 }
 
 func (manager *CapacityManager) MoveToActive(id string) error {

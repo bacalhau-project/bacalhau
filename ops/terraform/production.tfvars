@@ -1,4 +1,4 @@
-bacalhau_version       = "v0.1.29"
+bacalhau_version       = "v0.1.30"
 bacalhau_port          = "1235"
 bacalhau_connect_node0 = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
 ipfs_version           = "v0.12.2"
@@ -13,4 +13,4 @@ protect_resources      = true
 auto_subnets           = true
 ingress_cidrs          = ["0.0.0.0/0"]
 ssh_access_cidrs       = ["0.0.0.0/0"]
-num_gpu_machines       = 0
+num_gpu_machines       = 1

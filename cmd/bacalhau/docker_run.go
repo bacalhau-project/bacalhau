@@ -35,6 +35,7 @@ var jobIpfsGetTimeOut int
 var jobCPU string
 var jobMemory string
 var jobGPU string
+var jobWorkingDir string
 var skipSyntaxChecking bool
 var isLocal bool
 var waitForJobToFinishAndPrintOutput bool
@@ -344,13 +345,18 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
 
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&jobWorkingDir, "workdir", "w", "",
+		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
+	)
+
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, // nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.PersistentFlags().BoolVarP(
-		&waitForJobToFinishAndPrintOutput, "wait", "w", false,
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&waitForJobToFinishAndPrintOutput, "wait", false,
 		`Wait For Job To Finish And Print Output`,
 	)
 
@@ -401,6 +407,7 @@ var dockerRunCmd = &cobra.Command{
 		skipSyntaxChecking = false
 		waitForJobToFinishAndPrintOutput = false
 		jobIpfsGetTimeOut = 10
+		jobWorkingDir = ""
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		ctx := context.Background()
@@ -434,6 +441,13 @@ var dockerRunCmd = &cobra.Command{
 			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
 		}
 
+		if len(jobWorkingDir) > 0 {
+			err = system.ValidateWorkingDir(jobWorkingDir)
+			if err != nil {
+				return err
+			}
+		}
+
 		spec, deal, err := pjob.ConstructDockerJob(
 			engineType,
 			verifierType,
@@ -448,6 +462,7 @@ var dockerRunCmd = &cobra.Command{
 			jobImage,
 			jobConcurrency,
 			jobLabels,
+			jobWorkingDir,
 		)
 
 		if err != nil {
@@ -478,8 +493,7 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-
-			states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+	states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
 			if err != nil {
 				return err
 			}
@@ -513,9 +527,9 @@ var dockerRunCmd = &cobra.Command{
 				if err != nil {
 					return err
 				}
-				fmt.Println()
-				fmt.Println(string(body))
+				cmd.Println(string(body))
 			}
+
 		}
 
 		return nil

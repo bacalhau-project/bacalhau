@@ -65,6 +65,32 @@ func (suite *SystemScriptCheckerSuite) TestSubmitSyntaxErrors() {
 	}
 }
 
+func TestValidateWorkingDir(t *testing.T) {
+	tests := map[string]struct {
+		path       string
+		error_code int
+	}{
+		"good_path": {path: "/", error_code: 0},
+		"good_path_full": {path: "/project/", error_code: 0},
+		"relative_path":  {path: "../foo", error_code: 1},
+		"relative_path_2":  {path: "./foo", error_code: 1},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// t.Parallel()
+
+			err := ValidateWorkingDir(tc.path)
+
+			if tc.error_code != 0 {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err, "Error in running command.")
+			}
+		})
+	}
+}
+
 // https://github.com/koalaman/shellcheck
 var (
 	GOOD_PYTHON       = `python3 -c "time.sleep(10); %s"`

@@ -249,6 +249,13 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
 // done by compute nodes when they hear about the job
 func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	err := ctrl.db.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventBid,
+		JobID:     jobID,
+	})
+	if err != nil {
+		return err
+	}
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_BidJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBid)
 	// the target node is "us" because it is "us" who is bidding
@@ -412,8 +419,10 @@ func (ctrl *Controller) constructEvent(jobID string, eventName executor.JobEvent
 }
 
 func constructJob(ev executor.JobEvent) executor.Job {
+	log.Debug().Msgf("Constructing job from event: %+v", ev)
 	return executor.Job{
-		ID:              ev.JobID,
+		ID: ev.JobID,
+		// TODO: add logging here
 		RequesterNodeID: ev.SourceNodeID,
 		ClientID:        ev.ClientID,
 		Spec:            ev.JobSpec,
