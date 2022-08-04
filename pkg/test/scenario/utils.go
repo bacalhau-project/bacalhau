@@ -42,9 +42,7 @@ type ICheckResults func(resultsDir string)
 type IGetJobSpec func() executor.JobSpecDocker
 
 /*
-
-	Storage Drivers
-
+Storage Drivers
 */
 func FuseStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return fusedocker.NewStorageProvider(

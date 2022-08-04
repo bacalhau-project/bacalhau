@@ -24,7 +24,7 @@ type JobEvent struct {
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
-func init() { // nolint:gochecknoinits // init with zerolog is idiomatic
+func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))

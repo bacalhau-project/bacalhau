@@ -36,8 +36,8 @@ func Get() *executor.VersionInfo {
 		log.Fatal().Msgf("Could not parse GITVERSION during build - %s", GITVERSION)
 	}
 	versionInfo.GitVersion = GITVERSION
-	versionInfo.Major = strconv.FormatInt(s.Major(), 10) // nolint:gomnd // base10, magic number appropriate
-	versionInfo.Minor = strconv.FormatInt(s.Minor(), 10) // nolint:gomnd // base10, magic number appropriate
+	versionInfo.Major = strconv.FormatInt(s.Major(), 10) //nolint:gomnd // base10, magic number appropriate
+	versionInfo.Minor = strconv.FormatInt(s.Minor(), 10) //nolint:gomnd // base10, magic number appropriate
 	versionInfo.GitCommit = GITCOMMIT
 	buildDate, err := time.Parse("2006-01-02T15:04:05Z", BUILDDATE)
 	if err != nil {

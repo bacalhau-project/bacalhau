@@ -95,9 +95,7 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 }
 
 /*
-
-  READ API
-
+READ API
 */
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
 	return ctrl.db.GetJob(ctx, id)
@@ -120,9 +118,7 @@ func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]
 }
 
 /*
-
-  REQUESTER NODE
-
+REQUESTER NODE
 */
 func (ctrl *Controller) SubmitJob(
 	ctx context.Context,

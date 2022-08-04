@@ -53,7 +53,7 @@ type GetVerifiersFunc func(ipfsMultiAddress string, nodeIndex int) (
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, // nolint:unparam // Incorrectly assumed as unused
+	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
 	//nolint:gocritic

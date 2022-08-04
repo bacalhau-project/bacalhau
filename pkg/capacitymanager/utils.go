@@ -67,7 +67,7 @@ func ConvertMemoryString(val string) uint64 {
 }
 
 func ConvertGPUString(val string) uint64 {
-	ret, err := strconv.ParseUint(val, 10, 64) // nolint:gomnd
+	ret, err := strconv.ParseUint(val, 10, 64) //nolint:gomnd
 	if err != nil {
 		return 0
 	}

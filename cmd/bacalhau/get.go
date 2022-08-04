@@ -24,7 +24,7 @@ var getCmdFlags = struct {
 	ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
-func init() { // nolint:gochecknoinits
+func init() { //nolint:gochecknoinits
 	getCmd.Flags().IntVar(&getCmdFlags.timeoutSecs, "timeout-secs",
 		getCmdFlags.timeoutSecs, "Timeout duration for IPFS downloads.")
 	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",

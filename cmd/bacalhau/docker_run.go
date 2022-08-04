@@ -56,7 +56,7 @@ func GetJobStates(ctx context.Context, jobID string) (map[string]executor.JobSta
 	return ret, nil
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func WaitForJobWithLogs(
 	ctx context.Context,
 	jobID string,
@@ -291,7 +291,7 @@ func Get(jobID string, timeout int, downloadDirectory string) map[string]bool {
 	return resultCIDs
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
@@ -309,7 +309,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputUrls, "input-urls", "u", []string{},
-		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz') and supports HTTP and HTTPS.`, // nolint:lll // Documentation, ok if long.
+		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz') and supports HTTP and HTTPS.`, //nolint:lll // Documentation, ok if long.
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
@@ -351,7 +351,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
-		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, // nolint:lll // Documentation, ok if long.
+		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
@@ -361,7 +361,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	// ipfs get wait time
 	dockerRunCmd.PersistentFlags().IntVarP(
-		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
+		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint:gomnd
 		`Timeout for getting the results of a job in --wait`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
