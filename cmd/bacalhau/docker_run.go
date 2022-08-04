@@ -34,6 +34,9 @@ var jobWorkingDir string
 var skipSyntaxChecking bool
 var waitForJobToFinishAndPrintOutput bool
 var jobLabels []string
+var shardingGlobPattern string
+var shardingBasePath string
+var shardingBatchSize int
 
 var runDownloadFlags = ipfs.DownloadSettings{
 	TimeoutSecs:    10,
@@ -110,6 +113,21 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	)
 
 	setupDownloadFlags(dockerRunCmd, runDownloadFlags)
+
+	dockerRunCmd.PersistentFlags().StringVar(
+		&shardingGlobPattern, "sharding-glob-pattern", "",
+		`Use this pattern to match files to be sharded.`,
+	)
+
+	dockerRunCmd.PersistentFlags().StringVar(
+		&shardingGlobPattern, "sharding-base-path", "",
+		`Remove this prefix from each file path before applying the glob pattern`,
+	)
+
+	dockerRunCmd.PersistentFlags().IntVar(
+		&shardingBatchSize, "sharding-batch-size", 0,
+		`Remove this prefix from each file path before applying the glob pattern`,
+	)
 }
 
 var dockerCmd = &cobra.Command{
@@ -208,6 +226,12 @@ var dockerRunCmd = &cobra.Command{
 
 		if err != nil {
 			return err
+		}
+
+		spec.Sharding = executor.JobShardingConfig{
+			GlobPattern: shardingGlobPattern,
+			BasePath:    shardingBasePath,
+			BatchSize:   shardingBatchSize,
 		}
 
 		if !skipSyntaxChecking {
