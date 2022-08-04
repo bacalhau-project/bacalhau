@@ -251,6 +251,12 @@ jobs:
             echo "TAG = ${TAG}"
             find dist/
             gh release upload $TAG dist/*
+  runner-test:
+    machine: true
+    resource_class: filecoin-project/self-hosted-bacalhau
+    steps:
+      - run: echo "Hi I'm on Runners!"
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -329,3 +335,6 @@ workflows:
               run_tests: [false]
       - run_perf:
           name: Running perf
+  testing-self-hosted-runner:
+    jobs:
+      - runner-test
