@@ -280,7 +280,7 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		}
 
 		return fmt.Errorf(
-			"publicapi: received non-200 status: %d", res.StatusCode)
+			"publicapi: received non-200 status: %d %s", res.StatusCode, string(body))
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {
