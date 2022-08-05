@@ -61,7 +61,8 @@ func (cm *CleanupManager) Cleanup() {
 	defer f.Close() // error handling omitted for example
 	runtime.GC()    // get up-to-date statistics
 	if err := pprof.WriteHeapProfile(f); err != nil {
-		log.Fatal().Msgf("could not write memory profile: %s", err)
+		f.Close()
+		log.Fatal().Msgf("could not write memory profile: %s", err) //nolint:gocritic
 	}
 
 	cm.fnsMutex.Lock()
