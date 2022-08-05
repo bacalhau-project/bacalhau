@@ -289,10 +289,10 @@ func NewDevStack(
 	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
 	f, err := os.Create(cpuprofile)
 	if err != nil {
-		log.Fatal().Msgf("could not create CPU profile: %s", err)
+		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
 	}
 	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal().Msgf("could not start CPU profile: %s", err)
+		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}
 
 	return &DevStack{
