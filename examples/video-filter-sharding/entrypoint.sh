@@ -23,9 +23,10 @@ fi
 
 # given an input video - return a temp path for it
 function getScratchVideoPath() {
-  local inputVideoFile="$1"
+  local prefix="$1"
+  local inputVideoFile="$2"
   local outputVideoFilename=$(basename "$inputVideoFile")
-  echo "/tmp/scratch/$outputVideoFilename"
+  echo "/tmp/scratch/${prefix}-${outputVideoFilename}"
 }
 
 # given an input video - return the output path for it
@@ -35,20 +36,28 @@ function getOutputVideoPath() {
   echo "$outputFolder/$outputVideoFilename"
 }
 
+function resizeVideo() {
+  local inputVideoFile="$1"
+  local outputVideoFile="$2"
+  local scale="$3"
+  ffmpeg -i "$inputVideoFile" -vf scale=$scale,setsar=1:1 "$outputVideoFile"
+}
+
 function convertToAscii() {
   local inputVideoFile="$1"
-  local scratchVideoFile=$(getScratchVideoPath "$inputVideoFile")
+  local outputVideoFile="$2"
+  local scale="$3"
   ffmpeg -y \
     -i "$inputVideoFile" \
-    -vf "datascope=s=1920x1080:mode=color2" \
-    -an "$scratchVideoFile"
+    -vf "datascope=s=$scale:mode=color2" \
+    -an "$outputVideoFile"
 }
 
 function overlayVideos() {
-  local inputVideoFile="$1"
-  local scratchVideoFile=$(getScratchVideoPath "$inputVideoFile")
-  local outputVideoFile=$(getOutputVideoPath "$inputVideoFile")
-  ffmpeg -i "$inputVideoFile" -i "$scratchVideoFile" -filter_complex \
+  local inputVideoFile1="$1"
+  local inputVideoFile2="$2"
+  local outputVideoFile="$3"
+  ffmpeg -i "$inputVideoFile1" -i "$inputVideoFile2" -filter_complex \
   "[1:0]setdar=dar=1,format=rgba[a]; \
   [0:0]setdar=dar=1,format=rgba[b]; \
   [b][a]blend=all_mode='overlay':all_opacity=0.8" \
@@ -56,9 +65,9 @@ function overlayVideos() {
 }
 
 for filename in $inputFolder/*; do
-  convertToAscii "$filename"
-  overlayVideos "$filename"
+  asciiFilePath=$(getScratchVideoPath "ascii" "$filename")
+  outputPath=$(getOutputVideoPath "$filename")
+  # resizeVideo "$filename" "$outputPath" "600:400"
+  convertToAscii "$filename" "$asciiFilePath" "600x400"
+  overlayVideos "$filename" "$asciiFilePath" "$outputPath"
 done
-
-ls -la /tmp/scratch
-ls -la "$outputFolder"
