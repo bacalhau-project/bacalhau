@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"hash/fnv"
 	"strconv"
 	"time"
@@ -293,6 +294,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			log.Error().Msgf("Error selecting job on host %s: %v", node.id, err)
 			return
 		}
+
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
 
 		// now explode the job into shards and add each shard to the backlog
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
