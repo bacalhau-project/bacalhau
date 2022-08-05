@@ -186,7 +186,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
 		if hasShardReachedCapacity {
-			log.Info().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
+			log.Debug().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
 			node.capacityManager.Remove(flatID)
 			continue
 		}

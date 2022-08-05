@@ -118,6 +118,17 @@ var devstackCmd = &cobra.Command{
 			},
 		}
 
+		portFileName := "/tmp/bacalhau-devstack.port"
+		_, err := os.Stat(portFileName)
+		if err == nil {
+			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+		}
+		pidFileName := "/tmp/bacalhau-devstack.pid"
+		_, err = os.Stat(pidFileName)
+		if err == nil {
+			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+		}
+
 		stack, err := devstack.NewDevStack(
 			cm,
 			devStackNodes,
@@ -134,11 +145,6 @@ var devstackCmd = &cobra.Command{
 
 		stack.PrintNodeInfo()
 
-		portFileName := "/tmp/bacalhau-devstack.port"
-		_, err = os.Stat(portFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
-		}
 		f, err := os.Create(portFileName)
 		if err != nil {
 			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
@@ -150,11 +156,6 @@ var devstackCmd = &cobra.Command{
 			log.Fatal().Msgf("Error writing out port file: %v", portFileName)
 		}
 
-		pidFileName := "/tmp/bacalhau-devstack.pid"
-		_, err = os.Stat(pidFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
-		}
 		fPid, err := os.Create(pidFileName)
 		if err != nil {
 			log.Fatal().Msgf("Error writing out pid file to %v", pidFileName)
