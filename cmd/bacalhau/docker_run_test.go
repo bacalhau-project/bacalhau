@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -663,4 +664,95 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			}
 		}()
 	}
+}
+
+func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	const nodeCount = 1
+
+	videos := []string{
+		"Bird flying over the lake.mp4",
+		"Calm waves on a rocky sea gulf.mp4",
+		"Prominent Late Gothic styled architecture.mp4",
+	}
+
+	stack, cm := devstack.SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer cm.Cleanup()
+
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	require.NoError(suite.T(), err)
+	for _, video := range videos {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%s", dirPath, video),
+			[]byte(fmt.Sprintf("hello %s", video)),
+			0644,
+		)
+		require.NoError(suite.T(), err)
+	}
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+	allArgs := []string{
+		"docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
+		"--sharding-base-path", "/inputs",
+		"--sharding-glob-pattern", "*.mp4",
+		"--sharding-batch-size", "1",
+		"binocarlos/video-resize-example",
+		"bash", "/entrypoint.sh",
+		"/inputs", "/outputs",
+	}
+
+	_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+
+	fmt.Printf("out --------------------------------------\n")
+	spew.Dump(out)
+	fmt.Printf("submitErr --------------------------------------\n")
+	spew.Dump(submitErr.Error())
+
+	// jobSpec := executor.JobSpec{
+	// 	Engine:   executor.EngineDocker,
+	// 	Verifier: verifier.VerifierIpfs,
+	// 	Docker: executor.JobSpecDocker{
+	// 		Image: "ubuntu:latest",
+	// 		Entrypoint: []string{
+	// 			"bash", "-c",
+	// 			`ls -la /inputs`,
+	// 		},
+	// 	},
+	// 	Inputs: []storage.StorageSpec{
+	// 		{
+	// 			Engine: storage.StorageSourceIPFS,
+	// 			Cid:    directoryCid,
+	// 			Path:   "/inputs",
+	// 		},
+	// 	},
+	// 	Outputs: []storage.StorageSpec{},
+	// 	Sharding: executor.JobShardingConfig{
+	// 		BasePath:    "/inputs",
+	// 		GlobPattern: "*.mp4",
+	// 		BatchSize:   1,
+	// 	},
+	// }
+
+	// jobDeal := executor.JobDeal{
+	// 	Concurrency: nodeCount,
+	// }
+
+	// apiUri := stack.Nodes[0].APIServer.GetURI()
+	// apiClient := publicapi.NewAPIClient(apiUri)
+	// submittedJob, err := apiClient.Submit(context.Background(), jobSpec, jobDeal, nil)
+	// require.NoError(suite.T(), err)
+	// fmt.Printf("submittedJob --------------------------------------\n")
+	// spew.Dump(submittedJob)
 }
