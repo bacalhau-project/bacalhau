@@ -46,6 +46,11 @@ func TestApplyGlobPattern(t *testing.T) {
 		"/inputs/Prominent Late Gothic styled architecture.mp4",
 	}
 
+	videoFilesNoSlash := []string{}
+	for _, videoFile := range videoFiles {
+		videoFilesNoSlash = append(videoFilesNoSlash, strings.TrimPrefix(videoFile, "/"))
+	}
+
 	videoResults := []string{
 		"/inputs/Bird flying over the lake.mp4",
 		"/inputs/Calm waves on a rocky sea gulf.mp4",
@@ -112,9 +117,16 @@ func TestApplyGlobPattern(t *testing.T) {
 			videoResults,
 		},
 		{
-			"test without leading slash",
+			"test without leading slash in pattern",
 			videoFiles,
 			"*.mp4",
+			"/inputs",
+			videoResults,
+		},
+		{
+			"test without leading slash in filenames",
+			videoFilesNoSlash,
+			"/*.mp4",
 			"/inputs",
 			videoResults,
 		},
