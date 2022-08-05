@@ -132,9 +132,10 @@ const (
 	jobLocalEventDone // must be last
 )
 
-//go:generate stringer -type=JobStateType --trimprefix=JobState
 // JobStateType is the state of a job on a particular node. Note that the job
 // will typically have different states on different nodes.
+//
+//go:generate stringer -type=JobStateType --trimprefix=JobState
 type JobStateType int
 
 // these are the states a job can be in against a single node

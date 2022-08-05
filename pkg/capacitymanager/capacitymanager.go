@@ -29,7 +29,7 @@ type CapacityManagerItem struct {
 
 type CapacityManager struct {
 	// The configuration used to create this compute node.
-	config Config // nolint:gocritic
+	config Config //nolint:gocritic
 
 	// both of these are is either what the physical CPU / memory values are
 	// or the user defined limits from the config
@@ -262,12 +262,12 @@ func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
 
 // get the jobs we have capacity to bid on
 // this is done FIFO order from the order jobs have arrived
-//   * calculate "remaining resources"
-//     * this is total - running
-//   * loop over each job in selected queue
-//     * if there is enough in the remaining then bid
-//   * add each bid on job to the "projected resources"
-//   * repeat until project resources >= total resources or no more jobs in queue
+//   - calculate "remaining resources"
+//   - this is total - running
+//   - loop over each job in selected queue
+//   - if there is enough in the remaining then bid
+//   - add each bid on job to the "projected resources"
+//   - repeat until project resources >= total resources or no more jobs in queue
 func (manager *CapacityManager) GetNextItems() []string {
 	// the list of job ids that we have capacity to run
 	ids := []string{}

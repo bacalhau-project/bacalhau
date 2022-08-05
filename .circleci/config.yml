@@ -16,6 +16,7 @@ jobs:
     environment:
       GOVER: 1.18.3
       IPFS_VERSION: v0.12.2
+      GOLANGCILINT: v1.48.0
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
@@ -54,9 +55,11 @@ jobs:
             - run:
                 name: Install golangci-lint
                 command: |
-                  echo "Installing GOLANGCILINT"
+                  echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
                   # binary will be /usr/local/go/bin/bin/golangci-lint
-                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin
+                  # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+                  # This breaks normal pathing. So just installing in ./bin/
+                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
                   golangci-lint --version
 
             - run:
@@ -166,7 +169,8 @@ jobs:
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
   run_perf:
-    executor: linux
+    resource_class: filecoin-project/self-hosted-bacalhau
+    machine: true
     parallelism: 1
     environment:
       GCS_PERF_RESULTS_BUCKET: gs://bacalhau-global-storage/perf-results
@@ -178,6 +182,12 @@ jobs:
             export PATH="$HOME/.local/bin:${PATH}"
             export SHA="<< pipeline.git.revision >>"
             export DATETIME="$(date -u +"%FT%H%MZ")"
+            export BRANCH="<<pipeline.git.branch>>"
+            if [ "<<pipeline.git.tag>>" != "" ]; then
+              export TAG="<<pipeline.git.tag>>"
+            else
+              export TAG="NOTAG"
+            fi
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
             wget https://github.com/sharkdp/hyperfine/releases/download/v1.13.0/hyperfine_1.13.0_amd64.deb
@@ -187,9 +197,7 @@ jobs:
               cd benchmark
               bash start_and_run.sh
             )
-            ls -la benchmark
-            ls -la benchmark/results
-            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
+            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${BRANCH}-${TAG}-${SHA}"
 
       - heroku/install
       - run:
@@ -245,6 +253,7 @@ jobs:
             echo "TAG = ${TAG}"
             find dist/
             gh release upload $TAG dist/*
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -323,3 +332,5 @@ workflows:
               run_tests: [false]
       - run_perf:
           name: Running perf
+          requires:
+            - build-linux-amd64

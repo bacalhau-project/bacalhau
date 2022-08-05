@@ -37,7 +37,7 @@ type Versions struct {
 	ServerVersion *executor.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	versionCmd.Flags().BoolVar(&o.ClientOnly, "client", o.ClientOnly, "If true, shows client version only (no server required).")
 	versionCmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
 }
@@ -50,7 +50,6 @@ type Options struct {
 	args []string
 }
 
-// nolintunparam // incorrectly suggesting unused
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",

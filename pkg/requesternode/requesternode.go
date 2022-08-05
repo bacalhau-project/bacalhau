@@ -18,7 +18,7 @@ type RequesterNodeConfig struct{}
 
 type RequesterNode struct {
 	id         string
-	config     RequesterNodeConfig // nolint:gocritic
+	config     RequesterNodeConfig //nolint:gocritic
 	controller *controller.Controller
 	verifiers  map[verifier.VerifierType]verifier.Verifier
 	bidMutex   sync.Mutex
@@ -54,9 +54,7 @@ func NewRequesterNode(
 }
 
 /*
-
-  subscriptions
-
+subscriptions
 */
 func (node *RequesterNode) subscriptionSetup() {
 	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {

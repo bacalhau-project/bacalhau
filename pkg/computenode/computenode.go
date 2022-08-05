@@ -132,12 +132,12 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 }
 
 // each control loop we should bid on jobs in our queue
-//   * calculate "remaining resources"
-//     * this is total - running
-//   * loop over each job in selected queue
-//     * if there is enough in the remaining then bid
-//   * add each bid on job to the "projected resources"
-//   * repeat until project resources >= total resources or no more jobs in queue
+//   - calculate "remaining resources"
+//   - this is total - running
+//   - loop over each job in selected queue
+//   - if there is enough in the remaining then bid
+//   - add each bid on job to the "projected resources"
+//   - repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
@@ -192,9 +192,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 }
 
 /*
-
-  subscriptions
-
+subscriptions
 */
 func (node *ComputeNode) subscriptionSetup() {
 	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
@@ -218,9 +216,7 @@ func (node *ComputeNode) subscriptionSetup() {
 }
 
 /*
-
-  subscriptions -> created
-
+subscriptions -> created
 */
 func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
@@ -262,9 +258,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 }
 
 /*
-
-  subscriptions -> bid accepted
-
+subscriptions -> bid accepted
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
@@ -321,9 +315,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 }
 
 /*
-
-  subscriptions -> bid rejected
-
+subscriptions -> bid rejected
 */
 func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	node.capacityManager.Remove(job.ID)
@@ -410,9 +402,7 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIn
 }
 
 /*
-
-  run job
-
+run job
 */
 func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
 	// check that we have the executor to run this job
@@ -458,7 +448,7 @@ func (node *ComputeNode) RunShard(
 	return resultValue, containerRunError
 }
 
-// nolint:dupl // methods are not duplicates
+//nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineType) (executor.Executor, error) {
 	node.componentMu.Lock()
 	defer node.componentMu.Unlock()
@@ -480,7 +470,7 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	return executorEngine, nil
 }
 
-// nolint:dupl // methods are not duplicates
+//nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
 	node.componentMu.Lock()
 	defer node.componentMu.Unlock()

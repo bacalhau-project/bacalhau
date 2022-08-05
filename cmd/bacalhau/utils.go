@@ -27,7 +27,7 @@ var tableSortReverse bool
 var tableIDFilter string
 var tableNoStyle bool
 
-func shortenTime(t time.Time) string { // nolint:unused // Useful function, holding here
+func shortenTime(t time.Time) string { //nolint:unused // Useful function, holding here
 	if tableOutputWide {
 		return t.Format("06-01-02-15:04:05")
 	}

@@ -84,7 +84,7 @@ var runPythonCmd = &cobra.Command{
 	Use:   "python",
 	Short: "Run a python job on the network",
 	Args:  cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
 
 		// error if determinism is false
 		if !deterministic {
