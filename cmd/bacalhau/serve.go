@@ -125,7 +125,7 @@ func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.Resource
 	return totalResourceLimit, jobResourceLimit
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	serveCmd.PersistentFlags().StringVar(
 		&peerConnect, "peer", "",
 		`The libp2p multiaddress to connect to.`,

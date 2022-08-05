@@ -11,20 +11,19 @@ import (
 )
 
 /*
-	givem a flat list of all files - group them using a glob pattern
+given a flat list of all files - group them using a glob pattern
 
-	so if we have:
+so if we have:
 
-	 /a/file1.txt
-	 /a/file2.txt
-	 /b/file1.txt
-	 /b/file2.txt
+	/a/file1.txt
+	/a/file2.txt
+	/b/file1.txt
+	/b/file2.txt
 
-	the following is how different patterns would group:
+the following is how different patterns would group:
 
-	/* = [/a/, /b/]
-	/**\/*.txt = [/a/file1.txt, /a/file2.txt, /b/file1.txt, /b/file2.txt]
-
+/* = [/a/, /b/]
+/**\/*.txt = [/a/file1.txt, /a/file2.txt, /b/file1.txt, /b/file2.txt]
 */
 func ApplyGlobPattern(
 	files []storage.StorageSpec,

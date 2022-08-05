@@ -107,7 +107,7 @@ func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec)
 	return []storage.StorageSpec{}, nil
 }
 
-// nolint:lll // Exception to the long rule
+//nolint:lll // Exception to the long rule
 func (s *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	if s.Config.ExternalHooks.CleanupStorage != nil {
 		handler := s.Config.ExternalHooks.CleanupStorage

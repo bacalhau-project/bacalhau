@@ -26,12 +26,12 @@ type DownloadSettings struct {
 // * download all cids into temp dir
 // * ensure top level output dir exists
 // * iterate over each shard
-//   * make new folder for shard logs
-//   * copy stdout, stderr, exitCode
-//   * append stdout, stderr to global log
+// * make new folder for shard logs
+// * copy stdout, stderr, exitCode
+// * append stdout, stderr to global log
 // * iterate over each output volume
-//   * make new folder for output volume
-//   * iterate over each shard and merge files in output folder to results dir
+// * make new folder for output volume
+// * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
 	job executor.Job,

@@ -265,9 +265,7 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
 }
 
 /*
-
-  COMPUTE NODE
-
+COMPUTE NODE
 */
 func (ctrl *Controller) SelectJob(ctx context.Context, jobID string) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)

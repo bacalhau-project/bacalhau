@@ -60,7 +60,7 @@ jobs:
                   # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
                   # This breaks normal pathing. So just installing in ./bin/
                   curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-                  golangci-lint --version
+                  golangci-lint version
 
             - run:
                 name: Run linter

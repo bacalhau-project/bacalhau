@@ -220,7 +220,7 @@ func (manager *CapacityManager) AddShardsToBacklog(id string, shardCount int, re
 		shardIndexes = append(shardIndexes, i)
 	}
 	for i := range shardIndexes {
-		j := rand.Intn(i + 1) // nolint:gosec
+		j := rand.Intn(i + 1) //nolint:gosec
 		shardIndexes[i], shardIndexes[j] = shardIndexes[j], shardIndexes[i]
 	}
 	for _, shardIndex := range shardIndexes {

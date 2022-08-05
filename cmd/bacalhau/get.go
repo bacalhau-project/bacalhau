@@ -18,7 +18,7 @@ var getDownloadFlags = ipfs.DownloadSettings{
 	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
-func init() { // nolint:gochecknoinits
+func init() { //nolint:gochecknoinits
 	setupDownloadFlags(getCmd, &getDownloadFlags)
 }
 
