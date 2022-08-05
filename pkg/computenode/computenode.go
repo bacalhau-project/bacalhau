@@ -24,7 +24,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalMinutes = 10
+const ControlLoopIntervalSeconds = 10
 const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
@@ -303,7 +303,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			return
 		}
 
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100))) //nolint:gosec // weak randomness ok here
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
 
 		// now explode the job into shards and add each shard to the backlog
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
@@ -311,7 +311,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
-		node.controlLoopBidOnJobs("job created & selected")
+		node.controlLoopBidOnJobs()
 	}
 }
 
