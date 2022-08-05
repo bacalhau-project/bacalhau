@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	doublestar "github.com/bmatcuk/doublestar/v4"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
@@ -123,10 +122,6 @@ func ExplodeShardedVolumes(
 		}
 		allVolumes = append(allVolumes, explodedVolumes...)
 	}
-
-	fmt.Printf("allVolumes --------------------------------------\n")
-	spew.Dump(allVolumes)
-
 	// let's filter all of the combined volumes down using the glob pattern
 	return ApplyGlobPattern(allVolumes, config.GlobPattern, config.BasePath)
 }

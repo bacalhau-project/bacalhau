@@ -16,7 +16,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -713,46 +712,6 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		"/inputs", "/outputs",
 	}
 
-	_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
-
-	fmt.Printf("out --------------------------------------\n")
-	spew.Dump(out)
-	fmt.Printf("submitErr --------------------------------------\n")
-	spew.Dump(submitErr.Error())
-
-	// jobSpec := executor.JobSpec{
-	// 	Engine:   executor.EngineDocker,
-	// 	Verifier: verifier.VerifierIpfs,
-	// 	Docker: executor.JobSpecDocker{
-	// 		Image: "ubuntu:latest",
-	// 		Entrypoint: []string{
-	// 			"bash", "-c",
-	// 			`ls -la /inputs`,
-	// 		},
-	// 	},
-	// 	Inputs: []storage.StorageSpec{
-	// 		{
-	// 			Engine: storage.StorageSourceIPFS,
-	// 			Cid:    directoryCid,
-	// 			Path:   "/inputs",
-	// 		},
-	// 	},
-	// 	Outputs: []storage.StorageSpec{},
-	// 	Sharding: executor.JobShardingConfig{
-	// 		BasePath:    "/inputs",
-	// 		GlobPattern: "*.mp4",
-	// 		BatchSize:   1,
-	// 	},
-	// }
-
-	// jobDeal := executor.JobDeal{
-	// 	Concurrency: nodeCount,
-	// }
-
-	// apiUri := stack.Nodes[0].APIServer.GetURI()
-	// apiClient := publicapi.NewAPIClient(apiUri)
-	// submittedJob, err := apiClient.Submit(context.Background(), jobSpec, jobDeal, nil)
-	// require.NoError(suite.T(), err)
-	// fmt.Printf("submittedJob --------------------------------------\n")
-	// spew.Dump(submittedJob)
+	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+	require.NoError(suite.T(), submitErr)
 }
