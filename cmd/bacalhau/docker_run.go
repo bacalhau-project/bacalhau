@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -112,7 +113,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		`Wait For Job To Finish And Print Output`,
 	)
 
-	setupDownloadFlags(dockerRunCmd, runDownloadFlags)
+	setupDownloadFlags(dockerRunCmd, &runDownloadFlags)
 
 	dockerRunCmd.PersistentFlags().StringVar(
 		&shardingGlobPattern, "sharding-glob-pattern", "",
@@ -121,12 +122,12 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().StringVar(
 		&shardingGlobPattern, "sharding-base-path", "",
-		`Remove this prefix from each file path before applying the glob pattern`,
+		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
 	)
 
 	dockerRunCmd.PersistentFlags().IntVar(
-		&shardingBatchSize, "sharding-batch-size", 0,
-		`Remove this prefix from each file path before applying the glob pattern`,
+		&shardingBatchSize, "sharding-batch-size", 1,
+		`How many sharding atoms are to be grouped together into one shard`,
 	)
 }
 
@@ -249,6 +250,9 @@ var dockerRunCmd = &cobra.Command{
 		cmd.Printf("%s\n", job.ID)
 		if waitForJobToFinishAndPrintOutput {
 			resolver := getAPIClient().GetJobStateResolver()
+			// let's wait a lot longer than 100 seconds because sometimes
+			// jobs take a long time to finish
+			resolver.SetWaitTime(10000, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err

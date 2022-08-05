@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -44,6 +45,9 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&devStackPeer, "peer", "",
 		`Connect node 0 to another network node`,
 	)
+
+	setupJobSelectionCLIFlags(devstackCmd)
+	setupCapacityManagerCLIFlags(devstackCmd)
 }
 
 var devstackCmd = &cobra.Command{
@@ -104,6 +108,17 @@ var devstackCmd = &cobra.Command{
 			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
 		}
 
+		jobSelectionPolicy := getJobSelectionConfig()
+		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
+
+		computeNodeConfig := computenode.ComputeNodeConfig{
+			JobSelectionPolicy: jobSelectionPolicy,
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: totalResourceLimit,
+				ResourceLimitJob:   jobResourceLimit,
+			},
+		}
+
 		stack, err := devstack.NewDevStack(
 			cm,
 			devStackNodes,
@@ -111,7 +126,7 @@ var devstackCmd = &cobra.Command{
 			getStorageProviders,
 			getExecutors,
 			getVerifiers,
-			computenode.NewDefaultComputeNodeConfig(),
+			computeNodeConfig,
 			devStackPeer,
 		)
 		if err != nil {

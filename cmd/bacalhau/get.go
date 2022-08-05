@@ -19,7 +19,7 @@ var getDownloadFlags = ipfs.DownloadSettings{
 }
 
 func init() { // nolint:gochecknoinits
-	setupDownloadFlags(getCmd, getDownloadFlags)
+	setupDownloadFlags(getCmd, &getDownloadFlags)
 }
 
 var getCmd = &cobra.Command{
