@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -33,16 +34,31 @@ func init() { // nolint:gochecknoinits
 }
 
 var getCmd = &cobra.Command{
-	Use:   "get",
+	Use:   "get [id]",
 	Short: "Get the results of a job",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		log.Info().Msgf("Fetching results of job '%s'...", args[0])
+		inputJobID := cmdArgs[0]
 
-		states, err := getAPIClient().GetExecutionStates(context.Background(), args[0])
+		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+
+		if err != nil {
+			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
+			return err
+		}
+
+		if !ok {
+			err = fmt.Errorf("no job found with ID: %s", inputJobID)
+			log.Error().Msgf(err.Error())
+			return err
+		}
+
+		jobID := j.ID
+
+		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
 		if err != nil {
 			return err
 		}

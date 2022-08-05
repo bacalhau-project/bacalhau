@@ -9,7 +9,7 @@ linters-settings:
     threshold: 100
   funlen:
     lines: 100
-    statements: 50
+    statements: 100
   goconst:
     min-len: 2
     min-occurrences: 3
@@ -28,7 +28,7 @@ linters-settings:
       - wrapperFunc
       - hugeParam
   gocyclo:
-    min-complexity: 15
+    min-complexity: 18
   goimports:
     local-prefixes: github.com/golangci/golangci-lint
   gomnd:
@@ -105,7 +105,7 @@ linters:
 # Options for analysis running.
 run:
   # The default concurrency value is the number of available CPU.
-  concurrency: 4
+  # concurrency: 16
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m
   timeout: 5m
@@ -127,6 +127,7 @@ run:
   skip-dirs:
     - experimental
     - vendor
+    - viz
   # Enables skipping of directories:
   # - vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
   # Default: true

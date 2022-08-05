@@ -1,6 +1,8 @@
 package system
 
 import (
+	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -53,4 +55,14 @@ func SanitizeImageAndEntrypoint(jobEntrypoint []string) (returnMessages []string
 	}
 
 	return returnMessages, errorIsFatal
+}
+
+// Function for validating the workdir of a docker command.
+func ValidateWorkingDir(jobWorkingDir string) error {
+	if jobWorkingDir != "" {
+		if !filepath.IsAbs(jobWorkingDir) {
+			return fmt.Errorf("workdir must be an absolute path. Passed in: %s", jobWorkingDir)
+		}
+	}
+	return nil
 }

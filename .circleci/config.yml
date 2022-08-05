@@ -187,12 +187,15 @@ jobs:
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
             sudo apt install python3.10 python3-pip -y
-            sudo python3 -m pip install --upgrade pip
             pip3 install gsutil
             export SHA="<< pipeline.git.revision >>"
             export DATETIME="$(date -u +"%FT%H%MZ")"
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${SHA}"
+      - heroku/install
+      - run:
+          command: >
+            heroku run build # Updates dashboard data with latest from GCS
 
   release:
     executor: linux
@@ -242,6 +245,8 @@ jobs:
             echo "TAG = ${TAG}"
             find dist/
             gh release upload $TAG dist/*
+orbs:
+  heroku: circleci/heroku@1.2.6
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
