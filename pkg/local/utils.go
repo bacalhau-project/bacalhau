@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/moby/moby/pkg/stdcopy"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -241,11 +240,10 @@ func RunJobLocally(ctx context.Context, jobspec executor.JobSpec) (string, error
 		fmt.Printf("error is : %v", err)
 	}
 
-	addrStr := "/ip4/0.0.0.0/tcp/8080"
-	addr, err := ma.NewMultiaddr(addrStr)
+	addrStr := "/ip4/127.0.0.1/tcp/5001"
 	if err != nil {
 		fmt.Printf("error is : %v", err)
 	}
-	e, _ := executor_util.NewLocalStandardExecutors(cm, addr.String(), fmt.Sprintf("bacalhau-%s", hostID))
+	e, _ := executor_util.NewLocalStandardExecutors(cm, addrStr, fmt.Sprintf("bacalhau-%s", hostID))
 	return e.RunJobLocally(ctx, jobspec)
 }
