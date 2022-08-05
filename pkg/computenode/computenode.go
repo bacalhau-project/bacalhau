@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -302,6 +303,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			return
 		}
 
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(100))) //nolint:gosec // weak randomness ok here
+
 		// now explode the job into shards and add each shard to the backlog
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
 		if err != nil {
@@ -569,16 +572,10 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}()
 	if e == nil {
 		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String(),
-		)
-	}
-	executorEngine := *e
-
-	// cache it being installed so we're not hammering it
-	if node.executorsInstalledCache[typ] {
-		return executorEngine, nil
+			"no matching executor found on this server: %s", typ.String())
 	}
 
+	executorEngine := node.executors[typ]
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
