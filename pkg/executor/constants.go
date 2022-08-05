@@ -177,6 +177,19 @@ func (state JobStateType) IsTerminal() bool {
 	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
 }
 
+// IsComplete returns true if the given job has succeeded at the bid stage
+// and has finished running the job - this is used to calculate if a job
+// has completed across all nodes because a cancelation does not count
+// towards actually "running" the job whereas an error does (even though it failed
+// it still "ran")
+func (state JobStateType) IsComplete() bool {
+	return state == JobStateComplete || state == JobStateError
+}
+
+func (state JobStateType) IsError() bool {
+	return state == JobStateError
+}
+
 // tells you if this event is a valid one
 func IsValidJobState(state JobStateType) bool {
 	return state > jobStateUnknown && state < jobStateDone

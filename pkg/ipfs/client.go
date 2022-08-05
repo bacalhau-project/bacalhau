@@ -276,6 +276,18 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	return false, nil
 }
 
+func (cl *Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
+	ctx, span := newSpan(ctx, "GetTreeNode")
+	defer span.End()
+
+	ipldNode, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	if err != nil {
+		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
+	}
+
+	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.api.Dag()), []string{})
+}
+
 func getNodeType(node ipld.Node) (IPLDType, error) {
 	// Taken from go-ipfs/core/commands/files.go:
 	var nodeType IPLDType

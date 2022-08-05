@@ -51,10 +51,10 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	require.NoError(suite.T(), err)
 
-	result, err := computeNode.RunJob(context.Background(), executor.Job{
+	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
-	})
+	}, 0)
 	require.NoError(suite.T(), err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
@@ -75,9 +75,9 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	_, err := computeNode.RunJob(context.Background(), executor.Job{
+	_, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: executor.JobSpec{},
-	})
+	}, 0)
 	require.Error(suite.T(), err)
 }

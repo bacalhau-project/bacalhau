@@ -106,6 +106,24 @@ func (sp *StorageProvider) CleanupStorage(
 	})
 }
 
+// we don't "upload" anything to a URL
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+}
+
+// for the url download - explode will always result in a single item
+// mounted at the path specified in the spec
+func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{
+		{
+			Name:   spec.Name,
+			Engine: storage.StorageSourceURLDownload,
+			Path:   spec.Path,
+			URL:    spec.URL,
+		},
+	}, nil
+}
+
 func IsURLSupported(rawURL string) (bool, error) {
 	// The string url is assumed NOT to have a #fragment suffix
 	// thus the valid form is: [scheme:][//[userinfo@]host][/]path[?query]

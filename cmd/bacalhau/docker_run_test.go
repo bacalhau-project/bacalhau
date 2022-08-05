@@ -151,9 +151,13 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
+			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
+			require.NoError(suite.T(), err)
+
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -162,7 +166,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
-				"--localoutput", outputDir,
+				"--output-dir", outputDir,
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",

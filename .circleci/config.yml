@@ -60,7 +60,7 @@ jobs:
                   # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
                   # This breaks normal pathing. So just installing in ./bin/
                   curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-                  golangci-lint --version
+                  golangci-lint version
 
             - run:
                 name: Run linter
@@ -177,21 +177,9 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Run Perf
-          command: |
-            cd benchmark
-            sudo apt install build-essential -y
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source $HOME/.cargo/env
-            cargo install hyperfine
-            ./start_and_run.sh
-
-      - run:
-          name: Upload perf results
+          name: Run Perf and Upload Results
           command: |
             export PATH="$HOME/.local/bin:${PATH}"
-            sudo apt install python3.10 python3-pip -y
-            pip3 install gsutil
             export SHA="<< pipeline.git.revision >>"
             export DATETIME="$(date -u +"%FT%H%MZ")"
             export BRANCH="<<pipeline.git.branch>>"
@@ -200,12 +188,22 @@ jobs:
             else
               export TAG="NOTAG"
             fi
+            sudo apt install python3.10 python3-pip build-essential -y
+            pip3 install gsutil
+            wget https://github.com/sharkdp/hyperfine/releases/download/v1.13.0/hyperfine_1.13.0_amd64.deb
+            sudo dpkg -i hyperfine_1.13.0_amd64.deb
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-<<pipeline.git.branch>>-${TAG}-${SHA}"
+            (
+              cd benchmark
+              bash start_and_run.sh
+            )
+            gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${BRANCH}-${TAG}-${SHA}"
+
       - heroku/install
       - run:
           command: >
-            heroku run build --app bacalhau-dashboards # Updates dashboard data with latest from GCS
+            # Updates dashboard data with latest from GCS
+            heroku run build --app bacalhau-dashboards
 
   release:
     executor: linux

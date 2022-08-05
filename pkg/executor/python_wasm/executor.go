@@ -45,7 +45,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpe
 	return 0, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error) {
+func (e *Executor) RunShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
 	log.Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
 	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
@@ -64,12 +64,16 @@ func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error)
 		job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
+	for idx, v := range job.Spec.Contexts {
+		job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	}
+
 	for idx, v := range job.Spec.Outputs {
 		job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	return e.executors[executor.EngineDocker].RunJob(ctx, job)
+	return e.executors[executor.EngineDocker].RunShard(ctx, job, shardIndex)
 }
 
 // Compile-time check that Executor implements the Executor interface.

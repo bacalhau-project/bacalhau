@@ -10,7 +10,7 @@ import (
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume storage.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, job executor.Job) (string, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, job executor.Job, shardIndex int) (string, error)
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
@@ -68,11 +68,11 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 	return 0, nil
 }
 
-func (e *Executor) RunJob(ctx context.Context, job executor.Job) (string, error) {
+func (e *Executor) RunShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
 	e.Jobs = append(e.Jobs, job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, job)
+		return handler(ctx, job, shardIndex)
 	}
 	return "/tmp", nil
 }

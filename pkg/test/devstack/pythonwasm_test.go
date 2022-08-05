@@ -11,8 +11,6 @@ import (
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -68,8 +66,6 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	stack, cm := SetupTest(suite.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
-	nodeIds, err := stack.GetNodeIds()
-	require.NoError(suite.T(), err)
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
 	require.NoError(suite.T(), err)
 	defer func() {
@@ -94,12 +90,8 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 import os
 print("LIST /")
 print(os.listdir("/"))
-#print("LIST /input")
-#print(os.listdir("/input"))
 print("LIST /output")
 print(os.listdir("/output"))
-print("LIST /job")
-print(os.listdir("/job"))
 open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, inputPath))
 
@@ -120,33 +112,26 @@ open("%s/test.txt", "w").write(open("%s").read())
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
-	err = stack.WaitForJob(ctx, jobId,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
-		}),
-		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-	)
-	require.NoError(suite.T(), err)
 
-	nodeID := nodeIds[0]
-	node, err := stack.GetNode(ctx, nodeID)
-	require.NoError(suite.T(), err)
-
+	node := stack.Nodes[0]
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-
-	jobStates, err := apiClient.GetExecutionStates(ctx, jobId)
+	resolver := apiClient.GetJobStateResolver()
+	require.NoError(suite.T(), err)
+	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(suite.T(), err)
 
-	state, ok := jobStates[nodeID]
-	require.True(suite.T(), ok)
+	shards, err := resolver.GetShards(ctx, jobId)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), len(shards) > 0)
+
+	shard := shards[0]
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)
 
-	outputPath = filepath.Join(outputDir, state.ResultsID)
-	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
+	outputPath = filepath.Join(outputDir, shard.ResultsID)
+	err = node.IpfsClient.Get(ctx, shard.ResultsID, outputPath)
 	require.NoError(suite.T(), err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
@@ -163,9 +148,6 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	stack, cm := SetupTest(suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
-	nodeIds, err := stack.GetNodeIds()
-	require.NoError(suite.T(), err)
-
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
 	_, out, err := cmd.ExecuteTestCobraCommand(suite.T(), cmd.RootCmd,
@@ -181,18 +163,14 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
-	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, jobId,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
-		}),
-		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-	)
-	require.NoError(suite.T(), err)
 
-	// load result from ipfs and check it
-	// TODO: see devStackDockerStorageTest for how to do this
+	node := stack.Nodes[0]
+	apiUri := node.APIServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
+	resolver := apiClient.GetJobStateResolver()
+	require.NoError(suite.T(), err)
+	err = resolver.WaitUntilComplete(ctx, jobId)
+	require.NoError(suite.T(), err)
 
 }
 
@@ -206,8 +184,6 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	stack, cm := SetupTest(suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
-	nodeIds, err := stack.GetNodeIds()
-	require.NoError(suite.T(), err)
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
 	require.NoError(suite.T(), err)
 	defer func() {
@@ -241,15 +217,13 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
-	err = stack.WaitForJob(ctx, jobId,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
-		}),
-		devstack.WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-	)
-	require.NoError(suite.T(), err)
 
+	apiUri := stack.Nodes[0].APIServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
+	resolver := apiClient.GetJobStateResolver()
+	require.NoError(suite.T(), err)
+	err = resolver.WaitUntilComplete(ctx, jobId)
+	require.NoError(suite.T(), err)
 }
 
 // func TestPythonWasmWithRequirements(t *testing.T) {

@@ -3,13 +3,13 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -142,45 +142,50 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
-	for _, id := range bidJobIds {
-		// CHECK WE DON@T HAVE A BID EVENT LOCALLY
-		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), id)
+
+	for _, flatID := range bidJobIds {
+		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
-			node.capacityManager.Remove(id)
+			node.capacityManager.Remove(flatID)
+			continue
+		}
+		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobID)
+		if err != nil {
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 
 		hasAlreadyBid := false
 
 		for _, localEvent := range jobLocalEvents {
-			if localEvent.EventName == executor.JobLocalEventBid {
+			if localEvent.EventName == executor.JobLocalEventBid && localEvent.ShardIndex == shardIndex {
 				hasAlreadyBid = true
 				break
 			}
 		}
 
 		if hasAlreadyBid {
-			log.Info().Msgf("node %s has already bid on job %s", node.id, id)
-			node.capacityManager.Remove(id)
+			log.Info().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 
-		job, err := node.controller.GetJob(context.Background(), id)
+		job, err := node.controller.GetJob(context.Background(), jobID)
 		if err != nil {
-			node.capacityManager.Remove(id)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
-		err = node.BidOnJob(context.Background(), job)
+		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
-			node.capacityManager.Remove(job.ID)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
-		err = node.capacityManager.MoveToActive(job.ID)
+		err = node.capacityManager.MoveToActive(flatID)
 		if err != nil {
-			node.capacityManager.Remove(job.ID)
+			node.capacityManager.Remove(flatID)
 			continue
 		}
 	}
@@ -198,7 +203,7 @@ func (node *ComputeNode) subscriptionSetup() {
 		}
 		switch jobEvent.EventName {
 		case executor.JobEventCreated:
-			log.Debug().Msgf("[%s] APPLES ARE SICK job created: %s", node.id, job.ID)
+			log.Debug().Msgf("[%s] job created: %s", node.id, job.ID)
 			node.subscriptionEventCreated(ctx, jobEvent, job)
 		// we have been given the goahead to run the job
 		case executor.JobEventBidAccepted:
@@ -219,13 +224,16 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	defer span.End()
 
 	// Increment the number of jobs seen by this compute node:
-	jobsReceived.With(prometheus.Labels{"node_id": node.id}).Inc()
+	jobsReceived.With(prometheus.Labels{
+		"node_id": node.id,
+	}).Inc()
 
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
-		NodeID: node.id,
-		JobID:  jobEvent.JobID,
-		Spec:   jobEvent.JobSpec,
+		NodeID:        node.id,
+		JobID:         jobEvent.JobID,
+		Spec:          jobEvent.JobSpec,
+		ExecutionPlan: jobEvent.JobExecutionPlan,
 	})
 	if err != nil {
 		log.Error().Msgf("Error checking job policy: %v", err)
@@ -233,7 +241,14 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	}
 
 	if selected {
-		err = node.capacityManager.AddToBacklog(job.ID, processedRequirements)
+		err = node.controller.SelectJob(ctx, jobEvent.JobID)
+		if err != nil {
+			log.Info().Msgf("Error selecting job on host %s: %v", node.id, err)
+			return
+		}
+
+		// now explode the job into shards and add each shard to the backlog
+		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
 		if err != nil {
 			log.Info().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
@@ -256,69 +271,46 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	defer span.End()
 
 	// Increment the number of jobs accepted by this compute node:
-	jobsAccepted.With(prometheus.Labels{"node_id": node.id}).Inc()
+	jobsAccepted.With(prometheus.Labels{
+		"node_id":     node.id,
+		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
+	}).Inc()
 
-	log.Debug().Msgf("Bid accepted: Server (id: %s) - Job (id: %s)", node.id, job.ID)
-	logger.LogJobEvent(logger.JobEvent{
-		Node: node.id,
-		Type: "compute_node:run",
-		Job:  job.ID,
-		Data: job,
-	})
+	log.Debug().Msgf("Compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
 
-	resultFolder, containerRunError := node.RunJob(ctx, job)
-	if containerRunError != nil {
-		jobsFailed.With(prometheus.Labels{"node_id": node.id}).Inc()
-	} else {
-		jobsCompleted.With(prometheus.Labels{"node_id": node.id}).Inc()
-	}
-	if resultFolder == "" {
-		errMessage := fmt.Sprintf("Missing results folder for job %s", job.ID)
-		if containerRunError != nil {
-			errMessage = fmt.Sprintf("RunJob error %s: %s", job.ID, containerRunError)
-		}
-		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		return
-	}
+	// once we've finished this shard - let's see if we should
+	// bid on another shard or if we've finished the job
+	defer func() {
+		node.capacityManager.Remove(capacitymanager.FlattenShardID(job.ID, jobEvent.ShardIndex))
+		node.controlLoopBidOnJobs()
+	}()
 
-	v, err := node.getVerifier(ctx, job.Spec.Verifier)
-	if err != nil {
-		errMessage := fmt.Sprintf("Error getting verifier: %s %+v", err, job)
-		log.Error().Msgf(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		return
-	}
-
-	resultValue, err := v.ProcessResultsFolder(ctx, job.ID, resultFolder)
-	if err != nil {
-		errMessage := fmt.Sprintf("Error verifying results: %s %+v", err, job)
-		log.Error().Msg(errMessage)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
-		return
-	}
-
-	if containerRunError == nil {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "compute_node:result",
-			Job:  job.ID,
-			Data: resultValue,
-		})
+	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
+	if err == nil {
 		err = node.controller.CompleteJob(
 			ctx,
 			job.ID,
-			fmt.Sprintf("Got job result: %s", resultValue),
-			resultValue,
+			jobEvent.ShardIndex,
+			fmt.Sprintf("Got job result: %s", results),
+			results,
 		)
+
 		if err != nil {
-			errMessage := fmt.Sprintf("Error submitting results: %s %+v", err, job)
-			log.Error().Msgf(errMessage)
-			_ = node.controller.ErrorJob(ctx, job.ID, errMessage, "")
+			log.Error().Msgf("Error completing job: %s %s %s", node.id, job.ID, err.Error())
 		}
 	} else {
-		errMessage := fmt.Sprintf("Error running job: %s %+v", containerRunError.Error(), job)
-		_ = node.controller.ErrorJob(ctx, job.ID, errMessage, resultValue)
+		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
+		log.Error().Msgf(errMessage)
+		err = node.controller.ErrorJob(
+			ctx,
+			job.ID,
+			jobEvent.ShardIndex,
+			errMessage,
+			results,
+		)
+		if err != nil {
+			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
+		}
 	}
 }
 
@@ -363,8 +355,14 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 		return false, requirements, fmt.Errorf("error getting job disk space requirements: %v", err)
 	}
 
+	// TODO: think about the fact that each shard might be different sizes
+	// this is probably good enough for now
+	totalShards := data.ExecutionPlan.TotalShards
+	if totalShards == 0 {
+		totalShards = 1
+	}
 	// update the job requirements disk space with what we calculated
-	requirements.Disk = diskSpace
+	requirements.Disk = diskSpace / uint64(totalShards)
 
 	withinCapacityLimits, processedRequirements := node.capacityManager.FilterRequirements(requirements)
 
@@ -388,8 +386,8 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 	}
 
 	if !acceptedByPolicy {
-		log.Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %+v",
-			node.id, data.Spec)
+		log.Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %s",
+			node.id, data.JobID)
 		return false, processedRequirements, nil
 	}
 
@@ -398,37 +396,56 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
-func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job) error {
-	// TODO: Why do we have two different kinds of loggers?
-	logger.LogJobEvent(logger.JobEvent{
-		Node: node.id,
-		Type: "compute_node:bid",
-		Job:  job.ID,
-	})
-
-	log.Debug().Msgf("compute node %s bidding on: %+v", node.id, job.Spec)
-
-	return node.controller.BidJob(ctx, job.ID)
+func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIndex int) error {
+	log.Debug().Msgf("Compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
+	return node.controller.BidJob(ctx, job.ID, shardIndex)
 }
 
 /*
 run job
 */
-func (node *ComputeNode) RunJob(ctx context.Context, job executor.Job) (string, error) {
-	// whatever happens here (either completion or error)
-	// we will want to free up the capacity manager from this job
-	defer func() {
-		node.capacityManager.Remove(job.ID)
-		node.controlLoopBidOnJobs()
-	}()
-
+func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
 		return "", err
 	}
+	return e.RunShard(ctx, job, shardIndex)
+}
 
-	return e.RunJob(ctx, job)
+func (node *ComputeNode) RunShard(
+	ctx context.Context,
+	job executor.Job,
+	shardIndex int,
+) (string, error) {
+	resultFolder, containerRunError := node.ExecuteJobShard(ctx, job, shardIndex)
+	if containerRunError != nil {
+		jobsFailed.With(prometheus.Labels{
+			"node_id":     node.id,
+			"shard_index": strconv.Itoa(shardIndex),
+		}).Inc()
+	} else {
+		jobsCompleted.With(prometheus.Labels{
+			"node_id":     node.id,
+			"shard_index": strconv.Itoa(shardIndex),
+		}).Inc()
+	}
+	if resultFolder == "" {
+		err := fmt.Errorf("missing results folder for job %s", job.ID)
+		if containerRunError != nil {
+			err = fmt.Errorf("runJob error %s: %s", job.ID, containerRunError)
+		}
+		return "", err
+	}
+	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		return "", err
+	}
+	resultValue, err := verifier.ProcessShardResults(ctx, job.ID, shardIndex, resultFolder)
+	if err != nil {
+		return "", err
+	}
+	return resultValue, containerRunError
 }
 
 //nolint:dupl // methods are not duplicates

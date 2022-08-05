@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/ipfs"
@@ -61,15 +62,18 @@ func (suite *VerifierIPFSSuite) TestIPFSVerifier() {
 	require.NoError(suite.T(), err)
 
 	verifier, err := ipfs.NewVerifier(
-		cm, stack.Nodes[0].IpfsClient.APIAddress())
+		cm,
+		stack.Nodes[0].IpfsClient.APIAddress(),
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
 	require.NoError(suite.T(), err)
 
 	installed, err := verifier.IsInstalled(ctx)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), installed)
 
-	resultHash, err := verifier.ProcessResultsFolder(ctx,
-		"fake-job-id", inputDir)
+	resultHash, err := verifier.ProcessShardResults(ctx, "fake-job-id", 0, inputDir)
 	require.NoError(suite.T(), err)
 
 	outputPath := filepath.Join(outputDir, resultHash)

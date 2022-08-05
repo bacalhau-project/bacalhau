@@ -85,7 +85,6 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 
 	accepted := func() bool {
-		concurrency := job.Deal.Concurrency
 		// let's see how many bids we have already accepted
 		// it's important this comes from "local events"
 		// otherwise we are in a race with the network and could
@@ -96,22 +95,30 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 			return false
 		}
 
-		acceptedEvents := []executor.JobLocalEvent{}
+		// a map of shard index onto an array of node ids we have farmed the job out to
+		assignedNodes := map[int][]string{}
 
 		for _, localEvent := range localEvents {
 			if localEvent.EventName == executor.JobLocalEventBidAccepted {
-				// have we got a bid for a node we have already accepted a bid for?
-				if localEvent.TargetNodeID == jobEvent.TargetNodeID {
-					threadLogger.Debug().Msgf("Rejected: Job bid already accepted: %s %s", jobEvent.TargetNodeID, jobEvent.JobID)
-					return false
+				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
+				if !ok {
+					assignedNodesForShard = []string{}
 				}
-				acceptedEvents = append(acceptedEvents, localEvent)
+				assignedNodesForShard = append(assignedNodesForShard, localEvent.TargetNodeID)
+				assignedNodes[localEvent.ShardIndex] = assignedNodesForShard
 			}
 		}
 
-		if len(acceptedEvents) >= concurrency {
+		assignedNodesForShard, ok := assignedNodes[jobEvent.ShardIndex]
+		if !ok {
+			assignedNodesForShard = []string{}
+		}
+
+		// we have already reached concurrency for this shard
+		// so let's reject this bid
+		if len(assignedNodesForShard) >= job.Deal.Concurrency {
 			//nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job already on enough nodes (Subscribed: %d vs Concurrency: %d)", len(acceptedEvents), concurrency)
+			threadLogger.Debug().Msgf("Rejected: Job shard %s %d already reached concurrency of %d %+v", job.ID, jobEvent.ShardIndex, job.Deal.Concurrency, assignedNodesForShard)
 			return false
 		}
 
@@ -119,32 +126,18 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 	}()
 
 	if accepted {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "requestor_node:bid_accepted",
-			Job:  job.ID,
-		})
-		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
+		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
 	} else {
-		logger.LogJobEvent(logger.JobEvent{
-			Node: node.id,
-			Type: "requestor_node:bid_rejected",
-			Job:  job.ID,
-		})
-		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID)
+		log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
+		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
 		if err != nil {
 			threadLogger.Error().Err(err)
 		}
 	}
-}
-
-func (node *RequesterNode) PinContext(buildContext string) (string, error) {
-	ipfsVerifier := node.verifiers[verifier.VerifierIpfs]
-	// TODO: we should have a method specifically for this not just piggybacking on the ipfs verifier
-	return ipfsVerifier.ProcessResultsFolder(context.Background(), "", buildContext)
 }
 
 func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {

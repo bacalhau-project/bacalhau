@@ -6,12 +6,15 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -42,6 +45,9 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		&devStackPeer, "peer", "",
 		`Connect node 0 to another network node`,
 	)
+
+	setupJobSelectionCLIFlags(devstackCmd)
+	setupCapacityManagerCLIFlags(devstackCmd)
 }
 
 var devstackCmd = &cobra.Command{
@@ -64,7 +70,17 @@ var devstackCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int) (
+		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
+			map[storage.StorageSourceType]storage.StorageProvider, error) {
+
+			if devStackNoop {
+				return executor_util.NewNoopStorageProviders(cm)
+			}
+
+			return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+		}
+
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
 			map[executor.EngineType]executor.Executor, error) {
 
 			if devStackNoop {
@@ -75,23 +91,42 @@ var devstackCmd = &cobra.Command{
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		getVerifiers := func(ipfsMultiAddress string, nodeIndex int) ( //nolint:unparam // nodeIndex will be used in the future
+		// nodeIndex will be used in the future
+		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam,lll
 			map[verifier.VerifierType]verifier.Verifier, error) {
 
 			if devStackNoop {
 				return verifier_util.NewNoopVerifiers(cm)
 			}
 
-			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress)
+			jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+				return ctrl.GetJob(ctx, id)
+			}
+			stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
+				return ctrl.GetJobState(ctx, id)
+			}
+			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		}
+
+		jobSelectionPolicy := getJobSelectionConfig()
+		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
+
+		computeNodeConfig := computenode.ComputeNodeConfig{
+			JobSelectionPolicy: jobSelectionPolicy,
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: totalResourceLimit,
+				ResourceLimitJob:   jobResourceLimit,
+			},
 		}
 
 		stack, err := devstack.NewDevStack(
 			cm,
 			devStackNodes,
 			devStackBadActors,
+			getStorageProviders,
 			getExecutors,
 			getVerifiers,
-			computenode.NewDefaultComputeNodeConfig(),
+			computeNodeConfig,
 			devStackPeer,
 		)
 		if err != nil {

@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/google/uuid"
@@ -17,15 +19,16 @@ import (
 )
 
 type Controller struct {
-	cm              *system.CleanupManager
-	id              string
-	db              localdb.LocalDB
-	tx              transport.Transport
-	jobContexts     map[string]context.Context // total job lifecycle
-	jobNodeContexts map[string]context.Context // per-node job lifecycle
-	subscribeFuncs  []transport.SubscribeFn
-	contextMutex    sync.RWMutex
-	subscribeMutex  sync.RWMutex
+	cleanupManager   *system.CleanupManager
+	id               string
+	localdb          localdb.LocalDB
+	transport        transport.Transport
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider
+	jobContexts      map[string]context.Context // total job lifecycle
+	jobNodeContexts  map[string]context.Context // per-node job lifecycle
+	subscribeFuncs   []transport.SubscribeFn
+	contextMutex     sync.RWMutex
+	subscribeMutex   sync.RWMutex
 }
 
 /*
@@ -38,44 +41,46 @@ func NewController(
 	cm *system.CleanupManager,
 	db localdb.LocalDB,
 	tx transport.Transport,
+	storageProviders map[storage.StorageSourceType]storage.StorageProvider,
 ) (*Controller, error) {
 	nodeID, err := tx.HostID(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	ctrl := &Controller{
-		cm:              cm,
-		id:              nodeID,
-		db:              db,
-		tx:              tx,
-		jobContexts:     make(map[string]context.Context),
-		jobNodeContexts: make(map[string]context.Context),
+		cleanupManager:   cm,
+		id:               nodeID,
+		localdb:          db,
+		transport:        tx,
+		storageProviders: storageProviders,
+		jobContexts:      make(map[string]context.Context),
+		jobNodeContexts:  make(map[string]context.Context),
 	}
 
 	return ctrl, nil
 }
 
 func (ctrl *Controller) GetTransport() transport.Transport {
-	return ctrl.tx
+	return ctrl.transport
 }
 
-func (ctrl *Controller) GetDatastore() localdb.LocalDB {
-	return ctrl.db
+func (ctrl *Controller) GetLocalDB() localdb.LocalDB {
+	return ctrl.localdb
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
-	ctrl.tx.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
+	ctrl.transport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
 		err := ctrl.handleEvent(ctx, ev)
 		if err != nil {
 			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
 		}
 	})
 
-	ctrl.cm.RegisterCallback(func() error {
+	ctrl.cleanupManager.RegisterCallback(func() error {
 		return ctrl.Shutdown(ctx)
 	})
 
-	return ctrl.tx.Start(ctx)
+	return ctrl.transport.Start(ctx)
 }
 
 func (ctrl *Controller) Shutdown(ctx context.Context) error {
@@ -98,23 +103,24 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 READ API
 */
 func (ctrl *Controller) GetJob(ctx context.Context, id string) (executor.Job, error) {
-	return ctrl.db.GetJob(ctx, id)
+	return ctrl.localdb.GetJob(ctx, id)
 }
 
 func (ctrl *Controller) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
-	return ctrl.db.GetJobEvents(ctx, id)
+	return ctrl.localdb.GetJobEvents(ctx, id)
 }
 
 func (ctrl *Controller) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
-	return ctrl.db.GetJobLocalEvents(ctx, id)
+	return ctrl.localdb.GetJobLocalEvents(ctx, id)
 }
 
-func (ctrl *Controller) GetExecutionStates(ctx context.Context, id string) (map[string]executor.JobState, error) {
-	return ctrl.db.GetExecutionStates(ctx, id)
+// we return an array of job states against each job - one for each shard
+func (ctrl *Controller) GetJobState(ctx context.Context, id string) (executor.JobState, error) {
+	return ctrl.localdb.GetJobState(ctx, id)
 }
 
 func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
-	return ctrl.db.GetJobs(ctx, query)
+	return ctrl.localdb.GetJobs(ctx, query)
 }
 
 /*
@@ -137,18 +143,29 @@ func (ctrl *Controller) SubmitJob(
 
 	ev := ctrl.constructEvent(jobID, executor.JobEventCreated)
 
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Spec, ctrl.storageProviders)
+	if err != nil {
+		return executor.Job{}, fmt.Errorf("error generating execution plan: %s", err)
+	}
+
 	ev.ClientID = data.ClientID
 	ev.JobSpec = data.Spec
 	ev.JobDeal = data.Deal
+	ev.JobExecutionPlan = executionPlan
 
-	job := constructJob(ev)
+	job := jobutils.ConstructJobFromEvent(ev)
+
+	if err != nil {
+		return executor.Job{}, fmt.Errorf("error processing job sharding: %s", err)
+	}
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
-	err = ctrl.db.AddJob(ctx, job)
+	err = ctrl.localdb.AddJob(ctx, job)
 	if err != nil {
 		return executor.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
+
 	err = ctrl.writeEvent(jobCtx, ev)
 	return job, err
 }
@@ -163,7 +180,11 @@ func (ctrl *Controller) UpdateDeal(ctx context.Context, jobID string, deal execu
 }
 
 // can only be done by the requestor node that is responsible for the job
-func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) AcceptJobBid(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("AcceptJobBid: jobID cannot be empty")
 	}
@@ -171,10 +192,11 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 		return fmt.Errorf("AcceptJobBid: nodeID cannot be empty")
 	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	err := ctrl.db.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
 		EventName:    executor.JobLocalEventBidAccepted,
 		JobID:        jobID,
 		TargetNodeID: nodeID,
+		ShardIndex:   shardIndex,
 	})
 	if err != nil {
 		return err
@@ -184,11 +206,16 @@ func (ctrl *Controller) AcceptJobBid(ctx context.Context, jobID, nodeID string) 
 	// the target node is the "nodeID" because the requester node calls this
 	// function and so knows which node it is accepting the bid for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
 // can only be done by the requestor node that is responsible for the job
-func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) RejectJobBid(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("RejectJobBid: jobID cannot be empty")
 	}
@@ -201,6 +228,7 @@ func (ctrl *Controller) RejectJobBid(ctx context.Context, jobID, nodeID string) 
 	// the target node is the "nodeID" because the requester node calls this
 	// function and so knows which node it is rejecting the bid for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -237,26 +265,31 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
 }
 
 /*
-
-  COMPUTE NODE
-
+COMPUTE NODE
 */
+func (ctrl *Controller) SelectJob(ctx context.Context, jobID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventSelected,
+		JobID:     jobID,
+	})
+	return err
+}
 
 // done by compute nodes when they hear about the job
-func (ctrl *Controller) BidJob(ctx context.Context, jobID string) error {
+func (ctrl *Controller) BidJob(ctx context.Context, jobID string, shardIndex int) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	err := ctrl.db.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
-		EventName: executor.JobLocalEventBid,
-		JobID:     jobID,
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName:  executor.JobLocalEventBid,
+		JobID:      jobID,
+		ShardIndex: shardIndex,
 	})
 	if err != nil {
 		return err
 	}
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_BidJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBid)
-	// the target node is "us" because it is "us" who is bidding
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -265,9 +298,6 @@ func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CancelJobBid")
 	ev := ctrl.constructEvent(jobID, executor.JobEventBidCancelled)
-	// the target node is "us" because it is "us" who is canceling our bid
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -278,35 +308,58 @@ func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error 
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RunJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventRunning)
 	ev.Status = status
-	// the target node is "us" because it is "us" who is running the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) CompleteJob(ctx context.Context, jobID, status, resultsID string) error {
+func (ctrl *Controller) CompleteJob(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	status string,
+	resultsID string,
+) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
 	ev.Status = status
 	ev.ResultsID = resultsID
-	// the target node is "us" because it is "us" who has completed the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
 // can only be called by a compute node who is current assigned to the job
-func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID string) error {
+func (ctrl *Controller) ErrorJob(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	status string,
+	resultsID string,
+) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
 	ev.ResultsID = resultsID
-	// the target node is "us" because it is "us" who has errored the job
-	// and so the job state should be updated against our node id
-	ev.TargetNodeID = ctrl.id
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
+}
+
+/*
+
+  MISC FUNCTIONS
+
+*/
+
+// write the "context" for a job to storage
+// this is used to upload code files
+// we presently just fix on ipfs to do this
+func (ctrl *Controller) PinContext(ctx context.Context, buildContext string) (string, error) {
+	ipfsStorage := ctrl.storageProviders[storage.StorageSourceIPFS]
+	result, err := ipfsStorage.Upload(ctx, buildContext)
+	if err != nil {
+		return "", err
+	}
+	return result.Cid, nil
 }
 
 /*
@@ -318,7 +371,7 @@ func (ctrl *Controller) ErrorJob(ctx context.Context, jobID, status, resultsID s
 // tell the rest of the network about the event via the transport
 func (ctrl *Controller) writeEvent(ctx context.Context, ev executor.JobEvent) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, ev.JobID)
-	return ctrl.tx.Publish(jobCtx, ev)
+	return ctrl.transport.Publish(jobCtx, ev)
 }
 
 func (ctrl *Controller) handleEvent(ctx context.Context, ev executor.JobEvent) error {
@@ -350,28 +403,46 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 	// work out which internal handler function based on the event type
 	switch ev.EventName {
 	case executor.JobEventCreated:
-		err = ctrl.db.AddJob(ctx, constructJob(ev))
+		err = ctrl.localdb.AddJob(ctx, jobutils.ConstructJobFromEvent(ev))
 
 	case executor.JobEventDealUpdated:
-		err = ctrl.db.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
+		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	err = ctrl.db.AddEvent(ctx, ev.JobID, ev)
+	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
 	if err != nil {
 		return err
 	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
-	if ev.TargetNodeID != "" && executor.IsValidJobState(executionState) {
-		err = ctrl.db.UpdateExecutionState(ctx, ev.JobID, ev.TargetNodeID, executor.JobState{
-			State:     executionState,
-			Status:    ev.Status,
-			ResultsID: ev.ResultsID,
-		})
+
+	// in most cases - the source node is the id of the state
+	// we are updating - there are a few events where the target node id
+	// overrides this (e.g. BidAccepted)
+	useNodeID := ev.SourceNodeID
+	if ev.TargetNodeID != "" {
+		useNodeID = ev.TargetNodeID
+	}
+
+	if executor.IsValidJobState(executionState) {
+		// update the state for this job shard
+		err = ctrl.localdb.UpdateShardState(
+			ctx,
+			ev.JobID,
+			useNodeID,
+			ev.ShardIndex,
+			executor.JobShardState{
+				NodeID:     useNodeID,
+				ShardIndex: ev.ShardIndex,
+				State:      executionState,
+				Status:     ev.Status,
+				ResultsID:  ev.ResultsID,
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -411,19 +482,6 @@ func (ctrl *Controller) constructEvent(jobID string, eventName executor.JobEvent
 		JobID:        jobID,
 		EventName:    eventName,
 		EventTime:    time.Now(),
-	}
-}
-
-func constructJob(ev executor.JobEvent) executor.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
-	return executor.Job{
-		ID: ev.JobID,
-		// TODO: add logging here
-		RequesterNodeID: ev.SourceNodeID,
-		ClientID:        ev.ClientID,
-		Spec:            ev.JobSpec,
-		Deal:            ev.JobDeal,
-		CreatedAt:       time.Now(),
 	}
 }
 
