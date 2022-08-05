@@ -55,6 +55,7 @@ function install-healthcheck() {
 function install-ipfs() {
   wget "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
+  # TODO should reset PWD to home dir after each function call
   cd go-ipfs
   sudo bash install.sh
   ipfs --version
@@ -64,6 +65,42 @@ function install-bacalhau() {
   wget "https://github.com/filecoin-project/bacalhau/releases/download/${BACALHAU_VERSION}/bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   tar xfv "bacalhau_${BACALHAU_VERSION}_linux_amd64.tar.gz"
   sudo mv ./bacalhau /usr/local/bin/bacalhau
+}
+
+function install-prometheus() {
+  sudo apt -y update
+  sudo groupadd --system prometheus
+  sudo useradd -s /sbin/nologin --system -g prometheus prometheus
+  sudo mkdir -p /etc/prometheus
+  sudo mkdir -p /var/lib/prometheus
+  wget "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+  tar xvf "prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+  # TODO should reset PWD to home dir after each function call
+  cd "prometheus-${PROMETHEUS_VERSION}.linux-amd64"
+  sudo mv prometheus promtool /usr/local/bin/
+  sudo mv consoles/ console_libraries/ /etc/prometheus/
+  # config file
+  HOSTNAME=$(hostname)
+  sudo tee /terraform_node/prometheus.yml > /dev/null <<EOF
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+        external_labels:
+          origin_prometheus: ${HOSTNAME}
+
+      scrape_configs:
+        - job_name: 'opentelemetry'
+          static_configs:
+            - targets: ['localhost:2112']
+
+      remote_write:
+      - url: ${GRAFANA_CLOUD_API_ENDPOINT}
+        basic_auth:
+          username: ${GRAFANA_CLOUD_API_USER}
+          password: ${SECRETES_GRAFANA_CLOUD_API_KEY}
+EOF
+  sudo cp /terraform_node/prometheus.yml /etc/prometheus/prometheus.yml
+  sudo chown -R prometheus:prometheus /var/lib/prometheus/
 }
 
 function mount-disk() { 
@@ -123,8 +160,10 @@ function start-services() {
   sudo systemctl daemon-reload
   sudo systemctl enable ipfs-daemon.service
   sudo systemctl enable bacalhau-daemon.service
+  sudo systemctl enable prometheus-daemon.service
   sudo systemctl start ipfs-daemon
   sudo systemctl start bacalhau-daemon
+  sudo systemctl start prometheus-daemon
   sudo service openresty reload
 }
 
@@ -134,6 +173,7 @@ function install() {
   install-healthcheck
   install-ipfs
   install-bacalhau
+  install-prometheus
   mount-disk
   init-ipfs
   init-bacalhau
