@@ -36,6 +36,11 @@ func NewStateResolver(
 	}
 }
 
+func (resolver *StateResolver) SetWaitTime(maxWaitAttempts int, delay time.Duration) {
+	resolver.maxWaitAttempts = maxWaitAttempts
+	resolver.waitDelay = delay
+}
+
 func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]executor.JobShardState, error) {
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
