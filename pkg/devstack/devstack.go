@@ -74,7 +74,7 @@ type GetVerifiersFunc func(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, // nolint:unparam // Incorrectly assumed as unused
+	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
@@ -319,7 +319,7 @@ export BACALHAU_IPFS_API_PORT_%d=%d
 export BACALHAU_IPFS_PATH_%d=%s
 export BACALHAU_API_HOST_%d=%s
 export BACALHAU_API_PORT_%d=%d
-cid=$(ipfs --api /ip4/127.0.0.1/tcp/${IPFS_API_PORT_%d} add --quiet ./testdata/grep_file.txt)
+cid=$(ipfs --api /ip4/127.0.0.1/tcp/%d add --quiet ./testdata/grep_file.txt)
 curl -XPOST http://127.0.0.1:%d/api/v0/id
 `,
 			nodeIndex,

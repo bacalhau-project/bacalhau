@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
 type eventDescription struct {
@@ -77,11 +77,10 @@ type jobDealDescription struct {
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 
-// nolintunparam // incorrectly suggesting unused
 var describeCmd = &cobra.Command{
 	Use:   "describe [id]",
 	Short: "Describe a job on the network",
-	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
+	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", //nolint:lll
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		inputJobID := cmdArgs[0]

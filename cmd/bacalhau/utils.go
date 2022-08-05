@@ -27,7 +27,7 @@ var tableSortReverse bool
 var tableIDFilter string
 var tableNoStyle bool
 
-func shortenTime(t time.Time) string { // nolint:unused // Useful function, holding here
+func shortenTime(t time.Time) string { //nolint:unused // Useful function, holding here
 	if tableOutputWide {
 		return t.Format("06-01-02-15:04:05")
 	}
@@ -97,8 +97,8 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-func setupDownloadFlags(cmd *cobra.Command, settings ipfs.DownloadSettings) {
-	cmd.Flags().IntVar(&settings.TimeoutSecs, "timeout-secs",
+func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
+	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
 	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")

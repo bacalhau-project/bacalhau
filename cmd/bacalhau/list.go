@@ -16,7 +16,7 @@ import (
 
 var DefaultNumberOfJobsToPrint = 10
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
 		`do not print the column headers.`)
 	listCmd.PersistentFlags().StringVar(&tableIDFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)

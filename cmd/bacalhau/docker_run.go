@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -18,6 +19,7 @@ import (
 )
 
 const CompleteStatus = "Complete"
+const DefaultDockerRunWaitSeconds = 100
 
 var jobEngine string
 var jobVerifier string
@@ -32,9 +34,13 @@ var jobMemory string
 var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
-var waitForJobToFinishAndPrintOutput bool
 var waitForJobToFinish bool
+var waitForJobToFinishAndPrintOutput bool
+var waitForJobTimeoutSecs int
 var jobLabels []string
+var shardingGlobPattern string
+var shardingBasePath string
+var shardingBatchSize int
 
 var runDownloadFlags = ipfs.DownloadSettings{
 	TimeoutSecs:    10,
@@ -42,7 +48,7 @@ var runDownloadFlags = ipfs.DownloadSettings{
 	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
@@ -60,7 +66,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputUrls, "input-urls", "u", []string{},
-		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz') and supports HTTP and HTTPS.`, // nolint:lll // Documentation, ok if long.
+		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz' mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz') and supports HTTP and HTTPS.`, //nolint:lll // Documentation, ok if long.
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&jobInputVolumes, "input-volumes", "v", []string{},
@@ -102,20 +108,40 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
-		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, // nolint:lll // Documentation, ok if long.
+		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
-		&waitForJobToFinishAndPrintOutput, "wait", false,
-		`Wait for job to finish and print output`,
+		&waitForJobToFinish, "wait", false,
+		`Wait for the job to finish.`,
+	)
+
+	dockerRunCmd.PersistentFlags().IntVar(
+		&waitForJobTimeoutSecs, "wait-timeout-secs", DefaultDockerRunWaitSeconds,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
-		&waitForJobToFinish, "wait-only", false,
-		`Only wait for job to finish, but don't print output`,
+		&waitForJobToFinishAndPrintOutput, "download", false,
+		`Download the results and print stdout once the job has completed (implies --wait).`,
 	)
 
-	setupDownloadFlags(dockerRunCmd, runDownloadFlags)
+	setupDownloadFlags(dockerRunCmd, &runDownloadFlags)
+
+	dockerRunCmd.PersistentFlags().StringVar(
+		&shardingGlobPattern, "sharding-glob-pattern", "",
+		`Use this pattern to match files to be sharded.`,
+	)
+
+	dockerRunCmd.PersistentFlags().StringVar(
+		&shardingGlobPattern, "sharding-base-path", "",
+		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
+	)
+
+	dockerRunCmd.PersistentFlags().IntVar(
+		&shardingBatchSize, "sharding-batch-size", 1,
+		`Place results of the sharding glob pattern into groups of this size.`,
+	)
 }
 
 var dockerCmd = &cobra.Command{
@@ -146,6 +172,7 @@ var dockerRunCmd = &cobra.Command{
 		jobMemory = ""
 		jobGPU = ""
 		skipSyntaxChecking = false
+		waitForJobToFinish = false
 		waitForJobToFinishAndPrintOutput = false
 		runDownloadFlags = ipfs.DownloadSettings{
 			TimeoutSecs:    10,
@@ -160,6 +187,10 @@ var dockerRunCmd = &cobra.Command{
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
+
+		if waitForJobToFinishAndPrintOutput {
+			waitForJobToFinish = true
+		}
 
 		engineType, err := executor.ParseEngineType(jobEngine)
 		if err != nil {
@@ -216,6 +247,12 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
+		spec.Sharding = executor.JobShardingConfig{
+			GlobPattern: shardingGlobPattern,
+			BasePath:    shardingBasePath,
+			BatchSize:   shardingBatchSize,
+		}
+
 		if !skipSyntaxChecking {
 			err = system.CheckBashSyntax(jobEntrypoint)
 			if err != nil {
@@ -229,36 +266,38 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		cmd.Printf("%s\n", job.ID)
-		if waitForJobToFinishAndPrintOutput || waitForJobToFinish {
+		if waitForJobToFinish {
 			resolver := getAPIClient().GetJobStateResolver()
+			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-		}
-		if waitForJobToFinishAndPrintOutput {
-			results, err := getAPIClient().GetResults(ctx, job.ID)
-			if err != nil {
-				return err
+
+			if waitForJobToFinishAndPrintOutput {
+				results, err := getAPIClient().GetResults(ctx, job.ID)
+				if err != nil {
+					return err
+				}
+				if len(results) == 0 {
+					return fmt.Errorf("no results found")
+				}
+				err = ipfs.DownloadJob(
+					cm,
+					job,
+					results,
+					runDownloadFlags,
+				)
+				if err != nil {
+					return err
+				}
+				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				fmt.Println(string(body))
 			}
-			if len(results) == 0 {
-				return fmt.Errorf("no results found")
-			}
-			err = ipfs.DownloadJob(
-				cm,
-				job,
-				results,
-				runDownloadFlags,
-			)
-			if err != nil {
-				return err
-			}
-			body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
-			if err != nil {
-				return err
-			}
-			fmt.Println()
-			fmt.Println(string(body))
 		}
 
 		return nil

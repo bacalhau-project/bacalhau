@@ -74,7 +74,7 @@ func main() {
 
 	// // TODO: Should we check the result here?
 	// if cmd != nil && cmd.Process != nil {
-	// 	cmd.Process.Kill() // nolint
+	// 	cmd.Process.Kill() //nolint
 	// }
 
 	// f.Name()
