@@ -139,7 +139,7 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().IntVar(
 		&shardingBatchSize, "sharding-batch-size", 1,
-		`How many sharding atoms are to be grouped together into one shard`,
+		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 }
 
