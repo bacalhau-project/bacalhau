@@ -50,6 +50,9 @@ sidebar_position: 1
       --localoutput string       When using --wait, assign a specific directory to download output. (default ".")
       --memory string            Job Memory requirement (e.g. 500Mb, 2Gb, 8Gb).
   -o, --output-volumes strings   name:path of the output data volumes. 'outputs:/outputs' is always added.
+      --sharding-base-path string      Where the sharding glob pattern starts from - useful when you have multiple volumes.
+      --sharding-batch-size int        Place results of the sharding glob pattern into groups of this size. (default 1)
+      --sharding-glob-pattern string   Use this pattern to match files to be sharded.
       --skip-syntax-checking     Skip having 'shellchecker' verify syntax of the command
       --verifier string          What verification engine to use to run the job (default "ipfs")
       --wait                     Wait For Job To Finish And Print Output
