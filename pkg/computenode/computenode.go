@@ -318,7 +318,11 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 subscriptions -> bid rejected
 */
 func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
-	node.capacityManager.Remove(job.ID)
+	// we only care if the rejected bid is for us
+	if jobEvent.TargetNodeID != node.id {
+		return
+	}
+	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
 	node.controlLoopBidOnJobs()
 }
 
