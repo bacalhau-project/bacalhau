@@ -31,8 +31,8 @@ func NewStateResolver(
 	return &StateResolver{
 		jobLoader:       jobLoader,
 		stateLoader:     stateLoader,
-		maxWaitAttempts: 100,
-		waitDelay:       time.Second * 1,
+		maxWaitAttempts: 1000,
+		waitDelay:       time.Millisecond * 100,
 	}
 }
 
@@ -249,6 +249,10 @@ func GetFilteredShardStates(jobState executor.JobState, filterState executor.Job
 
 func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
 	return GetFilteredShardStates(jobState, executor.JobStateComplete)
+}
+
+func HasShardReachedCapacity(jobState executor.JobState, shardIndex int) bool {
+	return false
 }
 
 // group states by shard index so we can easily iterate over a whole set of them

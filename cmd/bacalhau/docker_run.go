@@ -279,8 +279,13 @@ var dockerRunCmd = &cobra.Command{
 			err = system.ValidateWorkingDir(ODR.WorkingDir)
 
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid working directory: %s", err)
 			}
+
+		jobSpec.Sharding = executor.JobShardingConfig{
+			GlobPattern: ODR.ShardingGlobPattern,
+			BasePath:    ODR.ShardingBasePath,
+			BatchSize:   ODR.ShardingBatchSize,
 		}
 
 		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
@@ -304,7 +309,7 @@ var dockerRunCmd = &cobra.Command{
 			doNotTrack,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("error executing job: %s", err)
 		}
 
 		jobSpec.Sharding = executor.JobShardingConfig{
@@ -313,7 +318,7 @@ var dockerRunCmd = &cobra.Command{
 			BatchSize:   ODR.ShardingBatchSize,
 		}
 
-		if !ODR.SkipSyntaxChecking {
+		if !ODR.SkipSyntaxChecking || waitForJobToFinish {
 			err = system.CheckBashSyntax(ODR.Entrypoint)
 			if err != nil {
 				return fmt.Errorf("error checking bash syntax: %s", err)

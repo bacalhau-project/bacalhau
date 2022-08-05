@@ -197,7 +197,7 @@ var devstackCmd = &cobra.Command{
 		if err == nil {
 			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
 		}
-		f, err = os.Create(portFileName)
+		f, err := os.Create(portFileName)
 		if err != nil {
 			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
 		}
