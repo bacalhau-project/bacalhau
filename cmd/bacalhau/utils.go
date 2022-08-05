@@ -98,7 +98,7 @@ func ReverseList(s []string) []string {
 }
 
 func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
-	cmd.Flags().IntVar(&settings.TimeoutSecs, "timeout-secs",
+	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
 	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")

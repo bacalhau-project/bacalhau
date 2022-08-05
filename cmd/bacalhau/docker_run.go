@@ -33,7 +33,9 @@ var jobMemory string
 var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
+var waitForJobToFinish bool
 var waitForJobToFinishAndPrintOutput bool
+var waitForJobTimeoutSecs int
 var jobLabels []string
 var shardingGlobPattern string
 var shardingBasePath string
@@ -109,8 +111,18 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
-		&waitForJobToFinishAndPrintOutput, "wait", false,
-		`Wait For Job To Finish And Print Output`,
+		&waitForJobToFinish, "wait", false,
+		`Wait for the job to finish.`,
+	)
+
+	dockerRunCmd.PersistentFlags().IntVar(
+		&waitForJobTimeoutSecs, "wait-timeout-secs", 100,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
+	)
+
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&waitForJobToFinishAndPrintOutput, "download", false,
+		`Download the results and print stdout once the job has completed (implies --wait).`,
 	)
 
 	setupDownloadFlags(dockerRunCmd, &runDownloadFlags)
@@ -159,6 +171,7 @@ var dockerRunCmd = &cobra.Command{
 		jobMemory = ""
 		jobGPU = ""
 		skipSyntaxChecking = false
+		waitForJobToFinish = false
 		waitForJobToFinishAndPrintOutput = false
 		runDownloadFlags = ipfs.DownloadSettings{
 			TimeoutSecs:    10,
@@ -173,6 +186,10 @@ var dockerRunCmd = &cobra.Command{
 		ctx := context.Background()
 		jobImage := cmdArgs[0]
 		jobEntrypoint := cmdArgs[1:]
+
+		if waitForJobToFinishAndPrintOutput {
+			waitForJobToFinish = true
+		}
 
 		engineType, err := executor.ParseEngineType(jobEngine)
 		if err != nil {
@@ -248,37 +265,38 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		cmd.Printf("%s\n", job.ID)
-		if waitForJobToFinishAndPrintOutput {
+		if waitForJobToFinish {
 			resolver := getAPIClient().GetJobStateResolver()
-			// let's wait a lot longer than 100 seconds because sometimes
-			// jobs take a long time to finish
-			resolver.SetWaitTime(10000, time.Second*1)
+			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-			results, err := getAPIClient().GetResults(ctx, job.ID)
-			if err != nil {
-				return err
+
+			if waitForJobToFinishAndPrintOutput {
+				results, err := getAPIClient().GetResults(ctx, job.ID)
+				if err != nil {
+					return err
+				}
+				if len(results) == 0 {
+					return fmt.Errorf("no results found")
+				}
+				err = ipfs.DownloadJob(
+					cm,
+					job,
+					results,
+					runDownloadFlags,
+				)
+				if err != nil {
+					return err
+				}
+				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				fmt.Println(string(body))
 			}
-			if len(results) == 0 {
-				return fmt.Errorf("no results found")
-			}
-			err = ipfs.DownloadJob(
-				cm,
-				job,
-				results,
-				runDownloadFlags,
-			)
-			if err != nil {
-				return err
-			}
-			body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
-			if err != nil {
-				return err
-			}
-			fmt.Println()
-			fmt.Println(string(body))
 		}
 
 		return nil
