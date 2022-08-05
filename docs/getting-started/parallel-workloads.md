@@ -42,11 +42,11 @@ For example - if we have 10 input volumes each containing a sequence of images a
    * image00001.jpg
    * image00002.jpg
  * /input_images/volumeX
-   * image00001.jpg
-   * image00002.jpg
+   * image02001.jpg
+   * image02002.jpg
  * /input_images/volume10
-   * image00001.jpg
-   * image00002.jpg
+   * image04701.jpg
+   * image04702.jpg
 
 We can use a base path of `/input_images` and a glob pattern of `/volume*/image*.jpg` which would result in all images in all mounted volumes becoming atoms in our shards.
 
