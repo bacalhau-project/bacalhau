@@ -703,13 +703,12 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		"docker", "run",
 		"--api-host", host,
 		"--api-port", port,
+		"--wait",
 		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
 		"--sharding-base-path", "/inputs",
 		"--sharding-glob-pattern", "*.mp4",
 		"--sharding-batch-size", "1",
-		"binocarlos/video-resize-example",
-		"bash", "/entrypoint.sh",
-		"/inputs", "/outputs",
+		"ubuntu", "echo", "hello",
 	}
 
 	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)

@@ -134,7 +134,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 
 	dockerRunCmd.PersistentFlags().StringVar(
-		&shardingGlobPattern, "sharding-base-path", "",
+		&shardingBasePath, "sharding-base-path", "",
 		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
 	)
 
