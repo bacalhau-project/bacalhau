@@ -111,7 +111,7 @@ func (e *Local) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (
 // TODO: #289 Clean up RunJob
 // nolint:funlen,gocyclo // will clean up
 func (e *Local) RunJobLocally(ctx context.Context, jobSpec executor.JobSpec) (string, error) {
-	ctx, span := newSpan(ctx, "RunJob")
+	ctx, span := newSpan(ctx, "RunJobLocally")
 	defer span.End()
 
 	jobResultsDir, err := e.ensureJobResultsDir()
