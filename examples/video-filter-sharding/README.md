@@ -1,10 +1,23 @@
 # Example of sharding with video filters
 
 ```bash
-cid=$(ipfs add folder-with-videos-inside)
-bacalhau docker run \
+cid="QmRmo77BkKvfXpAqFrCFZ26aeJjyMXY75zySWvyLgKfcbu"
+time bacalhau docker run \
   -v $cid:/inputs \
-  -o results:/results \
-  binocarlos/bacalhau-video-sharding \
-  bash /entrypoint.sh /inputs /results
+  --cpu 2 \
+  --memory 1Gb \
+  --wait \
+  --wait-timeout-secs 10000 \
+  binocarlos/video-resize-example \
+  bash /entrypoint.sh /inputs /outputs
+time bacalhau docker run \
+  -v $cid:/inputs \
+  --cpu 2 \
+  --memory 1Gb \
+  --wait \
+  --wait-timeout-secs 10000 \
+  --sharding-glob-pattern "/inputs/*.mp4" \
+  --sharding-batch-size 1 \
+  binocarlos/video-resize-example \
+  bash /entrypoint.sh /inputs /outputs
 ```
