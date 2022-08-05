@@ -19,6 +19,7 @@ import (
 )
 
 const CompleteStatus = "Complete"
+const DefaultDockerRunWaitSeconds = 100
 
 var jobEngine string
 var jobVerifier string
@@ -116,7 +117,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 
 	dockerRunCmd.PersistentFlags().IntVar(
-		&waitForJobTimeoutSecs, "wait-timeout-secs", 100,
+		&waitForJobTimeoutSecs, "wait-timeout-secs", DefaultDockerRunWaitSeconds,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
 	)
 

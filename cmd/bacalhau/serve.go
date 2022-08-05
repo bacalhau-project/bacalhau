@@ -107,7 +107,7 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() (capacitymanager.ResourceUsageConfig, capacitymanager.ResourceUsageConfig) {
+func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.ResourceUsageConfig) {
 	// the total amount of CPU / Memory the system can be using at one time
 	totalResourceLimit := capacitymanager.ResourceUsageConfig{
 		CPU:    limitTotalCPU,
