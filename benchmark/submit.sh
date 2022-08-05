@@ -13,7 +13,7 @@ while true; do
     if [[ $(${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost describe "${ID}" 2>&1|grep "State: Complete"|wc -l) -ne 3 ]]; then
         echo "JOB ${ID} FAILED"
         (( COUNTER++ ))
-        if (( COUNTER > 300 )); then
+        if (( COUNTER > 3000 )); then
             echo "JOB ${ID} checked ${COUNTER} times. Assuming failure."
             exit 1
         fi

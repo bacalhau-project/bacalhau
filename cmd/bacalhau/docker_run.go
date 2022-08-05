@@ -33,6 +33,7 @@ var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
 var waitForJobToFinishAndPrintOutput bool
+var waitForJobToFinish bool
 var jobLabels []string
 
 var runDownloadFlags = ipfs.DownloadSettings{
@@ -106,7 +107,12 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&waitForJobToFinishAndPrintOutput, "wait", false,
-		`Wait For Job To Finish And Print Output`,
+		`Wait for job to finish and print output`,
+	)
+
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&waitForJobToFinish, "wait-only", false,
+		`Only wait for job to finish, but don't print output`,
 	)
 
 	setupDownloadFlags(dockerRunCmd, runDownloadFlags)
@@ -223,12 +229,14 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		cmd.Printf("%s\n", job.ID)
-		if waitForJobToFinishAndPrintOutput {
+		if waitForJobToFinishAndPrintOutput || waitForJobToFinish {
 			resolver := getAPIClient().GetJobStateResolver()
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
+		}
+		if waitForJobToFinishAndPrintOutput {
 			results, err := getAPIClient().GetResults(ctx, job.ID)
 			if err != nil {
 				return err

@@ -143,6 +143,7 @@ func main() {
 		defer theMutex.Unlock()
 		err := json.NewEncoder(w).Encode(theResult)
 		if err != nil {
+			log.Print(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
