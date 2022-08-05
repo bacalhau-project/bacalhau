@@ -197,6 +197,9 @@ func GenerateExecutionPlan(
 	if err != nil {
 		return executor.JobExecutionPlan{}, err
 	}
+	if len(shards) == 0 {
+		return executor.JobExecutionPlan{}, fmt.Errorf("no sharding atoms found for glob pattern %s", config.GlobPattern)
+	}
 	return executor.JobExecutionPlan{
 		TotalShards: len(shards),
 	}, nil
