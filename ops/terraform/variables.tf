@@ -75,6 +75,21 @@ variable "honeycomb_api_key" {
   default = ""
 }
 
+// secrets
+variable "grafana_cloud_api_key" {
+  type    = string
+  default = ""
+}
+
+variable "grafana_cloud_api_user" {
+  type = string
+  default = ""
+}
+
+variable "grafana_cloud_api_endpoint" {
+  type = string
+  default = ""
+}
 
 // Out of a total of var.instance_count machines, how many do you want to be GPU machines?
 // I chose this, rather than making a new pool of machines, to maintain configuration parity
@@ -99,4 +114,9 @@ variable "gpu_type" {
 variable "gpu_machine_type" {
   type    = string
   default = "n1-standard-4"
+}
+
+// Version number, omit the 'v' prefix
+variable "prometheus_version" {
+  type = string
 }
