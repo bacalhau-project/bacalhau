@@ -200,14 +200,6 @@ func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
-
-		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
-		if hasShardReachedCapacity {
-			log.Debug().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
-			node.capacityManager.Remove(flatID)
-			continue
-		}
-
 		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
@@ -308,58 +300,14 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
-		node.controlLoopBidOnJobs("job created & selected")
+		node.controlLoopBidOnJobs()
 	}
-}
-
-func hash(s string) int {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return int(h.Sum32())
-}
-
-func diff(a, b int) int {
-	if a < b {
-		return b - a
-	}
-	return a - b
-}
-
-func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concurrency int) int {
-	// Calculate how long to wait to bid on the job by using a circular hashing
-	// style approach: Invent a metric for distance between node ID and job ID.
-	// If the node and job ID happen to be close to eachother, such that we'd
-	// expect that we are one of the N nodes "closest" to the job, bid
-	// instantly. Beyond that, back off an amount "stepped" proportional to how
-	// far we are from the job. This should evenly spread the work across the
-	// network, and have the property of on average only concurrency many nodes
-	// bidding on the job, and other nodes not bothering to bid because they
-	// will already have seen bid/bidaccepted messages from the close nodes.
-	// This will decrease overall network traffic, improving CPU and memory
-	// usage in large clusters.
-	nodeHash := hash(nodeID)
-	jobHash := hash(jobID)
-	// Range: 0 through 4,294,967,295. (4 billion)
-	distance := diff(nodeHash, jobHash)
-	// scale distance per chunk by concurrency (so that many nodes bid on a job
-	// with high concurrency). IOW, divide the space up into this many pieces.
-	// If concurrency=3 and network size=3, there'll only be one piece and
-	// everyone will bid. If concurrency=1 and network size=1 million, there
-	// will be a million slices of the hash space.
-	chunk := int((float32(concurrency) / float32(networkSize)) * 4294967295) //nolint:gomnd
-	// wait 1 second per chunk distance. So, if we land in exactly the same
-	// chunk, bid immediately. If we're one chunk away, wait a bit before
-	// bidding. If we're very far away, wait a very long time.
-	delay := (distance / chunk) * 1000 //nolint:gomnd
-	log.Trace().Msgf(
-		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
-		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
-	)
-	return delay
 }
 
 /*
-subscriptions -> bid accepted
+
+  subscriptions -> bid accepted
+
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span

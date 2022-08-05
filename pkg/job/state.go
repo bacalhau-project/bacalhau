@@ -251,34 +251,7 @@ func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardStat
 	return GetFilteredShardStates(jobState, executor.JobStateComplete)
 }
 
-func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shardIndex int) bool {
-	allShards := GroupShardStates(FlattenShardStates(jobState))
-	shardStates, ok := allShards[shardIndex]
-	if !ok {
-		return false
-	}
-
-	bidsSeen := 0
-	acceptedBidsSeen := 0
-
-	for _, shardState := range shardStates {
-		if shardState.State == executor.JobStateBidding {
-			bidsSeen++
-		} else if shardState.State == executor.JobStateWaiting {
-			acceptedBidsSeen++
-		}
-	}
-
-	if acceptedBidsSeen >= job.Deal.Concurrency {
-		log.Debug().Msgf("rejecting because accepted bids > concurrency")
-		return true
-	}
-
-	if bidsSeen*2 >= job.Deal.Concurrency*3 {
-		log.Debug().Msgf("rejecting because seen bids > concurrency * 1.5")
-		return true
-	}
-
+func HasShardReachedCapacity(jobState executor.JobState, shardIndex int) bool {
 	return false
 }
 
