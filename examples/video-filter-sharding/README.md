@@ -1,7 +1,7 @@
 # Example of sharding with video filters
 
 ```bash
-cid="QmRmo77BkKvfXpAqFrCFZ26aeJjyMXY75zySWvyLgKfcbu"
+cid="Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j"
 time bacalhau docker run \
   -v $cid:/inputs \
   --cpu 2 \
