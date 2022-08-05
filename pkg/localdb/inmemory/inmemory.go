@@ -149,7 +149,16 @@ func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (exec
 	if !ok {
 		return executor.JobState{}, nil
 	}
-	return *state, nil
+	// copy job state because it has mutable fields (Nodes), we should return a
+	// value that isn't concurrently being modified
+	// XXX what about the mutable fields within JobNodeState :-(
+	newJobState := executor.JobState{
+		Nodes: map[string]executor.JobNodeState{},
+	}
+	for idx, node := range state.Nodes {
+		newJobState.Nodes[idx] = node
+	}
+	return newJobState, nil
 }
 
 func (d *InMemoryDatastore) UpdateShardState(
