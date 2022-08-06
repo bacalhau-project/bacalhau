@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -152,4 +153,3 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
 	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 }
-

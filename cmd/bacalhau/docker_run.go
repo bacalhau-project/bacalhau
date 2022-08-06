@@ -10,9 +10,9 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	pjob "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/local"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/local"
+
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -35,7 +35,6 @@ var jobMemory string
 var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
-
 var isLocal bool
 var waitForJobToFinish bool
 var waitForJobToFinishAndPrintOutput bool
@@ -271,19 +270,8 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 		}
-
 		if isLocal {
 			client, err := local.NewDockerClient()
-		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("%s\n", job.ID)
-		if waitForJobToFinish {
-			resolver := getAPIClient().GetJobStateResolver()
-			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
-			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				cmd.Printf("%t\n", local.IsInstalled(client))
 				return err
@@ -299,67 +287,40 @@ var dockerRunCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-	states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
-			if err != nil {
-				return err
-			}
 
 			cmd.Printf("%s\n", job.ID)
-			currentNodeID, _ := pjob.GetCurrentJobState(states)
-			nodeIds := []string{currentNodeID}
-
-			// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
-			// feels like we're overloading the surface of the CLI command a lot.
-			if waitForJobToFinishAndPrintOutput {
-				err = WaitForJob(ctx, job.ID, job,
-					WaitForJobThrowErrors(job, []executor.JobStateType{
-						executor.JobStateCancelled,
-						executor.JobStateError,
-					}),
-					WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-				)
+			if waitForJobToFinish {
+				resolver := getAPIClient().GetJobStateResolver()
+				resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
+				err = resolver.WaitUntilComplete(ctx, job.ID)
 				if err != nil {
 					return err
 				}
 
-				cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
-
-				// TODO: #425 Can you explain what the below is doing? Please comment.
-				var cidv string
-				for cid := range cidl {
-					cidv = filepath.Join(jobLocalOutput, cid)
+				if waitForJobToFinishAndPrintOutput {
+					results, err := getAPIClient().GetResults(ctx, job.ID)
+					if err != nil {
+						return err
+					}
+					if len(results) == 0 {
+						return fmt.Errorf("no results found")
+					}
+					err = ipfs.DownloadJob(
+						cm,
+						job,
+						results,
+						runDownloadFlags,
+					)
+					if err != nil {
+						return err
+					}
+					body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+					if err != nil {
+						return err
+					}
+					fmt.Println()
+					fmt.Println(string(body))
 				}
-				body, err := os.ReadFile(cidv + "/stdout")
-				if err != nil {
-					return err
-				}
-				cmd.Println(string(body))
-			}
-
-
-			if waitForJobToFinishAndPrintOutput {
-				results, err := getAPIClient().GetResults(ctx, job.ID)
-				if err != nil {
-					return err
-				}
-				if len(results) == 0 {
-					return fmt.Errorf("no results found")
-				}
-				err = ipfs.DownloadJob(
-					cm,
-					job,
-					results,
-					runDownloadFlags,
-				)
-				if err != nil {
-					return err
-				}
-				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
-				if err != nil {
-					return err
-				}
-				fmt.Println()
-				fmt.Println(string(body))
 			}
 		}
 
