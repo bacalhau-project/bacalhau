@@ -60,7 +60,8 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 			err           string
 		}{
 			{outputVolumes: []OutputVolumes{{name: "", path: ""}}, correctLength: 0, err: "invalid output volume"},                                                // Flag not provided
-			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}}, correctLength: 1, err: ""},                                                  // Correct output flag, but dupe with existing
+			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}}, correctLength: 1, err: ""},    
+			{outputVolumes: []OutputVolumes{{name: "APPLE_1", path: "/apple"}, {name: "APPLE_2", path: "/apple"},}, correctLength: 2, err: ""},    
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs"}, {name: "OUTPUT_NAME_1", path: "/outputs_1"}}, correctLength: 2, err: ""},     // Two outputs, one default (and dupe), one not
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_1", path: "/outputs_1"}}, correctLength: 2, err: ""},                                              // Correct output flag
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags

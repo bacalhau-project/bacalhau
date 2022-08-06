@@ -94,8 +94,8 @@ func buildJobOutputs(outputVolumes []string) ([]storage.StorageSpec, error) {
 
 		if _, containsKey := outputVolumesMap[slices[1]]; containsKey {
 			log.Warn().Msgf("Output volumes already contain a mapping to '%s:%s'. Replacing it with '%s:%s'.",
-				outputVolumesMap[slices[0]],
-				outputVolumesMap[slices[1]],
+				outputVolumesMap[slices[1]].Name,
+				outputVolumesMap[slices[1]].Path,
 				slices[0],
 				slices[1],
 			)
