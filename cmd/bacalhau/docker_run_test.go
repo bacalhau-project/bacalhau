@@ -368,7 +368,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs_1"}}, correctLength: 2, err: ""},                                                // Correct output flag
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
-			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volumes"},                                     // OV requested but no name (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volume"},                                     // OV requested but no name (should error)
 		}
 
 		for _, tcids := range testCids {
@@ -400,7 +400,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 					flagsArray...,
 				)
 				if tcids.err != "" {
-					require.Error(suite.T(), err, "Expected an error, but none provided.")
+					require.Error(suite.T(), err, "Expected an error, but none provided. %+v", tcids)
 					require.Contains(suite.T(), err.Error(), "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
@@ -487,6 +487,10 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 		{numberOfJobs: 1}, // Test for one
 		// {numberOfJobs: 5}, // Test for five
 	}
+
+	var logBuf = new(bytes.Buffer)
+	var Stdout = struct{ io.Writer }{os.Stdout}
+	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
 
 	annotationsToTest := []struct {
 		Name          string

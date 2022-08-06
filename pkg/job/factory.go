@@ -1,7 +1,6 @@
 package job
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -9,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -53,58 +51,15 @@ func ConstructDockerJob( //nolint:funlen
 		Memory: memory,
 		GPU:    gpu,
 	}
-	jobInputs := []storage.StorageSpec{}
 	jobContexts := []storage.StorageSpec{}
-	jobOutputs := []storage.StorageSpec{}
 
-	for _, inputURL := range inputUrls {
-		// split using LastIndex to support port numbers in URL
-		lastInd := strings.LastIndex(inputURL, ":")
-		rawURL := inputURL[:lastInd]
-		path := inputURL[lastInd+1:]
-		// should loop through all available storage providers?
-		_, err := urldownload.IsURLSupported(rawURL)
-		if err != nil {
-			return executor.JobSpec{}, executor.JobDeal{}, err
-		}
-		jobInputs = append(jobInputs, storage.StorageSpec{
-			Engine: storage.StorageSourceURLDownload,
-			URL:    rawURL,
-			Path:   path,
-		})
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
+	if err != nil {
+		return executor.JobSpec{}, executor.JobDeal{}, err
 	}
-
-	for _, inputVolume := range inputVolumes {
-		slices := strings.Split(inputVolume, ":")
-		if len(slices) != 2 {
-			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid input volume: %s", inputVolume)
-		}
-		if strings.Contains(slices[0], "/") {
-			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("forward slash in CID not (yet) supported: %s", slices[0])
-		}
-		jobInputs = append(jobInputs, storage.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
-			Cid:    slices[0],
-			Path:   slices[1],
-		})
-	}
-
-	for _, outputVolume := range outputVolumes {
-		slices := strings.Split(outputVolume, ":")
-		if len(slices) != 2 {
-			msg := fmt.Sprintf("invalid output volume: %s", outputVolume)
-			log.Error().Msgf(msg)
-			return executor.JobSpec{}, executor.JobDeal{}, errors.New(msg)
-		}
-		jobOutputs = append(jobOutputs, storage.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
-			Name:   slices[0],
-			Path:   slices[1],
-		})
+	jobOutputs, err := buildJobOutputs(outputVolumes)
+	if err != nil {
+		return executor.JobSpec{}, executor.JobDeal{}, err
 	}
 
 	var jobAnnotations []string
@@ -161,6 +116,7 @@ func ConstructDockerJob( //nolint:funlen
 
 func ConstructLanguageJob(
 	inputVolumes []string,
+	inputUrls []string,
 	outputVolumes []string,
 	env []string,
 	concurrency int,
@@ -179,36 +135,15 @@ func ConstructLanguageJob(
 		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
 
-	jobInputs := []storage.StorageSpec{}
 	jobContexts := []storage.StorageSpec{}
-	jobOutputs := []storage.StorageSpec{}
 
-	for _, inputVolume := range inputVolumes {
-		slices := strings.Split(inputVolume, ":")
-		if len(slices) != 2 {
-			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid input volume: %s", inputVolume)
-		}
-		jobInputs = append(jobInputs, storage.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
-			Cid:    slices[0],
-			Path:   slices[1],
-		})
+	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
+	if err != nil {
+		return executor.JobSpec{}, executor.JobDeal{}, err
 	}
-
-	for _, outputVolume := range outputVolumes {
-		slices := strings.Split(outputVolume, ":")
-		if len(slices) != 2 {
-			return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("invalid output volume: %s", outputVolume)
-		}
-		jobOutputs = append(jobOutputs, storage.StorageSpec{
-			// we have a chance to have a kind of storage multiaddress here
-			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
-			Name:   slices[0],
-			Path:   slices[1],
-		})
+	jobOutputs, err := buildJobOutputs(outputVolumes)
+	if err != nil {
+		return executor.JobSpec{}, executor.JobDeal{}, err
 	}
 
 	spec := executor.JobSpec{

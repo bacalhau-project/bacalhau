@@ -124,9 +124,10 @@ var runPythonCmd = &cobra.Command{
 			return fmt.Errorf("must specify an inline command or a path to a python file")
 		}
 
-		// TODO: implement ConstructLanguageJob and switch to it
+		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync. 
 		spec, deal, err := job.ConstructLanguageJob(
 			jobInputVolumes,
+			jobInputUrls, 
 			jobOutputVolumes,
 			[]string{}, // no env vars (yet)
 			jobConcurrency,

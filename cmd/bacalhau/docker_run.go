@@ -206,8 +206,6 @@ var dockerRunCmd = &cobra.Command{
 			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
-		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
-
 		// No error checking, because it will never be an error (for now)
 		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
 		if sanitizationFatal {
