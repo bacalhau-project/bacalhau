@@ -108,6 +108,7 @@ func ReverseList(s []string) []string {
 // so if we want to compare the output in the console with a expected output like "hello" we could do that
 // this is mainly used in testing --local
 // go playground link https://go.dev/play/p/cuGIaIorWfD
+
 //nolint:unused,deadcode
 func capture() func() (string, error) {
 	r, w, err := os.Pipe()
