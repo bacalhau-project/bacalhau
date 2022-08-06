@@ -117,6 +117,7 @@ var applyCmd = &cobra.Command{
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
 			}
 		}
+		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
 
 		engineType, err := executor.ParseEngineType(jobspec.EngineName)
 		if err != nil {
