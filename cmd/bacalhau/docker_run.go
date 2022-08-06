@@ -10,18 +10,9 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-<<<<<<< HEAD
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/filecoin-project/bacalhau/pkg/version"
-
-||||||| parent of 4cb0c182 (bacalhau --local)
-	pjob "github.com/filecoin-project/bacalhau/pkg/job"
-
-=======
 	pjob "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/local"
->>>>>>> 4cb0c182 (bacalhau --local)
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -52,69 +43,14 @@ var jobCPU string
 var jobMemory string
 var jobGPU string
 var skipSyntaxChecking bool
-var waitForJobToFinishAndPrintOutput bool
-var jobLabels []string
-=======
-var jobEngine string
-var jobVerifier string
-var jobInputs []string
-var jobInputUrls []string
-var jobInputVolumes []string
-var jobOutputVolumes []string
-var jobLocalOutput string
-var jobEnv []string
-var jobConcurrency int
-var jobIpfsGetTimeOut int
-var jobCPU string
-var jobMemory string
-var jobGPU string
-var skipSyntaxChecking bool
+
 var isLocal bool
+var waitForJobToFinish bool
 var waitForJobToFinishAndPrintOutput bool
 var jobLabels []string
->>>>>>> 4cb0c182 (bacalhau --local)
-
-	//nolint:lll // Documentation
-	dockerRunExample = templates.Examples(i18n.T(`
-		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /output_images in the container.
-		# All flags after the '--' are passed directly into the container for exacution.
-		bacalhau docker run \
-		-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
-		-o results:/output_images \
-		dpokidov/imagemagick \
-		-- magick mogrify -resize 100x100 -quality 100 -path /output_images /input_images/*.jpg`))
-
-	ODR = &DockerRunOptions{}
-)
-
-// DockerRunOptions declares the arguments accepted by the `docker run` command
-type DockerRunOptions struct {
-	Engine        string   // Executor - executor.Executor
-	Verifier      string   // Verifier - verifier.Verifier
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	CPU           string
-	Memory        string
-	GPU           string
-	WorkingDir    string   // Working directory for docker
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
-
-	Image      string   // Image to execute
-	Entrypoint []string // Entrypoint to the docker image
-
-	SkipSyntaxChecking               bool // Verify the syntax using shellcheck
-	WaitForJobToFinish               bool // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int  // Job time out in seconds
-
-	ShardingGlobPattern string
-	ShardingBasePath    string
-	ShardingBatchSize   int
-}
+var shardingGlobPattern string
+var shardingBasePath string
+var shardingBatchSize int
 
 var runDownloadFlags = ipfs.DownloadSettings{
 	TimeoutSecs:    10,
@@ -358,7 +294,6 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 		}
-
 		if isLocal {
 			client, err := local.NewDockerClient()
 			if err != nil {
@@ -379,76 +314,6 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		cmd.Printf("%s\n", job.ID)
-		currentNodeID, _ := pjob.GetCurrentJobState(states)
-		nodeIds := []string{currentNodeID}
-
-		// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
-		// feels like we're overloading the surface of the CLI command a lot.
-		if waitForJobToFinishAndPrintOutput {
-			err = WaitForJob(ctx, job.ID, job,
-				WaitForJobThrowErrors(job, []executor.JobStateType{
-					executor.JobStateCancelled,
-					executor.JobStateError,
-				}),
-				WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-			)
-=======
-			if err != nil {
-				return err
-			}
-		} else {
-			job, err := getAPIClient().Submit(ctx, spec, deal, nil)
->>>>>>> 4cb0c182 (bacalhau --local)
-			if err != nil {
-				return err
-			}
-
-<<<<<<< HEAD
-			if ODR.WaitForJobToFinishAndPrintOutput {
-				results, err := getAPIClient().GetResults(ctx, job.ID)
-				if err != nil {
-					return err
-				}
-				if len(results) == 0 {
-					return fmt.Errorf("no results found")
-				}
-				err = ipfs.DownloadJob(
-					cm,
-					job,
-					results,
-					runDownloadFlags,
-				)
-				if err != nil {
-					return err
-				}
-				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
-				if err != nil {
-					return err
-				}
-				fmt.Println()
-				fmt.Println(string(body))
-			}
-||||||| parent of 4cb0c182 (bacalhau --local)
-			cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
-
-			// TODO: #425 Can you explain what the below is doing? Please comment.
-			var cidv string
-			for cid := range cidl {
-				cidv = filepath.Join(jobLocalOutput, cid)
-			}
-			body, err := os.ReadFile(cidv + "/stdout")
-			if err != nil {
-				return err
-			}
-			fmt.Println()
-			fmt.Println(string(body))
-=======
-			states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
-			if err != nil {
-				return err
-			}
 
 			cmd.Printf("%s\n", job.ID)
 			currentNodeID, _ := pjob.GetCurrentJobState(states)
@@ -479,10 +344,34 @@ var dockerRunCmd = &cobra.Command{
 				if err != nil {
 					return err
 				}
+				cmd.Println(string(body))
+			}
+
+
+			if waitForJobToFinishAndPrintOutput {
+				results, err := getAPIClient().GetResults(ctx, job.ID)
+				if err != nil {
+					return err
+				}
+				if len(results) == 0 {
+					return fmt.Errorf("no results found")
+				}
+				err = ipfs.DownloadJob(
+					cm,
+					job,
+					results,
+					runDownloadFlags,
+				)
+				if err != nil {
+					return err
+				}
+				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+				if err != nil {
+					return err
+				}
 				fmt.Println()
 				fmt.Println(string(body))
 			}
->>>>>>> 4cb0c182 (bacalhau --local)
 		}
 
 		return nil
