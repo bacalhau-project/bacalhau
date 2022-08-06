@@ -49,7 +49,7 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Co
 	}
 
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	// nolint:gocritic // will fix when we care
+	//nolint:gocritic // will fix when we care
 	for _, container := range containers {
 		if container.ID == nameOrID {
 			return &container, nil
@@ -79,7 +79,7 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 		return nil, err
 	}
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	// nolint:gocritic // will fix when we care
+	//nolint:gocritic // will fix when we care
 	for _, container := range containers {
 		value, ok := container.Labels[labelName]
 		if !ok {

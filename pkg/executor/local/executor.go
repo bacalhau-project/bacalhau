@@ -109,7 +109,7 @@ func (e *Local) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (
 }
 
 // TODO: #289 Clean up RunJob
-// nolint:funlen,gocyclo // will clean up
+//nolint:funlen,gocyclo // will clean up
 func (e *Local) RunJobLocally(ctx context.Context, jobSpec executor.JobSpec) (string, error) {
 	ctx, span := newSpan(ctx, "RunJobLocally")
 	defer span.End()
@@ -198,7 +198,7 @@ func (e *Local) RunJobLocally(ctx context.Context, jobSpec executor.JobSpec) (st
 		if err == nil {
 			log.Debug().Msgf("Not pulling image %s, already have %+v", jobSpec.Docker.Image, im)
 		} else if dockerclient.IsErrNotFound(err) {
-			stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+			stdout, err := system.RunCommandGetResults( //nolint:govet // shadowing ok
 				"docker",
 				[]string{"pull", jobSpec.Docker.Image},
 			)
@@ -219,7 +219,7 @@ func (e *Local) RunJobLocally(ctx context.Context, jobSpec executor.JobSpec) (st
 		return "", err
 	}
 
-	useEnv := append(jobSpec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) // nolint:gocritic
+	useEnv := append(jobSpec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 
 	containerConfig := &container.Config{
 		Image:           jobSpec.Docker.Image,
@@ -373,7 +373,7 @@ func (e *Local) cleanupAll() {
 		return
 	}
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	// nolint:gocritic // will fix when we care
+	//nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
 		err = docker.RemoveContainer(e.Client, container.ID)
 		if err != nil {
