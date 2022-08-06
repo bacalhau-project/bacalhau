@@ -134,7 +134,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 
 	dockerRunCmd.PersistentFlags().StringVar(
-		&shardingGlobPattern, "sharding-base-path", "",
+		&shardingBasePath, "sharding-base-path", "",
 		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
 	)
 
@@ -180,6 +180,9 @@ var dockerRunCmd = &cobra.Command{
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 		jobWorkingDir = ""
+		shardingGlobPattern = ""
+		shardingBasePath = ""
+		shardingBatchSize = 1
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()

@@ -69,6 +69,24 @@ func (suite *JobShardingSuite) TestApplyGlobPattern() {
 		"/b/file2.txt",
 	}
 
+	videoFiles := []string{
+		"/inputs",
+		"/inputs/Bird flying over the lake.mp4",
+		"/inputs/Calm waves on a rocky sea gulf.mp4",
+		"/inputs/Prominent Late Gothic styled architecture.mp4",
+	}
+
+	videoFilesNoSlash := []string{}
+	for _, videoFile := range videoFiles {
+		videoFilesNoSlash = append(videoFilesNoSlash, strings.TrimPrefix(videoFile, "/"))
+	}
+
+	videoResults := []string{
+		"/inputs/Bird flying over the lake.mp4",
+		"/inputs/Calm waves on a rocky sea gulf.mp4",
+		"/inputs/Prominent Late Gothic styled architecture.mp4",
+	}
+
 	testCases := []struct {
 		name     string
 		files    []string
@@ -120,6 +138,27 @@ func (suite *JobShardingSuite) TestApplyGlobPattern() {
 				"/a/file3.txt",
 				"/a/file4.txt",
 			},
+		},
+		{
+			"test with spaces in file names",
+			videoFiles,
+			"/inputs/*.mp4",
+			"",
+			videoResults,
+		},
+		{
+			"test without leading slash in pattern",
+			videoFiles,
+			"*.mp4",
+			"/inputs",
+			videoResults,
+		},
+		{
+			"test without leading slash in filenames",
+			videoFilesNoSlash,
+			"/*.mp4",
+			"/inputs",
+			videoResults,
 		},
 	}
 

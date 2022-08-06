@@ -67,7 +67,7 @@ function overlayVideos() {
 for filename in $inputFolder/*; do
   asciiFilePath=$(getScratchVideoPath "ascii" "$filename")
   outputPath=$(getOutputVideoPath "$filename")
-  # resizeVideo "$filename" "$outputPath" "600:400"
-  convertToAscii "$filename" "$asciiFilePath" "600x400"
+  # resizeVideo "$filename" "$outputPath" "352:240"
+  convertToAscii "$filename" "$asciiFilePath" "352x240"
   overlayVideos "$filename" "$asciiFilePath" "$outputPath"
 done
