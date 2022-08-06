@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -24,6 +25,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -32,14 +34,13 @@ import (
 
 const ServerReadHeaderTimeout = 10 * time.Second
 
-type PinContextHandler func(ctx context.Context, localPath string) (string, error)
-
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	Controller        *controller.Controller
-	PinContextHandler PinContextHandler
-	Host              string
-	Port              int
+	Controller  *controller.Controller
+	Verifiers   map[verifier.VerifierType]verifier.Verifier
+	Host        string
+	Port        int
+	componentMu sync.Mutex
 }
 
 // NewServer returns a new API server for a requester node.
@@ -47,13 +48,13 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
-	p PinContextHandler,
+	verifiers map[verifier.VerifierType]verifier.Verifier,
 ) *APIServer {
 	return &APIServer{
-		Controller:        c,
-		PinContextHandler: p,
-		Host:              host,
-		Port:              port,
+		Controller: c,
+		Verifiers:  verifiers,
+		Host:       host,
+		Port:       port,
 	}
 }
 
@@ -71,6 +72,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm := http.NewServeMux()
 	sm.Handle("/list", instrument("list", apiServer.list))
 	sm.Handle("/states", instrument("states", apiServer.states))
+	sm.Handle("/results", instrument("results", apiServer.results))
 	sm.Handle("/events", instrument("events", apiServer.events))
 	sm.Handle("/local_events", instrument("local_events", apiServer.localEvents))
 	sm.Handle("/id", instrument("id", apiServer.id))
@@ -116,13 +118,22 @@ type listResponse struct {
 	Jobs map[string]executor.Job `json:"jobs"`
 }
 
-type statesRequest struct {
+type stateRequest struct {
 	ClientID string `json:"client_id"`
 	JobID    string `json:"job_id"`
 }
 
-type statesResponse struct {
-	States map[string]executor.JobState `json:"states"`
+type stateResponse struct {
+	State executor.JobState `json:"state"`
+}
+
+type resultsRequest struct {
+	ClientID string `json:"client_id"`
+	JobID    string `json:"job_id"`
+}
+
+type resultsResponse struct {
+	Results []storage.StorageSpec `json:"results"`
 }
 
 type eventsRequest struct {
@@ -221,23 +232,56 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-//nolint:dupl
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
-	var statesReq statesRequest
-	if err := json.NewDecoder(req.Body).Decode(&statesReq); err != nil {
+	var stateReq stateRequest
+	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	states, err := apiServer.Controller.GetExecutionStates(req.Context(), statesReq.JobID)
+	jobState, err := apiServer.Controller.GetJobState(req.Context(), stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	res.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(res).Encode(statesResponse{
-		States: states,
+	err = json.NewEncoder(res).Encode(stateResponse{
+		State: jobState,
+	})
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
+	var stateReq stateRequest
+	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	job, err := apiServer.Controller.GetJob(req.Context(), stateReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	verifier, err := apiServer.getVerifier(req.Context(), job.Spec.Verifier)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	results, err := verifier.GetJobResultSet(req.Context(), stateReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(res).Encode(resultsResponse{
+		Results: results,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -370,7 +414,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.PinContextHandler(req.Context(), filepath.Join(tmpDir, "context"))
+		cid, err := apiServer.Controller.PinContext(req.Context(), filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -379,7 +423,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.Data.Spec.Inputs = append(submitReq.Data.Spec.Inputs, storage.StorageSpec{
+		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, storage.StorageSpec{
 			Engine: storage.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/job",
@@ -404,6 +448,27 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (apiServer *APIServer) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
+	apiServer.componentMu.Lock()
+	defer apiServer.componentMu.Unlock()
+
+	if _, ok := apiServer.Verifiers[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching verifier found on this server: %s", typ.String())
+	}
+
+	v := apiServer.Verifiers[typ]
+	installed, err := v.IsInstalled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !installed {
+		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
+	}
+
+	return v, nil
 }
 
 func verifySubmitRequest(req *submitRequest) error {
@@ -448,6 +513,7 @@ func instrument(name string, fn http.HandlerFunc) http.Handler {
 }
 
 // check for path traversal and correct forward slashes
+//
 //nolint:deadcode,unused
 func validRelPath(p string) bool {
 	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {

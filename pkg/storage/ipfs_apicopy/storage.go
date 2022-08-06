@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -106,11 +107,55 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	return volume, nil
 }
 
-// nolint:lll // Exception to the long rule
+//nolint:lll // Exception to the long rule
 func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	return system.RunCommand("sudo", []string{
 		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
 	})
+}
+
+func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
+	if err != nil {
+		return storage.StorageSpec{}, err
+	}
+	return storage.StorageSpec{
+		Engine: storage.StorageSourceIPFS,
+		Cid:    cid,
+	}, nil
+}
+
+func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.Cid)
+	if err != nil {
+		return []storage.StorageSpec{}, err
+	}
+	flatNodes, err := ipfs.FlattenTreeNode(ctx, treeNode)
+	if err != nil {
+		return []storage.StorageSpec{}, err
+	}
+	basePath := strings.TrimPrefix(spec.Path, "/")
+	basePath = strings.TrimSuffix(basePath, "/")
+	specs := []storage.StorageSpec{}
+	seenPaths := map[string]bool{}
+	for _, node := range flatNodes {
+		prepend := basePath
+		if prepend != "" {
+			prepend = "/" + prepend
+		}
+		usePath := strings.TrimSuffix(prepend+"/"+strings.Join(node.Path, "/"), "/")
+		_, ok := seenPaths[usePath]
+		if ok {
+			continue
+		}
+		seenPaths[usePath] = true
+		specs = append(specs, storage.StorageSpec{
+			Engine: storage.StorageSourceIPFS,
+			Cid:    node.Cid.String(),
+			Path:   usePath,
+		})
+	}
+	return specs, nil
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {

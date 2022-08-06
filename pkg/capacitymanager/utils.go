@@ -67,7 +67,7 @@ func ConvertMemoryString(val string) uint64 {
 }
 
 func ConvertGPUString(val string) uint64 {
-	ret, err := strconv.ParseUint(val, 10, 64) // nolint:gomnd
+	ret, err := strconv.ParseUint(val, 10, 64) //nolint:gomnd
 	if err != nil {
 		return 0
 	}
@@ -233,4 +233,20 @@ func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 		Disk:   totals.Disk - current.Disk,
 		GPU:    totals.GPU - current.GPU,
 	}
+}
+
+func FlattenShardID(jobID string, shardIndex int) string {
+	return fmt.Sprintf("%s:%d", jobID, shardIndex)
+}
+
+func ExplodeShardID(id string) (jobID string, shardIndex int, err error) {
+	parts := strings.Split(id, ":")
+	if len(parts) != 2 {
+		return "", 0, fmt.Errorf("invalid shard id: %s", id)
+	}
+	intVar, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", 0, err
+	}
+	return parts[0], intVar, nil
 }

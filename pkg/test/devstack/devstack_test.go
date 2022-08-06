@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -92,28 +92,35 @@ func devStackDockerStorageTest(
 	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(t, err)
 
-	// wait for the job to complete across all nodes
-	err = stack.WaitForJob(ctx, submittedJob.ID,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
+	resolver := apiClient.GetJobStateResolver()
+
+	err = resolver.Wait(
+		ctx,
+		submittedJob.ID,
+		len(nodeIDs),
+		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateCancelled,
 			executor.JobStateError,
 		}),
-		devstack.WaitForJobAllHaveState(nodeIDs, executor.JobStateComplete),
+		job.WaitForJobStates(map[executor.JobStateType]int{
+			executor.JobStateComplete: len(nodeIDs),
+		}),
 	)
 	require.NoError(t, err)
 
-	jobStates, err := apiClient.GetExecutionStates(ctx, submittedJob.ID)
+	shards, err := resolver.GetShards(ctx, submittedJob.ID)
+	require.NoError(t, err)
 
 	// now we check the actual results produced by the ipfs verifier
-	for nodeID, state := range jobStates {
-		node, err := stack.GetNode(ctx, nodeID)
+	for _, shard := range shards {
+		node, err := stack.GetNode(ctx, shard.NodeID)
 		require.NoError(t, err)
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(t, err)
 
-		outputPath := filepath.Join(outputDir, state.ResultsID)
-		err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
+		outputPath := filepath.Join(outputDir, shard.ResultsID)
+		err = node.IpfsClient.Get(ctx, shard.ResultsID, outputPath)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputPath)

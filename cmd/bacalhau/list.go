@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -17,7 +16,7 @@ import (
 
 var DefaultNumberOfJobsToPrint = 10
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
 		`do not print the column headers.`)
 	listCmd.PersistentFlags().StringVar(&tableIDFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
@@ -145,34 +144,27 @@ var listCmd = &cobra.Command{
 				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
 			}
 
-			states, err := getAPIClient().GetExecutionStates(context.Background(), j.ID)
+			resolver := getAPIClient().GetJobStateResolver()
+
+			stateSummary, err := resolver.StateSummary(context.Background(), j.ID)
 			if err != nil {
 				return err
 			}
 
-			if len(states) == 0 {
-				t.AppendRows([]table.Row{
-					{
-						j.CreatedAt.Format("06-01-02-15:04:05"),
-						shortID(j.ID),
-						shortenString(strings.Join(jobDesc, " ")),
-						"waiting",
-						"",
-					},
-				})
-			} else {
-				_, currentJobState := job.GetCurrentJobState(states)
-				t.AppendRows([]table.Row{
-					{
-						shortenTime(j.CreatedAt),
-						shortID(j.ID),
-						shortenString(strings.Join(jobDesc, " ")),
-						shortenString(currentJobState.State.String()),
-						shortenString(getJobResult(j, currentJobState)),
-					},
-				})
+			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
+			if err != nil {
+				return err
 			}
 
+			t.AppendRows([]table.Row{
+				{
+					shortenTime(j.CreatedAt),
+					shortID(j.ID),
+					shortenString(strings.Join(jobDesc, " ")),
+					shortenString(stateSummary),
+					shortenString(resultSummary),
+				},
+			})
 		}
 		if tableNoStyle {
 			t.SetStyle(table.Style{

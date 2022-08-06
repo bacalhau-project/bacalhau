@@ -15,6 +15,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	storage_noop "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -59,11 +60,18 @@ func setupTest(t *testing.T) (
 ) {
 	cm := system.NewCleanupManager()
 
+	noopStorage, err := storage_noop.NewStorageProvider(cm)
+	require.NoError(t, err)
+
 	noopExecutor, err := executorNoop.NewExecutor()
 	require.NoError(t, err)
 
 	noopVerifier, err := verifier_noop.NewVerifier()
 	require.NoError(t, err)
+
+	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{
+		storage.StorageSourceIPFS: noopStorage,
+	}
 
 	executors := map[executor.EngineType]executor.Executor{
 		executor.EngineNoop: noopExecutor,
@@ -79,7 +87,7 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport)
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
@@ -108,13 +116,14 @@ func setupTest(t *testing.T) (
 func (suite *TransportSuite) TestTransportSanity() {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
+	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{}
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(suite.T(), err)
-	ctrl, err := controller.NewController(cm, datastore, transport)
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
 		cm,

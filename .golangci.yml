@@ -27,6 +27,7 @@ linters-settings:
       - whyNoLint
       - wrapperFunc
       - hugeParam
+      - importShadow
   gocyclo:
     min-complexity: 18
   goimports:
@@ -72,7 +73,6 @@ linters:
     - deadcode
     - depguard
     - dogsled
-    - dupl
     - errcheck
     - exportloopref
     - funlen

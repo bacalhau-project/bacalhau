@@ -14,7 +14,7 @@ import (
 var apiHost string
 var apiPort int
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(serveCmd)
 
 	// Porcelain commands (language specific easy to use commands)

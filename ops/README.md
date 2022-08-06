@@ -205,3 +205,12 @@ For short lived clusters - we set this to false and create a single manual sub n
 
 This is so we don't use up all of our network quota making subnets that we don't actually use.
 
+# Uploading CIDs
+
+Sometimes it's useful to upload content directly to nodes in a terraform managed cluster.
+
+There is a script to help do that:
+
+```bash
+bash scripts/upload_cid.sh production ~/path/to/local/content
+```

@@ -48,7 +48,7 @@ func SanitizeImageAndEntrypoint(jobEntrypoint []string) (returnMessages []string
 			}
 		}
 		if containsGlob {
-			msg := "We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>)." // nolint:lll // error message, ok to be long
+			msg := "We could not help but notice your command contains a glob, but does not start with a shell. This is almost certainly not going to work. To use globs, you must start your command with a shell (e.g. /bin/bash <your command>)." //nolint:lll // error message, ok to be long
 			returnMessages = append(returnMessages, msg)
 			log.Warn().Msgf(msg)
 		}

@@ -426,7 +426,7 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 	if !ok {
 		return fmt.Errorf("invalid configuration profile: %s", profile)
 	}
-	if err := transformer.Transform(cfg); err != nil { // nolint: govet
+	if err := transformer.Transform(cfg); err != nil { //nolint: govet
 		return err
 	}
 

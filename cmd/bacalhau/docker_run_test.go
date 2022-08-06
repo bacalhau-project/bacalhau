@@ -151,9 +151,13 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
+			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
+			require.NoError(suite.T(), err)
+
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -162,7 +166,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
-				"--localoutput", outputDir,
+				"--output-dir", outputDir,
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",
@@ -674,4 +678,54 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			}
 		}()
 	}
+}
+
+func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	const nodeCount = 1
+
+	videos := []string{
+		"Bird flying over the lake.mp4",
+		"Calm waves on a rocky sea gulf.mp4",
+		"Prominent Late Gothic styled architecture.mp4",
+	}
+
+	stack, cm := devstack.SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer cm.Cleanup()
+
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	require.NoError(suite.T(), err)
+	for _, video := range videos {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%s", dirPath, video),
+			[]byte(fmt.Sprintf("hello %s", video)),
+			0644,
+		)
+		require.NoError(suite.T(), err)
+	}
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+	allArgs := []string{
+		"docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--wait",
+		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
+		"--sharding-base-path", "/inputs",
+		"--sharding-glob-pattern", "*.mp4",
+		"--sharding-batch-size", "1",
+		"ubuntu", "echo", "hello",
+	}
+
+	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+	require.NoError(suite.T(), submitErr)
 }

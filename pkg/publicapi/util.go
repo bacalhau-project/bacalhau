@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -23,30 +24,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var TimeToWaitForServerReply = 10 // nolint:gomnd // magic number appropriate here
-var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate here
+const TimeToWaitForServerReply = 10
+const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
+	cleanupManager := system.NewCleanupManager()
+	cleanupManager.RegisterCallback(system.CleanupTracer)
 
-	ipt, err := inprocess.NewInprocessTransport()
+	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cleanupManager)
 	require.NoError(t, err)
 
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	c, err := controller.NewController(cm, inmemoryDatastore, ipt)
+	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager)
 	require.NoError(t, err)
 
-	rn, err := requesternode.NewRequesterNode(
-		cm,
+	c, err := controller.NewController(
+		cleanupManager,
+		inmemoryDatastore,
+		inprocessTransport,
+		noopStorageProviders,
+	)
+	require.NoError(t, err)
+
+	_, err = requesternode.NewRequesterNode(
+		cleanupManager,
 		c,
 		noopVerifiers,
 		requesternode.RequesterNodeConfig{},
@@ -57,16 +66,14 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c, func(ctx context.Context, path string) (string, error) {
-		return rn.PinContext(path)
-	})
+	s := NewServer(host, port, c, noopVerifiers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
 	}()
 	require.NoError(t, waitForHealthy(cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return NewAPIClient(s.GetURI()), cleanupManager
 }
 
 func waitForHealthy(c *APIClient) error {
@@ -114,7 +121,7 @@ const (
 
 // use "-1" as count for just last line
 func TailFile(count int, path string) ([]byte, error) {
-	c := exec.Command("tail", strconv.Itoa(count), path) // nolint:gosec // subprocess not at risk
+	c := exec.Command("tail", strconv.Itoa(count), path) //nolint:gosec // subprocess not at risk
 	output, err := c.Output()
 	if err != nil {
 		log.Warn().Msgf("Could not find file at %s", path)

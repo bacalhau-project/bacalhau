@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -74,33 +74,22 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	job, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	createdJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
 
-	err = stack.WaitForJob(ctx, job.ID,
-		devstack.WaitForJobThrowErrors([]executor.JobStateType{
+	resolver := apiClient.GetJobStateResolver()
+
+	err = resolver.Wait(
+		ctx,
+		createdJob.ID,
+		3,
+		job.WaitThrowErrors([]executor.JobStateType{
 			executor.JobStateError,
 		}),
-		func(jobStates map[string]executor.JobStateType) (bool, error) {
-			// we should have 3 states - 2 of which are complete and the other is cancelled
-			if len(jobStates) != 3 {
-				return false, nil
-			}
-			completeCount := 0
-			cancelledCount := 0
-			for _, state := range jobStates {
-				if state == executor.JobStateComplete {
-					completeCount++
-				} else if state == executor.JobStateCancelled {
-					cancelledCount++
-				}
-			}
-			if completeCount == 2 && cancelledCount == 1 {
-				return true, nil
-			} else {
-				return false, nil
-			}
-		},
+		job.WaitForJobStates(map[executor.JobStateType]int{
+			executor.JobStateComplete:  2,
+			executor.JobStateCancelled: 1,
+		}),
 	)
 	require.NoError(suite.T(), err)
 }

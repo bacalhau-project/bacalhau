@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -66,7 +66,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		})
 		defer TeardownTest(stack, cm)
 
-		nodeIds, err := stack.GetNodeIds()
+		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
 		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
@@ -88,16 +88,21 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		require.NoError(suite.T(), err)
 
-		// wait for the job to complete across all nodes
-		err = stack.WaitForJobWithLogs(ctx, submittedJob.ID, true,
-			devstack.WaitDontExceedCount(testCase.expectedAccepts),
-			devstack.WaitForJobThrowErrors([]executor.JobStateType{
+		resolver := apiClient.GetJobStateResolver()
+
+		err = resolver.Wait(
+			ctx,
+			submittedJob.ID,
+			len(nodeIDs),
+			job.WaitDontExceedCount(testCase.expectedAccepts),
+			job.WaitThrowErrors([]executor.JobStateType{
 				executor.JobStateCancelled,
 				executor.JobStateError,
 			}),
-			devstack.WaitForJobAllHaveState(nodeIds[0:testCase.expectedAccepts], executor.JobStateComplete),
+			job.WaitForJobStates(map[executor.JobStateType]int{
+				executor.JobStateComplete: testCase.expectedAccepts,
+			}),
 		)
-
 		require.NoError(suite.T(), err)
 	}
 

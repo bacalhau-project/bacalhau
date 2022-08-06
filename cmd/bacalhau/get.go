@@ -2,35 +2,24 @@ package bacalhau
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-var getCmdFlags = struct {
-	timeoutSecs    int
-	outputDir      string
-	ipfsSwarmAddrs string
-}{
-	timeoutSecs:    10,
-	outputDir:      ".",
-	ipfsSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+var getDownloadFlags = ipfs.DownloadSettings{
+	TimeoutSecs:    10,
+	OutputDir:      ".",
+	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
 
-func init() { // nolint:gochecknoinits
-	getCmd.Flags().IntVar(&getCmdFlags.timeoutSecs, "timeout-secs",
-		getCmdFlags.timeoutSecs, "Timeout duration for IPFS downloads.")
-	getCmd.Flags().StringVar(&getCmdFlags.outputDir, "output-dir",
-		getCmdFlags.outputDir, "Directory to write the output to.")
-	getCmd.Flags().StringVar(&getCmdFlags.ipfsSwarmAddrs, "ipfs-swarm-addrs",
-		getCmdFlags.ipfsSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+func init() { //nolint:gochecknoinits
+	setupDownloadFlags(getCmd, &getDownloadFlags)
 }
 
 var getCmd = &cobra.Command{
@@ -41,87 +30,39 @@ var getCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		inputJobID := cmdArgs[0]
+		jobID := cmdArgs[0]
 
-		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+		log.Info().Msgf("Fetching results of job '%s'...", jobID)
 
-		if err != nil {
-			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
-			return err
-		}
+		job, ok, err := getAPIClient().Get(context.Background(), jobID)
 
 		if !ok {
-			err = fmt.Errorf("no job found with ID: %s", inputJobID)
-			log.Error().Msgf(err.Error())
-			return err
+			return fmt.Errorf("job not found: %s", jobID)
 		}
 
-		jobID := j.ID
-
-		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
 		if err != nil {
 			return err
 		}
 
-		resultCIDs := map[string]bool{}
-		for _, jobState := range states {
-			if jobState.ResultsID != "" {
-				resultCIDs[jobState.ResultsID] = true
-			}
-		}
-		log.Debug().Msgf("Job has result CIDs: %v", resultCIDs)
-
-		if len(resultCIDs) == 0 {
-			log.Info().Msg("Job has no results.")
-			return nil
+		// todo: deal with jobs with a different verifier
+		if job.Spec.Verifier != verifier.VerifierIpfs {
+			return fmt.Errorf("job verifier not found: %s", job.Spec.Verifier)
 		}
 
-		swarmAddrs := []string{}
-		if getCmdFlags.ipfsSwarmAddrs != "" {
-			swarmAddrs = strings.Split(getCmdFlags.ipfsSwarmAddrs, ",")
-		}
-
-		// NOTE: we have to spin up a temporary IPFS node as we don't
-		// generally have direct access to a remote node's API server.
-		log.Debug().Msg("Spinning up IPFS node...")
-		n, err := ipfs.NewNode(cm, swarmAddrs)
+		results, err := getAPIClient().GetResults(context.Background(), jobID)
 		if err != nil {
 			return err
 		}
 
-		log.Debug().Msg("Connecting client to new IPFS node...")
-		cl, err := n.Client()
+		err = ipfs.DownloadJob(
+			cm,
+			job,
+			results,
+			getDownloadFlags,
+		)
+
 		if err != nil {
 			return err
-		}
-
-		// NOTE: this will run in non-deterministic order
-		for cid := range resultCIDs {
-			outputDir := filepath.Join(getCmdFlags.outputDir, cid)
-			ok, err := system.PathExists(outputDir)
-			if err != nil {
-				return err
-			}
-			if ok {
-				log.Warn().Msgf("Output directory '%s' already exists, skipping CID '%s'.", outputDir, cid)
-				continue
-			}
-
-			log.Info().Msgf("Downloading result CID '%s' to '%s'...",
-				cid, outputDir)
-
-			ctx, cancel := context.WithDeadline(context.Background(),
-				time.Now().Add(time.Second*time.Duration(getCmdFlags.timeoutSecs)))
-			defer cancel()
-
-			err = cl.Get(ctx, cid, outputDir)
-			if err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					log.Error().Msg("Timed out while downloading result.")
-				}
-
-				return err
-			}
 		}
 
 		return nil

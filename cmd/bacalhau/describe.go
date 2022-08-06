@@ -3,15 +3,17 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-func init() { // nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
 type eventDescription struct {
@@ -28,22 +30,28 @@ type localEventDescription struct {
 	TargetNode string `yaml:"TargetNode"`
 }
 
-type stateDescription struct {
-	State     string `yaml:"State"`
-	Status    string `yaml:"Status"`
-	ResultsID string `yaml:"Result CID"`
+type shardNodeStateDescription struct {
+	Node     string `yaml:"Node"`
+	State    string `yaml:"State"`
+	Status   string `yaml:"Status"`
+	ResultID string `yaml:"ResultID"`
+}
+
+type shardStateDescription struct {
+	ShardIndex int                         `yaml:"ShardIndex"`
+	Nodes      []shardNodeStateDescription `yaml:"Nodes"`
 }
 
 type jobDescription struct {
-	ID              string                      `yaml:"ID"`
-	ClientID        string                      `yaml:"ClientID"`
-	RequesterNodeID string                      `yaml:"RequesterNodeID"`
-	Spec            jobSpecDescription          `yaml:"Spec"`
-	Deal            executor.JobDeal            `yaml:"Deal"`
-	State           map[string]stateDescription `yaml:"State"`
-	Events          []eventDescription          `yaml:"Events"`
-	LocalEvents     []localEventDescription     `yaml:"Local Events"`
-	CreatedAt       time.Time                   `yaml:"Start Time"`
+	ID              string                  `yaml:"Id"`
+	ClientID        string                  `yaml:"ClientID"`
+	RequesterNodeID string                  `yaml:"RequesterNodeId"`
+	Spec            jobSpecDescription      `yaml:"Spec"`
+	Deal            executor.JobDeal        `yaml:"Deal"`
+	Shards          []shardStateDescription `yaml:"Shards"`
+	CreatedAt       time.Time               `yaml:"Start Time"`
+	Events          []eventDescription      `yaml:"Events"`
+	LocalEvents     []localEventDescription `yaml:"LocalEvents"`
 }
 
 type jobSpecDescription struct {
@@ -69,16 +77,15 @@ type jobDealDescription struct {
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 
-// nolintunparam // incorrectly suggesting unused
 var describeCmd = &cobra.Command{
 	Use:   "describe [id]",
 	Short: "Describe a job on the network",
-	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", // nolint:lll
+	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", //nolint:lll
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		inputJobID := cmdArgs[0]
 
-		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+		job, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
 
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
@@ -91,59 +98,84 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		jobID := j.ID
-
-		states, err := getAPIClient().GetExecutionStates(context.Background(), jobID)
+		state, err := getAPIClient().GetJobState(context.Background(), job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job states '%s': %s", job.ID, err)
 			return err
 		}
 
-		events, err := getAPIClient().GetEvents(context.Background(), jobID)
+		events, err := getAPIClient().GetEvents(context.Background(), job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), jobID)
+		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", jobID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
 			return err
 		}
 
 		jobDockerDesc := jobSpecDockerDescription{}
-		jobDockerDesc.Image = j.Spec.Docker.Image
-		jobDockerDesc.Entrypoint = j.Spec.Docker.Entrypoint
-		jobDockerDesc.Env = j.Spec.Docker.Env
+		jobDockerDesc.Image = job.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = job.Spec.Docker.Env
 
-		jobDockerDesc.CPU = j.Spec.Resources.CPU
-		jobDockerDesc.Memory = j.Spec.Resources.Memory
+		jobDockerDesc.CPU = job.Spec.Resources.CPU
+		jobDockerDesc.Memory = job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = j.Spec.Engine.String()
+		jobSpecDesc.Engine = job.Spec.Engine.String()
 
 		jobDealDesc := jobDealDescription{}
-		jobDealDesc.Concurrency = j.Deal.Concurrency
+		jobDealDesc.Concurrency = job.Deal.Concurrency
 
-		jobSpecDesc.Verifier = j.Spec.Verifier.String()
+		jobSpecDesc.Verifier = job.Spec.Verifier.String()
 		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
-		jobDesc.ID = j.ID
-		jobDesc.ClientID = j.ClientID
-		jobDesc.RequesterNodeID = j.RequesterNodeID
+		jobDesc.ID = job.ID
+		jobDesc.ClientID = job.ClientID
+		jobDesc.RequesterNodeID = job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
-		jobDesc.Deal = j.Deal
-		jobDesc.State = map[string]stateDescription{}
-		for id, state := range states {
-			jobDesc.State[id] = stateDescription{
-				State:     state.State.String(),
-				Status:    state.Status,
-				ResultsID: state.ResultsID,
-			}
-		}
-		jobDesc.CreatedAt = j.CreatedAt
+		jobDesc.Deal = job.Deal
+		jobDesc.CreatedAt = job.CreatedAt
 		jobDesc.Events = []eventDescription{}
+
+		shardDescriptions := map[int]shardStateDescription{}
+
+		for _, shard := range jobutils.FlattenShardStates(state) {
+			shardDescription, ok := shardDescriptions[shard.ShardIndex]
+			if !ok {
+				shardDescription = shardStateDescription{
+					ShardIndex: shard.ShardIndex,
+					Nodes:      []shardNodeStateDescription{},
+				}
+			}
+			shardDescription.Nodes = append(shardDescription.Nodes, shardNodeStateDescription{
+				Node:     shard.NodeID,
+				State:    shard.State.String(),
+				Status:   shard.Status,
+				ResultID: shard.ResultsID,
+			})
+			shardDescriptions[shard.ShardIndex] = shardDescription
+		}
+
+		shardIndexes := []int{}
+		for shardIndex := range shardDescriptions {
+			shardIndexes = append(shardIndexes, shardIndex)
+		}
+
+		sort.Ints(shardIndexes)
+
+		finalDescriptions := []shardStateDescription{}
+
+		for _, shardIndex := range shardIndexes {
+			finalDescriptions = append(finalDescriptions, shardDescriptions[shardIndex])
+		}
+
+		jobDesc.Shards = finalDescriptions
+
 		for _, event := range events {
 			jobDesc.Events = append(jobDesc.Events, eventDescription{
 				Event:       event.EventName.String(),
@@ -165,7 +197,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshaling job description '%s': %s", jobID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", job.ID, err)
 			return err
 		}
 

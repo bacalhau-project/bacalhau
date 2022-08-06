@@ -2,6 +2,7 @@ package capacitymanager
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 const DefaultJobCPU = "100m"
@@ -28,7 +29,7 @@ type CapacityManagerItem struct {
 
 type CapacityManager struct {
 	// The configuration used to create this compute node.
-	config Config // nolint:gocritic
+	config Config //nolint:gocritic
 
 	// both of these are is either what the physical CPU / memory values are
 	// or the user defined limits from the config
@@ -211,6 +212,26 @@ func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsa
 	return nil
 }
 
+// add the shards in random order so we get some kind of general coverage across
+// the network - otherwise all nodes are racing each other for the same shards
+func (manager *CapacityManager) AddShardsToBacklog(id string, shardCount int, requirements ResourceUsageData) error {
+	shardIndexes := []int{}
+	for i := 0; i < shardCount; i++ {
+		shardIndexes = append(shardIndexes, i)
+	}
+	for i := range shardIndexes {
+		j := rand.Intn(i + 1) //nolint:gosec
+		shardIndexes[i], shardIndexes[j] = shardIndexes[j], shardIndexes[i]
+	}
+	for _, shardIndex := range shardIndexes {
+		err := manager.AddToBacklog(FlattenShardID(id, shardIndex), requirements)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (manager *CapacityManager) MoveToActive(id string) error {
 	item := manager.backlog.Get(id)
 	if item == nil {
@@ -241,12 +262,12 @@ func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
 
 // get the jobs we have capacity to bid on
 // this is done FIFO order from the order jobs have arrived
-//   * calculate "remaining resources"
-//     * this is total - running
-//   * loop over each job in selected queue
-//     * if there is enough in the remaining then bid
-//   * add each bid on job to the "projected resources"
-//   * repeat until project resources >= total resources or no more jobs in queue
+//   - calculate "remaining resources"
+//   - this is total - running
+//   - loop over each job in selected queue
+//   - if there is enough in the remaining then bid
+//   - add each bid on job to the "projected resources"
+//   - repeat until project resources >= total resources or no more jobs in queue
 func (manager *CapacityManager) GetNextItems() []string {
 	// the list of job ids that we have capacity to run
 	ids := []string{}
