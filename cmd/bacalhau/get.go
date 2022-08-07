@@ -37,7 +37,8 @@ var getCmd = &cobra.Command{
 		job, ok, err := getAPIClient().Get(context.Background(), jobID)
 
 		if !ok {
-			return fmt.Errorf("job not found: %s", jobID)
+			cmd.Printf("No job ID found matching ID: %s", jobID)
+			return nil
 		}
 
 		if err != nil {
