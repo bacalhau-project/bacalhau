@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -42,7 +43,89 @@ var DefaultBootstrapAddresses = []string{
 }
 var DefaultSwarmPort = 1235
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func setupJobSelectionCLIFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVar(
+		&jobSelectionDataLocality, "job-selection-data-locality", "local",
+		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
+	)
+	cmd.PersistentFlags().BoolVar(
+		&jobSelectionDataRejectStateless, "job-selection-reject-stateless", false,
+		`Reject jobs that don't specify any data.`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&jobSelectionProbeHTTP, "job-selection-probe-http", "",
+		`Use the result of a HTTP POST to decide if we should take on the job.`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&jobSelectionProbeExec, "job-selection-probe-exec", "",
+		`Use the result of a exec an external program to decide if we should take on the job.`,
+	)
+}
+
+func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVar(
+		&limitTotalCPU, "limit-total-cpu", "",
+		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&limitTotalMemory, "limit-total-memory", "",
+		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&limitTotalGPU, "limit-total-gpu", "",
+		`Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&limitJobCPU, "limit-job-cpu", "",
+		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&limitJobMemory, "limit-job-memory", "",
+		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&limitJobGPU, "limit-job-gpu", "",
+		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
+	)
+}
+
+func getJobSelectionConfig() computenode.JobSelectionPolicy {
+	// construct the job selection policy from the CLI args
+	typedJobSelectionDataLocality := computenode.Local
+
+	if jobSelectionDataLocality == "anywhere" {
+		typedJobSelectionDataLocality = computenode.Anywhere
+	}
+
+	jobSelectionPolicy := computenode.JobSelectionPolicy{
+		Locality:            typedJobSelectionDataLocality,
+		RejectStatelessJobs: jobSelectionDataRejectStateless,
+		ProbeHTTP:           jobSelectionProbeHTTP,
+		ProbeExec:           jobSelectionProbeExec,
+	}
+
+	return jobSelectionPolicy
+}
+
+func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.ResourceUsageConfig) {
+	// the total amount of CPU / Memory the system can be using at one time
+	totalResourceLimit := capacitymanager.ResourceUsageConfig{
+		CPU:    limitTotalCPU,
+		Memory: limitTotalMemory,
+		GPU:    limitTotalGPU,
+	}
+
+	// the per job CPU / Memory limits
+	jobResourceLimit := capacitymanager.ResourceUsageConfig{
+		CPU:    limitJobCPU,
+		Memory: limitJobMemory,
+		GPU:    limitJobGPU,
+	}
+
+	return totalResourceLimit, jobResourceLimit
+}
+
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	serveCmd.PersistentFlags().StringVar(
 		&peerConnect, "peer", "",
 		`The libp2p multiaddress to connect to.`,
@@ -59,50 +142,13 @@ func init() { // nolint:gochecknoinits // Using init in cobra command is idomati
 		&hostPort, "port", DefaultSwarmPort,
 		`The port to listen on for swarm connections.`,
 	)
-	serveCmd.PersistentFlags().StringVar(
-		&jobSelectionDataLocality, "job-selection-data-locality", "local",
-		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
-	)
-	serveCmd.PersistentFlags().BoolVar(
-		&jobSelectionDataRejectStateless, "job-selection-reject-stateless", false,
-		`Reject jobs that don't specify any data.`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&jobSelectionProbeHTTP, "job-selection-probe-http", "",
-		`Use the result of a HTTP POST to decide if we should take on the job.`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&jobSelectionProbeExec, "job-selection-probe-exec", "",
-		`Use the result of a exec an external program to decide if we should take on the job.`,
-	)
 	serveCmd.PersistentFlags().IntVar(
 		&metricsPort, "metrics-port", metricsPort,
 		`The port to serve prometheus metrics on.`,
 	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitTotalCPU, "limit-total-cpu", "",
-		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitTotalMemory, "limit-total-memory", "",
-		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitTotalGPU, "limit-total-gpu", "",
-		`Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitJobCPU, "limit-job-cpu", "",
-		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitJobMemory, "limit-job-memory", "",
-		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
-	)
-	serveCmd.PersistentFlags().StringVar(
-		&limitJobGPU, "limit-job-gpu", "",
-		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
-	)
+
+	setupJobSelectionCLIFlags(serveCmd)
+	setupCapacityManagerCLIFlags(serveCmd)
 }
 
 var serveCmd = &cobra.Command{
@@ -141,19 +187,29 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		controller, err := controller.NewController(
+		hostID, err := transport.HostID(context.Background())
+		if err != nil {
+			return err
+		}
+
+		storageProviders, err := executor_util.NewStandardStorageProviders(
 			cm,
-			datastore,
-			transport,
+			ipfsConnect,
 		)
 		if err != nil {
 			return err
 		}
 
-		hostID, err := transport.HostID(context.Background())
+		controller, err := controller.NewController(
+			cm,
+			datastore,
+			transport,
+			storageProviders,
+		)
 		if err != nil {
 			return err
 		}
+
 		executors, err := executor_util.NewStandardExecutors(
 			cm,
 			ipfsConnect,
@@ -163,40 +219,21 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect)
+		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+			return controller.GetJob(ctx, id)
+		}
+
+		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
+			return controller.GetJobState(ctx, id)
+		}
+
+		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect, jobLoader, stateLoader)
 		if err != nil {
 			return err
 		}
 
-		// construct the job selection policy from the CLI args
-		typedJobSelectionDataLocality := computenode.Local
-
-		if jobSelectionDataLocality == "anywhere" {
-			typedJobSelectionDataLocality = computenode.Anywhere
-		}
-
-		// the total amount of CPU / Memory the system can be using at one time
-		totalResourceLimit := capacitymanager.ResourceUsageConfig{
-			CPU:    limitTotalCPU,
-			Memory: limitTotalMemory,
-			GPU:    limitTotalGPU,
-		}
-
-		// the per job CPU / Memory limits
-		jobResourceLimit := capacitymanager.ResourceUsageConfig{
-			CPU:    limitJobCPU,
-			Memory: limitJobMemory,
-			GPU:    limitJobGPU,
-		}
-
-		jobSelectionPolicy := computenode.JobSelectionPolicy{
-			Locality:            typedJobSelectionDataLocality,
-			RejectStatelessJobs: jobSelectionDataRejectStateless,
-			ProbeHTTP:           jobSelectionProbeHTTP,
-			ProbeExec:           jobSelectionProbeExec,
-		}
-
-		requesterNodeConfig := requesternode.RequesterNodeConfig{}
+		jobSelectionPolicy := getJobSelectionConfig()
+		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
 
 		computeNodeConfig := computenode.ComputeNodeConfig{
 			JobSelectionPolicy: jobSelectionPolicy,
@@ -206,7 +243,9 @@ var serveCmd = &cobra.Command{
 			},
 		}
 
-		requesterNode, err := requesternode.NewRequesterNode(
+		requesterNodeConfig := requesternode.RequesterNodeConfig{}
+
+		_, err = requesternode.NewRequesterNode(
 			cm,
 			controller,
 			verifiers,
@@ -230,9 +269,7 @@ var serveCmd = &cobra.Command{
 			hostAddress,
 			apiPort,
 			controller,
-			func(ctx context.Context, path string) (string, error) {
-				return requesterNode.PinContext(path)
-			},
+			verifiers,
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
@@ -255,7 +292,7 @@ var serveCmd = &cobra.Command{
 		}(ctx)
 
 		// TODO: #352 should system.ListenAndServeMetrix take ctx?
-		go func(ctx context.Context) { // nolint:unparam // ctx appropriate here
+		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
 			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}

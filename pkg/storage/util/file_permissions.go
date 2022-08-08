@@ -1,4 +1,4 @@
-// nolint:stylecheck // prefer caps for these
+//nolint:stylecheck // prefer caps for these
 package util
 
 const (

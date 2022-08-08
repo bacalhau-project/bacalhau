@@ -26,7 +26,7 @@ var jobfOutputVolumes []string
 var jobfWorkingDir string
 var jobTags []string
 
-func init() { // nolint:gochecknoinits
+func init() { //nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(
 		&filename, "filename", "f", "",
 		`Path to the job file`,
@@ -47,7 +47,7 @@ var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Submit a job.json or job.yaml file and run it on the network",
 	Args:  cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		ctx := context.Background()
 		fileextension := filepath.Ext(filename)
 
@@ -117,6 +117,7 @@ var applyCmd = &cobra.Command{
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
 			}
 		}
+		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
 
 		engineType, err := executor.ParseEngineType(jobspec.EngineName)
 		if err != nil {

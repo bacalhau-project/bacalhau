@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -99,13 +100,12 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 	return storageProvider.GetVolumeSize(ctx, volume)
 }
 
-// TODO: #289 Clean up RunJob
-// nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
+//nolint:funlen,gocyclo // will clean up
+func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int) (string, error) {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
-	jobResultsDir, err := e.ensureJobResultsDir(j)
+	jobResultsDir, err := e.ensureShardResultsDir(j, shardIndex)
 	if err != nil {
 		return "", err
 	}
@@ -114,34 +114,53 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	// these are paths for both input and output data
 	mounts := []mount.Mount{}
 
-	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range j.Spec.Inputs {
+	shard, err := jobutils.GetShard(ctx, j.Spec, e.StorageProviders, shardIndex)
+	if err != nil {
+		return "", err
+	}
+
+	// reusable between the input shards and the input context
+	addInputStorageHandler := func(spec storage.StorageSpec) error {
 		var storageProvider storage.StorageProvider
 		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorageProvider(ctx, inputStorage.Engine)
+		storageProvider, err = e.getStorageProvider(ctx, spec.Engine)
 		if err != nil {
-			return "", err
+			return err
 		}
 
-		volumeMount, err = storageProvider.PrepareStorage(ctx, inputStorage)
+		volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Trace().Msgf("Input Volume: %+v %+v", inputStorage, volumeMount)
-
+			log.Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
 				Type: "bind",
-
 				// this is an input volume so is read only
 				ReadOnly: true,
 				Source:   volumeMount.Source,
 				Target:   volumeMount.Target,
 			})
 		} else {
-			return "", fmt.Errorf(
-				"unknown storage volume type: %s", volumeMount.Type)
+			return fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
+		}
+		return nil
+	}
+
+	// loop over the job contexts and prepare them
+	for _, contextStorage := range j.Spec.Contexts {
+		err = addInputStorageHandler(contextStorage)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// loop over the job storage inputs and prepare them
+	for _, inputStorage := range shard {
+		err = addInputStorageHandler(inputStorage)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -187,9 +206,9 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		var im dockertypes.ImageInspect
 		im, _, err = e.Client.ImageInspectWithRaw(ctx, j.Spec.Docker.Image)
 		if err == nil {
-			log.Debug().Msgf("Not pulling image %s, already have %+v", j.Spec.Docker.Image, im)
+			log.Debug().Msgf("Not pulling image %s, already have %s", j.Spec.Docker.Image, im.ID)
 		} else if dockerclient.IsErrNotFound(err) {
-			stdout, err := system.RunCommandGetResults( // nolint:govet // shadowing ok
+			stdout, err := system.RunCommandGetResults( //nolint:govet // shadowing ok
 				"docker",
 				[]string{"pull", j.Spec.Docker.Image},
 			)
@@ -210,7 +229,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		return "", err
 	}
 
-	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) // nolint:gocritic
+	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 
 	containerConfig := &container.Config{
 		Image:           j.Spec.Docker.Image,
@@ -251,7 +270,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 		},
 		&network.NetworkingConfig{},
 		nil,
-		e.jobContainerName(j),
+		e.jobContainerName(j, shardIndex),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
@@ -265,7 +284,7 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to start container: %w", err)
 	}
-	defer e.cleanupJob(j)
+	defer e.cleanupJob(j, shardIndex)
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -340,12 +359,12 @@ func (e *Executor) RunJob(ctx context.Context, j executor.Job) (string, error) {
 	return jobResultsDir, containerError
 }
 
-func (e *Executor) cleanupJob(job executor.Job) {
+func (e *Executor) cleanupJob(job executor.Job, shardIndex int) {
 	if config.ShouldKeepStack() {
 		return
 	}
 
-	err := docker.RemoveContainer(e.Client, e.jobContainerName(job))
+	err := docker.RemoveContainer(e.Client, e.jobContainerName(job, shardIndex))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
 		debug.PrintStack()
@@ -357,14 +376,14 @@ func (e *Executor) cleanupAll() {
 		return
 	}
 
-	log.Info().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
+	log.Debug().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
 	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
 	}
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	// nolint:gocritic // will fix when we care
+	//nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
 		err = docker.RemoveContainer(e.Client, container.ID)
 		if err != nil {
@@ -373,8 +392,8 @@ func (e *Executor) cleanupAll() {
 	}
 }
 
-func (e *Executor) jobContainerName(job executor.Job) string {
-	return fmt.Sprintf("bacalhau-%s-%s", e.ID, job.ID)
+func (e *Executor) jobContainerName(job executor.Job, shardIndex int) string {
+	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, job.ID, shardIndex)
 }
 
 func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
@@ -384,12 +403,12 @@ func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
 	}
 }
 
-func (e *Executor) jobResultsDir(job executor.Job) string {
-	return fmt.Sprintf("%s/%s", e.ResultsDir, job.ID)
+func (e *Executor) shardResultsDir(job executor.Job, shardIndex int) string {
+	return fmt.Sprintf("%s/%s/%d", e.ResultsDir, job.ID, shardIndex)
 }
 
-func (e *Executor) ensureJobResultsDir(job executor.Job) (string, error) {
-	dir := e.jobResultsDir(job)
+func (e *Executor) ensureShardResultsDir(job executor.Job, shardIndex int) (string, error) {
+	dir := e.shardResultsDir(job, shardIndex)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	info, _ := os.Stat(dir)
 	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())

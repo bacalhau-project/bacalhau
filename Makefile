@@ -195,8 +195,12 @@ devstack-badactor:
 # Target: lint
 ################################################################################
 .PHONY: lint
-lint: build-bacalhau
+lint:
 	golangci-lint run --timeout 10m
+
+.PHONY: lint-fix
+lint-fix:
+	golangci-lint run --timeout 10m --fix
 
 ################################################################################
 # Target: modtidy

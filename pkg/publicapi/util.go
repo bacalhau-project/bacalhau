@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -18,35 +19,44 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
 
-var TimeToWaitForServerReply = 10 // nolint:gomnd // magic number appropriate here
-var TimeToWaitForHealthy = 50     // nolint:gomnd // magic number appropriate here
+const TimeToWaitForServerReply = 10
+const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
-	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
+	cleanupManager := system.NewCleanupManager()
+	cleanupManager.RegisterCallback(system.CleanupTracer)
 
-	ipt, err := inprocess.NewInprocessTransport()
+	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cm)
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cleanupManager)
 	require.NoError(t, err)
 
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	c, err := controller.NewController(cm, inmemoryDatastore, ipt)
+	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager)
 	require.NoError(t, err)
 
-	rn, err := requesternode.NewRequesterNode(
-		cm,
+	c, err := controller.NewController(
+		cleanupManager,
+		inmemoryDatastore,
+		inprocessTransport,
+		noopStorageProviders,
+	)
+	require.NoError(t, err)
+
+	_, err = requesternode.NewRequesterNode(
+		cleanupManager,
 		c,
 		noopVerifiers,
 		requesternode.RequesterNodeConfig{},
@@ -57,16 +67,14 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c, func(ctx context.Context, path string) (string, error) {
-		return rn.PinContext(path)
-	})
+	s := NewServer(host, port, c, noopVerifiers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
 	}()
 	require.NoError(t, waitForHealthy(cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return NewAPIClient(s.GetURI()), cleanupManager
 }
 
 func waitForHealthy(c *APIClient) error {
@@ -114,7 +122,7 @@ const (
 
 // use "-1" as count for just last line
 func TailFile(count int, path string) ([]byte, error) {
-	c := exec.Command("tail", strconv.Itoa(count), path) // nolint:gosec // subprocess not at risk
+	c := exec.Command("tail", strconv.Itoa(count), path) //nolint:gosec // subprocess not at risk
 	output, err := c.Output()
 	if err != nil {
 		log.Warn().Msgf("Could not find file at %s", path)
@@ -123,24 +131,37 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
+func MakeEchoJob() (executor.JobSpec, executor.JobDeal) {
+	randomSuffix, _ := uuid.NewUUID()
+	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+		"echo",
+		randomSuffix.String(),
+	})
+}
+
 func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs)
+	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+		"cat",
+		"/data/file.txt",
+	})
 }
 
 func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs)
+	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs, []string{
+		"cat",
+		"/data/file.txt",
+	})
 }
 
-func MakeJob(engineType executor.EngineType, verifierType verifier.VerifierType) (executor.JobSpec, executor.JobDeal) {
+func MakeJob(engineType executor.EngineType,
+	verifierType verifier.VerifierType,
+	entrypointArray []string) (executor.JobSpec, executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   engineType,
 		Verifier: verifierType,
 		Docker: executor.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"cat",
-				"/data/file.txt",
-			},
+			Image:      "ubuntu:latest",
+			Entrypoint: entrypointArray,
 		},
 		// Inputs:  inputStorageList,
 		// Outputs: testCase.Outputs,

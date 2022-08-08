@@ -13,6 +13,7 @@ func TestInMemoryDataStore(t *testing.T) {
 
 	jobId := "123"
 	nodeId := "456"
+	shardIndex := 1
 
 	store, err := NewInMemoryDatastore()
 	require.NoError(t, err)
@@ -29,9 +30,18 @@ func TestInMemoryDataStore(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = store.UpdateExecutionState(context.Background(), jobId, nodeId, executor.JobState{
-		State: executor.JobStateBidding,
-	})
+	err = store.UpdateShardState(context.Background(),
+		jobId,
+		nodeId,
+		shardIndex,
+		executor.JobShardState{
+			NodeID:     nodeId,
+			ShardIndex: shardIndex,
+			State:      executor.JobStateBidding,
+			Status:     "hello",
+			ResultsID:  "apples",
+		},
+	)
 	require.NoError(t, err)
 
 	err = store.AddLocalEvent(context.Background(), jobId, executor.JobLocalEvent{
@@ -53,4 +63,15 @@ func TestInMemoryDataStore(t *testing.T) {
 	require.Equal(t, 1, len(localEvents))
 	require.Equal(t, executor.JobLocalEventSelected, localEvents[0].EventName)
 
+	jobState, err := store.GetJobState(context.Background(), jobId)
+	require.NoError(t, err)
+
+	nodeState, ok := jobState.Nodes[nodeId]
+	require.True(t, ok)
+
+	shardState, ok := nodeState.Shards[shardIndex]
+	require.True(t, ok)
+
+	require.Equal(t, executor.JobStateBidding, shardState.State)
+	require.Equal(t, "hello", shardState.Status)
 }

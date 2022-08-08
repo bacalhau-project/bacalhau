@@ -20,7 +20,7 @@ var (
 			Name: "jobs_accepted",
 			Help: "Number of jobs bid on and accepted by the compute node.",
 		},
-		[]string{"node_id"},
+		[]string{"node_id", "shard_index"},
 	)
 
 	jobsCompleted = promauto.NewCounterVec(
@@ -28,7 +28,7 @@ var (
 			Name: "jobs_completed",
 			Help: "Number of jobs completed by the compute node.",
 		},
-		[]string{"node_id"},
+		[]string{"node_id", "shard_index"},
 	)
 
 	jobsFailed = promauto.NewCounterVec(
@@ -36,6 +36,6 @@ var (
 			Name: "jobs_failed",
 			Help: "Number of jobs failed by the compute node.",
 		},
-		[]string{"node_id"},
+		[]string{"node_id", "shard_index"},
 	)
 )

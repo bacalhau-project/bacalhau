@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -75,7 +77,7 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]executor.Job, 
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): implement with separate API call, don't filter list
+// TODO(optimisation): #452 implement with separate API call, don't filter list
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor.Job, foundJob bool, err error) {
 	if jobID == "" {
 		return executor.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
@@ -86,7 +88,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 		return executor.Job{}, false, err
 	}
 
-	// TODO: make this deterministic, return the first match alphabetically
+	// TODO: #453 make this deterministic, return the first match alphabetically
 	for _, job = range jobs { //nolint:gocritic
 		strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(job.ID), "-", "")
 		strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
@@ -98,22 +100,36 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 	return executor.Job{}, false, nil
 }
 
-func (apiClient *APIClient) GetExecutionStates(ctx context.Context, jobID string) (states map[string]executor.JobState, err error) {
+func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states executor.JobState, err error) {
 	if jobID == "" {
-		return nil, fmt.Errorf("jobID must be non-empty in a GetExecutionStates call")
+		return executor.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
-	req := statesRequest{
+	req := stateRequest{
 		ClientID: system.GetClientID(),
 		JobID:    jobID,
 	}
 
-	var res statesResponse
+	var res stateResponse
 	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return nil, err
+		return executor.JobState{}, err
 	}
 
-	return res.States, nil
+	return res.State, nil
+}
+
+func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
+	jobLoader := func(ctx context.Context, jobID string) (executor.Job, error) {
+		job, ok, err := apiClient.Get(ctx, jobID)
+		if !ok {
+			return executor.Job{}, fmt.Errorf("no job found with id %s", jobID)
+		}
+		return job, err
+	}
+	stateLoader := func(ctx context.Context, jobID string) (executor.JobState, error) {
+		return apiClient.GetJobState(ctx, jobID)
+	}
+	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
 func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []executor.JobEvent, err error) {
@@ -150,6 +166,24 @@ func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (l
 	}
 
 	return res.LocalEvents, nil
+}
+
+func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []storage.StorageSpec, err error) {
+	if jobID == "" {
+		return nil, fmt.Errorf("jobID must be non-empty in a GetResults call")
+	}
+
+	req := resultsRequest{
+		ClientID: system.GetClientID(),
+		JobID:    jobID,
+	}
+
+	var res resultsResponse
+	if err := apiClient.post(ctx, "results", req, &res); err != nil {
+		return nil, err
+	}
+
+	return res.Results, nil
 }
 
 // Submit submits a new job to the node's transport.
@@ -246,7 +280,7 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		}
 
 		return fmt.Errorf(
-			"publicapi: received non-200 status: %d", res.StatusCode)
+			"publicapi: received non-200 status: %d %s", res.StatusCode, string(body))
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {

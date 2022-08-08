@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,15 +42,26 @@ func SetupTestDockerIpfs(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
-
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
+
+	storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+	require.NoError(t, err)
 	executors, err := executor_util.NewStandardExecutors(
-		cm, apiAddress, fmt.Sprintf("devstacknode0-%s", ipfsID))
+		cm,
+		apiAddress,
+		fmt.Sprintf("devstacknode0-%s", ipfsID),
+	)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewIPFSVerifiers(cm, apiAddress)
+	verifiers, err := verifier_util.NewIPFSVerifiers(
+		cm,
+		apiAddress,
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
@@ -79,13 +90,16 @@ func SetupTestNoop(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport)
-	require.NoError(t, err)
-
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(cm)
+	require.NoError(t, err)
+
+	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(
@@ -171,16 +185,16 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.RunJob(context.Background(), executor.Job{
+	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
-	})
-	assert.NoError(t, err)
+	}, 0)
+	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	assert.DirExists(t, result, "The job result folder exists")
-	assert.FileExists(t, stdoutPath, "The stdout file exists")
+	require.DirExists(t, result, "The job result folder exists")
+	require.FileExists(t, stdoutPath, "The stdout file exists")
 	dat, err := os.ReadFile(stdoutPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return string(dat)
 }

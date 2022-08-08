@@ -84,7 +84,7 @@ var runPythonCmd = &cobra.Command{
 	Use:   "python",
 	Short: "Run a python job on the network",
 	Args:  cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolint
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
 
 		// error if determinism is false
 		if !deterministic {
@@ -124,9 +124,11 @@ var runPythonCmd = &cobra.Command{
 			return fmt.Errorf("must specify an inline command or a path to a python file")
 		}
 
-		// TODO: implement ConstructLanguageJob and switch to it
+		//nolint:lll // it's ok to be long
+		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 		spec, deal, err := job.ConstructLanguageJob(
 			jobInputVolumes,
+			jobInputUrls,
 			jobOutputVolumes,
 			[]string{}, // no env vars (yet)
 			jobConcurrency,

@@ -115,7 +115,7 @@ func SedFile(t *testing.T) TestCase {
 			stdoutString,
 			"LISBON",
 			ExpectedModeContains,
-			5, // nolint:gomnd // magic number ok for testing
+			5, //nolint:gomnd // magic number ok for testing
 		),
 		GetJobSpec: func() executor.JobSpecDocker {
 			return executor.JobSpecDocker{
@@ -144,7 +144,7 @@ func AwkFile(t *testing.T) TestCase {
 			stdoutString,
 			"LISBON",
 			ExpectedModeContains,
-			501, // nolint:gomnd // magic number appropriate for test
+			501, //nolint:gomnd // magic number appropriate for test
 		),
 		GetJobSpec: func() executor.JobSpecDocker {
 			return executor.JobSpecDocker{

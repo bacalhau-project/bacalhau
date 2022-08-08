@@ -132,9 +132,10 @@ const (
 	jobLocalEventDone // must be last
 )
 
-//go:generate stringer -type=JobStateType --trimprefix=JobState
 // JobStateType is the state of a job on a particular node. Note that the job
 // will typically have different states on different nodes.
+//
+//go:generate stringer -type=JobStateType --trimprefix=JobState
 type JobStateType int
 
 // these are the states a job can be in against a single node
@@ -174,6 +175,19 @@ const (
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
 	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
+}
+
+// IsComplete returns true if the given job has succeeded at the bid stage
+// and has finished running the job - this is used to calculate if a job
+// has completed across all nodes because a cancelation does not count
+// towards actually "running" the job whereas an error does (even though it failed
+// it still "ran")
+func (state JobStateType) IsComplete() bool {
+	return state == JobStateComplete || state == JobStateError
+}
+
+func (state JobStateType) IsError() bool {
+	return state == JobStateError
 }
 
 // tells you if this event is a valid one

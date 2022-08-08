@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ var tableSortReverse bool
 var tableIDFilter string
 var tableNoStyle bool
 
-func shortenTime(t time.Time) string { // nolint:unused // Useful function, holding here
+func shortenTime(t time.Time) string { //nolint:unused // Useful function, holding here
 	if tableOutputWide {
 		return t.Format("06-01-02-15:04:05")
 	}
@@ -55,13 +54,6 @@ func shortID(id string) string {
 		return id
 	}
 	return id[:8]
-}
-
-func getJobResult(job executor.Job, state executor.JobState) string {
-	if state.ResultsID == "" {
-		return "-"
-	}
-	return "/" + strings.ToLower(job.Spec.Verifier.String()) + "/" + state.ResultsID
 }
 
 func getAPIClient() *publicapi.APIClient {
@@ -105,11 +97,11 @@ func ReverseList(s []string) []string {
 	return s
 }
 
-// func RandInt(i int) int {
-// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
-// 	if err != nil {
-// 		log.Fatal().Msg("could not generate random number")
-// 	}
-
-// 	return int(n.Int64())
-// }
+func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
+	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
+		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
+	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
+		settings.OutputDir, "Directory to write the output to.")
+	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
+		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+}

@@ -12,6 +12,8 @@ type StroageHandlerHasStorageLocally func(ctx context.Context, volume storage.St
 type StroageHandlerGetVolumeSize func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
 type StroageHandlerPrepareStorage func(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error)
 type StroageHandlerCleanupStorage func(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error
+type StroageHandlerUpload func(ctx context.Context, localPath string) (storage.StorageSpec, error)
+type StroageHandlerExplode func(ctx context.Context, storageSpec storage.StorageSpec) ([]storage.StorageSpec, error)
 
 type StorageConfigExternalHooks struct {
 	IsInstalled       StroageHandlerIsInstalled
@@ -19,6 +21,8 @@ type StorageConfigExternalHooks struct {
 	GetVolumeSize     StroageHandlerGetVolumeSize
 	PrepareStorage    StroageHandlerPrepareStorage
 	CleanupStorage    StroageHandlerCleanupStorage
+	Upload            StroageHandlerUpload
+	Explode           StroageHandlerExplode
 }
 
 type StorageConfig struct {
@@ -83,7 +87,27 @@ func (s *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storag
 	}, nil
 }
 
-// nolint:lll // Exception to the long rule
+func (s *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	if s.Config.ExternalHooks.Upload != nil {
+		handler := s.Config.ExternalHooks.Upload
+		return handler(ctx, localPath)
+	}
+	return storage.StorageSpec{
+		Engine: storage.StorageSourceIPFS,
+		Cid:    "test",
+		Path:   "/",
+	}, nil
+}
+
+func (s *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	if s.Config.ExternalHooks.Explode != nil {
+		handler := s.Config.ExternalHooks.Explode
+		return handler(ctx, spec)
+	}
+	return []storage.StorageSpec{}, nil
+}
+
+//nolint:lll // Exception to the long rule
 func (s *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
 	if s.Config.ExternalHooks.CleanupStorage != nil {
 		handler := s.Config.ExternalHooks.CleanupStorage

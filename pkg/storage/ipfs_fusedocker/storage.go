@@ -145,6 +145,14 @@ func (sp *StorageProvider) CleanupStorage(ctx context.Context,
 	return nil
 }
 
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+}
+
+func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+	return []storage.StorageSpec{}, fmt.Errorf("not implemented")
+}
+
 func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {
 	sidecar, err := sp.getSidecar()
 	if err != nil {

@@ -151,9 +151,13 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
+			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
+			require.NoError(suite.T(), err)
+
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			getCmdFlags.ipfsSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			runDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -162,7 +166,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
-				"--localoutput", outputDir,
+				"--output-dir", outputDir,
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",
@@ -364,7 +368,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs_1"}}, correctLength: 2, err: ""},                                                // Correct output flag
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
-			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volumes"},                                     // OV requested but no name (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volume"},                                      // OV requested but no name (should error)
 		}
 
 		for _, tcids := range testCids {
@@ -396,7 +400,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 					flagsArray...,
 				)
 				if tcids.err != "" {
-					require.Error(suite.T(), err, "Expected an error, but none provided.")
+					require.Error(suite.T(), err, "Expected an error, but none provided. %+v", tcids)
 					require.Contains(suite.T(), err.Error(), "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
@@ -483,6 +487,10 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 		{numberOfJobs: 1}, // Test for one
 		// {numberOfJobs: 5}, // Test for five
 	}
+
+	var logBuf = new(bytes.Buffer)
+	var Stdout = struct{ io.Writer }{os.Stdout}
+	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
 
 	annotationsToTest := []struct {
 		Name          string
@@ -659,4 +667,54 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			}
 		}()
 	}
+}
+
+func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	const nodeCount = 1
+
+	videos := []string{
+		"Bird flying over the lake.mp4",
+		"Calm waves on a rocky sea gulf.mp4",
+		"Prominent Late Gothic styled architecture.mp4",
+	}
+
+	stack, cm := devstack.SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer cm.Cleanup()
+
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	require.NoError(suite.T(), err)
+	for _, video := range videos {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%s", dirPath, video),
+			[]byte(fmt.Sprintf("hello %s", video)),
+			0644,
+		)
+		require.NoError(suite.T(), err)
+	}
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+	allArgs := []string{
+		"docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--wait",
+		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
+		"--sharding-base-path", "/inputs",
+		"--sharding-glob-pattern", "*.mp4",
+		"--sharding-batch-size", "1",
+		"ubuntu", "echo", "hello",
+	}
+
+	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+	require.NoError(suite.T(), submitErr)
 }
