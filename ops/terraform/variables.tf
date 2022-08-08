@@ -109,7 +109,7 @@ variable "prometheus_version" {
 // Grafana: you can find the /api/prom/push URL, username, and password for your metrics
 // endpoint by clicking on Details in the Prometheus card of the Cloud Portal
 // https://grafana.com/docs/grafana-cloud/fundamentals/cloud-portal/
-// Note: th
+// Note: this is not an account-wide API key, but rather a key for Prometheus
 variable "grafana_cloud_api_key" {
   type    = string
   default = ""
