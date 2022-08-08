@@ -207,6 +207,27 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 
 }
 
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
+	// -v QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN:/hello.txt ubuntu cat hello.txt
+	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	args := []string{"docker", "run",
+		"--local",
+		"-v", fmt.Sprintf("%s:/hello.txt", CID),
+		"ubuntu",
+		"cat", "hello.txt"}
+	expectedStdout := "hello"
+	done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), trimmedStdout, expectedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+}
+
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int
