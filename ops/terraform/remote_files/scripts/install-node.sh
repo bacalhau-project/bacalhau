@@ -86,8 +86,8 @@ function install-prometheus() {
     HOSTNAME=$(hostname)
     sudo tee /terraform_node/prometheus.yml > /dev/null <<EOF
         global:
-          scrape_interval: 15s
-          evaluation_interval: 15s
+          scrape_interval: 60s
+          evaluation_interval: 60s
           external_labels:
             origin_prometheus: ${HOSTNAME}
 
