@@ -277,14 +277,16 @@ workflows:
               ignore: main
             tags:
               ignore: /.*/
-      - deploy:
-          name: deploy-development-cluster
-          requires:
-            - build-linux-amd64
-          rollout_stage: development
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
-          filters:
-            <<: *filters_dev_branches # this is calling the previously set yaml anchor
+      ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
+      ## See https://github.com/filecoin-project/bacalhau/issues/434
+      # - deploy:
+      #     name: deploy-development-cluster
+      #     requires:
+      #       - build-linux-amd64
+      #     rollout_stage: development
+      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
+      #     filters:
+      #       <<: *filters_dev_branches # this is calling the previously set yaml anchor
 
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
