@@ -360,7 +360,6 @@ workflows:
       - performance_job:
           name: Running Performance
           requires:
-<<<<<<< HEAD
             - build-linux-amd64
       - update_metadata:
           METADATA_BUCKET: "bacalhau-global-storage"
