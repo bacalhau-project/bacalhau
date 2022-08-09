@@ -101,14 +101,14 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 }
 
 //nolint:funlen,gocyclo // will clean up
-func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int) (string, error) {
+func (e *Executor) RunShard(
+	ctx context.Context,
+	j executor.Job,
+	shardIndex int,
+	jobResultsDir string,
+) error {
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
-
-	jobResultsDir, err := e.ensureShardResultsDir(j, shardIndex)
-	if err != nil {
-		return "", err
-	}
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
@@ -116,7 +116,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 
 	shard, err := jobutils.GetShard(ctx, j.Spec, e.StorageProviders, shardIndex)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// reusable between the input shards and the input context
@@ -152,7 +152,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	for _, contextStorage := range j.Spec.Contexts {
 		err = addInputStorageHandler(contextStorage)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
@@ -160,7 +160,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	for _, inputStorage := range shard {
 		err = addInputStorageHandler(inputStorage)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
@@ -170,17 +170,17 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	// if and when the deal is settled
 	for _, output := range j.Spec.Outputs {
 		if output.Name == "" {
-			return "", fmt.Errorf("output volume has no name: %+v", output)
+			return fmt.Errorf("output volume has no name: %+v", output)
 		}
 
 		if output.Path == "" {
-			return "", fmt.Errorf("output volume has no path: %+v", output)
+			return fmt.Errorf("output volume has no path: %+v", output)
 		}
 
 		srcd := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
-			return "", err
+			return err
 		}
 
 		log.Trace().Msgf("Output Volume: %+v", output)
@@ -213,11 +213,11 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 				[]string{"pull", j.Spec.Docker.Image},
 			)
 			if err != nil {
-				return "", fmt.Errorf("error pulling %s: %s, %s", j.Spec.Docker.Image, err, stdout)
+				return fmt.Errorf("error pulling %s: %s, %s", j.Spec.Docker.Image, err, stdout)
 			}
 			log.Trace().Msgf("Pull image output: %s\n%s", j.Spec.Docker.Image, stdout)
 		} else {
-			return "", fmt.Errorf("error checking if we have %s locally: %s", j.Spec.Docker.Image, err)
+			return fmt.Errorf("error checking if we have %s locally: %s", j.Spec.Docker.Image, err)
 		}
 	}
 
@@ -226,7 +226,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	// (which is what we actually want to happen)
 	jsonJobSpec, err := json.Marshal(j.Spec)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	useEnv := append(j.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
@@ -273,7 +273,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		e.jobContainerName(j, shardIndex),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to create container: %w", err)
+		return fmt.Errorf("failed to create container: %w", err)
 	}
 
 	err = e.Client.ContainerStart(
@@ -282,7 +282,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		dockertypes.ContainerStartOptions{},
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to start container: %w", err)
+		return fmt.Errorf("failed to start container: %w", err)
 	}
 	defer e.cleanupJob(j, shardIndex)
 
@@ -320,7 +320,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to get logs: %w", err)
+		return fmt.Errorf("failed to get logs: %w", err)
 	}
 
 	err = os.WriteFile(
@@ -331,7 +331,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to exitCode: %s", err)
 		log.Error().Msg(msg)
-		return "", errors.New(msg)
+		return errors.New(msg)
 	}
 
 	err = os.WriteFile(
@@ -342,7 +342,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stdout: %s", err)
 		log.Error().Msg(msg)
-		return "", errors.New(msg)
+		return errors.New(msg)
 	}
 
 	err = os.WriteFile(
@@ -353,10 +353,10 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	if err != nil {
 		msg := fmt.Sprintf("could not write results to stderr: %s", err)
 		log.Error().Msg(msg)
-		return "", errors.New(msg)
+		return errors.New(msg)
 	}
 
-	return jobResultsDir, containerError
+	return containerError
 }
 
 func (e *Executor) cleanupJob(job executor.Job, shardIndex int) {
@@ -401,18 +401,6 @@ func (e *Executor) jobContainerLabels(job executor.Job) map[string]string {
 		"bacalhau-executor": e.ID,
 		"bacalhau-jobID":    job.ID,
 	}
-}
-
-func (e *Executor) shardResultsDir(job executor.Job, shardIndex int) string {
-	return fmt.Sprintf("%s/%s/%d", e.ResultsDir, job.ID, shardIndex)
-}
-
-func (e *Executor) ensureShardResultsDir(job executor.Job, shardIndex int) (string, error) {
-	dir := e.shardResultsDir(job, shardIndex)
-	err := os.MkdirAll(dir, util.OS_ALL_RWX)
-	info, _ := os.Stat(dir)
-	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
-	return dir, err
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

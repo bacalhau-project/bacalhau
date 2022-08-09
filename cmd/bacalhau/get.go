@@ -2,12 +2,10 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -43,11 +41,6 @@ var getCmd = &cobra.Command{
 
 		if err != nil {
 			return err
-		}
-
-		// todo: deal with jobs with a different verifier
-		if job.Spec.Verifier != verifier.VerifierIpfs {
-			return fmt.Errorf("job verifier not found: %s", job.Spec.Verifier)
 		}
 
 		results, err := getAPIClient().GetResults(context.Background(), job.ID)

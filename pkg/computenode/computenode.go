@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -42,6 +43,7 @@ type ComputeNode struct {
 	controller      *controller.Controller
 	executors       map[executor.EngineType]executor.Executor
 	verifiers       map[verifier.VerifierType]verifier.Verifier
+	publishers      map[publisher.PublisherType]publisher.Publisher
 	capacityManager *capacitymanager.CapacityManager
 	componentMu     sync.Mutex
 	bidMu           sync.Mutex
@@ -58,9 +60,10 @@ func NewComputeNode(
 	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
+	publishers map[publisher.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
-	computeNode, err := constructComputeNode(c, executors, verifiers, config)
+	computeNode, err := constructComputeNode(c, executors, verifiers, publishers, config)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +79,7 @@ func constructComputeNode(
 	c *controller.Controller,
 	executors map[executor.EngineType]executor.Executor,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
+	publishers map[publisher.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	// TODO: instrument with trace
@@ -96,6 +100,7 @@ func constructComputeNode(
 		controller:      c,
 		executors:       executors,
 		verifiers:       verifiers,
+		publishers:      publishers,
 		capacityManager: capacityManager,
 	}
 
@@ -408,13 +413,13 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIn
 /*
 run job
 */
-func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
+func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int, resultFolder string) error {
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return e.RunShard(ctx, job, shardIndex)
+	return e.RunShard(ctx, job, shardIndex, resultFolder)
 }
 
 func (node *ComputeNode) RunShard(
@@ -422,12 +427,21 @@ func (node *ComputeNode) RunShard(
 	job executor.Job,
 	shardIndex int,
 ) (string, error) {
-	resultFolder, containerRunError := node.ExecuteJobShard(ctx, job, shardIndex)
+	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		return "", err
+	}
+	resultFolder, err := verifier.GetShardResultPath(ctx, job.ID, shardIndex)
+	if err != nil {
+		return "", err
+	}
+	containerRunError := node.ExecuteJobShard(ctx, job, shardIndex, resultFolder)
 	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     node.id,
 			"shard_index": strconv.Itoa(shardIndex),
 		}).Inc()
+		return resultFolder, fmt.Errorf("runJob error %s: %s", job.ID, containerRunError)
 	} else {
 		jobsCompleted.With(prometheus.Labels{
 			"node_id":     node.id,
@@ -441,15 +455,11 @@ func (node *ComputeNode) RunShard(
 		}
 		return "", err
 	}
-	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	shardProposal, err := verifier.GetProposal(ctx, job.ID, shardIndex, resultFolder)
 	if err != nil {
 		return "", err
 	}
-	resultValue, err := verifier.ProcessShardResults(ctx, job.ID, shardIndex, resultFolder)
-	if err != nil {
-		return "", err
-	}
-	return resultValue, containerRunError
+	return shardProposal, containerRunError
 }
 
 //nolint:dupl // methods are not duplicates

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -69,6 +70,15 @@ type GetVerifiersFunc func(
 	error,
 )
 
+type GetPublishersFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+	ctrl *controller.Controller,
+) (
+	map[publisher.PublisherType]publisher.Publisher,
+	error,
+)
+
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
@@ -76,6 +86,7 @@ func NewDevStack(
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
+	getPublishers GetPublishersFunc,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 	peer string,
@@ -187,6 +198,11 @@ func NewDevStack(
 			return nil, err
 		}
 
+		publishers, err := getPublishers(ipfsAPIAddrs[0], i, ctrl)
+		if err != nil {
+			return nil, err
+		}
+
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
@@ -208,6 +224,7 @@ func NewDevStack(
 			ctrl,
 			executors,
 			verifiers,
+			publishers,
 			config,
 		)
 		if err != nil {
@@ -225,7 +242,7 @@ func NewDevStack(
 			"0.0.0.0",
 			apiPort,
 			ctrl,
-			verifiers,
+			publishers,
 		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope

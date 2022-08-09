@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -53,7 +55,14 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewIPFSVerifiers(
+	verifiers, err := verifier_util.NewNoopVerifiers(
+		cm,
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
+	require.NoError(t, err)
+
+	publishers, err := publisher_util.NewIPFSPublishers(
 		cm,
 		apiAddress,
 		job.NewNoopJobLoader(),
@@ -69,6 +78,7 @@ func SetupTestDockerIpfs(
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		config,
 	)
 	require.NoError(t, err)
@@ -93,7 +103,10 @@ func SetupTestNoop(
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewNoopVerifiers(cm)
+	verifiers, err := verifier_util.NewNoopVerifiers(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
+	require.NoError(t, err)
+
+	publishers, err := publisher_util.NewNoopPublishers(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
 	require.NoError(t, err)
 
 	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
@@ -115,6 +128,7 @@ func SetupTestNoop(
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computeNodeconfig,
 	)
 	if err != nil {
@@ -185,10 +199,12 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
+	require.NoError(t, err)
+	err = computeNode.ExecuteJobShard(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
-	}, 0)
+	}, 0, result)
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

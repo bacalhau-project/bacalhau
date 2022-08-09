@@ -61,7 +61,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker:   testCase.GetJobSpec(),
 		Inputs:   inputStorageList,
 		Outputs:  testCase.Outputs,

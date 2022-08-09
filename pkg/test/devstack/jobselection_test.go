@@ -73,7 +73,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		jobSpec := executor.JobSpec{
 			Engine:   executor.EngineDocker,
-			Verifier: verifier.VerifierIpfs,
+			Verifier: verifier.VerifierNoop,
 			Docker:   scenario.GetJobSpec(),
 			Inputs:   inputStorageList,
 			Outputs:  scenario.Outputs,

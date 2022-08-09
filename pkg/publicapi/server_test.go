@@ -104,7 +104,7 @@ func (suite *ServerSuite) TestVarz() {
 func makeJob() (*executor.JobSpec, *executor.JobDeal) {
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{

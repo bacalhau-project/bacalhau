@@ -12,6 +12,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -227,7 +228,12 @@ var serveCmd = &cobra.Command{
 			return controller.GetJobState(ctx, id)
 		}
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, ipfsConnect, jobLoader, stateLoader)
+		verifiers, err := verifier_util.NewNoopVerifiers(cm, jobLoader, stateLoader)
+		if err != nil {
+			return err
+		}
+
+		publishers, err := publisher_util.NewIPFSPublishers(cm, ipfsConnect, jobLoader, stateLoader)
 		if err != nil {
 			return err
 		}
@@ -259,6 +265,7 @@ var serveCmd = &cobra.Command{
 			controller,
 			executors,
 			verifiers,
+			publishers,
 			computeNodeConfig,
 		)
 		if err != nil {
@@ -269,7 +276,7 @@ var serveCmd = &cobra.Command{
 			hostAddress,
 			apiPort,
 			controller,
-			verifiers,
+			publishers,
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:

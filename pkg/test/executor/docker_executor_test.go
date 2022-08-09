@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -104,12 +105,11 @@ func dockerExecutorStorageTest(
 			CreatedAt: time.Now(),
 		}
 
-		resultsDirectory, err := dockerExecutor.RunShard(ctx, job, 0)
+		resultsDirectory, err := ioutil.TempDir("", "bacalhau-dockerExecutorStorageTest")
 		require.NoError(t, err)
 
-		if err != nil {
-			t.FailNow()
-		}
+		err = dockerExecutor.RunShard(ctx, job, 0, resultsDirectory)
+		require.NoError(t, err)
 
 		testCase.ResultsChecker(resultsDirectory)
 	}

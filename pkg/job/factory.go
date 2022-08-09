@@ -149,7 +149,7 @@ func ConstructLanguageJob(
 	spec := executor.JobSpec{
 		Engine: executor.EngineLanguage,
 		// TODO: should this always be ipfs?
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Language: executor.JobSpecLanguage{
 			Language:         language,
 			LanguageVersion:  languageVersion,

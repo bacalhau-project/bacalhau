@@ -68,7 +68,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{

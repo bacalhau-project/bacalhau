@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -199,7 +200,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
+		jobHandler := func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -214,7 +215,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return "/tmp", nil
+			return nil
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
@@ -535,9 +536,15 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
 		require.NoError(suite.T(), err)
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(
+		verifiers, err := verifier_util.NewNoopVerifiers(
 			cm,
-			apiAddress,
+			job.NewNoopJobLoader(),
+			job.NewNoopStateLoader(),
+		)
+		require.NoError(suite.T(), err)
+
+		publishers, err := publisher_util.NewNoopPublishers(
+			cm,
 			job.NewNoopJobLoader(),
 			job.NewNoopStateLoader(),
 		)
@@ -551,6 +558,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 			ctrl,
 			executors,
 			verifiers,
+			publishers,
 			computenode.ComputeNodeConfig{},
 		)
 		require.NoError(suite.T(), err)

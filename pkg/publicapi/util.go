@@ -12,7 +12,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -38,7 +40,18 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cleanupManager)
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
+		cleanupManager,
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
+	require.NoError(t, err)
+
+	noopPublishers, err := publisher_utils.NewNoopPublishers(
+		cleanupManager,
+		job.NewNoopJobLoader(),
+		job.NewNoopStateLoader(),
+	)
 	require.NoError(t, err)
 
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
@@ -67,7 +80,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c, noopVerifiers)
+	s := NewServer(host, port, c, noopPublishers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
@@ -133,21 +146,21 @@ func TailFile(count int, path string) ([]byte, error) {
 
 func MakeEchoJob() (executor.JobSpec, executor.JobDeal) {
 	randomSuffix, _ := uuid.NewUUID()
-	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, []string{
 		"echo",
 		randomSuffix.String(),
 	})
 }
 
 func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
 func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineNoop, verifier.VerifierNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})

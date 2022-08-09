@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -66,7 +68,23 @@ func SetupTest(
 		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
 			return ctrl.GetJobState(ctx, id)
 		}
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		return verifier_util.NewNoopVerifiers(cm, jobLoader, stateLoader)
+	}
+	getPublishers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[publisher.PublisherType]publisher.Publisher,
+		error,
+	) {
+		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+			return ctrl.GetJob(ctx, id)
+		}
+		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
+			return ctrl.GetJobState(ctx, id)
+		}
+		return publisher_util.NewIPFSPublishers(cm, ipfsMultiAddress, jobLoader, stateLoader)
 	}
 	stack, err := devstack.NewDevStack(
 		cm,
@@ -75,6 +93,7 @@ func SetupTest(
 		getStorageProviders,
 		getExecutors,
 		getVerifiers,
+		getPublishers,
 		config,
 		"",
 	)

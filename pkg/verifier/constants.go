@@ -11,7 +11,6 @@ type VerifierType int
 const (
 	verifierUnknown VerifierType = iota // must be first
 	VerifierNoop
-	VerifierIpfs
 	verifierDone // must be last
 )
 

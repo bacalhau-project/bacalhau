@@ -11,8 +11,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_noop "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	storage_noop "github.com/filecoin-project/bacalhau/pkg/storage/noop"
@@ -54,7 +57,7 @@ func (suite *TransportSuite) TearDownAllSuite() {
 func setupTest(t *testing.T) (
 	*inprocess.InProcessTransport,
 	*executorNoop.Executor,
-	*verifier_noop.Verifier,
+	*verifier_noop.NoopVerifier,
 	*controller.Controller,
 	*system.CleanupManager,
 ) {
@@ -66,7 +69,10 @@ func setupTest(t *testing.T) (
 	noopExecutor, err := executorNoop.NewExecutor()
 	require.NoError(t, err)
 
-	noopVerifier, err := verifier_noop.NewVerifier()
+	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
+	require.NoError(t, err)
+
+	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
 	require.NoError(t, err)
 
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{
@@ -79,6 +85,10 @@ func setupTest(t *testing.T) (
 
 	verifiers := map[verifier.VerifierType]verifier.Verifier{
 		verifier.VerifierNoop: noopVerifier,
+	}
+
+	publishers := map[publisher.PublisherType]publisher.Publisher{
+		publisher.PublisherNoop: noopPublisher,
 	}
 
 	datastore, err := inmemory.NewInMemoryDatastore()
@@ -95,6 +105,7 @@ func setupTest(t *testing.T) (
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
@@ -119,6 +130,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{}
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
+	publishers := map[publisher.PublisherType]publisher.Publisher{}
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
@@ -130,6 +142,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(suite.T(), err)

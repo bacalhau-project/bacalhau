@@ -155,17 +155,17 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	// Test to see how many files can be open on this system...
 	cmd := exec.Command("ulimit", "-n")
-    err := cmd.Run()
+	err := cmd.Run()
 
-    if err != nil {
-        require.Fail(suite.T(), "Failure checking for ulimit.")
-    }
+	if err != nil {
+		require.Fail(suite.T(), "Failure checking for ulimit.")
+	}
 
 	out, _ := cmd.CombinedOutput()
 	ulimitValue, _ := strconv.Atoi(string(out))
-    if err != nil {
-        require.Fail(suite.T(), "Failure getting ulimit value.")
-    }
+	if err != nil {
+		require.Fail(suite.T(), "Failure getting ulimit value.")
+	}
 
 	if ulimitValue <= 512 {
 		suite.T().Skip("Skipping sharding end to end test because the ulimit value is too low.")
@@ -194,7 +194,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -332,7 +332,7 @@ func (suite *ShardingSuite) TestNoShards() {
 
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -400,7 +400,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 	jobSpec := executor.JobSpec{
 		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Verifier: verifier.VerifierNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{

@@ -10,13 +10,12 @@ func _() {
 	var x [1]struct{}
 	_ = x[verifierUnknown-0]
 	_ = x[VerifierNoop-1]
-	_ = x[VerifierIpfs-2]
-	_ = x[verifierDone-3]
+	_ = x[verifierDone-2]
 }
 
-const _VerifierType_name = "verifierUnknownNoopIpfsverifierDone"
+const _VerifierType_name = "verifierUnknownNoopverifierDone"
 
-var _VerifierType_index = [...]uint8{0, 15, 19, 23, 35}
+var _VerifierType_index = [...]uint8{0, 15, 19, 31}
 
 func (i VerifierType) String() string {
 	if i < 0 || i >= VerifierType(len(_VerifierType_index)-1) {

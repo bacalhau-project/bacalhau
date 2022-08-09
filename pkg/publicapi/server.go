@@ -22,10 +22,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -37,7 +37,7 @@ const ServerReadHeaderTimeout = 10 * time.Second
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	Controller  *controller.Controller
-	Verifiers   map[verifier.VerifierType]verifier.Verifier
+	Publishers  map[publisher.PublisherType]publisher.Publisher
 	Host        string
 	Port        int
 	componentMu sync.Mutex
@@ -48,11 +48,11 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
-	verifiers map[verifier.VerifierType]verifier.Verifier,
+	publishers map[publisher.PublisherType]publisher.Publisher,
 ) *APIServer {
 	return &APIServer{
 		Controller: c,
-		Verifiers:  verifiers,
+		Publishers: publishers,
 		Host:       host,
 		Port:       port,
 	}
@@ -262,19 +262,19 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	job, err := apiServer.Controller.GetJob(req.Context(), stateReq.JobID)
+	// job, err := apiServer.Controller.GetJob(req.Context(), stateReq.JobID)
+	// if err != nil {
+	// 	http.Error(res, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+
+	publisher, err := apiServer.getPublisher(req.Context(), publisher.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	verifier, err := apiServer.getVerifier(req.Context(), job.Spec.Verifier)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	results, err := verifier.GetJobResultSet(req.Context(), stateReq.JobID)
+	results, err := publisher.ComposeResultSet(req.Context(), stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -450,16 +450,16 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
+func (apiServer *APIServer) getPublisher(ctx context.Context, typ publisher.PublisherType) (publisher.Publisher, error) {
 	apiServer.componentMu.Lock()
 	defer apiServer.componentMu.Unlock()
 
-	if _, ok := apiServer.Verifiers[typ]; !ok {
+	if _, ok := apiServer.Publishers[typ]; !ok {
 		return nil, fmt.Errorf(
 			"no matching verifier found on this server: %s", typ.String())
 	}
 
-	v := apiServer.Verifiers[typ]
+	v := apiServer.Publishers[typ]
 	installed, err := v.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
