@@ -242,6 +242,7 @@ var dockerRunCmd = &cobra.Command{
 			jobConcurrency,
 			jobLabels,
 			jobWorkingDir,
+			doNotTrack,
 		)
 
 		if err != nil {
