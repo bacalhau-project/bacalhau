@@ -36,3 +36,4 @@ ops/terraform/*.out
 *_unit.json
 .trunk/logs
 benchmark/results
+shards

@@ -13,7 +13,7 @@
     },
     "resources": {
         "cpu": "",
-        "gpu":"",
+        "gpu": "",
         "memory": "",
         "disk": ""
     },
@@ -28,11 +28,10 @@
     "outputs": [
         {
             "engine_name": "ipfs",
-            "name": "output",
+            "name": "output_custom",
             "cid": "",
-            "path": "/output"
+            "path": "/output_custom"
         }
     ],
-    
     "annotations": null
 }
