@@ -186,7 +186,7 @@ jobs:
             if [ "<<pipeline.git.tag>>" != "" ]; then
               export TAG="<<pipeline.git.tag>>"
             else
-              export TAG="NOTAG"
+              export TAG="v0.0.0-xxxxxxx"
             fi
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
