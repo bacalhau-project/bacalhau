@@ -153,6 +153,7 @@ var applyCmd = &cobra.Command{
 			jobfConcurrency,
 			jobTags,
 			jobfWorkingDir,
+			doNotTrack,
 		)
 		if err != nil {
 			return err

@@ -42,6 +42,7 @@ func ConstructDockerJob( //nolint:funlen
 	concurrency int,
 	annotations []string,
 	workingDir string,
+	doNotTrack bool,
 ) (executor.JobSpec, executor.JobDeal, error) {
 	if concurrency <= 0 {
 		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
@@ -100,6 +101,7 @@ func ConstructDockerJob( //nolint:funlen
 		Contexts:    jobContexts,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,
+		DoNotTrack:  doNotTrack,
 	}
 
 	// override working dir if provided
@@ -128,6 +130,7 @@ func ConstructLanguageJob(
 	requirementsPath string,
 	contextPath string, // we have to tar this up and POST it to the requestor node
 	deterministic bool,
+	doNotTrack bool,
 ) (executor.JobSpec, executor.JobDeal, error) {
 	// TODO refactor this wrt ConstructDockerJob
 
@@ -160,9 +163,10 @@ func ConstructLanguageJob(
 			RequirementsPath: requirementsPath,
 		},
 
-		Inputs:   jobInputs,
-		Contexts: jobContexts,
-		Outputs:  jobOutputs,
+		Inputs:     jobInputs,
+		Contexts:   jobContexts,
+		Outputs:    jobOutputs,
+		DoNotTrack: doNotTrack,
 	}
 
 	deal := executor.JobDeal{

@@ -168,6 +168,9 @@ type JobSpec struct {
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
 	Sharding JobShardingConfig `json:"sharding" yaml:"sharding"`
+
+	// Do not track specified by the client
+	DoNotTrack bool `json:"donottrack" yaml:"donottrack"`
 }
 
 // for VM style executors

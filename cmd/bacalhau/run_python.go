@@ -139,6 +139,7 @@ var runPythonCmd = &cobra.Command{
 			requirementsPath,
 			"",
 			deterministic,
+			doNotTrack,
 		)
 		if err != nil {
 			return err

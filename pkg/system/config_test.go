@@ -52,9 +52,8 @@ func (suite *SystemConfigSuite) TestMessageSigning() {
 	require.True(suite.T(), ok)
 
 	publicKey := GetClientPublicKey()
-	ok, err = Verify(msg, sig, publicKey)
+	err = Verify(msg, sig, publicKey)
 	require.NoError(suite.T(), err)
-	require.True(suite.T(), ok)
 }
 
 func (suite *SystemConfigSuite) TestGetClientID() {

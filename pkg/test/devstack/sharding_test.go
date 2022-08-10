@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -152,19 +153,23 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
+	ulimitValue := 0
 
-	// Test to see how many files can be open on this system...
-	cmd := exec.Command("ulimit", "-n")
-	err := cmd.Run()
+	if _, err := exec.LookPath("ulimit"); err == nil {
+		// Test to see how many files can be open on this system...
+		cmd := exec.Command("ulimit", "-n")
+		err := cmd.Run()
+		require.NoError(suite.T(), err)
 
-	if err != nil {
-		require.Fail(suite.T(), "Failure checking for ulimit.")
-	}
-
-	out, _ := cmd.CombinedOutput()
-	ulimitValue, _ := strconv.Atoi(string(out))
-	if err != nil {
-		require.Fail(suite.T(), "Failure getting ulimit value.")
+		out, _ := cmd.CombinedOutput()
+		ulimitValue, err = strconv.Atoi(string(out))
+		require.NoError(suite.T(), err)
+	} else {
+		var rLimit syscall.Rlimit
+		err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+		require.NoError(suite.T(), err)
+		ulimitValue, err = strconv.Atoi(fmt.Sprint(rLimit.Cur))
+		require.NoError(suite.T(), err)
 	}
 
 	if ulimitValue <= 512 {

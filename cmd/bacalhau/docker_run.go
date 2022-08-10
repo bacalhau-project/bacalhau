@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/version"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -147,6 +148,15 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
 	Short: "Run a docker job on the network (see run subcommand)",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Check that the server version is compatible with the client version
+		serverVersion, _ := getAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
+		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
+			log.Err(err)
+			return err
+		}
+		return nil
+	},
 }
 
 var dockerRunCmd = &cobra.Command{
@@ -242,6 +252,7 @@ var dockerRunCmd = &cobra.Command{
 			jobConcurrency,
 			jobLabels,
 			jobWorkingDir,
+			doNotTrack,
 		)
 
 		if err != nil {
