@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/local"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -295,6 +296,8 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 		}
+
+		var apiClient *publicapi.APIClient
 		if isLocal {
 			client, err := local.NewDockerClient()
 			if err != nil {
@@ -334,14 +337,14 @@ var dockerRunCmd = &cobra.Command{
 					return err
 				}
 
-			cmd.Printf("%s\n", job.ID)
-			if waitForJobToFinish {
-				resolver := getAPIClient().GetJobStateResolver()
-				resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
-				err = resolver.WaitUntilComplete(ctx, job.ID)
-				if err != nil {
-					return err
-				}
+		cmd.Printf("%s\n", job.ID)
+		if waitForJobToFinish {
+			resolver := getAPIClient().GetJobStateResolver()
+			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
+			err = resolver.WaitUntilComplete(ctx, job.ID)
+			if err != nil {
+				return err
+			}
 				cmd.Println(string(body))
 			}
 
