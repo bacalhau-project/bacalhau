@@ -128,6 +128,7 @@ var devstackCmd = &cobra.Command{
 			getVerifiers,
 			computeNodeConfig,
 			devStackPeer,
+			false,
 		)
 		if err != nil {
 			return err
