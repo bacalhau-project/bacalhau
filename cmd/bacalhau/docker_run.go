@@ -8,10 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -270,48 +271,56 @@ var dockerRunCmd = &cobra.Command{
 				return err
 			}
 		}
+
+		var apiClient *publicapi.APIClient
 		if isLocal {
-			fmt.Printf("LOCAL --------------------------------------\n")
-			spew.Dump("LOCAL")
+			stack, err := devstack.NewDevStackForRunLocal(cm, 1)
+			if err != nil {
+				return err
+			}
+			apiUri := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiUri)
 		} else {
-			job, err := getAPIClient().Submit(ctx, spec, deal, nil)
+			apiClient = getAPIClient()
+		}
+
+		job, err := apiClient.Submit(ctx, spec, deal, nil)
+		if err != nil {
+			return err
+		}
+
+		cmd.Printf("%s\n", job.ID)
+		if waitForJobToFinish {
+			resolver := getAPIClient().GetJobStateResolver()
+			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
+			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
 
-			cmd.Printf("%s\n", job.ID)
-			if waitForJobToFinish {
-				resolver := getAPIClient().GetJobStateResolver()
-				resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
-				err = resolver.WaitUntilComplete(ctx, job.ID)
+			if waitForJobToFinishAndPrintOutput {
+				results, err := getAPIClient().GetResults(ctx, job.ID)
 				if err != nil {
 					return err
 				}
-
-				if waitForJobToFinishAndPrintOutput {
-					results, err := getAPIClient().GetResults(ctx, job.ID)
-					if err != nil {
-						return err
-					}
-					if len(results) == 0 {
-						return fmt.Errorf("no results found")
-					}
-					err = ipfs.DownloadJob(
-						cm,
-						job,
-						results,
-						runDownloadFlags,
-					)
-					if err != nil {
-						return err
-					}
-					body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
-					if err != nil {
-						return err
-					}
-					fmt.Println()
-					fmt.Println(string(body))
+				if len(results) == 0 {
+					return fmt.Errorf("no results found")
 				}
+				err = ipfs.DownloadJob(
+					cm,
+					job,
+					results,
+					runDownloadFlags,
+				)
+				if err != nil {
+					return err
+				}
+				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				fmt.Println(string(body))
 			}
 		}
 
