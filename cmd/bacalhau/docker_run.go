@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/local"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -271,17 +271,8 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 		if isLocal {
-			client, err := local.NewDockerClient()
-			if err != nil {
-				cmd.Printf("%t\n", local.IsInstalled(client))
-				return err
-			}
-			std, err := local.RunJobLocally(ctx, spec)
-			cmd.Printf("%v", std)
-
-			if err != nil {
-				return err
-			}
+			fmt.Printf("LOCAL --------------------------------------\n")
+			spew.Dump("LOCAL")
 		} else {
 			job, err := getAPIClient().Submit(ctx, spec, deal, nil)
 			if err != nil {
