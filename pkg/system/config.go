@@ -123,11 +123,12 @@ func VerifyForClient(msg []byte, sig string) (bool, error) {
 	return rsa.VerifyPKCS1v15(&globalUserIDKey.PublicKey, sigHash, hashBytes, sigBytes) == nil, nil
 }
 
-// Verify verifies a signed message with the given encoding of a public key:
-func Verify(msg []byte, sig, publicKey string) (bool, error) {
+// Verify verifies a signed message with the given encoding of a public key.
+// Returns non nil if the key is invalid.
+func Verify(msg []byte, sig, publicKey string) error {
 	key, err := decodePublicKey(publicKey)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode public key: %w", err)
+		return fmt.Errorf("failed to decode public key: %w", err)
 	}
 
 	hash := sigHash.New()
@@ -136,11 +137,11 @@ func Verify(msg []byte, sig, publicKey string) (bool, error) {
 
 	sigBytes, err := base64.StdEncoding.DecodeString(sig)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode signature: %w", err)
+		return fmt.Errorf("failed to decode signature: %w", err)
 	}
 
-	// A successful verification is indicated by a nil return:
-	return rsa.VerifyPKCS1v15(key, sigHash, hashBytes, sigBytes) == nil, nil
+	// A successful verification is indicated by a nil return
+	return rsa.VerifyPKCS1v15(key, sigHash, hashBytes, sigBytes)
 }
 
 // GetClientID returns a hash identifying a user based on their ID key.
