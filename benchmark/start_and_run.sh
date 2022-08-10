@@ -38,7 +38,8 @@ wait_file "/tmp/bacalhau-devstack.pid" 15
 # trunk-ignore(shellcheck/SC2155)
 export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
-sleep 1 # Readd sleep to avoid race conditions
+# Wait for the Bacalhau API to be ready
+for i in 1 2 3 4 5; do curl -sSf localhost:${API_PORT}/healthz > /dev/null && break || sleep 1; done
 
 ./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
 ./explode.sh "${BACALHAU_BIN}" "${API_PORT}"
