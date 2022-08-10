@@ -68,14 +68,6 @@ func (suite *UtilsSuite) TestVersionCheck() {
 	})
 	require.NoError(suite.T(), err)
 
-	// OK: Newer CLI version
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
-		GitVersion: "v1.2.3",
-	}, &executor.VersionInfo{
-		GitVersion: "v1.2.0",
-	})
-	require.NoError(suite.T(), err)
-
 	// OK: invalid semver
 	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
 		GitVersion: "not-a-sem-ver",
@@ -103,6 +95,14 @@ func (suite *UtilsSuite) TestVersionCheck() {
 		GitVersion: "v1.2.3",
 	}, &executor.VersionInfo{
 		GitVersion: "v1.2.4",
+	})
+	require.Error(suite.T(), err)
+
+	// NOT OK: client is newer
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v1.2.4",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.3",
 	})
 	require.Error(suite.T(), err)
 }

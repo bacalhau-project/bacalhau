@@ -88,7 +88,18 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 		return nil
 	}
 	if s.GreaterThan(c) {
-		return fmt.Errorf("server version %s is newer than client version %s", serverVersion.GitVersion, clientVersion.GitVersion)
+		return fmt.Errorf(
+			"server version %s is newer than client version %s, please upgrade your client",
+			serverVersion.GitVersion,
+			clientVersion.GitVersion,
+		)
+	}
+	if c.GreaterThan(s) {
+		return fmt.Errorf(
+			"client version %s is newer than server version %s, please ask your network administrator to update Bacalhau",
+			serverVersion.GitVersion,
+			clientVersion.GitVersion,
+		)
 	}
 	return nil
 }
