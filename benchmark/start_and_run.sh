@@ -38,6 +38,8 @@ wait_file "/tmp/bacalhau-devstack.pid" 15
 # trunk-ignore(shellcheck/SC2155)
 export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
+sleep 1 # Readd sleep to avoid race conditions
+
 ./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
 ./explode.sh "${BACALHAU_BIN}" "${API_PORT}"
 
