@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	pjob "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/local"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/local"
+
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -333,14 +334,11 @@ var dockerRunCmd = &cobra.Command{
 					return err
 				}
 
-				cidl := Get(job.ID, jobIpfsGetTimeOut, jobLocalOutput)
-
-				// TODO: #425 Can you explain what the below is doing? Please comment.
-				var cidv string
-				for cid := range cidl {
-					cidv = filepath.Join(jobLocalOutput, cid)
-				}
-				body, err := os.ReadFile(cidv + "/stdout")
+			cmd.Printf("%s\n", job.ID)
+			if waitForJobToFinish {
+				resolver := getAPIClient().GetJobStateResolver()
+				resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
+				err = resolver.WaitUntilComplete(ctx, job.ID)
 				if err != nil {
 					return err
 				}
