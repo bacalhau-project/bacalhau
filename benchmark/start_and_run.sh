@@ -30,6 +30,7 @@ make build
 
 cd benchmark
 export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
+export PREDICTABLE_API_PORT=1
 
 ${BACALHAU_BIN} devstack &
 

@@ -219,7 +219,15 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// predictable port for API
-		apiPort := 20000 + i
+		var apiPort int
+		if os.Getenv("PREDICTABLE_API_PORT") != "" {
+			apiPort = 20000 + i
+		} else {
+			apiPort, err = freeport.GetFreePort()
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",
