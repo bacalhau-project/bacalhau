@@ -116,11 +116,13 @@ jobs:
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
+                  export TEST_RUNS_METADATA_FILENAME="LAST-TEST-RUNS-METADATA-OBJECT"
+
                   gsutil -m setmeta -h "Content-Type:text/plain" \
                     -h "Cache-Control:public, max-age=0, no-cache, no-store" \
-                    -h "Content-Disposition" gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}
+                    -h "Content-Disposition" gs://${BUCKET}/${TEST_RUNS_METADATA_FILENAME}
 
-                  gsutil setmeta -h "x-goog-meta-performance-results-last-updated:$(date -u +'%FT%H%MZ')" "gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}"
+                  gsutil setmeta -h "x-goog-meta-test-runs-last-updated:$(date -u +'%FT%H%MZ')" "gs://${BUCKET}/${TEST_RUNS_METADATA_FILENAME}"
 
   deploy:
     docker:
