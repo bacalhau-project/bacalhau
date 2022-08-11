@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var originalDockerRunOptions = &DockerRunOptions{}
+
 // Define the suite, and absorb the built-in basic suite
 // functionality from testify - including a T() method which
 // returns the current testing context
@@ -49,6 +51,8 @@ func (suite *DockerRunSuite) SetupAllSuite() {
 func (suite *DockerRunSuite) SetupTest() {
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
+	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
+	*originalDockerRunOptions = *ODR
 }
 
 func (suite *DockerRunSuite) TearDownTest() {
@@ -58,8 +62,7 @@ func (suite *DockerRunSuite) TearDownAllSuite() {
 
 }
 
-// TODO: Refactor all of these tests to use common functionality; they're all very similar
-
+// TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
 func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
@@ -73,6 +76,9 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -102,7 +108,6 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 
 	for i, tc := range tests {
 		func() {
-
 			var logBuf = new(bytes.Buffer)
 			var Stdout = struct{ io.Writer }{os.Stdout}
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
@@ -110,6 +115,9 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -150,6 +158,9 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			ctx := context.Background()
 			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
 
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
@@ -218,6 +229,9 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *originalDockerRunOptions
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -289,13 +303,15 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
 			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
 		}
-		jobOutputVolumes = []string{} // TODO reset all cli variables
 
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *originalDockerRunOptions
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -376,6 +392,9 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *originalDockerRunOptions
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -459,6 +478,9 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
+
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
@@ -527,6 +549,9 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *originalDockerRunOptions
+
 				// log.Warn().Msgf("%s - Args: %+v", labelTest.Name, os.Args)
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				require.NoError(suite.T(), err)
@@ -595,6 +620,9 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
+
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
@@ -635,14 +663,14 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 		{workdir: "/foo//bar", error_code: 0},
 	}
 
-	// TODO reset all cli variables
-	jobOutputVolumes = []string{}
-
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -685,6 +713,9 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer cm.Cleanup()
+
+	// Below copies the original default run options over the existing ones, to reset the test
+	*ODR = *originalDockerRunOptions
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
 	require.NoError(suite.T(), err)

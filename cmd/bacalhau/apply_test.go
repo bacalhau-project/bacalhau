@@ -32,6 +32,8 @@ func (suite *ApplySuite) SetupAllSuite() {
 func (suite *ApplySuite) SetupTest() {
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
+	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
+ 
 }
 
 func (suite *ApplySuite) TearDownTest() {
@@ -55,6 +57,9 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+	    	*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			assert.NoError(suite.T(), err)
@@ -91,6 +96,9 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *originalDockerRunOptions
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				assert.NoError(suite.T(), err)

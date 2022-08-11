@@ -19,12 +19,12 @@ import (
 
 var jobspec *executor.JobSpec
 var filename string
-var jobfConcurrency int
-var jobfInputUrls []string
-var jobfInputVolumes []string
-var jobfOutputVolumes []string
-var jobfWorkingDir string
-var jobTags []string
+var jobConcurrency int
+var jobInputUrls []string
+var jobInputVolumes []string
+var jobOutputVolumes []string
+var jobWorkingDir string
+var jobLabels []string
 
 func init() { //nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(
@@ -33,11 +33,11 @@ func init() { //nolint:gochecknoinits
 	)
 
 	applyCmd.PersistentFlags().IntVarP(
-		&jobfConcurrency, "concurrency", "c", 1,
+		&jobConcurrency, "concurrency", "c", 1,
 		`How many nodes should run the job in parallel`,
 	)
 
-	applyCmd.PersistentFlags().StringSliceVarP(&jobTags,
+	applyCmd.PersistentFlags().StringSliceVarP(&jobLabels,
 		"labels", "l", []string{},
 		`List of jobTags for the job. In the format 'a,b,c,1'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`,
 	)
@@ -98,13 +98,13 @@ var applyCmd = &cobra.Command{
 						return fmt.Errorf("empty ipfs volume cid %+v", jobspecInput)
 					}
 					is := jobspecInput.Cid + ":" + jobspecInput.Path
-					jobfInputVolumes = append(jobfInputVolumes, is)
+					jobInputVolumes = append(jobInputVolumes, is)
 				} else if storageSpecEngineType == storage.StorageSourceURLDownload {
 					if jobspecInput.URL == "" {
 						return fmt.Errorf("empty url volume url %+v", jobspecInput)
 					}
 					is := jobspecInput.URL + ":" + jobspecInput.Path
-					jobfInputUrls = append(jobfInputUrls, is)
+					jobInputUrls = append(jobInputUrls, is)
 				} else {
 					return fmt.Errorf("unknown storage source type %s", jobspecInput.EngineName)
 				}
@@ -114,7 +114,7 @@ var applyCmd = &cobra.Command{
 		if len(jobspec.Outputs) != 0 {
 			for _, jobspecsOutputs := range jobspec.Outputs {
 				is := jobspecsOutputs.Name + ":" + jobspecsOutputs.Path
-				jobfOutputVolumes = append(jobfOutputVolumes, is)
+				jobOutputVolumes = append(jobOutputVolumes, is)
 			}
 		}
 		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
@@ -131,8 +131,8 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
-		if len(jobfWorkingDir) > 0 {
-			err = system.ValidateWorkingDir(jobfWorkingDir)
+		if len(jobWorkingDir) > 0 {
+			err = system.ValidateWorkingDir(jobWorkingDir)
 			if err != nil {
 				return err
 			}
@@ -144,26 +144,19 @@ var applyCmd = &cobra.Command{
 			jobspec.Resources.CPU,
 			jobspec.Resources.Memory,
 			jobspec.Resources.GPU,
-			jobfInputUrls,
-			jobfInputVolumes,
-			jobfOutputVolumes,
+			jobInputUrls,
+			jobInputVolumes,
+			jobOutputVolumes,
 			jobspec.Docker.Env,
 			jobEntrypoint,
 			jobImage,
-			jobfConcurrency,
-			jobTags,
-			jobfWorkingDir,
+			jobConcurrency,
+			jobLabels,
+			jobWorkingDir,
 			doNotTrack,
 		)
 		if err != nil {
 			return err
-		}
-
-		if !skipSyntaxChecking {
-			err = system.CheckBashSyntax(jobEntrypoint)
-			if err != nil {
-				return err
-			}
 		}
 
 		job, err := getAPIClient().Submit(ctx, spec, deal, nil)

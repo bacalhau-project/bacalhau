@@ -29,7 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var o = &Options{}
+var oV = &VersionOptions{}
 
 // Versions is a struct for version information
 type Versions struct {
@@ -38,12 +38,12 @@ type Versions struct {
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
-	versionCmd.Flags().BoolVar(&o.ClientOnly, "client", o.ClientOnly, "If true, shows client version only (no server required).")
-	versionCmd.Flags().StringVarP(&o.Output, "output", "o", o.Output, "One of 'yaml' or 'json'.")
+	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
+	versionCmd.Flags().StringVarP(&oV.Output, "output", "o", oV.Output, "One of 'yaml' or 'json'.")
 }
 
 // Options is a struct to support version command
-type Options struct {
+type VersionOptions struct {
 	ClientOnly bool
 	Output     string
 
@@ -54,12 +54,12 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
-		err := o.Validate(cmd)
+		err := oV.Validate(cmd)
 		if err != nil {
 			log.Error().Msgf("error validating version - %s", err)
 		}
 
-		err = o.Run(cmd)
+		err = oV.Run(cmd)
 		if err != nil {
 			log.Error().Msgf("error running version - %s", err)
 		}
@@ -69,12 +69,12 @@ var versionCmd = &cobra.Command{
 }
 
 // Validate validates the provided options
-func (o *Options) Validate(cmd *cobra.Command) error {
-	if len(o.args) != 0 {
-		return fmt.Errorf("extra arguments: %v", o.args)
+func (oV *VersionOptions) Validate(cmd *cobra.Command) error {
+	if len(oV.args) != 0 {
+		return fmt.Errorf("extra arguments: %v", oV.args)
 	}
 
-	if o.Output != "" && o.Output != YAMLFormat && o.Output != JSONFormat {
+	if oV.Output != "" && oV.Output != YAMLFormat && oV.Output != JSONFormat {
 		return errors.New(`--output must be 'yaml' or 'json'`)
 	}
 
@@ -82,14 +82,14 @@ func (o *Options) Validate(cmd *cobra.Command) error {
 }
 
 // Run executes version command
-func (o *Options) Run(cmd *cobra.Command) error {
+func (oV *VersionOptions) Run(cmd *cobra.Command) error {
 	var (
 		versions Versions
 	)
 
 	versions.ClientVersion = version.Get()
 
-	if !o.ClientOnly {
+	if !oV.ClientOnly {
 		serverVersion, err := getAPIClient().Version(context.Background())
 		if err != nil {
 			log.Error().Msgf("could not get server version")
@@ -99,7 +99,7 @@ func (o *Options) Run(cmd *cobra.Command) error {
 		versions.ServerVersion = serverVersion
 	}
 
-	switch o.Output {
+	switch oV.Output {
 	case "":
 		cmd.Printf("Client Version: %s\n", versions.ClientVersion.GitVersion)
 		if versions.ServerVersion != nil {
@@ -120,13 +120,13 @@ func (o *Options) Run(cmd *cobra.Command) error {
 	default:
 		// There is a bug in the program if we hit this case.
 		// However, we follow a policy of never panicking.
-		return fmt.Errorf("VersionOptions were not validated: --output=%q should have been rejected", o.Output)
+		return fmt.Errorf("VersionOptions were not validated: --output=%q should have been rejected", oV.Output)
 	}
 
 	return nil
 }
 
 // NewOptions returns initialized Options
-func NewOptions() *Options {
-	return &Options{}
+func NewVersionOptions() *VersionOptions {
+	return &VersionOptions{}
 }
