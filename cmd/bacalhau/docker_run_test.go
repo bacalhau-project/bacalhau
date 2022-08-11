@@ -182,9 +182,46 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 }
 
 func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
-	// TODO @enricorotundo check if --wait is working
-	args := []string{"docker", "run", "ubuntu", "echo", "hello", "--local", "--wait"}
 	expectedStdout := "hello"
+	args := []string{"docker", "run", "ubuntu", "echo", expectedStdout, "--local", "--wait", "--download"}
+	done := capture()
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocal-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+	
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
+	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	args := []string{"docker", "run",
+		"--local",
+		"--wait",
+		"--download",
+		"-v", fmt.Sprintf("%s:/hello.txt", CID),
+		"ubuntu",
+		"cat", "hello.txt"}
+	expectedStdout := "hello"
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocalInput-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
 	done := capture()
 	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 	out, _ := done()
@@ -194,25 +231,8 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 	fmt.Println(trimmedStdout)
 
 	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-}
 
-func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
-	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
-	args := []string{"docker", "run",
-		"--local",
-		"-v", fmt.Sprintf("%s:/hello.txt", CID),
-		"ubuntu",
-		"cat", "hello.txt"}
-	expectedStdout := "hello"
-	done := capture()
-	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-	out, _ := done()
-
-	require.NoError(suite.T(), err)
-	trimmedStdout := strings.TrimSpace(string(out))
-	fmt.Println(trimmedStdout)
-
-	require.Equal(suite.T(), trimmedStdout, expectedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+	runDownloadFlags.OutputDir = "."
 }
 
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
