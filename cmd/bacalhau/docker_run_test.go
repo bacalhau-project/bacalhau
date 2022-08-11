@@ -182,7 +182,8 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 }
 
 func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
-	args := []string{"docker", "run", "ubuntu", "echo", "hello", "--local"}
+	// TODO @enricorotundo check if --wait is working
+	args := []string{"docker", "run", "ubuntu", "echo", "hello", "--local", "--wait"}
 	expectedStdout := "hello"
 	done := capture()
 	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
@@ -192,12 +193,10 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 	trimmedStdout := strings.TrimSpace(string(out))
 	fmt.Println(trimmedStdout)
 
-	require.Equal(suite.T(), trimmedStdout, expectedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
 }
 
 func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
-	// -v QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN:/hello.txt ubuntu cat hello.txt
 	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
 	args := []string{"docker", "run",
 		"--local",
@@ -214,7 +213,6 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
 	fmt.Println(trimmedStdout)
 
 	require.Equal(suite.T(), trimmedStdout, expectedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-
 }
 
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
