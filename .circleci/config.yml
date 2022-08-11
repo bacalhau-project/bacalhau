@@ -30,9 +30,6 @@ jobs:
         type: string
       target_os:
         type: string
-      run_tests:
-        type: boolean
-        default: true
 
     steps:
       - checkout
@@ -85,7 +82,6 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
-              - equal: ["run_tests", true]
           steps:
             - run:
                 name: Test
@@ -331,7 +327,6 @@ workflows:
             parameters:
               target_os: ["linux"]
               target_arch: ["amd64"]
-              run_tests: [false]
       - run_perf:
           name: Running perf
           requires:
