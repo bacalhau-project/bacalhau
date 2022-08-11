@@ -299,10 +299,10 @@ var dockerRunCmd = &cobra.Command{
 
 		var apiClient *publicapi.APIClient
 		if isLocal {
-			client, err := local.NewDockerClient()
-			if err != nil {
+			client, errLocalDevStack := local.NewDockerClient()
+			if errLocalDevStack != nil {
 				cmd.Printf("%t\n", local.IsInstalled(client))
-				return err
+				return errLocalDevStack
 			}
 			std, err := local.RunJobLocally(ctx, spec)
 			cmd.Printf("%v", std)
@@ -318,6 +318,29 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+=======
+			apiURI := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiURI)
+		} else {
+			apiClient = getAPIClient()
+		}
+>>>>>>> 5a248cd4 (Fix CI errors)
+
+<<<<<<< HEAD
+		cmd.Printf("%s\n", job.ID)
+		if ODR.WaitForJobToFinish {
+			resolver := getAPIClient().GetJobStateResolver()
+			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+			err = resolver.WaitUntilComplete(ctx, job.ID)
+||||||| parent of 4cb0c182 (bacalhau --local)
+		states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+		if err != nil {
+			return err
+		}
+
+			cmd.Printf("%s\n", job.ID)
+			currentNodeID, _ := pjob.GetCurrentJobState(states)
+			nodeIds := []string{currentNodeID}
 
 			cmd.Printf("%s\n", job.ID)
 			currentNodeID, _ := pjob.GetCurrentJobState(states)
