@@ -39,21 +39,23 @@ You should see something like
             QmYgxZiy  bid_rejected  /ipfs/
 ```
 
-Copy the CID (in this case `QmQtZKRPXehLU5JroBbzBCVdhNkgZT7m4MiSD7sUVxE3LD`), and run:
+Copy the JOB_ID (in this case `fa11069f`), and run:
 
 ```
-bacalhau get CID
+bacalhau get JOB_ID
 ```
-Replace `CID` with the CID you copied above.
+
+You should see the following:
 
 ```
-Saving file(s) to QmQtZKRPXehLU5JroBbzBCVdhNkgZT7m4MiSD7sUVxE3LD
- 120 B / 120 B [==================================================================] 100.00% 0s
+[2207] INF bacalhau/get.go:35 > Fetching results of job 'fa11069f'...
+[...]
+[2207] INF ipfs/downloader.go:101 > Copying output volume outputs
 ```
 
 Now read the stdout
 ```
-cat QmQtZKRPXehLU5JroBbzBCVdhNkgZT7m4MiSD7sUVxE3LD/stdout
+cat stdout
 ```
 
 ```
