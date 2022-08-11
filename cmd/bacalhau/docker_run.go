@@ -283,12 +283,12 @@ var dockerRunCmd = &cobra.Command{
 
 		var apiClient *publicapi.APIClient
 		if isLocal {
-			stack, err := devstack.NewDevStackForRunLocal(cm, 1)
-			if err != nil {
-				return err
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1)
+			if errLocalDevStack != nil {
+				return errLocalDevStack
 			}
-			apiUri := stack.Nodes[0].APIServer.GetURI()
-			apiClient = publicapi.NewAPIClient(apiUri)
+			apiURI := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiURI)
 		} else {
 			apiClient = getAPIClient()
 		}

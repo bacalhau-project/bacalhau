@@ -242,7 +242,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		NetworkDisabled: true,
 		WorkingDir:      j.Spec.Docker.WorkingDir,
 	}
-	
+
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	resourceRequirements := capacitymanager.ParseResourceUsageConfig(j.Spec.Resources)
@@ -279,7 +279,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	} else {
 		log.Trace().Msgf("Created container: %s", jobContainer.ID)
 	}
-	
+
 	err = e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
@@ -290,7 +290,7 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	} else {
 		log.Trace().Msgf("Started container: %s", jobContainer.ID)
 	}
-	
+
 	defer e.cleanupJob(j, shardIndex)
 
 	// the idea here is even if the container errors
