@@ -82,7 +82,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
-              - equal: ["run_tests", true]
+              - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test
