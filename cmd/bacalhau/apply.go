@@ -117,6 +117,7 @@ var applyCmd = &cobra.Command{
 				jobfOutputVolumes = append(jobfOutputVolumes, is)
 			}
 		}
+		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
 
 		engineType, err := executor.ParseEngineType(jobspec.EngineName)
 		if err != nil {
@@ -152,6 +153,7 @@ var applyCmd = &cobra.Command{
 			jobfConcurrency,
 			jobTags,
 			jobfWorkingDir,
+			doNotTrack,
 		)
 		if err != nil {
 			return err

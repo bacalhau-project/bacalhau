@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/rs/zerolog/log"
@@ -60,6 +63,47 @@ func shortID(id string) string {
 
 func getAPIClient() *publicapi.APIClient {
 	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+}
+
+// ensureValidVersion checks that the server version is the same or less than the client version
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *executor.VersionInfo) error {
+	if clientVersion == nil {
+		log.Warn().Msg("Unable to parse nil client version, skipping version check")
+		return nil
+	}
+	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
+		log.Info().Msg("Development version, skipping version check")
+		return nil
+	}
+	if serverVersion == nil {
+		log.Warn().Msg("Unable to parse nil server version, skipping version check")
+		return nil
+	}
+	c, err := semver.NewVersion(clientVersion.GitVersion)
+	if err != nil {
+		log.Warn().Err(err).Msg("Unable to parse client version, skipping version check")
+		return nil
+	}
+	s, err := semver.NewVersion(serverVersion.GitVersion)
+	if err != nil {
+		log.Warn().Err(err).Msg("Unable to parse server version, skipping version check")
+		return nil
+	}
+	if s.GreaterThan(c) {
+		return fmt.Errorf(
+			"server version %s is newer than client version %s, please upgrade your client",
+			serverVersion.GitVersion,
+			clientVersion.GitVersion,
+		)
+	}
+	if c.GreaterThan(s) {
+		return fmt.Errorf(
+			"client version %s is newer than server version %s, please ask your network administrator to update Bacalhau",
+			serverVersion.GitVersion,
+			clientVersion.GitVersion,
+		)
+	}
+	return nil
 }
 
 func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (

@@ -13,6 +13,7 @@ import (
 
 var apiHost string
 var apiPort int
+var doNotTrack bool
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(serveCmd)
@@ -47,6 +48,14 @@ var RootCmd = &cobra.Command{
 }
 
 func Execute() {
+	doNotTrack = false
+	if doNotTrackValue, foundDoNotTrack := os.LookupEnv("DO_NOT_TRACK"); foundDoNotTrack {
+		doNotTrackInt, err := strconv.Atoi(doNotTrackValue)
+		if err == nil && doNotTrackInt == 1 {
+			doNotTrack = true
+		}
+	}
+
 	viper.SetEnvPrefix("BACALHAU")
 
 	err := viper.BindEnv("API_HOST")

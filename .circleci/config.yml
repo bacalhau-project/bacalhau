@@ -21,7 +21,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       CGO: 0
-      GCS_TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
+      GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
       METADATA_FILENAME: LAST-PERFORMANCE-RESULT-METADATA-OBJECT
     working_directory: ~/repo
     executor: linux
@@ -85,7 +85,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
-              - equal: ["run_tests", true]
+              - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test
@@ -117,13 +117,16 @@ jobs:
                   fi
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
-                  gsutil cp "$TEST_RESULTS_FILENAME" "$GCS_TEST_RESULTS_BUCKET"
+                  gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
+
+                  export METADATA_BUCKET="bacalhau-global-storage"
+                  export TEST_RUNS_METADATA_FILENAME="LAST-TEST-RUNS-METADATA-OBJECT"
 
                   gsutil -m setmeta -h "Content-Type:text/plain" \
                     -h "Cache-Control:public, max-age=0, no-cache, no-store" \
-                    -h "Content-Disposition" gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}
+                    -h "Content-Disposition" gs://${METADATA_BUCKET}/${TEST_RUNS_METADATA_FILENAME}
 
-                  gsutil setmeta -h "x-goog-meta-performance-results-last-updated:$(date -u +'%FT%H%MZ')" "gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}"
+                  gsutil setmeta -h "x-goog-meta-test-runs-last-updated:$(date -u +'%FT%H%MZ')" "gs://${METADATA_BUCKET}/${TEST_RUNS_METADATA_FILENAME}"
 
   deploy:
     docker:
@@ -186,7 +189,7 @@ jobs:
             if [ "<<pipeline.git.tag>>" != "" ]; then
               export TAG="<<pipeline.git.tag>>"
             else
-              export TAG="NOTAG"
+              export TAG="v0.0.0-xxxxxxx"
             fi
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
@@ -268,6 +271,7 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
@@ -296,6 +300,7 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:

@@ -1,9 +1,12 @@
 package bacalhau
 
 import (
+	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -52,6 +55,56 @@ func (suite *UtilsSuite) TestSafeRegex() {
 			require.Equal(suite.T(), tc.predictedLength, len(strippedString))
 		}
 	}
+}
+
+func (suite *UtilsSuite) TestVersionCheck() {
+	system.InitConfigForTesting(suite.T())
+
+	// OK: Normal operation
+	err := ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v1.2.3",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.3",
+	})
+	require.NoError(suite.T(), err)
+
+	// OK: invalid semver
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "not-a-sem-ver",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.0",
+	})
+	require.NoError(suite.T(), err)
+
+	// OK: nil semver
+	err = ensureValidVersion(context.TODO(), nil, &executor.VersionInfo{
+		GitVersion: "v1.2.0",
+	})
+	require.NoError(suite.T(), err)
+
+	// OK: development version
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v0.0.0-xxxxxxx",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.0",
+	})
+	require.NoError(suite.T(), err)
+
+	// NOT OK: server is newer
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v1.2.3",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.4",
+	})
+	require.Error(suite.T(), err)
+
+	// NOT OK: client is newer
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v1.2.4",
+	}, &executor.VersionInfo{
+		GitVersion: "v1.2.3",
+	})
+	require.Error(suite.T(), err)
 }
 
 // In order for 'go test' to run this suite, we need to create

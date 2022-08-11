@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -150,6 +153,34 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
+	ulimitValue := 0
+
+	if _, err := exec.LookPath("ulimit"); err == nil {
+		// Test to see how many files can be open on this system...
+		cmd := exec.Command("ulimit", "-n")
+		err := cmd.Run()
+
+		if err != nil {
+			require.Fail(suite.T(), "Failure checking for ulimit.")
+		}
+		out, _ := cmd.CombinedOutput()
+		ulimitValue, _ = strconv.Atoi(string(out))
+
+		if err != nil {
+			require.Fail(suite.T(), "Failure getting ulimit value.")
+		}
+	} else {
+		var rLimit syscall.Rlimit
+		err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+		if err != nil {
+			require.Fail(suite.T(), "Failure checking for Rlimit.")
+		}
+		ulimitValue, _ = strconv.Atoi(fmt.Sprint(rLimit.Cur))
+	}
+
+	if ulimitValue <= 512 {
+		suite.T().Skip("Skipping sharding end to end test because the ulimit value is too low.")
+	}
 
 	const totalFiles = 100
 	const batchSize = 10

@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -93,9 +92,8 @@ var describeCmd = &cobra.Command{
 		}
 
 		if !ok {
-			err = fmt.Errorf("no job found with ID: %s", inputJobID)
-			log.Error().Msgf(err.Error())
-			return err
+			cmd.Printf("No job ID found matching ID: %s", inputJobID)
+			return nil
 		}
 
 		state, err := getAPIClient().GetJobState(context.Background(), job.ID)
