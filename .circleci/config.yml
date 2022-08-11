@@ -82,7 +82,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
-              # - equal: ["run_tests", true]
+              - equal: ["run_tests", true]
           steps:
             - run:
                 name: Test
@@ -265,6 +265,7 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
@@ -293,6 +294,7 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
