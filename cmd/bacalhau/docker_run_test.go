@@ -200,7 +200,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 	trimmedStdout := strings.TrimSpace(string(out))
 
 	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-	
+
 	runDownloadFlags.OutputDir = "."
 }
 
@@ -227,6 +227,35 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
 	out, _ := done()
 
 	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
+	args := []string{"docker", "run",
+		"ubuntu",
+		"--local",
+		"--wait",
+		"--download",
+		"-w", "/outputs",
+		"--",
+		"/bin/bash", "-c", "printf hello > hello.txt"}
+	expectedStdout := "hello"
+
+	// done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	if err != nil {
+		fmt.Print(err)
+	}
+	// out, _ := done()
+
+	require.NoError(suite.T(), err)
+	content, _ := ioutil.ReadFile("volumes/outputs/hello.txt")
+	out := string(content)
 	trimmedStdout := strings.TrimSpace(string(out))
 	fmt.Println(trimmedStdout)
 
