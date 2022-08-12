@@ -68,8 +68,8 @@ function install-bacalhau() {
 }
 
 function install-prometheus() {
-  if [ -z "$PROMETHEUS_VERSION" ] || [ -z "$GRAFANA_CLOUD_API_ENDPOINT" ] || [ -z "$GRAFANA_CLOUD_API_USER" ] || [ -z "$SECRETES_GRAFANA_CLOUD_API_KEY" ]; then
-    echo 'PROMETHEUS_VERSION or any of the GRAFANA_CLOUD env variables are undefined. Skipping Prometheus installation.'
+  if [ -z "$PROMETHEUS_VERSION" ] || [ -z "$GRAFANA_CLOUD_API_ENDPOINT" ] || [ -z "$GRAFANA_CLOUD_API_USER" ] || [ -z "$GRAFANA_CLOUD_API_KEY" ]; then
+    echo 'PROMETHEUS_VERSION or any of the GRAFANA_CLOUD_API_* env variables are undefined. Skipping Prometheus installation.'
   else
     sudo apt -y update
     sudo groupadd --system prometheus
@@ -100,7 +100,7 @@ function install-prometheus() {
         - url: ${GRAFANA_CLOUD_API_ENDPOINT}
           basic_auth:
             username: ${GRAFANA_CLOUD_API_USER}
-            password: ${SECRETES_GRAFANA_CLOUD_API_KEY}
+            password: ${GRAFANA_CLOUD_API_KEY}
 EOF
     sudo cp /terraform_node/prometheus.yml /etc/prometheus/prometheus.yml
     sudo chown -R prometheus:prometheus /var/lib/prometheus/
@@ -132,6 +132,7 @@ function init-ipfs() {
 function install-secrets() {
   # set defaults
   export HONEYCOMB_KEY=""
+  export GRAFANA_CLOUD_API_KEY=""
   if [ -e /data/secrets.sh ]; then
     source /data/secrets.sh
   fi
@@ -140,10 +141,14 @@ function install-secrets() {
   if [ ! -z "${SECRETS_HONEYCOMB_KEY}" ]; then
     export HONEYCOMB_KEY="${SECRETS_HONEYCOMB_KEY}"
   fi
+  if [ ! -z "${SECRETS_GRAFANA_CLOUD_API_KEY}" ]; then
+    export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
+  fi
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
 export HONEYCOMB_KEY="${HONEYCOMB_KEY}"
+export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
 EOG
 }
 
@@ -177,11 +182,11 @@ function install() {
   install-healthcheck
   install-ipfs
   install-bacalhau
+  install-secrets
   install-prometheus
   mount-disk
   init-ipfs
   init-bacalhau
-  install-secrets
   start-services
 }
 
