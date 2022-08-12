@@ -262,7 +262,9 @@ jobs:
           command: |
             export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
             echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
-            python3 ops/update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+            cd ops
+            pip3 install -r requirements.txt
+            python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
 orbs:
   heroku: circleci/heroku@1.2.6

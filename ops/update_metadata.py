@@ -2,6 +2,7 @@ import google.cloud
 from google.cloud import storage
 import os
 import sys
+import datetime
 
 
 def update_metadata_function(BUCKET_NAME: str, FILE_NAME: str):
@@ -12,7 +13,7 @@ def update_metadata_function(BUCKET_NAME: str, FILE_NAME: str):
     if not blob:
         print(f"Could not access the file at 'gs://{BUCKET_NAME}/{FILE_NAME}'.", file=sys.stderr)
 
-    metadata = {"color": "Red", "name": "Test"}
+    metadata = {"x-goog-meta-last-updated": f"{datetime.datetime.utcnow().isoformat()}Z"}
     blob.metadata = metadata
     blob.patch()
 
