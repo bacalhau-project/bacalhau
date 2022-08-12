@@ -250,6 +250,11 @@ jobs:
 
   update_metadata:
     executor: linux
+    parameters:
+      METADATA_BUCKET:
+        type: string
+      METADATA_FILENAME:
+        type: string
     steps:
       - run:
           name: Update metadata
@@ -284,11 +289,10 @@ workflows:
               ignore: /.*/
       - update_metadata:
           name: Update metadata
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
             - build-linux-amd64
-          parameters:
-            METADATA_BUCKET: "bacalhau-global-storage"
-            METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
@@ -319,9 +323,8 @@ workflows:
           name: Update metadata
           requires:
             - build-linux-amd64
-          parameters:
-            METADATA_BUCKET: "bacalhau-global-storage"
-            METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       - deploy:
           name: deploy-staging-cluster
           requires:
@@ -357,9 +360,8 @@ workflows:
           requires:
             - build-linux-amd64
       - update_metadata:
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
           name: Update metadata
           requires:
-            - run_perf
-          parameters:
-            METADATA_BUCKET: "bacalhau-global-storage"
-            METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
+            - Running perf
