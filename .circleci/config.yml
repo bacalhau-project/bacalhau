@@ -183,9 +183,9 @@ jobs:
             else
               export TAG="v0.0.0-xxxxxxx"
             fi
+            sudo dpkg --configure -a
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
-            sudo apt install build-essential
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
             source $HOME/.cargo/env
             cargo install hyperfine
