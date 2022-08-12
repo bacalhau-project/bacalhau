@@ -182,11 +182,11 @@ function install() {
   install-healthcheck
   install-ipfs
   install-bacalhau
-  install-secrets
-  install-prometheus
   mount-disk
   init-ipfs
   init-bacalhau
+  install-secrets
+  install-prometheus
   start-services
 }
 
