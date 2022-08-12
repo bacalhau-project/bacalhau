@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -73,7 +74,8 @@ type GetVerifiersFunc func(
 
 func NewDevStackForRunLocal(
 	cm *system.CleanupManager,
-	count int, //nolint:unparam // Incorrectly assumed as unused
+	count int,
+	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
@@ -121,6 +123,10 @@ func NewDevStackForRunLocal(
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality:            computenode.Anywhere,
 				RejectStatelessJobs: false,
+			}, CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
+					GPU: jobGPU,
+				},
 			},
 		},
 		"",

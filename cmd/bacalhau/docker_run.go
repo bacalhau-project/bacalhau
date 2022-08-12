@@ -283,7 +283,7 @@ var dockerRunCmd = &cobra.Command{
 
 		var apiClient *publicapi.APIClient
 		if isLocal {
-			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1)
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobGPU)
 			if errLocalDevStack != nil {
 				return errLocalDevStack
 			}
