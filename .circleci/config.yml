@@ -186,7 +186,7 @@ jobs:
             sudo dpkg --configure -a
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
             source $HOME/.cargo/env
             cargo install hyperfine
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
