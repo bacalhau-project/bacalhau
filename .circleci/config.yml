@@ -367,3 +367,4 @@ workflows:
           name: Update metadata for performance
           requires:
             - Running Performance
+
