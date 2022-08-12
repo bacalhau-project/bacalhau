@@ -105,6 +105,8 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	ctx, span := newSpan(ctx, "RunJob")
 	defer span.End()
 
+	log.Debug().Msgf("Running job %s on executor %s", j.ID, e.ID)
+
 	jobResultsDir, err := e.ensureShardResultsDir(j, shardIndex)
 	if err != nil {
 		return "", err
@@ -274,6 +276,8 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create container: %w", err)
+	} else {
+		log.Trace().Msgf("Created container: %s", jobContainer.ID)
 	}
 
 	err = e.Client.ContainerStart(
@@ -283,7 +287,10 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to start container: %w", err)
+	} else {
+		log.Trace().Msgf("Started container: %s", jobContainer.ID)
 	}
+
 	defer e.cleanupJob(j, shardIndex)
 
 	// the idea here is even if the container errors
