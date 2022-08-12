@@ -293,7 +293,7 @@ workflows:
             tags:
               ignore: /.*/
       - update_metadata:
-          name: Update metadata
+          name: Update metadata for dev branch test runs
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
@@ -325,7 +325,7 @@ workflows:
             tags:
               ignore: /.*/
       - update_metadata:
-          name: Update metadata
+          name: Update metadata for main test runs
           requires:
             - build-linux-amd64
           METADATA_BUCKET: "bacalhau-global-storage"
@@ -367,6 +367,6 @@ workflows:
       - update_metadata:
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
-          name: Update metadata
+          name: Update metadata for performance
           requires:
             - Running Performance
