@@ -22,7 +22,6 @@ jobs:
       GOARCH: << parameters.target_arch >>
       CGO: 0
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
-      METADATA_FILENAME: LAST-PERFORMANCE-RESULT-METADATA-OBJECT
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -115,18 +114,11 @@ jobs:
                   else
                     export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
                   fi
+                  # Credentials for project: bacalhau-cicd
+                  # Account: 
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
-
-                  export METADATA_BUCKET="bacalhau-global-storage"
-                  export TEST_RUNS_METADATA_FILENAME="LAST-TEST-RUNS-METADATA-OBJECT"
-
-                  gsutil -m setmeta -h "Content-Type:text/plain" \
-                    -h "Cache-Control:public, max-age=0, no-cache, no-store" \
-                    -h "Content-Disposition" gs://${METADATA_BUCKET}/${TEST_RUNS_METADATA_FILENAME}
-
-                  gsutil setmeta -h "x-goog-meta-test-runs-last-updated:$(date -u +'%FT%H%MZ')" "gs://${METADATA_BUCKET}/${TEST_RUNS_METADATA_FILENAME}"
 
   deploy:
     docker:
@@ -201,10 +193,9 @@ jobs:
               bash start_and_run.sh
             )
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${BRANCH}-${TAG}-${SHA}"
-
       - heroku/install
       - run:
-          command: >
+          command: |
             # Updates dashboard data with latest from GCS
             heroku run build --app bacalhau-dashboards
 
@@ -257,6 +248,16 @@ jobs:
             find dist/
             gh release upload $TAG dist/*
 
+  update_metadata:
+    executor: linux
+    steps:
+      - run:
+          name: Update metadata
+          command: |
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
+            echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
+            python3 ops/update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -281,6 +282,13 @@ workflows:
               ignore: main
             tags:
               ignore: /.*/
+      - update_metadata:
+          name: Update metadata
+          requires:
+            - build-linux-amd64
+          parameters:
+            METADATA_BUCKET: "bacalhau-global-storage"
+            METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
@@ -307,6 +315,13 @@ workflows:
               only: main
             tags:
               ignore: /.*/
+      - update_metadata:
+          name: Update metadata
+          requires:
+            - build-linux-amd64
+          parameters:
+            METADATA_BUCKET: "bacalhau-global-storage"
+            METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       - deploy:
           name: deploy-staging-cluster
           requires:
@@ -341,3 +356,10 @@ workflows:
           name: Running perf
           requires:
             - build-linux-amd64
+      - update_metadata:
+          name: Update metadata
+          requires:
+            - run_perf
+          parameters:
+            METADATA_BUCKET: "bacalhau-global-storage"
+            METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
