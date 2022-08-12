@@ -185,8 +185,10 @@ jobs:
             fi
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
-            wget https://github.com/sharkdp/hyperfine/releases/download/v1.13.0/hyperfine_1.13.0_amd64.deb
-            sudo dpkg -i hyperfine_1.13.0_amd64.deb
+            sudo apt install build-essential
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+            source $HOME/.cargo/env
+            cargo install hyperfine
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
             (
               cd benchmark
