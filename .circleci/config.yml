@@ -5,7 +5,7 @@ version: 2.1
 executors:
   linux:
     machine:
-      image: ubuntu-2204:2022.04.2
+      image: ubuntu-2204:2022.07.1
     resource_class: xlarge
 
 # Define a job to be invoked later in a workflow.
