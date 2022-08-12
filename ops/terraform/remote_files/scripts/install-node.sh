@@ -150,6 +150,9 @@ function install-secrets() {
 export HONEYCOMB_KEY="${HONEYCOMB_KEY}"
 export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
 EOG
+
+  # clean up variables file from any secret
+  sed -e '/^export SECRETS_/d' /terraform_node/variables | sudo tee /terraform_node/variables > /dev/null
 }
 
 # if we are node zero, are in unsafe mode and don't have a private key

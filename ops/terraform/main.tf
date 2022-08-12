@@ -51,11 +51,13 @@ export BACALHAU_PORT="${var.bacalhau_port}"
 export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
-export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
 export GPU_NODE="${count.index < var.num_gpu_machines ? "true" : "false"}"
 export PROMETHEUS_VERSION="${var.prometheus_version}"
 export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
 export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
+
+### secrets are installed in the install-node.sh script
+export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
 export SECRETS_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
 EOI
 
