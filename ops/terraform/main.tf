@@ -56,7 +56,7 @@ export GPU_NODE="${count.index < var.num_gpu_machines ? "true" : "false"}"
 export PROMETHEUS_VERSION="${var.prometheus_version}"
 export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
 export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
-export SECRETES_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
+export SECRETS_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
 EOI
 
 ##############################
