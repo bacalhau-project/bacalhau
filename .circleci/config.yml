@@ -358,7 +358,7 @@ workflows:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
-      - run_perf:
+      - performance_job:
           name: Running Performance
           requires:
             - build-linux-amd64
