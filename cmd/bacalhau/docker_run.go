@@ -299,7 +299,7 @@ var dockerRunCmd = &cobra.Command{
 
 		var apiClient *publicapi.APIClient
 		if isLocal {
-			client, errLocalDevStack := local.NewDockerClient()
+			client, errLocalDevStack := local.NewDockerClient(, jobGPU)
 			if errLocalDevStack != nil {
 				cmd.Printf("%t\n", local.IsInstalled(client))
 				return errLocalDevStack
