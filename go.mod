@@ -302,12 +302,7 @@ require (
 	golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
-<<<<<<< HEAD
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
-||||||| parent of 4cb0c182 (bacalhau --local)
-=======
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
->>>>>>> 4cb0c182 (bacalhau --local)
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/appengine v1.6.7 // indirect

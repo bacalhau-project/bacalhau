@@ -78,7 +78,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -117,7 +117,7 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -160,15 +160,15 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
 
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			runDownloadFlags.OutputDir = dir
+			ODR.RunDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			ODR.RunDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -202,7 +202,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 		err := os.RemoveAll(dir)
 		require.NoError(suite.T(), err)
 	}()
-	runDownloadFlags.OutputDir = dir
+	ODR.RunDownloadFlags.OutputDir = dir
 
 	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 	out, _ := done()
@@ -212,7 +212,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
 
 	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
 
-	runDownloadFlags.OutputDir = "."
+	ODR.RunDownloadFlags.OutputDir = "."
 }
 
 func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
@@ -231,7 +231,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
 		err := os.RemoveAll(dir)
 		require.NoError(suite.T(), err)
 	}()
-	runDownloadFlags.OutputDir = dir
+	ODR.RunDownloadFlags.OutputDir = dir
 
 	done := capture()
 	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
@@ -243,7 +243,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
 
 	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
 
-	runDownloadFlags.OutputDir = "."
+	ODR.RunDownloadFlags.OutputDir = "."
 }
 
 func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
@@ -272,7 +272,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
 
 	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
 
-	runDownloadFlags.OutputDir = "."
+	ODR.RunDownloadFlags.OutputDir = "."
 }
 
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
@@ -562,7 +562,7 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -704,7 +704,7 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -753,7 +753,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)

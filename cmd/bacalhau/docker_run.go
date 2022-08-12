@@ -12,8 +12,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/local"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/filecoin-project/bacalhau/pkg/version"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -25,42 +26,58 @@ import (
 const CompleteStatus = "Complete"
 const DefaultDockerRunWaitSeconds = 100
 
-<<<<<<< HEAD
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
 		Runs a job using the Docker executor on the node.
 		`))
-||||||| parent of 4cb0c182 (bacalhau --local)
-var jobEngine string
-var jobVerifier string
-var jobInputs []string
-var jobInputUrls []string
-var jobInputVolumes []string
-var jobOutputVolumes []string
-var jobLocalOutput string
-var jobEnv []string
-var jobConcurrency int
-var jobIpfsGetTimeOut int
-var jobCPU string
-var jobMemory string
-var jobGPU string
-var skipSyntaxChecking bool
 
-var isLocal bool
-var waitForJobToFinish bool
-var waitForJobToFinishAndPrintOutput bool
-var jobLabels []string
-var shardingGlobPattern string
-var shardingBasePath string
-var shardingBatchSize int
+	//nolint:lll // Documentation
+	dockerRunExample = templates.Examples(i18n.T(`
+		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /output_images in the container.
+		# All flags after the '--' are passed directly into the container for exacution.
+		bacalhau docker run \
+		-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+		-o results:/output_images \
+		dpokidov/imagemagick \
+		-- magick mogrify -resize 100x100 -quality 100 -path /output_images /input_images/*.jpg`))
 
-var runDownloadFlags = ipfs.DownloadSettings{
-	TimeoutSecs:    10,
-	OutputDir:      ".",
-	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+	ODR = &DockerRunOptions{}
+)
+
+// DockerRunOptions declares the arguments accepted by the `docker run` command
+type DockerRunOptions struct {
+	Engine        string   // Executor - executor.Executor
+	Verifier      string   // Verifier - verifier.Verifier
+	Inputs        []string // Array of input CIDs
+	InputUrls     []string // Array of input URLs (will be copied to IPFS)
+	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
+	OutputVolumes []string // Array of output volumes in 'name:mount point' form
+	Env           []string // Array of environment variables
+	Concurrency   int      // Number of concurrent jobs to run
+	CPU           string
+	Memory        string
+	GPU           string
+	WorkingDir    string   // Working directory for docker
+	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+
+	Image      string   // Image to execute
+	Entrypoint []string // Entrypoint to the docker image
+
+	SkipSyntaxChecking               bool // Verify the syntax using shellcheck
+	WaitForJobToFinish               bool // Wait for the job to execute before exiting
+	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
+	WaitForJobTimeoutSecs            int  // Job time out in seconds
+	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
+	IsLocal                          bool // Job should be executed locally
+
+	RunDownloadFlags ipfs.DownloadSettings // Settings for running Download
+
+	ShardingGlobPattern string
+	ShardingBasePath    string
+	ShardingBatchSize   int
 }
 
-func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
@@ -127,26 +144,20 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
-<<<<<<< HEAD
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.WaitForJobToFinish, "wait", false,
 		`Wait for the job to finish.`,
-||||||| parent of 4cb0c182 (bacalhau --local)
-	// ipfs get wait time
-	dockerRunCmd.PersistentFlags().IntVarP(
-		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
-		`Timeout for getting the results of a job in --wait`,
-=======
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&isLocal, "local", false,
-		`Run the job locally. Docker is required`,
 	)
 
 	// ipfs get wait time
 	dockerRunCmd.PersistentFlags().IntVarP(
-		&jobIpfsGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
+		&ODR.IPFSGetTimeOut, "gettimeout", "g", 10, //nolint: gomnd
 		`Timeout for getting the results of a job in --wait`,
->>>>>>> 4cb0c182 (bacalhau --local)
+	)
+
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.IsLocal, "local", false,
+		`Run the job locally. Docker is required`,
 	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
@@ -159,7 +170,12 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
 	)
 
-	setupDownloadFlags(dockerRunCmd, &runDownloadFlags)
+	ODR.RunDownloadFlags = ipfs.DownloadSettings{
+		TimeoutSecs:    10,
+		OutputDir:      ".",
+		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+	}
+	setupDownloadFlags(dockerRunCmd, &ODR.RunDownloadFlags)
 
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", "",
@@ -197,28 +213,7 @@ var dockerRunCmd = &cobra.Command{
 	Long:    dockerRunLong,
 	Example: dockerRunExample,
 	Args:    cobra.MinimumNArgs(1),
-	PostRun: func(cmd *cobra.Command, args []string) {
-		// Can't think of any reason we'd want these to persist.
-		// The below is to clean out for testing purposes. (Kinda ugly to put it in here,
-		// but potentially cleaner than making things public, which would
-		// be the other way to attack this.)
-		jobInputs = []string{}
-		jobInputUrls = []string{}
-		jobInputVolumes = []string{}
-		jobOutputVolumes = []string{}
-		jobEnv = []string{}
-		jobLabels = []string{}
-
-		jobEngine = "docker"
-		jobVerifier = "ipfs"
-		jobConcurrency = 1
-		jobCPU = ""
-		jobMemory = ""
-		jobGPU = ""
-		skipSyntaxChecking = false
-		waitForJobToFinishAndPrintOutput = false
-		jobIpfsGetTimeOut = 10
-	},
+	PostRun: func(cmd *cobra.Command, args []string) {},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
@@ -298,81 +293,32 @@ var dockerRunCmd = &cobra.Command{
 		}
 
 		var apiClient *publicapi.APIClient
-		if isLocal {
-			client, errLocalDevStack := local.NewDockerClient(, jobGPU)
+		if ODR.IsLocal {
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, ODR.GPU)
 			if errLocalDevStack != nil {
-				cmd.Printf("%t\n", local.IsInstalled(client))
 				return errLocalDevStack
 			}
-			std, err := local.RunJobLocally(ctx, spec)
-			cmd.Printf("%v", std)
-
-<<<<<<< HEAD
-		cmd.Printf("%s\n", job.ID)
-		if ODR.WaitForJobToFinish {
-			resolver := getAPIClient().GetJobStateResolver()
-			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
-			err = resolver.WaitUntilComplete(ctx, job.ID)
-||||||| parent of 4cb0c182 (bacalhau --local)
-		states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
-		if err != nil {
-			return err
-		}
-=======
 			apiURI := stack.Nodes[0].APIServer.GetURI()
 			apiClient = publicapi.NewAPIClient(apiURI)
 		} else {
 			apiClient = getAPIClient()
 		}
->>>>>>> 5a248cd4 (Fix CI errors)
 
-<<<<<<< HEAD
-		cmd.Printf("%s\n", job.ID)
-		if ODR.WaitForJobToFinish {
-			resolver := getAPIClient().GetJobStateResolver()
-			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
-			err = resolver.WaitUntilComplete(ctx, job.ID)
-||||||| parent of 4cb0c182 (bacalhau --local)
-		states, err := getAPIClient().GetExecutionStates(ctx, job.ID)
+		job, err := apiClient.Submit(ctx, spec, deal, nil)
 		if err != nil {
 			return err
 		}
 
-			cmd.Printf("%s\n", job.ID)
-			currentNodeID, _ := pjob.GetCurrentJobState(states)
-			nodeIds := []string{currentNodeID}
-
-			cmd.Printf("%s\n", job.ID)
-			currentNodeID, _ := pjob.GetCurrentJobState(states)
-			nodeIds := []string{currentNodeID}
-
-			// TODO: #424 Should we refactor all this waiting out? I worry about putting this all here \
-			// feels like we're overloading the surface of the CLI command a lot.
-			if waitForJobToFinishAndPrintOutput {
-				err = WaitForJob(ctx, job.ID, job,
-					WaitForJobThrowErrors(job, []executor.JobStateType{
-						executor.JobStateCancelled,
-						executor.JobStateError,
-					}),
-					WaitForJobAllHaveState(nodeIds, executor.JobStateComplete),
-				)
-				if err != nil {
-					return err
-				}
-
 		cmd.Printf("%s\n", job.ID)
-		if waitForJobToFinish {
+		if ODR.WaitForJobToFinish {
 			resolver := apiClient.GetJobStateResolver()
-			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
+			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
 				return err
 			}
-				cmd.Println(string(body))
-			}
 
-
-			if waitForJobToFinishAndPrintOutput {
+			if ODR.WaitForJobToFinishAndPrintOutput {
 				results, err := apiClient.GetResults(ctx, job.ID)
 				if err != nil {
 					return err
@@ -384,17 +330,17 @@ var dockerRunCmd = &cobra.Command{
 					cm,
 					job,
 					results,
-					runDownloadFlags,
+					ODR.RunDownloadFlags,
 				)
 				if err != nil {
 					return err
 				}
-				body, err := os.ReadFile(filepath.Join(runDownloadFlags.OutputDir, "stdout"))
+				body, err := os.ReadFile(filepath.Join(ODR.RunDownloadFlags.OutputDir, "stdout"))
 				if err != nil {
 					return err
 				}
-				fmt.Println()
-				fmt.Println(string(body))
+				cmd.Println()
+				cmd.Println(string(body))
 			}
 		}
 

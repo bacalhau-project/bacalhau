@@ -33,7 +33,7 @@ func (suite *ApplySuite) SetupTest() {
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
 	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
- 
+
 }
 
 func (suite *ApplySuite) TearDownTest() {
@@ -59,7 +59,7 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			defer cm.Cleanup()
 
 			// Below copies the original default run options over the existing ones, to reset the test
-	    	*ODR = *originalDockerRunOptions
+			*ODR = *originalDockerRunOptions
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			assert.NoError(suite.T(), err)
