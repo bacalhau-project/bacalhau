@@ -361,10 +361,3 @@ workflows:
           name: Running Performance
           requires:
             - build-linux-amd64
-      - update_metadata:
-          METADATA_BUCKET: "bacalhau-global-storage"
-          METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
-          name: Update metadata for performance
-          requires:
-            - Running Performance
-
