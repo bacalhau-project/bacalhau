@@ -230,7 +230,7 @@ test-and-report: build-bacalhau
 			-- \
 				-p 1 \
 				./pkg/... ./cmd/... \
-				$(COVERAGE_OPTS)
+				$(COVERAGE_OPTS) --tags=unit
 
 .PHONY: generate
 generate:
