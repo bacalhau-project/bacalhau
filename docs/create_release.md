@@ -45,10 +45,6 @@ There are three environments: development, staging and production. For more info
 
 This happens when the ops cluster versions are _behind_ the CLI versions. Update the ops clusters to the most recent version.
 
-### Error: publicapi: received non-200 status: 400 client's signature is invalid
-
-This happens when the ops cluster versions are _behind_ the CLI versions. Update the ops clusters to the most recent version.
-
 ### Split Brain
 
 When making changes that only affect "node 0" in the network, you will effectively create a new Bacalhau network, and old nodes (1+) will still belong to the old network.
