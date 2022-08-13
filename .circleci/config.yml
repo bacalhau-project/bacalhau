@@ -29,7 +29,8 @@ jobs:
         type: string
       target_os:
         type: string
-
+      run_tests:
+        type: boolean
     steps:
       - checkout
 
