@@ -96,6 +96,7 @@ func SetupTest(
 		getPublishers,
 		config,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 

@@ -75,7 +75,6 @@ variable "honeycomb_api_key" {
   default = ""
 }
 
-
 // Out of a total of var.instance_count machines, how many do you want to be GPU machines?
 // I chose this, rather than making a new pool of machines, to maintain configuration parity
 variable "num_gpu_machines" {
@@ -99,4 +98,31 @@ variable "gpu_type" {
 variable "gpu_machine_type" {
   type    = string
   default = "n1-standard-4"
+}
+
+// Version number, omit the 'v' prefix
+variable "prometheus_version" {
+  type = string
+  default = ""
+}
+
+// Grafana: you can find the /api/prom/push URL, username, and password for your metrics
+// endpoint by clicking on Details in the Prometheus card of the Cloud Portal
+// https://grafana.com/docs/grafana-cloud/fundamentals/cloud-portal/
+// Note: this is not an account-wide API key, but rather a key for Prometheus
+variable "grafana_cloud_api_key" {
+  type    = string
+  default = ""
+}
+
+variable "grafana_cloud_api_user" {
+  type = string
+  default = ""
+}
+
+// Remote Write Endpoint 
+// e.g. https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
+variable "grafana_cloud_api_endpoint" {
+  type = string
+  default = ""
 }

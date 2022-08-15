@@ -144,6 +144,7 @@ var devstackCmd = &cobra.Command{
 			getPublishers,
 			computeNodeConfig,
 			devStackPeer,
+			false,
 		)
 		if err != nil {
 			return err

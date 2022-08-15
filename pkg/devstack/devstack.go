@@ -7,20 +7,24 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/ipfs/go-datastore"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -79,6 +83,85 @@ type GetPublishersFunc func(
 	error,
 )
 
+func NewDevStackForRunLocal(
+	cm *system.CleanupManager,
+	count int,
+	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
+) (*DevStack, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+	}
+	getExecutors := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[executor.EngineType]executor.Executor,
+		error,
+	) {
+		ipfsParts := strings.Split(ipfsMultiAddress, "/")
+		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
+		return executor_util.NewStandardExecutors(
+			cm,
+			ipfsMultiAddress,
+			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+		)
+	}
+	getVerifiers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[verifier.VerifierType]verifier.Verifier,
+		error,
+	) {
+		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+			return ctrl.GetJob(ctx, id)
+		}
+		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
+			return ctrl.GetJobState(ctx, id)
+		}
+		return verifier_util.NewNoopVerifiers(cm, jobLoader, stateLoader)
+	}
+	getPublishers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[publisher.PublisherType]publisher.Publisher,
+		error,
+	) {
+		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
+			return ctrl.GetJob(ctx, id)
+		}
+		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
+			return ctrl.GetJobState(ctx, id)
+		}
+		return publisher_util.NewIPFSPublishers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+	}
+
+	return NewDevStack(
+		cm,
+		count, 0,
+		getStorageProviders,
+		getExecutors,
+		getVerifiers,
+		getPublishers,
+		computenode.ComputeNodeConfig{
+			JobSelectionPolicy: computenode.JobSelectionPolicy{
+				Locality:            computenode.Anywhere,
+				RejectStatelessJobs: false,
+			}, CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
+					GPU: jobGPU,
+				},
+			},
+		},
+		"",
+		true,
+	)
+}
+
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
@@ -90,6 +173,7 @@ func NewDevStack(
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 	peer string,
+	publicIPFSMode bool,
 ) (*DevStack, error) {
 	ctx, span := newSpan("NewDevStack")
 	defer span.End()
@@ -103,6 +187,8 @@ func NewDevStack(
 		//////////////////////////////////////
 		var err error
 		var ipfsSwarmAddrs []string
+		var ipfsNode *ipfs.Node
+
 		if i > 0 {
 			ipfsSwarmAddrs, err = nodes[0].IpfsNode.SwarmAddresses()
 			if err != nil {
@@ -110,9 +196,16 @@ func NewDevStack(
 			}
 		}
 
-		ipfsNode, err := ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		if publicIPFSMode {
+			ipfsNode, err = ipfs.NewNode(cm, []string{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+			}
+		} else {
+			ipfsNode, err = ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+			}
 		}
 
 		ipfsClient, err := ipfsNode.Client()
@@ -236,7 +329,15 @@ func NewDevStack(
 		//////////////////////////////////////
 
 		// predictable port for API
-		apiPort := 20000 + i
+		var apiPort int
+		if os.Getenv("PREDICTABLE_API_PORT") != "" {
+			apiPort = 20000 + i
+		} else {
+			apiPort, err = freeport.GetFreePort()
+			if err != nil {
+				return nil, err
+			}
+		}
 
 		apiServer := publicapi.NewServer(
 			"0.0.0.0",

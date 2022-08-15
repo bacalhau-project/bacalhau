@@ -181,6 +181,89 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
+	expectedStdout := "hello"
+	args := []string{"docker", "run", "ubuntu", "echo", expectedStdout, "--local", "--wait", "--download"}
+	done := capture()
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocal-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
+	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	args := []string{"docker", "run",
+		"--local",
+		"--wait",
+		"--download",
+		"-v", fmt.Sprintf("%s:/hello.txt", CID),
+		"ubuntu",
+		"cat", "hello.txt"}
+	expectedStdout := "hello"
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocalInput-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
+	done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
+	args := []string{"docker", "run",
+		"ubuntu",
+		"--local",
+		"--wait",
+		"--download",
+		"-w", "/outputs",
+		"--",
+		"/bin/bash", "-c", "printf hello > hello.txt"}
+	expectedStdout := "hello"
+
+	// done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	if err != nil {
+		fmt.Print(err)
+	}
+	// out, _ := done()
+
+	require.NoError(suite.T(), err)
+	content, _ := ioutil.ReadFile("volumes/outputs/hello.txt")
+	out := string(content)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int

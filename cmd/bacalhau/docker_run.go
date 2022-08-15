@@ -8,9 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -35,6 +37,7 @@ var jobMemory string
 var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
+var isLocal bool
 var waitForJobToFinish bool
 var waitForJobToFinishAndPrintOutput bool
 var waitForJobTimeoutSecs int
@@ -117,6 +120,11 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`Wait for the job to finish.`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&isLocal, "local", false,
+		`Run the job locally. Docker is required`,
+	)
+
 	dockerRunCmd.PersistentFlags().IntVar(
 		&waitForJobTimeoutSecs, "wait-timeout-secs", DefaultDockerRunWaitSeconds,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
@@ -181,6 +189,7 @@ var dockerRunCmd = &cobra.Command{
 		jobCPU = ""
 		jobMemory = ""
 		jobGPU = ""
+		isLocal = false
 		skipSyntaxChecking = false
 		waitForJobToFinish = false
 		waitForJobToFinishAndPrintOutput = false
@@ -272,14 +281,26 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
+		var apiClient *publicapi.APIClient
+		if isLocal {
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobGPU)
+			if errLocalDevStack != nil {
+				return errLocalDevStack
+			}
+			apiURI := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiURI)
+		} else {
+			apiClient = getAPIClient()
+		}
+
+		job, err := apiClient.Submit(ctx, spec, deal, nil)
 		if err != nil {
 			return err
 		}
 
 		cmd.Printf("%s\n", job.ID)
 		if waitForJobToFinish {
-			resolver := getAPIClient().GetJobStateResolver()
+			resolver := apiClient.GetJobStateResolver()
 			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
@@ -287,7 +308,7 @@ var dockerRunCmd = &cobra.Command{
 			}
 
 			if waitForJobToFinishAndPrintOutput {
-				results, err := getAPIClient().GetResults(ctx, job.ID)
+				results, err := apiClient.GetResults(ctx, job.ID)
 				if err != nil {
 					return err
 				}

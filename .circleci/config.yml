@@ -5,7 +5,7 @@ version: 2.1
 executors:
   linux:
     machine:
-      image: ubuntu-2204:2022.04.2
+      image: ubuntu-2204:2022.07.1
     resource_class: xlarge
 
 # Define a job to be invoked later in a workflow.
@@ -21,8 +21,7 @@ jobs:
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
       CGO: 0
-      GCS_TEST_RESULTS_BUCKET: gs://bacalhau-global-storage/test-results
-      METADATA_FILENAME: LAST-PERFORMANCE-RESULT-METADATA-OBJECT
+      GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
     executor: linux
     parameters:
@@ -85,7 +84,7 @@ jobs:
             and:
               - equal: ["linux", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
-              - equal: ["run_tests", true]
+              - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test
@@ -115,15 +114,11 @@ jobs:
                   else
                     export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
                   fi
+                  # Credentials for project: bacalhau-cicd
+                  # Account: 
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unit-tests.xml "$TEST_RESULTS_FILENAME"
-                  gsutil cp "$TEST_RESULTS_FILENAME" "$GCS_TEST_RESULTS_BUCKET"
-
-                  gsutil -m setmeta -h "Content-Type:text/plain" \
-                    -h "Cache-Control:public, max-age=0, no-cache, no-store" \
-                    -h "Content-Disposition" gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}
-
-                  gsutil setmeta -h "x-goog-meta-performance-results-last-updated:$(date -u +'%FT%H%MZ')" "gs://${GCS_TEST_RESULTS_BUCKET}/${METADATA_FILENAME}"
+                  gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
   deploy:
     docker:
@@ -168,7 +163,7 @@ jobs:
                                 terraform workspace select << parameters.rollout_stage >> && \
                                 terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
-  run_perf:
+  performance_job:
     resource_class: filecoin-project/self-hosted-bacalhau
     machine: true
     parallelism: 1
@@ -188,20 +183,21 @@ jobs:
             else
               export TAG="v0.0.0-xxxxxxx"
             fi
+            sudo dpkg --configure -a
             sudo apt install python3.10 python3-pip build-essential -y
             pip3 install gsutil
-            wget https://github.com/sharkdp/hyperfine/releases/download/v1.13.0/hyperfine_1.13.0_amd64.deb
-            sudo dpkg -i hyperfine_1.13.0_amd64.deb
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y
+            source $HOME/.cargo/env
+            cargo install hyperfine
             echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
             (
               cd benchmark
               bash start_and_run.sh
             )
             gsutil -m cp benchmark/results/* "${GCS_PERF_RESULTS_BUCKET}/${DATETIME}-${BRANCH}-${TAG}-${SHA}"
-
       - heroku/install
       - run:
-          command: >
+          command: |
             # Updates dashboard data with latest from GCS
             heroku run build --app bacalhau-dashboards
 
@@ -254,6 +250,24 @@ jobs:
             find dist/
             gh release upload $TAG dist/*
 
+  update_metadata:
+    executor: linux
+    parameters:
+      METADATA_BUCKET:
+        type: string
+      METADATA_FILENAME:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: Update Metadata
+          command: |
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/UPDATE_METADATA_CREDENTIALS.json"
+            echo "${UPDATE_METADATA_CREDENTIALS_CONTENT_B64}" | base64 --decode > "${GOOGLE_APPLICATION_CREDENTIALS}"
+            cd ops
+            pip3 install -r requirements.txt
+            python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -268,6 +282,7 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
             exclude:
               - target_os: "linux"
                 target_arch: "arm64"
@@ -277,6 +292,12 @@ workflows:
               ignore: main
             tags:
               ignore: /.*/
+      - update_metadata:
+          name: Update metadata for dev branch test runs
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+          requires:
+            - build-linux-amd64
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
@@ -296,12 +317,19 @@ workflows:
             parameters:
               target_os: ["linux", "darwin"]
               target_arch: ["amd64", "arm64"]
+              run_tests: [true]
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
               only: main
             tags:
               ignore: /.*/
+      - update_metadata:
+          name: Update metadata for main test runs
+          requires:
+            - build-linux-amd64
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       - deploy:
           name: deploy-staging-cluster
           requires:
@@ -332,7 +360,13 @@ workflows:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
-      - run_perf:
-          name: Running perf
+      - performance_job:
+          name: Running Performance
           requires:
             - build-linux-amd64
+      - update_metadata:
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
+          name: Update metadata for performance
+          requires:
+            - Running Performance

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,6 +142,53 @@ func ReverseList(s []string) []string {
 	}
 	return s
 }
+
+// this function captures the output of all functions running in it between capture() and done()
+// example:
+// 	done := capture()
+//	fmt.Println("hello")
+//	s, _ := done()
+// after trimming str := strings.TrimSpace(s) it will return "hello"
+// so if we want to compare the output in the console with a expected output like "hello" we could do that
+// this is mainly used in testing --local
+// go playground link https://go.dev/play/p/cuGIaIorWfD
+
+//nolint:unused,deadcode
+func capture() func() (string, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+
+	done := make(chan error, 1)
+
+	save := os.Stdout
+	os.Stdout = w
+
+	var buf strings.Builder
+
+	go func() {
+		_, err := io.Copy(&buf, r)
+		r.Close()
+		done <- err
+	}()
+
+	return func() (string, error) {
+		os.Stdout = save
+		w.Close()
+		err := <-done
+		return buf.String(), err
+	}
+}
+
+// func RandInt(i int) int {
+// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
+// 	if err != nil {
+// 		log.Fatal().Msg("could not generate random number")
+// 	}
+
+// 	return int(n.Int64())
+// }
 
 func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
 	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",

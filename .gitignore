@@ -37,3 +37,4 @@ ops/terraform/*.out
 .trunk/logs
 benchmark/results
 shards
+__pycache__

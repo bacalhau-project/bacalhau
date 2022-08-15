@@ -284,6 +284,7 @@ func (e *Executor) RunShard(
 	if err != nil {
 		return fmt.Errorf("failed to start container: %w", err)
 	}
+
 	defer e.cleanupJob(j, shardIndex)
 
 	// the idea here is even if the container errors
