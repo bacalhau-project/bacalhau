@@ -14,6 +14,7 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	ft "github.com/ipfs/go-unixfs"
 	icore "github.com/ipfs/interface-go-ipfs-core"
+	icoreoptions "github.com/ipfs/interface-go-ipfs-core/options"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
@@ -147,7 +148,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	return nil
 }
 
-// Put uploads a file or directory to the ipfs network. Timeouts and
+// Put uploads and pins a file or directory to the ipfs network. Timeouts and
 // cancellation should be handled by passing an appropriate context value.
 func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 	ctx, span := newSpan(ctx, "Put")
@@ -163,7 +164,12 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to create ipfs node: %w", err)
 	}
 
-	ipfsPath, err := cl.api.Unixfs().Add(ctx, node)
+	// Pin uploaded file/directory to local storage to prevent deletion by GC.
+	addOptions := []icoreoptions.UnixfsAddOption{
+		icoreoptions.Unixfs.Pin(true),
+	}
+
+	ipfsPath, err := cl.api.Unixfs().Add(ctx, node, addOptions...)
 	if err != nil {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
@@ -252,7 +258,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	return res, nil
 }
 
-// HadCID returns true if the node has the given CID pinned.
+// HadCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	ctx, span := newSpan(ctx, "HasCID")
 	defer span.End()
