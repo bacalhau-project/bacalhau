@@ -2,7 +2,9 @@ package bacalhau
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"gopkg.in/yaml.v2"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -60,6 +63,8 @@ type DockerRunOptions struct {
 	GPU           string
 	WorkingDir    string   // Working directory for docker
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+
+	Filename string // filename for job spec
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -112,6 +117,11 @@ func NewDockerRunOptions() *DockerRunOptions {
 
 func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
+
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.Filename, "filename", "f", "",
+		`Path to the job file. Any command line flags will override configurations in the file.`,
+	)
 
 	// TODO: don't make jobEngine specifiable in the docker subcommand
 	dockerRunCmd.PersistentFlags().StringVar(
@@ -252,6 +262,36 @@ var dockerRunCmd = &cobra.Command{
 		ctx := context.Background()
 		ODR.Image = cmdArgs[0]
 		ODR.Entrypoint = cmdArgs[1:]
+
+		if filename != "" {
+			fileextension := filepath.Ext(filename)
+			fileContent, err := os.Open(filename)
+
+			if err != nil {
+				return err
+			}
+
+			defer fileContent.Close()
+			byteResult, err := io.ReadAll(fileContent)
+
+			if err != nil {
+				return err
+			}
+
+			if fileextension == ".json" {
+				err = json.Unmarshal(byteResult, &jobspec)
+				if err != nil {
+					return err
+				}
+			}
+
+			if fileextension == ".yaml" || fileextension == ".yml" {
+				err = yaml.Unmarshal(byteResult, &jobspec)
+				if err != nil {
+					return err
+				}
+			}
+		}
 
 		ODR.DockerRunDownloadFlags = ipfs.DownloadSettings{
 			TimeoutSecs:    10,

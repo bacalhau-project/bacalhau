@@ -26,6 +26,7 @@ var jobOutputVolumes []string
 var jobWorkingDir string
 var jobLabels []string
 
+
 func init() { //nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(
 		&filename, "filename", "f", "",
@@ -46,6 +47,7 @@ func init() { //nolint:gochecknoinits
 var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Submit a job.json or job.yaml file and run it on the network",
+	Long: 
 	Args:  cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		ctx := context.Background()
