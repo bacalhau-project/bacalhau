@@ -9,18 +9,18 @@ job_spec_docker:
     - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
   env: []
 resources:
-  cpu: ''
-  gpu: ''
-  memory: ''
-  disk: ''
+  cpu: ""
+  gpu: ""
+  memory: ""
+  disk: ""
 inputs:
   - engine_name: ipfs
-    name: ''
+    name: ""
     cid: QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9
     path: /input
 outputs:
   - engine_name: ipfs
-    name: output
-    cid: ''
-    path: /output
+    name: output_custom
+    cid: ""
+    path: /output_custom
 annotations: null

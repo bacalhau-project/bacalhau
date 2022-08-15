@@ -70,10 +70,10 @@ func TestValidateWorkingDir(t *testing.T) {
 		path       string
 		error_code int
 	}{
-		"good_path": {path: "/", error_code: 0},
-		"good_path_full": {path: "/project/", error_code: 0},
-		"relative_path":  {path: "../foo", error_code: 1},
-		"relative_path_2":  {path: "./foo", error_code: 1},
+		"good_path":       {path: "/", error_code: 0},
+		"good_path_full":  {path: "/project/", error_code: 0},
+		"relative_path":   {path: "../foo", error_code: 1},
+		"relative_path_2": {path: "./foo", error_code: 1},
 	}
 
 	for name, tc := range tests {

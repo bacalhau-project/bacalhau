@@ -10,6 +10,17 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
+func prependSlash(st string) string {
+	if st == "" {
+		return st
+	}
+	if !strings.HasPrefix(st, "/") {
+		return "/" + st
+	} else {
+		return st
+	}
+}
+
 /*
 given a flat list of all files - group them using a glob pattern
 
@@ -30,13 +41,24 @@ func ApplyGlobPattern(
 	pattern string,
 	basePath string,
 ) ([]storage.StorageSpec, error) {
+	if pattern == "" {
+		return files, nil
+	}
 	var result []storage.StorageSpec
+	usePattern := prependSlash(pattern)
+	useBasePath := prependSlash(basePath)
 	for _, file := range files {
+		file.Path = prependSlash(file.Path)
+
 		usePath := file.Path
-		if basePath != "" {
-			usePath = strings.TrimPrefix(file.Path, basePath)
+
+		// remove the base path from the file path because
+		// we will apply the glob pattern from below the base path
+		if useBasePath != "" {
+			usePath = strings.TrimPrefix(file.Path, useBasePath)
 		}
-		matches, err := doublestar.Match(pattern, usePath)
+
+		matches, err := doublestar.Match(usePattern, usePath)
 		if err != nil {
 			return result, err
 		}
@@ -174,6 +196,9 @@ func GenerateExecutionPlan(
 	shards, err := GetShards(ctx, spec, storageProviders)
 	if err != nil {
 		return executor.JobExecutionPlan{}, err
+	}
+	if len(shards) == 0 {
+		return executor.JobExecutionPlan{}, fmt.Errorf("no sharding atoms found for glob pattern %s", config.GlobPattern)
 	}
 	return executor.JobExecutionPlan{
 		TotalShards: len(shards),

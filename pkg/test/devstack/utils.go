@@ -77,6 +77,7 @@ func SetupTest(
 		getVerifiers,
 		config,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 

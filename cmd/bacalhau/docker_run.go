@@ -8,9 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/version"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -34,6 +37,7 @@ var jobMemory string
 var jobGPU string
 var jobWorkingDir string
 var skipSyntaxChecking bool
+var isLocal bool
 var waitForJobToFinish bool
 var waitForJobToFinishAndPrintOutput bool
 var waitForJobTimeoutSecs int
@@ -116,6 +120,11 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`Wait for the job to finish.`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&isLocal, "local", false,
+		`Run the job locally. Docker is required`,
+	)
+
 	dockerRunCmd.PersistentFlags().IntVar(
 		&waitForJobTimeoutSecs, "wait-timeout-secs", DefaultDockerRunWaitSeconds,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
@@ -134,7 +143,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 
 	dockerRunCmd.PersistentFlags().StringVar(
-		&shardingGlobPattern, "sharding-base-path", "",
+		&shardingBasePath, "sharding-base-path", "",
 		`Where the sharding glob pattern starts from - useful when you have multiple volumes.`,
 	)
 
@@ -147,6 +156,15 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
 	Short: "Run a docker job on the network (see run subcommand)",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Check that the server version is compatible with the client version
+		serverVersion, _ := getAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
+		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
+			log.Err(err)
+			return err
+		}
+		return nil
+	},
 }
 
 var dockerRunCmd = &cobra.Command{
@@ -171,6 +189,7 @@ var dockerRunCmd = &cobra.Command{
 		jobCPU = ""
 		jobMemory = ""
 		jobGPU = ""
+		isLocal = false
 		skipSyntaxChecking = false
 		waitForJobToFinish = false
 		waitForJobToFinishAndPrintOutput = false
@@ -180,6 +199,9 @@ var dockerRunCmd = &cobra.Command{
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 		jobWorkingDir = ""
+		shardingGlobPattern = ""
+		shardingBasePath = ""
+		shardingBatchSize = 1
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
@@ -205,8 +227,6 @@ var dockerRunCmd = &cobra.Command{
 		for _, i := range jobInputs {
 			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
-
-		jobOutputVolumes = append(jobOutputVolumes, "outputs:/outputs")
 
 		// No error checking, because it will never be an error (for now)
 		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
@@ -241,6 +261,7 @@ var dockerRunCmd = &cobra.Command{
 			jobConcurrency,
 			jobLabels,
 			jobWorkingDir,
+			doNotTrack,
 		)
 
 		if err != nil {
@@ -260,14 +281,26 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal, nil)
+		var apiClient *publicapi.APIClient
+		if isLocal {
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobGPU)
+			if errLocalDevStack != nil {
+				return errLocalDevStack
+			}
+			apiURI := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiURI)
+		} else {
+			apiClient = getAPIClient()
+		}
+
+		job, err := apiClient.Submit(ctx, spec, deal, nil)
 		if err != nil {
 			return err
 		}
 
 		cmd.Printf("%s\n", job.ID)
 		if waitForJobToFinish {
-			resolver := getAPIClient().GetJobStateResolver()
+			resolver := apiClient.GetJobStateResolver()
 			resolver.SetWaitTime(waitForJobTimeoutSecs, time.Second*1)
 			err = resolver.WaitUntilComplete(ctx, job.ID)
 			if err != nil {
@@ -275,7 +308,7 @@ var dockerRunCmd = &cobra.Command{
 			}
 
 			if waitForJobToFinishAndPrintOutput {
-				results, err := getAPIClient().GetResults(ctx, job.ID)
+				results, err := apiClient.GetResults(ctx, job.ID)
 				if err != nil {
 					return err
 				}

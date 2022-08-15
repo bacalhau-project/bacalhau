@@ -497,12 +497,9 @@ func verifySubmitRequest(req *submitRequest) error {
 		return fmt.Errorf("error marshaling job data: %w", err)
 	}
 
-	ok, err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
+	err = system.Verify(jsonData, req.ClientSignature, req.ClientPublicKey)
 	if err != nil {
-		return fmt.Errorf("error verifying client signature: %w", err)
-	}
-	if !ok {
-		return errors.New("client's signature is invalid")
+		return fmt.Errorf("client's signature is invalid: %w", err)
 	}
 
 	return nil

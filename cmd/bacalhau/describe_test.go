@@ -124,6 +124,22 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					returnedJobDescription.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
+				// Short job id
+				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
+					"--api-host", host,
+					submittedJob.ID[0:6],
+					"--api-port", port,
+				)
+
+				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
+				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(),
+					submittedJob.Spec.Docker.Entrypoint[0],
+					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
+
 			}()
 		}
 	}

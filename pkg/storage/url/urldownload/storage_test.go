@@ -3,15 +3,15 @@ package urldownload
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
-	"net/http"
-	"net/http/httptest"
-	"io/ioutil"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 func TestNewStorageProvider(t *testing.T) {
@@ -35,7 +35,6 @@ func TestNewStorageProvider(t *testing.T) {
 		t.Error("HTTP client in StorageProvider is nil")
 	}
 }
-
 
 func TestHasStorageLocally(t *testing.T) {
 	cm := system.NewCleanupManager()
@@ -86,21 +85,21 @@ func TestPrepareStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	file, err := os.Open(volume.Source)
 	if err != nil {
-        t.Fatal(err)
-    }
+		t.Fatal(err)
+	}
 	defer func() {
-        if err = file.Close(); err != nil {
-            t.Fatal(err)
-        }
-    }()
+		if err = file.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
-        t.Fatal(err)
-    }
+		t.Fatal(err)
+	}
 	text := string(content)
 	if text != testString {
 		t.Errorf("Should be \"%s\", but is \"%s\"", testString, text)

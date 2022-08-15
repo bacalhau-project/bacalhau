@@ -77,7 +77,7 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]executor.Job, 
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): implement with separate API call, don't filter list
+// TODO(optimisation): #452 implement with separate API call, don't filter list
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor.Job, foundJob bool, err error) {
 	if jobID == "" {
 		return executor.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
@@ -88,7 +88,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 		return executor.Job{}, false, err
 	}
 
-	// TODO: make this deterministic, return the first match alphabetically
+	// TODO: #453 make this deterministic, return the first match alphabetically
 	for _, job = range jobs { //nolint:gocritic
 		strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(job.ID), "-", "")
 		strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
@@ -280,7 +280,7 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		}
 
 		return fmt.Errorf(
-			"publicapi: received non-200 status: %d", res.StatusCode)
+			"publicapi: received non-200 status: %d %s", res.StatusCode, string(body))
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {

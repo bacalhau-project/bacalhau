@@ -241,7 +241,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	// Increment the number of jobs seen by this compute node:
 	jobsReceived.With(prometheus.Labels{
-		"node_id": node.id,
+		"node_id":   node.id,
+		"client_id": job.ClientID,
 	}).Inc()
 
 	// A new job has arrived - decide if we want to bid on it:
@@ -292,6 +293,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	jobsAccepted.With(prometheus.Labels{
 		"node_id":     node.id,
 		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
+		"client_id":   job.ClientID,
 	}).Inc()
 
 	log.Debug().Msgf("Compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
@@ -336,7 +338,11 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 subscriptions -> bid rejected
 */
 func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
-	node.capacityManager.Remove(job.ID)
+	// we only care if the rejected bid is for us
+	if jobEvent.TargetNodeID != node.id {
+		return
+	}
+	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
 	node.controlLoopBidOnJobs()
 }
 
@@ -441,11 +447,13 @@ func (node *ComputeNode) RunShard(
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     node.id,
 			"shard_index": strconv.Itoa(shardIndex),
+			"client_id":   job.ClientID,
 		}).Inc()
 	} else {
 		jobsCompleted.With(prometheus.Labels{
 			"node_id":     node.id,
 			"shard_index": strconv.Itoa(shardIndex),
+			"client_id":   job.ClientID,
 		}).Inc()
 	}
 	if resultFolder == "" {

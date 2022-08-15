@@ -1,8 +1,9 @@
-bacalhau_version       = "v0.1.32"
+bacalhau_version       = "v0.1.37"
 bacalhau_port          = "1235"
 bacalhau_connect_node0 = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
 ipfs_version           = "v0.12.2"
 gcp_project            = "bacalhau-production"
+prometheus_version     = "2.37.0"
 instance_count         = 3
 region                 = "us-east4"
 zone                   = "us-east4-c"

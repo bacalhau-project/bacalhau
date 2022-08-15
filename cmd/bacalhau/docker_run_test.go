@@ -181,6 +181,89 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
+	expectedStdout := "hello"
+	args := []string{"docker", "run", "ubuntu", "echo", expectedStdout, "--local", "--wait", "--download"}
+	done := capture()
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocal-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
+	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	args := []string{"docker", "run",
+		"--local",
+		"--wait",
+		"--download",
+		"-v", fmt.Sprintf("%s:/hello.txt", CID),
+		"ubuntu",
+		"cat", "hello.txt"}
+	expectedStdout := "hello"
+
+	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocalInput-")
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(suite.T(), err)
+	}()
+	runDownloadFlags.OutputDir = dir
+
+	done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	out, _ := done()
+
+	require.NoError(suite.T(), err)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
+func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
+	args := []string{"docker", "run",
+		"ubuntu",
+		"--local",
+		"--wait",
+		"--download",
+		"-w", "/outputs",
+		"--",
+		"/bin/bash", "-c", "printf hello > hello.txt"}
+	expectedStdout := "hello"
+
+	// done := capture()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	if err != nil {
+		fmt.Print(err)
+	}
+	// out, _ := done()
+
+	require.NoError(suite.T(), err)
+	content, _ := ioutil.ReadFile("volumes/outputs/hello.txt")
+	out := string(content)
+	trimmedStdout := strings.TrimSpace(string(out))
+	fmt.Println(trimmedStdout)
+
+	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
+
+	runDownloadFlags.OutputDir = "."
+}
+
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int
@@ -368,7 +451,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME", path: "/outputs_1"}}, correctLength: 2, err: ""},                                                // Correct output flag
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_2", path: "/outputs_2"}, {name: "OUTPUT_NAME_3", path: "/outputs_3"}}, correctLength: 3, err: ""}, // 2 correct output flags
 			{outputVolumes: []OutputVolumes{{name: "OUTPUT_NAME_4", path: ""}}, correctLength: 0, err: "invalid output volume"},                                   // OV requested but no path (should error)
-			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volumes"},                                     // OV requested but no name (should error)
+			{outputVolumes: []OutputVolumes{{name: "", path: "/outputs_4"}}, correctLength: 0, err: "invalid output volume"},                                      // OV requested but no name (should error)
 		}
 
 		for _, tcids := range testCids {
@@ -400,7 +483,7 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 					flagsArray...,
 				)
 				if tcids.err != "" {
-					require.Error(suite.T(), err, "Expected an error, but none provided.")
+					require.Error(suite.T(), err, "Expected an error, but none provided. %+v", tcids)
 					require.Contains(suite.T(), err.Error(), "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
@@ -487,6 +570,10 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 		{numberOfJobs: 1}, // Test for one
 		// {numberOfJobs: 5}, // Test for five
 	}
+
+	var logBuf = new(bytes.Buffer)
+	var Stdout = struct{ io.Writer }{os.Stdout}
+	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
 
 	annotationsToTest := []struct {
 		Name          string
@@ -663,4 +750,54 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			}
 		}()
 	}
+}
+
+func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	const nodeCount = 1
+
+	videos := []string{
+		"Bird flying over the lake.mp4",
+		"Calm waves on a rocky sea gulf.mp4",
+		"Prominent Late Gothic styled architecture.mp4",
+	}
+
+	stack, cm := devstack.SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer cm.Cleanup()
+
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	require.NoError(suite.T(), err)
+	for _, video := range videos {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%s", dirPath, video),
+			[]byte(fmt.Sprintf("hello %s", video)),
+			0644,
+		)
+		require.NoError(suite.T(), err)
+	}
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+	allArgs := []string{
+		"docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--wait",
+		"-v", fmt.Sprintf("%s:/inputs", directoryCid),
+		"--sharding-base-path", "/inputs",
+		"--sharding-glob-pattern", "*.mp4",
+		"--sharding-batch-size", "1",
+		"ubuntu", "echo", "hello",
+	}
+
+	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+	require.NoError(suite.T(), submitErr)
 }

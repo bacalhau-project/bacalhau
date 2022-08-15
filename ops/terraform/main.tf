@@ -51,8 +51,14 @@ export BACALHAU_PORT="${var.bacalhau_port}"
 export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
-export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
 export GPU_NODE="${count.index < var.num_gpu_machines ? "true" : "false"}"
+export PROMETHEUS_VERSION="${var.prometheus_version}"
+export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
+export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
+
+### secrets are installed in the install-node.sh script
+export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
+export SECRETS_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
 EOI
 
 ##############################
@@ -117,6 +123,10 @@ EOI
 
 sudo tee /etc/systemd/system/bacalhau-daemon.service > /dev/null <<'EOI'
 ${file("${path.module}/remote_files/configs/bacalhau-daemon.service")}
+EOI
+
+sudo tee /etc/systemd/system/prometheus-daemon.service > /dev/null <<'EOI'
+${file("${path.module}/remote_files/configs/prometheus-daemon.service")}
 EOI
 
 ##############################
@@ -246,6 +256,7 @@ resource "google_compute_firewall" "bacalhau_firewall" {
       "1234",  // bacalhau API
       "1235",  // bacalhau swarm
       "2112",  // bacalhau metrics
+      "9090",  // prometheus service
       "44443", // nginx is healthy - for running health check scripts
       "44444", // nginx node health check scripts
     ]

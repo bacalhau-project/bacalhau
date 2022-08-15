@@ -1,7 +1,7 @@
 # Example of sharding with video filters
 
 ```bash
-cid="QmRmo77BkKvfXpAqFrCFZ26aeJjyMXY75zySWvyLgKfcbu"
+cid="Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j"
 time bacalhau docker run \
   -v $cid:/inputs \
   --cpu 2 \
@@ -16,7 +16,8 @@ time bacalhau docker run \
   --memory 1Gb \
   --wait \
   --wait-timeout-secs 10000 \
-  --sharding-glob-pattern "/inputs/*.mp4" \
+  --sharding-base-path "/inputs" \
+  --sharding-glob-pattern "*.mp4" \
   --sharding-batch-size 1 \
   binocarlos/video-resize-example \
   bash /entrypoint.sh /inputs /outputs

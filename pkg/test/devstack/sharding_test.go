@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -149,6 +153,34 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
+	ulimitValue := 0
+
+	if _, err := exec.LookPath("ulimit"); err == nil {
+		// Test to see how many files can be open on this system...
+		cmd := exec.Command("ulimit", "-n")
+		err := cmd.Run()
+
+		if err != nil {
+			require.Fail(suite.T(), "Failure checking for ulimit.")
+		}
+		out, _ := cmd.CombinedOutput()
+		ulimitValue, _ = strconv.Atoi(string(out))
+
+		if err != nil {
+			require.Fail(suite.T(), "Failure getting ulimit value.")
+		}
+	} else {
+		var rLimit syscall.Rlimit
+		err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+		if err != nil {
+			require.Fail(suite.T(), "Failure checking for Rlimit.")
+		}
+		ulimitValue, _ = strconv.Atoi(fmt.Sprint(rLimit.Cur))
+	}
+
+	if ulimitValue <= 512 {
+		suite.T().Skip("Skipping sharding end to end test because the ulimit value is too low.")
+	}
 
 	const totalFiles = 100
 	const batchSize = 10
@@ -288,4 +320,128 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	sort.Strings(actualResultsFiles)
 
 	require.Equal(suite.T(), strings.Join(expectedResultsFiles, "\n"), strings.Join(actualResultsFiles, "\n"), "the merged list of files is not correct")
+}
+
+func (suite *ShardingSuite) TestNoShards() {
+	const nodeCount = 1
+	ctx, span := newSpan("sharding_noshards")
+	defer span.End()
+
+	stack, cm := SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer TeardownTest(stack, cm)
+
+	dirPath, err := prepareFolderWithFiles(0)
+	require.NoError(suite.T(), err)
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	jobSpec := executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierIpfs,
+		Docker: executor.JobSpecDocker{
+			Image: "ubuntu:latest",
+			Entrypoint: []string{
+				"bash", "-c",
+				`echo "where did all the files go?"`,
+			},
+		},
+		Inputs: []storage.StorageSpec{
+			{
+				Engine: storage.StorageSourceIPFS,
+				Cid:    directoryCid,
+				Path:   "/input",
+			},
+		},
+		Outputs: []storage.StorageSpec{},
+		Sharding: executor.JobShardingConfig{
+			GlobPattern: "/input/*",
+			BatchSize:   1,
+		},
+	}
+
+	jobDeal := executor.JobDeal{
+		Concurrency: nodeCount,
+	}
+
+	apiUri := stack.Nodes[0].APIServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
+	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	require.Error(suite.T(), err)
+	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
+}
+
+func (suite *ShardingSuite) TestExplodeVideos() {
+	const nodeCount = 1
+	ctx, span := newSpan("sharding_video_files")
+	defer span.End()
+
+	videos := []string{
+		"Bird flying over the lake.mp4",
+		"Calm waves on a rocky sea gulf.mp4",
+		"Prominent Late Gothic styled architecture.mp4",
+	}
+
+	stack, cm := SetupTest(
+		suite.T(),
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer TeardownTest(stack, cm)
+
+	dirPath, err := os.MkdirTemp("", "sharding-test")
+	require.NoError(suite.T(), err)
+	for _, video := range videos {
+		err = os.WriteFile(
+			fmt.Sprintf("%s/%s", dirPath, video),
+			[]byte(fmt.Sprintf("hello %s", video)),
+			0644,
+		)
+		require.NoError(suite.T(), err)
+	}
+
+	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	require.NoError(suite.T(), err)
+
+	jobSpec := executor.JobSpec{
+		Engine:   executor.EngineDocker,
+		Verifier: verifier.VerifierIpfs,
+		Docker: executor.JobSpecDocker{
+			Image: "ubuntu:latest",
+			Entrypoint: []string{
+				"bash", "-c",
+				`ls -la /inputs`,
+			},
+		},
+		Inputs: []storage.StorageSpec{
+			{
+				Engine: storage.StorageSourceIPFS,
+				Cid:    directoryCid,
+				Path:   "/inputs",
+			},
+		},
+		Outputs: []storage.StorageSpec{},
+		Sharding: executor.JobShardingConfig{
+			BasePath:    "/inputs",
+			GlobPattern: "*.mp4",
+			BatchSize:   1,
+		},
+	}
+
+	jobDeal := executor.JobDeal{
+		Concurrency: nodeCount,
+	}
+
+	apiUri := stack.Nodes[0].APIServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiUri)
+	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	require.NoError(suite.T(), err)
+	fmt.Printf("submittedJob --------------------------------------\n")
+	spew.Dump(submittedJob)
 }
