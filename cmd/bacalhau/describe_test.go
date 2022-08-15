@@ -51,9 +51,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 		numberOfRejectNodes int
 		jobState            string
 	}{
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobStateExecutionComplete.String()}, // Run and accept
-		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobStateExecutionComplete.String()}, // Run and accept
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobStateExecutionComplete.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobStateShardComplete.String()}, // Run and accept
+		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobStateShardComplete.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobStateShardComplete.String()}, // Run and accept
 	}
 
 	numOfJobsTests := []struct {

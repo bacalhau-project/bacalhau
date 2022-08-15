@@ -87,8 +87,8 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 			executor.JobStateError,
 		}),
 		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateExecutionComplete: 2,
-			executor.JobStateCancelled:         1,
+			executor.JobStateShardComplete: 2,
+			executor.JobStateCancelled:     1,
 		}),
 	)
 	require.NoError(suite.T(), err)

@@ -72,10 +72,10 @@ const (
 	JobEventRunning
 
 	// a compute node completed running a job
-	JobEventExecutionCompleted
+	JobEventShardCompleted
 
 	// a compute node had an error running a job
-	JobEventError
+	JobEventShardError
 
 	// a requestor node accepted the results from a node for a job
 	JobEventResultsAccepted
@@ -89,7 +89,7 @@ const (
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (event JobEventType) IsTerminal() bool {
-	return event == JobEventError || event == JobEventExecutionCompleted
+	return event == JobEventShardError || event == JobEventShardCompleted
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
@@ -162,7 +162,7 @@ const (
 
 	// the requestor node is verifying the results
 	// we got back from the compute node
-	JobStateExecutionComplete
+	JobStateShardComplete
 
 	// our results have been processed
 	JobStateFinalized
@@ -174,7 +174,7 @@ const (
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
-	return state == JobStateExecutionComplete || state == JobStateError || state == JobStateCancelled
+	return state == JobStateShardComplete || state == JobStateError || state == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -183,7 +183,7 @@ func (state JobStateType) IsTerminal() bool {
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (state JobStateType) IsComplete() bool {
-	return state == JobStateExecutionComplete || state == JobStateError
+	return state == JobStateShardComplete || state == JobStateError
 }
 
 func (state JobStateType) IsError() bool {
@@ -245,11 +245,11 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateRunning
 
 	// we are complete
-	case JobEventExecutionCompleted:
-		return JobStateExecutionComplete
+	case JobEventShardCompleted:
+		return JobStateShardComplete
 
 	// we are complete
-	case JobEventError:
+	case JobEventShardError:
 		return JobStateError
 
 	// both of these are "finalized"

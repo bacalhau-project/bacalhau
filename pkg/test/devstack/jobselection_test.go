@@ -100,7 +100,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 				executor.JobStateError,
 			}),
 			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStateExecutionComplete: testCase.expectedAccepts,
+				executor.JobStateShardComplete: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

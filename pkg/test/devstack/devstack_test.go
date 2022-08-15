@@ -103,7 +103,7 @@ func devStackDockerStorageTest(
 			executor.JobStateError,
 		}),
 		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateExecutionComplete: len(nodeIDs),
+			executor.JobStateShardComplete: len(nodeIDs),
 		}),
 	)
 	require.NoError(t, err)

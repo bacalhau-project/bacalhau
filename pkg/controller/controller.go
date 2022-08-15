@@ -309,8 +309,8 @@ func (ctrl *Controller) CompleteShard(
 	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventExecutionCompleted)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteShard")
+	ev := ctrl.constructEvent(jobID, executor.JobEventShardCompleted)
 	ev.Status = status
 	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex
@@ -326,8 +326,8 @@ func (ctrl *Controller) ErrorShard(
 	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventError)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorShard")
+	ev := ctrl.constructEvent(jobID, executor.JobEventShardError)
 	ev.Status = status
 	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex
