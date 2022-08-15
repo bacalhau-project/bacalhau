@@ -297,7 +297,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	// node verifier
 	proposal, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
 	if err == nil {
-		err = node.controller.CompleteJob(
+		err = node.controller.CompleteShard(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,
@@ -311,7 +311,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	} else {
 		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
 		log.Error().Msgf(errMessage)
-		err = node.controller.ErrorJob(
+		err = node.controller.ErrorShard(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,

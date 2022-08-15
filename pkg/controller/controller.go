@@ -311,7 +311,7 @@ func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error 
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) CompleteJob(
+func (ctrl *Controller) CompleteShard(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -328,7 +328,7 @@ func (ctrl *Controller) CompleteJob(
 }
 
 // can only be called by a compute node who is current assigned to the job
-func (ctrl *Controller) ErrorJob(
+func (ctrl *Controller) ErrorShard(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
