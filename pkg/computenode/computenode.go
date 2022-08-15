@@ -417,8 +417,9 @@ func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIn
 
 /*
 run job
+this is a separate method to RunShard because then we can invoke tests on it directly
 */
-func (node *ComputeNode) ExecuteJobShard(ctx context.Context, job executor.Job, shardIndex int, resultFolder string) error {
+func (node *ComputeNode) RunShardExecution(ctx context.Context, job executor.Job, shardIndex int, resultFolder string) error {
 	// check that we have the executor to run this job
 	e, err := node.getExecutor(ctx, job.Spec.Engine)
 	if err != nil {
@@ -442,7 +443,7 @@ func (node *ComputeNode) RunShard(
 		return shardProposal, err
 	}
 
-	containerRunError := node.ExecuteJobShard(ctx, job, shardIndex, resultFolder)
+	containerRunError := node.RunShardExecution(ctx, job, shardIndex, resultFolder)
 	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     node.id,
@@ -460,7 +461,7 @@ func (node *ComputeNode) RunShard(
 	// if there was an error running the job
 	// we don't pass the results off to the verifier
 	if containerRunError == nil {
-		shardProposal, containerRunError = verifier.GetProposal(ctx, job.ID, shardIndex, resultFolder)
+		shardProposal, containerRunError = verifier.GetShardProposal(ctx, job.ID, shardIndex, resultFolder)
 	}
 
 	return shardProposal, containerRunError

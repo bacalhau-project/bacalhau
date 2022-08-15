@@ -37,7 +37,7 @@ type Verifier interface {
 	// that will be broadcast back to the network
 	// For example - the "resultsHash" verifier will hash the folder
 	// and encrypt that hash with the public key of the requester
-	GetProposal(
+	GetShardProposal(
 		ctx context.Context,
 		jobID string,
 		shardIndex int,
@@ -49,7 +49,7 @@ type Verifier interface {
 	// do we think that enough executions have occured to call this job "complete"
 	// there should be at least 1 result per shard but it's really up to the verifier
 	// to decide that a job has "completed"
-	IsJobComplete(
+	IsExecutionComplete(
 		ctx context.Context,
 		jobID string,
 	) (bool, error)

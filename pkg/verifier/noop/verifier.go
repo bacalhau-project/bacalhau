@@ -50,7 +50,7 @@ func (v *NoopVerifier) GetShardResultPath(
 	return v.ensureShardResultsDir(jobID, shardIndex)
 }
 
-func (v *NoopVerifier) GetProposal(
+func (v *NoopVerifier) GetShardProposal(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -59,7 +59,7 @@ func (v *NoopVerifier) GetProposal(
 	return []byte{}, nil
 }
 
-func (v *NoopVerifier) IsJobComplete(
+func (v *NoopVerifier) IsExecutionComplete(
 	ctx context.Context,
 	jobID string,
 ) (bool, error) {

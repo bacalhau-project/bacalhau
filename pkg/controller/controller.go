@@ -320,7 +320,7 @@ func (ctrl *Controller) CompleteJob(
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
+	ev := ctrl.constructEvent(jobID, executor.JobEventExecutionCompleted)
 	ev.Status = status
 	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex

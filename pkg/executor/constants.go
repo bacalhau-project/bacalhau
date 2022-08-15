@@ -72,7 +72,7 @@ const (
 	JobEventRunning
 
 	// a compute node completed running a job
-	JobEventCompleted
+	JobEventExecutionCompleted
 
 	// a compute node had an error running a job
 	JobEventError
@@ -89,7 +89,7 @@ const (
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (event JobEventType) IsTerminal() bool {
-	return event == JobEventError || event == JobEventCompleted
+	return event == JobEventError || event == JobEventExecutionCompleted
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
@@ -162,7 +162,7 @@ const (
 
 	// the requestor node is verifying the results
 	// we got back from the compute node
-	JobStateComplete
+	JobStateExecutionComplete
 
 	// our results have been processed
 	JobStateFinalized
@@ -174,7 +174,7 @@ const (
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
-	return state == JobStateComplete || state == JobStateError || state == JobStateCancelled
+	return state == JobStateExecutionComplete || state == JobStateError || state == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -183,7 +183,7 @@ func (state JobStateType) IsTerminal() bool {
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (state JobStateType) IsComplete() bool {
-	return state == JobStateComplete || state == JobStateError
+	return state == JobStateExecutionComplete || state == JobStateError
 }
 
 func (state JobStateType) IsError() bool {
@@ -245,8 +245,8 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateRunning
 
 	// we are complete
-	case JobEventCompleted:
-		return JobStateComplete
+	case JobEventExecutionCompleted:
+		return JobStateExecutionComplete
 
 	// we are complete
 	case JobEventError:

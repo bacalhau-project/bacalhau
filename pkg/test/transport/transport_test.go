@@ -231,7 +231,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		executor.JobEventCreated.String(),
 		executor.JobEventBid.String(),
 		executor.JobEventBidAccepted.String(),
-		executor.JobEventCompleted.String(),
+		executor.JobEventExecutionCompleted.String(),
 	}
 	actualEventNames := []string{}
 

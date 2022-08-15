@@ -162,7 +162,7 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 			executor.JobStateError,
 		}),
 		WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateComplete: totalShards,
+			executor.JobStateExecutionComplete: totalShards,
 		}),
 	)
 }
@@ -250,7 +250,7 @@ func GetFilteredShardStates(jobState executor.JobState, filterState executor.Job
 }
 
 func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
-	return GetFilteredShardStates(jobState, executor.JobStateComplete)
+	return GetFilteredShardStates(jobState, executor.JobStateExecutionComplete)
 }
 
 // group states by shard index so we can easily iterate over a whole set of them

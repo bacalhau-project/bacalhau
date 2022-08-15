@@ -55,7 +55,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
 	require.NoError(suite.T(), err)
 
-	err = computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	err = computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
 	}, 0, result)
@@ -78,7 +78,7 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	err := computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: executor.JobSpec{},
 	}, 0, "")

@@ -201,7 +201,7 @@ func RunJobGetStdout(
 ) string {
 	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
 	require.NoError(t, err)
-	err = computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	err = computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
 	}, 0, result)
