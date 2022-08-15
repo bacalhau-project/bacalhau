@@ -1,0 +1,22 @@
+accepted = 
+QmNSUDUGrakoN7xXRazvxUo75tJ1pvp34Kubo4Sq8WXTJP did work
+QmQ3oiXoEQ7xm1DidkoG8recGSFWGH8QL9aVfJhHqvt3t5 did work
+QmRaGLzYxM3gsoViokmjt3KFDCJubBzzec1fkJnZjUwDch sus
+
+
+        - Node: QmRaGLzYxM3gsoViokmjt3KFDCJubBzzec1fkJnZjUwDch
+          State: Waiting
+          Status: ""
+          ResultID: ""
+
+obvious scenarios
+1. goroutine running container somehow got stuck or the container never quit
+2. message got dropped (libp2p isn't reliable, probably doesn't guarantee delivery?)
+
+LocalEvents:
+    - Event: Selected
+      TargetNode: ""
+    - Event: Bid
+      TargetNode: ""
+
+seems likely
