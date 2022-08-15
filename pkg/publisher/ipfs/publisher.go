@@ -90,7 +90,7 @@ func (publisher *IPFSPublisher) ComposeResultSet(
 			Name:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
 			Path:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
 			Engine: storage.StorageSourceIPFS,
-			Cid:    shardResult.ResultsID,
+			Cid:    string(shardResult.ResultsProposal),
 		})
 	}
 	return results, nil

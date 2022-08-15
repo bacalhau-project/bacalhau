@@ -55,8 +55,8 @@ func (v *NoopVerifier) GetProposal(
 	jobID string,
 	shardIndex int,
 	shardResultPath string,
-) (string, error) {
-	return "", nil
+) ([]byte, error) {
+	return []byte{}, nil
 }
 
 func (v *NoopVerifier) IsJobComplete(

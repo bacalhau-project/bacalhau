@@ -154,7 +154,7 @@ var describeCmd = &cobra.Command{
 				Node:     shard.NodeID,
 				State:    shard.State.String(),
 				Status:   shard.Status,
-				ResultID: shard.ResultsID,
+				ResultID: string(shard.ResultsProposal),
 			})
 			shardDescriptions[shard.ShardIndex] = shardDescription
 		}

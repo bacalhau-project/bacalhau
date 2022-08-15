@@ -42,7 +42,7 @@ type Verifier interface {
 		jobID string,
 		shardIndex int,
 		shardResultPath string,
-	) (string, error)
+	) ([]byte, error)
 
 	// requester node
 	//

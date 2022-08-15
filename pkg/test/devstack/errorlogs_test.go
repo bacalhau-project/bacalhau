@@ -116,8 +116,8 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	node, err := stack.GetNode(ctx, nodeIDs[0])
 	require.NoError(suite.T(), err)
 
-	outputPath := filepath.Join(outputDir, state.ResultsID)
-	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
+	outputPath := filepath.Join(outputDir, string(state.ResultsProposal))
+	err = node.IpfsClient.Get(ctx, string(state.ResultsProposal), outputPath)
 	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))

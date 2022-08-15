@@ -185,8 +185,8 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.Status = update.Status
 	}
 
-	if update.ResultsID != "" {
-		shardSate.ResultsID = update.ResultsID
+	if len(update.ResultsProposal) != 0 {
+		shardSate.ResultsProposal = update.ResultsProposal
 	}
 
 	nodeState.Shards[shardIndex] = shardSate

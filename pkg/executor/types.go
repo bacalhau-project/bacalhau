@@ -113,9 +113,9 @@ type JobShardState struct {
 	State JobStateType `json:"state"`
 	// an arbitrary status message
 	Status string `json:"status"`
-	// the ID of the results for this shard
+	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	ResultsID string `json:"results_id"`
+	ResultsProposal []byte `json:"results_proposal"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -231,10 +231,10 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
-	JobDeal   JobDeal   `json:"job_deal"`
-	Status    string    `json:"status"`
-	ResultsID string    `json:"results_id"`
-	EventTime time.Time `json:"event_time"`
+	JobDeal         JobDeal   `json:"job_deal"`
+	Status          string    `json:"status"`
+	ResultsProposal []byte    `json:"results_proposal"`
+	EventTime       time.Time `json:"event_time"`
 }
 
 type JobCreatePayload struct {

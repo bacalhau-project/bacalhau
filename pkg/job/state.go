@@ -81,7 +81,9 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if len(completedShards) == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("/ipfs/%s", completedShards[0].ResultsID), nil
+	// TODO: this currently assumes the noop verifier will publish a CID
+	// as it's proposal - this needs to read the results of publishing not verification
+	return fmt.Sprintf("/ipfs/%s", string(completedShards[0].ResultsProposal)), nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -166,8 +168,8 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 }
 
 type ResultsShard struct {
-	ShardIndex int
-	ResultsID  string
+	ShardIndex      int
+	ResultsProposal []byte
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
@@ -211,7 +213,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 
 		// again this should never happen but just in case
 		// a shard result with an empty CID has made it through somehow
-		if shardResult.ResultsID == "" {
+		if len(shardResult.ResultsProposal) == 0 {
 			return results, fmt.Errorf(
 				"job (%s) has a missing results id at shard index %d",
 				jobID,
@@ -220,8 +222,8 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		}
 
 		results = append(results, ResultsShard{
-			ShardIndex: shardIndex,
-			ResultsID:  shardResult.ResultsID,
+			ShardIndex:      shardIndex,
+			ResultsProposal: shardResult.ResultsProposal,
 		})
 	}
 	return results, nil

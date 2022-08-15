@@ -316,13 +316,13 @@ func (ctrl *Controller) CompleteJob(
 	jobID string,
 	shardIndex int,
 	status string,
-	resultsID string,
+	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventCompleted)
 	ev.Status = status
-	ev.ResultsID = resultsID
+	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -333,13 +333,13 @@ func (ctrl *Controller) ErrorJob(
 	jobID string,
 	shardIndex int,
 	status string,
-	resultsID string,
+	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorJob")
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
-	ev.ResultsID = resultsID
+	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -436,11 +436,11 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 			useNodeID,
 			ev.ShardIndex,
 			executor.JobShardState{
-				NodeID:     useNodeID,
-				ShardIndex: ev.ShardIndex,
-				State:      executionState,
-				Status:     ev.Status,
-				ResultsID:  ev.ResultsID,
+				NodeID:          useNodeID,
+				ShardIndex:      ev.ShardIndex,
+				State:           executionState,
+				Status:          ev.Status,
+				ResultsProposal: ev.ResultsProposal,
 			},
 		)
 		if err != nil {

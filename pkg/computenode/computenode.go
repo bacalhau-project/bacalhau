@@ -292,14 +292,17 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		node.controlLoopBidOnJobs()
 	}()
 
-	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
+	// we get a "proposal" from this method which is not the results
+	// but what the compute node verifier wants to pass to the requester
+	// node verifier
+	proposal, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
 	if err == nil {
 		err = node.controller.CompleteJob(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,
-			fmt.Sprintf("Got job result: %s", results),
-			results,
+			fmt.Sprintf("Got results proposal of length: %d", len(proposal)),
+			proposal,
 		)
 
 		if err != nil {
@@ -313,7 +316,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 			job.ID,
 			jobEvent.ShardIndex,
 			errMessage,
-			results,
+			proposal,
 		)
 		if err != nil {
 			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
@@ -428,15 +431,17 @@ func (node *ComputeNode) RunShard(
 	ctx context.Context,
 	job executor.Job,
 	shardIndex int,
-) (string, error) {
+) ([]byte, error) {
+	shardProposal := []byte{}
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
-		return "", err
+		return shardProposal, err
 	}
 	resultFolder, err := verifier.GetShardResultPath(ctx, job.ID, shardIndex)
 	if err != nil {
-		return "", err
+		return shardProposal, err
 	}
+
 	containerRunError := node.ExecuteJobShard(ctx, job, shardIndex, resultFolder)
 	if containerRunError != nil {
 		jobsFailed.With(prometheus.Labels{
@@ -444,7 +449,6 @@ func (node *ComputeNode) RunShard(
 			"shard_index": strconv.Itoa(shardIndex),
 			"client_id":   job.ClientID,
 		}).Inc()
-		return resultFolder, fmt.Errorf("runJob error %s: %s", job.ID, containerRunError)
 	} else {
 		jobsCompleted.With(prometheus.Labels{
 			"node_id":     node.id,
@@ -452,17 +456,13 @@ func (node *ComputeNode) RunShard(
 			"client_id":   job.ClientID,
 		}).Inc()
 	}
-	if resultFolder == "" {
-		err := fmt.Errorf("missing results folder for job %s", job.ID)
-		if containerRunError != nil {
-			err = fmt.Errorf("runJob error %s: %s", job.ID, containerRunError)
-		}
-		return "", err
+
+	// if there was an error running the job
+	// we don't pass the results off to the verifier
+	if containerRunError == nil {
+		shardProposal, containerRunError = verifier.GetProposal(ctx, job.ID, shardIndex, resultFolder)
 	}
-	shardProposal, err := verifier.GetProposal(ctx, job.ID, shardIndex, resultFolder)
-	if err != nil {
-		return "", err
-	}
+
 	return shardProposal, containerRunError
 }
 

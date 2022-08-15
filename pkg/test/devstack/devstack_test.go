@@ -119,8 +119,8 @@ func devStackDockerStorageTest(
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(t, err)
 
-		outputPath := filepath.Join(outputDir, shard.ResultsID)
-		err = node.IpfsClient.Get(ctx, shard.ResultsID, outputPath)
+		outputPath := filepath.Join(outputDir, string(shard.ResultsProposal))
+		err = node.IpfsClient.Get(ctx, string(shard.ResultsProposal), outputPath)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputPath)
