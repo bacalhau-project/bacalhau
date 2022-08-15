@@ -301,16 +301,6 @@ func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-// this can be used both to indicate the job has started to run
-// and also to update the status half way through running it
-func (ctrl *Controller) RunJob(ctx context.Context, jobID, status string) error {
-	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RunJob")
-	ev := ctrl.constructEvent(jobID, executor.JobEventRunning)
-	ev.Status = status
-	return ctrl.writeEvent(jobCtx, ev)
-}
-
 func (ctrl *Controller) CompleteShard(
 	ctx context.Context,
 	jobID string,
