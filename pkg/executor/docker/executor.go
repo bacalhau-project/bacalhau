@@ -330,6 +330,12 @@ func (e *Executor) RunShard(ctx context.Context, j executor.Job, shardIndex int)
 		return "", fmt.Errorf("failed to get logs: %w", err)
 	}
 
+	// log more when container exits with an error
+	if containerExitStatusCode != 0 {
+		log.Debug().Msgf("container's stdout: %s", stdout)
+		log.Error().Msgf("container's stderr: %s", stderr)
+	}
+
 	err = os.WriteFile(
 		fmt.Sprintf("%s/exitCode", jobResultsDir),
 		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),
