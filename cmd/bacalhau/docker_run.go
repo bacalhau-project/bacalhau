@@ -24,7 +24,7 @@ import (
 )
 
 const CompleteStatus = "Complete"
-const DefaultDockerRunWaitSeconds = 100
+const DefaultDockerRunWaitSeconds = 600
 
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
@@ -275,17 +275,6 @@ var dockerRunCmd = &cobra.Command{
 
 		for _, i := range ODR.Inputs {
 			ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-		}
-
-		// No error checking, because it will never be an error (for now)
-		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(ODR.Entrypoint)
-		if sanitizationFatal {
-			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
-			return fmt.Errorf("could not continue with errors")
-		}
-
-		if len(sanitizationMsgs) > 0 {
-			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
 		}
 
 		if len(ODR.WorkingDir) > 0 {

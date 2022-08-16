@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -79,6 +81,11 @@ func (suite *NodeSuite) TestFunctionality() {
 	cid, err := cl2.Put(ctx, filePath)
 	require.NoError(suite.T(), err)
 	require.NotEmpty(suite.T(), cid)
+
+	// Validate file was uploaded and pinned
+	_, isPinned, err := cl2.api.Pin().IsPinned(ctx, icorepath.New(cid))
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), isPinned)
 
 	// Download the file from the first client:
 	cl1, err := n1.Client()
