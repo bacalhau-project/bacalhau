@@ -2,6 +2,7 @@ package requesternode
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -17,11 +18,13 @@ import (
 type RequesterNodeConfig struct{}
 
 type RequesterNode struct {
-	id         string
-	config     RequesterNodeConfig //nolint:gocritic
-	controller *controller.Controller
-	verifiers  map[verifier.VerifierType]verifier.Verifier
-	bidMutex   sync.Mutex
+	id             string
+	config         RequesterNodeConfig //nolint:gocritic
+	controller     *controller.Controller
+	verifiers      map[verifier.VerifierType]verifier.Verifier
+	componentMutex sync.Mutex
+	bidMutex       sync.Mutex
+	verifyMutex    sync.Mutex
 }
 
 func NewRequesterNode(
@@ -67,13 +70,22 @@ func (node *RequesterNode) subscriptionSetup() {
 		if job.RequesterNodeID != node.id {
 			return
 		}
-		if jobEvent.EventName == executor.JobEventBid {
+		switch jobEvent.EventName {
+		case executor.JobEventBid:
 			node.subscriptionEventBid(ctx, job, jobEvent)
+		case executor.JobEventShardCompleted:
+			node.subscriptionEventShardProcessResults(ctx, job, jobEvent)
+		case executor.JobEventShardError:
+			node.subscriptionEventShardProcessResults(ctx, job, jobEvent)
 		}
 	})
 }
 
-func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executor.Job, jobEvent executor.JobEvent) {
+func (node *RequesterNode) subscriptionEventBid(
+	ctx context.Context,
+	job executor.Job,
+	jobEvent executor.JobEvent,
+) {
 	node.bidMutex.Lock()
 	defer node.bidMutex.Unlock()
 
@@ -138,6 +150,86 @@ func (node *RequesterNode) subscriptionEventBid(ctx context.Context, job executo
 			threadLogger.Error().Err(err)
 		}
 	}
+}
+
+// called for both JobEventShardCompleted and JobEventShardError
+// we ask the verifier "IsExecutionComplete" to decide if we can start
+// verifying the results - each verifier might have a different
+// answer for IsExecutionComplete so we pass off to it to decide
+// we mark the job as "verifying" to prevent duplicate verification
+func (node *RequesterNode) subscriptionEventShardProcessResults(
+	ctx context.Context,
+	job executor.Job,
+	jobEvent executor.JobEvent,
+) {
+	node.verifyMutex.Lock()
+	defer node.verifyMutex.Unlock()
+	err := node.subscriptionEventShardProcessResultsHandler(ctx, job, jobEvent)
+	if err != nil {
+		err = node.controller.ErrorShard(
+			ctx,
+			job.ID,
+			jobEvent.ShardIndex,
+			err.Error(),
+			[]byte{},
+		)
+		if err != nil {
+			log.Debug().Msgf("ErrorShard failed: %s", err.Error())
+		}
+	}
+}
+
+func (node *RequesterNode) subscriptionEventShardProcessResultsHandler(
+	ctx context.Context,
+	job executor.Job,
+	jobEvent executor.JobEvent,
+) error {
+	// first check that we have not already verified this job
+	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(executor.JobLocalEventVerified))
+	if err != nil {
+		return err
+	}
+	if hasVerified {
+		return nil
+	}
+	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		return err
+	}
+	// ask the verifier if we have enough to start the verification yet
+	isExecutionComplete, err := verifier.IsExecutionComplete(ctx, job.ID)
+	if err != nil {
+		return err
+	}
+	if !isExecutionComplete {
+		return nil
+	}
+	verificationResults, err := verifier.VerifyJob(ctx, job.ID)
+	if err != nil {
+		return err
+	}
+}
+
+//nolint:dupl // methods are not duplicates
+func (node *RequesterNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
+	node.componentMutex.Lock()
+	defer node.componentMutex.Unlock()
+
+	if _, ok := node.verifiers[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching verifier found on this server: %s", typ.String())
+	}
+
+	v := node.verifiers[typ]
+	installed, err := v.IsInstalled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !installed {
+		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
+	}
+
+	return v, nil
 }
 
 func (node *RequesterNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {

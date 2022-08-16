@@ -128,6 +128,7 @@ const (
 	JobLocalEventSelected
 	JobLocalEventBidAccepted
 	JobLocalEventBid
+	JobLocalEventVerified
 
 	jobLocalEventDone // must be last
 )

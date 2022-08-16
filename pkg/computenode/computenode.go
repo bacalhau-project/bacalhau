@@ -154,19 +154,14 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
-		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobID)
+		hasAlreadyBid, err := node.controller.HasLocalEvent(
+			context.Background(),
+			jobID,
+			controller.EventFilterByTypeAndShard(executor.JobLocalEventBid, shardIndex),
+		)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
-		}
-
-		hasAlreadyBid := false
-
-		for _, localEvent := range jobLocalEvents {
-			if localEvent.EventName == executor.JobLocalEventBid && localEvent.ShardIndex == shardIndex {
-				hasAlreadyBid = true
-				break
-			}
 		}
 
 		if hasAlreadyBid {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -126,6 +127,16 @@ func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]
 /*
 REQUESTER NODE
 */
+
+func (ctrl *Controller) VerifyJob(ctx context.Context, jobID string) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventVerified,
+		JobID:     jobID,
+	})
+	return err
+}
+
 func (ctrl *Controller) SubmitJob(
 	ctx context.Context,
 	data executor.JobCreatePayload,
@@ -350,6 +361,42 @@ func (ctrl *Controller) PinContext(ctx context.Context, buildContext string) (st
 		return "", err
 	}
 	return result.Cid, nil
+}
+
+func (ctrl *Controller) GetStateResolver() *job.StateResolver {
+	return job.NewStateResolver(
+		ctrl.GetJob,
+		ctrl.GetJobState,
+	)
+}
+
+type LocalEventFilter func(ev executor.JobLocalEvent) bool
+
+func (ctrl *Controller) HasLocalEvent(ctx context.Context, jobID string, eventFilter LocalEventFilter) (bool, error) {
+	jobLocalEvents, err := ctrl.GetJobLocalEvents(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+	hasEvent := false
+	for _, localEvent := range jobLocalEvents {
+		if eventFilter(localEvent) {
+			hasEvent = true
+			break
+		}
+	}
+	return hasEvent, nil
+}
+
+func EventFilterByType(eventType executor.JobLocalEventType) LocalEventFilter {
+	return func(ev executor.JobLocalEvent) bool {
+		return ev.EventName == eventType
+	}
+}
+
+func EventFilterByTypeAndShard(eventType executor.JobLocalEventType, shardIndex int) LocalEventFilter {
+	return func(ev executor.JobLocalEvent) bool {
+		return ev.EventName == eventType && ev.ShardIndex == shardIndex
+	}
 }
 
 /*
