@@ -1,11 +1,7 @@
-import json
-from tempfile import mktemp
-from turtle import dot
 import dotenv
 import tempfile
 import os
 from pathlib import Path
-import sys
 from update_metadata import update_metadata_function
 
 dotenv.load_dotenv()

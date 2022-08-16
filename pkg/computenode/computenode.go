@@ -165,7 +165,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		}
 
 		if hasAlreadyBid {
-			log.Info().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
+			log.Trace().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
 			node.capacityManager.Remove(flatID)
 			continue
 		}
@@ -244,14 +244,14 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	if selected {
 		err = node.controller.SelectJob(ctx, jobEvent.JobID)
 		if err != nil {
-			log.Info().Msgf("Error selecting job on host %s: %v", node.id, err)
+			log.Error().Msgf("Error selecting job on host %s: %v", node.id, err)
 			return
 		}
 
 		// now explode the job into shards and add each shard to the backlog
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
 		if err != nil {
-			log.Info().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
+			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
 		node.controlLoopBidOnJobs()

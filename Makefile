@@ -226,6 +226,7 @@ test-and-report: build-bacalhau
 	CGO_ENABLED=${CGO} \
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+			--junitfile unittests.xml
 			--format standard-quiet \
 			-- \
 				-p 1 \

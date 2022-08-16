@@ -17,6 +17,7 @@ import (
 type ApplySuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
+	originalDockerRunOptions *DockerRunOptions
 }
 
 func TestApplySuite(t *testing.T) {
@@ -24,14 +25,20 @@ func TestApplySuite(t *testing.T) {
 }
 
 //before all the suite
-func (suite *ApplySuite) SetupAllSuite() {
+func (suite *ApplySuite) SetupSuite() {
 
 }
 
 //before each test
 func (suite *ApplySuite) SetupTest() {
+	suite.originalDockerRunOptions = &DockerRunOptions{}
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
+	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
+	print("%+v", suite.originalDockerRunOptions)
+	if (suite.originalDockerRunOptions.Engine == ""){ 
+		*suite.originalDockerRunOptions = *ODR
+	}
 }
 
 func (suite *ApplySuite) TearDownTest() {
@@ -55,6 +62,9 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			// Below copies the original default run options over the existing ones, to reset the test
+			*ODR = *suite.originalDockerRunOptions
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			assert.NoError(suite.T(), err)
@@ -91,6 +101,9 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				// Below copies the original default run options over the existing ones, to reset the test
+				*ODR = *suite.originalDockerRunOptions
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				assert.NoError(suite.T(), err)

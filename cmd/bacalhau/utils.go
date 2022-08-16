@@ -181,15 +181,6 @@ func capture() func() (string, error) {
 	}
 }
 
-// func RandInt(i int) int {
-// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
-// 	if err != nil {
-// 		log.Fatal().Msg("could not generate random number")
-// 	}
-
-// 	return int(n.Int64())
-// }
-
 func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
 	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")

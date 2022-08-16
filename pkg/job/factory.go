@@ -130,6 +130,7 @@ func ConstructLanguageJob(
 	requirementsPath string,
 	contextPath string, // we have to tar this up and POST it to the requestor node
 	deterministic bool,
+	annotations []string,
 	doNotTrack bool,
 ) (executor.JobSpec, executor.JobDeal, error) {
 	// TODO refactor this wrt ConstructDockerJob
@@ -149,6 +150,22 @@ func ConstructLanguageJob(
 		return executor.JobSpec{}, executor.JobDeal{}, err
 	}
 
+	var jobAnnotations []string
+	var unSafeAnnotations []string
+	for _, a := range annotations {
+		if IsSafeAnnotation(a) && a != "" {
+			jobAnnotations = append(jobAnnotations, a)
+		} else {
+			unSafeAnnotations = append(unSafeAnnotations, a)
+		}
+	}
+
+	if len(unSafeAnnotations) > 0 {
+		log.Error().Msgf("The following labels are unsafe. Labels must fit the regex '/%s/' (and all emjois): %+v",
+			RegexString,
+			strings.Join(unSafeAnnotations, ", "))
+	}
+
 	spec := executor.JobSpec{
 		Engine: executor.EngineLanguage,
 		// TODO: should this always be ipfs?
@@ -162,11 +179,11 @@ func ConstructLanguageJob(
 			ProgramPath:      programPath,
 			RequirementsPath: requirementsPath,
 		},
-
-		Inputs:     jobInputs,
-		Contexts:   jobContexts,
-		Outputs:    jobOutputs,
-		DoNotTrack: doNotTrack,
+		Inputs:      jobInputs,
+		Contexts:    jobContexts,
+		Outputs:     jobOutputs,
+		Annotations: jobAnnotations,
+		DoNotTrack:  doNotTrack,
 	}
 
 	deal := executor.JobDeal{
