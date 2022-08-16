@@ -228,6 +228,17 @@ var dockerRunCmd = &cobra.Command{
 			jobInputVolumes = append(jobInputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
+		// No error checking, because it will never be an error (for now)
+		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(jobEntrypoint)
+		if sanitizationFatal {
+			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
+			return fmt.Errorf("could not continue with errors")
+		}
+
+		if len(sanitizationMsgs) > 0 {
+			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
+		}
+
 		if len(jobWorkingDir) > 0 {
 			err = system.ValidateWorkingDir(jobWorkingDir)
 			if err != nil {
