@@ -344,6 +344,9 @@ func NewDevStack(
 			if err = ctrl.Start(ctx); err != nil {
 				panic(err) // if controller can't run, devstack should stop
 			}
+			if err = transport.Start(ctx); err != nil {
+				panic(err) // if transport can't run, devstack should stop
+			}
 		}(context.Background())
 
 		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
