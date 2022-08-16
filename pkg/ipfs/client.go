@@ -174,25 +174,7 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
 
-	// There's a delay between calling Unixfs().Add(...) and the file being
-	// added to the ipfs network. We need to wait for the file to be added
-	// before we can return the ipfs path:
 	cid := ipfsPath.Cid().String()
-	for {
-		if err := ctx.Err(); err != nil {
-			return "", err
-		}
-
-		// check if the file is available:
-		ok, err := cl.HasCID(ctx, cid)
-		if err != nil {
-			return "", fmt.Errorf("failed to check if uploaded cid '%s' is available yet: %w", cid, err)
-		}
-		if ok {
-			break
-		}
-	}
-
 	return cid, nil
 }
 
