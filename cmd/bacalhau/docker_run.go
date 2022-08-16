@@ -22,7 +22,7 @@ import (
 )
 
 const CompleteStatus = "Complete"
-const DefaultDockerRunWaitSeconds = 100
+const DefaultDockerRunWaitSeconds = 600
 
 var jobEngine string
 var jobVerifier string

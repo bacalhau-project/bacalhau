@@ -13,7 +13,7 @@ import (
 )
 
 var getDownloadFlags = ipfs.DownloadSettings{
-	TimeoutSecs:    10,
+	TimeoutSecs:    600,
 	OutputDir:      ".",
 	IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 }
