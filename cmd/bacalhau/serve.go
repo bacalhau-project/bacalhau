@@ -92,7 +92,7 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
 	typedJobSelectionDataLocality := computenode.Anywhere
-	
+
 	if jobSelectionDataLocality == "anywhere" {
 		typedJobSelectionDataLocality = computenode.Anywhere
 	}
