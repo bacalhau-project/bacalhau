@@ -169,10 +169,13 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		icoreoptions.Unixfs.Pin(true),
 	}
 
+	log.Info().Msgf("============== STARTING TO ADD %s TO IPFS", inputPath)
 	ipfsPath, err := cl.api.Unixfs().Add(ctx, node, addOptions...)
 	if err != nil {
+		log.Info().Msgf("============== ERROR TO ADD %s TO IPFS: %s", inputPath, err)
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
+	log.Info().Msgf("============== FINISHED TO ADD %s TO IPFS", inputPath)
 
 	cid := ipfsPath.Cid().String()
 	return cid, nil
