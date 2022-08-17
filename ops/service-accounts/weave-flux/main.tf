@@ -24,7 +24,16 @@ resource "google_service_account_key" "sak" {
 
 resource "google_project_iam_binding" "compute_role" {
   project = var.gcp_project
-  role    = "roles/compute.instanceAdmin"
+  role    = "roles/compute.admin"
+
+  members = [
+    "serviceAccount:${google_service_account.sa.email}",
+  ]
+}
+
+resource "google_project_iam_binding" "terraform_state_role" {
+  project = "bacalhau-cicd"
+  role    = "roles/storage.admin"
 
   members = [
     "serviceAccount:${google_service_account.sa.email}",
