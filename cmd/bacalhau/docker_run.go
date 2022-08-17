@@ -34,7 +34,7 @@ var (
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
 		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /output_images in the container.
-		# All flags after the '--' are passed directly into the container for exacution.
+		# All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
 		-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 		-o results:/output_images \
