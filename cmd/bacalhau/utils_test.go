@@ -90,6 +90,14 @@ func (suite *UtilsSuite) TestVersionCheck() {
 	})
 	require.NoError(suite.T(), err)
 
+	// OK: development version
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v1.2.0",
+	}, &executor.VersionInfo{
+		GitVersion: "v0.0.0-xxxxxxx",
+	})
+	require.NoError(suite.T(), err)
+
 	// NOT OK: server is newer
 	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
 		GitVersion: "v1.2.3",
@@ -105,6 +113,15 @@ func (suite *UtilsSuite) TestVersionCheck() {
 		GitVersion: "v1.2.3",
 	})
 	require.Error(suite.T(), err)
+
+	// https://github.com/filecoin-project/bacalhau/issues/495
+	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+		GitVersion: "v0.1.37",
+	}, &executor.VersionInfo{
+		GitVersion: "v0.1.36",
+	})
+	require.Error(suite.T(), err)
+	require.Contains(suite.T(), err.Error(), "client version v0.1.37")
 }
 
 // In order for 'go test' to run this suite, we need to create
