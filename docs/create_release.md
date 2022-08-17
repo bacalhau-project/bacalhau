@@ -14,7 +14,7 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 1. Click on the `Generate Release Notes` button to auto-populate the notes. Add anything else.
 1. Tick the "This is a pre-release" checkbox. This prevents this version from being installed by the `https://get.bacalhau.org/install.sh` script.
 1. Click on the publish release button. The [CI scripts](../.circleci) will automatically build and attach binaries.
-1. Download the binaries and test that they do what you expect. If you are testing against a dev/staging cluster, you **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
+1. Download the binaries and test that they do what you expect. Use the pre-release option to download the newest pre-release version. `(export PRE_RELEASE=true ; curl -sL https://get.bacalhau.org/install.sh | bash)` If you are testing against a dev/staging cluster, you **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
 1. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
 1. Edit the release and de-select the "This is a pre-release" checkbox. Users will now download this version.
 
