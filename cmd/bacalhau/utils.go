@@ -72,11 +72,15 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 		return nil
 	}
 	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Info().Msg("Development version, skipping version check")
+		log.Info().Msg("Development client version, skipping version check")
 		return nil
 	}
 	if serverVersion == nil {
 		log.Warn().Msg("Unable to parse nil server version, skipping version check")
+		return nil
+	}
+	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
+		log.Info().Msg("Development server version, skipping version check")
 		return nil
 	}
 	c, err := semver.NewVersion(clientVersion.GitVersion)
