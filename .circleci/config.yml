@@ -31,8 +31,6 @@ jobs:
         type: string
       run_tests:
         type: boolean
-        default: true
-
     steps:
       - checkout
 
@@ -93,14 +91,7 @@ jobs:
                   docker version
                   echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
-                  CGO_ENABLED=${CGO} \
-                  LOG_LEVEL=debug \
-                  gotestsum \
-                    --junitfile unit-tests.xml \
-                    --format standard-verbose \
-                    -- \
-                      ./pkg/... ./cmd/... \
-                      ${COVERAGE_OPTS} --tags=unit
+                  make test-and-report
             - run:
                 name: Upload results
                 command: |
@@ -117,7 +108,7 @@ jobs:
                   # Credentials for project: bacalhau-cicd
                   # Account: 
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
-                  mv unit-tests.xml "$TEST_RESULTS_FILENAME"
+                  mv unittests.xml "${TEST_RESULTS_FILENAME}"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
   deploy:
@@ -364,9 +355,3 @@ workflows:
           name: Running Performance
           requires:
             - build-linux-amd64
-      - update_metadata:
-          METADATA_BUCKET: "bacalhau-global-storage"
-          METADATA_FILENAME: "LAST-PERFORMANCE-RESULT-METADATA-OBJECT"
-          name: Update metadata for performance
-          requires:
-            - Running Performance

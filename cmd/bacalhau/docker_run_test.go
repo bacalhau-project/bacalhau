@@ -42,7 +42,7 @@ func TestDockerRunSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DockerRunSuite) SetupAllSuite() {
+func (suite *DockerRunSuite) SetupSuite() {
 }
 
 // Before each test
@@ -54,12 +54,11 @@ func (suite *DockerRunSuite) SetupTest() {
 func (suite *DockerRunSuite) TearDownTest() {
 }
 
-func (suite *DockerRunSuite) TearDownAllSuite() {
+func (suite *DockerRunSuite) TearDownSuite() {
 
 }
 
-// TODO: Refactor all of these tests to use common functionality; they're all very similar
-
+// TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
 func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
@@ -73,6 +72,8 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -102,7 +103,6 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 
 	for i, tc := range tests {
 		func() {
-
 			var logBuf = new(bytes.Buffer)
 			var Stdout = struct{ io.Writer }{os.Stdout}
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
@@ -110,6 +110,8 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -151,13 +153,15 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
+			*ODR = *NewDockerRunOptions()
+
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
 
 			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
 			require.NoError(suite.T(), err)
-			runDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			runDownloadFlags.OutputDir = dir
+			ODR.DockerRunDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			ODR.DockerRunDownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -179,89 +183,6 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
 	}
-}
-
-func (suite *DockerRunSuite) TestRun_GenericSubmitLocal() {
-	expectedStdout := "hello"
-	args := []string{"docker", "run", "ubuntu", "echo", expectedStdout, "--local", "--wait", "--download"}
-	done := capture()
-
-	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocal-")
-	defer func() {
-		err := os.RemoveAll(dir)
-		require.NoError(suite.T(), err)
-	}()
-	runDownloadFlags.OutputDir = dir
-
-	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-	out, _ := done()
-
-	require.NoError(suite.T(), err)
-	trimmedStdout := strings.TrimSpace(string(out))
-
-	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-
-	runDownloadFlags.OutputDir = "."
-}
-
-func (suite *DockerRunSuite) TestRun_GenericSubmitLocalInput() {
-	CID := "QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
-	args := []string{"docker", "run",
-		"--local",
-		"--wait",
-		"--download",
-		"-v", fmt.Sprintf("%s:/hello.txt", CID),
-		"ubuntu",
-		"cat", "hello.txt"}
-	expectedStdout := "hello"
-
-	dir, _ := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitLocalInput-")
-	defer func() {
-		err := os.RemoveAll(dir)
-		require.NoError(suite.T(), err)
-	}()
-	runDownloadFlags.OutputDir = dir
-
-	done := capture()
-	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-	out, _ := done()
-
-	require.NoError(suite.T(), err)
-	trimmedStdout := strings.TrimSpace(string(out))
-	fmt.Println(trimmedStdout)
-
-	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-
-	runDownloadFlags.OutputDir = "."
-}
-
-func (suite *DockerRunSuite) TestRun_GenericSubmitLocalOutput() {
-	args := []string{"docker", "run",
-		"ubuntu",
-		"--local",
-		"--wait",
-		"--download",
-		"-w", "/outputs",
-		"--",
-		"/bin/bash", "-c", "printf hello > hello.txt"}
-	expectedStdout := "hello"
-
-	// done := capture()
-	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-	if err != nil {
-		fmt.Print(err)
-	}
-	// out, _ := done()
-
-	require.NoError(suite.T(), err)
-	content, _ := ioutil.ReadFile("volumes/outputs/hello.txt")
-	out := string(content)
-	trimmedStdout := strings.TrimSpace(string(out))
-	fmt.Println(trimmedStdout)
-
-	require.Equal(suite.T(), expectedStdout, trimmedStdout, "Expected %s as output, but got %s", expectedStdout, trimmedStdout)
-
-	runDownloadFlags.OutputDir = "."
 }
 
 func (suite *DockerRunSuite) TestRun_SubmitInputs() {
@@ -301,6 +222,8 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				*ODR = *NewDockerRunOptions()
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -372,13 +295,14 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
 			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
 		}
-		jobOutputVolumes = []string{} // TODO reset all cli variables
 
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
+
+				*ODR = *NewDockerRunOptions()
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -460,6 +384,8 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
 
+				*ODR = *NewDockerRunOptions()
+
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				flagsArray := []string{"docker", "run",
@@ -538,6 +464,8 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 
 	for i, tc := range tests {
 		func() {
+			*ODR = *NewDockerRunOptions()
+
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
@@ -551,13 +479,13 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, strings.TrimSpace(out))
+			j, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-			require.LessOrEqual(suite.T(), job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
+			require.LessOrEqual(suite.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			require.GreaterOrEqual(suite.T(), job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(suite.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
@@ -610,6 +538,8 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
+				*ODR = *NewDockerRunOptions()
+
 				// log.Warn().Msgf("%s - Args: %+v", labelTest.Name, os.Args)
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				require.NoError(suite.T(), err)
@@ -662,14 +592,11 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 	}{
 		{submitArgs: []string{"ubuntu", "-foo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"},     // submitting flag will fail if not separated with a --
 		{submitArgs: []string{"ubuntu", "python -foo -bar -baz"}, fatalErr: false, errString: ""},                   // separating with -- should work and allow flags
-		{submitArgs: []string{"ubuntu", "baz -foo -bar -baz *.jpg"}, fatalErr: false, errString: "contains a glob"}, // contains a glob, and should fail
-		{submitArgs: []string{"ubuntu", "/bin/bash *.jpg"}, fatalErr: false, errString: ""},                         // contains a glob but starts with a shell (and a space)
 		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
 	for i, tc := range tests {
 		func() {
-
 			var logBuf = new(bytes.Buffer)
 			var Stdout = struct{ io.Writer }{os.Stdout}
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
@@ -677,6 +604,8 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -718,14 +647,13 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 		{workdir: "/foo//bar", error_code: 0},
 	}
 
-	// TODO reset all cli variables
-	jobOutputVolumes = []string{}
-
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -768,6 +696,8 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer cm.Cleanup()
+
+	*ODR = *NewDockerRunOptions()
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
 	require.NoError(suite.T(), err)

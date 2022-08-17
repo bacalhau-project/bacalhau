@@ -12,66 +12,109 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var deterministic bool
-var command string
-var requirementsPath string
-var contextPath string
+var (
+	languageRunLong = templates.LongDesc(i18n.T(`
+		Runs a job by compiling language file to WASM on the node.
+		`))
+
+	languageRunExample = templates.Examples(i18n.T(`
+		TBD`))
+
+	OLR = &LanguageRunOptions{}
+)
+
+// LanguageRunOptions declares the arguments accepted by the `'language' run` command
+type LanguageRunOptions struct {
+	Deterministic bool     // Execute this job deterministically
+	Verifier      string   // Verifier - verifier.Verifier
+	Inputs        []string // Array of input CIDs
+	InputUrls     []string // Array of input URLs (will be copied to IPFS)
+	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
+	OutputVolumes []string // Array of output volumes in 'name:mount point' form
+	Env           []string // Array of environment variables
+	Concurrency   int      // Number of concurrent jobs to run
+	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+
+	Command          string // Command to execute
+	RequirementsPath string // Path for requirements.txt for executing with Python
+	ContextPath      string // ContextPath (code) for executing with Python
+
+	// CPU string
+	// Memory string
+	// GPU string
+	// WorkingDir string // Working directory for docker
+
+	// WaitForJobToFinish bool // Wait for the job to execute before exiting
+	// WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
+	// WaitForJobTimeoutSecs int // Job time out in seconds
+
+	// ShardingGlobPattern string
+	// ShardingBasePath string
+	// ShardingBatchSize int
+}
 
 //nolint:gochecknoinits
 func init() {
 	// determinism flag
 	runPythonCmd.PersistentFlags().BoolVar(
-		&deterministic, "deterministic", true,
+		&OLR.Deterministic, "deterministic", true,
 		`Enforce determinism: run job in a single-threaded wasm runtime with `+
 			`no sources of entropy. NB: this will make the python runtime execute`+
 			`in an environment where only some librarie are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&jobInputs, "inputs", "i", []string{},
+		&OLR.Inputs, "inputs", "i", []string{},
 		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,
 	)
 
 	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&jobInputVolumes, "input-volumes", "v", []string{},
+		&OLR.InputVolumes, "input-volumes", "v", []string{},
 		`CID:path of the input data volumes`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&jobOutputVolumes, "output-volumes", "o", []string{},
+		&OLR.OutputVolumes, "output-volumes", "o", []string{},
 		`name:path of the output data volumes`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
-		&jobEnv, "env", "e", []string{},
+		&OLR.Env, "env", "e", []string{},
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
 	// TODO: concurrency should be factored out (at least up to run, maybe
 	// shared with docker and wasm raw commands too)
 	runPythonCmd.PersistentFlags().IntVar(
-		&jobConcurrency, "concurrency", 1,
+		&OLR.Concurrency, "concurrency", 1,
 		`How many nodes should run the job`,
 	)
 	runPythonCmd.PersistentFlags().StringVarP(
-		&command, "command", "c", "",
+		&OLR.Command, "command", "c", "",
 		`Program passed in as string (like python)`,
 	)
 	runPythonCmd.PersistentFlags().StringVarP(
-		&requirementsPath, "requirement", "r", "",
+		&OLR.RequirementsPath, "requirement", "r", "",
 		`Install from the given requirements file. (like pip)`, // TODO: This option can be used multiple times.
 	)
 	runPythonCmd.PersistentFlags().StringVar(
 		// TODO: consider replacing this with context-glob, default to
 		// "./**/*.py|./requirements.txt", OR .bacalhau_ignore
-		&contextPath, "context-path", ".",
+		&OLR.ContextPath, "context-path", ".",
 		"Path to context (e.g. python code) to send to server (via public IPFS network) "+
 			"for execution (max 10MiB). Set to empty string to disable",
 	)
 	runPythonCmd.PersistentFlags().StringVar(
-		&jobVerifier, "verifier", "ipfs",
+		&OLR.Verifier, "verifier", "ipfs",
 		`What verification engine to use to run the job`,
+	)
+
+	runPythonCmd.PersistentFlags().StringSliceVarP(
+		&OLR.Labels, "labels", "l", []string{},
+		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 }
 
@@ -81,37 +124,18 @@ func init() {
 // set up the wasm environment to be determinstic)
 
 var runPythonCmd = &cobra.Command{
-	Use:   "python",
-	Short: "Run a python job on the network",
-	Args:  cobra.MinimumNArgs(0),
+	Use:     "python",
+	Short:   "Run a python job on the network",
+	Long:    languageRunLong,
+	Example: languageRunExample,
+	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
 
 		// error if determinism is false
-		if !deterministic {
+		if !OLR.Deterministic {
 			return fmt.Errorf("determinism=false not supported yet " +
 				"(python only supports wasm backend with forced determinism)")
 		}
-
-		// engineType := executor.EngineLanguage
-
-		// var engineType executor.EngineType
-		// if deterministic {
-		// 	engineType = executor.EngineWasm
-		// } else {
-		// 	engineType = executor.EngineDocker
-		// }
-
-		// verifierType := verifier.VerifierIpfs // this does nothing right now?
-
-		// if engineType == executor.EngineWasm {
-
-		// 	// pythonFile := cmdArgs[0]
-		// 	// TODO: expose python file on ipfs
-		// 	jobImage := ""
-		// 	jobEntrypoint := []string{}
-
-		// }
-		// return nil
 
 		// TODO: prepare context
 
@@ -120,25 +144,30 @@ var runPythonCmd = &cobra.Command{
 			programPath = cmdArgs[0]
 		}
 
-		if command == "" && programPath == "" {
+		if OLR.Command == "" && programPath == "" {
 			return fmt.Errorf("must specify an inline command or a path to a python file")
+		}
+
+		for _, i := range ODR.Inputs {
+			OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
 		//nolint:lll // it's ok to be long
 		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 		spec, deal, err := job.ConstructLanguageJob(
-			jobInputVolumes,
-			jobInputUrls,
-			jobOutputVolumes,
+			OLR.InputVolumes,
+			OLR.InputUrls,
+			OLR.OutputVolumes,
 			[]string{}, // no env vars (yet)
-			jobConcurrency,
+			OLR.Concurrency,
 			"python",
 			"3.10",
-			command,
+			OLR.Command,
 			programPath,
-			requirementsPath,
-			"",
-			deterministic,
+			OLR.RequirementsPath,
+			OLR.ContextPath,
+			OLR.Deterministic,
+			OLR.Labels,
 			doNotTrack,
 		)
 		if err != nil {
@@ -147,17 +176,17 @@ var runPythonCmd = &cobra.Command{
 
 		var buf bytes.Buffer
 
-		if contextPath == "." && requirementsPath == "" && programPath == "" {
+		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
 			log.Info().Msgf("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
-			contextPath = ""
+			OLR.ContextPath = ""
 		}
 
-		if contextPath != "" {
+		if OLR.ContextPath != "" {
 			// construct a tar file from the contextPath directory
 			// tar + gzip
-			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel", contextPath)
+			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel", OLR.ContextPath)
 			time.Sleep(1 * time.Second)
-			err = compress(contextPath, &buf)
+			err = compress(OLR.ContextPath, &buf)
 			if err != nil {
 				return err
 			}

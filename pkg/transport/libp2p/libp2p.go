@@ -139,7 +139,7 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 
 	go t.listenForEvents(ctx)
 
-	log.Info().Msg("Libp2p transport has started")
+	log.Trace().Msg("Libp2p transport has started")
 
 	return nil
 }
@@ -197,7 +197,7 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Info().Msgf("Libp2p transport connected to: %s", peerAddress)
+		log.Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
 	}
 
 	return nil
@@ -270,7 +270,7 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 		msg, err := t.jobEventSubscription.Next(ctx)
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
-				log.Info().Msgf("libp2p transport shutting down: %v", err)
+				log.Trace().Msgf("libp2p transport shutting down: %v", err)
 			} else {
 				log.Error().Msgf(
 					"libp2p encountered an unexpected error, shutting down: %v", err)

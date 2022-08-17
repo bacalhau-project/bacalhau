@@ -91,7 +91,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					1,          // concurrency
 					[]string{}, // annotations
 					"",         // working dir
-					true,		// do not track
+					true,       // do not track
 				)
 
 				if tcids.err != "" {
