@@ -282,17 +282,19 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// the node which gossiped the message to us, which might be different.
 	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
 
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-
 	var wg realsync.WaitGroup
-	for _, fn := range t.subscribeFunctions {
-		wg.Add(1)
-		go func(f transport.SubscribeFn) {
-			defer wg.Done()
-			f(jobCtx, ev)
-		}(fn)
-	}
+	func() {
+		t.mutex.RLock()
+		defer t.mutex.RUnlock()
+
+		for _, fn := range t.subscribeFunctions {
+			wg.Add(1)
+			go func(f transport.SubscribeFn) {
+				defer wg.Done()
+				f(jobCtx, ev)
+			}(fn)
+		}
+	}()
 	wg.Wait()
 }
 
