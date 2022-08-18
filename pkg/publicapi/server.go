@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -33,7 +33,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func init() { //nolint:gochecknoinits
+func init() {
 	sync.SetGlobalOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
 		Enabled:   true,
@@ -65,6 +65,11 @@ func NewServer(
 		Host:       host,
 		Port:       port,
 	}
+	a.componentMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "APIServer.componentMu",
+	})
+	return a
 	a.componentMu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
 		Id:        "APIServer.componentMu",
