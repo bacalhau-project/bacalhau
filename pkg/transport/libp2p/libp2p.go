@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -212,6 +213,7 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 // we wrap our events on the wire in this envelope so
 // we can pass our tracing context to remote peers
 type jobEventEnvelope struct {
+	SentTime  time.Time              `json:"sent_time"`
 	JobEvent  executor.JobEvent      `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
@@ -223,6 +225,7 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobE
 	bs, err := json.Marshal(jobEventEnvelope{
 		JobEvent:  event,
 		TraceData: traceData,
+		SentTime:  time.Now(),
 	})
 	if err != nil {
 		return err
@@ -241,6 +244,17 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
 	}
+
+	now := time.Now()
+	then := payload.SentTime
+	latency := now.Sub(then)
+	log.Debug().Msgf(
+		"[%s=>%s] Message latency: %d ms (%s)",
+		payload.JobEvent.SourceNodeID[:8],
+		t.host.ID().String()[:8],
+		int64(latency/time.Millisecond), payload.JobEvent.EventName.String(),
+	)
+
 	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 
 	// Notify all the listeners in this process of the event:
