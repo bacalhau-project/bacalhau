@@ -3,7 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"hash/fnv"
 	"strconv"
 	"sync"
 	"time"
@@ -264,7 +264,10 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			return
 		}
 
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(DelayBeforeBidMillisecondRange))) //nolint:gosec
+		// TODO: don't hardcode networkSize, calculate this dynamically from libp2p instead somehow.
+		jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay(250, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency)
+
+		time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
 
 		// now explode the job into shards and add each shard to the backlog
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
@@ -274,6 +277,48 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 		node.controlLoopBidOnJobs()
 	}
+}
+
+func hash(s string) int {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return int(h.Sum32())
+}
+
+func diff(a, b int) int {
+	if a < b {
+		return b - a
+	}
+	return a - b
+}
+
+func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concurrency int) int {
+	// Calculate how long to wait to bid on the job by using a circular hashing
+	// style approach: Invent a metric for distance between node ID and job ID.
+	// If the node and job ID happen to be close to eachother, such that we'd
+	// expect that we are one of the N nodes "closest" to the job, bid
+	// instantly. Beyond that, back off an amount "stepped" proportional to how
+	// far we are from the job. This should evenly spread the work across the
+	// network, and have the property of on average only concurrency many nodes
+	// bidding on the job, and other nodes not bothering to bid because they
+	// will already have seen bid/bidaccepted messages from the close nodes.
+	// This will decrease overall network traffic, improving CPU and memory
+	// usage in large clusters.
+	nodeHash := hash(nodeID)
+	jobHash := hash(jobID)
+	// Range: 0 through 4,294,967,295. (4 billion)
+	distance := diff(nodeHash, jobHash)
+	// scale distance per chunk by concurrency (so that many nodes bid on a job
+	// with high concurrency). IOW, divide the space up into this many pieces.
+	chunk := (concurrency / networkSize) * 4294967295
+	if distance < chunk {
+		return 0
+	}
+	// wait 1 second per chunk distance. So, if we land in exactly the same
+	// chunk, bid immediately. If we're one chunk away, wait a bit before
+	// bidding. If we're very far away, wait a very long time.
+	delay := (distance / chunk) * 1000
+	return delay
 }
 
 /*
