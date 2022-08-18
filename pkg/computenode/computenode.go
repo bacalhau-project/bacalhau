@@ -47,7 +47,7 @@ type ComputeNode struct {
 	executors               map[executor.EngineType]executor.Executor
 	executorsInstalledCache map[executor.EngineType]bool
 	verifiers               map[verifier.VerifierType]verifier.Verifier
-	verifiersInstalledCache map[executor.VerifierType]bool
+	verifiersInstalledCache map[verifier.VerifierType]bool
 	capacityManager         *capacitymanager.CapacityManager
 	componentMu             sync.RWMutex
 	bidMu                   sync.Mutex
@@ -97,12 +97,14 @@ func constructComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		id:              nodeID,
-		config:          config,
-		controller:      c,
-		executors:       executors,
-		verifiers:       verifiers,
-		capacityManager: capacityManager,
+		id:                      nodeID,
+		config:                  config,
+		controller:              c,
+		executors:               executors,
+		executorsInstalledCache: map[executors.ExecutorType]bool{},
+		verifiers:               verifiers,
+		verifiersInstalledCache: map[verifier.VerifierType]bool{},
+		capacityManager:         capacityManager,
 	}
 
 	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
