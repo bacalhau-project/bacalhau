@@ -248,12 +248,22 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	now := time.Now()
 	then := payload.SentTime
 	latency := now.Sub(then)
-	log.Debug().Msgf(
-		"[%s=>%s] Message latency: %d ms (%s)",
-		payload.JobEvent.SourceNodeID[:8],
-		t.host.ID().String()[:8],
-		int64(latency/time.Millisecond), payload.JobEvent.EventName.String(),
-	)
+	latencyMilli := int64(latency / time.Millisecond)
+	if latencyMilli > 50 {
+		log.Warn().Msgf(
+			"[%s=>%s] High message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	} else {
+		log.Debug().Msgf(
+			"[%s=>%s] Message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	}
 
 	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 

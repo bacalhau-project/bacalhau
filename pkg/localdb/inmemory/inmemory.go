@@ -15,7 +15,7 @@ type InMemoryDatastore struct {
 	states      map[string]*executor.JobState
 	events      map[string][]executor.JobEvent
 	localEvents map[string][]executor.JobLocalEvent
-	mtx         sync.Mutex
+	mtx         sync.RWMutex
 }
 
 func NewInMemoryDatastore() (*InMemoryDatastore, error) {
@@ -29,8 +29,8 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 }
 
 func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (executor.Job, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
 	job, ok := d.jobs[id]
 	if !ok {
 		return executor.Job{}, fmt.Errorf("no job found: %s", id)
@@ -39,8 +39,8 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (executor.Job
 }
 
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
 		return []executor.JobEvent{}, fmt.Errorf("no job found: %s", id)
@@ -53,8 +53,8 @@ func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]exec
 }
 
 func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
 		return []executor.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
@@ -67,8 +67,8 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 }
 
 func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
 	result := []executor.Job{}
 	if query.ID != "" {
 		job, err := d.GetJob(ctx, query.ID)
@@ -139,8 +139,8 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 }
 
 func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (executor.JobState, error) {
-	d.mtx.Lock()
-	defer d.mtx.Unlock()
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
 		return executor.JobState{}, fmt.Errorf("no job found: %s", jobID)
