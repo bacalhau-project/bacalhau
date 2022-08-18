@@ -43,12 +43,14 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig
 
-	controller      *controller.Controller
-	executors       map[executor.EngineType]executor.Executor
-	verifiers       map[verifier.VerifierType]verifier.Verifier
-	capacityManager *capacitymanager.CapacityManager
-	componentMu     sync.RWMutex
-	bidMu           sync.Mutex
+	controller              *controller.Controller
+	executors               map[executor.EngineType]executor.Executor
+	executorsInstalledCache map[executor.EngineType]bool
+	verifiers               map[verifier.VerifierType]verifier.Verifier
+	verifiersInstalledCache map[executor.VerifierType]bool
+	capacityManager         *capacitymanager.CapacityManager
+	componentMu             sync.RWMutex
+	bidMu                   sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -584,6 +586,11 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}
 	executorEngine := *e
 
+	// cache it being installed so we're not hammering it
+	if node.executorsInstalledCache[typ] {
+		return executorEngine, nil
+	}
+
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
@@ -592,21 +599,35 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 		return nil, fmt.Errorf("executor is not installed: %s", typ.String())
 	}
 
+	node.executorsInstalledCache[typ] = true
+
 	return executorEngine, nil
 }
 
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
-	node.componentMu.Lock()
-	defer node.componentMu.Unlock()
+	v := func() *verifier.Verifier {
+		node.componentMu.Lock()
+		defer node.componentMu.Unlock()
+		if _, ok := node.verifiers[typ]; !ok {
+			return nil
+		}
+		vv := node.verifiers[typ]
+		return &vv
+	}()
 
-	if _, ok := node.verifiers[typ]; !ok {
+	if v == nil {
 		return nil, fmt.Errorf(
 			"no matching verifier found on this server: %s", typ.String())
 	}
+	verifier := *v
 
-	v := node.verifiers[typ]
-	installed, err := v.IsInstalled(ctx)
+	// cache it being installed so we're not hammering it
+	if node.verifiersInstalledCache[typ] {
+		return verifier, nil
+	}
+
+	installed, err := verifier.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +635,9 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
 	}
 
-	return v, nil
+	node.verifiersInstalledCache[typ] = true
+
+	return verifier, nil
 }
 
 func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
