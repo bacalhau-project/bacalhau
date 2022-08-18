@@ -590,6 +590,11 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}
 	executorEngine := *e
 
+	// cache it being installed so we're not hammering it
+	if node.executorsInstalledCache[typ] {
+		return executorEngine, nil
+	}
+
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
