@@ -43,12 +43,14 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig
 
-	controller      *controller.Controller
-	executors       map[executor.EngineType]executor.Executor
-	verifiers       map[verifier.VerifierType]verifier.Verifier
-	capacityManager *capacitymanager.CapacityManager
-	componentMu     sync.RWMutex
-	bidMu           sync.Mutex
+	controller              *controller.Controller
+	executors               map[executor.EngineType]executor.Executor
+	executorsInstalledCache map[executor.EngineType]bool
+	verifiers               map[verifier.VerifierType]verifier.Verifier
+	verifiersInstalledCache map[executor.VerifierType]bool
+	capacityManager         *capacitymanager.CapacityManager
+	componentMu             sync.RWMutex
+	bidMu                   sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -95,14 +97,12 @@ func constructComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		id:                      nodeID,
-		config:                  config,
-		controller:              c,
-		executors:               executors,
-		executorsInstalledCache: map[executor.EngineType]bool{},
-		verifiers:               verifiers,
-		verifiersInstalledCache: map[verifier.VerifierType]bool{},
-		capacityManager:         capacityManager,
+		id:              nodeID,
+		config:          config,
+		controller:      c,
+		executors:       executors,
+		verifiers:       verifiers,
+		capacityManager: capacityManager,
 	}
 
 	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
