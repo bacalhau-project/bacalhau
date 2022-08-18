@@ -25,6 +25,7 @@ import (
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalSeconds = 10
+const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -157,6 +158,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
+	log.Debug().Msgf("starting controlLoopBidOnJobs, acq lock")
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	log.Debug().Msgf("lock acquired!")
@@ -304,7 +306,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 		log.Debug().Msgf("--> finished node.capacityManager.AddShardsToBacklog")
 		log.Debug().Msgf("calling node.controlLoopBidOnJobs()")
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("job created & selected")
 		log.Debug().Msgf("--> finished node.controlLoopBidOnJobs()")
 	}
 }
