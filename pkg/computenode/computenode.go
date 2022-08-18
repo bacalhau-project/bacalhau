@@ -305,6 +305,12 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		// TODO: don't hardcode networkSize, calculate this dynamically from libp2p instead somehow.
 		jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay(250, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency)
 
+		// if delay is too high, just exit immediately.
+		if jobNodeDistanceDelayMs > 1000 {
+			// drop the job on the floor, :-O
+			return
+		}
+
 		time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
 
 		// now explode the job into shards and add each shard to the backlog
@@ -348,14 +354,12 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	distance := diff(nodeHash, jobHash)
 	// scale distance per chunk by concurrency (so that many nodes bid on a job
 	// with high concurrency). IOW, divide the space up into this many pieces.
-	chunk := (concurrency / networkSize) * 4294967295
-	if distance < chunk {
-		return 0
-	}
+	chunk := int((float32(concurrency) / float32(networkSize)) * 4294967295)
 	// wait 1 second per chunk distance. So, if we land in exactly the same
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
 	// bidding. If we're very far away, wait a very long time.
 	delay := (distance / chunk) * 1000
+	log.Info().Msgf("node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d", nodeID, jobID, nodeHash, jobHash, distance, chunk, delay)
 	return delay
 }
 
