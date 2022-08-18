@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,7 +24,7 @@ var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
 
 func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
 
@@ -42,7 +43,7 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	textWriter := zerolog.ConsoleWriter{Out: Stderr, TimeFormat: "[0607]", NoColor: false, PartsOrder: []string{
+	textWriter := zerolog.ConsoleWriter{Out: Stderr, TimeFormat: "15:04:05.999 |", NoColor: false, PartsOrder: []string{
 		zerolog.TimestampFieldName,
 		zerolog.LevelFieldName,
 		zerolog.CallerFieldName,
