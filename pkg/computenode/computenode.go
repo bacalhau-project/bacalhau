@@ -362,7 +362,7 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
 	// bidding. If we're very far away, wait a very long time.
 	delay := (distance / chunk) * 1000
-	log.Info().Msgf("node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d", nodeID, jobID, nodeHash, jobHash, distance, chunk, delay)
+	log.Trace().Msgf("node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d", nodeID, jobID, nodeHash, jobHash, distance, chunk, delay)
 	return delay
 }
 

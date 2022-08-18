@@ -49,6 +49,8 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (executor.Job
 }
 
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
 	_, ok := d.jobs[id]
 	if !ok {
 		return []executor.JobEvent{}, fmt.Errorf("no job found: %s", id)
@@ -61,6 +63,8 @@ func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]exec
 }
 
 func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
 	_, ok := d.jobs[id]
 	if !ok {
 		return []executor.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
