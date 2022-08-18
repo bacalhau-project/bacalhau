@@ -101,7 +101,7 @@ func constructComputeNode(
 		config:                  config,
 		controller:              c,
 		executors:               executors,
-		executorsInstalledCache: map[executors.ExecutorType]bool{},
+		executorsInstalledCache: map[executor.EngineType]bool{},
 		verifiers:               verifiers,
 		verifiersInstalledCache: map[verifier.VerifierType]bool{},
 		capacityManager:         capacityManager,
