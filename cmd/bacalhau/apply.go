@@ -25,7 +25,12 @@ var jobInputVolumes []string
 var jobOutputVolumes []string
 var jobWorkingDir string
 var jobLabels []string
-
+var jobConcurrency int
+var jobInputUrls []string
+var jobInputVolumes []string
+var jobOutputVolumes []string
+var jobWorkingDir string
+var jobLabels []string
 
 func init() { //nolint:gochecknoinits
 	applyCmd.PersistentFlags().StringVarP(

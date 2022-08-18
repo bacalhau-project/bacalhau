@@ -27,7 +27,7 @@ import (
 )
 
 const CompleteStatus = "Complete"
-const DefaultDockerRunWaitSeconds = 100
+const DefaultDockerRunWaitSeconds = 600
 
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
@@ -37,7 +37,7 @@ var (
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
 		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /output_images in the container.
-		# All flags after the '--' are passed directly into the container for exacution.
+		# All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
 		-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 		-o results:/output_images \
@@ -63,8 +63,6 @@ type DockerRunOptions struct {
 	GPU           string
 	WorkingDir    string   // Working directory for docker
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
-
-	Filename string // filename for job spec
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -119,7 +117,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	dockerCmd.AddCommand(dockerRunCmd)
 
 	dockerRunCmd.PersistentFlags().StringVarP(
-		&ODR.Filename, "filename", "f", "",
+		&filename, "filename", "f", "",
 		`Path to the job file. Any command line flags will override configurations in the file.`,
 	)
 
@@ -299,6 +297,7 @@ var dockerRunCmd = &cobra.Command{
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 
+
 		if ODR.WaitForJobToFinishAndPrintOutput {
 			ODR.WaitForJobToFinish = true
 		}
@@ -317,19 +316,9 @@ var dockerRunCmd = &cobra.Command{
 			ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
-		// No error checking, because it will never be an error (for now)
-		sanitizationMsgs, sanitizationFatal := system.SanitizeImageAndEntrypoint(ODR.Entrypoint)
-		if sanitizationFatal {
-			log.Error().Msgf("Errors: %+v", sanitizationMsgs)
-			return fmt.Errorf("could not continue with errors")
-		}
-
-		if len(sanitizationMsgs) > 0 {
-			log.Warn().Msgf("Found the following possible errors in arguments: %+v", sanitizationMsgs)
-		}
-
 		if len(ODR.WorkingDir) > 0 {
 			err = system.ValidateWorkingDir(ODR.WorkingDir)
+
 			if err != nil {
 				return err
 			}

@@ -230,7 +230,8 @@ resource "google_compute_resource_policy" "bacalhau_disk_backups" {
       labels = {
         bacalhau_backup = "true"
       }
-      guest_flush = true
+      # this only works with Windows and looks like it's non-negotiable with gcp
+      guest_flush = false
     }
   }
 }

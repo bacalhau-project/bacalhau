@@ -18,6 +18,7 @@ type ApplySuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
 	originalDockerRunOptions *DockerRunOptions
+	rootCmd *cobra.Command
 }
 
 func TestApplySuite(t *testing.T) {
