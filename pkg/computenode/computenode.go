@@ -47,7 +47,7 @@ type ComputeNode struct {
 	executors       map[executor.EngineType]executor.Executor
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
-	componentMu     sync.Mutex
+	componentMu     sync.RWMutex
 	bidMu           sync.Mutex
 }
 
@@ -568,6 +568,11 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}
 	executorEngine := *e
 
+	// cache it being installed so we're not hammering it
+	if node.executorsInstalledCache[typ] {
+		return executorEngine, nil
+	}
+
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
@@ -597,14 +602,9 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 		return nil, fmt.Errorf(
 			"no matching verifier found on this server: %s", typ.String())
 	}
-	verifier := *v
 
-	// cache it being installed so we're not hammering it
-	if node.verifiersInstalledCache[typ] {
-		return verifier, nil
-	}
-
-	installed, err := verifier.IsInstalled(ctx)
+	v := node.verifiers[typ]
+	installed, err := v.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
