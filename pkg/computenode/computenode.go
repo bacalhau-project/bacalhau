@@ -22,7 +22,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalSeconds = 10
+const ControlLoopIntervalMinutes = 10
 const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
@@ -115,7 +115,8 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	// this won't hurt our throughput becauase we are calling
 	// controlLoopBidOnJobs right away as soon as a created event is
 	// seen or a job has finished
-	ticker := time.NewTicker(time.Second * ControlLoopIntervalSeconds)
+
+	ticker := time.NewTicker(time.Minute * ControlLoopIntervalMinutes)
 	ctx, cancelFunction := context.WithCancel(context.Background())
 
 	cm.RegisterCallback(func() error {
@@ -126,7 +127,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	for {
 		select {
 		case <-ticker.C:
-			node.controlLoopBidOnJobs()
+			node.controlLoopBidOnJobs("tick")
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -141,8 +142,8 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - if there is enough in the remaining then bid
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
-func (node *ComputeNode) controlLoopBidOnJobs() {
-	log.Debug().Msgf("starting controlLoopBidOnJobs, acq lock")
+func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
+	log.Debug().Msgf("[%s] starting controlLoopBidOnJobs because %s, acq lock", node.id[:8], debug)
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	log.Debug().Msgf("lock acquired!")
@@ -309,7 +310,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 		log.Debug().Msgf("--> finished node.capacityManager.AddShardsToBacklog")
 		log.Debug().Msgf("calling node.controlLoopBidOnJobs()")
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("job created & selected")
 		log.Debug().Msgf("--> finished node.controlLoopBidOnJobs()")
 	}
 }
@@ -383,7 +384,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	// bid on another shard or if we've finished the job
 	defer func() {
 		node.capacityManager.Remove(capacitymanager.FlattenShardID(job.ID, jobEvent.ShardIndex))
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("defer in bidAccepted")
 	}()
 
 	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
@@ -424,7 +425,7 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 		return
 	}
 	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
-	node.controlLoopBidOnJobs()
+	node.controlLoopBidOnJobs("bid rejected")
 }
 
 /*
