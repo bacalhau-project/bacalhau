@@ -3,7 +3,9 @@ package inmemory
 import (
 	"context"
 	"fmt"
-	"sync"
+	"time"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
@@ -25,6 +27,10 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 		events:      map[string][]executor.JobEvent{},
 		localEvents: map[string][]executor.JobLocalEvent{},
 	}
+	res.mtx.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "InMemoryDatastore.mtx",
+	})
 	return res, nil
 }
 

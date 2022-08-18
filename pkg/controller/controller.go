@@ -3,8 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	realsync "sync"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -56,7 +59,14 @@ func NewController(
 		jobContexts:      make(map[string]context.Context),
 		jobNodeContexts:  make(map[string]context.Context),
 	}
-
+	ctrl.contextMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "Controller.contextMutex",
+	})
+	ctrl.subscribeMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "Controller.subscribeMutex",
+	})
 	return ctrl, nil
 }
 
@@ -459,7 +469,7 @@ func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev executor.Jo
 	defer ctrl.subscribeMutex.RUnlock()
 
 	// run all local subscribers in parallel
-	var wg sync.WaitGroup
+	var wg realsync.WaitGroup
 	for _, fn := range ctrl.subscribeFuncs {
 		wg.Add(1)
 		go func(f transport.SubscribeFn) {

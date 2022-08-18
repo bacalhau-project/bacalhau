@@ -15,8 +15,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -31,6 +32,14 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
+
+func init() {
+	sync.SetGlobalOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Enabled:   true,
+		Id:        "<UNKNOWN>",
+	})
+}
 
 const ServerReadHeaderTimeout = 10 * time.Second
 
@@ -50,12 +59,17 @@ func NewServer(
 	c *controller.Controller,
 	verifiers map[verifier.VerifierType]verifier.Verifier,
 ) *APIServer {
-	return &APIServer{
+	a := &APIServer{
 		Controller: c,
 		Verifiers:  verifiers,
 		Host:       host,
 		Port:       port,
 	}
+	a.componentMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "APIServer.componentMu",
+	})
+	return a
 }
 
 // GetURI returns the HTTP URI that the server is listening on.

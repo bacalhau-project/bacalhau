@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"strconv"
-	"sync"
 	"time"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
@@ -101,6 +102,15 @@ func constructComputeNode(
 		verifiers:       verifiers,
 		capacityManager: capacityManager,
 	}
+
+	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "ComputeNode.componentMu",
+	})
+	computeNode.bidMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "ComputeNode.bidMu",
+	})
 
 	return computeNode, nil
 }
