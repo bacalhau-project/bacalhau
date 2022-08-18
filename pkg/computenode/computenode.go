@@ -326,7 +326,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 		log.Debug().Msgf("--> finished node.capacityManager.AddShardsToBacklog")
 		log.Debug().Msgf("calling node.controlLoopBidOnJobs()")
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("job created & selected")
 		log.Debug().Msgf("--> finished node.controlLoopBidOnJobs()")
 	}
 }
