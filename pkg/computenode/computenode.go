@@ -3,7 +3,6 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"hash/fnv"
 	"strconv"
 	"time"
@@ -44,14 +43,12 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig
 
-	controller              *controller.Controller
-	executors               map[executor.EngineType]executor.Executor
-	executorsInstalledCache map[executor.EngineType]bool
-	verifiers               map[verifier.VerifierType]verifier.Verifier
-	verifiersInstalledCache map[verifier.VerifierType]bool
-	capacityManager         *capacitymanager.CapacityManager
-	componentMu             sync.RWMutex
-	bidMu                   sync.Mutex
+	controller      *controller.Controller
+	executors       map[executor.EngineType]executor.Executor
+	verifiers       map[verifier.VerifierType]verifier.Verifier
+	capacityManager *capacitymanager.CapacityManager
+	componentMu     sync.Mutex
+	bidMu           sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -567,15 +564,9 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}()
 	if e == nil {
 		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String(),
-		)
+			"no matching executor found on this server: %s", typ.String())
 	}
 	executorEngine := *e
-
-	// cache it being installed so we're not hammering it
-	if node.executorsInstalledCache[typ] {
-		return executorEngine, nil
-	}
 
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
