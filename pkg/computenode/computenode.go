@@ -47,7 +47,7 @@ type ComputeNode struct {
 	executors       map[executor.EngineType]executor.Executor
 	verifiers       map[verifier.VerifierType]verifier.Verifier
 	capacityManager *capacitymanager.CapacityManager
-	componentMu     sync.Mutex
+	componentMu     sync.RWMutex
 	bidMu           sync.Mutex
 }
 
@@ -568,15 +568,22 @@ func (node *ComputeNode) RunShard(
 
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineType) (executor.Executor, error) {
-	node.componentMu.Lock()
-	defer node.componentMu.Unlock()
-
-	if _, ok := node.executors[typ]; !ok {
+	e := func() *executor.Executor {
+		node.componentMu.RLock()
+		defer node.componentMu.RUnlock()
+		if _, ok := node.executors[typ]; !ok {
+			return nil
+		}
+		ee := node.executors[typ]
+		return &ee
+	}()
+	if e == nil {
 		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String())
+			"no matching executor found on this server: %s", typ.String(),
+		)
 	}
+	executorEngine := *e
 
-	executorEngine := node.executors[typ]
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
