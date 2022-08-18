@@ -307,13 +307,6 @@ var dockerRunCmd = &cobra.Command{
 			return fmt.Errorf("error executing job: %s", err)
 		}
 
-		if !ODR.SkipSyntaxChecking || ODR.WaitForJobToFinish {
-			err = system.CheckBashSyntax(ODR.Entrypoint)
-			if err != nil {
-				return err
-			}
-		}
-
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
