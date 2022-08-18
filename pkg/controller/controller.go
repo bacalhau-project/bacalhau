@@ -465,18 +465,20 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 // we run them in parallel but block on them all finishing
 // otherwise the context would be canceled
 func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev executor.JobEvent) {
-	ctrl.subscribeMutex.RLock()
-	defer ctrl.subscribeMutex.RUnlock()
-
-	// run all local subscribers in parallel
 	var wg realsync.WaitGroup
-	for _, fn := range ctrl.subscribeFuncs {
-		wg.Add(1)
-		go func(f transport.SubscribeFn) {
-			defer wg.Done()
-			f(ctx, ev)
-		}(fn)
-	}
+	func() {
+		ctrl.subscribeMutex.RLock()
+		defer ctrl.subscribeMutex.RUnlock()
+
+		// run all local subscribers in parallel
+		for _, fn := range ctrl.subscribeFuncs {
+			wg.Add(1)
+			go func(f transport.SubscribeFn) {
+				defer wg.Done()
+				f(ctx, ev)
+			}(fn)
+		}
+	}()
 	wg.Wait()
 }
 
