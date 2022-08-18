@@ -321,9 +321,35 @@ var dockerRunCmd = &cobra.Command{
 		if !ODR.SkipSyntaxChecking || waitForJobToFinish {
 			err = system.CheckBashSyntax(ODR.Entrypoint)
 			if err != nil {
-				return fmt.Errorf("error checking bash syntax: %s", err)
+				return err
 			}
 		}
+
+		var apiClient *publicapi.APIClient
+		if ODR.IsLocal {
+			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, ODR.GPU)
+			if errLocalDevStack != nil {
+				return errLocalDevStack
+			}
+			apiURI := stack.Nodes[0].APIServer.GetURI()
+			apiClient = publicapi.NewAPIClient(apiURI)
+		} else {
+			apiClient = getAPIClient()
+		}
+
+		job, err := apiClient.Submit(ctx, spec, deal, nil)
+		if err != nil {
+			return err
+		}
+
+		cmd.Printf("%s\n", job.ID)
+		if ODR.WaitForJobToFinish {
+			resolver := apiClient.GetJobStateResolver()
+			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+			err = resolver.WaitUntilComplete(ctx, job.ID)
+			if err != nil {
+				return err
+			}
 
 		err = ExecuteJob(ctx,
 			cm,
