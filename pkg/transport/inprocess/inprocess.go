@@ -3,7 +3,9 @@ package inprocess
 import (
 	"context"
 	"fmt"
-	"sync"
+	"time"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -16,7 +18,7 @@ type InProcessTransport struct {
 	id                 string
 	subscribeFunctions []transport.SubscribeFn
 	seenEvents         []executor.JobEvent
-	ctx                sync.Mutex
+	mutex              sync.Mutex
 }
 
 /*
@@ -34,6 +36,10 @@ func NewInprocessTransport() (*InProcessTransport, error) {
 		id:                 hostID.String(),
 		subscribeFunctions: []transport.SubscribeFn{},
 	}
+	res.mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "InprocessTransport.mutex",
+	})
 	return res, nil
 }
 
@@ -63,8 +69,8 @@ func (t *InProcessTransport) GetEvents() []executor.JobEvent {
 */
 
 func (t *InProcessTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.seenEvents = append(t.seenEvents, ev)
 	for _, fn := range t.subscribeFunctions {
 		go fn(ctx, ev)
@@ -73,8 +79,8 @@ func (t *InProcessTransport) Publish(ctx context.Context, ev executor.JobEvent) 
 }
 
 func (t *InProcessTransport) Subscribe(fn transport.SubscribeFn) {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 

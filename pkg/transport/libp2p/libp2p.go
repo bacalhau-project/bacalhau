@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
+
+	realsync "sync"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -30,7 +33,7 @@ type LibP2PTransport struct {
 	cm *system.CleanupManager
 
 	subscribeFunctions   []transport.SubscribeFn
-	ctx                  sync.RWMutex
+	mutex                sync.RWMutex
 	host                 host.Host
 	port                 int
 	peers                []string
@@ -102,6 +105,10 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		jobEventSubscription: jobEventSubscription,
 	}
 
+	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "LibP2PTransport.mutex",
+	})
 	return libp2pTransport, nil
 }
 
@@ -162,8 +169,8 @@ func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) err
 }
 
 func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
@@ -275,10 +282,10 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// the node which gossiped the message to us, which might be different.
 	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
 
-	t.ctx.RLock()
-	defer t.ctx.RUnlock()
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
 
-	var wg sync.WaitGroup
+	var wg realsync.WaitGroup
 	for _, fn := range t.subscribeFunctions {
 		wg.Add(1)
 		go func(f transport.SubscribeFn) {

@@ -4,8 +4,11 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"sync"
 	"time"
+
+	realsync "sync"
+
+	sync "github.com/RobinUS2/golang-mutex-tracer"
 
 	"github.com/rs/zerolog/log"
 )
@@ -16,7 +19,7 @@ const SleepBeforeCleanup = time.Millisecond * 100
 // clean up their resources before the main goroutine exits. Can be used to
 // register callbacks for long-running system processes.
 type CleanupManager struct {
-	wg sync.WaitGroup
+	wg realsync.WaitGroup
 
 	fnsMutex sync.Mutex
 	fns      []func() error
@@ -25,7 +28,12 @@ type CleanupManager struct {
 
 // NewCleanupManager returns a new CleanupManager instance.
 func NewCleanupManager() *CleanupManager {
-	return &CleanupManager{}
+	c := &CleanupManager{}
+	c.fnsMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "CleanupManager.fnsMutex",
+	})
+	return c
 }
 
 // RegisterCallback registers a clean-up function.
