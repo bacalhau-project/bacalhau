@@ -72,11 +72,15 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 		return nil
 	}
 	if clientVersion.GitVersion == "v0.0.0-xxxxxxx" {
-		log.Info().Msg("Development version, skipping version check")
+		log.Info().Msg("Development client version, skipping version check")
 		return nil
 	}
 	if serverVersion == nil {
 		log.Warn().Msg("Unable to parse nil server version, skipping version check")
+		return nil
+	}
+	if serverVersion.GitVersion == "v0.0.0-xxxxxxx" {
+		log.Info().Msg("Development server version, skipping version check")
 		return nil
 	}
 	c, err := semver.NewVersion(clientVersion.GitVersion)
@@ -99,8 +103,8 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 	if c.GreaterThan(s) {
 		return fmt.Errorf(
 			"client version %s is newer than server version %s, please ask your network administrator to update Bacalhau",
-			serverVersion.GitVersion,
 			clientVersion.GitVersion,
+			serverVersion.GitVersion,
 		)
 	}
 	return nil
@@ -180,15 +184,6 @@ func capture() func() (string, error) {
 		return buf.String(), err
 	}
 }
-
-// func RandInt(i int) int {
-// 	n, err := rand.Int(rand.Reader, big.NewInt(int64(i)))
-// 	if err != nil {
-// 		log.Fatal().Msg("could not generate random number")
-// 	}
-
-// 	return int(n.Int64())
-// }
 
 func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
 	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",

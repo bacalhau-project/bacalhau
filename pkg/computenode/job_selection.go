@@ -111,7 +111,7 @@ func applyJobSelectionPolicySettings(
 	// if policy.RejectStatelessJobs is set then we reject this job
 	if len(job.Inputs) == 0 {
 		if policy.RejectStatelessJobs {
-			log.Info().Msgf("Found policy of RejectStatelessJobs - rejecting job")
+			log.Trace().Msgf("Found policy of RejectStatelessJobs - rejecting job")
 			return false, nil
 		} else {
 			return true, nil
@@ -120,7 +120,7 @@ func applyJobSelectionPolicySettings(
 
 	// if we have an "anywhere" policy for the data then we accept the job
 	if policy.Locality == Anywhere {
-		log.Info().Msgf("Found policy of anywhere - accepting job")
+		log.Trace().Msgf("Found policy of anywhere - accepting job")
 		return true, nil
 	}
 
@@ -141,10 +141,10 @@ func applyJobSelectionPolicySettings(
 	}
 
 	if foundInputs >= len(job.Inputs) {
-		log.Info().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
+		log.Trace().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
 		return true, nil
 	} else {
-		log.Info().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
+		log.Trace().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
 		return false, nil
 	}
 }

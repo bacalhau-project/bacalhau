@@ -1,4 +1,3 @@
-import google.cloud
 from google.cloud import storage
 import os
 import sys

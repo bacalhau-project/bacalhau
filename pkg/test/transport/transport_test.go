@@ -118,7 +118,11 @@ func setupTest(t *testing.T) (
 	)
 	require.NoError(t, err)
 
-	err = ctrl.Start(context.Background())
+	ctx := context.Background()
+	err = ctrl.Start(ctx)
+	require.NoError(t, err)
+
+	err = transport.Start(ctx)
 	require.NoError(t, err)
 
 	return transport, noopExecutor, noopVerifier, ctrl, cm

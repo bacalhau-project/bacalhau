@@ -38,3 +38,5 @@ ops/terraform/*.out
 benchmark/results
 shards
 __pycache__
+stderr
+stdout

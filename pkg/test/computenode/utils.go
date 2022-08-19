@@ -135,8 +135,13 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	err = ctrl.Start(context.Background())
+	ctx := context.Background()
+	err = ctrl.Start(ctx)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = transport.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
 

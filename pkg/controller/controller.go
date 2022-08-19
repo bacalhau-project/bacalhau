@@ -81,7 +81,7 @@ func (ctrl *Controller) Start(ctx context.Context) error {
 		return ctrl.Shutdown(ctx)
 	})
 
-	return ctrl.transport.Start(ctx)
+	return nil
 }
 
 func (ctrl *Controller) Shutdown(ctx context.Context) error {

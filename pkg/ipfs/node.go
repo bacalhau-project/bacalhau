@@ -205,7 +205,7 @@ func NewNodeWithConfig(cm *system.CleanupManager, cfg Config) (*Node, error) {
 	}
 
 	// Log details so that user can connect to the new node:
-	log.Info().Msgf("IPFS node created with ID: %s", node.Identity)
+	log.Trace().Msgf("IPFS node created with ID: %s", node.Identity)
 	n.LogDetails()
 
 	return &n, nil
@@ -262,10 +262,10 @@ func (n *Node) LogDetails() {
 
 	id := n.ID()
 	for _, apiAddr := range apiAddrs {
-		log.Info().Msgf("IPFS node %s listening for API on: %s", id, apiAddr)
+		log.Trace().Msgf("IPFS node %s listening for API on: %s", id, apiAddr)
 	}
 	for _, swarmAddr := range swarmAddrs {
-		log.Info().Msgf("IPFS node %s listening for swarm on: %s", id, swarmAddr)
+		log.Trace().Msgf("IPFS node %s listening for swarm on: %s", id, swarmAddr)
 	}
 }
 

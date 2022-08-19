@@ -81,7 +81,7 @@ cid=$(IPFS_PATH=%s ipfs $command)
 curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.RepoPath, node.IpfsNode.APIPort)
 	}
 
-	log.Info().Msg(logString + "\n")
+	log.Trace().Msg(logString + "\n")
 }
 
 func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
