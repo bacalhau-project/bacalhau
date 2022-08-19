@@ -53,7 +53,7 @@ function install-healthcheck() {
 }
 
 function install-ipfs() {
-  wget "https://dist.ipfs.io/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
+  wget "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
   # TODO should reset PWD to home dir after each function call
   cd go-ipfs
