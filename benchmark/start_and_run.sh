@@ -32,7 +32,7 @@ cd benchmark
 export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
 export PREDICTABLE_API_PORT=1
 
-${BACALHAU_BIN} devstack --nodes 250 &
+${BACALHAU_BIN} devstack &
 
 wait_file "/tmp/bacalhau-devstack.pid" 1500
 

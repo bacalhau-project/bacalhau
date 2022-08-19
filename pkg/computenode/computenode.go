@@ -267,7 +267,7 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	// (This is an optimization to avoid all nodes bidding on a job in large networks).
 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-	// libp2p instead somehow.
+	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
 	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd
 		3, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
 	)
