@@ -9,7 +9,6 @@ type VerifierResult struct {
 	NodeID     string
 	ShardIndex int
 	Verified   bool
-	Error      error
 }
 
 // Verifier is an interface representing something that can verify the results

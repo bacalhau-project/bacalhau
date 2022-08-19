@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -35,19 +36,19 @@ func NewNoopVerifier(
 	}, nil
 }
 
-func (v *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
+func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (v *NoopVerifier) GetShardResultPath(
+func (noopVerifier *NoopVerifier) GetShardResultPath(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
 ) (string, error) {
-	return v.ensureShardResultsDir(jobID, shardIndex)
+	return noopVerifier.ensureShardResultsDir(jobID, shardIndex)
 }
 
-func (v *NoopVerifier) GetShardProposal(
+func (noopVerifier *NoopVerifier) GetShardProposal(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -56,26 +57,57 @@ func (v *NoopVerifier) GetShardProposal(
 	return []byte{}, nil
 }
 
-func (v *NoopVerifier) IsExecutionComplete(
+// each shard must have >= concurrency states
+// and they must be either JobStateError or JobStateVerifying
+func (noopVerifier *NoopVerifier) IsExecutionComplete(
 	ctx context.Context,
 	jobID string,
 ) (bool, error) {
-	return false, nil
+	return noopVerifier.StateResolver.CheckShardStates(ctx, jobID, func(
+		shardStates []executor.JobShardState,
+		concurrency int,
+	) (bool, error) {
+		if len(shardStates) < concurrency {
+			return false, nil
+		}
+		for _, state := range shardStates {
+			if state.State != executor.JobStateError && state.State != executor.JobStateVerifying {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 }
 
-func (v *NoopVerifier) VerifyJob(
+func (noopVerifier *NoopVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
-	return []verifier.VerifierResult{}, nil
+	results := []verifier.VerifierResult{}
+	jobState, err := noopVerifier.StateResolver.GetJobState(ctx, jobID)
+	if err != nil {
+		return results, err
+	}
+	for _, shardState := range job.FlattenShardStates(jobState) {
+		if shardState.State != executor.JobStateVerifying {
+			continue
+		}
+		results = append(results, verifier.VerifierResult{
+			JobID:      jobID,
+			NodeID:     shardState.NodeID,
+			ShardIndex: shardState.ShardIndex,
+			Verified:   true,
+		})
+	}
+	return results, nil
 }
 
-func (v *NoopVerifier) getShardResultsDir(jobID string, shardIndex int) string {
-	return fmt.Sprintf("%s/%s/%d", v.ResultsDir, jobID, shardIndex)
+func (noopVerifier *NoopVerifier) getShardResultsDir(jobID string, shardIndex int) string {
+	return fmt.Sprintf("%s/%s/%d", noopVerifier.ResultsDir, jobID, shardIndex)
 }
 
-func (v *NoopVerifier) ensureShardResultsDir(jobID string, shardIndex int) (string, error) {
-	dir := v.getShardResultsDir(jobID, shardIndex)
+func (noopVerifier *NoopVerifier) ensureShardResultsDir(jobID string, shardIndex int) (string, error) {
+	dir := noopVerifier.getShardResultsDir(jobID, shardIndex)
 	err := os.MkdirAll(dir, util.OS_ALL_RWX)
 	info, _ := os.Stat(dir)
 	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())

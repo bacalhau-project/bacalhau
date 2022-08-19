@@ -36,6 +36,14 @@ func NewStateResolver(
 	}
 }
 
+func (resolver *StateResolver) GetJob(ctx context.Context, id string) (executor.Job, error) {
+	return resolver.jobLoader(ctx, id)
+}
+
+func (resolver *StateResolver) GetJobState(ctx context.Context, id string) (executor.JobState, error) {
+	return resolver.stateLoader(ctx, id)
+}
+
 func (resolver *StateResolver) SetWaitTime(maxWaitAttempts int, delay time.Duration) {
 	resolver.maxWaitAttempts = maxWaitAttempts
 	resolver.waitDelay = delay
@@ -227,6 +235,46 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		})
 	}
 	return results, nil
+}
+
+type ShardStateChecker func(
+	shardStates []executor.JobShardState,
+	concurrency int,
+) (bool, error)
+
+// iterate each shard and pass off []executor.JobShardState to the given function
+// every shard must return true for this function to return true
+// this is useful for example to say "do we have enough to begin verification"
+func (resolver *StateResolver) CheckShardStates(
+	ctx context.Context,
+	jobID string,
+	shardStateChecker ShardStateChecker,
+) (bool, error) {
+	jobState, err := resolver.stateLoader(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+	job, err := resolver.jobLoader(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+	shardCount := GetJobTotalShards(job)
+	concurrency := GetJobConcurrency(job)
+	shardGroups := GroupShardStates(FlattenShardStates(jobState))
+	for i := 0; i < shardCount; i++ {
+		shardStates, ok := shardGroups[i]
+		if !ok {
+			return false, fmt.Errorf("job (%s) has no shard state for shard index %d", jobID, i)
+		}
+		shardCheckResult, err := shardStateChecker(shardStates, concurrency)
+		if err != nil {
+			return false, err
+		}
+		if !shardCheckResult {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
