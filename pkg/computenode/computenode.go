@@ -273,12 +273,12 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	)
 
 	// if delay is too high, just exit immediately.
-	if jobNodeDistanceDelayMs > 1000 {
+	if jobNodeDistanceDelayMs > 1000 { //nolint:gomnd
 		// drop the job on the floor, :-O
 		return
 	}
 	if jobNodeDistanceDelayMs > 0 {
-		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobEvent.JobID)
+		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
 	}
 
 	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
