@@ -15,16 +15,14 @@ import (
 )
 
 type NoopVerifier struct {
-	JobLoader   job.JobLoader
-	StateLoader job.StateLoader
+	StateResolver *job.StateResolver
 	// where do we copy the results from jobs temporarily?
 	ResultsDir string
 }
 
 func NewNoopVerifier(
 	cm *system.CleanupManager,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
+	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
 	dir, err := ioutil.TempDir("", "bacalhau-noop-verifier")
 	if err != nil {
@@ -32,9 +30,8 @@ func NewNoopVerifier(
 	}
 
 	return &NoopVerifier{
-		JobLoader:   jobLoader,
-		StateLoader: stateLoader,
-		ResultsDir:  dir,
+		StateResolver: resolver,
+		ResultsDir:    dir,
 	}, nil
 }
 

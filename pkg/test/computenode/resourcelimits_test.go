@@ -537,21 +537,19 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
 		require.NoError(suite.T(), err)
 
+		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+		require.NoError(suite.T(), err)
+
 		verifiers, err := verifier_util.NewNoopVerifiers(
 			cm,
-			job.NewNoopJobLoader(),
-			job.NewNoopStateLoader(),
+			ctrl.GetStateResolver(),
 		)
 		require.NoError(suite.T(), err)
 
 		publishers, err := publisher_util.NewNoopPublishers(
 			cm,
-			job.NewNoopJobLoader(),
-			job.NewNoopStateLoader(),
+			ctrl.GetStateResolver(),
 		)
-		require.NoError(suite.T(), err)
-
-		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 		require.NoError(suite.T(), err)
 
 		_, err = computenode.NewComputeNode(

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -73,16 +72,6 @@ var devstackCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		getLoaders := func(ctrl *controller.Controller) (job.JobLoader, job.StateLoader) {
-			jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-				return ctrl.GetJob(ctx, id)
-			}
-			stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-				return ctrl.GetJobState(ctx, id)
-			}
-			return jobLoader, stateLoader
-		}
-
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
 			map[storage.StorageSourceType]storage.StorageProvider, error) {
 
@@ -110,8 +99,7 @@ var devstackCmd = &cobra.Command{
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (map[verifier.VerifierType]verifier.Verifier, error) {
-			jobLoader, stateLoader := getLoaders(ctrl)
-			return verifier_util.NewNoopVerifiers(cm, jobLoader, stateLoader)
+			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 		}
 
 		getPublishers := func(
@@ -119,8 +107,7 @@ var devstackCmd = &cobra.Command{
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (map[publisher.PublisherType]publisher.Publisher, error) {
-			jobLoader, stateLoader := getLoaders(ctrl)
-			return publisher_util.NewIPFSPublishers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 		}
 
 		jobSelectionPolicy := getJobSelectionConfig()

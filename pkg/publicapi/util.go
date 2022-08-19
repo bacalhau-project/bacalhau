@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -40,20 +39,6 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
-		cleanupManager,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
-	)
-	require.NoError(t, err)
-
-	noopPublishers, err := publisher_utils.NewNoopPublishers(
-		cleanupManager,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
-	)
-	require.NoError(t, err)
-
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
@@ -65,6 +50,18 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 		inmemoryDatastore,
 		inprocessTransport,
 		noopStorageProviders,
+	)
+	require.NoError(t, err)
+
+	noopPublishers, err := publisher_utils.NewNoopPublishers(
+		cleanupManager,
+		c.GetStateResolver(),
+	)
+	require.NoError(t, err)
+
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
+		cleanupManager,
+		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 

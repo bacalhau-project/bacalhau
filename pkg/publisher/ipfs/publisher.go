@@ -14,16 +14,14 @@ import (
 )
 
 type IPFSPublisher struct {
-	IPFSClient  *ipfs.Client
-	JobLoader   job.JobLoader
-	StateLoader job.StateLoader
+	IPFSClient    *ipfs.Client
+	StateResolver *job.StateResolver
 }
 
 func NewIPFSPublisher(
 	cm *system.CleanupManager,
+	resolver *job.StateResolver,
 	ipfsAPIAddr string,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
 ) (*IPFSPublisher, error) {
 	cl, err := ipfs.NewClient(ipfsAPIAddr)
 	if err != nil {
@@ -32,9 +30,8 @@ func NewIPFSPublisher(
 
 	log.Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
 	return &IPFSPublisher{
-		IPFSClient:  cl,
-		JobLoader:   jobLoader,
-		StateLoader: stateLoader,
+		IPFSClient:    cl,
+		StateResolver: resolver,
 	}, nil
 }
 
@@ -80,8 +77,7 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 	results := []storage.StorageSpec{}
 	ctx, span := newSpan(ctx, "ComposeResultSet")
 	defer span.End()
-	resolver := publisher.getStateResolver()
-	shardResults, err := resolver.GetResults(ctx, jobID)
+	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, nil
 	}
@@ -94,13 +90,6 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 		})
 	}
 	return results, nil
-}
-
-func (publisher *IPFSPublisher) getStateResolver() *job.StateResolver {
-	return job.NewStateResolver(
-		publisher.JobLoader,
-		publisher.StateLoader,
-	)
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -55,22 +54,20 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	require.NoError(t, err)
+
 	verifiers, err := verifier_util.NewNoopVerifiers(
 		cm,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
+		ctrl.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	publishers, err := publisher_util.NewIPFSPublishers(
 		cm,
+		ctrl.GetStateResolver(),
 		apiAddress,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
 	)
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
@@ -103,16 +100,16 @@ func SetupTestNoop(
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewNoopVerifiers(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
-	require.NoError(t, err)
-
-	publishers, err := publisher_util.NewNoopPublishers(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
-	require.NoError(t, err)
-
 	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	require.NoError(t, err)
+
+	verifiers, err := verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
+
+	publishers, err := publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(

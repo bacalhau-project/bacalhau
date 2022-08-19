@@ -115,13 +115,7 @@ func NewDevStackForRunLocal(
 		map[verifier.VerifierType]verifier.Verifier,
 		error,
 	) {
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return ctrl.GetJob(ctx, id)
-		}
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return ctrl.GetJobState(ctx, id)
-		}
-		return verifier_util.NewNoopVerifiers(cm, jobLoader, stateLoader)
+		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 	}
 	getPublishers := func(
 		ipfsMultiAddress string,
@@ -131,13 +125,7 @@ func NewDevStackForRunLocal(
 		map[publisher.PublisherType]publisher.Publisher,
 		error,
 	) {
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return ctrl.GetJob(ctx, id)
-		}
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return ctrl.GetJobState(ctx, id)
-		}
-		return publisher_util.NewIPFSPublishers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 
 	return NewDevStack(

@@ -9,13 +9,11 @@ import (
 
 func NewNoopVerifiers(
 	cm *system.CleanupManager,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
+	resolver *job.StateResolver,
 ) (map[verifier.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		cm,
-		jobLoader,
-		stateLoader,
+		resolver,
 	)
 	if err != nil {
 		return nil, err

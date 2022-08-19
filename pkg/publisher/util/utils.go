@@ -10,16 +10,15 @@ import (
 
 func NewIPFSPublishers(
 	cm *system.CleanupManager,
+	resolver *job.StateResolver,
 	ipfsMultiAddress string,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
 ) (map[publisher.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, jobLoader, stateLoader)
+	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(cm, ipfsMultiAddress, jobLoader, stateLoader)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(cm, resolver, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -32,10 +31,9 @@ func NewIPFSPublishers(
 
 func NewNoopPublishers(
 	cm *system.CleanupManager,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
+	resolver *job.StateResolver,
 ) (map[publisher.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, jobLoader, stateLoader)
+	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
 	if err != nil {
 		return nil, err
 	}

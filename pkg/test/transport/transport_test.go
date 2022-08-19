@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -66,18 +65,27 @@ func setupTest(t *testing.T) (
 	noopStorage, err := storage_noop.NewStorageProvider(cm)
 	require.NoError(t, err)
 
-	noopExecutor, err := executorNoop.NewExecutor()
-	require.NoError(t, err)
-
-	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
-	require.NoError(t, err)
-
-	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, job.NewNoopJobLoader(), job.NewNoopStateLoader())
-	require.NoError(t, err)
-
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{
 		storage.StorageSourceIPFS: noopStorage,
 	}
+
+	noopExecutor, err := executorNoop.NewExecutor()
+	require.NoError(t, err)
+
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
+	transport, err := inprocess.NewInprocessTransport()
+	require.NoError(t, err)
+
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	require.NoError(t, err)
+
+	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
+
+	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
 
 	executors := map[executor.EngineType]executor.Executor{
 		executor.EngineNoop: noopExecutor,
@@ -90,15 +98,6 @@ func setupTest(t *testing.T) (
 	publishers := map[publisher.PublisherType]publisher.Publisher{
 		publisher.PublisherNoop: noopPublisher,
 	}
-
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
-	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
-	require.NoError(t, err)
 
 	_, err = computenode.NewComputeNode(
 		cm,

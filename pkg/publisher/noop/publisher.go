@@ -11,18 +11,15 @@ import (
 )
 
 type NoopPublisher struct {
-	JobLoader   job.JobLoader
-	StateLoader job.StateLoader
+	StateResolver *job.StateResolver
 }
 
 func NewNoopPublisher(
 	cm *system.CleanupManager,
-	jobLoader job.JobLoader,
-	stateLoader job.StateLoader,
+	resolver *job.StateResolver,
 ) (*NoopPublisher, error) {
 	return &NoopPublisher{
-		JobLoader:   jobLoader,
-		StateLoader: stateLoader,
+		StateResolver: resolver,
 	}, nil
 }
 
