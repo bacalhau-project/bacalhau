@@ -51,7 +51,7 @@ require (
 	mvdan.cc/sh/v3 v3.5.1
 )
 
-require github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994 // indirect
+require github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
@@ -59,7 +59,6 @@ require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/RobinUS2/golang-mutex-tracer v0.0.0-20190220123315-f74bc028c5fc
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
