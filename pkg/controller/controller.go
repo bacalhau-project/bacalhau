@@ -285,6 +285,17 @@ func (ctrl *Controller) RejectResults(
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
+func (ctrl *Controller) CompleteVerification(
+	ctx context.Context,
+	jobID string,
+) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	return ctrl.localdb.AddLocalEvent(jobCtx, jobID, executor.JobLocalEvent{
+		EventName: executor.JobLocalEventVerified,
+		JobID:     jobID,
+	})
+}
+
 /*
 COMPUTE NODE
 */

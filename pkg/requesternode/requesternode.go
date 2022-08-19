@@ -164,7 +164,7 @@ func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 ) {
 	node.verifyMutex.Lock()
 	defer node.verifyMutex.Unlock()
-	err := node.shardExecutionComplete(ctx, job, jobEvent)
+	err := node.attemptVerification(ctx, job)
 	if err != nil {
 		err = node.controller.ShardError(
 			ctx,
@@ -179,10 +179,9 @@ func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 	}
 }
 
-func (node *RequesterNode) shardExecutionComplete(
+func (node *RequesterNode) attemptVerification(
 	ctx context.Context,
 	job executor.Job,
-	jobEvent executor.JobEvent,
 ) error {
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
@@ -212,20 +211,32 @@ func (node *RequesterNode) shardExecutionComplete(
 	// loop over each verification result and publish events
 	for _, verificationResult := range verificationResults {
 		if verificationResult.Verified {
-			log.Debug().Msgf("Requester node %s accepting results: job=%s node=%s shard=%d", node.id, verificationResult.JobID, verificationResult.NodeID, jobEvent.ShardIndex)
-			err := node.controller.AcceptResults(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
+			log.Debug().Msgf(
+				"Requester node %s accepting results: job=%s node=%s shard=%d",
+				node.id,
+				verificationResult.JobID,
+				verificationResult.NodeID,
+				verificationResult.ShardIndex,
+			)
+			err := node.controller.AcceptResults(ctx, verificationResult.JobID, verificationResult.NodeID, verificationResult.ShardIndex)
 			if err != nil {
 				threadLogger.Error().Err(err)
 			}
 		} else {
-			log.Debug().Msgf("Requester node %s rejecting results: job=%s node=%s shard=%d", node.id, verificationResult.JobID, verificationResult.NodeID, jobEvent.ShardIndex)
-			err := node.controller.RejectResults(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
+			log.Debug().Msgf(
+				"Requester node %s rejecting results: job=%s node=%s shard=%d",
+				node.id,
+				verificationResult.JobID,
+				verificationResult.NodeID,
+				verificationResult.ShardIndex,
+			)
+			err := node.controller.RejectResults(ctx, verificationResult.JobID, verificationResult.NodeID, verificationResult.ShardIndex)
 			if err != nil {
 				threadLogger.Error().Err(err)
 			}
 		}
 	}
-	return nil
+	return node.controller.CompleteVerification(ctx, job.ID)
 }
 
 //nolint:dupl // methods are not duplicates
