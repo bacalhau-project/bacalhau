@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	sync "github.com/RobinUS2/golang-mutex-tracer"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
