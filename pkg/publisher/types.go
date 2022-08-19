@@ -35,7 +35,9 @@ type Publisher interface {
 	// this is basically picking a valid shard result
 	// and then re-assembling the storage spec it has associated
 	// with it
-	ComposeResultSet(
+	// this is NOT actually downloading results simply giving you
+	// enough information to do so if you wanted to
+	ComposeResultReferences(
 		ctx context.Context,
 		jobID string,
 	) ([]storage.StorageSpec, error)

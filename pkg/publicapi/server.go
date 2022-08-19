@@ -274,7 +274,7 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	results, err := publisher.ComposeResultSet(req.Context(), stateReq.JobID)
+	results, err := publisher.ComposeResultReferences(req.Context(), stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

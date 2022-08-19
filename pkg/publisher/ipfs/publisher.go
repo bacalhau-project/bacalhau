@@ -73,7 +73,7 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	}, nil
 }
 
-func (publisher *IPFSPublisher) ComposeResultSet(
+func (publisher *IPFSPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]storage.StorageSpec, error) {

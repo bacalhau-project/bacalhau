@@ -44,7 +44,7 @@ func (publisher *NoopPublisher) PublishShardResult(
 	return nil, nil
 }
 
-func (publisher *NoopPublisher) ComposeResultSet(
+func (publisher *NoopPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]storage.StorageSpec, error) {
