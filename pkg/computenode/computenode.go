@@ -268,8 +268,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd
-		1, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
+	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
+		3, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
 	)
 
 	// if delay is too high, just exit immediately.
@@ -346,11 +346,11 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	// If concurrency=3 and network size=3, there'll only be one piece and
 	// everyone will bid. If concurrency=1 and network size=1 million, there
 	// will be a million slices of the hash space.
-	chunk := int((float32(concurrency) / float32(networkSize)) * 4294967295) //nolint:gomnd // 4294967295 is the max value for an int
+	chunk := int((float32(concurrency) / float32(networkSize)) * 4294967295) //nolint:gomnd
 	// wait 1 second per chunk distance. So, if we land in exactly the same
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
 	// bidding. If we're very far away, wait a very long time.
-	delay := (distance / chunk) * 1000
+	delay := (distance / chunk) * 1000 //nolint:gomnd
 	log.Trace().Msgf(
 		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
 		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
