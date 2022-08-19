@@ -33,7 +33,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	sync.SetGlobalOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
 		Enabled:   true,
