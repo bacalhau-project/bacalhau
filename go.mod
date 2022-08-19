@@ -51,6 +51,8 @@ require (
 	mvdan.cc/sh/v3 v3.5.1
 )
 
+require github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994 // indirect
+
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
