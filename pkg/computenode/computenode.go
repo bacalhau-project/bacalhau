@@ -158,20 +158,15 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	log.Debug().Msgf("starting controlLoopBidOnJobs, acq lock")
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
-	log.Debug().Msgf("lock acquired!")
-	log.Debug().Msgf("getNextItems")
 	bidJobIds := node.capacityManager.GetNextItems()
-	log.Debug().Msgf("--> getNextItems")
 
 	log.Debug().Msgf("len(bidJobIds)=%d", len(bidJobIds))
 	for _, flatID := range bidJobIds {
-		log.Debug().Msgf("explode")
 		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
-		log.Debug().Msgf("getlocal")
 		jobLocalEvents, err := node.controller.GetJobLocalEvents(context.Background(), jobID)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
@@ -193,20 +188,17 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			continue
 		}
 
-		log.Debug().Msgf("getjobstate")
 		jobState, err := node.controller.GetJobState(context.Background(), jobID)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
-		log.Debug().Msgf("getjob")
 		job, err := node.controller.GetJob(context.Background(), jobID)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
 
-		log.Debug().Msgf("hasshardreached")
 		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
 		if hasShardReachedCapacity {
 			log.Info().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
@@ -214,19 +206,15 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			continue
 		}
 
-		log.Debug().Msgf("bidonjob")
 		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
-		log.Debug().Msgf("--> bidonjob")
 		// we did not get an error from the transport
 		// so let's assume that our bid is out there
 		// now we reserve space on this node for this job
-		log.Debug().Msgf("movetoactive")
 		err = node.capacityManager.MoveToActive(flatID)
-		log.Debug().Msgf("--> movetoactive")
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
@@ -272,6 +260,25 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		"client_id": job.ClientID,
 	}).Inc()
 
+	// Decide whether we should even consider bidding on the job, early exit if
+	// we're not in the active set for this job, given the hash distances.
+	// (This is an optimization to avoid all nodes bidding on a job in large networks).
+
+	// TODO XXX: don't hardcode networkSize, calculate this dynamically from libp2p instead somehow.
+	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay(250, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency)
+
+	// if delay is too high, just exit immediately.
+	if jobNodeDistanceDelayMs > 1000 {
+		// drop the job on the floor, :-O
+		return
+	}
+	if jobNodeDistanceDelayMs > 0 {
+		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobEvent.JobID)
+	}
+
+	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
+
+	log.Debug().Msgf("calling node.SelectJob")
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
 		NodeID:        node.id,
@@ -283,28 +290,21 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		log.Error().Msgf("Error checking job policy: %v", err)
 		return
 	}
-	log.Debug().Msgf("--> finished node.SelectJob")
 
 	if selected {
-		log.Debug().Msgf("calling node.controller.SelectJob")
 		err = node.controller.SelectJob(ctx, jobEvent.JobID)
 		if err != nil {
 			log.Error().Msgf("Error selecting job on host %s: %v", node.id, err)
 			return
 		}
-		log.Debug().Msgf("--> finished node.controller.SelectJob")
 
 		// now explode the job into shards and add each shard to the backlog
-		log.Debug().Msgf("calling node.capacityManager.AddShardsToBacklog")
 		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
 		if err != nil {
 			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
-		log.Debug().Msgf("--> finished node.capacityManager.AddShardsToBacklog")
-		log.Debug().Msgf("calling node.controlLoopBidOnJobs()")
 		node.controlLoopBidOnJobs("job created & selected")
-		log.Debug().Msgf("--> finished node.controlLoopBidOnJobs()")
 	}
 }
 
@@ -347,7 +347,10 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
 	// bidding. If we're very far away, wait a very long time.
 	delay := (distance / chunk) * 1000
-	log.Trace().Msgf("node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d", nodeID, jobID, nodeHash, jobHash, distance, chunk, delay)
+	log.Trace().Msgf(
+		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
+		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
+	)
 	return delay
 }
 
