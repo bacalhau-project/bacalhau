@@ -3,7 +3,7 @@ package capacitymanager
 import (
 	"time"
 
-	sync "github.com/RobinUS2/golang-mutex-tracer"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
 type ItemMap struct {

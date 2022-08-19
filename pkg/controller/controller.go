@@ -7,7 +7,7 @@ import (
 
 	realsync "sync"
 
-	sync "github.com/RobinUS2/golang-mutex-tracer"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	sync "github.com/RobinUS2/golang-mutex-tracer"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/transport"

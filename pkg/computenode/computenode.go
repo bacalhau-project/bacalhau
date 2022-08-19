@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	sync "github.com/RobinUS2/golang-mutex-tracer"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
