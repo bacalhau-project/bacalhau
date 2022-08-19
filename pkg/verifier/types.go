@@ -5,8 +5,8 @@ import (
 )
 
 type VerifierResult struct {
-	HostID     string
 	JobID      string
+	NodeID     string
 	ShardIndex int
 	Verified   bool
 	Error      error

@@ -243,7 +243,11 @@ func (ctrl *Controller) RejectJobBid(
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) AcceptResults(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) AcceptResults(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("AcceptResults: jobID cannot be empty")
 	}
@@ -254,12 +258,17 @@ func (ctrl *Controller) AcceptResults(ctx context.Context, jobID, nodeID string)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_AcceptResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsAccepted)
 	// the target node is the "nodeID" because the requester node calls this
-	// function and so knows which node it is rejecting the bid for
+	// function and so knows which node it is accepting the results for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string) error {
+func (ctrl *Controller) RejectResults(
+	ctx context.Context,
+	jobID, nodeID string,
+	shardIndex int,
+) error {
 	if jobID == "" {
 		return fmt.Errorf("RejectResults: jobID cannot be empty")
 	}
@@ -270,8 +279,9 @@ func (ctrl *Controller) RejectResults(ctx context.Context, jobID, nodeID string)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectResults")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsRejected)
 	// the target node is the "nodeID" because the requester node calls this
-	// function and so knows which node it is rejecting the bid for
+	// function and so knows which node it is rejecting the results for
 	ev.TargetNodeID = nodeID
+	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -312,7 +322,7 @@ func (ctrl *Controller) CancelJobBid(ctx context.Context, jobID string) error {
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
-func (ctrl *Controller) CompleteShard(
+func (ctrl *Controller) ShardExecutionFinished(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -320,8 +330,8 @@ func (ctrl *Controller) CompleteShard(
 	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_CompleteShard")
-	ev := ctrl.constructEvent(jobID, executor.JobEventShardCompleted)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardExecutionFinished")
+	ev := ctrl.constructEvent(jobID, executor.JobEventResultsProposed)
 	ev.Status = status
 	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex
@@ -329,7 +339,7 @@ func (ctrl *Controller) CompleteShard(
 }
 
 // can only be called by a compute node who is current assigned to the job
-func (ctrl *Controller) ErrorShard(
+func (ctrl *Controller) ShardError(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -337,8 +347,8 @@ func (ctrl *Controller) ErrorShard(
 	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
-	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ErrorShard")
-	ev := ctrl.constructEvent(jobID, executor.JobEventShardError)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardError")
+	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
 	ev.ResultsProposal = proposal
 	ev.ShardIndex = shardIndex

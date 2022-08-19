@@ -71,11 +71,11 @@ const (
 	// this is like a heartbeat for running jobs
 	JobEventRunning
 
-	// a compute node completed running a job
-	JobEventShardCompleted
-
 	// a compute node had an error running a job
-	JobEventShardError
+	JobEventError
+
+	// a compute node completed running a job
+	JobEventResultsProposed
 
 	// a requestor node accepted the results from a node for a job
 	JobEventResultsAccepted
@@ -83,13 +83,17 @@ const (
 	// a requestor node rejected the results from a node for a job
 	JobEventResultsRejected
 
+	// once the results have been accepted or rejected
+	// the compute node will publish them and issue this event
+	JobEventResultsPublished
+
 	jobEventDone // must be last
 )
 
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
 func (event JobEventType) IsTerminal() bool {
-	return event == JobEventShardError || event == JobEventShardCompleted
+	return event == JobEventError || event == JobEventResultsPublished
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
@@ -161,12 +165,11 @@ const (
 	// the job had an error - this is an end state
 	JobStateError
 
-	// the requestor node is verifying the results
-	// we got back from the compute node
-	JobStateShardComplete
+	// the compute node has finished execution and has communicated the ResultsProposal
+	JobStateVerifying
 
-	// our results have been processed
-	JobStateFinalized
+	// our results have been processed and published
+	JobStatePublished
 
 	jobStateDone // must be last
 )
@@ -175,7 +178,7 @@ const (
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
-	return state == JobStateShardComplete || state == JobStateError || state == JobStateCancelled
+	return state == JobStatePublished || state == JobStateError || state == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -184,7 +187,7 @@ func (state JobStateType) IsTerminal() bool {
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (state JobStateType) IsComplete() bool {
-	return state == JobStateShardComplete || state == JobStateError
+	return state == JobStatePublished || state == JobStateError
 }
 
 func (state JobStateType) IsError() bool {
@@ -245,20 +248,23 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 	case JobEventRunning:
 		return JobStateRunning
 
-	// we are complete
-	case JobEventShardCompleted:
-		return JobStateShardComplete
+	// yikes
+	case JobEventError:
+		return JobStateError
 
 	// we are complete
-	case JobEventShardError:
-		return JobStateError
+	case JobEventResultsProposed:
+		return JobStateVerifying
 
 	// both of these are "finalized"
 	case JobEventResultsAccepted:
-		return JobStateFinalized
+		return JobStateVerifying
 
 	case JobEventResultsRejected:
-		return JobStateFinalized
+		return JobStateVerifying
+
+	case JobEventResultsPublished:
+		return JobStatePublished
 
 	default:
 		return jobStateUnknown

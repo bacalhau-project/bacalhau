@@ -73,10 +73,10 @@ func (node *RequesterNode) subscriptionSetup() {
 		switch jobEvent.EventName {
 		case executor.JobEventBid:
 			node.subscriptionEventBid(ctx, job, jobEvent)
-		case executor.JobEventShardCompleted:
-			node.subscriptionEventShardProcessResults(ctx, job, jobEvent)
-		case executor.JobEventShardError:
-			node.subscriptionEventShardProcessResults(ctx, job, jobEvent)
+		case executor.JobEventResultsProposed:
+			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
+		case executor.JobEventError:
+			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
 		}
 	})
 }
@@ -157,16 +157,16 @@ func (node *RequesterNode) subscriptionEventBid(
 // verifying the results - each verifier might have a different
 // answer for IsExecutionComplete so we pass off to it to decide
 // we mark the job as "verifying" to prevent duplicate verification
-func (node *RequesterNode) subscriptionEventShardProcessResults(
+func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 	ctx context.Context,
 	job executor.Job,
 	jobEvent executor.JobEvent,
 ) {
 	node.verifyMutex.Lock()
 	defer node.verifyMutex.Unlock()
-	err := node.subscriptionEventShardProcessResultsHandler(ctx, job, jobEvent)
+	err := node.shardExecutionComplete(ctx, job, jobEvent)
 	if err != nil {
-		err = node.controller.ErrorShard(
+		err = node.controller.ShardError(
 			ctx,
 			job.ID,
 			jobEvent.ShardIndex,
@@ -179,19 +179,12 @@ func (node *RequesterNode) subscriptionEventShardProcessResults(
 	}
 }
 
-func (node *RequesterNode) subscriptionEventShardProcessResultsHandler(
+func (node *RequesterNode) shardExecutionComplete(
 	ctx context.Context,
 	job executor.Job,
 	jobEvent executor.JobEvent,
 ) error {
-	// first check that we have not already verified this job
-	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(executor.JobLocalEventVerified))
-	if err != nil {
-		return err
-	}
-	if hasVerified {
-		return nil
-	}
+	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
 		return err
@@ -204,10 +197,35 @@ func (node *RequesterNode) subscriptionEventShardProcessResultsHandler(
 	if !isExecutionComplete {
 		return nil
 	}
+	// check that we have not already verified this job
+	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(executor.JobLocalEventVerified))
+	if err != nil {
+		return err
+	}
+	if hasVerified {
+		return nil
+	}
 	verificationResults, err := verifier.VerifyJob(ctx, job.ID)
 	if err != nil {
 		return err
 	}
+	// loop over each verification result and publish events
+	for _, verificationResult := range verificationResults {
+		if verificationResult.Verified {
+			log.Debug().Msgf("Requester node %s accepting results: job=%s node=%s shard=%d", node.id, verificationResult.JobID, verificationResult.NodeID, jobEvent.ShardIndex)
+			err := node.controller.AcceptResults(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
+			}
+		} else {
+			log.Debug().Msgf("Requester node %s rejecting results: job=%s node=%s shard=%d", node.id, verificationResult.JobID, verificationResult.NodeID, jobEvent.ShardIndex)
+			err := node.controller.RejectResults(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
+			}
+		}
+	}
+	return nil
 }
 
 //nolint:dupl // methods are not duplicates
