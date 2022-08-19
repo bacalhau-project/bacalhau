@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -186,6 +187,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		seenJobs := []SeenJobRecord{}
 		var seenJobsMutex sync.Mutex
+		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
+			Threshold: 10 * time.Millisecond,
+			Id:        "TestTotalResourceLimits.seenJobsMutex",
+		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()

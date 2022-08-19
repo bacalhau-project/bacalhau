@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -364,6 +366,21 @@ func NewDevStack(
 		nodes = append(nodes, devStackNode)
 	}
 
+	// only start profiling after we've set everything up!
+	// do a GC before we start profiling
+	runtime.GC()
+
+	log.Info().Msg("============= STARTING PROFILING ============")
+	// devstack always records a cpu profile, it will be generally useful.
+	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
+	f, err := os.Create(cpuprofile)
+	if err != nil {
+		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
+	}
+
 	return &DevStack{
 		Nodes: nodes,
 	}, nil
@@ -434,7 +451,7 @@ export BACALHAU_API_PORT=%s`,
 		devStackAPIHost,
 		devStackAPIPort,
 	)
-	log.Info().Msg(logString)
+	log.Debug().Msg(logString)
 }
 
 func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {

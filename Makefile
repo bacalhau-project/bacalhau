@@ -171,6 +171,10 @@ devstack:
 devstack-100:
 	go run . devstack --nodes 100
 
+.PHONY: devstack-250
+devstack-250:
+	go run . devstack --nodes 250
+
 .PHONY: devstack-20
 devstack-20:
 	go run . devstack --nodes 20

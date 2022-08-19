@@ -2,7 +2,9 @@ package requesternode
 
 import (
 	"context"
-	"sync"
+	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -47,6 +49,10 @@ func NewRequesterNode(
 		controller: c,
 		verifiers:  verifiers,
 	}
+	requesterNode.bidMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "RequesterNode.bidMutex",
+	})
 
 	requesterNode.subscriptionSetup()
 

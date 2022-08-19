@@ -1,8 +1,14 @@
 package system
 
 import (
-	"sync"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"time"
+
+	realsync "sync"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/rs/zerolog/log"
 )
@@ -13,7 +19,7 @@ const SleepBeforeCleanup = time.Millisecond * 100
 // clean up their resources before the main goroutine exits. Can be used to
 // register callbacks for long-running system processes.
 type CleanupManager struct {
-	wg sync.WaitGroup
+	wg realsync.WaitGroup
 
 	fnsMutex sync.Mutex
 	fns      []func() error
@@ -22,7 +28,12 @@ type CleanupManager struct {
 
 // NewCleanupManager returns a new CleanupManager instance.
 func NewCleanupManager() *CleanupManager {
-	return &CleanupManager{}
+	c := &CleanupManager{}
+	c.fnsMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "CleanupManager.fnsMutex",
+	})
+	return c
 }
 
 // RegisterCallback registers a clean-up function.
@@ -46,6 +57,21 @@ func (cm *CleanupManager) Cleanup() {
 	// that there are RegisterCallback calls happening
 	// after we have been called
 	time.Sleep(SleepBeforeCleanup)
+
+	// stop profiling now, just before we clean up, if we're profiling.
+	log.Info().Msg("============= STOPPING PROFILING ============")
+	pprof.StopCPUProfile()
+	memprofile := "/tmp/bacalhau-devstack-mem.prof"
+	f, err := os.Create(memprofile)
+	if err != nil {
+		log.Fatal().Msgf("could not create memory profile: %s", err)
+	}
+	defer f.Close() // error handling omitted for example
+	runtime.GC()    // get up-to-date statistics
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		f.Close()
+		log.Fatal().Msgf("could not write memory profile: %s", err) //nolint:gocritic
+	}
 
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()

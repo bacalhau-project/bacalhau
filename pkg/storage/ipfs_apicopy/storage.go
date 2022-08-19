@@ -50,12 +50,8 @@ func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 	ctx, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 
-	addresses, err := dockerIPFS.IPFSClient.SwarmAddresses(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return len(addresses) > 0, nil
+	_, err := dockerIPFS.IPFSClient.ID(ctx)
+	return err == nil, err
 }
 
 func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {

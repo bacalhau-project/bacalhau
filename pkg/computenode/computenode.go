@@ -3,13 +3,16 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"strconv"
-	"sync"
 	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,7 +23,8 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalSeconds = 10
+const ControlLoopIntervalMinutes = 10
+const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -39,12 +43,14 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig
 
-	controller      *controller.Controller
-	executors       map[executor.EngineType]executor.Executor
-	verifiers       map[verifier.VerifierType]verifier.Verifier
-	capacityManager *capacitymanager.CapacityManager
-	componentMu     sync.Mutex
-	bidMu           sync.Mutex
+	controller              *controller.Controller
+	executors               map[executor.EngineType]executor.Executor
+	executorsInstalledCache map[executor.EngineType]bool
+	verifiers               map[verifier.VerifierType]verifier.Verifier
+	verifiersInstalledCache map[verifier.VerifierType]bool
+	capacityManager         *capacitymanager.CapacityManager
+	componentMu             sync.RWMutex
+	bidMu                   sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -91,13 +97,24 @@ func constructComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		id:              nodeID,
-		config:          config,
-		controller:      c,
-		executors:       executors,
-		verifiers:       verifiers,
-		capacityManager: capacityManager,
+		id:                      nodeID,
+		config:                  config,
+		controller:              c,
+		executors:               executors,
+		executorsInstalledCache: map[executor.EngineType]bool{},
+		verifiers:               verifiers,
+		verifiersInstalledCache: map[verifier.VerifierType]bool{},
+		capacityManager:         capacityManager,
 	}
+
+	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "ComputeNode.componentMu",
+	})
+	computeNode.bidMu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "ComputeNode.bidMu",
+	})
 
 	return computeNode, nil
 }
@@ -112,7 +129,8 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	// this won't hurt our throughput becauase we are calling
 	// controlLoopBidOnJobs right away as soon as a created event is
 	// seen or a job has finished
-	ticker := time.NewTicker(time.Second * ControlLoopIntervalSeconds)
+
+	ticker := time.NewTicker(time.Minute * ControlLoopIntervalMinutes)
 	ctx, cancelFunction := context.WithCancel(context.Background())
 
 	cm.RegisterCallback(func() error {
@@ -123,7 +141,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	for {
 		select {
 		case <-ticker.C:
-			node.controlLoopBidOnJobs()
+			node.controlLoopBidOnJobs("tick")
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -138,11 +156,13 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - if there is enough in the remaining then bid
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
-func (node *ComputeNode) controlLoopBidOnJobs() {
+func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
+	log.Debug().Msgf("[%s] starting controlLoopBidOnJobs because %s, acq lock", node.id[:8], debug)
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 
+	log.Debug().Msgf("len(bidJobIds)=%d", len(bidJobIds))
 	for _, flatID := range bidJobIds {
 		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
@@ -170,11 +190,24 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 			continue
 		}
 
+		jobState, err := node.controller.GetJobState(context.Background(), jobID)
+		if err != nil {
+			node.capacityManager.Remove(flatID)
+			continue
+		}
 		job, err := node.controller.GetJob(context.Background(), jobID)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
 			continue
 		}
+
+		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
+		if hasShardReachedCapacity {
+			log.Debug().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
+			node.capacityManager.Remove(flatID)
+			continue
+		}
+
 		err = node.BidOnJob(context.Background(), job, shardIndex)
 		if err != nil {
 			node.capacityManager.Remove(flatID)
@@ -229,6 +262,27 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		"client_id": job.ClientID,
 	}).Inc()
 
+	// Decide whether we should even consider bidding on the job, early exit if
+	// we're not in the active set for this job, given the hash distances.
+	// (This is an optimization to avoid all nodes bidding on a job in large networks).
+
+	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
+	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
+	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd
+		1, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
+	)
+
+	// if delay is too high, just exit immediately.
+	if jobNodeDistanceDelayMs > 1000 { //nolint:gomnd
+		// drop the job on the floor, :-O
+		return
+	}
+	if jobNodeDistanceDelayMs > 0 {
+		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
+	}
+
+	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
+
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
 		NodeID:        node.id,
@@ -254,8 +308,54 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("job created & selected")
 	}
+}
+
+func hash(s string) int {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return int(h.Sum32())
+}
+
+func diff(a, b int) int {
+	if a < b {
+		return b - a
+	}
+	return a - b
+}
+
+func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concurrency int) int {
+	// Calculate how long to wait to bid on the job by using a circular hashing
+	// style approach: Invent a metric for distance between node ID and job ID.
+	// If the node and job ID happen to be close to eachother, such that we'd
+	// expect that we are one of the N nodes "closest" to the job, bid
+	// instantly. Beyond that, back off an amount "stepped" proportional to how
+	// far we are from the job. This should evenly spread the work across the
+	// network, and have the property of on average only concurrency many nodes
+	// bidding on the job, and other nodes not bothering to bid because they
+	// will already have seen bid/bidaccepted messages from the close nodes.
+	// This will decrease overall network traffic, improving CPU and memory
+	// usage in large clusters.
+	nodeHash := hash(nodeID)
+	jobHash := hash(jobID)
+	// Range: 0 through 4,294,967,295. (4 billion)
+	distance := diff(nodeHash, jobHash)
+	// scale distance per chunk by concurrency (so that many nodes bid on a job
+	// with high concurrency). IOW, divide the space up into this many pieces.
+	// If concurrency=3 and network size=3, there'll only be one piece and
+	// everyone will bid. If concurrency=1 and network size=1 million, there
+	// will be a million slices of the hash space.
+	chunk := int((float32(concurrency) / float32(networkSize)) * 4294967295) //nolint:gomnd
+	// wait 1 second per chunk distance. So, if we land in exactly the same
+	// chunk, bid immediately. If we're one chunk away, wait a bit before
+	// bidding. If we're very far away, wait a very long time.
+	delay := (distance / chunk) * 1000 //nolint:gomnd
+	log.Trace().Msgf(
+		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
+		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
+	)
+	return delay
 }
 
 /*
@@ -284,7 +384,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 	// bid on another shard or if we've finished the job
 	defer func() {
 		node.capacityManager.Remove(capacitymanager.FlattenShardID(job.ID, jobEvent.ShardIndex))
-		node.controlLoopBidOnJobs()
+		node.controlLoopBidOnJobs("defer in bidAccepted")
 	}()
 
 	results, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
@@ -325,7 +425,7 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 		return
 	}
 	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
-	node.controlLoopBidOnJobs()
+	node.controlLoopBidOnJobs("bid rejected")
 }
 
 /*
@@ -458,15 +558,27 @@ func (node *ComputeNode) RunShard(
 
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineType) (executor.Executor, error) {
-	node.componentMu.Lock()
-	defer node.componentMu.Unlock()
-
-	if _, ok := node.executors[typ]; !ok {
+	e := func() *executor.Executor {
+		node.componentMu.RLock()
+		defer node.componentMu.RUnlock()
+		if _, ok := node.executors[typ]; !ok {
+			return nil
+		}
+		ee := node.executors[typ]
+		return &ee
+	}()
+	if e == nil {
 		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String())
+			"no matching executor found on this server: %s", typ.String(),
+		)
+	}
+	executorEngine := *e
+
+	// cache it being installed so we're not hammering it
+	if node.executorsInstalledCache[typ] {
+		return executorEngine, nil
 	}
 
-	executorEngine := node.executors[typ]
 	installed, err := executorEngine.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
@@ -475,21 +587,35 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 		return nil, fmt.Errorf("executor is not installed: %s", typ.String())
 	}
 
+	node.executorsInstalledCache[typ] = true
+
 	return executorEngine, nil
 }
 
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
-	node.componentMu.Lock()
-	defer node.componentMu.Unlock()
+	v := func() *verifier.Verifier {
+		node.componentMu.Lock()
+		defer node.componentMu.Unlock()
+		if _, ok := node.verifiers[typ]; !ok {
+			return nil
+		}
+		vv := node.verifiers[typ]
+		return &vv
+	}()
 
-	if _, ok := node.verifiers[typ]; !ok {
+	if v == nil {
 		return nil, fmt.Errorf(
 			"no matching verifier found on this server: %s", typ.String())
 	}
+	verifier := *v
 
-	v := node.verifiers[typ]
-	installed, err := v.IsInstalled(ctx)
+	// cache it being installed so we're not hammering it
+	if node.verifiersInstalledCache[typ] {
+		return verifier, nil
+	}
+
+	installed, err := verifier.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +623,9 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
 	}
 
-	return v, nil
+	node.verifiersInstalledCache[typ] = true
+
+	return verifier, nil
 }
 
 func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {

@@ -1,7 +1,9 @@
 package capacitymanager
 
 import (
-	"sync"
+	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
 type ItemList struct {
@@ -10,9 +12,14 @@ type ItemList struct {
 }
 
 func NewItemList() *ItemList {
-	return &ItemList{
+	i := &ItemList{
 		items: []CapacityManagerItem{},
 	}
+	i.mu.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "ItemList.mu",
+	})
+	return i
 }
 
 func (l *ItemList) Add(item CapacityManagerItem) {
