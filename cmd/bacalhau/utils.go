@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -23,14 +26,16 @@ const (
 	YAMLFormat string = "yaml"
 )
 
-var listOutputFormat string
-var tableOutputWide bool
-var tableHideHeader bool
-var tableMaxJobs int
-var tableSortBy ColumnEnum
-var tableSortReverse bool
-var tableIDFilter string
-var tableNoStyle bool
+var (
+	listOutputFormat string
+	tableOutputWide  bool
+	tableHideHeader  bool
+	tableMaxJobs     int
+	tableSortBy      ColumnEnum
+	tableSortReverse bool
+	tableIDFilter    string
+	tableNoStyle     bool
+)
 
 func shortenTime(t time.Time) string { //nolint:unused // Useful function, holding here
 	if tableOutputWide {
@@ -111,7 +116,8 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 }
 
 func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (
-	c *cobra.Command, output string, err error) { //nolint:unparam // use of t is valuable here
+	c *cobra.Command, output string, err error,
+) { //nolint:unparam // use of t is valuable here
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(buf)
@@ -192,4 +198,67 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
 		settings.OutputDir, "Directory to write the output to.")
 	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+}
+
+func ExecuteJob(ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	jobSpec *executor.JobSpec,
+	jobDeal *executor.JobDeal,
+	isLocal bool,
+	waitForJobToFinish bool,
+	dockerRunDownloadFlags ipfs.DownloadSettings,
+) error {
+	var apiClient *publicapi.APIClient
+	if isLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobSpec.Resources.GPU)
+		if errLocalDevStack != nil {
+			return errLocalDevStack
+		}
+		apiURI := stack.Nodes[0].APIServer.GetURI()
+		apiClient = publicapi.NewAPIClient(apiURI)
+	} else {
+		apiClient = getAPIClient()
+	}
+
+	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("%s\n", j.ID)
+	if waitForJobToFinish {
+		resolver := apiClient.GetJobStateResolver()
+		resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+		err = resolver.WaitUntilComplete(ctx, j.ID)
+		if err != nil {
+			return err
+		}
+
+		if ODR.WaitForJobToFinishAndPrintOutput {
+			results, err := apiClient.GetResults(ctx, j.ID)
+			if err != nil {
+				return err
+			}
+			if len(results) == 0 {
+				return fmt.Errorf("no results found")
+			}
+			err = ipfs.DownloadJob(
+				cm,
+				j,
+				results,
+				dockerRunDownloadFlags,
+			)
+			if err != nil {
+				return err
+			}
+			body, err := os.ReadFile(filepath.Join(dockerRunDownloadFlags.OutputDir, "stdout"))
+			if err != nil {
+				return err
+			}
+			cmd.Println()
+			cmd.Println(string(body))
+		}
+	}
+	return nil
 }

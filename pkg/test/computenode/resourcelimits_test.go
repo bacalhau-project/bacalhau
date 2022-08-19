@@ -242,7 +242,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
-			spec, deal, err := job.ConstructDockerJob(
+			jobSpec, jobDeal, err := job.ConstructDockerJob(
 				executor.EngineNoop,
 				verifier.VerifierNoop,
 				jobResources.CPU,
@@ -261,14 +261,17 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				1,
 				[]string{},
 				"",
+				"", // sharding base path
+				"", // sharding glob pattern
+				1,  // sharding batch size
 				true,
 			)
 
 			require.NoError(suite.T(), err)
 			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
 				ClientID: "123",
-				Spec:     spec,
-				Deal:     deal,
+				Spec:     *jobSpec,
+				Deal:     *jobDeal,
 			})
 			require.NoError(suite.T(), err)
 

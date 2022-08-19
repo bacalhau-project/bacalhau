@@ -2,22 +2,14 @@ package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
-	"gopkg.in/yaml.v2"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -26,8 +18,10 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-const CompleteStatus = "Complete"
-const DefaultDockerRunWaitSeconds = 600
+const (
+	CompleteStatus              = "Complete"
+	DefaultDockerRunWaitSeconds = 600
+)
 
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
@@ -258,45 +252,15 @@ var dockerRunCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := context.Background()
+
 		ODR.Image = cmdArgs[0]
 		ODR.Entrypoint = cmdArgs[1:]
 
-		if filename != "" {
-			fileextension := filepath.Ext(filename)
-			fileContent, err := os.Open(filename)
-
-			if err != nil {
-				return err
-			}
-
-			defer fileContent.Close()
-			byteResult, err := io.ReadAll(fileContent)
-
-			if err != nil {
-				return err
-			}
-
-			if fileextension == ".json" {
-				err = json.Unmarshal(byteResult, &jobspec)
-				if err != nil {
-					return err
-				}
-			}
-
-			if fileextension == ".yaml" || fileextension == ".yml" {
-				err = yaml.Unmarshal(byteResult, &jobspec)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
 		ODR.DockerRunDownloadFlags = ipfs.DownloadSettings{
-			TimeoutSecs:    10,
-			OutputDir:      ".",
+			TimeoutSecs:    ODR.DockerRunDownloadFlags.TimeoutSecs,
+			OutputDir:      ODR.DockerRunDownloadFlags.OutputDir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
-
 
 		if ODR.WaitForJobToFinishAndPrintOutput {
 			ODR.WaitForJobToFinish = true
@@ -324,7 +288,7 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		spec, deal, err := jobutils.ConstructDockerJob(
+		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
 			engineType,
 			verifierType,
 			ODR.CPU,
@@ -339,14 +303,16 @@ var dockerRunCmd = &cobra.Command{
 			ODR.Concurrency,
 			ODR.Labels,
 			ODR.WorkingDir,
+			ODR.ShardingGlobPattern,
+			ODR.ShardingBasePath,
+			ODR.ShardingBatchSize,
 			doNotTrack,
 		)
-
 		if err != nil {
 			return err
 		}
 
-		spec.Sharding = executor.JobShardingConfig{
+		jobSpec.Sharding = executor.JobShardingConfig{
 			GlobPattern: ODR.ShardingGlobPattern,
 			BasePath:    ODR.ShardingBasePath,
 			BatchSize:   ODR.ShardingBatchSize,
@@ -359,57 +325,14 @@ var dockerRunCmd = &cobra.Command{
 			}
 		}
 
-		var apiClient *publicapi.APIClient
-		if ODR.IsLocal {
-			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, ODR.GPU)
-			if errLocalDevStack != nil {
-				return errLocalDevStack
-			}
-			apiURI := stack.Nodes[0].APIServer.GetURI()
-			apiClient = publicapi.NewAPIClient(apiURI)
-		} else {
-			apiClient = getAPIClient()
-		}
-
-		job, err := apiClient.Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("%s\n", job.ID)
-		if ODR.WaitForJobToFinish {
-			resolver := apiClient.GetJobStateResolver()
-			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
-			err = resolver.WaitUntilComplete(ctx, job.ID)
-			if err != nil {
-				return err
-			}
-
-			if ODR.WaitForJobToFinishAndPrintOutput {
-				results, err := apiClient.GetResults(ctx, job.ID)
-				if err != nil {
-					return err
-				}
-				if len(results) == 0 {
-					return fmt.Errorf("no results found")
-				}
-				err = ipfs.DownloadJob(
-					cm,
-					job,
-					results,
-					ODR.DockerRunDownloadFlags,
-				)
-				if err != nil {
-					return err
-				}
-				body, err := os.ReadFile(filepath.Join(ODR.DockerRunDownloadFlags.OutputDir, "stdout"))
-				if err != nil {
-					return err
-				}
-				cmd.Println()
-				cmd.Println(string(body))
-			}
-		}
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.WaitForJobToFinish,
+			ODR.WaitForJobToFinish,
+			ODR.DockerRunDownloadFlags)
 
 		return nil
 	},
