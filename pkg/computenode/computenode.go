@@ -266,8 +266,11 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	// we're not in the active set for this job, given the hash distances.
 	// (This is an optimization to avoid all nodes bidding on a job in large networks).
 
-	// TODO XXX: don't hardcode networkSize, calculate this dynamically from libp2p instead somehow.
-	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay(250, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency)
+	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
+	// libp2p instead somehow.
+	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay(
+		3, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
+	)
 
 	// if delay is too high, just exit immediately.
 	if jobNodeDistanceDelayMs > 1000 {
