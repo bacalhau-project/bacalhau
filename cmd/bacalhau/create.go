@@ -3,11 +3,13 @@ package bacalhau
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -24,54 +26,60 @@ var (
 	//nolint:lll // Documentation
 	createExample = templates.Examples(i18n.T(`
 		# Create a job using the data in job.json
-		bacalhau create -f ./job.json
+		bacalhau create ./job.json
 
 		# Create a job based on the JSON passed into stdin
-		cat job.json | job create -f -`))
+		cat job.json | job create -`))
 
 	// Set Defaults (probably a better way to do this)
-	OC = NewDockerRunOptions()
+	OC = NewCreateOptions()
 
 	// For the -f flag
-	filename = ""
 )
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type CreateOptions struct {
-	Filename        string   // Filename for job (can be .json or .yaml)
-	Concurrency   	int      // Number of concurrent jobs to run
+	Filename    string // Filename for job (can be .json or .yaml)
+	Concurrency int    // Number of concurrent jobs to run
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
-		Filename:			"",
-		Concurrency: el        1,
+		Filename:    "",
+		Concurrency: 1,
 	}
 }
 
-
 func init() { //nolint:gochecknoinits
-	createCmd.PersistentFlags().StringVarP(
-		&filename, "filename", "f", "",
-		`Path to the job file`,
+	createCmd.PersistentFlags().IntVarP(
+		&OC.Concurrency, "concurrency", "c", OC.Concurrency,
+		`How many nodes should run the job`,
 	)
 }
 
 var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a job using a json or yaml file.",
-	Long:  "Create a job using a json or yaml file.",
-	Args:  cobra.MinimumNArgs(0),
+	Use:     "create",
+	Short:   "Create a job using a json or yaml file.",
+	Long:    createLong,
+	Example: createExample,
+	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
 		ctx := context.Background()
-		fileextension := filepath.Ext(filename)
-		fileContent, err := os.Open(filename)
+
+		if len(cmdArgs) == 0 {
+			_ = cmd.Usage()
+			return fmt.Errorf("no filename specified")
+		}
+		OC.Filename = cmdArgs[0]
+
+		fileextension := filepath.Ext(OC.Filename)
+		fileContent, err := os.Open(OC.Filename)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("could not open file '%s': %s", OC.Filename, err)
 		}
-
-		defer fileContent.Close()
 
 		byteResult, err := io.ReadAll(fileContent)
 
@@ -84,21 +92,34 @@ var createCmd = &cobra.Command{
 		if fileextension == ".json" {
 			err = json.Unmarshal(byteResult, &jobSpec)
 			if err != nil {
-				return err
+				return fmt.Errorf("error reading json file '%s': %s", OC.Filename, err)
 			}
 		} else if fileextension == ".yaml" || fileextension == ".yml" {
 			err = yaml.Unmarshal(byteResult, &jobSpec)
 			if err != nil {
-				return err
+				return fmt.Errorf("error reading yaml file '%s': %s", OC.Filename, err)
 			}
+		} else {
+			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
 		}
 
-		job, err := getAPIClient().Submit(ctx, jobSpec, deal, nil)
+		jobDeal := &executor.JobDeal{
+			Concurrency: OC.Concurrency,
+		}
+
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.IsLocal,
+			ODR.WaitForJobToFinish,
+			ODR.DockerRunDownloadFlags)
+
 		if err != nil {
-			return err
+			return fmt.Errorf("error executing job: %s", err)
 		}
 
-		cmd.Printf("%s\n", job.ID)
 		return nil
 
 	},

@@ -110,11 +110,6 @@ func NewDockerRunOptions() *DockerRunOptions {
 func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
 
-	dockerRunCmd.PersistentFlags().StringVarP(
-		&filename, "filename", "f", "",
-		`Path to the job file. Any command line flags will override configurations in the file.`,
-	)
-
 	// TODO: don't make jobEngine specifiable in the docker subcommand
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.Engine, "engine", ODR.Engine,
@@ -321,7 +316,7 @@ var dockerRunCmd = &cobra.Command{
 		if !ODR.SkipSyntaxChecking {
 			err = system.CheckBashSyntax(ODR.Entrypoint)
 			if err != nil {
-				return err
+				return fmt.Errorf("error checking bash syntax: %s", err)
 			}
 		}
 
@@ -330,9 +325,12 @@ var dockerRunCmd = &cobra.Command{
 			cmd,
 			jobSpec,
 			jobDeal,
-			ODR.WaitForJobToFinish,
+			ODR.IsLocal,
 			ODR.WaitForJobToFinish,
 			ODR.DockerRunDownloadFlags)
+		if err != nil {
+			return fmt.Errorf("error executing job: %s", err)
+		}
 
 		return nil
 	},
