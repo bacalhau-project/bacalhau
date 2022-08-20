@@ -37,7 +37,6 @@ var (
 	// For the -f flag
 )
 
-// DockerRunOptions declares the arguments accepted by the `docker run` command
 type CreateOptions struct {
 	Filename    string // Filename for job (can be .json or .yaml)
 	Concurrency int    // Number of concurrent jobs to run
