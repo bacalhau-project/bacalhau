@@ -23,7 +23,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalSeconds = 10
+const ControlLoopIntervalMinutes = 10
 const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
@@ -47,7 +47,7 @@ type ComputeNode struct {
 	executors               map[executor.EngineType]executor.Executor
 	executorsInstalledCache map[executor.EngineType]bool
 	verifiers               map[verifier.VerifierType]verifier.Verifier
-	verifiersInstalledCache map[executor.VerifierType]bool
+	verifiersInstalledCache map[verifier.VerifierType]bool
 	capacityManager         *capacitymanager.CapacityManager
 	componentMu             sync.RWMutex
 	bidMu                   sync.Mutex
@@ -97,12 +97,14 @@ func constructComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		id:              nodeID,
-		config:          config,
-		controller:      c,
-		executors:       executors,
-		verifiers:       verifiers,
-		capacityManager: capacityManager,
+		id:                      nodeID,
+		config:                  config,
+		controller:              c,
+		executors:               executors,
+		executorsInstalledCache: map[executor.EngineType]bool{},
+		verifiers:               verifiers,
+		verifiersInstalledCache: map[verifier.VerifierType]bool{},
+		capacityManager:         capacityManager,
 	}
 
 	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
@@ -154,8 +156,8 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - if there is enough in the remaining then bid
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
-func (node *ComputeNode) controlLoopBidOnJobs() {
-	log.Debug().Msgf("starting controlLoopBidOnJobs, acq lock")
+func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
+	log.Debug().Msgf("[%s] starting controlLoopBidOnJobs because %s, acq lock", node.id[:8], debug)
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
@@ -201,7 +203,7 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 
 		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
 		if hasShardReachedCapacity {
-			log.Info().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
+			log.Debug().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
 			node.capacityManager.Remove(flatID)
 			continue
 		}
@@ -266,8 +268,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd
-		1, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
+	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
+		3, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
 	)
 
 	// if delay is too high, just exit immediately.
@@ -281,7 +283,6 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 
 	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
 
-	log.Debug().Msgf("calling node.SelectJob")
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
 		NodeID:        node.id,
@@ -358,9 +359,7 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 }
 
 /*
-
-  subscriptions -> bid accepted
-
+subscriptions -> bid accepted
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
 	var span trace.Span
@@ -570,7 +569,8 @@ func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineTyp
 	}()
 	if e == nil {
 		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String())
+			"no matching executor found on this server: %s", typ.String(),
+		)
 	}
 	executorEngine := *e
 
@@ -608,9 +608,14 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 		return nil, fmt.Errorf(
 			"no matching verifier found on this server: %s", typ.String())
 	}
+	verifier := *v
 
-	v := node.verifiers[typ]
-	installed, err := v.IsInstalled(ctx)
+	// cache it being installed so we're not hammering it
+	if node.verifiersInstalledCache[typ] {
+		return verifier, nil
+	}
+
+	installed, err := verifier.IsInstalled(ctx)
 	if err != nil {
 		return nil, err
 	}

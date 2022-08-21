@@ -17,7 +17,6 @@ import (
 type CreateSuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
-	originalDockerRunOptions *DockerRunOptions
 }
 
 func TestCreateSuite(t *testing.T) {
@@ -33,11 +32,6 @@ func (suite *CreateSuite) SetupSuite() {
 func (suite *CreateSuite) SetupTest() {
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
-	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
-	print("%+v", suite.originalDockerRunOptions)
-	if (suite.originalDockerRunOptions.Engine == ""){ 
-		*suite.originalDockerRunOptions = *ODR
-	}
 }
 
 func (suite *CreateSuite) TearDownTest() {

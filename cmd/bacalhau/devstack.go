@@ -25,10 +25,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var devStackNodes int
-var devStackBadActors int
-var devStackNoop bool
-var devStackPeer string
+var (
+	devStackLong = templates.LongDesc(i18n.T(`
+		Start a cluster of nodes and run a job on them.
+`))
+
+	//nolint:lll // Documentation
+	devstackExample = templates.Examples(i18n.T(`
+		# Create a devstack cluster.
+		bacalhau devstack
+`))
+
+	// Set Defaults (probably a better way to do this)
+	ODs = NewDevStackOptions()
+
+	// For the -f flag
+)
+
+type DevStackOptions struct {
+	NumberOfNodes     int    // Number of nodes to start in the cluster
+	NumberOfBadActors int    // Number of nodes to be bad actors
+	IsNoop            bool   // Noop executor and verifier for all jobs
+	Peer              string // Connect node 0 to another network node
+}
+
+func NewDevStackOptions() *DevStackOptions {
+	return &DevStackOptions{
+		NumberOfNodes:     3,
+		NumberOfBadActors: 0,
+		IsNoop:            false,
+		Peer:              "",
+	}
+}
 
 func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(

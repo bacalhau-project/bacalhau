@@ -233,5 +233,5 @@ func (suite *TransportSuite) TestTransportEvents() {
 	sort.Strings(expectedEventNames)
 	sort.Strings(actualEventNames)
 
-	require.True(suite.T(), reflect.DeepEqual(expectedEventNames, actualEventNames), "event list is correct")
+	require.True(suite.T(), reflect.DeepEqual(expectedEventNames, actualEventNames), "event list was not equal: %+v != %+v", expectedEventNames, actualEventNames)
 }

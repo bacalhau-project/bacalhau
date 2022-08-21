@@ -3,16 +3,11 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
@@ -308,74 +303,21 @@ var dockerRunCmd = &cobra.Command{
 			ODR.ShardingBatchSize,
 			doNotTrack,
 		)
+		if err != nil {
+			return fmt.Errorf("error executing job: %s", err)
+		}
+
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.IsLocal,
+			ODR.WaitForJobToFinish,
+			ODR.DockerRunDownloadFlags)
 
 		if err != nil {
-			return err
-		}
-
-		spec.Sharding = executor.JobShardingConfig{
-			GlobPattern: ODR.ShardingGlobPattern,
-			BasePath:    ODR.ShardingBasePath,
-			BatchSize:   ODR.ShardingBatchSize,
-		}
-
-		if !ODR.SkipSyntaxChecking {
-			err = system.CheckBashSyntax(ODR.Entrypoint)
-			if err != nil {
-				return err
-			}
-		}
-
-		var apiClient *publicapi.APIClient
-		if ODR.IsLocal {
-			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, ODR.GPU)
-			if errLocalDevStack != nil {
-				return errLocalDevStack
-			}
-			apiURI := stack.Nodes[0].APIServer.GetURI()
-			apiClient = publicapi.NewAPIClient(apiURI)
-		} else {
-			apiClient = getAPIClient()
-		}
-
-		job, err := apiClient.Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("%s\n", job.ID)
-		if ODR.WaitForJobToFinish {
-			resolver := apiClient.GetJobStateResolver()
-			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs*10, time.Millisecond*100)
-			err = resolver.WaitUntilComplete(ctx, job.ID)
-			if err != nil {
-				return err
-			}
-
-			if ODR.WaitForJobToFinishAndPrintOutput {
-				results, err := apiClient.GetResults(ctx, job.ID)
-				if err != nil {
-					return err
-				}
-				if len(results) == 0 {
-					return fmt.Errorf("no results found")
-				}
-				err = ipfs.DownloadJob(
-					cm,
-					job,
-					results,
-					ODR.DockerRunDownloadFlags,
-				)
-				if err != nil {
-					return err
-				}
-				body, err := os.ReadFile(filepath.Join(ODR.DockerRunDownloadFlags.OutputDir, "stdout"))
-				if err != nil {
-					return err
-				}
-				cmd.Println()
-				cmd.Println(string(body))
-			}
+			return fmt.Errorf("error executing job: %s", err)
 		}
 
 		return nil
