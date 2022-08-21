@@ -17,8 +17,10 @@ wait_file() {
 
 function cleanup {
 	echo "Done. Exiting normally."
-	BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
-	kill -2 "${BACALHAU_PID}"
+	if [ -f "/tmp/bacalhau-devstack.pid" ]; then
+		BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
+		kill -2 "${BACALHAU_PID}"
+	fi
 	rm -f /tmp/bacalhau-devstack.p*
 	exit 0 
 }
