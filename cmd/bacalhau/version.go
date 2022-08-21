@@ -50,6 +50,11 @@ type VersionOptions struct {
 	args []string
 }
 
+// NewOptions returns initialized Options
+func NewVersionOptions() *VersionOptions {
+	return &VersionOptions{}
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
@@ -124,9 +129,4 @@ func (oV *VersionOptions) Run(cmd *cobra.Command) error {
 	}
 
 	return nil
-}
-
-// NewOptions returns initialized Options
-func NewVersionOptions() *VersionOptions {
-	return &VersionOptions{}
 }
