@@ -30,7 +30,7 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
-	engine executor.EngineType,
+	e executor.EngineType,
 	v verifier.VerifierType,
 	cpu, memory, gpu string,
 	inputUrls []string,
@@ -42,10 +42,13 @@ func ConstructDockerJob( //nolint:funlen
 	concurrency int,
 	annotations []string,
 	workingDir string,
+	shardingGlobPattern string,
+	shardingBasePath string,
+	shardingBatchSize int,
 	doNotTrack bool,
-) (executor.JobSpec, executor.JobDeal, error) {
+) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
-		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return &executor.JobSpec{}, &executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
 	jobResources := capacitymanager.ResourceUsageConfig{
 		CPU:    cpu,
@@ -56,11 +59,11 @@ func ConstructDockerJob( //nolint:funlen
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return &executor.JobSpec{}, &executor.JobDeal{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return &executor.JobSpec{}, &executor.JobDeal{}, err
 	}
 
 	var jobAnnotations []string
@@ -83,12 +86,18 @@ func ConstructDockerJob( //nolint:funlen
 		err := system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
-			return executor.JobSpec{}, executor.JobDeal{}, err
+			return &executor.JobSpec{}, &executor.JobDeal{}, err
 		}
 	}
 
+	jobShardingConfig := executor.JobShardingConfig{
+		GlobPattern: shardingGlobPattern,
+		BasePath:    shardingBasePath,
+		BatchSize:   shardingBatchSize,
+	}
+
 	spec := executor.JobSpec{
-		Engine:   engine,
+		Engine:   e,
 		Verifier: v,
 		Docker: executor.JobSpecDocker{
 			Image:      image,
@@ -101,6 +110,7 @@ func ConstructDockerJob( //nolint:funlen
 		Contexts:    jobContexts,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,
+		Sharding:    jobShardingConfig,
 		DoNotTrack:  doNotTrack,
 	}
 
@@ -113,7 +123,7 @@ func ConstructDockerJob( //nolint:funlen
 		Concurrency: concurrency,
 	}
 
-	return spec, deal, nil
+	return &spec, &deal, nil
 }
 
 func ConstructLanguageJob(

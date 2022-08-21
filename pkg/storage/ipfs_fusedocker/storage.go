@@ -73,6 +73,10 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (
 		Threshold: 10 * time.Millisecond,
 		Id:        "StorageHandler.Mutex",
 	})
+	storageHandler.Mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "StorageHandler.Mutex",
+	})
 
 	cm.RegisterCallback(func() error {
 		return cleanupStorageDriver(storageHandler)

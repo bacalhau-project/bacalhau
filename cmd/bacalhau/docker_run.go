@@ -3,16 +3,11 @@ package bacalhau
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
@@ -23,8 +18,10 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-const CompleteStatus = "Complete"
-const DefaultDockerRunWaitSeconds = 600
+const (
+	CompleteStatus              = "Complete"
+	DefaultDockerRunWaitSeconds = 600
+)
 
 var (
 	dockerRunLong = templates.LongDesc(i18n.T(`
@@ -64,13 +61,13 @@ type DockerRunOptions struct {
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
 
-	SkipSyntaxChecking               bool                  // Verify the syntax using shellcheck
-	WaitForJobToFinish               bool                  // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool                  // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int                   // Job time out in seconds
-	IPFSGetTimeOut                   int                   // Timeout for IPFS in seconds
-	IsLocal                          bool                  // Job should be executed locally
-	DockerRunDownloadFlags           ipfs.DownloadSettings // Settings for running Download
+	SkipSyntaxChecking               bool                      // Verify the syntax using shellcheck
+	WaitForJobToFinish               bool                      // Wait for the job to execute before exiting
+	WaitForJobToFinishAndPrintOutput bool                      // Wait for the job to execute, and print the results before exiting
+	WaitForJobTimeoutSecs            int                       // Job time out in seconds
+	IPFSGetTimeOut                   int                       // Timeout for IPFS in seconds
+	IsLocal                          bool                      // Job should be executed locally
+	DockerRunDownloadFlags           ipfs.IPFSDownloadSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -96,7 +93,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		WaitForJobToFinish:               false,
 		WaitForJobToFinishAndPrintOutput: false,
 		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		DockerRunDownloadFlags: ipfs.DownloadSettings{
+		DockerRunDownloadFlags: ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,
 			OutputDir:      ".",
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
@@ -250,12 +247,13 @@ var dockerRunCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := context.Background()
+
 		ODR.Image = cmdArgs[0]
 		ODR.Entrypoint = cmdArgs[1:]
 
-		ODR.DockerRunDownloadFlags = ipfs.DownloadSettings{
-			TimeoutSecs:    10,
-			OutputDir:      ".",
+		ODR.DockerRunDownloadFlags = ipfs.IPFSDownloadSettings{
+			TimeoutSecs:    ODR.DockerRunDownloadFlags.TimeoutSecs,
+			OutputDir:      ODR.DockerRunDownloadFlags.OutputDir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		}
 
@@ -279,12 +277,13 @@ var dockerRunCmd = &cobra.Command{
 
 		if len(ODR.WorkingDir) > 0 {
 			err = system.ValidateWorkingDir(ODR.WorkingDir)
+
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid working directory: %s", err)
 			}
 		}
 
-		spec, deal, err := jobutils.ConstructDockerJob(
+		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
 			engineType,
 			verifierType,
 			ODR.CPU,
@@ -299,76 +298,26 @@ var dockerRunCmd = &cobra.Command{
 			ODR.Concurrency,
 			ODR.Labels,
 			ODR.WorkingDir,
+			ODR.ShardingGlobPattern,
+			ODR.ShardingBasePath,
+			ODR.ShardingBatchSize,
 			doNotTrack,
 		)
+		if err != nil {
+			return fmt.Errorf("error executing job: %s", err)
+		}
+
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.IsLocal,
+			ODR.WaitForJobToFinish,
+			ODR.DockerRunDownloadFlags)
 
 		if err != nil {
-			return err
-		}
-
-		spec.Sharding = executor.JobShardingConfig{
-			GlobPattern: ODR.ShardingGlobPattern,
-			BasePath:    ODR.ShardingBasePath,
-			BatchSize:   ODR.ShardingBatchSize,
-		}
-
-		if !ODR.SkipSyntaxChecking {
-			err = system.CheckBashSyntax(ODR.Entrypoint)
-			if err != nil {
-				return err
-			}
-		}
-
-		var apiClient *publicapi.APIClient
-		if ODR.IsLocal {
-			stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, ODR.GPU)
-			if errLocalDevStack != nil {
-				return errLocalDevStack
-			}
-			apiURI := stack.Nodes[0].APIServer.GetURI()
-			apiClient = publicapi.NewAPIClient(apiURI)
-		} else {
-			apiClient = getAPIClient()
-		}
-
-		job, err := apiClient.Submit(ctx, spec, deal, nil)
-		if err != nil {
-			return err
-		}
-
-		cmd.Printf("%s\n", job.ID)
-		if ODR.WaitForJobToFinish {
-			resolver := apiClient.GetJobStateResolver()
-			resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs*10, time.Millisecond*100) //nolint:gomnd
-			err = resolver.WaitUntilComplete(ctx, job.ID)
-			if err != nil {
-				return err
-			}
-
-			if ODR.WaitForJobToFinishAndPrintOutput {
-				results, err := apiClient.GetResults(ctx, job.ID)
-				if err != nil {
-					return err
-				}
-				if len(results) == 0 {
-					return fmt.Errorf("no results found")
-				}
-				err = ipfs.DownloadJob(
-					cm,
-					job,
-					results,
-					ODR.DockerRunDownloadFlags,
-				)
-				if err != nil {
-					return err
-				}
-				body, err := os.ReadFile(filepath.Join(ODR.DockerRunDownloadFlags.OutputDir, "stdout"))
-				if err != nil {
-					return err
-				}
-				cmd.Println()
-				cmd.Println(string(body))
-			}
+			return fmt.Errorf("error executing job: %s", err)
 		}
 
 		return nil

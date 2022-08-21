@@ -423,10 +423,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
-	// TODO: We don't record events in memory right now because it uses too much
-	// memory. But we might want to start doing that again in the future,
-	// especially if we have something like sqlite plugged in.
-	//nolint:gocritic
+	//nolint:gocritic // temporary comment out
 	// err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
 	// if err != nil {
 	// 	return err

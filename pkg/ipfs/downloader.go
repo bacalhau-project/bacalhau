@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type DownloadSettings struct {
+type IPFSDownloadSettings struct {
 	TimeoutSecs    int
 	OutputDir      string
 	IPFSSwarmAddrs string
@@ -36,7 +36,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
 	job executor.Job,
 	results []storage.StorageSpec,
-	settings DownloadSettings,
+	settings IPFSDownloadSettings,
 ) error {
 	if len(results) == 0 {
 		log.Debug().Msg("No results to download")

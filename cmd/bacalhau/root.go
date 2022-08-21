@@ -21,10 +21,12 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	// Porcelain commands (language specific easy to use commands)
 	RootCmd.AddCommand(runCmd)
 
+	// Create job from file
+	RootCmd.AddCommand(createCmd)
+
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)
-	RootCmd.AddCommand(applyCmd)
 
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)

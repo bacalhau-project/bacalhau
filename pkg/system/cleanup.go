@@ -59,7 +59,7 @@ func (cm *CleanupManager) Cleanup() {
 	time.Sleep(SleepBeforeCleanup)
 
 	// stop profiling now, just before we clean up, if we're profiling.
-	log.Info().Msg("============= STOPPING PROFILING ============")
+	log.Trace().Msg("============= STOPPING PROFILING ============")
 	pprof.StopCPUProfile()
 	memprofile := "/tmp/bacalhau-devstack-mem.prof"
 	f, err := os.Create(memprofile)

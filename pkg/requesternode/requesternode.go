@@ -53,6 +53,10 @@ func NewRequesterNode(
 		Threshold: 10 * time.Millisecond,
 		Id:        "RequesterNode.bidMutex",
 	})
+	requesterNode.bidMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "RequesterNode.bidMutex",
+	})
 
 	requesterNode.subscriptionSetup()
 

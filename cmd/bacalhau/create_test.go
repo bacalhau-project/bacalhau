@@ -14,42 +14,35 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ApplySuite struct {
+type CreateSuite struct {
 	suite.Suite
-	rootCmd                  *cobra.Command
-	originalDockerRunOptions *DockerRunOptions
+	rootCmd *cobra.Command
 }
 
-func TestApplySuite(t *testing.T) {
-	suite.Run(t, new(ApplySuite))
+func TestCreateSuite(t *testing.T) {
+	suite.Run(t, new(CreateSuite))
 }
 
 //before all the suite
-func (suite *ApplySuite) SetupSuite() {
+func (suite *CreateSuite) SetupSuite() {
 
 }
 
 //before each test
-func (suite *ApplySuite) SetupTest() {
-	suite.originalDockerRunOptions = &DockerRunOptions{}
+func (suite *CreateSuite) SetupTest() {
 	system.InitConfigForTesting(suite.T())
 	suite.rootCmd = RootCmd
-	ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run")
-	print("%+v", suite.originalDockerRunOptions)
-	if suite.originalDockerRunOptions.Engine == "" {
-		*suite.originalDockerRunOptions = *ODR
-	}
 }
 
-func (suite *ApplySuite) TearDownTest() {
+func (suite *CreateSuite) TearDownTest() {
 
 }
 
-func (suite *ApplySuite) TearDownAllSuite() {
+func (suite *CreateSuite) TearDownAllSuite() {
 
 }
 
-func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
+func (suite *CreateSuite) TestApplyJSON_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -63,17 +56,16 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			// Below copies the original default run options over the existing ones, to reset the test
-			*ODR = *suite.originalDockerRunOptions
+			*OC = *NewCreateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
 			assert.NoError(suite.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
 				"--api-host", host,
 				"--api-port", port,
-				"-f", "../../testdata/job.json",
+				"../../testdata/job.json",
 			)
 			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
@@ -84,7 +76,7 @@ func (suite *ApplySuite) TestApplyJSON_GenericSubmit() {
 	}
 }
 
-func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
+func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -102,17 +94,16 @@ func (suite *ApplySuite) TestApplyYAML_GenericSubmit() {
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
 
-				// Below copies the original default run options over the existing ones, to reset the test
-				*ODR = *suite.originalDockerRunOptions
+				*OC = *NewCreateOptions()
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
 				assert.NoError(suite.T(), err)
 
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "apply",
+				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
 					"--api-host", host,
 					"--api-port", port,
-					"-f", testFile,
+					testFile,
 				)
 
 				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)

@@ -9,14 +9,14 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 > _Note: You only need to create a CLI release if you want to release new Bacalhau functionality. You don't need to cut a release if you are only updating the infrastructure, like altering VM sizes, for example._
 
 1. [Draft a new release](https://github.com/filecoin-project/bacalhau/releases/new)
-1. Create a new tag using semantic versioning, prefixed with a v. E.g. `v0.1.37`
-1. Make the title of the release the same as the tag
-1. Click on the `Generate Release Notes` button to auto-populate the notes. Add anything else.
-1. Tick the "This is a pre-release" checkbox. This prevents this version from being installed by the `https://get.bacalhau.org/install.sh` script.
-1. Click on the publish release button. The [CI scripts](../.circleci) will automatically build and attach binaries.
-1. Download the binaries and test that they do what you expect. Use the pre-release option to download the newest pre-release version. `(export PRE_RELEASE=true ; curl -sL https://get.bacalhau.org/install.sh | bash)` If you are testing against a dev/staging cluster, you **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
-1. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
-1. Edit the release and de-select the "This is a pre-release" checkbox. Users will now download this version.
+2. Create a new tag using semantic versioning, prefixed with a v. E.g. `v0.1.37`
+3. Make the title of the release the same as the tag
+4. Click on the `Generate Release Notes` button to auto-populate the notes. Add anything else.
+5. Tick the "This is a pre-release" checkbox. _Note: This doesn't functionally do anything right now, it's just a Github UI thing._
+6. Click on the publish release button. **The [CI scripts](../.circleci) will automatically build and attach binaries.**
+7. Download the binaries and test that they do what you expect. `curl -sL https://get.bacalhau.org/install.sh | bash`. You **must** update the ops deployments to make the new version work because of signature errors. See [troubleshooting below](#hints-tips-and-troubleshooting).
+8. Edit the release and de-select the "This is a pre-release" checkbox
+9. [Update the Bacalhau servers -- see below](#updating-the-bacalhau-networks).
 
 ## Updating the Bacalhau Networks
 

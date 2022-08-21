@@ -270,12 +270,10 @@ func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shard
 	}
 
 	if acceptedBidsSeen >= job.Deal.Concurrency {
-		log.Debug().Msgf("rejecting because accepted bids > concurrency")
 		return true
 	}
 
-	if bidsSeen*2 >= job.Deal.Concurrency*3 {
-		log.Debug().Msgf("rejecting because seen bids > concurrency * 1.5")
+	if bidsSeen >= job.Deal.Concurrency*2 {
 		return true
 	}
 
