@@ -70,11 +70,6 @@ func NewServer(
 		Id:        "APIServer.componentMu",
 	})
 	return a
-	a.componentMu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "APIServer.componentMu",
-	})
-	return a
 }
 
 // GetURI returns the HTTP URI that the server is listening on.

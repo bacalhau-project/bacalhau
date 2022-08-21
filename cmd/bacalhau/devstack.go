@@ -58,7 +58,7 @@ func NewDevStackOptions() *DevStackOptions {
 	}
 }
 
-func init() { // nolint:gochecknoinits // Using init in cobra command is idomatic
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
 		&ODs.NumberOfNodes, "nodes", ODs.NumberOfNodes,
 		`How many nodes should be started in the cluster`,
