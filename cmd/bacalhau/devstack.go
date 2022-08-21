@@ -95,7 +95,7 @@ var devstackCmd = &cobra.Command{
 			log.Fatal().Msgf("could not create CPU profile: %s", err)
 		}
 		defer f.Close()
-		if err := pprof.StartCPUProfile(f); err != nil {
+		if err = pprof.StartCPUProfile(f); err != nil {
 			log.Fatal().Msgf("could not start CPU profile: %s", err)
 		}
 		defer pprof.StopCPUProfile()
@@ -107,7 +107,7 @@ var devstackCmd = &cobra.Command{
 		}
 		defer f.Close() // error handling omitted for example
 		runtime.GC()    // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
+		if err = pprof.WriteHeapProfile(f); err != nil {
 			log.Fatal().Msgf("could not write memory profile: %s", err)
 		}
 
