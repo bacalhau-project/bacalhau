@@ -58,7 +58,7 @@ func NewVersionOptions() *VersionOptions {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, args []string) error { // nolint:unparam // incorrectly suggesting unused
 		err := oV.Validate(cmd)
 		if err != nil {
 			log.Error().Msgf("error validating version - %s", err)

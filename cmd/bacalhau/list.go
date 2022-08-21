@@ -121,7 +121,7 @@ var listCmd = &cobra.Command{
 	Short:   "List jobs on the network",
 	Long:    listLong,
 	Example: listExample,
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		jobs, err := getAPIClient().List(context.Background())
 		if err != nil {
 			return err

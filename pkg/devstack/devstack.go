@@ -85,7 +85,7 @@ func NewDevStackForRunLocal(
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
-		ctrl *controller.Controller,
+		_ *controller.Controller,
 	) (
 		map[executor.EngineType]executor.Executor,
 		error,
@@ -100,7 +100,7 @@ func NewDevStackForRunLocal(
 	}
 	getVerifiers := func(
 		ipfsMultiAddress string,
-		nodeIndex int,
+		_ int,
 		ctrl *controller.Controller,
 	) (
 		map[verifier.VerifierType]verifier.Verifier,
@@ -139,7 +139,7 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
+	count, _ int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
@@ -370,13 +370,14 @@ func NewDevStack(
 	// do a GC before we start profiling
 	runtime.GC()
 
-	log.Info().Msg("============= STARTING PROFILING ============")
+	log.Trace().Msg("============= STARTING PROFILING ============")
 	// devstack always records a cpu profile, it will be generally useful.
 	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
 	f, err := os.Create(cpuprofile)
 	if err != nil {
 		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
 	}
+	defer f.Close()
 	if err := pprof.StartCPUProfile(f); err != nil {
 		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}

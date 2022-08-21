@@ -104,7 +104,7 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *execu
 	return nil
 }
 
-func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (
+func ExecuteTestCobraCommand(_ *testing.T, root *cobra.Command, args ...string) (
 	c *cobra.Command, output string, err error,
 ) { //nolint:unparam // use of t is valuable here
 	buf := new(bytes.Buffer)
