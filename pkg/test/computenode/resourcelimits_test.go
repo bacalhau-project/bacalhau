@@ -288,7 +288,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 10,
+			MaxAttempts: 100,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)

@@ -179,7 +179,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	jobSelected, err := ctrl.SubmitJob(ctx, payload)
 	require.NoError(suite.T(), err)
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 5)
 	require.Equal(suite.T(), 1, len(noopExecutor.Jobs))
 	require.Equal(suite.T(), jobSelected.ID, noopExecutor.Jobs[0].ID)
 }
@@ -225,6 +225,8 @@ func (suite *TransportSuite) TestTransportEvents() {
 		executor.JobEventCompleted.String(),
 	}
 	actualEventNames := []string{}
+
+	time.Sleep(time.Second * 5)
 
 	for _, event := range transport.GetEvents() {
 		actualEventNames = append(actualEventNames, event.EventName.String())

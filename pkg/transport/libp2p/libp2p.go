@@ -256,7 +256,14 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	then := payload.SentTime
 	latency := now.Sub(then)
 	latencyMilli := int64(latency / time.Millisecond)
-	if latencyMilli > 50 {
+	if latencyMilli > 500 { //nolint:gomnd
+		log.Warn().Msgf(
+			"[%s=>%s] VERY High message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	} else if latencyMilli > 50 { //nolint:gomnd
 		log.Warn().Msgf(
 			"[%s=>%s] High message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
