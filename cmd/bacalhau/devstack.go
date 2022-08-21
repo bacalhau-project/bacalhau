@@ -176,7 +176,7 @@ var devstackCmd = &cobra.Command{
 		}
 
 		portFileName := "/tmp/bacalhau-devstack.port"
-		_, err := os.Stat(portFileName)
+		_, err = os.Stat(portFileName)
 		if err == nil {
 			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
 		}
@@ -203,7 +203,7 @@ var devstackCmd = &cobra.Command{
 
 		stack.PrintNodeInfo()
 
-		f, err := os.Create(portFileName)
+		f, err = os.Create(portFileName)
 		if err != nil {
 			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
 		}
