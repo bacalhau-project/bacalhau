@@ -26,19 +26,8 @@ const (
 	YAMLFormat string = "yaml"
 )
 
-var (
-	listOutputFormat string
-	tableOutputWide  bool
-	tableHideHeader  bool
-	tableMaxJobs     int
-	tableSortBy      ColumnEnum
-	tableSortReverse bool
-	tableIDFilter    string
-	tableNoStyle     bool
-)
-
-func shortenTime(t time.Time) string { //nolint:unused // Useful function, holding here
-	if tableOutputWide {
+func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
+	if outputWide {
 		return t.Format("06-01-02-15:04:05")
 	}
 
@@ -47,8 +36,8 @@ func shortenTime(t time.Time) string { //nolint:unused // Useful function, holdi
 
 var DefaultShortenStringLength = 20
 
-func shortenString(st string) string {
-	if tableOutputWide {
+func shortenString(outputWide bool, st string) string {
+	if outputWide {
 		return st
 	}
 
@@ -59,8 +48,8 @@ func shortenString(st string) string {
 	return st[:20] + "..."
 }
 
-func shortID(id string) string {
-	if tableOutputWide {
+func shortID(outputWide bool, id string) string {
+	if outputWide {
 		return id
 	}
 	return id[:8]
@@ -191,7 +180,7 @@ func capture() func() (string, error) {
 	}
 }
 
-func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.DownloadSettings) {
+func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings) {
 	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
 	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
@@ -207,7 +196,7 @@ func ExecuteJob(ctx context.Context,
 	jobDeal *executor.JobDeal,
 	isLocal bool,
 	waitForJobToFinish bool,
-	dockerRunDownloadFlags ipfs.DownloadSettings,
+	dockerRunDownloadFlags ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
 	if isLocal {

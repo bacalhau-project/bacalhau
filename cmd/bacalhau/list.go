@@ -9,38 +9,81 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
 )
 
-var DefaultNumberOfJobsToPrint = 10
+var (
+	listLong = templates.LongDesc(i18n.T(`
+		List jobs on the network.
+`))
+
+	//nolint:lll // Documentation
+	listExample = templates.Examples(i18n.T(`
+		# List jobs on the network
+		bacalhau list
+
+		# List jobs and output as json
+		bacalhau list --output json`))
+
+	// Set Defaults (probably a better way to do this)
+	OL = NewListOptions()
+
+	// For the -f flag
+)
+
+type ListOptions struct {
+	HideHeader   bool       // Hide the column headers
+	IDFilter     string     // Filter by Job List to IDs matching substring.
+	NoStyle      bool       // Remove all styling from table output.
+	MaxJobs      int        // Print the first NUM jobs instead of the first 10.
+	OutputFormat string     // The output format for the list of jobs (json or text)
+	SortReverse  bool       // Reverse order of table - for time sorting, this will be newest first.
+	SortBy       ColumnEnum // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
+	OutputWide   bool       // Print full values in the table results
+}
+
+func NewListOptions() *ListOptions {
+	return &ListOptions{
+		HideHeader:   false,
+		IDFilter:     "",
+		NoStyle:      false,
+		MaxJobs:      10,
+		OutputFormat: "text",
+		SortReverse:  true,
+		SortBy:       ColumnCreatedAt,
+		OutputWide:   false,
+	}
+}
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
-	listCmd.PersistentFlags().BoolVar(&tableHideHeader, "hide-header", false,
+	listCmd.PersistentFlags().BoolVar(&OL.HideHeader, "hide-header", OL.HideHeader,
 		`do not print the column headers.`)
-	listCmd.PersistentFlags().StringVar(&tableIDFilter, "id-filter", "", `filter by Job List to IDs matching substring.`)
-	listCmd.PersistentFlags().BoolVar(&tableNoStyle, "no-style", false, `remove all styling from table output.`)
+	listCmd.PersistentFlags().StringVar(&OL.IDFilter, "id-filter", OL.IDFilter, `filter by Job List to IDs matching substring.`)
+	listCmd.PersistentFlags().BoolVar(&OL.NoStyle, "no-style", OL.NoStyle, `remove all styling from table output.`)
 	listCmd.PersistentFlags().IntVarP(
-		&tableMaxJobs, "number", "n", DefaultNumberOfJobsToPrint,
+		&OL.MaxJobs, "number", "n", OL.MaxJobs,
 		`print the first NUM jobs instead of the first 10.`,
 	)
 	listCmd.PersistentFlags().StringVar(
-		&listOutputFormat, "output", "text",
+		&OL.OutputFormat, "output", OL.OutputFormat,
 		`The output format for the list of jobs (json or text)`,
 	)
-	listCmd.PersistentFlags().BoolVar(&tableSortReverse, "reverse", true,
+	listCmd.PersistentFlags().BoolVar(&OL.SortReverse, "reverse", OL.SortReverse,
 		`reverse order of table - for time sorting, this will be newest first.`)
 
-	listCmd.PersistentFlags().Var(&tableSortBy, "sort-by",
+	listCmd.PersistentFlags().Var(&OL.SortBy, "sort-by",
 		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
 	listCmd.PersistentFlags().Lookup("sort-by").DefValue = string(ColumnCreatedAt)
-	if tableSortBy == "" {
-		tableSortBy = ColumnCreatedAt
+	if OL.SortBy == "" {
+		OL.SortBy = ColumnCreatedAt
 	}
 
 	listCmd.PersistentFlags().BoolVar(
-		&tableOutputWide, "wide", false,
+		&OL.OutputWide, "wide", OL.OutputWide,
 		`Print full values in the table results`,
 	)
 }
@@ -74,8 +117,10 @@ func (c *ColumnEnum) Set(v string) error {
 }
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List jobs on the network",
+	Use:     "list",
+	Short:   "List jobs on the network",
+	Long:    listLong,
+	Example: listExample,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		jobs, err := getAPIClient().List(context.Background())
 		if err != nil {
@@ -84,7 +129,7 @@ var listCmd = &cobra.Command{
 
 		t := table.NewWriter()
 		t.SetOutputMirror(cmd.OutOrStderr())
-		if !tableHideHeader {
+		if !OL.HideHeader {
 			t.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
 		}
 
@@ -94,8 +139,8 @@ var listCmd = &cobra.Command{
 
 		jobArray := []executor.Job{}
 		for _, j := range jobs {
-			if tableIDFilter != "" {
-				if j.ID == tableIDFilter || shortID(j.ID) == tableIDFilter {
+			if OL.IDFilter != "" {
+				if j.ID == OL.IDFilter || shortID(false, j.ID) == OL.IDFilter {
 					jobArray = append(jobArray, j)
 				}
 			} else {
@@ -103,14 +148,14 @@ var listCmd = &cobra.Command{
 			}
 		}
 
-		log.Debug().Msgf("Found table sort flag: %s", tableSortBy)
-		log.Debug().Msgf("Table filter flag set to: %s", tableIDFilter)
-		log.Debug().Msgf("Table reverse flag set to: %t", tableSortReverse)
+		log.Debug().Msgf("Found table sort flag: %s", OL.SortBy)
+		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
+		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 
 		sort.Slice(jobArray, func(i, j int) bool {
-			switch tableSortBy {
+			switch OL.SortBy {
 			case ColumnID:
-				return shortID(jobArray[i].ID) < shortID(jobArray[j].ID)
+				return shortID(OL.OutputWide, jobArray[i].ID) < shortID(OL.OutputWide, jobArray[j].ID)
 			case ColumnCreatedAt:
 				return jobArray[i].CreatedAt.Format(time.RFC3339) < jobArray[j].CreatedAt.Format(time.RFC3339)
 			default:
@@ -118,7 +163,7 @@ var listCmd = &cobra.Command{
 			}
 		})
 
-		if tableSortReverse {
+		if OL.SortReverse {
 			jobIDs := []string{}
 			for _, j := range jobArray {
 				jobIDs = append(jobIDs, j.ID)
@@ -130,7 +175,7 @@ var listCmd = &cobra.Command{
 			}
 		}
 
-		numberInTable := Min(tableMaxJobs, len(jobArray))
+		numberInTable := Min(OL.MaxJobs, len(jobArray))
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
@@ -158,15 +203,15 @@ var listCmd = &cobra.Command{
 
 			t.AppendRows([]table.Row{
 				{
-					shortenTime(j.CreatedAt),
-					shortID(j.ID),
-					shortenString(strings.Join(jobDesc, " ")),
-					shortenString(stateSummary),
-					shortenString(resultSummary),
+					shortenTime(OL.OutputWide, j.CreatedAt),
+					shortID(OL.OutputWide, j.ID),
+					shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
+					shortenString(OL.OutputWide, stateSummary),
+					shortenString(OL.OutputWide, resultSummary),
 				},
 			})
 		}
-		if tableNoStyle {
+		if OL.NoStyle {
 			t.SetStyle(table.Style{
 				Name:   "StyleDefault",
 				Box:    table.StyleBoxDefault,
@@ -186,7 +231,7 @@ var listCmd = &cobra.Command{
 			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
-		if listOutputFormat == JSONFormat {
+		if OL.OutputFormat == JSONFormat {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err

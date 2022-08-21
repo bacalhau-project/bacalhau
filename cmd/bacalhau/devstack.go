@@ -16,33 +16,63 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
+	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/spf13/cobra"
 )
 
-var devStackNodes int
-var devStackBadActors int
-var devStackNoop bool
-var devStackPeer string
+var (
+	devStackLong = templates.LongDesc(i18n.T(`
+		Start a cluster of nodes and run a job on them.
+`))
+
+	//nolint:lll // Documentation
+	devstackExample = templates.Examples(i18n.T(`
+		# Create a devstack cluster.
+		bacalhau devstack
+`))
+
+	// Set Defaults (probably a better way to do this)
+	ODs = NewDevStackOptions()
+
+	// For the -f flag
+)
+
+type DevStackOptions struct {
+	NumberOfNodes     int    // Number of nodes to start in the cluster
+	NumberOfBadActors int    // Number of nodes to be bad actors
+	IsNoop            bool   // Noop executor and verifier for all jobs
+	Peer              string // Connect node 0 to another network node
+}
+
+func NewDevStackOptions() *DevStackOptions {
+	return &DevStackOptions{
+		NumberOfNodes:     3,
+		NumberOfBadActors: 0,
+		IsNoop:            false,
+		Peer:              "",
+	}
+}
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().IntVar(
-		&devStackNodes, "nodes", 3,
+		&ODs.NumberOfNodes, "nodes", ODs.NumberOfNodes,
 		`How many nodes should be started in the cluster`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&devStackBadActors, "bad-actors", 0,
+		&ODs.NumberOfBadActors, "bad-actors", ODs.NumberOfBadActors,
 		`How many nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
-		&devStackNoop, "noop", false,
+		&ODs.IsNoop, "noop", false,
 		`Use the noop executor and verifier for all jobs`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
-		&devStackPeer, "peer", "",
+		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
 	)
 
@@ -51,14 +81,15 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 }
 
 var devstackCmd = &cobra.Command{
-	Use:   "devstack",
-	Short: "Start a cluster of bacalhau nodes for testing and development",
-	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
-
+	Use:     "devstack",
+	Short:   "Start a cluster of bacalhau nodes for testing and development",
+	Long:    devStackLong,
+	Example: devstackExample,
+	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrect lint that is not used
 		config.DevstackSetShouldPrintInfo()
 
-		if devStackBadActors > devStackNodes {
-			return fmt.Errorf("cannot have more bad actors than there are nodes")
+		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
+			return fmt.Errorf("must have more nodes (%d) than bad actors (%d)", ODs.NumberOfNodes, ODs.NumberOfBadActors)
 		}
 
 		// Cleanup manager ensures that resources are freed before exiting:
@@ -73,7 +104,7 @@ var devstackCmd = &cobra.Command{
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
 			map[storage.StorageSourceType]storage.StorageProvider, error) {
 
-			if devStackNoop {
+			if ODs.IsNoop {
 				return executor_util.NewNoopStorageProviders(cm)
 			}
 
@@ -83,7 +114,7 @@ var devstackCmd = &cobra.Command{
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
 			map[executor.EngineType]executor.Executor, error) {
 
-			if devStackNoop {
+			if ODs.IsNoop {
 				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
 			}
 
@@ -95,7 +126,7 @@ var devstackCmd = &cobra.Command{
 		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam,lll
 			map[verifier.VerifierType]verifier.Verifier, error) {
 
-			if devStackNoop {
+			if ODs.IsNoop {
 				return verifier_util.NewNoopVerifiers(cm)
 			}
 
@@ -121,13 +152,13 @@ var devstackCmd = &cobra.Command{
 
 		stack, err := devstack.NewDevStack(
 			cm,
-			devStackNodes,
-			devStackBadActors,
+			ODs.NumberOfNodes,
+			ODs.NumberOfBadActors,
 			getStorageProviders,
 			getExecutors,
 			getVerifiers,
 			computeNodeConfig,
-			devStackPeer,
+			ODs.Peer,
 			false,
 		)
 		if err != nil {

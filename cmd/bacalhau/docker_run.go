@@ -61,13 +61,13 @@ type DockerRunOptions struct {
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
 
-	SkipSyntaxChecking               bool                  // Verify the syntax using shellcheck
-	WaitForJobToFinish               bool                  // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool                  // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int                   // Job time out in seconds
-	IPFSGetTimeOut                   int                   // Timeout for IPFS in seconds
-	IsLocal                          bool                  // Job should be executed locally
-	DockerRunDownloadFlags           ipfs.DownloadSettings // Settings for running Download
+	SkipSyntaxChecking               bool                      // Verify the syntax using shellcheck
+	WaitForJobToFinish               bool                      // Wait for the job to execute before exiting
+	WaitForJobToFinishAndPrintOutput bool                      // Wait for the job to execute, and print the results before exiting
+	WaitForJobTimeoutSecs            int                       // Job time out in seconds
+	IPFSGetTimeOut                   int                       // Timeout for IPFS in seconds
+	IsLocal                          bool                      // Job should be executed locally
+	DockerRunDownloadFlags           ipfs.IPFSDownloadSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -93,7 +93,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		WaitForJobToFinish:               false,
 		WaitForJobToFinishAndPrintOutput: false,
 		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		DockerRunDownloadFlags: ipfs.DownloadSettings{
+		DockerRunDownloadFlags: ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,
 			OutputDir:      ".",
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
@@ -251,7 +251,7 @@ var dockerRunCmd = &cobra.Command{
 		ODR.Image = cmdArgs[0]
 		ODR.Entrypoint = cmdArgs[1:]
 
-		ODR.DockerRunDownloadFlags = ipfs.DownloadSettings{
+		ODR.DockerRunDownloadFlags = ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    ODR.DockerRunDownloadFlags.TimeoutSecs,
 			OutputDir:      ODR.DockerRunDownloadFlags.OutputDir,
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),

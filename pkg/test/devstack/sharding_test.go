@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -278,7 +277,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		cm,
 		submittedJob,
 		jobResults,
-		ipfs.DownloadSettings{
+		ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,
 			OutputDir:      downloadFolder,
 			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
@@ -440,8 +439,6 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 	require.NoError(suite.T(), err)
-	fmt.Printf("submittedJob --------------------------------------\n")
-	spew.Dump(submittedJob)
 }
