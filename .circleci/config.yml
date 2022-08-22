@@ -92,7 +92,7 @@ jobs:
                   echo "---------------------------------------"
                   go install gotest.tools/gotestsum@latest
                   make test-and-report
-                  timeout: 1200
+                no_output_timeout: 20m
             - run:
                 name: Upload results
                 command: |
