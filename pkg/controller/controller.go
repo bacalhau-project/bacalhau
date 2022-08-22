@@ -285,6 +285,7 @@ func (ctrl *Controller) RejectResults(
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
+// local event for requester to know it has already verified this job
 func (ctrl *Controller) CompleteVerification(
 	ctx context.Context,
 	jobID string,
@@ -344,8 +345,22 @@ func (ctrl *Controller) ShardExecutionFinished(
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardExecutionFinished")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsProposed)
 	ev.Status = status
-	ev.ResultsProposal = proposal
+	ev.VerificationProposal = proposal
 	ev.ShardIndex = shardIndex
+	return ctrl.writeEvent(jobCtx, ev)
+}
+
+func (ctrl *Controller) ShardResultsPublished(
+	ctx context.Context,
+	jobID string,
+	shardIndex int,
+	publishedResults []storage.StorageSpec,
+) error {
+	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardResultsPublished")
+	ev := ctrl.constructEvent(jobID, executor.JobEventResultsPublished)
+	ev.ShardIndex = shardIndex
+	ev.PublishedResults = publishedResults
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -361,7 +376,7 @@ func (ctrl *Controller) ShardError(
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardError")
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
-	ev.ResultsProposal = proposal
+	ev.VerificationProposal = proposal
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
@@ -494,11 +509,12 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 			useNodeID,
 			ev.ShardIndex,
 			executor.JobShardState{
-				NodeID:          useNodeID,
-				ShardIndex:      ev.ShardIndex,
-				State:           executionState,
-				Status:          ev.Status,
-				ResultsProposal: ev.ResultsProposal,
+				NodeID:               useNodeID,
+				ShardIndex:           ev.ShardIndex,
+				State:                executionState,
+				Status:               ev.Status,
+				VerificationProposal: ev.VerificationProposal,
+				PublishedResults:     ev.PublishedResults,
 			},
 		)
 		if err != nil {

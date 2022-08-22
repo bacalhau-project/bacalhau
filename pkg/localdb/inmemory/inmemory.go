@@ -185,8 +185,12 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.Status = update.Status
 	}
 
-	if len(update.ResultsProposal) != 0 {
-		shardSate.ResultsProposal = update.ResultsProposal
+	if len(update.VerificationProposal) != 0 {
+		shardSate.VerificationProposal = update.VerificationProposal
+	}
+
+	if len(update.PublishedResults) != 0 {
+		shardSate.PublishedResults = update.PublishedResults
 	}
 
 	nodeState.Shards[shardIndex] = shardSate

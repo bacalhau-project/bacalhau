@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -115,7 +116,8 @@ type JobShardState struct {
 	Status string `json:"status"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	ResultsProposal []byte `json:"results_proposal"`
+	VerificationProposal []byte                `json:"verification_proposal"`
+	PublishedResults     []storage.StorageSpec `json:"published_results"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -135,12 +137,13 @@ type JobSpec struct {
 	// allow the engine to be provided as a string for yaml and JSON job specs
 	EngineName string `json:"engine_name" yaml:"engine_name"`
 
-	// e.g. ipfs or localfs
-	// these verifiers both just copy the results
-	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
 	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
+
+	// there can be multiple publishers for the job
+	Publishers     []publisher.PublisherType `json:"publishers" yaml:"publishers"`
+	PublisherNames []string                  `json:"publisher_names" yaml:"publisher_names"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
@@ -231,10 +234,12 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
-	JobDeal         JobDeal   `json:"job_deal"`
-	Status          string    `json:"status"`
-	ResultsProposal []byte    `json:"results_proposal"`
-	EventTime       time.Time `json:"event_time"`
+	JobDeal              JobDeal               `json:"job_deal"`
+	Status               string                `json:"status"`
+	VerificationProposal []byte                `json:"verification_proposal"`
+	PublishedResults     []storage.StorageSpec `json:"published_results"`
+
+	EventTime time.Time `json:"event_time"`
 }
 
 type JobCreatePayload struct {

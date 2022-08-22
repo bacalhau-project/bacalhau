@@ -24,8 +24,8 @@ type Publisher interface {
 	// (e.g. notify slack)
 	PublishShardResult(
 		ctx context.Context,
-		hostID string,
 		jobID string,
+		hostID string,
 		shardIndex int,
 		shardResultPath string,
 	) (*storage.StorageSpec, error)

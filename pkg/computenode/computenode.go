@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -211,7 +212,12 @@ func (node *ComputeNode) subscriptionSetup() {
 		// our bid has not been accepted - let's remove this job from our current queue
 		case executor.JobEventBidRejected:
 			node.subscriptionEventBidRejected(ctx, jobEvent, job)
+		case executor.JobEventResultsAccepted:
+			node.subscriptionEventResultsAccepted(ctx, jobEvent, job)
+		case executor.JobEventResultsRejected:
+			node.subscriptionEventResultsRejected(ctx, jobEvent, job)
 		}
+
 	})
 }
 
@@ -329,6 +335,22 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 	}
 	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
 	node.controlLoopBidOnJobs()
+}
+
+func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
+	// we only care if the rejected bid is for us
+	if jobEvent.TargetNodeID != node.id {
+		return
+	}
+
+}
+
+func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
+	// we only care if the rejected bid is for us
+	if jobEvent.TargetNodeID != node.id {
+		return
+	}
+
 }
 
 /*
@@ -462,6 +484,36 @@ func (node *ComputeNode) RunShard(
 	return shardProposal, containerRunError
 }
 
+func (node *ComputeNode) PublishShard(
+	ctx context.Context,
+	job executor.Job,
+	shardIndex int,
+) error {
+	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	if err != nil {
+		return err
+	}
+	resultFolder, err := verifier.GetShardResultPath(ctx, job.ID, shardIndex)
+	if err != nil {
+		return err
+	}
+	publishedResults := []storage.StorageSpec{}
+	for _, publisherType := range job.Spec.Publishers {
+		publisher, err := node.getPublisher(ctx, publisherType)
+		if err != nil {
+			return err
+		}
+		publishedResult, err := publisher.PublishShardResult(ctx, job.ID, node.id, shardIndex, resultFolder)
+		if err != nil {
+			return err
+		}
+		if publishedResult != nil {
+			publishedResults = append(publishedResults, *publishedResult)
+		}
+	}
+	return nil
+}
+
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getExecutor(ctx context.Context, typ executor.EngineType) (executor.Executor, error) {
 	node.componentMu.Lock()
@@ -504,6 +556,28 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 	}
 
 	return v, nil
+}
+
+//nolint:dupl // methods are not duplicates
+func (node *ComputeNode) getPublisher(ctx context.Context, typ publisher.PublisherType) (publisher.Publisher, error) {
+	node.componentMu.Lock()
+	defer node.componentMu.Unlock()
+
+	if _, ok := node.publishers[typ]; !ok {
+		return nil, fmt.Errorf(
+			"no matching publisher found on this server: %s", typ.String())
+	}
+
+	publisher := node.publishers[typ]
+	installed, err := publisher.IsInstalled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !installed {
+		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
+	}
+
+	return publisher, nil
 }
 
 func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
