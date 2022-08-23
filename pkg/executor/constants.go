@@ -18,6 +18,10 @@ const (
 	engineDone       // must be last
 )
 
+func IsValidEngineType(engineType EngineType) bool {
+	return engineType > engineUnknown && engineType < engineDone
+}
+
 func ParseEngineType(str string) (EngineType, error) {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		if equal(typ.String(), str) {

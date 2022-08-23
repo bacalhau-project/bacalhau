@@ -24,6 +24,10 @@ func ParseVerifierType(str string) (VerifierType, error) {
 	return verifierUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
+func IsValidVerifierType(verifierType VerifierType) bool {
+	return verifierType > verifierUnknown && verifierType < verifierDone
+}
+
 func VerifierTypes() []VerifierType {
 	var res []VerifierType
 	for typ := verifierUnknown + 1; typ < verifierDone; typ++ {

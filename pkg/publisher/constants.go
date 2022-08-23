@@ -25,7 +25,11 @@ func ParseVerifierType(str string) (PublisherType, error) {
 	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
-func VerifierTypes() []PublisherType {
+func IsValidPublisherType(publisherType PublisherType) bool {
+	return publisherType > publisherUnknown && publisherType < publisherDone
+}
+
+func PublisherTypes() []PublisherType {
 	var res []PublisherType
 	for typ := publisherUnknown + 1; typ < publisherDone; typ++ {
 		res = append(res, typ)
