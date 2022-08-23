@@ -104,17 +104,19 @@ var createCmd = &cobra.Command{
 			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
 		}
 
-		engineType, err := executor.ParseEngineType(jobSpec.EngineName)
+		// the spec might use string version or proper numeric versions
+		// let's convert them to the numeric version
+		engineType, err := executor.EnsureEngineType(jobSpec.Engine, jobSpec.EngineName)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := verifier.ParseVerifierType(jobSpec.VerifierName)
+		verifierType, err := verifier.EnsureVerifierType(jobSpec.Verifier, jobSpec.VerifierName)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := publisher.ParsePublisherType(jobSpec.PublisherName)
+		publisherType, err := publisher.EnsurePublisherType(jobSpec.Publisher, jobSpec.PublisherName)
 		if err != nil {
 			return err
 		}

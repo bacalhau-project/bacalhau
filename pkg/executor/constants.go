@@ -33,6 +33,13 @@ func ParseEngineType(str string) (EngineType, error) {
 		"executor: unknown engine type '%s'", str)
 }
 
+func EnsureEngineType(typ EngineType, str string) (EngineType, error) {
+	if IsValidEngineType(typ) {
+		return typ, nil
+	}
+	return ParseEngineType(str)
+}
+
 func EngineTypes() []EngineType {
 	var res []EngineType
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
