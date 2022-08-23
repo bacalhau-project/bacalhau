@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -177,9 +178,10 @@ func ConstructLanguageJob(
 	}
 
 	spec := executor.JobSpec{
-		Engine: executor.EngineLanguage,
-		// TODO: should this always be ipfs?
+		Engine:   executor.EngineLanguage,
 		Verifier: verifier.VerifierNoop,
+		// TODO: should this always be ipfs?
+		Publisher: publisher.PublisherIpfs,
 		Language: executor.JobSpecLanguage{
 			Language:         language,
 			LanguageVersion:  languageVersion,

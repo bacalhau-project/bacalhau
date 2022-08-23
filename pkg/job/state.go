@@ -370,7 +370,7 @@ func WaitForJobStates(requiredStateCounts map[executor.JobStateType]int) CheckSt
 	return func(jobState executor.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		discoveredStateCount := GetShardStateTotals(allShardStates)
-		log.Debug().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, discoveredStateCount)
+		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, discoveredStateCount)
 		for requiredStateType, requiredStateCount := range requiredStateCounts {
 			discoveredCount, ok := discoveredStateCount[requiredStateType]
 			if !ok {
