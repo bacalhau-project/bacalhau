@@ -79,7 +79,7 @@ func devStackDockerStorageTest(
 	jobSpec := executor.JobSpec{
 		Engine:    executor.EngineDocker,
 		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
+		Publisher: publisher.PublisherIpfs,
 		Docker:    testCase.GetJobSpec(),
 		Inputs:    inputStorageList,
 		Outputs:   testCase.Outputs,
@@ -120,9 +120,10 @@ func devStackDockerStorageTest(
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(t, err)
+		require.NotEmpty(t, shard.PublishedResult.Cid)
 
-		outputPath := filepath.Join(outputDir, string(shard.VerificationProposal))
-		err = node.IpfsClient.Get(ctx, string(shard.VerificationProposal), outputPath)
+		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
+		err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputPath)
