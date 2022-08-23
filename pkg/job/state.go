@@ -92,7 +92,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	}
 	// TODO: this currently assumes the noop verifier will publish a CID
 	// as it's proposal - this needs to read the results of publishing not verification
-	return fmt.Sprintf("/ipfs/%s", string(completedShards[0].VerificationProposal)), nil
+	return fmt.Sprintf("/ipfs/%s", string(completedShards[0].PublishedResult.Cid)), nil
 }
 
 func (resolver *StateResolver) Wait(
