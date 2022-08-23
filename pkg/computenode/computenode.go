@@ -317,7 +317,6 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 			job.ID,
 			jobEvent.ShardIndex,
 			errMessage,
-			proposal,
 		)
 		if err != nil {
 			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
@@ -343,6 +342,18 @@ func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, j
 		return
 	}
 
+	err := node.PublishShard(ctx, job, jobEvent.ShardIndex)
+	if err != nil {
+		err = node.controller.ShardError(
+			ctx,
+			job.ID,
+			jobEvent.ShardIndex,
+			err.Error(),
+		)
+		if err != nil {
+			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
+		}
+	}
 }
 
 func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {

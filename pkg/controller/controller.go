@@ -370,13 +370,11 @@ func (ctrl *Controller) ShardError(
 	jobID string,
 	shardIndex int,
 	status string,
-	proposal []byte,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardError")
 	ev := ctrl.constructEvent(jobID, executor.JobEventError)
 	ev.Status = status
-	ev.VerificationProposal = proposal
 	ev.ShardIndex = shardIndex
 	return ctrl.writeEvent(jobCtx, ev)
 }
