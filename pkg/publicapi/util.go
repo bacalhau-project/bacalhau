@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -143,32 +144,35 @@ func TailFile(count int, path string) ([]byte, error) {
 
 func MakeEchoJob() (executor.JobSpec, executor.JobDeal) {
 	randomSuffix, _ := uuid.NewUUID()
-	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"echo",
 		randomSuffix.String(),
 	})
 }
 
 func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
 func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineNoop, verifier.VerifierNoop, []string{
+	return MakeJob(executor.EngineNoop, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
-func MakeJob(engineType executor.EngineType,
+func MakeJob(
+	engineType executor.EngineType,
 	verifierType verifier.VerifierType,
+	publisherType publisher.PublisherType,
 	entrypointArray []string) (executor.JobSpec, executor.JobDeal) {
 	jobSpec := executor.JobSpec{
-		Engine:   engineType,
-		Verifier: verifierType,
+		Engine:    engineType,
+		Verifier:  verifierType,
+		Publisher: publisherType,
 		Docker: executor.JobSpecDocker{
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,
