@@ -24,7 +24,7 @@ func NewNoopPublisher(
 }
 
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
+	_, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 	return true, nil
 }
@@ -36,7 +36,7 @@ func (publisher *NoopPublisher) PublishShardResult(
 	shardIndex int,
 	shardResultPath string,
 ) (storage.StorageSpec, error) {
-	ctx, span := newSpan(ctx, "PublishShardResult")
+	_, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
 	return storage.StorageSpec{}, nil
 }
@@ -45,7 +45,7 @@ func (publisher *NoopPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]storage.StorageSpec, error) {
-	ctx, span := newSpan(ctx, "ComposeResultSet")
+	_, span := newSpan(ctx, "ComposeResultSet")
 	defer span.End()
 	return []storage.StorageSpec{}, nil
 }

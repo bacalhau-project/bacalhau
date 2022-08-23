@@ -10,7 +10,6 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -407,8 +406,8 @@ func (ctrl *Controller) PinContext(ctx context.Context, buildContext string) (st
 	return result.Cid, nil
 }
 
-func (ctrl *Controller) GetStateResolver() *job.StateResolver {
-	return job.NewStateResolver(
+func (ctrl *Controller) GetStateResolver() *jobutils.StateResolver {
+	return jobutils.NewStateResolver(
 		ctrl.GetJob,
 		ctrl.GetJobState,
 	)

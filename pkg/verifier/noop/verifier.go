@@ -73,7 +73,7 @@ func (noopVerifier *NoopVerifier) IsExecutionComplete(
 		// count how many shard states have progress through the
 		// "I have run this" stage
 		hasExecutedCount := 0
-		for _, state := range shardStates {
+		for _, state := range shardStates { //nolint:gocritic
 			if state.State == executor.JobStateError || state.State == executor.JobStateVerifying {
 				hasExecutedCount++
 			}
@@ -86,12 +86,14 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
+	ctx, span := newSpan(ctx, "VerifyJob")
+	defer span.End()
 	results := []verifier.VerifierResult{}
 	jobState, err := noopVerifier.StateResolver.GetJobState(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
-	for _, shardState := range job.FlattenShardStates(jobState) {
+	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.State != executor.JobStateVerifying {
 			continue
 		}

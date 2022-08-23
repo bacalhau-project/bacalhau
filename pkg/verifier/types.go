@@ -45,7 +45,7 @@ type Verifier interface {
 
 	// requester node
 	//
-	// do we think that enough executions have occured to call this job "complete"
+	// do we think that enough executions have occurred to call this job "complete"
 	// there should be at least 1 result per shard but it's really up to the verifier
 	// to decide that a job has "completed"
 	IsExecutionComplete(

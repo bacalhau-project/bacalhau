@@ -251,7 +251,6 @@ func (node *ComputeNode) subscriptionSetup() {
 		case executor.JobEventResultsRejected:
 			node.subscriptionEventResultsRejected(ctx, jobEvent, job)
 		}
-
 	})
 }
 
@@ -462,7 +461,6 @@ func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, j
 	if jobEvent.TargetNodeID != node.id {
 		return
 	}
-
 }
 
 /*
@@ -698,7 +696,6 @@ func (node *ComputeNode) getVerifier(ctx context.Context, typ verifier.VerifierT
 
 //nolint:dupl // methods are not duplicates
 func (node *ComputeNode) getPublisher(ctx context.Context, typ publisher.PublisherType) (publisher.Publisher, error) {
-
 	p := func() *publisher.Publisher {
 		node.componentMu.Lock()
 		defer node.componentMu.Unlock()

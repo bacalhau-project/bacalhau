@@ -65,7 +65,7 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 	}
 
 	var currentJobState executor.JobStateType
-	for _, shardState := range FlattenShardStates(jobState) {
+	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.State > currentJobState {
 			currentJobState = shardState.State
 		}
@@ -90,9 +90,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if len(completedShards) == 0 {
 		return "", nil
 	}
-	// TODO: this currently assumes the noop verifier will publish a CID
-	// as it's proposal - this needs to read the results of publishing not verification
-	return fmt.Sprintf("/ipfs/%s", string(completedShards[0].PublishedResult.Cid)), nil
+	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.Cid), nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -138,7 +136,7 @@ func (resolver *StateResolver) Wait(
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
 			allTerminal := len(allShardStates) == totalShards
-			for _, shard := range allShardStates {
+			for _, shard := range allShardStates { //nolint:gocritic
 				if !shard.State.IsTerminal() {
 					allTerminal = false
 					break
@@ -281,7 +279,7 @@ func (resolver *StateResolver) CheckShardStates(
 func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 	ret := []executor.JobShardState{}
 	for _, nodeState := range jobState.Nodes {
-		for _, shardState := range nodeState.Shards {
+		for _, shardState := range nodeState.Shards { //nolint:gocritic
 			ret = append(ret, shardState)
 		}
 	}
@@ -290,7 +288,7 @@ func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 
 func GetFilteredShardStates(jobState executor.JobState, filterState executor.JobStateType) []executor.JobShardState {
 	ret := []executor.JobShardState{}
-	for _, shardState := range FlattenShardStates(jobState) {
+	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.State == filterState {
 			ret = append(ret, shardState)
 		}
@@ -312,7 +310,7 @@ func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shard
 	bidsSeen := 0
 	acceptedBidsSeen := 0
 
-	for _, shardState := range shardStates {
+	for _, shardState := range shardStates { //nolint:gocritic
 		if shardState.State == executor.JobStateBidding {
 			bidsSeen++
 		} else if shardState.State == executor.JobStateWaiting {
@@ -334,7 +332,7 @@ func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shard
 // group states by shard index so we can easily iterate over a whole set of them
 func GroupShardStates(flatShards []executor.JobShardState) map[int][]executor.JobShardState {
 	ret := map[int][]executor.JobShardState{}
-	for _, shardState := range flatShards {
+	for _, shardState := range flatShards { //nolint:gocritic
 		arr, ok := ret[shardState.ShardIndex]
 		if !ok {
 			arr = []executor.JobShardState{}
@@ -347,7 +345,7 @@ func GroupShardStates(flatShards []executor.JobShardState) map[int][]executor.Jo
 
 func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobStateType]int {
 	discoveredStateCount := map[executor.JobStateType]int{}
-	for _, shardState := range shardStates {
+	for _, shardState := range shardStates { //nolint:gocritic
 		discoveredStateCount[shardState.State]++
 	}
 	return discoveredStateCount
@@ -357,7 +355,7 @@ func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobS
 func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 	return func(jobState executor.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
-		for _, shard := range allShardStates {
+		for _, shard := range allShardStates { //nolint:gocritic
 			if shard.State.IsError() {
 				return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
 			}

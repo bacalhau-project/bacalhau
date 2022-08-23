@@ -276,12 +276,6 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	// job, err := apiServer.Controller.GetJob(req.Context(), stateReq.JobID)
-	// if err != nil {
-	// 	http.Error(res, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-
 	publisher, err := apiServer.getPublisher(req.Context(), publisher.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
