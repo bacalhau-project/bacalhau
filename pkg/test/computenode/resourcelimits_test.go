@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -251,6 +252,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			jobSpec, jobDeal, err := job.ConstructDockerJob(
 				executor.EngineNoop,
 				verifier.VerifierNoop,
+				publisher.PublisherNoop,
 				jobResources.CPU,
 				jobResources.Memory,
 				"0", // zero GPU for now

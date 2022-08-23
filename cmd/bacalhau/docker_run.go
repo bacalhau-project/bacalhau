@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -46,6 +47,7 @@ var (
 type DockerRunOptions struct {
 	Engine        string   // Executor - executor.Executor
 	Verifier      string   // Verifier - verifier.Verifier
+	Publisher     string   // Publisher - publisher.Publisher
 	Inputs        []string // Array of input CIDs
 	InputUrls     []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
@@ -77,7 +79,8 @@ type DockerRunOptions struct {
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
 		Engine:                           "docker",
-		Verifier:                         "ipfs",
+		Verifier:                         "noop",
+		Publisher:                        "ipfs",
 		Inputs:                           []string{},
 		InputUrls:                        []string{},
 		InputVolumes:                     []string{},
@@ -271,6 +274,11 @@ var dockerRunCmd = &cobra.Command{
 			return err
 		}
 
+		publisherType, err := publisher.ParsePublisherType(ODR.Publisher)
+		if err != nil {
+			return err
+		}
+
 		for _, i := range ODR.Inputs {
 			ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
@@ -286,6 +294,7 @@ var dockerRunCmd = &cobra.Command{
 		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
 			engineType,
 			verifierType,
+			publisherType,
 			ODR.CPU,
 			ODR.Memory,
 			ODR.GPU,

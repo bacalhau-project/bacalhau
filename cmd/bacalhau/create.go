@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -101,6 +103,25 @@ var createCmd = &cobra.Command{
 		} else {
 			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
 		}
+
+		engineType, err := executor.ParseEngineType(jobSpec.EngineName)
+		if err != nil {
+			return err
+		}
+
+		verifierType, err := verifier.ParseVerifierType(jobSpec.VerifierName)
+		if err != nil {
+			return err
+		}
+
+		publisherType, err := publisher.ParsePublisherType(jobSpec.PublisherName)
+		if err != nil {
+			return err
+		}
+
+		jobSpec.Engine = engineType
+		jobSpec.Verifier = verifierType
+		jobSpec.Publisher = publisherType
 
 		jobDeal := &executor.JobDeal{
 			Concurrency: OC.Concurrency,

@@ -1,6 +1,7 @@
 apiVersion: v1alpha1
 engine_name: docker
-verifier_name: ipfs
+verifier_name: noop
+publisher_name: ipfs
 job_spec_docker:
   image: gromacs/gromacs
   entrypoint:

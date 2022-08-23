@@ -33,6 +33,7 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 func ConstructDockerJob( //nolint:funlen
 	e executor.EngineType,
 	v verifier.VerifierType,
+	p publisher.PublisherType,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -98,8 +99,9 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	spec := executor.JobSpec{
-		Engine:   e,
-		Verifier: v,
+		Engine:    e,
+		Verifier:  v,
+		Publisher: p,
 		Docker: executor.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,

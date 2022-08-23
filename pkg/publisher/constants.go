@@ -15,7 +15,7 @@ const (
 	publisherDone // must be last
 )
 
-func ParseVerifierType(str string) (PublisherType, error) {
+func ParsePublisherType(str string) (PublisherType, error) {
 	for typ := publisherUnknown + 1; typ < publisherDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil

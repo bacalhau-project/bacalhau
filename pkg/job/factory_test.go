@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -79,6 +80,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 				jobSpec, _, err := ConstructDockerJob( //nolint:funlen
 					executor.EngineNoop,
 					verifier.VerifierNoop,
+					publisher.PublisherNoop,
 					"1",        // cpu
 					"1",        // memory
 					"0",        // gpu

@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -59,7 +59,7 @@ func (suite *CreateSuite) TestApplyJSON_GenericSubmit() {
 			*OC = *NewCreateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
-			assert.NoError(suite.T(), err)
+			require.NoError(suite.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
@@ -67,11 +67,11 @@ func (suite *CreateSuite) TestApplyJSON_GenericSubmit() {
 				"--api-port", port,
 				"../../testdata/job.json",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			assert.NoError(suite.T(), err)
-			assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 		}()
 	}
 }
@@ -97,7 +97,7 @@ func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
 				*OC = *NewCreateOptions()
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
-				assert.NoError(suite.T(), err)
+				require.NoError(suite.T(), err)
 
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
@@ -106,11 +106,11 @@ func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
 					testFile,
 				)
 
-				assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
-				assert.NoError(suite.T(), err)
-				assert.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.NoError(suite.T(), err)
+				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 			}()
 		}
 	}
