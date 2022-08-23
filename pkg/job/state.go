@@ -358,7 +358,7 @@ func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 		allShardStates := FlattenShardStates(jobState)
 		for _, shard := range allShardStates {
 			if shard.State.IsError() {
-				return false, fmt.Errorf("job has error state %s on node %s", shard.State.String(), shard.NodeID)
+				return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
 			}
 		}
 		return true, nil
