@@ -353,8 +353,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		// TODO: #393 Why is ctx unused if it's passed in? Shouldn't cm do something with it?
-		go func(ctx context.Context) { //nolint:unparam // Ok to be unused?
+		go func(ctx context.Context) { //nolint:unparam
 			var gerr error // don't capture outer scope
 			if gerr = system.ListenAndServeMetrics(cm, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
