@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -76,11 +77,12 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
-		Docker:   testCase.GetJobSpec(),
-		Inputs:   inputStorageList,
-		Outputs:  testCase.Outputs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
+		Docker:    testCase.GetJobSpec(),
+		Inputs:    inputStorageList,
+		Outputs:   testCase.Outputs,
 	}
 
 	jobDeal := executor.JobDeal{
