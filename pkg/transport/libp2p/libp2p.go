@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
+	"time"
+
+	realsync "sync"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -29,7 +33,7 @@ type LibP2PTransport struct {
 	cm *system.CleanupManager
 
 	subscribeFunctions   []transport.SubscribeFn
-	ctx                  sync.RWMutex
+	mutex                sync.RWMutex
 	host                 host.Host
 	port                 int
 	peers                []string
@@ -101,6 +105,10 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		jobEventSubscription: jobEventSubscription,
 	}
 
+	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "LibP2PTransport.mutex",
+	})
 	return libp2pTransport, nil
 }
 
@@ -161,8 +169,8 @@ func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) err
 }
 
 func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
-	t.ctx.Lock()
-	defer t.ctx.Unlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
@@ -212,6 +220,7 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 // we wrap our events on the wire in this envelope so
 // we can pass our tracing context to remote peers
 type jobEventEnvelope struct {
+	SentTime  time.Time              `json:"sent_time"`
 	JobEvent  executor.JobEvent      `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
@@ -223,6 +232,7 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobE
 	bs, err := json.Marshal(jobEventEnvelope{
 		JobEvent:  event,
 		TraceData: traceData,
+		SentTime:  time.Now(),
 	})
 	if err != nil {
 		return err
@@ -241,6 +251,34 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
 	}
+
+	now := time.Now()
+	then := payload.SentTime
+	latency := now.Sub(then)
+	latencyMilli := int64(latency / time.Millisecond)
+	if latencyMilli > 500 { //nolint:gomnd
+		log.Warn().Msgf(
+			"[%s=>%s] VERY High message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	} else if latencyMilli > 50 { //nolint:gomnd
+		log.Warn().Msgf(
+			"[%s=>%s] High message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	} else {
+		log.Debug().Msgf(
+			"[%s=>%s] Message latency: %d ms (%s)",
+			payload.JobEvent.SourceNodeID[:8],
+			t.host.ID().String()[:8],
+			latencyMilli, payload.JobEvent.EventName.String(),
+		)
+	}
+
 	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 
 	// Notify all the listeners in this process of the event:
@@ -251,17 +289,19 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// the node which gossiped the message to us, which might be different.
 	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
 
-	t.ctx.RLock()
-	defer t.ctx.RUnlock()
+	var wg realsync.WaitGroup
+	func() {
+		t.mutex.RLock()
+		defer t.mutex.RUnlock()
 
-	var wg sync.WaitGroup
-	for _, fn := range t.subscribeFunctions {
-		wg.Add(1)
-		go func(f transport.SubscribeFn) {
-			defer wg.Done()
-			f(jobCtx, ev)
-		}(fn)
-	}
+		for _, fn := range t.subscribeFunctions {
+			wg.Add(1)
+			go func(f transport.SubscribeFn) {
+				defer wg.Done()
+				f(jobCtx, ev)
+			}(fn)
+		}
+	}()
 	wg.Wait()
 }
 

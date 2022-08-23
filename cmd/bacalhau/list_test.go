@@ -49,9 +49,6 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
-	tableIDFilter = ""
-	tableSortReverse = false
-
 	tests := []struct {
 		numberOfJobs       int
 		numberOfJobsOutput int
@@ -68,6 +65,10 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
+
+			*OL = *NewListOptions()
+			OL.IDFilter = ""
+			OL.SortReverse = false
 
 			for i := 0; i < tc.numberOfJobs; i++ {
 				spec, deal := publicapi.MakeNoopJob()
@@ -95,11 +96,13 @@ func (suite *ListSuite) TestList_IdFilter() {
 	c, cm := publicapi.SetupTests(suite.T())
 	defer cm.Cleanup()
 
+	*OL = *NewListOptions()
+
 	jobIds := []string{}
 	for i := 0; i < 10; i++ {
 		spec, deal := publicapi.MakeNoopJob()
-		job, err := c.Submit(ctx, spec, deal, nil)
-		jobIds = append(jobIds, shortID(job.ID))
+		j, err := c.Submit(ctx, spec, deal, nil)
+		jobIds = append(jobIds, shortID(OL.OutputWide, j.ID))
 		require.NoError(suite.T(), err)
 	}
 
@@ -128,8 +131,6 @@ func (suite *ListSuite) TestList_IdFilter() {
 func (suite *ListSuite) TestList_SortFlags() {
 	var badSortFlag = "BADSORTFLAG"
 	var createdAtSortFlag = "created_at"
-	tableIDFilter = ""
-	tableSortReverse = false
 
 	combinationOfJobSizes := []struct {
 		numberOfJobs       int
@@ -163,12 +164,16 @@ func (suite *ListSuite) TestList_SortFlags() {
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
 
+				*OL = *NewListOptions()
+				OL.IDFilter = ""
+				OL.SortReverse = false
+
 				jobIDs := []string{}
 				for i := 0; i < tc.numberOfJobs; i++ {
 					spec, deal := publicapi.MakeNoopJob()
 					j, err := c.Submit(ctx, spec, deal, nil)
 					require.NoError(suite.T(), err)
-					jobIDs = append(jobIDs, shortID(j.ID))
+					jobIDs = append(jobIDs, shortID(OL.OutputWide, j.ID))
 
 					// all the middle jobs can have the same timestamp
 					// but we need the first and last to differ
@@ -188,10 +193,6 @@ func (suite *ListSuite) TestList_SortFlags() {
 				if sortFlags.reverseFlag {
 					reverseString = "--reverse"
 				}
-
-				// IMPORTANT: reset this to the default value because otherwise strange things happen
-				// between tests because the value is held on from the last CLI invocation
-				tableSortReverse = false
 
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 					"list",

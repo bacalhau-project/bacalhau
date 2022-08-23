@@ -91,6 +91,9 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					1,          // concurrency
 					[]string{}, // annotations
 					"",         // working dir
+					"",         // sharding base path
+					"",         // sharding glob pattern
+					1,          // sharding batch size
 					true,       // do not track
 				)
 

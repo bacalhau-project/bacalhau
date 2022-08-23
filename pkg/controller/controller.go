@@ -3,8 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	realsync "sync"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -57,7 +60,14 @@ func NewController(
 		jobContexts:      make(map[string]context.Context),
 		jobNodeContexts:  make(map[string]context.Context),
 	}
-
+	ctrl.contextMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "Controller.contextMutex",
+	})
+	ctrl.subscribeMutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "Controller.subscribeMutex",
+	})
 	return ctrl, nil
 }
 
@@ -484,10 +494,11 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
-	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
-	if err != nil {
-		return err
-	}
+	//nolint:gocritic // temporary comment out
+	// err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
+	// if err != nil {
+	// 	return err
+	// }
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 
@@ -527,18 +538,20 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 // we run them in parallel but block on them all finishing
 // otherwise the context would be canceled
 func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev executor.JobEvent) {
-	ctrl.subscribeMutex.RLock()
-	defer ctrl.subscribeMutex.RUnlock()
+	var wg realsync.WaitGroup
+	func() {
+		ctrl.subscribeMutex.RLock()
+		defer ctrl.subscribeMutex.RUnlock()
 
-	// run all local subscribers in parallel
-	var wg sync.WaitGroup
-	for _, fn := range ctrl.subscribeFuncs {
-		wg.Add(1)
-		go func(f transport.SubscribeFn) {
-			defer wg.Done()
-			f(ctx, ev)
-		}(fn)
-	}
+		// run all local subscribers in parallel
+		for _, fn := range ctrl.subscribeFuncs {
+			wg.Add(1)
+			go func(f transport.SubscribeFn) {
+				defer wg.Done()
+				f(ctx, ev)
+			}(fn)
+		}
+	}()
 	wg.Wait()
 }
 

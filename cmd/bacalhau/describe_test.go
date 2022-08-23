@@ -44,8 +44,6 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
-	tableSortReverse = false
-
 	tests := []struct {
 		numberOfAcceptNodes int
 		numberOfRejectNodes int

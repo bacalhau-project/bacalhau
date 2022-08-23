@@ -7,11 +7,41 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	"k8s.io/kubectl/pkg/util/i18n"
 )
 
+var (
+	//nolint:lll // Documentation
+	describeLong = templates.LongDesc(i18n.T(`
+		Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.
+`))
+	//nolint:lll // Documentation
+	describeExample = templates.Examples(i18n.T(`
+		# Describe a job with the full ID
+		bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
+
+		# Describe a job with the a shortened ID
+		bacalhau describe 47805f5c
+`))
+
+	// Set Defaults (probably a better way to do this)
+	OD = NewDescribeOptions()
+
+	// For the -f flag
+)
+
+type DescribeOptions struct {
+	Filename    string // Filename for job (can be .json or .yaml)
+	Concurrency int    // Number of concurrent jobs to run
+}
+
+func NewDescribeOptions() *DescribeOptions {
+	return &DescribeOptions{}
+}
 func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 }
 
@@ -77,14 +107,15 @@ type jobDealDescription struct {
 }
 
 var describeCmd = &cobra.Command{
-	Use:   "describe [id]",
-	Short: "Describe a job on the network",
-	Long:  "Full description of a job, in yaml format. Use 'bacalhau list' to get a list of all ids. Short form and long form of the job id are accepted.", //nolint:lll
-	Args:  cobra.ExactArgs(1),
+	Use:     "describe [id]",
+	Short:   "Describe a job on the network",
+	Long:    describeLong,
+	Example: describeExample,
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		inputJobID := cmdArgs[0]
 
-		job, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
 
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
@@ -96,53 +127,53 @@ var describeCmd = &cobra.Command{
 			return nil
 		}
 
-		state, err := getAPIClient().GetJobState(context.Background(), job.ID)
+		jobState, err := getAPIClient().GetJobState(context.Background(), j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", job.ID, err)
+			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
 			return err
 		}
 
-		events, err := getAPIClient().GetEvents(context.Background(), job.ID)
+		jobEvents, err := getAPIClient().GetEvents(context.Background(), j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), job.ID)
+		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", job.ID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
 
 		jobDockerDesc := jobSpecDockerDescription{}
-		jobDockerDesc.Image = job.Spec.Docker.Image
-		jobDockerDesc.Entrypoint = job.Spec.Docker.Entrypoint
-		jobDockerDesc.Env = job.Spec.Docker.Env
+		jobDockerDesc.Image = j.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = j.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = j.Spec.Docker.Env
 
-		jobDockerDesc.CPU = job.Spec.Resources.CPU
-		jobDockerDesc.Memory = job.Spec.Resources.Memory
+		jobDockerDesc.CPU = j.Spec.Resources.CPU
+		jobDockerDesc.Memory = j.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = job.Spec.Engine.String()
+		jobSpecDesc.Engine = j.Spec.Engine.String()
 
 		jobDealDesc := jobDealDescription{}
-		jobDealDesc.Concurrency = job.Deal.Concurrency
+		jobDealDesc.Concurrency = j.Deal.Concurrency
 
-		jobSpecDesc.Verifier = job.Spec.Verifier.String()
+		jobSpecDesc.Verifier = j.Spec.Verifier.String()
 		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
-		jobDesc.ID = job.ID
-		jobDesc.ClientID = job.ClientID
-		jobDesc.RequesterNodeID = job.RequesterNodeID
+		jobDesc.ID = j.ID
+		jobDesc.ClientID = j.ClientID
+		jobDesc.RequesterNodeID = j.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
-		jobDesc.Deal = job.Deal
-		jobDesc.CreatedAt = job.CreatedAt
+		jobDesc.Deal = j.Deal
+		jobDesc.CreatedAt = j.CreatedAt
 		jobDesc.Events = []eventDescription{}
 
 		shardDescriptions := map[int]shardStateDescription{}
 
-		for _, shard := range jobutils.FlattenShardStates(state) {
+		for _, shard := range jobutils.FlattenShardStates(jobState) {
 			shardDescription, ok := shardDescriptions[shard.ShardIndex]
 			if !ok {
 				shardDescription = shardStateDescription{
@@ -174,7 +205,7 @@ var describeCmd = &cobra.Command{
 
 		jobDesc.Shards = finalDescriptions
 
-		for _, event := range events {
+		for _, event := range jobEvents {
 			jobDesc.Events = append(jobDesc.Events, eventDescription{
 				Event:       event.EventName.String(),
 				Status:      event.Status,
@@ -195,7 +226,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshaling job description '%s': %s", job.ID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
 

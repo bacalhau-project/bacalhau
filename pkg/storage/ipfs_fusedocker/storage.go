@@ -6,8 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"sync"
 	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -68,6 +69,14 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (
 		IPFSClient:   api,
 		DockerClient: dockerClient,
 	}
+	storageHandler.Mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "StorageHandler.Mutex",
+	})
+	storageHandler.Mutex.EnableTracerWithOpts(sync.Opts{
+		Threshold: 10 * time.Millisecond,
+		Id:        "StorageHandler.Mutex",
+	})
 
 	cm.RegisterCallback(func() error {
 		return cleanupStorageDriver(storageHandler)

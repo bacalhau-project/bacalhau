@@ -15,26 +15,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"k8s.io/kubectl/pkg/util/i18n"
 )
-
-var peerConnect string
-var ipfsConnect string
-var hostAddress string
-var hostPort int
-var jobSelectionDataLocality string
-var jobSelectionDataRejectStateless bool
-var jobSelectionProbeHTTP string
-var jobSelectionProbeExec string
-var metricsPort = 2112
-var limitTotalCPU string
-var limitTotalMemory string
-var limitTotalGPU string
-var limitJobCPU string
-var limitJobMemory string
-var limitJobGPU string
 
 var DefaultBootstrapAddresses = []string{
 	"/ip4/35.245.115.191/tcp/1235/p2p/QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -43,48 +29,97 @@ var DefaultBootstrapAddresses = []string{
 }
 var DefaultSwarmPort = 1235
 
+var (
+	serveLong = templates.LongDesc(i18n.T(`
+		Start the bacalhau campute node.
+		`))
+
+	serveExample = templates.Examples(i18n.T(`
+		TBD`))
+
+	OS = NewServeOptions()
+)
+
+type ServeOptions struct {
+	PeerConnect                     string // The libp2p multiaddress to connect to.
+	IPFSConnect                     string // The IPFS multiaddress to connect to.
+	HostAddress                     string // The host address to listen on.
+	HostPort                        int    // The host port to listen on.
+	JobSelectionDataLocality        string // The data locality to use for job selection.
+	JobSelectionDataRejectStateless bool   // Whether to reject jobs that don't specify any data.
+	JobSelectionProbeHTTP           string // The HTTP URL to use for job selection.
+	JobSelectionProbeExec           string // The executable to use for job selection.
+	MetricsPort                     int    // The port to listen on for metrics.
+	LimitTotalCPU                   string // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                string // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                   string // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                     string // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                  string // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                     string // The amount of GPU the system can be using at one time for a single job.
+}
+
+func NewServeOptions() *ServeOptions {
+	return &ServeOptions{
+		PeerConnect:                     "",
+		IPFSConnect:                     "",
+		HostAddress:                     "0.0.0.0",
+		HostPort:                        DefaultSwarmPort,
+		JobSelectionDataLocality:        "local",
+		JobSelectionDataRejectStateless: false,
+		JobSelectionProbeHTTP:           "",
+		JobSelectionProbeExec:           "",
+		MetricsPort:                     2112,
+		LimitTotalCPU:                   "",
+		LimitTotalMemory:                "",
+		LimitTotalGPU:                   "",
+		LimitJobCPU:                     "",
+		LimitJobMemory:                  "",
+		LimitJobGPU:                     "",
+	}
+}
+
 func setupJobSelectionCLIFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
-		&jobSelectionDataLocality, "job-selection-data-locality", "local",
+		&OS.JobSelectionDataLocality, "job-selection-data-locality", OS.JobSelectionDataLocality,
 		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
 	)
 	cmd.PersistentFlags().BoolVar(
-		&jobSelectionDataRejectStateless, "job-selection-reject-stateless", false,
+		&OS.JobSelectionDataRejectStateless, "job-selection-reject-stateless", OS.JobSelectionDataRejectStateless,
 		`Reject jobs that don't specify any data.`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&jobSelectionProbeHTTP, "job-selection-probe-http", "",
+		&OS.JobSelectionProbeHTTP, "job-selection-probe-http", OS.JobSelectionProbeHTTP,
 		`Use the result of a HTTP POST to decide if we should take on the job.`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&jobSelectionProbeExec, "job-selection-probe-exec", "",
+		&OS.JobSelectionProbeExec, "job-selection-probe-exec", OS.JobSelectionProbeExec,
 		`Use the result of a exec an external program to decide if we should take on the job.`,
 	)
 }
 
 func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(
-		&limitTotalCPU, "limit-total-cpu", "",
+		&OS.LimitTotalCPU, "limit-total-cpu", OS.LimitTotalCPU,
 		`Total CPU core limit to run all jobs (e.g. 500m, 2, 8).`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&limitTotalMemory, "limit-total-memory", "",
+		&OS.LimitTotalMemory, "limit-total-memory", OS.LimitTotalMemory,
 		`Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&limitTotalGPU, "limit-total-gpu", "",
+		&OS.LimitTotalGPU, "limit-total-gpu", OS.LimitTotalGPU,
 		`Total GPU limit to run all jobs (e.g. 1, 2, or 8).`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&limitJobCPU, "limit-job-cpu", "",
+		&OS.LimitJobCPU, "limit-job-cpu", OS.LimitJobCPU,
 		`Job CPU core limit for single job (e.g. 500m, 2, 8).`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&limitJobMemory, "limit-job-memory", "",
+		&OS.LimitJobMemory, "limit-job-memory", OS.LimitJobMemory,
 		`Job Memory limit for single job  (e.g. 500Mb, 2Gb, 8Gb).`,
 	)
 	cmd.PersistentFlags().StringVar(
-		&limitJobGPU, "limit-job-gpu", "",
+		&OS.LimitJobGPU, "limit-job-gpu", OS.LimitJobGPU,
 		`Job GPU limit for single job (e.g. 1, 2, or 8).`,
 	)
 }
@@ -93,15 +128,15 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
 	typedJobSelectionDataLocality := computenode.Anywhere
 
-	if jobSelectionDataLocality == "anywhere" {
+	if OS.JobSelectionDataLocality == "anywhere" {
 		typedJobSelectionDataLocality = computenode.Anywhere
 	}
 
 	jobSelectionPolicy := computenode.JobSelectionPolicy{
 		Locality:            typedJobSelectionDataLocality,
-		RejectStatelessJobs: jobSelectionDataRejectStateless,
-		ProbeHTTP:           jobSelectionProbeHTTP,
-		ProbeExec:           jobSelectionProbeExec,
+		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
+		ProbeHTTP:           OS.JobSelectionProbeHTTP,
+		ProbeExec:           OS.JobSelectionProbeExec,
 	}
 
 	return jobSelectionPolicy
@@ -110,16 +145,16 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.ResourceUsageConfig) {
 	// the total amount of CPU / Memory the system can be using at one time
 	totalResourceLimit := capacitymanager.ResourceUsageConfig{
-		CPU:    limitTotalCPU,
-		Memory: limitTotalMemory,
-		GPU:    limitTotalGPU,
+		CPU:    OS.LimitTotalCPU,
+		Memory: OS.LimitTotalMemory,
+		GPU:    OS.LimitTotalGPU,
 	}
 
 	// the per job CPU / Memory limits
 	jobResourceLimit := capacitymanager.ResourceUsageConfig{
-		CPU:    limitJobCPU,
-		Memory: limitJobMemory,
-		GPU:    limitJobGPU,
+		CPU:    OS.LimitJobCPU,
+		Memory: OS.LimitJobMemory,
+		GPU:    OS.LimitJobGPU,
 	}
 
 	return totalResourceLimit, jobResourceLimit
@@ -127,23 +162,23 @@ func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.Resource
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	serveCmd.PersistentFlags().StringVar(
-		&peerConnect, "peer", "",
+		&OS.PeerConnect, "peer", OS.PeerConnect,
 		`The libp2p multiaddress to connect to.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&ipfsConnect, "ipfs-connect", "",
+		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
-		&hostAddress, "host", "0.0.0.0",
+		&OS.HostAddress, "host", OS.HostAddress,
 		`The host to listen on (for both api and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&hostPort, "port", DefaultSwarmPort,
+		&OS.HostPort, "port", OS.HostPort,
 		`The port to listen on for swarm connections.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&metricsPort, "metrics-port", metricsPort,
+		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
 		`The port to serve prometheus metrics on.`,
 	)
 
@@ -152,14 +187,16 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 }
 
 var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Start the bacalhau compute node",
+	Use:     "serve",
+	Short:   "Start the bacalhau compute node",
+	Long:    serveLong,
+	Example: serveExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if ipfsConnect == "" {
+		if OS.IPFSConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
 		}
 
-		if jobSelectionDataLocality != "local" && jobSelectionDataLocality != "anywhere" {
+		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
 
@@ -169,10 +206,10 @@ var serveCmd = &cobra.Command{
 		defer cm.Cleanup()
 
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults
-		if peerConnect == "none" {
+		if OS.PeerConnect == "none" {
 			peers = []string{} // Only connect to peers if not none
-		} else if peerConnect != "" {
-			peers = []string{peerConnect} // Otherwise set peers according to the user options
+		} else if OS.PeerConnect != "" {
+			peers = []string{OS.PeerConnect} // Otherwise set peers according to the user options
 		}
 
 		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
@@ -182,7 +219,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		transport, err := libp2p.NewTransport(cm, hostPort, peers)
+		transport, err := libp2p.NewTransport(cm, OS.HostPort, peers)
 		if err != nil {
 			return err
 		}
@@ -194,7 +231,7 @@ var serveCmd = &cobra.Command{
 
 		storageProviders, err := executor_util.NewStandardStorageProviders(
 			cm,
-			ipfsConnect,
+			OS.IPFSConnect,
 		)
 		if err != nil {
 			return err
@@ -212,7 +249,7 @@ var serveCmd = &cobra.Command{
 
 		executors, err := executor_util.NewStandardExecutors(
 			cm,
-			ipfsConnect,
+			OS.IPFSConnect,
 			fmt.Sprintf("bacalhau-%s", hostID),
 		)
 		if err != nil {
@@ -224,7 +261,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		publishers, err := publisher_util.NewIPFSPublishers(cm, controller.GetStateResolver(), ipfsConnect)
+		publishers, err := publisher_util.NewIPFSPublishers(cm, controller.GetStateResolver(), OS.IPFSConnect)
 		if err != nil {
 			return err
 		}
@@ -264,7 +301,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		apiServer := publicapi.NewServer(
-			hostAddress,
+			OS.HostAddress,
 			apiPort,
 			controller,
 			publishers,
@@ -291,12 +328,12 @@ var serveCmd = &cobra.Command{
 
 		// TODO: #352 should system.ListenAndServeMetrix take ctx?
 		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
-			if err = system.ListenAndServeMetrics(cm, metricsPort); err != nil {
+			if err = system.ListenAndServeMetrics(cm, OS.MetricsPort); err != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(ctx)
 
-		log.Debug().Msgf("libp2p server started: %d", hostPort)
+		log.Debug().Msgf("libp2p server started: %d", OS.HostPort)
 
 		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
 

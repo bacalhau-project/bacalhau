@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -187,6 +188,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		seenJobs := []SeenJobRecord{}
 		var seenJobsMutex sync.Mutex
+		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
+			Threshold: 10 * time.Millisecond,
+			Id:        "TestTotalResourceLimits.seenJobsMutex",
+		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()
@@ -243,7 +248,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
-			spec, deal, err := job.ConstructDockerJob(
+			jobSpec, jobDeal, err := job.ConstructDockerJob(
 				executor.EngineNoop,
 				verifier.VerifierNoop,
 				jobResources.CPU,
@@ -262,14 +267,17 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				1,
 				[]string{},
 				"",
+				"", // sharding base path
+				"", // sharding glob pattern
+				1,  // sharding batch size
 				true,
 			)
 
 			require.NoError(suite.T(), err)
 			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
 				ClientID: "123",
-				Spec:     spec,
-				Deal:     deal,
+				Spec:     *jobSpec,
+				Deal:     *jobDeal,
 			})
 			require.NoError(suite.T(), err)
 
@@ -281,7 +289,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 10,
+			MaxAttempts: 1000,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)

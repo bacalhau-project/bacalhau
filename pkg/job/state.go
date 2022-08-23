@@ -31,8 +31,8 @@ func NewStateResolver(
 	return &StateResolver{
 		jobLoader:       jobLoader,
 		stateLoader:     stateLoader,
-		maxWaitAttempts: 100,
-		waitDelay:       time.Second * 1,
+		maxWaitAttempts: 1000,
+		waitDelay:       time.Millisecond * 100,
 	}
 }
 
@@ -299,6 +299,35 @@ func GetFilteredShardStates(jobState executor.JobState, filterState executor.Job
 
 func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
 	return GetFilteredShardStates(jobState, executor.JobStatePublished)
+}
+
+func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shardIndex int) bool {
+	allShards := GroupShardStates(FlattenShardStates(jobState))
+	shardStates, ok := allShards[shardIndex]
+	if !ok {
+		return false
+	}
+
+	bidsSeen := 0
+	acceptedBidsSeen := 0
+
+	for _, shardState := range shardStates {
+		if shardState.State == executor.JobStateBidding {
+			bidsSeen++
+		} else if shardState.State == executor.JobStateWaiting {
+			acceptedBidsSeen++
+		}
+	}
+
+	if acceptedBidsSeen >= job.Deal.Concurrency {
+		return true
+	}
+
+	if bidsSeen >= job.Deal.Concurrency*2 {
+		return true
+	}
+
+	return false
 }
 
 // group states by shard index so we can easily iterate over a whole set of them
