@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -122,21 +124,26 @@ var devstackCmd = &cobra.Command{
 				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
 		}
 
-		// nodeIndex will be used in the future
-		getVerifiers := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) ( //nolint:unparam,lll
-			map[verifier.VerifierType]verifier.Verifier, error) {
-
+		getVerifiers := func(
+			ipfsMultiAddress string,
+			nodeIndex int,
+			ctrl *controller.Controller,
+		) (map[verifier.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
-				return verifier_util.NewNoopVerifiers(cm)
+				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 			}
+			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+		}
 
-			jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-				return ctrl.GetJob(ctx, id)
+		getPublishers := func(
+			ipfsMultiAddress string,
+			nodeIndex int,
+			ctrl *controller.Controller,
+		) (map[publisher.PublisherType]publisher.Publisher, error) {
+			if ODs.IsNoop {
+				return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
 			}
-			stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-				return ctrl.GetJobState(ctx, id)
-			}
-			return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 		}
 
 		jobSelectionPolicy := getJobSelectionConfig()
@@ -168,6 +175,7 @@ var devstackCmd = &cobra.Command{
 			getStorageProviders,
 			getExecutors,
 			getVerifiers,
+			getPublishers,
 			computeNodeConfig,
 			ODs.Peer,
 			false,

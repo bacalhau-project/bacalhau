@@ -13,6 +13,8 @@ import (
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_noop "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	storage_noop "github.com/filecoin-project/bacalhau/pkg/storage/noop"
@@ -54,7 +56,7 @@ func (suite *TransportSuite) TearDownAllSuite() {
 func setupTest(t *testing.T) (
 	*inprocess.InProcessTransport,
 	*executorNoop.Executor,
-	*verifier_noop.Verifier,
+	*verifier_noop.NoopVerifier,
 	*controller.Controller,
 	*system.CleanupManager,
 ) {
@@ -63,23 +65,12 @@ func setupTest(t *testing.T) (
 	noopStorage, err := storage_noop.NewStorageProvider(cm)
 	require.NoError(t, err)
 
-	noopExecutor, err := executorNoop.NewExecutor()
-	require.NoError(t, err)
-
-	noopVerifier, err := verifier_noop.NewVerifier()
-	require.NoError(t, err)
-
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{
 		storage.StorageSourceIPFS: noopStorage,
 	}
 
-	executors := map[executor.EngineType]executor.Executor{
-		executor.EngineNoop: noopExecutor,
-	}
-
-	verifiers := map[verifier.VerifierType]verifier.Verifier{
-		verifier.VerifierNoop: noopVerifier,
-	}
+	noopExecutor, err := executorNoop.NewExecutor()
+	require.NoError(t, err)
 
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
@@ -90,11 +81,30 @@ func setupTest(t *testing.T) (
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
+	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
+
+	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
+
+	executors := map[executor.EngineType]executor.Executor{
+		executor.EngineNoop: noopExecutor,
+	}
+
+	verifiers := map[verifier.VerifierType]verifier.Verifier{
+		verifier.VerifierNoop: noopVerifier,
+	}
+
+	publishers := map[publisher.PublisherType]publisher.Publisher{
+		publisher.PublisherNoop: noopPublisher,
+	}
+
 	_, err = computenode.NewComputeNode(
 		cm,
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
@@ -123,6 +133,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{}
 	executors := map[executor.EngineType]executor.Executor{}
 	verifiers := map[verifier.VerifierType]verifier.Verifier{}
+	publishers := map[publisher.PublisherType]publisher.Publisher{}
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
@@ -134,6 +145,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(suite.T(), err)
@@ -190,8 +202,9 @@ func (suite *TransportSuite) TestTransportEvents() {
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
-		Engine:   executor.EngineNoop,
-		Verifier: verifier.VerifierNoop,
+		Engine:    executor.EngineNoop,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
@@ -222,7 +235,9 @@ func (suite *TransportSuite) TestTransportEvents() {
 		executor.JobEventCreated.String(),
 		executor.JobEventBid.String(),
 		executor.JobEventBidAccepted.String(),
-		executor.JobEventCompleted.String(),
+		executor.JobEventResultsProposed.String(),
+		executor.JobEventResultsAccepted.String(),
+		executor.JobEventResultsPublished.String(),
 	}
 	actualEventNames := []string{}
 

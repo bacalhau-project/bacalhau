@@ -129,9 +129,10 @@ open("%s/test.txt", "w").write(open("%s").read())
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)
+	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
-	outputPath = filepath.Join(outputDir, shard.ResultsID)
-	err = node.IpfsClient.Get(ctx, shard.ResultsID, outputPath)
+	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
+	err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 	require.NoError(suite.T(), err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)

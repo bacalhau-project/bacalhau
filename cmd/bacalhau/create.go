@@ -9,8 +9,11 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -101,6 +104,33 @@ var createCmd = &cobra.Command{
 		} else {
 			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
 		}
+
+		// the spec might use string version or proper numeric versions
+		// let's convert them to the numeric version
+		engineType, err := executor.EnsureEngineType(jobSpec.Engine, jobSpec.EngineName)
+		if err != nil {
+			return err
+		}
+
+		verifierType, err := verifier.EnsureVerifierType(jobSpec.Verifier, jobSpec.VerifierName)
+		if err != nil {
+			return err
+		}
+
+		publisherType, err := publisher.EnsurePublisherType(jobSpec.Publisher, jobSpec.PublisherName)
+		if err != nil {
+			return err
+		}
+
+		parsedInputs, err := storage.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
+		if err != nil {
+			return err
+		}
+
+		jobSpec.Engine = engineType
+		jobSpec.Verifier = verifierType
+		jobSpec.Publisher = publisherType
+		jobSpec.Inputs = parsedInputs
 
 		jobDeal := &executor.JobDeal{
 			Concurrency: OC.Concurrency,

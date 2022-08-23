@@ -35,11 +35,11 @@ func TestInMemoryDataStore(t *testing.T) {
 		nodeId,
 		shardIndex,
 		executor.JobShardState{
-			NodeID:     nodeId,
-			ShardIndex: shardIndex,
-			State:      executor.JobStateBidding,
-			Status:     "hello",
-			ResultsID:  "apples",
+			NodeID:               nodeId,
+			ShardIndex:           shardIndex,
+			State:                executor.JobStateBidding,
+			Status:               "hello",
+			VerificationProposal: []byte("apples"),
 		},
 	)
 	require.NoError(t, err)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 type InMemoryDatastore struct {
@@ -204,8 +205,12 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.Status = update.Status
 	}
 
-	if update.ResultsID != "" {
-		shardSate.ResultsID = update.ResultsID
+	if len(update.VerificationProposal) != 0 {
+		shardSate.VerificationProposal = update.VerificationProposal
+	}
+
+	if storage.IsValidStorageSourceType(update.PublishedResult.Engine) {
+		shardSate.PublishedResult = update.PublishedResult
 	}
 
 	nodeState.Shards[shardIndex] = shardSate

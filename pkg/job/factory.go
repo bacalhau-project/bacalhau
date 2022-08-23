@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -32,6 +33,7 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 func ConstructDockerJob( //nolint:funlen
 	e executor.EngineType,
 	v verifier.VerifierType,
+	p publisher.PublisherType,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -97,8 +99,9 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	spec := executor.JobSpec{
-		Engine:   e,
-		Verifier: v,
+		Engine:    e,
+		Verifier:  v,
+		Publisher: p,
 		Docker: executor.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,
@@ -177,9 +180,10 @@ func ConstructLanguageJob(
 	}
 
 	spec := executor.JobSpec{
-		Engine: executor.EngineLanguage,
+		Engine:   executor.EngineLanguage,
+		Verifier: verifier.VerifierNoop,
 		// TODO: should this always be ipfs?
-		Verifier: verifier.VerifierIpfs,
+		Publisher: publisher.PublisherIpfs,
 		Language: executor.JobSpecLanguage{
 			Language:         language,
 			LanguageVersion:  languageVersion,

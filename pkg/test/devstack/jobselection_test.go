@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -72,11 +73,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
 
 		jobSpec := executor.JobSpec{
-			Engine:   executor.EngineDocker,
-			Verifier: verifier.VerifierIpfs,
-			Docker:   scenario.GetJobSpec(),
-			Inputs:   inputStorageList,
-			Outputs:  scenario.Outputs,
+			Engine:    executor.EngineDocker,
+			Verifier:  verifier.VerifierNoop,
+			Publisher: publisher.PublisherNoop,
+			Docker:    scenario.GetJobSpec(),
+			Inputs:    inputStorageList,
+			Outputs:   scenario.Outputs,
 		}
 
 		jobDeal := executor.JobDeal{
@@ -100,7 +102,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 				executor.JobStateError,
 			}),
 			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStateComplete: testCase.expectedAccepts,
+				executor.JobStatePublished: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

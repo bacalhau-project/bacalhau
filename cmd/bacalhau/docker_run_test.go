@@ -105,7 +105,11 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 		func() {
 			var logBuf = new(bytes.Buffer)
 			var Stdout = struct{ io.Writer }{os.Stdout}
+			originalLogger := log.Logger
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
+			defer func() {
+				log.Logger = originalLogger
+			}()
 
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
@@ -499,10 +503,6 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 		// {numberOfJobs: 5}, // Test for five
 	}
 
-	var logBuf = new(bytes.Buffer)
-	var Stdout = struct{ io.Writer }{os.Stdout}
-	log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
-
 	annotationsToTest := []struct {
 		Name          string
 		Annotations   []string
@@ -599,7 +599,11 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 		func() {
 			var logBuf = new(bytes.Buffer)
 			var Stdout = struct{ io.Writer }{os.Stdout}
+			originalLogger := log.Logger
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
+			defer func() {
+				log.Logger = originalLogger
+			}()
 
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())

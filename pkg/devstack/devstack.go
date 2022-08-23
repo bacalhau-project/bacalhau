@@ -18,6 +18,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -74,6 +76,15 @@ type GetVerifiersFunc func(
 	error,
 )
 
+type GetPublishersFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+	ctrl *controller.Controller,
+) (
+	map[publisher.PublisherType]publisher.Publisher,
+	error,
+)
+
 func NewDevStackForRunLocal(
 	cm *system.CleanupManager,
 	count int,
@@ -106,13 +117,17 @@ func NewDevStackForRunLocal(
 		map[verifier.VerifierType]verifier.Verifier,
 		error,
 	) {
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return ctrl.GetJob(ctx, id)
-		}
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return ctrl.GetJobState(ctx, id)
-		}
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	}
+	getPublishers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[publisher.PublisherType]publisher.Publisher,
+		error,
+	) {
+		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 
 	return NewDevStack(
@@ -121,6 +136,7 @@ func NewDevStackForRunLocal(
 		getStorageProviders,
 		getExecutors,
 		getVerifiers,
+		getPublishers,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality:            computenode.Anywhere,
@@ -143,6 +159,7 @@ func NewDevStack(
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
+	getPublishers GetPublishersFunc,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 	peer string,
@@ -264,6 +281,11 @@ func NewDevStack(
 			return nil, err
 		}
 
+		publishers, err := getPublishers(ipfsAPIAddrs[0], i, ctrl)
+		if err != nil {
+			return nil, err
+		}
+
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
@@ -285,6 +307,7 @@ func NewDevStack(
 			ctrl,
 			executors,
 			verifiers,
+			publishers,
 			config,
 		)
 		if err != nil {
@@ -310,7 +333,7 @@ func NewDevStack(
 			"0.0.0.0",
 			apiPort,
 			ctrl,
-			verifiers,
+			publishers,
 		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope

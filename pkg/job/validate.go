@@ -5,6 +5,9 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
 
 func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
@@ -14,6 +17,24 @@ func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
 
 	if reflect.DeepEqual(executor.JobDeal{}, deal) {
 		return fmt.Errorf("job spec is empty")
+	}
+
+	if !executor.IsValidEngineType(spec.Engine) {
+		return fmt.Errorf("invalid executor type: %s", spec.Engine.String())
+	}
+
+	if !verifier.IsValidVerifierType(spec.Verifier) {
+		return fmt.Errorf("invalid verifier type: %s", spec.Verifier.String())
+	}
+
+	if !publisher.IsValidPublisherType(spec.Publisher) {
+		return fmt.Errorf("invalid publisher type: %s", spec.Publisher.String())
+	}
+
+	for _, inputVolume := range spec.Inputs {
+		if !storage.IsValidStorageSourceType(inputVolume.Engine) {
+			return fmt.Errorf("invalid input volume type: %s", inputVolume.Engine.String())
+		}
 	}
 
 	return nil

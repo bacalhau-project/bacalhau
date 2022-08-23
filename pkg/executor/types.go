@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 )
@@ -28,7 +29,12 @@ type Executor interface {
 
 	// run the given job - it's expected that we have already prepared the job
 	// this will return a local filesystem path to the jobs results
-	RunShard(ctx context.Context, job Job, shardIndex int) (string, error)
+	RunShard(
+		ctx context.Context,
+		job Job,
+		shardIndex int,
+		resultsDir string,
+	) error
 }
 
 // Job contains data about a job in the bacalhau network.
@@ -108,9 +114,10 @@ type JobShardState struct {
 	State JobStateType `json:"state"`
 	// an arbitrary status message
 	Status string `json:"status"`
-	// the ID of the results for this shard
+	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	ResultsID string `json:"results_id"`
+	VerificationProposal []byte              `json:"verification_proposal"`
+	PublishedResult      storage.StorageSpec `json:"published_results"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -130,12 +137,13 @@ type JobSpec struct {
 	// allow the engine to be provided as a string for yaml and JSON job specs
 	EngineName string `json:"engine_name" yaml:"engine_name"`
 
-	// e.g. ipfs or localfs
-	// these verifiers both just copy the results
-	// and don't do any verification
 	Verifier verifier.VerifierType `json:"verifier" yaml:"verifier"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
 	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
+
+	// there can be multiple publishers for the job
+	Publisher     publisher.PublisherType `json:"publisher" yaml:"publisher"`
+	PublisherName string                  `json:"publisher_name" yaml:"publisher_name"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
@@ -226,9 +234,11 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
-	JobDeal   JobDeal   `json:"job_deal"`
-	Status    string    `json:"status"`
-	ResultsID string    `json:"results_id"`
+	JobDeal              JobDeal             `json:"job_deal"`
+	Status               string              `json:"status"`
+	VerificationProposal []byte              `json:"verification_proposal"`
+	PublishedResult      storage.StorageSpec `json:"published_results"`
+
 	EventTime time.Time `json:"event_time"`
 }
 

@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -13,9 +14,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -53,15 +54,20 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewIPFSVerifiers(
+	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	require.NoError(t, err)
+
+	verifiers, err := verifier_util.NewNoopVerifiers(
 		cm,
-		apiAddress,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
+		ctrl.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	publishers, err := publisher_util.NewIPFSPublishers(
+		cm,
+		ctrl.GetStateResolver(),
+		apiAddress,
+	)
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
@@ -69,6 +75,7 @@ func SetupTestDockerIpfs(
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		config,
 	)
 	require.NoError(t, err)
@@ -93,13 +100,16 @@ func SetupTestNoop(
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewNoopVerifiers(cm)
-	require.NoError(t, err)
-
 	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	require.NoError(t, err)
+
+	verifiers, err := verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	require.NoError(t, err)
+
+	publishers, err := publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(
@@ -115,6 +125,7 @@ func SetupTestNoop(
 		ctrl,
 		executors,
 		verifiers,
+		publishers,
 		computeNodeconfig,
 	)
 	if err != nil {
@@ -190,10 +201,12 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec executor.JobSpec,
 ) string {
-	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
+	require.NoError(t, err)
+	err = computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: spec,
-	}, 0)
+	}, 0, result)
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -158,23 +159,17 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		// Test to see how many files can be open on this system...
 		cmd := exec.Command("ulimit", "-n")
 		err := cmd.Run()
+		require.NoError(suite.T(), err)
 
-		if err != nil {
-			require.Fail(suite.T(), "Failure checking for ulimit.")
-		}
 		out, _ := cmd.CombinedOutput()
-		ulimitValue, _ = strconv.Atoi(string(out))
-
-		if err != nil {
-			require.Fail(suite.T(), "Failure getting ulimit value.")
-		}
+		ulimitValue, err = strconv.Atoi(string(out))
+		require.NoError(suite.T(), err)
 	} else {
 		var rLimit syscall.Rlimit
 		err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
-		if err != nil {
-			require.Fail(suite.T(), "Failure checking for Rlimit.")
-		}
-		ulimitValue, _ = strconv.Atoi(fmt.Sprint(rLimit.Cur))
+		require.NoError(suite.T(), err)
+		ulimitValue, err = strconv.Atoi(fmt.Sprint(rLimit.Cur))
+		require.NoError(suite.T(), err)
 	}
 
 	if ulimitValue <= 512 {
@@ -203,8 +198,9 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherIpfs,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -264,6 +260,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	jobResults, err := apiClient.GetResults(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
+	require.True(suite.T(), len(jobResults) > 0, "there should be > 0 results")
 
 	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
 	require.NoError(suite.T(), err)
@@ -341,8 +338,9 @@ func (suite *ShardingSuite) TestNoShards() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -409,8 +407,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{

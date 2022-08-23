@@ -11,7 +11,6 @@ type VerifierType int
 const (
 	verifierUnknown VerifierType = iota // must be first
 	VerifierNoop
-	VerifierIpfs
 	verifierDone // must be last
 )
 
@@ -23,6 +22,17 @@ func ParseVerifierType(str string) (VerifierType, error) {
 	}
 
 	return verifierUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
+}
+
+func EnsureVerifierType(typ VerifierType, str string) (VerifierType, error) {
+	if IsValidVerifierType(typ) {
+		return typ, nil
+	}
+	return ParseVerifierType(str)
+}
+
+func IsValidVerifierType(verifierType VerifierType) bool {
+	return verifierType > verifierUnknown && verifierType < verifierDone
 }
 
 func VerifierTypes() []VerifierType {

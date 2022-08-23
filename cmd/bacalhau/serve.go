@@ -8,10 +8,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -256,15 +256,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return controller.GetJob(ctx, id)
+		verifiers, err := verifier_util.NewNoopVerifiers(cm, controller.GetStateResolver())
+		if err != nil {
+			return err
 		}
 
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return controller.GetJobState(ctx, id)
-		}
-
-		verifiers, err := verifier_util.NewIPFSVerifiers(cm, OS.IPFSConnect, jobLoader, stateLoader)
+		publishers, err := publisher_util.NewIPFSPublishers(cm, controller.GetStateResolver(), OS.IPFSConnect)
 		if err != nil {
 			return err
 		}
@@ -296,6 +293,7 @@ var serveCmd = &cobra.Command{
 			controller,
 			executors,
 			verifiers,
+			publishers,
 			computeNodeConfig,
 		)
 		if err != nil {
@@ -306,7 +304,7 @@ var serveCmd = &cobra.Command{
 			OS.HostAddress,
 			apiPort,
 			controller,
-			verifiers,
+			publishers,
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
