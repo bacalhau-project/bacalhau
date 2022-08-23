@@ -202,8 +202,9 @@ func (suite *TransportSuite) TestTransportEvents() {
 	defer cm.Cleanup()
 
 	spec := executor.JobSpec{
-		Engine:   executor.EngineNoop,
-		Verifier: verifier.VerifierNoop,
+		Engine:    executor.EngineNoop,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
@@ -234,7 +235,9 @@ func (suite *TransportSuite) TestTransportEvents() {
 		executor.JobEventCreated.String(),
 		executor.JobEventBid.String(),
 		executor.JobEventBidAccepted.String(),
-		executor.JobStatePublished.String(),
+		executor.JobEventResultsProposed.String(),
+		executor.JobEventResultsAccepted.String(),
+		executor.JobEventResultsPublished.String(),
 	}
 	actualEventNames := []string{}
 
