@@ -260,6 +260,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	jobResults, err := apiClient.GetResults(ctx, submittedJob.ID)
 	require.NoError(suite.T(), err)
+	require.True(suite.T(), len(jobResults) > 0, "there should be > 0 results")
 
 	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
 	require.NoError(suite.T(), err)

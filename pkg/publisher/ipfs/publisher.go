@@ -79,15 +79,10 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 	defer span.End()
 	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)
 	if err != nil {
-		return results, nil
+		return results, err
 	}
 	for _, shardResult := range shardResults {
-		results = append(results, storage.StorageSpec{
-			Name:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
-			Path:   fmt.Sprintf("shard%d", shardResult.ShardIndex),
-			Engine: storage.StorageSourceIPFS,
-			Cid:    string(shardResult.ResultsProposal),
-		})
+		results = append(results, shardResult.Results)
 	}
 	return results, nil
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -176,8 +177,8 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 }
 
 type ResultsShard struct {
-	ShardIndex      int
-	ResultsProposal []byte
+	ShardIndex int
+	Results    storage.StorageSpec
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
@@ -221,7 +222,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 
 		// again this should never happen but just in case
 		// a shard result with an empty CID has made it through somehow
-		if len(shardResult.VerificationProposal) == 0 {
+		if shardResult.PublishedResult.Cid == "" {
 			return results, fmt.Errorf(
 				"job (%s) has a missing results id at shard index %d",
 				jobID,
@@ -230,8 +231,8 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 		}
 
 		results = append(results, ResultsShard{
-			ShardIndex:      shardIndex,
-			ResultsProposal: shardResult.VerificationProposal,
+			ShardIndex: shardIndex,
+			Results:    shardResult.PublishedResult,
 		})
 	}
 	return results, nil
