@@ -35,10 +35,10 @@ func (publisher *NoopPublisher) PublishShardResult(
 	jobID string,
 	shardIndex int,
 	shardResultPath string,
-) (*storage.StorageSpec, error) {
+) (storage.StorageSpec, error) {
 	ctx, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
-	return nil, nil
+	return storage.StorageSpec{}, nil
 }
 
 func (publisher *NoopPublisher) ComposeResultReferences(

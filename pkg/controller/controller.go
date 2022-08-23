@@ -354,13 +354,13 @@ func (ctrl *Controller) ShardResultsPublished(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
-	publishedResults []storage.StorageSpec,
+	publishedResults storage.StorageSpec,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardResultsPublished")
 	ev := ctrl.constructEvent(jobID, executor.JobEventResultsPublished)
 	ev.ShardIndex = shardIndex
-	ev.PublishedResults = publishedResults
+	ev.PublishedResult = publishedResults
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -512,7 +512,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 				State:                executionState,
 				Status:               ev.Status,
 				VerificationProposal: ev.VerificationProposal,
-				PublishedResults:     ev.PublishedResults,
+				PublishedResult:      ev.PublishedResult,
 			},
 		)
 		if err != nil {

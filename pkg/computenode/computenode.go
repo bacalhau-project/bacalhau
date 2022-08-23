@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/prometheus/client_golang/prometheus"
@@ -508,19 +507,17 @@ func (node *ComputeNode) PublishShard(
 	if err != nil {
 		return err
 	}
-	publishedResults := []storage.StorageSpec{}
-	for _, publisherType := range job.Spec.Publishers {
-		publisher, err := node.getPublisher(ctx, publisherType)
-		if err != nil {
-			return err
-		}
-		publishedResult, err := publisher.PublishShardResult(ctx, job.ID, node.id, shardIndex, resultFolder)
-		if err != nil {
-			return err
-		}
-		if publishedResult != nil {
-			publishedResults = append(publishedResults, *publishedResult)
-		}
+	publisher, err := node.getPublisher(ctx, job.Spec.Publisher)
+	if err != nil {
+		return err
+	}
+	publishedResult, err := publisher.PublishShardResult(ctx, job.ID, node.id, shardIndex, resultFolder)
+	if err != nil {
+		return err
+	}
+	err = node.controller.ShardResultsPublished(ctx, job.ID, shardIndex, publishedResult)
+	if err != nil {
+		return err
 	}
 	return nil
 }

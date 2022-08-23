@@ -116,8 +116,8 @@ type JobShardState struct {
 	Status string `json:"status"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	VerificationProposal []byte                `json:"verification_proposal"`
-	PublishedResults     []storage.StorageSpec `json:"published_results"`
+	VerificationProposal []byte              `json:"verification_proposal"`
+	PublishedResult      storage.StorageSpec `json:"published_results"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -142,8 +142,8 @@ type JobSpec struct {
 	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
 
 	// there can be multiple publishers for the job
-	Publishers     []publisher.PublisherType `json:"publishers" yaml:"publishers"`
-	PublisherNames []string                  `json:"publisher_names" yaml:"publisher_names"`
+	Publisher     publisher.PublisherType `json:"publisher" yaml:"publisher"`
+	PublisherName string                  `json:"publisher_name" yaml:"publisher_name"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
@@ -234,10 +234,10 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
-	JobDeal              JobDeal               `json:"job_deal"`
-	Status               string                `json:"status"`
-	VerificationProposal []byte                `json:"verification_proposal"`
-	PublishedResults     []storage.StorageSpec `json:"published_results"`
+	JobDeal              JobDeal             `json:"job_deal"`
+	Status               string              `json:"status"`
+	VerificationProposal []byte              `json:"verification_proposal"`
+	PublishedResult      storage.StorageSpec `json:"published_results"`
 
 	EventTime time.Time `json:"event_time"`
 }

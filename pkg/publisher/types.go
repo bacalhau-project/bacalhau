@@ -28,7 +28,7 @@ type Publisher interface {
 		hostID string,
 		shardIndex int,
 		shardResultPath string,
-	) (*storage.StorageSpec, error)
+	) (storage.StorageSpec, error)
 
 	// return a slice of storage specs that when re-assembled
 	// constitutes a complete set of results for a job

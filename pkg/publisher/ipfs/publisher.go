@@ -49,7 +49,7 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	jobID string,
 	shardIndex int,
 	shardResultPath string,
-) (*storage.StorageSpec, error) {
+) (storage.StorageSpec, error) {
 	ctx, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
 	log.Debug().Msgf(
@@ -61,9 +61,9 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	)
 	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
 	if err != nil {
-		return nil, err
+		return storage.StorageSpec{}, err
 	}
-	return &storage.StorageSpec{
+	return storage.StorageSpec{
 		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", jobID, shardIndex, hostID),
 		Engine: storage.StorageSourceIPFS,
 		Cid:    cid,

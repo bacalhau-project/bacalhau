@@ -31,6 +31,10 @@ func ParseStorageSourceType(str string) (StorageSourceType, error) {
 		"executor: unknown engine type '%s'", str)
 }
 
+func IsValidStorageSourceType(sourceType StorageSourceType) bool {
+	return sourceType > storageSourceUnknown && sourceType < storageSourceDone
+}
+
 func equal(a, b string) bool {
 	a = strings.TrimSpace(a)
 	b = strings.TrimSpace(b)
