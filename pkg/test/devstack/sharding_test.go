@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -197,8 +198,9 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherIpfs,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -335,8 +337,9 @@ func (suite *ShardingSuite) TestNoShards() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
@@ -403,8 +406,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{

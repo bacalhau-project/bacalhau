@@ -70,12 +70,15 @@ func (noopVerifier *NoopVerifier) IsExecutionComplete(
 		if len(shardStates) < concurrency {
 			return false, nil
 		}
+		// count how many shard states have progress through the
+		// "I have run this" stage
+		hasExecutedCount := 0
 		for _, state := range shardStates {
-			if state.State != executor.JobStateError && state.State != executor.JobStateVerifying {
-				return false, nil
+			if state.State == executor.JobStateError || state.State == executor.JobStateVerifying {
+				hasExecutedCount++
 			}
 		}
-		return true, nil
+		return hasExecutedCount >= concurrency, nil
 	})
 }
 
