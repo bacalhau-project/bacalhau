@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -121,9 +122,15 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
+		parsedInputs, err := storage.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
+		if err != nil {
+			return err
+		}
+
 		jobSpec.Engine = engineType
 		jobSpec.Verifier = verifierType
 		jobSpec.Publisher = publisherType
+		jobSpec.Inputs = parsedInputs
 
 		jobDeal := &executor.JobDeal{
 			Concurrency: OC.Concurrency,
