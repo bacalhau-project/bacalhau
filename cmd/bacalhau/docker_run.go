@@ -105,7 +105,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		IsLocal:        false,
 
 		ShardingGlobPattern: "",
-		ShardingBasePath:    ".",
+		ShardingBasePath:    "/inputs",
 		ShardingBatchSize:   1,
 	}
 }
