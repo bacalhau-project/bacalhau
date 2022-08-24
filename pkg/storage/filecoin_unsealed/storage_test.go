@@ -23,6 +23,17 @@ type FilecoinUnsealedSuite struct {
 	suite.Suite
 }
 
+func (suite *FilecoinUnsealedSuite) prepareCid(cid string) storage.StorageSpec {
+	folderPath := fmt.Sprintf("%s/%s", tempDir, cid)
+	err := os.MkdirAll(folderPath, os.ModePerm)
+	require.NoError(suite.T(), err)
+	return storage.StorageSpec{
+		Engine: storage.StorageSourceFilecoinUnsealed,
+		Cid:    cid,
+		Path:   folderPath,
+	}
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestFilecoinUnsealedSuite(t *testing.T) {
@@ -60,19 +71,24 @@ func (suite *FilecoinUnsealedSuite) TestIsInstalled() {
 
 func (suite *FilecoinUnsealedSuite) TestHasStorageLocally() {
 	cid := "123"
-	folderPath := fmt.Sprintf("%s/%s", tempDir, cid)
-	err := os.MkdirAll(folderPath, os.ModePerm)
-	require.NoError(suite.T(), err)
-	hasStorageTrue, err := driver.HasStorageLocally(ctx, storage.StorageSpec{
-		Engine: storage.StorageSourceFilecoinUnsealed,
-		Cid:    cid,
-	})
+	spec := suite.prepareCid(cid)
+	hasStorageTrue, err := driver.HasStorageLocally(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), hasStorageTrue, "file that exists should return true for HasStorageLocally")
-	hasStorageFalse, err := driver.HasStorageLocally(ctx, storage.StorageSpec{
-		Engine: storage.StorageSourceFilecoinUnsealed,
-		Cid:    "apples",
-	})
+	spec.Cid = "apples"
+	hasStorageFalse, err := driver.HasStorageLocally(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.False(suite.T(), hasStorageFalse, "file that does not exist should return false for HasStorageLocally")
+}
+
+func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
+	cid := "123"
+	fileContents := "hello world"
+	spec := suite.prepareCid(cid)
+	filePath := fmt.Sprintf("%s/%s", spec.Path, "file")
+	err := os.WriteFile(filePath, []byte(fileContents), 0644)
+	require.NoError(suite.T(), err)
+	volumeSize, err := driver.GetVolumeSize(ctx, spec)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), int64(len(fileContents)), volumeSize, "the volume size should be the size of the file")
 }

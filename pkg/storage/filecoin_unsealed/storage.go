@@ -36,7 +36,7 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume sto
 }
 
 func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
-	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
+	ctx, span := newSpan(ctx, "GetVolumeSize")
 	defer span.End()
 	return 0, nil
 }
