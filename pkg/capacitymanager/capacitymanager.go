@@ -2,7 +2,6 @@ package capacitymanager
 
 import (
 	"fmt"
-	"math/rand"
 )
 
 const DefaultJobCPU = "100m"
@@ -27,6 +26,22 @@ type CapacityManagerItem struct {
 	Requirements ResourceUsageData
 }
 
+type CapacityTracker interface {
+	// A map of jobs the compute node has decided to bid on according to
+	// the JobSelectionPolicy, but which have not yet been accepted by the
+	// requester node that initated the job.
+	BacklogIterator(handler func(item CapacityManagerItem))
+
+	// jobs we are currently bidding on
+	// this is "potential" usage because accepted bids
+	// will start coming in (which turns a BiddingJob into a RunningJob)
+	// so when we ask "how much capacity are we using"
+	// we need to sum "RunningJobs" and a coeffcieint of "BiddingJobs"
+	// the coefficient represents how much we over promise our capacity
+	// based on bids not being accepted
+	ActiveIterator(handler func(item CapacityManagerItem))
+}
+
 type CapacityManager struct {
 	// The configuration used to create this compute node.
 	config Config //nolint:gocritic
@@ -41,25 +56,11 @@ type CapacityManager struct {
 	resourceLimitsJob              ResourceUsageData
 	resourceRequirementsJobDefault ResourceUsageData
 
-	// A map of jobs the compute node has decided to bid on according to
-	// the JobSelectionPolicy, but which have not yet been accepted by the
-	// requester node that initated the job.
-	backlog *ItemList
-
-	// jobs we are currently bidding on
-	// this is "potential" usage because accepted bids
-	// will start coming in (which turns a BiddingJob into a RunningJob)
-	// so when we ask "how much capacity are we using"
-	// we need to sum "RunningJobs" and a coeffcieint of "BiddingJobs"
-	// the coefficient represents how much we over promise our capacity
-	// based on bids not being accepted
-	// TODO: replace all of this with a proper state machine implmentation
-	// that is based on a data store
-	// https://github.com/filecoin-project/bacalhau/issues/327
-	active *ItemMap
+	capacityTracker CapacityTracker
 }
 
 func NewCapacityManager( //nolint:funlen,gocyclo
+	capacityTracker CapacityTracker,
 	config Config, //nolint:gocritic
 ) (*CapacityManager, error) {
 	// assign the default config values
@@ -171,11 +172,10 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 
 	return &CapacityManager{
 		config:                         useConfig,
+		capacityTracker:                capacityTracker,
 		resourceLimitsTotal:            resourceLimitsTotal,
 		resourceLimitsJob:              resourceLimitsJob,
 		resourceRequirementsJobDefault: resourceRequirementsJobDefault,
-		backlog:                        NewItemList(),
-		active:                         NewItemMap(),
 	}, nil
 }
 
@@ -200,57 +200,10 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	return isOk, requirements
 }
 
-func (manager *CapacityManager) AddToBacklog(id string, requirements ResourceUsageData) error {
-	existingItem := manager.backlog.Get(id)
-	if existingItem != nil {
-		return fmt.Errorf("job %s already in backlog", id)
-	}
-	manager.backlog.Add(CapacityManagerItem{
-		ID:           id,
-		Requirements: requirements,
-	})
-	return nil
-}
-
-// add the shards in random order so we get some kind of general coverage across
-// the network - otherwise all nodes are racing each other for the same shards
-func (manager *CapacityManager) AddShardsToBacklog(id string, shardCount int, requirements ResourceUsageData) error {
-	shardIndexes := []int{}
-	for i := 0; i < shardCount; i++ {
-		shardIndexes = append(shardIndexes, i)
-	}
-	for i := range shardIndexes {
-		j := rand.Intn(i + 1) //nolint:gosec
-		shardIndexes[i], shardIndexes[j] = shardIndexes[j], shardIndexes[i]
-	}
-	for _, shardIndex := range shardIndexes {
-		err := manager.AddToBacklog(FlattenShardID(id, shardIndex), requirements)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (manager *CapacityManager) MoveToActive(id string) error {
-	item := manager.backlog.Get(id)
-	if item == nil {
-		return fmt.Errorf("job %s not in backlog", id)
-	}
-	manager.backlog.Remove(id)
-	manager.active.Add(*item)
-	return nil
-}
-
-func (manager *CapacityManager) Remove(id string) {
-	manager.backlog.Remove(id)
-	manager.active.Remove(id)
-}
-
 func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
 	currentResourceUsage := ResourceUsageData{}
 
-	manager.active.Iterate(func(item CapacityManagerItem) {
+	manager.capacityTracker.ActiveIterator(func(item CapacityManagerItem) {
 		currentResourceUsage.CPU += item.Requirements.CPU
 		currentResourceUsage.Memory += item.Requirements.Memory
 		currentResourceUsage.Disk += item.Requirements.Disk
@@ -274,7 +227,7 @@ func (manager *CapacityManager) GetNextItems() []string {
 
 	freeSpace := manager.GetFreeSpace()
 
-	manager.backlog.Iterate(func(item CapacityManagerItem) {
+	manager.capacityTracker.BacklogIterator(func(item CapacityManagerItem) {
 		if checkResourceUsage(item.Requirements, freeSpace) {
 			ids = append(ids, item.ID)
 			freeSpace = subtractResourceUsage(item.Requirements, freeSpace)

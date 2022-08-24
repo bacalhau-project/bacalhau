@@ -57,11 +57,14 @@ all: build
 # Run go fmt against code
 fmt:
 	@${GO} fmt ./cmd/... 
+	@${GO} fmt ./pkg/... 
 
 
 # Run go vet against code
 vet:
 	@${GO} vet ./cmd/...
+	@${GO} vet ./pkg/... 
+
 
 ## Run all pre-commit hooks
 ################################################################################
