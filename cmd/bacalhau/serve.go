@@ -231,7 +231,9 @@ var serveCmd = &cobra.Command{
 
 		storageProviders, err := executor_util.NewStandardStorageProviders(
 			cm,
-			OS.IPFSConnect,
+			executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: OS.IPFSConnect,
+			},
 		)
 		if err != nil {
 			return err
@@ -249,8 +251,12 @@ var serveCmd = &cobra.Command{
 
 		executors, err := executor_util.NewStandardExecutors(
 			cm,
-			OS.IPFSConnect,
-			fmt.Sprintf("bacalhau-%s", hostID),
+			executor_util.StandardExecutorOptions{
+				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
+				Storage: executor_util.StandardStorageProviderOptions{
+					IPFSMultiaddress: OS.IPFSConnect,
+				},
+			},
 		)
 		if err != nil {
 			return err

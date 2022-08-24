@@ -1,4 +1,4 @@
-package apicopy
+package filecoin_unsealed
 
 import (
 	"context"
@@ -11,15 +11,15 @@ import (
 )
 
 type StorageProvider struct {
-	PathTemplate string
+	LocalPathTemplate string
 }
 
-func NewStorageProvider(cm *system.CleanupManager, pathTemplate string) (*StorageProvider, error) {
+func NewStorageProvider(cm *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
-		PathTemplate: pathTemplate,
+		LocalPathTemplate: localPathTemplate,
 	}
 
-	log.Debug().Msgf("Filecoin unsealed driver created with path template: %s", pathTemplate)
+	log.Debug().Msgf("Filecoin unsealed driver created with path template: %s", localPathTemplate)
 	return storageHandler, nil
 }
 
