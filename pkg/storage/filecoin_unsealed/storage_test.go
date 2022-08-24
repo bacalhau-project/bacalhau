@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -54,4 +56,23 @@ func (suite *FilecoinUnsealedSuite) TestIsInstalled() {
 	installed, err := driver.IsInstalled(ctx)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), installed)
+}
+
+func (suite *FilecoinUnsealedSuite) TestHasStorageLocally() {
+	cid := "123"
+	folderPath := fmt.Sprintf("%s/%s", tempDir, cid)
+	err := os.MkdirAll(folderPath, os.ModePerm)
+	require.NoError(suite.T(), err)
+	hasStorageTrue, err := driver.HasStorageLocally(ctx, storage.StorageSpec{
+		Engine: storage.StorageSourceFilecoinUnsealed,
+		Cid:    cid,
+	})
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), hasStorageTrue, "file that exists should return true for HasStorageLocally")
+	hasStorageFalse, err := driver.HasStorageLocally(ctx, storage.StorageSpec{
+		Engine: storage.StorageSourceFilecoinUnsealed,
+		Cid:    "apples",
+	})
+	require.NoError(suite.T(), err)
+	require.False(suite.T(), hasStorageFalse, "file that does not exist should return false for HasStorageLocally")
 }
