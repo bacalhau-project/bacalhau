@@ -100,3 +100,20 @@ func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
 }
+
+func (suite *FilecoinUnsealedSuite) TestExplode() {
+	cid := "123"
+	filenames := []string{
+		"a.txt",
+		"b.txt",
+		"c.txt",
+	}
+	spec := suite.prepareCid(cid)
+	for _, filename := range filenames {
+		err := os.WriteFile(fmt.Sprintf("%s/%s", spec.Path, filename), []byte(filename), 0644)
+		require.NoError(suite.T(), err)
+	}
+	exploded, err := driver.Explode(ctx, spec)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), len(exploded), 3, "the exploded list should be 3 files long")
+}
