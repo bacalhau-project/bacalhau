@@ -1,12 +1,15 @@
 package util
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	"github.com/filecoin-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
 	"github.com/filecoin-project/bacalhau/pkg/storage/filecoinunsealed"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
@@ -43,8 +46,45 @@ func NewStandardStorageProviders(
 		return nil, err
 	}
 
+	var useIPFSDriver storage.StorageProvider = ipfsAPICopyStorage
+
+	// if we are using a FilecoinUnsealedPath then construct a combo
+	// driver that will give preference to the filecoin unsealed driver
+	// if the cid is deemed to be local
+	if options.FilecoinUnsealedPath != "" {
+		comboDriver, err := combo.NewStorageProvider(
+			cm,
+			func(ctx context.Context) ([]storage.StorageProvider, error) {
+				return []storage.StorageProvider{
+					filecoinUnsealedStorage,
+					ipfsAPICopyStorage,
+				}, nil
+			},
+			func(ctx context.Context, spec storage.StorageSpec) (storage.StorageProvider, error) {
+				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, spec)
+				if err != nil {
+					return ipfsAPICopyStorage, err
+				}
+				if filecoinUnsealedHasCid {
+					return filecoinUnsealedStorage, nil
+				} else {
+					return ipfsAPICopyStorage, nil
+				}
+			},
+			func(ctx context.Context) (storage.StorageProvider, error) {
+				return ipfsAPICopyStorage, nil
+			},
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		useIPFSDriver = comboDriver
+	}
+
 	return map[storage.StorageSourceType]storage.StorageProvider{
-		storage.StorageSourceIPFS:             ipfsAPICopyStorage,
+		storage.StorageSourceIPFS:             useIPFSDriver,
 		storage.StorageSourceURLDownload:      urlDownloadStorage,
 		storage.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
 	}, nil
