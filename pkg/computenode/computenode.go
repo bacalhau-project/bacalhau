@@ -45,6 +45,7 @@ type ComputeNode struct {
 	config ComputeNodeConfig
 
 	controller               *controller.Controller
+	shardStateManager		*shardStateMachineManager
 	executors                map[executor.EngineType]executor.Executor
 	executorsInstalledCache  map[executor.EngineType]bool
 	verifiers                map[verifier.VerifierType]verifier.Verifier
@@ -96,7 +97,12 @@ func constructComputeNode(
 		return nil, err
 	}
 
-	capacityManager, err := capacitymanager.NewCapacityManager(config.CapacityManagerConfig)
+	shardStateManager, err := NewShardComputeStateMachineManager()
+	if err != nil {
+		return nil, err
+	}
+
+	capacityManager, err := capacitymanager.NewCapacityManager(shardStateManager, config.CapacityManagerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +111,7 @@ func constructComputeNode(
 		id:                       nodeID,
 		config:                   config,
 		controller:               c,
+		shardStateManager: 		 shardStateManager,
 		executors:                executors,
 		executorsInstalledCache:  map[executor.EngineType]bool{},
 		verifiers:                verifiers,
@@ -122,7 +129,7 @@ func constructComputeNode(
 		Threshold: 10 * time.Millisecond,
 		Id:        "ComputeNode.bidMu",
 	})
-
+	
 	return computeNode, nil
 }
 
@@ -168,61 +175,46 @@ func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
-
+	
 	log.Debug().Msgf("len(bidJobIds)=%d", len(bidJobIds))
 	for _, flatID := range bidJobIds {
 		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
-			node.capacityManager.Remove(flatID)
+			log.Error().Msgf("error exploding shard id: %s", err)
 			continue
 		}
-		hasAlreadyBid, err := node.controller.HasLocalEvent(
-			context.Background(),
-			jobID,
-			controller.EventFilterByTypeAndShard(executor.JobLocalEventBid, shardIndex),
-		)
-		if err != nil {
-			node.capacityManager.Remove(flatID)
+		
+		shardState, shardStateFound := node.shardStateManager.Get(flatID)
+		if !shardStateFound {
 			continue
 		}
 
-		if hasAlreadyBid {
+		if shardState.bidSent {
+			// possible race condition where a bid was sent for the shard after 
+			// preparing the candidates in GetNextItems()
 			log.Trace().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
-			node.capacityManager.Remove(flatID)
 			continue
 		}
 
 		jobState, err := node.controller.GetJobState(context.Background(), jobID)
 		if err != nil {
-			node.capacityManager.Remove(flatID)
+			shardState.Fail("error getting job state from controller")
 			continue
 		}
 		job, err := node.controller.GetJob(context.Background(), jobID)
 		if err != nil {
-			node.capacityManager.Remove(flatID)
+			shardState.Fail("error getting job instance from controller")
 			continue
 		}
 
 		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shardIndex)
 		if hasShardReachedCapacity {
 			log.Debug().Msgf("node %s: shard %d for job %s has already reached capacity - not bidding", node.id, shardIndex, jobID)
-			node.capacityManager.Remove(flatID)
+			shardState.Fail("shard has reached capacity")
 			continue
 		}
 
-		err = node.BidOnJob(context.Background(), job, shardIndex)
-		if err != nil {
-			node.capacityManager.Remove(flatID)
-			continue
-		}
-		// we did not get an error from the transport
-		// so let's assume that our bid is out there
-		// now we reserve space on this node for this job
-		err = node.capacityManager.MoveToActive(flatID)
-		if err != nil {
-			node.capacityManager.Remove(flatID)
-			continue
-		}
+		shardState.Bid()
 	}
 }
 
@@ -309,12 +301,16 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 
 		// now explode the job into shards and add each shard to the backlog
-		err = node.capacityManager.AddShardsToBacklog(job.ID, job.ExecutionPlan.TotalShards, processedRequirements)
+		shardIndexes := capacitymanager.GenerateShardIndexes(job.ExecutionPlan.TotalShards, processedRequirements)
+
+		// even if an error is returned, some shards might have been partially added to the backlog
+		for _, shardIndex := range shardIndexes {
+			node.shardStateManager.StartShardStateIfNecessery(job.ID, shardIndex, node, processedRequirements)
+		}
 		if err != nil {
 			log.Error().Msgf("Error adding job to backlog on host %s: %v", node.id, err)
 			return
 		}
-		node.controlLoopBidOnJobs("job created & selected")
 	}
 }
 
@@ -374,7 +370,7 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		return
 	}
 
-	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventBidAccepted")
+	_, span = node.newSpanForJob(ctx, job.ID, "JobEventBidAccepted")
 	defer span.End()
 
 	// Increment the number of jobs accepted by this compute node:
@@ -384,43 +380,11 @@ func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEv
 		"client_id":   job.ClientID,
 	}).Inc()
 
-	log.Debug().Msgf("Compute node %s bid accepted on: %s %d", node.id, job.ID, jobEvent.ShardIndex)
-
-	// once we've finished this shard - let's see if we should
-	// bid on another shard or if we've finished the job
-	defer func() {
-		node.capacityManager.Remove(capacitymanager.FlattenShardID(job.ID, jobEvent.ShardIndex))
-		node.controlLoopBidOnJobs("defer in bidAccepted")
-	}()
-
-	// we get a "proposal" from this method which is not the results
-	// but what the compute node verifier wants to pass to the requester
-	// node verifier
-	proposal, err := node.RunShard(ctx, job, jobEvent.ShardIndex)
-	if err == nil {
-		err = node.controller.ShardExecutionFinished(
-			ctx,
-			job.ID,
-			jobEvent.ShardIndex,
-			fmt.Sprintf("Got results proposal of length: %d", len(proposal)),
-			proposal,
-		)
-
-		if err != nil {
-			log.Error().Msgf("Error completing job: %s %s %s", node.id, job.ID, err.Error())
-		}
+	flatID := capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex)
+	if shardState, ok := node.shardStateManager.Get(flatID); ok {
+		shardState.Execute()
 	} else {
-		errMessage := fmt.Sprintf("Error running shard %s %d: %s", job.ID, jobEvent.ShardIndex, err.Error())
-		log.Error().Msgf(errMessage)
-		err = node.controller.ShardError(
-			ctx,
-			job.ID,
-			jobEvent.ShardIndex,
-			errMessage,
-		)
-		if err != nil {
-			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
-		}
+		log.Error().Msgf("Received bid accepted for unknown shard %s", flatID)
 	}
 }
 
@@ -432,8 +396,13 @@ func (node *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEv
 	if jobEvent.TargetNodeID != node.id {
 		return
 	}
-	node.capacityManager.Remove(capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex))
-	node.controlLoopBidOnJobs("bid rejected")
+
+	flatID := capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex)
+	if shardState, ok := node.shardStateManager.Get(flatID); ok {
+		shardState.BidRejected()
+	} else {
+		log.Debug().Msgf("Received bid rejected for unknown shard %s", flatID)
+	}
 }
 
 func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
@@ -442,18 +411,14 @@ func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, j
 		return
 	}
 
-	err := node.PublishShard(ctx, job, jobEvent.ShardIndex)
-	if err != nil {
-		err = node.controller.ShardError(
-			ctx,
-			job.ID,
-			jobEvent.ShardIndex,
-			err.Error(),
-		)
-		if err != nil {
-			log.Error().Msgf("Error erroring job: %s %s %s", node.id, job.ID, err.Error())
-		}
+	flatID := capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex)
+	if shardState, ok := node.shardStateManager.Get(flatID); ok {
+		shardState.Publish()
+	} else {
+		log.Debug().Msgf("Received results accepted for unknown shard %s", flatID)
 	}
+
+	
 }
 
 func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {
@@ -537,9 +502,9 @@ func (node *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyP
 
 // by bidding on a job - we are moving it from "backlog" to "active"
 // in the capacity manager
-func (node *ComputeNode) BidOnJob(ctx context.Context, job executor.Job, shardIndex int) error {
-	log.Debug().Msgf("Compute node %s bidding on: %s %d", node.id, job.ID, shardIndex)
-	return node.controller.BidJob(ctx, job.ID, shardIndex)
+func (node *ComputeNode) BidOnJob(ctx context.Context, jobID string, shardIndex int) error {
+	log.Debug().Msgf("Compute node %s bidding on: %s %d", node.id, jobID, shardIndex)
+	return node.controller.BidJob(ctx, jobID, shardIndex)
 }
 
 /*
@@ -557,10 +522,15 @@ func (node *ComputeNode) RunShardExecution(ctx context.Context, job executor.Job
 
 func (node *ComputeNode) RunShard(
 	ctx context.Context,
-	job executor.Job,
+	jobID string,
 	shardIndex int,
 ) ([]byte, error) {
 	shardProposal := []byte{}
+	job, err := node.controller.GetJob(ctx, jobID)
+	if err != nil {
+		return shardProposal, err
+	}
+
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
 		return shardProposal, err
@@ -596,9 +566,14 @@ func (node *ComputeNode) RunShard(
 
 func (node *ComputeNode) PublishShard(
 	ctx context.Context,
-	job executor.Job,
+	jobID string,
 	shardIndex int,
 ) error {
+	job, err := node.controller.GetJob(ctx, jobID)
+	if err != nil {
+		return err
+	}
+
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
 	if err != nil {
 		return err
