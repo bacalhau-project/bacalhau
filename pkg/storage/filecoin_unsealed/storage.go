@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"text/template"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -55,7 +56,11 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume sto
 func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeSize")
 	defer span.End()
-	return 0, nil
+	localPath, err := driver.getPathToVolume(ctx, volume)
+	if err != nil {
+		return 0, err
+	}
+	return dirSize(localPath)
 }
 
 func (driver *StorageProvider) PrepareStorage(
@@ -95,6 +100,20 @@ func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume stora
 		return "", err
 	}
 	return buffer.String(), nil
+}
+
+func dirSize(path string) (uint64, error) {
+	var size uint64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += uint64(info.Size())
+		}
+		return err
+	})
+	return size, err
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

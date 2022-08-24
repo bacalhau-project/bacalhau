@@ -90,7 +90,7 @@ func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
 	require.NoError(suite.T(), err)
 	volumeSize, err := driver.GetVolumeSize(ctx, spec)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), int64(len(fileContents)), volumeSize, "the volume size should be the size of the file")
+	require.Equal(suite.T(), uint64(len(fileContents)), volumeSize, "the volume size should be the size of the file")
 }
 
 func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
