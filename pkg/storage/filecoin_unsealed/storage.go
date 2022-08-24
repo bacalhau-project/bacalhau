@@ -69,8 +69,15 @@ func (driver *StorageProvider) PrepareStorage(
 ) (storage.StorageVolume, error) {
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
-	var volume storage.StorageVolume
-	return volume, nil
+	localPath, err := driver.getPathToVolume(ctx, storageSpec)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+	return storage.StorageVolume{
+		Type:   storage.StorageVolumeConnectorBind,
+		Source: localPath,
+		Target: storageSpec.Path,
+	}, nil
 }
 
 func (driver *StorageProvider) CleanupStorage(
@@ -89,8 +96,9 @@ func (driver *StorageProvider) Upload(
 }
 
 func (driver *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	// TODO: get a tree of the file system and apply the glob pattern to it
-	return []storage.StorageSpec{}, nil
+	return []storage.StorageSpec{
+		spec,
+	}, nil
 }
 
 func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume storage.StorageSpec) (string, error) {
