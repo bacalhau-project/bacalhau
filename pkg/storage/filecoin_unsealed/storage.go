@@ -1,8 +1,12 @@
 package filecoin_unsealed
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"text/template"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -11,14 +15,20 @@ import (
 )
 
 type StorageProvider struct {
-	LocalPathTemplate string
+	LocalPathTemplateString string
+	localPathTemplate       *template.Template
 }
 
 func NewStorageProvider(cm *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
-	storageHandler := &StorageProvider{
-		LocalPathTemplate: localPathTemplate,
+	t := template.New("bacalhau-storage-filecoin-unsealed-path")
+	t, err := t.Parse(localPathTemplate)
+	if err != nil {
+		return nil, err
 	}
-
+	storageHandler := &StorageProvider{
+		LocalPathTemplateString: localPathTemplate,
+		localPathTemplate:       t,
+	}
 	log.Debug().Msgf("Filecoin unsealed driver created with path template: %s", localPathTemplate)
 	return storageHandler, nil
 }
@@ -32,6 +42,13 @@ func (driver *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
+	localPath, err := driver.getPathToVolume(ctx, volume)
+	if err != nil {
+		return false, err
+	}
+	if _, err := os.Stat(localPath); errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
 	return true, nil
 }
 
@@ -66,9 +83,18 @@ func (driver *StorageProvider) Upload(
 	return storage.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+func (driver *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
 	// TODO: get a tree of the file system and apply the glob pattern to it
 	return []storage.StorageSpec{}, nil
+}
+
+func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume storage.StorageSpec) (string, error) {
+	var buffer bytes.Buffer
+	err := driver.localPathTemplate.Execute(&buffer, volume)
+	if err != nil {
+		return "", err
+	}
+	return buffer.String(), nil
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
