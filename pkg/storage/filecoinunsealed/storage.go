@@ -1,4 +1,4 @@
-package filecoin_unsealed
+package filecoinunsealed
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func NewStorageProvider(cm *system.CleanupManager, localPathTemplate string) (*S
 }
 
 func (driver *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
+	_, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
 	return true, nil
 }

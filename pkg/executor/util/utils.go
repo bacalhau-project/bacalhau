@@ -7,7 +7,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
+	"github.com/filecoin-project/bacalhau/pkg/storage/filecoinunsealed"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
@@ -38,7 +38,7 @@ func NewStandardStorageProviders(
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoin_unsealed.NewStorageProvider(cm, options.FilecoinUnsealedPath)
+	filecoinUnsealedStorage, err := filecoinunsealed.NewStorageProvider(cm, options.FilecoinUnsealedPath)
 	if err != nil {
 		return nil, err
 	}

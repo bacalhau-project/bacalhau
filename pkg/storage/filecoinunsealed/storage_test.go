@@ -1,4 +1,4 @@
-package filecoin_unsealed
+package filecoinunsealed
 
 import (
 	"context"
