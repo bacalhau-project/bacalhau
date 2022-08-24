@@ -15,8 +15,8 @@ import (
 )
 
 type StandardStorageProviderOptions struct {
-	IPFSMultiaddress  string
-	LocalPathTemplate string
+	IPFSMultiaddress     string
+	FilecoinUnsealedPath string
 }
 
 type StandardExecutorOptions struct {
@@ -38,7 +38,7 @@ func NewStandardStorageProviders(
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoin_unsealed.NewStorageProvider(cm, options.LocalPathTemplate)
+	filecoinUnsealedStorage, err := filecoin_unsealed.NewStorageProvider(cm, options.FilecoinUnsealedPath)
 	if err != nil {
 		return nil, err
 	}

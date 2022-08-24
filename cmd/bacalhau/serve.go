@@ -43,6 +43,7 @@ var (
 type ServeOptions struct {
 	PeerConnect                     string // The libp2p multiaddress to connect to.
 	IPFSConnect                     string // The IPFS multiaddress to connect to.
+	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data
 	HostAddress                     string // The host address to listen on.
 	HostPort                        int    // The host port to listen on.
 	JobSelectionDataLocality        string // The data locality to use for job selection.
@@ -62,6 +63,7 @@ func NewServeOptions() *ServeOptions {
 	return &ServeOptions{
 		PeerConnect:                     "",
 		IPFSConnect:                     "",
+		FilecoinUnsealedPath:            "",
 		HostAddress:                     "0.0.0.0",
 		HostPort:                        DefaultSwarmPort,
 		JobSelectionDataLocality:        "local",
@@ -170,6 +172,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The ipfs host multiaddress to connect to.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
+		&OS.FilecoinUnsealedPath, "filecoin-unsealed-path", OS.FilecoinUnsealedPath,
+		`The go template that can turn a filecoin CID into a local filepath with the unsealed data.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
 		`The host to listen on (for both api and swarm connections).`,
 	)
@@ -232,7 +238,8 @@ var serveCmd = &cobra.Command{
 		storageProviders, err := executor_util.NewStandardStorageProviders(
 			cm,
 			executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress: OS.IPFSConnect,
+				IPFSMultiaddress:     OS.IPFSConnect,
+				FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 			},
 		)
 		if err != nil {
@@ -254,7 +261,8 @@ var serveCmd = &cobra.Command{
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
 				Storage: executor_util.StandardStorageProviderOptions{
-					IPFSMultiaddress: OS.IPFSConnect,
+					IPFSMultiaddress:     OS.IPFSConnect,
+					FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 				},
 			},
 		)
