@@ -92,3 +92,11 @@ func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), int64(len(fileContents)), volumeSize, "the volume size should be the size of the file")
 }
+
+func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
+	cid := "123"
+	spec := suite.prepareCid(cid)
+	volume, err := driver.PrepareStorage(ctx, spec)
+	require.NoError(suite.T(), err)
+	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
+}
