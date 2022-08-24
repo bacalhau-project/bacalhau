@@ -11,6 +11,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type MockCapacityTracker struct {
+	backlog []CapacityManagerItem
+	active  []CapacityManagerItem
+}
+
+func (m *MockCapacityTracker) addToBacklog(item CapacityManagerItem) {
+	m.backlog = append(m.backlog, item)
+}
+
+func (m *MockCapacityTracker) addToActive(item CapacityManagerItem) {
+	m.active = append(m.active, item)
+}
+
+func (m *MockCapacityTracker) moveToActive(itemID string) {
+	for i, v := range m.backlog {
+		if v.ID == itemID {
+			m.backlog = append(m.backlog[:i], m.backlog[i+1:]...)
+			m.addToActive(v)
+			return
+		}
+	}
+}
+
+func (m *MockCapacityTracker) remove(itemID string) {
+	for i, v := range m.backlog {
+		if v.ID == itemID {
+			m.backlog = append(m.backlog[:i], m.backlog[i+1:]...)
+			break
+		}
+	}
+	for i, v := range m.active {
+		if v.ID == itemID {
+			m.active = append(m.active[:i], m.active[i+1:]...)
+			break
+		}
+	}
+}
+
+func (m *MockCapacityTracker) BacklogIterator(handler func(item CapacityManagerItem)) {
+	for _, item := range m.backlog {
+		handler(item)
+	}
+}
+
+func (m *MockCapacityTracker) ActiveIterator(handler func(item CapacityManagerItem)) {
+	for _, item := range m.active {
+		handler(item)
+	}
+}
+
 func getResources(c, m, d string) ResourceUsageConfig {
 	return ResourceUsageConfig{
 		CPU:    c,
@@ -31,6 +81,8 @@ func getResourcesArray(data [][]string) []ResourceUsageConfig {
 func TestConstructionErrors(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
 	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
+
+	capacityTracker := &MockCapacityTracker{}
 
 	testCases := []struct {
 		name        string
@@ -92,7 +144,7 @@ func TestConstructionErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewCapacityManager(Config{
+			_, err := NewCapacityManager(capacityTracker, Config{
 				ResourceLimitTotal:          tc.limitTotal,
 				ResourceLimitJob:            tc.limitJob,
 				ResourceRequirementsDefault: tc.defaults,
@@ -111,6 +163,8 @@ func TestConstructionErrors(t *testing.T) {
 func TestFilter(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
 	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
+
+	capacityTracker := &MockCapacityTracker{}
 
 	testCases := []struct {
 		name           string
@@ -190,7 +244,7 @@ func TestFilter(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mgr, err := NewCapacityManager(Config{
+			mgr, err := NewCapacityManager(capacityTracker, Config{
 				ResourceLimitTotal:          tc.limitTotal,
 				ResourceLimitJob:            tc.limitJob,
 				ResourceRequirementsDefault: tc.defaults,
@@ -211,6 +265,8 @@ func TestFilter(t *testing.T) {
 func TestGetNextItems(t *testing.T) {
 	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "1")
 	defer os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", "")
+
+	capacityTracker := &MockCapacityTracker{}
 
 	// this means we can test "long lived" jobs that use resources
 	// for longer than other jobs
@@ -329,7 +385,7 @@ func TestGetNextItems(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mgr, err := NewCapacityManager(Config{
+			mgr, err := NewCapacityManager(capacityTracker, Config{
 				ResourceLimitTotal:          tc.limit,
 				ResourceLimitJob:            tc.limit,
 				ResourceRequirementsDefault: getResources("", "", ""),
@@ -344,7 +400,10 @@ func TestGetNextItems(t *testing.T) {
 				idString := fmt.Sprintf("%d", id)
 				counterMap[idString] = 0
 				iterationMap[idString] = job.iterations
-				mgr.AddToBacklog(idString, ParseResourceUsageConfig(job.usage))
+				capacityTracker.addToBacklog(CapacityManagerItem{
+					ID:           idString,
+					Requirements: ParseResourceUsageConfig(job.usage),
+				})
 			}
 
 			for {
@@ -355,7 +414,7 @@ func TestGetNextItems(t *testing.T) {
 				// loop over currently active items and increment
 				// the iteration counter and remove them
 				// if they have "completed"
-				mgr.active.Iterate(func(item CapacityManagerItem) {
+				capacityTracker.ActiveIterator(func(item CapacityManagerItem) {
 					counterMap[item.ID]++
 					if counterMap[item.ID] >= iterationMap[item.ID] {
 						toRemove = append(toRemove, item.ID)
@@ -365,7 +424,7 @@ func TestGetNextItems(t *testing.T) {
 				})
 
 				for _, id := range toRemove {
-					mgr.Remove(id)
+					capacityTracker.remove(id)
 				}
 
 				// get the items we have space to run
@@ -374,7 +433,7 @@ func TestGetNextItems(t *testing.T) {
 				// mark each new item as active and start it's
 				// iteration counter at zero
 				for _, id := range nextItems {
-					mgr.MoveToActive(id)
+					capacityTracker.moveToActive(id)
 					running = append(running, id)
 				}
 
@@ -382,7 +441,7 @@ func TestGetNextItems(t *testing.T) {
 				logs = append(logs, strings.Join(running, ","))
 
 				// this means we've cleared out all the jobs
-				if mgr.backlog.Count() <= 0 && mgr.active.Count() <= 0 {
+				if len(capacityTracker.backlog) <= 0 && len(capacityTracker.active) <= 0 {
 					break
 				}
 			}
@@ -393,7 +452,9 @@ func TestGetNextItems(t *testing.T) {
 }
 
 func TestNewCapacityManager(t *testing.T) {
-	m, err := NewCapacityManager(Config{})
+	capacityTracker := &MockCapacityTracker{}
+
+	m, err := NewCapacityManager(capacityTracker, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +474,7 @@ func TestNewCapacityManager(t *testing.T) {
 	}
 
 	// Test job limits cannot be greater than Total limits
-	_, err = NewCapacityManager(Config{
+	_, err = NewCapacityManager(capacityTracker, Config{
 		ResourceLimitJob: ResourceUsageConfig{
 			CPU: "5",
 		},
@@ -424,7 +485,7 @@ func TestNewCapacityManager(t *testing.T) {
 	if err == nil {
 		t.Fatal("job CPU limit should fail when greater than the default total limit (which defaults to the system limit)")
 	}
-	_, err = NewCapacityManager(Config{
+	_, err = NewCapacityManager(capacityTracker, Config{
 		ResourceLimitJob: ResourceUsageConfig{
 			Memory: "5",
 		},
@@ -435,7 +496,7 @@ func TestNewCapacityManager(t *testing.T) {
 	if err == nil {
 		t.Fatal("job Memory limit should fail when greater than the default total limit (which defaults to the system limit)")
 	}
-	_, err = NewCapacityManager(Config{
+	_, err = NewCapacityManager(capacityTracker, Config{
 		ResourceLimitJob: ResourceUsageConfig{
 			GPU: "5",
 		},
@@ -453,7 +514,7 @@ func TestNewCapacityManager(t *testing.T) {
 	}
 
 	// Test that the default job limits are always greater than the job limit set here
-	_, err = NewCapacityManager(Config{
+	_, err = NewCapacityManager(capacityTracker, Config{
 		ResourceLimitJob: ResourceUsageConfig{
 			GPU: "0",
 		},
@@ -470,7 +531,9 @@ func TestNewCapacityManager(t *testing.T) {
 }
 
 func TestFilterRequirements(t *testing.T) {
-	m, err := NewCapacityManager(Config{
+	capacityTracker := &MockCapacityTracker{}
+
+	m, err := NewCapacityManager(capacityTracker, Config{
 		ResourceLimitTotal: ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
@@ -503,7 +566,9 @@ func TestFilterRequirements(t *testing.T) {
 }
 
 func TestGetFreeSpace(t *testing.T) {
-	m, err := NewCapacityManager(Config{
+	capacityTracker := &MockCapacityTracker{}
+
+	m, err := NewCapacityManager(capacityTracker, Config{
 		ResourceLimitTotal: ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
@@ -518,7 +583,7 @@ func TestGetFreeSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.active.Add(CapacityManagerItem{
+	capacityTracker.addToActive(CapacityManagerItem{
 		ID: "test",
 		Requirements: ResourceUsageData{
 			CPU:    1,

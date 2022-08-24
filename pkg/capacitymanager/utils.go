@@ -2,6 +2,7 @@ package capacitymanager
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"runtime"
@@ -212,7 +213,7 @@ func checkResourceUsage(wants, limits ResourceUsageData) bool {
 	limitOverZero := limits.CPU > 0 ||
 		limits.Memory > 0 ||
 		limits.Disk > 0 ||
-		wants.GPU > 0
+		limits.GPU > 0
 
 	// if there are some limits and there are zero values for "wants"
 	// we deny the job because we can't know if it would exceed our limit
@@ -249,4 +250,18 @@ func ExplodeShardID(id string) (jobID string, shardIndex int, err error) {
 		return "", 0, err
 	}
 	return parts[0], intVar, nil
+}
+
+// add the shards in random order so we get some kind of general coverage across
+// the network - otherwise all nodes are racing each other for the same shards
+func GenerateShardIndexes(shardCount int, requirements ResourceUsageData) []int {
+	shardIndexes := []int{}
+	for i := 0; i < shardCount; i++ {
+		shardIndexes = append(shardIndexes, i)
+	}
+	for i := range shardIndexes {
+		j := rand.Intn(i + 1) //nolint:gosec
+		shardIndexes[i], shardIndexes[j] = shardIndexes[j], shardIndexes[i]
+	}
+	return shardIndexes
 }
