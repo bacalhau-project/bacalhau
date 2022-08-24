@@ -252,10 +252,9 @@ func ExplodeShardID(id string) (jobID string, shardIndex int, err error) {
 	return parts[0], intVar, nil
 }
 
-
 // add the shards in random order so we get some kind of general coverage across
 // the network - otherwise all nodes are racing each other for the same shards
-func GenerateShardIndexes(shardCount int, requirements ResourceUsageData) ([]int) {
+func GenerateShardIndexes(shardCount int, requirements ResourceUsageData) []int {
 	shardIndexes := []int{}
 	for i := 0; i < shardCount; i++ {
 		shardIndexes = append(shardIndexes, i)

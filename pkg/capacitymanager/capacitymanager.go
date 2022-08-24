@@ -56,7 +56,7 @@ type CapacityManager struct {
 	resourceLimitsJob              ResourceUsageData
 	resourceRequirementsJobDefault ResourceUsageData
 
-	capacityTracker CapacityTracker 
+	capacityTracker CapacityTracker
 }
 
 func NewCapacityManager( //nolint:funlen,gocyclo

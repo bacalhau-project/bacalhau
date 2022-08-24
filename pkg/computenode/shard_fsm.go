@@ -36,7 +36,7 @@ func (a shardStateAction) String() string {
 
 // request to change the state of the fsm
 type shardStateRequest struct {
-	action             shardStateAction
+	action        shardStateAction
 	failureReason string
 }
 
@@ -75,20 +75,20 @@ const (
 
 func (s shardStateType) String() string {
 	return [...]string{
-		"InitialState", "Enqueued", "Bidding", "Running", "PublishingToVerifier", 
+		"InitialState", "Enqueued", "Bidding", "Running", "PublishingToVerifier",
 		"VerifyingResults", "PublishingToRequester", "Error", "Completed"}[s]
 }
 
 type shardStateMachineManager struct {
-	// map fo the shard flatID and shard state machine. 
+	// map fo the shard flatID and shard state machine.
 	// Used to find the shard state machine for a given flatID.
-	shardStates     map[string]*shardStateMachine
+	shardStates map[string]*shardStateMachine
 
 	// list of all shard state machines ordered by their creation time
 	// according the priority defined by the capacity manager
 	shardStatesList []*shardStateMachine
 
-	mu              sync.Mutex
+	mu sync.Mutex
 }
 
 func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
@@ -105,7 +105,7 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 	return stateManager, nil
 }
 
-// Start a new shard state machine, if it does not already exist, 
+// Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
 func (m *shardStateMachineManager) StartShardStateIfNecessery(
 	jobID string, shardIndex int, node *ComputeNode, requirements capacitymanager.ResourceUsageData) {
@@ -171,13 +171,13 @@ func (m *shardStateMachineManager) Get(flatID string) (*shardStateMachine, bool)
 }
 
 // Since we want to keep the list of shard state machines ordered by their creation time,
-// and since shards can complete at any time, we need to remove completed shards 
-// from the list without impacting the order of the remaining shards, and without 
+// and since shards can complete at any time, we need to remove completed shards
+// from the list without impacting the order of the remaining shards, and without
 // having to copy things around.
-// This method only removes completed shards from the beginning of the list, and is 
+// This method only removes completed shards from the beginning of the list, and is
 // called inside GetEnqueued and GetActive.
 func (m *shardStateMachineManager) cleanupCompleted() {
-	firstActive := len(m.shardStatesList) 
+	firstActive := len(m.shardStatesList)
 	for index, item := range m.shardStatesList {
 		if item.currentState != shardCompleted {
 			firstActive = index
@@ -199,11 +199,11 @@ type shardStateMachine struct {
 	mu      sync.Mutex
 	req     chan shardStateRequest
 
-	currentState  	shardStateType
-	previousState 	shardStateType
-	resultProposal  []byte
-	bidSent       	bool
-	errorMsg      	string
+	currentState   shardStateType
+	previousState  shardStateType
+	resultProposal []byte
+	bidSent        bool
+	errorMsg       string
 }
 
 func (m *shardStateMachineManager) newStateMachine(
@@ -216,7 +216,7 @@ func (m *shardStateMachineManager) newStateMachine(
 		flatID:       flatID,
 		manager:      m,
 		node:         node,
-		capacity:	  capacitymanager.CapacityManagerItem{ID: flatID, Requirements: requirements},
+		capacity:     capacitymanager.CapacityManagerItem{ID: flatID, Requirements: requirements},
 		req:          make(chan shardStateRequest),
 		currentState: shardInitialState,
 	}
@@ -229,7 +229,7 @@ func (m *shardStateMachineManager) newStateMachine(
 	return stateMachine
 }
 
-func (m *shardStateMachine) String() (string) {
+func (m *shardStateMachine) String() string {
 	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.id[:8], m.flatID, m.currentState)
 }
 
@@ -238,7 +238,7 @@ func (m *shardStateMachine) Run() {
 	for state := enqueuedState; state != nil; {
 		state = state(m)
 	}
-	// close the request channel. 
+	// close the request channel.
 	// Check `sendRequest` comments for more details.
 	close(m.req)
 }
@@ -264,18 +264,18 @@ func (m *shardStateMachine) Fail(reason string) {
 }
 
 // send a request to the state machine by enquing it in the request channel.
-// it is possible due to race condition or duplicate network events that a 
+// it is possible due to race condition or duplicate network events that a
 // request is sent after the fsm is completed and no longer a goroutin is
-// consuming from the channel, which will lead to a deadlock in the 
-// computenode when trying to send the request. 
+// consuming from the channel, which will lead to a deadlock in the
+// computenode when trying to send the request.
 // To mitigagte this, we close the channel when the fsm is completed, and handle
 // the panic gracefully here.
 func (m *shardStateMachine) sendRequest(request shardStateRequest) {
 	defer func() {
-        if r := recover(); r != nil {
+		if r := recover(); r != nil {
 			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
-        }
-    }()
+		}
+	}()
 	m.req <- request
 }
 
@@ -388,14 +388,14 @@ func verifyingResultsState(m *shardStateMachine) StateFn {
 		req := <-m.req
 		switch req.action {
 		case actionPublish:
-			return publishingToRequesterState		
+			return publishingToRequesterState
 		case actionFail:
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
 			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
-	}	
+	}
 }
 
 // the job has been executed and the results are being published.
@@ -409,7 +409,7 @@ func publishingToRequesterState(m *shardStateMachine) StateFn {
 		return errorState
 	} else {
 		return completedState
-	}		
+	}
 }
 
 func errorState(m *shardStateMachine) StateFn {

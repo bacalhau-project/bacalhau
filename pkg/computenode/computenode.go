@@ -45,7 +45,7 @@ type ComputeNode struct {
 	config ComputeNodeConfig
 
 	controller               *controller.Controller
-	shardStateManager		*shardStateMachineManager
+	shardStateManager        *shardStateMachineManager
 	executors                map[executor.EngineType]executor.Executor
 	executorsInstalledCache  map[executor.EngineType]bool
 	verifiers                map[verifier.VerifierType]verifier.Verifier
@@ -111,7 +111,7 @@ func constructComputeNode(
 		id:                       nodeID,
 		config:                   config,
 		controller:               c,
-		shardStateManager: 		 shardStateManager,
+		shardStateManager:        shardStateManager,
 		executors:                executors,
 		executorsInstalledCache:  map[executor.EngineType]bool{},
 		verifiers:                verifiers,
@@ -129,7 +129,7 @@ func constructComputeNode(
 		Threshold: 10 * time.Millisecond,
 		Id:        "ComputeNode.bidMu",
 	})
-	
+
 	return computeNode, nil
 }
 
@@ -175,7 +175,7 @@ func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
-	
+
 	log.Debug().Msgf("len(bidJobIds)=%d", len(bidJobIds))
 	for _, flatID := range bidJobIds {
 		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
@@ -183,14 +183,14 @@ func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
 			log.Error().Msgf("error exploding shard id: %s", err)
 			continue
 		}
-		
+
 		shardState, shardStateFound := node.shardStateManager.Get(flatID)
 		if !shardStateFound {
 			continue
 		}
 
 		if shardState.bidSent {
-			// possible race condition where a bid was sent for the shard after 
+			// possible race condition where a bid was sent for the shard after
 			// preparing the candidates in GetNextItems()
 			log.Trace().Msgf("node %s has already bid on job shard %s %d", node.id, jobID, shardIndex)
 			continue
@@ -417,8 +417,6 @@ func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, j
 	} else {
 		log.Debug().Msgf("Received results accepted for unknown shard %s", flatID)
 	}
-
-	
 }
 
 func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent executor.JobEvent, job executor.Job) {

@@ -49,7 +49,6 @@ func (m *MockCapacityTracker) remove(itemID string) {
 	}
 }
 
-
 func (m *MockCapacityTracker) BacklogIterator(handler func(item CapacityManagerItem)) {
 	for _, item := range m.backlog {
 		handler(item)
