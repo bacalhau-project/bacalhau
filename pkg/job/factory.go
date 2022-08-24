@@ -92,6 +92,9 @@ func ConstructDockerJob( //nolint:funlen
 		}
 	}
 
+	// Weird bug that sharding basepath fails if has a trailing slash
+	shardingBasePath = strings.TrimSuffix(shardingBasePath, "/")
+
 	jobShardingConfig := executor.JobShardingConfig{
 		GlobPattern: shardingGlobPattern,
 		BasePath:    shardingBasePath,
