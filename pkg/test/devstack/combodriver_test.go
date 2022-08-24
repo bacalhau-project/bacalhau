@@ -59,6 +59,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 	defer cm.Cleanup()
+
+	unsealedPath, err := os.MkdirTemp("", "combo-driver-test-unsealed")
+	require.NoError(suite.T(), err)
+
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
@@ -79,7 +83,8 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
 				Storage: executor_util.StandardStorageProviderOptions{
-					IPFSMultiaddress: ipfsMultiAddress,
+					IPFSMultiaddress:     ipfsMultiAddress,
+					FilecoinUnsealedPath: fmt.Sprintf("%s/{{.Cid}}", unsealedPath),
 				},
 			},
 		)
