@@ -41,45 +41,59 @@ func (suite *Libp2pTransportSuite) TearDownAllSuite() {
 
 }
 
-func (suite *Libp2pTransportSuite) TestTransportSanity() {
+func (suite *Libp2pTransportSuite) TestEncryption() {
+	TestData := "hello encryption my old friend"
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 	ctx := context.Background()
 
-	portA, err := freeport.GetFreePort()
+	computeNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	portB, err := freeport.GetFreePort()
+	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	transportA, err := NewTransport(cm, portA, []string{})
+	computeNodeTransport, err := NewTransport(cm, computeNodePort, []string{})
 	require.NoError(suite.T(), err)
-	idA, err := transportA.HostID(ctx)
+	computeNodeID, err := computeNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
-	transportB, err := NewTransport(cm, portB, []string{
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", portA, idA),
+	requesterNodeTransport, err := NewTransport(cm, requesterNodePort, []string{
+		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID),
 	})
 	require.NoError(suite.T(), err)
-	idB, err := transportB.HostID(ctx)
+	requesterNodeID, err := requesterNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
 
-	transportA.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
-		fmt.Printf("ev A --------------------------------------\n")
-		//spew.Dump(ev)
+	computeNodeTransport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
+		if ev.EventName == executor.JobEventBidAccepted {
+			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
+			require.NoError(suite.T(), err)
+			err = computeNodeTransport.Publish(ctx, executor.JobEvent{
+				EventName:            executor.JobEventResultsProposed,
+				SourceNodeID:         computeNodeID,
+				TargetNodeID:         requesterNodeID,
+				VerificationProposal: encryptedData,
+			})
+			require.NoError(suite.T(), err)
+		}
 	})
-	err = transportA.Start(ctx)
+	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
-	transportB.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
-		fmt.Printf("ev B --------------------------------------\n")
-		//spew.Dump(ev)
+	requesterNodeTransport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
+		if ev.EventName == executor.JobEventResultsProposed {
+			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
+			require.NoError(suite.T(), err)
+			require.Equal(suite.T(), TestData, string(decryptedData), "the decrypted data should be the same as the original data")
+		}
 	})
-	err = transportB.Start(ctx)
+	err = requesterNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
 	time.Sleep(time.Second * 1)
 
-	err = transportA.Publish(ctx, executor.JobEvent{
-		SourceNodeID: idA,
-		TargetNodeID: idB,
+	err = requesterNodeTransport.Publish(ctx, executor.JobEvent{
+		EventName:    executor.JobEventBidAccepted,
+		SourceNodeID: requesterNodeID,
+		TargetNodeID: computeNodeID,
 	})
 	require.NoError(suite.T(), err)
 }
