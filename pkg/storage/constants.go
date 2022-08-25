@@ -17,6 +17,7 @@ const (
 	storageSourceUnknown StorageSourceType = iota // must be first
 	StorageSourceIPFS
 	StorageSourceURLDownload
+	StorageSourceFilecoinUnsealed
 	storageSourceDone // must be last
 )
 

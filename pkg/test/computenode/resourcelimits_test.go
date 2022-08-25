@@ -541,10 +541,18 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		datastore, err := inmemory.NewInMemoryDatastore()
 		require.NoError(suite.T(), err)
 
-		storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+		storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: apiAddress,
+		})
 		require.NoError(suite.T(), err)
 
-		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
+		executors, err := executor_util.NewStandardExecutors(cm, executor_util.StandardExecutorOptions{
+			DockerID: "devstacknode0",
+			Storage: executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: apiAddress,
+			},
+		})
+
 		require.NoError(suite.T(), err)
 
 		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

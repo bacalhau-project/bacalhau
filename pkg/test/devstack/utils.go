@@ -36,7 +36,9 @@ func SetupTest(
 
 	cm := system.NewCleanupManager()
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: ipfsMultiAddress,
+		})
 	}
 	getExecutors := func(
 		ipfsMultiAddress string,
@@ -50,8 +52,12 @@ func SetupTest(
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
 			cm,
-			ipfsMultiAddress,
-			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+			executor_util.StandardExecutorOptions{
+				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+				Storage: executor_util.StandardStorageProviderOptions{
+					IPFSMultiaddress: ipfsMultiAddress,
+				},
+			},
 		)
 	}
 	getVerifiers := func(

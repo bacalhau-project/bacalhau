@@ -111,7 +111,9 @@ var devstackCmd = &cobra.Command{
 				return executor_util.NewNoopStorageProviders(cm)
 			}
 
-			return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: ipfsMultiAddress,
+			})
 		}
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
@@ -121,8 +123,15 @@ var devstackCmd = &cobra.Command{
 				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
 			}
 
-			return executor_util.NewStandardExecutors(cm,
-				ipfsMultiAddress, fmt.Sprintf("devstacknode%d", nodeIndex))
+			return executor_util.NewStandardExecutors(
+				cm,
+				executor_util.StandardExecutorOptions{
+					DockerID: fmt.Sprintf("devstacknode%d", nodeIndex),
+					Storage: executor_util.StandardStorageProviderOptions{
+						IPFSMultiaddress: ipfsMultiAddress,
+					},
+				},
+			)
 		}
 
 		getVerifiers := func(
