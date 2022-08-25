@@ -2,6 +2,8 @@ package devstack
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -77,6 +79,15 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 				cm,
 				noop_executor.ExecutorConfig{
 					IsBadActor: isBadActor,
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+						JobHandler: func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
+							jobStdout := "hello world"
+							if isBadActor {
+								jobStdout = "i am bad and deserve to fail"
+							}
+							return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0644)
+						},
+					},
 				},
 			)
 		}
@@ -126,7 +137,6 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			Docker: executor.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
-					"bash", "-c",
 					`echo hello`,
 				},
 			},
