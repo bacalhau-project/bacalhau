@@ -1,4 +1,4 @@
-package noop
+package deterministic
 
 import (
 	"context"
@@ -9,16 +9,21 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 type DeterministicVerifier struct {
 	stateResolver *job.StateResolver
 	results       *results.Results
+	encrypter     verifier.EncrypterFunction
+	decrypter     verifier.DecrypterFunction
 }
 
 func NewDeterministicVerifier(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
+	encrypter verifier.EncrypterFunction,
+	decrypter verifier.DecrypterFunction,
 ) (*DeterministicVerifier, error) {
 	results, err := results.NewResults()
 	if err != nil {
@@ -27,6 +32,8 @@ func NewDeterministicVerifier(
 	return &DeterministicVerifier{
 		stateResolver: resolver,
 		results:       results,
+		encrypter:     encrypter,
+		decrypter:     decrypter,
 	}, nil
 }
 
@@ -48,7 +55,19 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	shardIndex int,
 	shardResultPath string,
 ) ([]byte, error) {
-	return []byte{}, nil
+	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
+	if err != nil {
+		return nil, err
+	}
+	job, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), job.RequesterPublicKey)
+	if err != nil {
+		return nil, err
+	}
+	return encryptedHash, nil
 }
 
 // each shard must have >= concurrency states

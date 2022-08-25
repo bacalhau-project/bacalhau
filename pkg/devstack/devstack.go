@@ -68,7 +68,7 @@ type GetExecutorsFunc func(
 )
 
 type GetVerifiersFunc func(
-	ipfsMultiAddress string,
+	transport *libp2p.LibP2PTransport,
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
@@ -110,14 +110,19 @@ func NewDevStackForRunLocal(
 		)
 	}
 	getVerifiers := func(
-		ipfsMultiAddress string,
+		transport *libp2p.LibP2PTransport,
 		_ int,
 		ctrl *controller.Controller,
 	) (
 		map[verifier.VerifierType]verifier.Verifier,
 		error,
 	) {
-		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+		return verifier_util.NewStandardVerifiers(
+			cm,
+			ctrl.GetStateResolver(),
+			transport.Encrypt,
+			transport.Decrypt,
+		)
 	}
 	getPublishers := func(
 		ipfsMultiAddress string,
@@ -276,7 +281,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i, ctrl)
+		verifiers, err := getVerifiers(transport, i, ctrl)
 		if err != nil {
 			return nil, err
 		}

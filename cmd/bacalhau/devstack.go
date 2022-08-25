@@ -18,6 +18,7 @@ import (
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -125,14 +126,19 @@ var devstackCmd = &cobra.Command{
 		}
 
 		getVerifiers := func(
-			ipfsMultiAddress string,
+			transport *libp2p.LibP2PTransport,
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (map[verifier.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
 				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 			}
-			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+			return verifier_util.NewStandardVerifiers(
+				cm,
+				ctrl.GetStateResolver(),
+				transport.Encrypt,
+				transport.Decrypt,
+			)
 		}
 
 		getPublishers := func(
