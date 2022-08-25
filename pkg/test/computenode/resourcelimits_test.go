@@ -267,6 +267,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				[]string{},
 				"",
 				1,
+				0,
 				[]string{},
 				"",
 				"", // sharding base path

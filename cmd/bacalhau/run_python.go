@@ -39,6 +39,7 @@ type LanguageRunOptions struct {
 	OutputVolumes []string // Array of output volumes in 'name:mount point' form
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
+	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
@@ -177,6 +178,7 @@ var runPythonCmd = &cobra.Command{
 			OLR.OutputVolumes,
 			[]string{}, // no env vars (yet)
 			OLR.Concurrency,
+			OLR.MinBids,
 			"python",
 			"3.10",
 			OLR.Command,

@@ -260,6 +260,13 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		"client_id": job.ClientID,
 	}).Inc()
 
+	Max := func(x, y int) int {
+		if x < y {
+			return y
+		}
+		return x
+	}
+
 	// Decide whether we should even consider bidding on the job, early exit if
 	// we're not in the active set for this job, given the hash distances.
 	// (This is an optimization to avoid all nodes bidding on a job in large networks).
@@ -267,7 +274,9 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
 	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
-		1, node.id, jobEvent.JobID, jobEvent.JobDeal.Concurrency,
+		// if the user isn't going to bid unless there are minBids many bids,
+		// we'd better make sure there are minBids many bids!
+		1, node.id, jobEvent.JobID, Max(jobEvent.JobDeal.Concurrency, jobEvent.JobDeal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.

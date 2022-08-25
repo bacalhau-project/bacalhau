@@ -42,6 +42,7 @@ func ConstructDockerJob( //nolint:funlen
 	entrypoint []string,
 	image string,
 	concurrency int,
+	minBids int,
 	annotations []string,
 	workingDir string,
 	shardingGlobPattern string,
@@ -127,6 +128,7 @@ func ConstructDockerJob( //nolint:funlen
 
 	deal := executor.JobDeal{
 		Concurrency: concurrency,
+		MinBids:     minBids,
 	}
 
 	return &spec, &deal, nil
@@ -138,6 +140,7 @@ func ConstructLanguageJob(
 	outputVolumes []string,
 	env []string,
 	concurrency int,
+	minBids int,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,
