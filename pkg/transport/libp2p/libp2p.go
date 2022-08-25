@@ -223,33 +223,6 @@ func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, err
 		data,
 		nil,
 	)
-
-	// genericPrivateKey, err := x509.ParsePKIXPrivateKey(publicKeyBytes)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
-	// if !ok {
-	// 	return nil, fmt.Errorf("could not cast public key to RSA")
-	// }
-	// privateKey, err := parseRsaPrivateKeyFromBytes(privateKeyBytes)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// priv, err := x509.ParsePKCS1PrivateKey(data)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return priv, nil
-
-	// return rsa.DecryptOAEP(
-	// 	sha512.New(),
-	// 	rand.Reader,
-	// 	privateKey,
-	// 	data,
-	// 	nil,
-	// )
 }
 
 /*
