@@ -94,8 +94,11 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 func (d *InMemoryDatastore) AddJob(ctx context.Context, job executor.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	_, ok := d.jobs[job.ID]
+	existingJob, ok := d.jobs[job.ID]
 	if ok {
+		if len(job.RequesterPublicKey) > 0 {
+			existingJob.RequesterPublicKey = job.RequesterPublicKey
+		}
 		return nil
 	}
 	d.jobs[job.ID] = &job
@@ -207,6 +210,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 
 	if len(update.VerificationProposal) != 0 {
 		shardSate.VerificationProposal = update.VerificationProposal
+	}
+
+	if update.VerificationResult.Complete {
+		shardSate.VerificationResult = update.VerificationResult
 	}
 
 	if storage.IsValidStorageSourceType(update.PublishedResult.Engine) {

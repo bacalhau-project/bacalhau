@@ -120,6 +120,7 @@ type JobShardState struct {
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
 	VerificationProposal []byte              `json:"verification_proposal"`
+	VerificationResult   VerificationResult  `json:"verification_result"`
 	PublishedResult      storage.StorageSpec `json:"published_results"`
 }
 
@@ -240,10 +241,20 @@ type JobEvent struct {
 	JobDeal              JobDeal             `json:"job_deal"`
 	Status               string              `json:"status"`
 	VerificationProposal []byte              `json:"verification_proposal"`
+	VerificationResult   VerificationResult  `json:"verification_result"`
 	PublishedResult      storage.StorageSpec `json:"published_results"`
 
 	EventTime       time.Time `json:"event_time"`
 	SenderPublicKey []byte    `json:"public_key"`
+}
+
+// we need to use a struct for the result because:
+//  a) otherwise we don't know if VerificationResult==false
+//     means "I've not verified yet" or "verification failed"
+//  b) we might want to add further fields to the result later
+type VerificationResult struct {
+	Complete bool `json:"complete"`
+	Result   bool `json:"result"`
 }
 
 type JobCreatePayload struct {

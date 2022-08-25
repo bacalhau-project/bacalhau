@@ -116,7 +116,7 @@ var devstackCmd = &cobra.Command{
 			})
 		}
 
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int, isBadActor bool, ctrl *controller.Controller) (
 			map[executor.EngineType]executor.Executor, error) {
 
 			if ODs.IsNoop {
@@ -126,7 +126,8 @@ var devstackCmd = &cobra.Command{
 			return executor_util.NewStandardExecutors(
 				cm,
 				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("devstacknode%d", nodeIndex),
+					DockerID:   fmt.Sprintf("devstacknode%d", nodeIndex),
+					IsBadActor: isBadActor,
 					Storage: executor_util.StandardStorageProviderOptions{
 						IPFSMultiaddress: ipfsMultiAddress,
 					},

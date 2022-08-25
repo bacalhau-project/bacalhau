@@ -270,6 +270,10 @@ func (ctrl *Controller) AcceptResults(
 	// function and so knows which node it is accepting the results for
 	ev.TargetNodeID = nodeID
 	ev.ShardIndex = shardIndex
+	ev.VerificationResult = executor.VerificationResult{
+		Complete: true,
+		Result:   true,
+	}
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -291,6 +295,10 @@ func (ctrl *Controller) RejectResults(
 	// function and so knows which node it is rejecting the results for
 	ev.TargetNodeID = nodeID
 	ev.ShardIndex = shardIndex
+	ev.VerificationResult = executor.VerificationResult{
+		Complete: true,
+		Result:   false,
+	}
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -522,6 +530,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 				State:                executionState,
 				Status:               ev.Status,
 				VerificationProposal: ev.VerificationProposal,
+				VerificationResult:   ev.VerificationResult,
 				PublishedResult:      ev.PublishedResult,
 			},
 		)

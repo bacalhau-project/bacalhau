@@ -61,6 +61,7 @@ type GetStorageProvidersFunc func(
 type GetExecutorsFunc func(
 	ipfsMultiAddress string,
 	nodeIndex int,
+	isBadActor bool,
 	ctrl *controller.Controller,
 ) (
 	map[executor.EngineType]executor.Executor,
@@ -98,6 +99,7 @@ func NewDevStackForRunLocal(
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
+		isBadActor bool,
 		_ *controller.Controller,
 	) (
 		map[executor.EngineType]executor.Executor,
@@ -166,7 +168,7 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, _ int, //nolint:unparam // Incorrectly assumed as unused
+	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
@@ -282,7 +284,13 @@ func NewDevStack(
 			return nil, err
 		}
 
-		executors, err := getExecutors(ipfsAPIAddrs[0], i, ctrl)
+		isBadActor := false
+
+		if badActors > 0 {
+			isBadActor = i >= count-badActors
+		}
+
+		executors, err := getExecutors(ipfsAPIAddrs[0], i, isBadActor, ctrl)
 		if err != nil {
 			return nil, err
 		}

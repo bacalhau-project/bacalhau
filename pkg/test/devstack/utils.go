@@ -43,6 +43,7 @@ func SetupTest(
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
+		isBadActor bool,
 		ctrl *controller.Controller,
 	) (
 		map[executor.EngineType]executor.Executor,
@@ -53,7 +54,8 @@ func SetupTest(
 		return executor_util.NewStandardExecutors(
 			cm,
 			executor_util.StandardExecutorOptions{
-				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+				DockerID:   fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+				IsBadActor: isBadActor,
 				Storage: executor_util.StandardStorageProviderOptions{
 					IPFSMultiaddress: ipfsMultiAddress,
 				},

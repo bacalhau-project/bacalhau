@@ -2,6 +2,7 @@ package deterministic
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -55,11 +56,14 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	shardIndex int,
 	shardResultPath string,
 ) ([]byte, error) {
-	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
+	job, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
-	job, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	if len(job.RequesterPublicKey) <= 0 {
+		return nil, errors.New("no RequesterPublicKey found in the job")
+	}
+	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
 	if err != nil {
 		return nil, err
 	}
