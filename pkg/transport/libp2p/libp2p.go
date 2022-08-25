@@ -288,6 +288,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// NOTE: Do not use msg.ReceivedFrom as the original sender, it's not. It's
 	// the node which gossiped the message to us, which might be different.
 	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
+	ev.SenderPublicKey = msg.Key
 
 	var wg realsync.WaitGroup
 	func() {

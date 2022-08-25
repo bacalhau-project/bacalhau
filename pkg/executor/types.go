@@ -44,6 +44,9 @@ type Job struct {
 
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"requester_node_id"`
+	// the public key of the requestor node that created this job
+	// this can be used to encrypt messages back to the creator
+	RequesterPublicKey []byte `json:"requester_public_key"`
 
 	// The ID of the client that created this job.
 	ClientID string `json:"client_id"`
@@ -239,7 +242,8 @@ type JobEvent struct {
 	VerificationProposal []byte              `json:"verification_proposal"`
 	PublishedResult      storage.StorageSpec `json:"published_results"`
 
-	EventTime time.Time `json:"event_time"`
+	EventTime       time.Time `json:"event_time"`
+	SenderPublicKey []byte    `json:"public_key"`
 }
 
 type JobCreatePayload struct {

@@ -16,14 +16,19 @@ import (
 
 func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 	log.Debug().Msgf("Constructing job from event: %+v", ev)
+	publicKey := ev.SenderPublicKey
+	if publicKey == nil {
+		publicKey = []byte{}
+	}
 	return executor.Job{
-		ID:              ev.JobID,
-		RequesterNodeID: ev.SourceNodeID,
-		ClientID:        ev.ClientID,
-		Spec:            ev.JobSpec,
-		Deal:            ev.JobDeal,
-		ExecutionPlan:   ev.JobExecutionPlan,
-		CreatedAt:       time.Now(),
+		ID:                 ev.JobID,
+		RequesterNodeID:    ev.SourceNodeID,
+		RequesterPublicKey: publicKey,
+		ClientID:           ev.ClientID,
+		Spec:               ev.JobSpec,
+		Deal:               ev.JobDeal,
+		ExecutionPlan:      ev.JobExecutionPlan,
+		CreatedAt:          time.Now(),
 	}
 }
 
