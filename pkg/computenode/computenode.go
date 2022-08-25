@@ -424,6 +424,13 @@ func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, j
 	if jobEvent.TargetNodeID != node.id {
 		return
 	}
+
+	flatID := capacitymanager.FlattenShardID(jobEvent.JobID, jobEvent.ShardIndex)
+	if shardState, ok := node.shardStateManager.Get(flatID); ok {
+		shardState.Publish()
+	} else {
+		log.Debug().Msgf("Received results rejected for unknown shard %s", flatID)
+	}
 }
 
 /*

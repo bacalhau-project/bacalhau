@@ -3,7 +3,9 @@ package deterministic
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -88,29 +90,93 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	})
 }
 
+type shardVerificationData struct {
+	hash   string
+	result verifier.VerifierResult
+}
+
 func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
 	ctx, span := newSpan(ctx, "VerifyJob")
 	defer span.End()
-	results := []verifier.VerifierResult{}
 	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
 	if err != nil {
-		return results, err
+		return nil, err
 	}
+
+	// group the verifier results by their reported hash
+	// then pick the largest group and verify all of those
+	// caveats:
+	//  * if there is only 1 group - there must be > 1 result
+	//  * there cannot be a draw between the top 2 groups
+	hashGroups := map[string][]verifier.VerifierResult{}
+
 	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
+		// we've already called IsExecutionComplete so will assume any shard state
+		// that is not JobStateVerifying we can safely ignore
 		if shardState.State != executor.JobStateVerifying {
 			continue
 		}
-		results = append(results, verifier.VerifierResult{
+
+		hash := ""
+
+		if len(shardState.VerificationProposal) > 0 {
+			decryptedHash, err := deterministicVerifier.decrypter(ctx, shardState.VerificationProposal)
+			if err == nil {
+				hash = string(decryptedHash)
+			}
+		}
+
+		existingArray, ok := hashGroups[hash]
+		if !ok {
+			existingArray = []verifier.VerifierResult{}
+		}
+		hashGroups[hash] = append(existingArray, verifier.VerifierResult{
 			JobID:      jobID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
-			Verified:   true,
+			Verified:   false,
 		})
 	}
-	return results, nil
+
+	largestGroupHash := ""
+	largestGroupSize := 0
+	isVoidResult := false
+
+	for hash, group := range hashGroups {
+		if len(group) > largestGroupSize {
+			largestGroupSize = len(group)
+			largestGroupHash = hash
+		} else if len(group) == largestGroupSize {
+			isVoidResult = true
+		}
+	}
+
+	if len(hashGroups) == 1 && largestGroupSize == 1 {
+		isVoidResult = true
+	}
+
+	if !isVoidResult {
+		for _, passedVerificationResult := range hashGroups[largestGroupHash] {
+			updateObj := &passedVerificationResult
+			updateObj.Verified = true
+		}
+		fmt.Printf("hashGroups[largestGroupHash] --------------------------------------\n")
+		spew.Dump(hashGroups[largestGroupHash])
+	}
+
+	allResults := []verifier.VerifierResult{}
+
+	for _, verificationResults := range hashGroups {
+		allResults = append(allResults, verificationResults...)
+	}
+
+	fmt.Printf("allResults --------------------------------------\n")
+	spew.Dump(allResults)
+
+	return allResults, nil
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
