@@ -2,10 +2,9 @@ package devstack
 
 import (
 	"context"
-	"fmt"
 	"testing"
+	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -59,6 +58,8 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 	runTest := func(
 		nodeCount int,
 		badActors int,
+		expectedPassed int,
+		expectedFailed int,
 	) {
 		cm := system.NewCleanupManager()
 		ctx := context.Background()
@@ -137,6 +138,8 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			Concurrency: nodeCount,
 		}
 
+		// wait for other nodes to catch up
+		time.Sleep(time.Second * 1)
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
 		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
@@ -147,7 +150,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		err = resolver.Wait(
 			ctx,
 			submittedJob.ID,
-			1,
+			nodeCount,
 			job.WaitThrowErrors([]executor.JobStateType{
 				executor.JobStateCancelled,
 				executor.JobStateError,
@@ -160,10 +163,26 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 
 		state, err := resolver.GetJobState(ctx, submittedJob.ID)
 		require.NoError(suite.T(), err)
-		fmt.Printf("state --------------------------------------\n")
-		spew.Dump(state)
+
+		verifiedCount := 0
+		failedCount := 0
+
+		for _, state := range state.Nodes {
+			shard, ok := state.Shards[0]
+			require.True(suite.T(), ok)
+			require.True(suite.T(), shard.VerificationResult.Complete)
+			if shard.VerificationResult.Result {
+				verifiedCount++
+			} else {
+				failedCount++
+			}
+		}
+
+		require.Equal(suite.T(), expectedPassed, verifiedCount, "verified count should be correct")
+		require.Equal(suite.T(), expectedFailed, failedCount, "failed count should be correct")
 	}
 
-	runTest(1, 0)
-
+	// runTest(1, 0, 1, 0)
+	// runTest(3, 0, 3, 0)
+	runTest(3, 1, 2, 1)
 }
