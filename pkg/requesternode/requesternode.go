@@ -119,8 +119,14 @@ func (node *RequesterNode) subscriptionEventBid(
 
 		// a map of shard index onto an array of node ids we have farmed the job out to
 		assignedNodes := map[int][]string{}
+		bidCount := 0
 
 		for _, localEvent := range localEvents {
+			if localEvent.EventName == executor.JobLocalEventBid {
+				// TODO: group by node_id, so that one node can't make multiple
+				// bids to increase the counter
+				bidCount += 1
+			}
 			if localEvent.EventName == executor.JobLocalEventBidAccepted {
 				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
 				if !ok {
@@ -144,10 +150,19 @@ func (node *RequesterNode) subscriptionEventBid(
 			return false
 		}
 
+		if bidCount < job.Deal.MinBids {
+			threadLogger.Debug().Msgf("Not accepting bid yet because we haven't received minBids yet (%d/%d)", bidCount, job.Deal.MinBids)
+			return false
+		}
+
 		return true
 	}()
 
 	if accepted {
+		// TODO: don't accept THIS bid, necessarily, instead accept
+		// concurrency-many bids randomly from the bids that haven't been
+		// accepted yet in localEvents.
+
 		log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
 		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
 		if err != nil {
