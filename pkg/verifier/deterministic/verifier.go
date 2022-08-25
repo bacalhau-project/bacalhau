@@ -11,38 +11,38 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type NoopVerifier struct {
+type DeterministicVerifier struct {
 	stateResolver *job.StateResolver
 	results       *results.Results
 }
 
-func NewNoopVerifier(
+func NewDeterministicVerifier(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (*NoopVerifier, error) {
+) (*DeterministicVerifier, error) {
 	results, err := results.NewResults()
 	if err != nil {
 		return nil, err
 	}
-	return &NoopVerifier{
+	return &DeterministicVerifier{
 		stateResolver: resolver,
 		results:       results,
 	}, nil
 }
 
-func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
+func (deterministicVerifier *DeterministicVerifier) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (noopVerifier *NoopVerifier) GetShardResultPath(
+func (deterministicVerifier *DeterministicVerifier) GetShardResultPath(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
 ) (string, error) {
-	return noopVerifier.results.EnsureShardResultsDir(jobID, shardIndex)
+	return deterministicVerifier.results.EnsureShardResultsDir(jobID, shardIndex)
 }
 
-func (noopVerifier *NoopVerifier) GetShardProposal(
+func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	ctx context.Context,
 	jobID string,
 	shardIndex int,
@@ -53,26 +53,26 @@ func (noopVerifier *NoopVerifier) GetShardProposal(
 
 // each shard must have >= concurrency states
 // and they must be either JobStateError or JobStateVerifying
-func (noopVerifier *NoopVerifier) IsExecutionComplete(
+func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	ctx context.Context,
 	jobID string,
 ) (bool, error) {
-	return noopVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
+	return deterministicVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
 		shardStates []executor.JobShardState,
 		concurrency int,
 	) (bool, error) {
-		return noopVerifier.results.CheckShardStates(shardStates, concurrency)
+		return deterministicVerifier.results.CheckShardStates(shardStates, concurrency)
 	})
 }
 
-func (noopVerifier *NoopVerifier) VerifyJob(
+func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
 	ctx, span := newSpan(ctx, "VerifyJob")
 	defer span.End()
 	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, jobID)
+	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
@@ -94,5 +94,5 @@ func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) 
 	return system.Span(ctx, "verifier/noop", apiName)
 }
 
-// Compile-time check that NoopVerifier implements the correct interface:
-var _ verifier.Verifier = (*NoopVerifier)(nil)
+// Compile-time check that deterministicVerifier implements the correct interface:
+var _ verifier.Verifier = (*DeterministicVerifier)(nil)
