@@ -45,12 +45,18 @@ func SetupTestDockerIpfs(
 
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 
-	storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+	storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+		IPFSMultiaddress: apiAddress,
+	})
 	require.NoError(t, err)
 	executors, err := executor_util.NewStandardExecutors(
 		cm,
-		apiAddress,
-		fmt.Sprintf("devstacknode0-%s", ipfsID),
+		executor_util.StandardExecutorOptions{
+			DockerID: fmt.Sprintf("devstacknode0-%s", ipfsID),
+			Storage: executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: apiAddress,
+			},
+		},
 	)
 	require.NoError(t, err)
 

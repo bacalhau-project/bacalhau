@@ -158,11 +158,10 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	if _, err := exec.LookPath("ulimit"); err == nil {
 		// Test to see how many files can be open on this system...
 		cmd := exec.Command("ulimit", "-n")
-		err := cmd.Run()
+		out, err := cmd.Output()
 		require.NoError(suite.T(), err)
 
-		out, _ := cmd.CombinedOutput()
-		ulimitValue, err = strconv.Atoi(string(out))
+		ulimitValue, err = strconv.Atoi(strings.TrimSpace(string(out)))
 		require.NoError(suite.T(), err)
 	} else {
 		var rLimit syscall.Rlimit

@@ -5,7 +5,7 @@ set -xeuo pipefail
 # /bin/true
 
 ID=$(time ${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost docker run --concurrency=3 --wait --wait-timeout-secs 20 busybox -- /bin/true)
-if [[ $(time ${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost describe "${ID}" |grep "State: Complete"|wc -l) -ne 3 ]]; then
+if [[ $(time ${BACALHAU_BIN} --api-port="${API_PORT}" --api-host=localhost describe "${ID}" |grep "State: Published"|wc -l) -ne 3 ]]; then
         echo "JOB ${ID} FAILED"
         exit 1
     else
