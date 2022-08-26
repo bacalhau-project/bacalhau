@@ -54,15 +54,18 @@ func (suite *DeterministicVerifierSuite) TearDownAllSuite() {
 
 }
 
+type testArgs struct {
+	nodeCount      int
+	badActors      int
+	confidence     int
+	expectedPassed int
+	expectedFailed int
+}
+
 // test that the combo driver gives preference to the filecoin unsealed driver
 // also that this does not affect normal jobs where the CID resides on the IPFS driver
 func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
-	runTest := func(
-		nodeCount int,
-		badActors int,
-		expectedPassed int,
-		expectedFailed int,
-	) {
+	runTest := func(args testArgs) {
 		cm := system.NewCleanupManager()
 		ctx := context.Background()
 		defer cm.Cleanup()
@@ -192,12 +195,39 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		require.Equal(suite.T(), expectedFailed, failedCount, "failed count should be correct")
 	}
 
-	// this tests that we must have more than one node to run the job
-	runTest(1, 0, 0, 1)
+	// test that we must have more than one node to run the job
+	runTest(testArgs{
+		nodeCount:      1,
+		badActors:      0,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 1,
+	})
+
 	// test that if all nodes agree then all are verified
-	runTest(3, 0, 3, 0)
+	runTest(testArgs{
+		nodeCount:      3,
+		badActors:      0,
+		confidence:     0,
+		expectedPassed: 3,
+		expectedFailed: 0,
+	})
+
 	// test that if one node mis-behaves we catch it but the others are verified
-	runTest(3, 1, 2, 1)
+	runTest(testArgs{
+		nodeCount:      3,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 2,
+		expectedFailed: 1,
+	})
+
 	// test that is there is a draw between good and bad actors then none are verified
-	runTest(2, 1, 0, 2)
+	runTest(testArgs{
+		nodeCount:      2,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 2,
+	})
 }
