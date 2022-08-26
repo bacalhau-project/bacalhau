@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
@@ -72,6 +73,26 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 	}
 
 	return currentJobState.String(), nil
+}
+
+func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string) (string, error) {
+	job, err := resolver.jobLoader(ctx, jobID)
+	if err != nil {
+		return "", err
+	}
+
+	if job.Spec.Verifier == verifier.VerifierNoop {
+		return "", nil
+	}
+
+	jobState, err := resolver.stateLoader(ctx, jobID)
+	if err != nil {
+		return "", err
+	}
+	totalShards := GetJobTotalExecutionCount(job)
+	verifiedShardCount := GetVerifiedShardStates(jobState)
+
+	return fmt.Sprintf("%d/%d", verifiedShardCount, totalShards), nil
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
@@ -294,6 +315,16 @@ func GetFilteredShardStates(jobState executor.JobState, filterState executor.Job
 		}
 	}
 	return ret
+}
+
+func GetVerifiedShardStates(jobState executor.JobState) int {
+	count := 0
+	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
+		if shardState.VerificationResult.Result {
+			count++
+		}
+	}
+	return count
 }
 
 func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
