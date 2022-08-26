@@ -88,24 +88,11 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	})
 }
 
-func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
+func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	ctx context.Context,
-	jobID string,
-) ([]verifier.VerifierResult, error) {
-	ctx, span := newSpan(ctx, "VerifyJob")
-	defer span.End()
-	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
-	if err != nil {
-		return nil, err
-	}
-
-	jobData, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
-	if err != nil {
-		return nil, err
-	}
-
-	confidence := jobData.Deal.Confidence
-
+	jobData executor.Job,
+	shardStates []executor.JobShardState,
+) map[string][]*verifier.VerifierResult {
 	// group the verifier results by their reported hash
 	// then pick the largest group and verify all of those
 	// caveats:
@@ -113,7 +100,7 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 	//  * there cannot be a draw between the top 2 groups
 	hashGroups := map[string][]*verifier.VerifierResult{}
 
-	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
+	for _, shardState := range shardStates { //nolint:gocritic
 		// we've already called IsExecutionComplete so will assume any shard state
 		// that is not JobStateVerifying we can safely ignore
 		if shardState.State != executor.JobStateVerifying {
@@ -124,6 +111,12 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 
 		if len(shardState.VerificationProposal) > 0 {
 			decryptedHash, err := deterministicVerifier.decrypter(ctx, shardState.VerificationProposal)
+
+			// if there is an error decrypting let's not fail the verification job
+			// but just leave the proposed hash at empty string (which won't pass actual verification)
+			// this means we can "complete" the verification process by deciding that anyone
+			// who couldn't submit a correctly encrypted hash will result in an empty hash
+			// rather than a decryption error
 			if err == nil {
 				hash = string(decryptedHash)
 			}
@@ -134,17 +127,28 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 			existingArray = []*verifier.VerifierResult{}
 		}
 		hashGroups[hash] = append(existingArray, &verifier.VerifierResult{
-			JobID:      jobID,
+			JobID:      jobData.ID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
 			Verified:   false,
 		})
 	}
 
+	return hashGroups
+}
+
+func (deterministicVerifier *DeterministicVerifier) verifyShard(
+	ctx context.Context,
+	jobData executor.Job,
+	shardStates []executor.JobShardState,
+) ([]verifier.VerifierResult, error) {
+	confidence := jobData.Deal.Confidence
+
 	largestGroupHash := ""
 	largestGroupSize := 0
 	isVoidResult := false
 	groupSizeCounts := map[int]int{}
+	hashGroups := deterministicVerifier.getHashGroups(ctx, jobData, shardStates)
 
 	for hash, group := range hashGroups {
 		if len(group) > largestGroupSize {
@@ -170,6 +174,11 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 		isVoidResult = true
 	}
 
+	// the winning hash must not be empty string
+	if largestGroupHash == "" {
+		isVoidResult = true
+	}
+
 	if !isVoidResult {
 		for _, passedVerificationResult := range hashGroups[largestGroupHash] {
 			passedVerificationResult.Verified = true
@@ -182,6 +191,36 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 		for _, verificationResult := range verificationResultList {
 			allResults = append(allResults, *verificationResult)
 		}
+	}
+
+	return allResults, nil
+}
+
+func (deterministicVerifier *DeterministicVerifier) VerifyJob(
+	ctx context.Context,
+	jobID string,
+) ([]verifier.VerifierResult, error) {
+	ctx, span := newSpan(ctx, "VerifyJob")
+	defer span.End()
+	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	jobData, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	groupedShards := job.GroupShardStates(job.FlattenShardStates(jobState))
+	allResults := []verifier.VerifierResult{}
+
+	for _, shardStates := range groupedShards {
+		shardResults, err := deterministicVerifier.verifyShard(ctx, jobData, shardStates)
+		if err != nil {
+			return nil, err
+		}
+		allResults = append(allResults, shardResults...)
 	}
 
 	return allResults, nil

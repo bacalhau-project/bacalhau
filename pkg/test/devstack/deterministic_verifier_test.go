@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -210,32 +209,30 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		verifiedCount := 0
 		failedCount := 0
 
-		fmt.Printf("state --------------------------------------\n")
-		spew.Dump(state)
-
 		for _, state := range state.Nodes {
-			shard, ok := state.Shards[0]
-			require.True(suite.T(), ok)
-			require.True(suite.T(), shard.VerificationResult.Complete)
-			if shard.VerificationResult.Result {
-				verifiedCount++
-			} else {
-				failedCount++
+			for _, shard := range state.Shards {
+				require.True(suite.T(), shard.VerificationResult.Complete)
+				if shard.VerificationResult.Result {
+					verifiedCount++
+				} else {
+					failedCount++
+				}
 			}
 		}
 
-		require.Equal(suite.T(), args.expectedPassed, verifiedCount, "verified count should be correct")
-		require.Equal(suite.T(), args.expectedFailed, failedCount, "failed count should be correct")
+		require.Equal(suite.T(), args.expectedPassed*args.shardCount, verifiedCount, "verified count should be correct")
+		require.Equal(suite.T(), args.expectedFailed*args.shardCount, failedCount, "failed count should be correct")
 	}
 
 	// test that we must have more than one node to run the job
-	// runTest(testArgs{
-	// 	nodeCount:      1,
-	// 	badActors:      0,
-	// 	confidence:     0,
-	// 	expectedPassed: 0,
-	// 	expectedFailed: 1,
-	// })
+	runTest(testArgs{
+		nodeCount:      1,
+		shardCount:     2,
+		badActors:      0,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 1,
+	})
 
 	// test that if all nodes agree then all are verified
 	runTest(testArgs{
@@ -247,31 +244,34 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		expectedFailed: 0,
 	})
 
-	// // test that if one node mis-behaves we catch it but the others are verified
-	// runTest(testArgs{
-	// 	nodeCount:      3,
-	// 	badActors:      1,
-	// 	confidence:     0,
-	// 	expectedPassed: 2,
-	// 	expectedFailed: 1,
-	// })
+	// test that if one node mis-behaves we catch it but the others are verified
+	runTest(testArgs{
+		nodeCount:      3,
+		shardCount:     2,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 2,
+		expectedFailed: 1,
+	})
 
-	// // test that is there is a draw between good and bad actors then none are verified
-	// runTest(testArgs{
-	// 	nodeCount:      2,
-	// 	badActors:      1,
-	// 	confidence:     0,
-	// 	expectedPassed: 0,
-	// 	expectedFailed: 2,
-	// })
+	// test that is there is a draw between good and bad actors then none are verified
+	runTest(testArgs{
+		nodeCount:      2,
+		shardCount:     2,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 2,
+	})
 
-	// // test that with a larger group the confidence setting gives us a lower threshold
-	// runTest(testArgs{
-	// 	nodeCount:      5,
-	// 	badActors:      2,
-	// 	confidence:     4,
-	// 	expectedPassed: 0,
-	// 	expectedFailed: 5,
-	// })
+	// test that with a larger group the confidence setting gives us a lower threshold
+	runTest(testArgs{
+		nodeCount:      5,
+		shardCount:     2,
+		badActors:      2,
+		confidence:     4,
+		expectedPassed: 0,
+		expectedFailed: 5,
+	})
 
 }
