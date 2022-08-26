@@ -63,6 +63,7 @@ type shardNodeStateDescription struct {
 	Node     string `yaml:"Node"`
 	State    string `yaml:"State"`
 	Status   string `yaml:"Status"`
+	Verified bool   `yaml:"Verified"`
 	ResultID string `yaml:"ResultID"`
 }
 
@@ -187,7 +188,8 @@ var describeCmd = &cobra.Command{
 				Node:     shard.NodeID,
 				State:    shard.State.String(),
 				Status:   shard.Status,
-				ResultID: string(shard.VerificationProposal),
+				Verified: shard.VerificationResult.Result,
+				ResultID: shard.PublishedResult.Cid,
 			})
 			shardDescriptions[shard.ShardIndex] = shardDescription
 		}
