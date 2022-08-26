@@ -130,7 +130,7 @@ var listCmd = &cobra.Command{
 		t := table.NewWriter()
 		t.SetOutputMirror(cmd.OutOrStderr())
 		if !OL.HideHeader {
-			t.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
+			t.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
 		}
 
 		columnConfig := []table.ColumnConfig{}
@@ -196,6 +196,11 @@ var listCmd = &cobra.Command{
 				return err
 			}
 
+			verifiedSummary, err := resolver.VerifiedSummary(context.Background(), j.ID)
+			if err != nil {
+				return err
+			}
+
 			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
 			if err != nil {
 				return err
@@ -207,6 +212,7 @@ var listCmd = &cobra.Command{
 					shortID(OL.OutputWide, j.ID),
 					shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 					shortenString(OL.OutputWide, stateSummary),
+					shortenString(OL.OutputWide, verifiedSummary),
 					shortenString(OL.OutputWide, resultSummary),
 				},
 			})
