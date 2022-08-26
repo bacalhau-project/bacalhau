@@ -3,9 +3,7 @@ package deterministic
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -111,7 +109,7 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	// caveats:
 	//  * if there is only 1 group - there must be > 1 result
 	//  * there cannot be a draw between the top 2 groups
-	hashGroups := map[string][]verifier.VerifierResult{}
+	hashGroups := map[string][]*verifier.VerifierResult{}
 
 	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
 		// we've already called IsExecutionComplete so will assume any shard state
@@ -131,9 +129,9 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 
 		existingArray, ok := hashGroups[hash]
 		if !ok {
-			existingArray = []verifier.VerifierResult{}
+			existingArray = []*verifier.VerifierResult{}
 		}
-		hashGroups[hash] = append(existingArray, verifier.VerifierResult{
+		hashGroups[hash] = append(existingArray, &verifier.VerifierResult{
 			JobID:      jobID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
@@ -160,21 +158,17 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 
 	if !isVoidResult {
 		for _, passedVerificationResult := range hashGroups[largestGroupHash] {
-			updateObj := &passedVerificationResult
-			updateObj.Verified = true
+			passedVerificationResult.Verified = true
 		}
-		fmt.Printf("hashGroups[largestGroupHash] --------------------------------------\n")
-		spew.Dump(hashGroups[largestGroupHash])
 	}
 
 	allResults := []verifier.VerifierResult{}
 
-	for _, verificationResults := range hashGroups {
-		allResults = append(allResults, verificationResults...)
+	for _, verificationResultList := range hashGroups {
+		for _, verificationResult := range verificationResultList {
+			allResults = append(allResults, *verificationResult)
+		}
 	}
-
-	fmt.Printf("allResults --------------------------------------\n")
-	spew.Dump(allResults)
 
 	return allResults, nil
 }

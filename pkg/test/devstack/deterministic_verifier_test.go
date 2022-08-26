@@ -192,7 +192,12 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		require.Equal(suite.T(), expectedFailed, failedCount, "failed count should be correct")
 	}
 
-	// runTest(1, 0, 1, 0)
-	// runTest(3, 0, 3, 0)
+	// this tests that we must have more than one node to run the job
+	runTest(1, 0, 0, 1)
+	// test that if all nodes agree then all are verified
+	runTest(3, 0, 3, 0)
+	// test that if one node mis-behaves we catch it but the others are verified
 	runTest(3, 1, 2, 1)
+	// test that is there is a draw between good and bad actors then none are verified
+	runTest(2, 1, 0, 2)
 }
