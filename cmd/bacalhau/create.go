@@ -43,12 +43,14 @@ var (
 type CreateOptions struct {
 	Filename    string // Filename for job (can be .json or .yaml)
 	Concurrency int    // Number of concurrent jobs to run
+	Confidence  int    // Minimum number of nodes that must agree on a verification result
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
 		Filename:    "",
 		Concurrency: 1,
+		Confidence:  0,
 	}
 }
 
@@ -56,6 +58,10 @@ func init() { //nolint:gochecknoinits
 	createCmd.PersistentFlags().IntVarP(
 		&OC.Concurrency, "concurrency", "c", OC.Concurrency,
 		`How many nodes should run the job`,
+	)
+	createCmd.PersistentFlags().IntVar(
+		&OC.Confidence, "confidence", OC.Confidence,
+		`The minimum number of nodes that must agree on a verification result`,
 	)
 }
 
@@ -134,6 +140,7 @@ var createCmd = &cobra.Command{
 
 		jobDeal := &executor.JobDeal{
 			Concurrency: OC.Concurrency,
+			Confidence:  OC.Confidence,
 		}
 
 		err = ExecuteJob(ctx,
