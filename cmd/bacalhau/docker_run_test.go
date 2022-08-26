@@ -11,15 +11,28 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	actual_devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -734,4 +747,183 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
 	require.NoError(suite.T(), submitErr)
+}
+
+type deterministicVerifierTestArgs struct {
+	nodeCount      int
+	badActors      int
+	confidence     int
+	expectedPassed int
+	expectedFailed int
+}
+
+func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
+	runTest := func(args deterministicVerifierTestArgs) {
+		cm := system.NewCleanupManager()
+		ctx := context.Background()
+		defer cm.Cleanup()
+		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+			return executor_util.NewNoopStorageProviders(cm)
+		}
+		getExecutors := func(
+			ipfsMultiAddress string,
+			nodeIndex int,
+			isBadActor bool,
+			ctrl *controller.Controller,
+		) (map[executor.EngineType]executor.Executor, error) {
+			return executor_util.NewNoopExecutors(
+				cm,
+				noop_executor.ExecutorConfig{
+					IsBadActor: isBadActor,
+					ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+						JobHandler: func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
+							jobStdout := "hello world"
+							if isBadActor {
+								jobStdout = "i am bad and deserve to fail"
+							}
+							return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0644)
+						},
+					},
+				},
+			)
+		}
+		getVerifiers := func(
+			transport *libp2p.LibP2PTransport,
+			nodeIndex int,
+			ctrl *controller.Controller,
+		) (
+			map[verifier.VerifierType]verifier.Verifier,
+			error,
+		) {
+			return verifier_util.NewStandardVerifiers(
+				cm,
+				ctrl.GetStateResolver(),
+				transport.Encrypt,
+				transport.Decrypt,
+			)
+		}
+		getPublishers := func(
+			ipfsMultiAddress string,
+			nodeIndex int,
+			ctrl *controller.Controller,
+		) (
+			map[publisher.PublisherType]publisher.Publisher,
+			error,
+		) {
+			return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
+		}
+		stack, err := actual_devstack.NewDevStack(
+			cm,
+			args.nodeCount,
+			args.badActors,
+			getStorageProviders,
+			getExecutors,
+			getVerifiers,
+			getPublishers,
+			computenode.NewDefaultComputeNodeConfig(),
+			"",
+			false,
+		)
+		require.NoError(suite.T(), err)
+
+		// wait for other nodes to catch up
+		time.Sleep(time.Second * 1)
+		apiUri := stack.Nodes[0].APIServer.GetURI()
+		apiClient := publicapi.NewAPIClient(apiUri)
+
+		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
+		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+			"docker", "run",
+			"--api-host", host,
+			"--api-port", port,
+			"--verifier", "deterministic",
+			"--concurrency", strconv.Itoa(args.nodeCount),
+			"--confidence", strconv.Itoa(args.confidence),
+			"ubuntu", "echo", "hello",
+		)
+		require.NoError(suite.T(), err)
+		jobId := strings.TrimSpace(out)
+		resolver := apiClient.GetJobStateResolver()
+
+		err = resolver.Wait(
+			ctx,
+			jobId,
+			args.nodeCount,
+			job.WaitThrowErrors([]executor.JobStateType{
+				executor.JobStateCancelled,
+				executor.JobStateError,
+			}),
+			job.WaitForJobStates(map[executor.JobStateType]int{
+				executor.JobStatePublished: args.nodeCount,
+			}),
+		)
+		require.NoError(suite.T(), err)
+
+		state, err := resolver.GetJobState(ctx, jobId)
+		require.NoError(suite.T(), err)
+
+		verifiedCount := 0
+		failedCount := 0
+
+		for _, state := range state.Nodes {
+			shard, ok := state.Shards[0]
+			require.True(suite.T(), ok)
+			require.True(suite.T(), shard.VerificationResult.Complete)
+			if shard.VerificationResult.Result {
+				verifiedCount++
+			} else {
+				failedCount++
+			}
+		}
+
+		require.Equal(suite.T(), args.expectedPassed, verifiedCount, "verified count should be correct")
+		require.Equal(suite.T(), args.expectedFailed, failedCount, "failed count should be correct")
+	}
+
+	// test that we must have more than one node to run the job
+	runTest(deterministicVerifierTestArgs{
+		nodeCount:      1,
+		badActors:      0,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 1,
+	})
+
+	// test that if all nodes agree then all are verified
+	runTest(deterministicVerifierTestArgs{
+		nodeCount:      3,
+		badActors:      0,
+		confidence:     0,
+		expectedPassed: 3,
+		expectedFailed: 0,
+	})
+
+	// test that if one node mis-behaves we catch it but the others are verified
+	runTest(deterministicVerifierTestArgs{
+		nodeCount:      3,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 2,
+		expectedFailed: 1,
+	})
+
+	// test that is there is a draw between good and bad actors then none are verified
+	runTest(deterministicVerifierTestArgs{
+		nodeCount:      2,
+		badActors:      1,
+		confidence:     0,
+		expectedPassed: 0,
+		expectedFailed: 2,
+	})
+
+	// test that with a larger group the confidence setting gives us a lower threshold
+	runTest(deterministicVerifierTestArgs{
+		nodeCount:      5,
+		badActors:      2,
+		confidence:     4,
+		expectedPassed: 0,
+		expectedFailed: 5,
+	})
 }
