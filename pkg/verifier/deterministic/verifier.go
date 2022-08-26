@@ -104,6 +104,13 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 		return nil, err
 	}
 
+	jobData, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	confidence := jobData.Deal.Confidence
+
 	// group the verifier results by their reported hash
 	// then pick the largest group and verify all of those
 	// caveats:
@@ -142,17 +149,29 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	largestGroupHash := ""
 	largestGroupSize := 0
 	isVoidResult := false
+	groupSizeCounts := map[int]int{}
 
 	for hash, group := range hashGroups {
 		if len(group) > largestGroupSize {
 			largestGroupSize = len(group)
 			largestGroupHash = hash
-		} else if len(group) == largestGroupSize {
-			isVoidResult = true
 		}
+		groupSizeCounts[len(group)]++
 	}
 
+	// this means there is a draw for the largest group size
+	if groupSizeCounts[largestGroupSize] > 1 {
+		isVoidResult = true
+	}
+
+	// this means there is only a single result
 	if len(hashGroups) == 1 && largestGroupSize == 1 {
+		isVoidResult = true
+	}
+
+	// this means that the winning group size does not
+	// meet the confidence threshold
+	if confidence > 0 && largestGroupSize < confidence {
 		isVoidResult = true
 	}
 
