@@ -254,9 +254,9 @@ type JobEvent struct {
 }
 
 // we need to use a struct for the result because:
-//  a) otherwise we don't know if VerificationResult==false
-//     means "I've not verified yet" or "verification failed"
-//  b) we might want to add further fields to the result later
+// a) otherwise we don't know if VerificationResult==false
+// means "I've not verified yet" or "verification failed"
+// b) we might want to add further fields to the result later
 type VerificationResult struct {
 	Complete bool `json:"complete"`
 	Result   bool `json:"result"`

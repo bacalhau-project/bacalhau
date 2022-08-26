@@ -60,7 +60,7 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	if err != nil {
 		return nil, err
 	}
-	if len(job.RequesterPublicKey) <= 0 {
+	if len(job.RequesterPublicKey) == 0 {
 		return nil, errors.New("no RequesterPublicKey found in the job")
 	}
 	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
@@ -88,12 +88,7 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	})
 }
 
-type shardVerificationData struct {
-	hash   string
-	result verifier.VerifierResult
-}
-
-func (deterministicVerifier *DeterministicVerifier) VerifyJob(
+func (deterministicVerifier *DeterministicVerifier) VerifyJob( //nolint:gocyclo
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {

@@ -29,17 +29,17 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)
 
-	defaultApiHost := system.Envs[system.Production].APIHost
-	defaultApiPort := system.Envs[system.Production].APIPort
+	defaultAPIHost := system.Envs[system.Production].APIHost
+	defaultAPIPort := system.Envs[system.Production].APIPort
 
-	if config.GetApiHost() != "" {
-		defaultApiHost = config.GetApiHost()
+	if config.GetAPIHost() != "" {
+		defaultAPIHost = config.GetAPIHost()
 	}
 
-	if config.GetApiPort() != "" {
-		intPort, err := strconv.Atoi(config.GetApiPort())
+	if config.GetAPIPort() != "" {
+		intPort, err := strconv.Atoi(config.GetAPIPort())
 		if err == nil {
-			defaultApiPort = intPort
+			defaultAPIPort = intPort
 		}
 	}
 
@@ -48,11 +48,11 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(describeCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
-		&apiHost, "api-host", defaultApiHost,
+		&apiHost, "api-host", defaultAPIHost,
 		`The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set.`,
 	)
 	RootCmd.PersistentFlags().IntVar(
-		&apiPort, "api-port", defaultApiPort,
+		&apiPort, "api-port", defaultAPIPort,
 		`The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
 	RootCmd.AddCommand(versionCmd)

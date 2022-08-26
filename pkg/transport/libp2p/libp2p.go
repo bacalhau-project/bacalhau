@@ -181,7 +181,7 @@ func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
-func (t *LibP2PTransport) Encrypt(ctx context.Context, data []byte, libp2pKeyBytes []byte) ([]byte, error) {
+func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
 	if err != nil {
 		return nil, err
@@ -279,12 +279,6 @@ type jobEventEnvelope struct {
 func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
-
-	// publicKeyBytes, err := t.privateKey.GetPublic().Raw()
-	// if err != nil {
-	// 	return err
-	// }
-	// event.SenderPublicKey = publicKeyBytes
 
 	bs, err := json.Marshal(jobEventEnvelope{
 		JobEvent:  event,

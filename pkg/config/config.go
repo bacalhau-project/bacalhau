@@ -37,11 +37,11 @@ func GetStoragePath() string {
 	return storagePath
 }
 
-func GetApiHost() string {
+func GetAPIHost() string {
 	return os.Getenv("BACALHAU_HOST")
 }
 
-func GetApiPort() string {
+func GetAPIPort() string {
 	return os.Getenv("BACALHAU_PORT")
 }
 
