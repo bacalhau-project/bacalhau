@@ -130,6 +130,11 @@ type JobDeal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
+	// The number of nodes that must agree on a verification result
+	// this is used by the different verifiers - for example the
+	// deterministic verifier requires the winning group size
+	// to be at least this size
+	Confidence int `json:"confidence"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
