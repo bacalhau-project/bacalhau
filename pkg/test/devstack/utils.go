@@ -185,7 +185,7 @@ func RunDeterministicVerifierTests(
 	})
 }
 
-func RunDeterministicVerifierTest(
+func RunDeterministicVerifierTest( //nolint:funlen
 	t *testing.T,
 	submitJob func(
 		apiClient *publicapi.APIClient,
@@ -229,7 +229,7 @@ func RunDeterministicVerifierTest(
 						if isBadActor {
 							jobStdout = fmt.Sprintf("i am bad and deserve to fail %d", shardIndex)
 						}
-						return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0644)
+						return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0600) //nolint:gomnd
 					},
 				},
 			},
@@ -276,8 +276,8 @@ func RunDeterministicVerifierTest(
 
 	// wait for other nodes to catch up
 	time.Sleep(time.Second * 1)
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
+	apiURI := stack.Nodes[0].APIServer.GetURI()
+	apiClient := publicapi.NewAPIClient(apiURI)
 
 	jobID, err := submitJob(apiClient, args)
 	require.NoError(t, err)
@@ -305,7 +305,7 @@ func RunDeterministicVerifierTest(
 	failedCount := 0
 
 	for _, state := range state.Nodes {
-		for _, shard := range state.Shards {
+		for _, shard := range state.Shards { //nolint:gocritic
 			require.True(t, shard.VerificationResult.Complete)
 			if shard.VerificationResult.Result {
 				verifiedCount++
