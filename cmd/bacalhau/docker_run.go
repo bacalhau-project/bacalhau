@@ -251,9 +251,7 @@ var dockerRunCmd = &cobra.Command{
 	Long:    dockerRunLong,
 	Example: dockerRunExample,
 	Args:    cobra.MinimumNArgs(1),
-	PostRun: func(cmd *cobra.Command, args []string) {
-		//ODR = NewDockerRunOptions()
-	},
+	PostRun: func(cmd *cobra.Command, args []string) {},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
