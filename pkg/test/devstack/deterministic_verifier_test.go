@@ -231,4 +231,14 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		expectedPassed: 0,
 		expectedFailed: 2,
 	})
+
+	// test that with a larger group the confidence setting gives us a lower threshold
+	runTest(testArgs{
+		nodeCount:      5,
+		badActors:      2,
+		confidence:     4,
+		expectedPassed: 0,
+		expectedFailed: 5,
+	})
+
 }
