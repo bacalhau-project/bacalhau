@@ -31,6 +31,10 @@ func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
 		return fmt.Errorf("invalid publisher type: %s", spec.Publisher.String())
 	}
 
+	if deal.Confidence > deal.Concurrency {
+		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
+	}
+
 	for _, inputVolume := range spec.Inputs {
 		if !storage.IsValidStorageSourceType(inputVolume.Engine) {
 			return fmt.Errorf("invalid input volume type: %s", inputVolume.Engine.String())
