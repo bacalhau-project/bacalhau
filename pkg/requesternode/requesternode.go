@@ -122,6 +122,7 @@ func (node *RequesterNode) subscriptionEventBid(
 		bidCount := 0
 
 		for _, localEvent := range localEvents {
+			threadLogger.Debug().Msgf("localEvent: %+v", localEvent)
 			if localEvent.EventName == executor.JobLocalEventBid {
 				// TODO: group by node_id, so that one node can't make multiple
 				// bids to increase the counter
@@ -142,16 +143,16 @@ func (node *RequesterNode) subscriptionEventBid(
 			assignedNodesForShard = []string{}
 		}
 
+		if bidCount < job.Deal.MinBids {
+			threadLogger.Debug().Msgf("Not accepting bid yet because we haven't received minBids yet (%d/%d)", bidCount, job.Deal.MinBids)
+			return false
+		}
+
 		// we have already reached concurrency for this shard
 		// so let's reject this bid
 		if len(assignedNodesForShard) >= job.Deal.Concurrency {
 			//nolint:lll // Error message needs long line
 			threadLogger.Debug().Msgf("Rejected: Job shard %s %d already reached concurrency of %d %+v", job.ID, jobEvent.ShardIndex, job.Deal.Concurrency, assignedNodesForShard)
-			return false
-		}
-
-		if bidCount < job.Deal.MinBids {
-			threadLogger.Debug().Msgf("Not accepting bid yet because we haven't received minBids yet (%d/%d)", bidCount, job.Deal.MinBids)
 			return false
 		}
 
