@@ -121,8 +121,8 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		}
 		stack, err := devstack.NewDevStack(
 			cm,
-			nodeCount,
-			badActors,
+			args.nodeCount,
+			args.badActors,
 			getStorageProviders,
 			getExecutors,
 			getVerifiers,
@@ -148,7 +148,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		}
 
 		jobDeal := executor.JobDeal{
-			Concurrency: nodeCount,
+			Concurrency: args.nodeCount,
 		}
 
 		// wait for other nodes to catch up
@@ -163,13 +163,13 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		err = resolver.Wait(
 			ctx,
 			submittedJob.ID,
-			nodeCount,
+			args.nodeCount,
 			job.WaitThrowErrors([]executor.JobStateType{
 				executor.JobStateCancelled,
 				executor.JobStateError,
 			}),
 			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStatePublished: nodeCount,
+				executor.JobStatePublished: args.nodeCount,
 			}),
 		)
 		require.NoError(suite.T(), err)
@@ -191,8 +191,8 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			}
 		}
 
-		require.Equal(suite.T(), expectedPassed, verifiedCount, "verified count should be correct")
-		require.Equal(suite.T(), expectedFailed, failedCount, "failed count should be correct")
+		require.Equal(suite.T(), args.expectedPassed, verifiedCount, "verified count should be correct")
+		require.Equal(suite.T(), args.expectedFailed, failedCount, "failed count should be correct")
 	}
 
 	// test that we must have more than one node to run the job
