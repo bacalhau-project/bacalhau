@@ -62,7 +62,7 @@ func setupTest(t *testing.T) (
 ) {
 	cm := system.NewCleanupManager()
 
-	noopStorage, err := storage_noop.NewStorageProvider(cm)
+	noopStorage, err := storage_noop.NewStorageProvider(cm, storage_noop.StorageConfig{})
 	require.NoError(t, err)
 
 	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{

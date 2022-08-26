@@ -38,8 +38,10 @@ type StorageProvider struct {
 	Config StorageConfig
 }
 
-func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
-	storageHandler := &StorageProvider{}
+func NewStorageProvider(cm *system.CleanupManager, config StorageConfig) (*StorageProvider, error) {
+	storageHandler := &StorageProvider{
+		Config: config,
+	}
 	return storageHandler, nil
 }
 

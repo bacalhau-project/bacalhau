@@ -93,8 +93,9 @@ func NewStandardStorageProviders(
 
 func NewNoopStorageProviders(
 	cm *system.CleanupManager,
+	config noop_storage.StorageConfig,
 ) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewStorageProvider(cm)
+	noopStorage, err := noop_storage.NewStorageProvider(cm, config)
 	if err != nil {
 		return nil, err
 	}

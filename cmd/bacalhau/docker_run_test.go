@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
@@ -763,7 +764,7 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		ctx := context.Background()
 		defer cm.Cleanup()
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-			return executor_util.NewNoopStorageProviders(cm)
+			return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
 		}
 		getExecutors := func(
 			ipfsMultiAddress string,

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
@@ -43,7 +44,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager)
+	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	c, err := controller.NewController(

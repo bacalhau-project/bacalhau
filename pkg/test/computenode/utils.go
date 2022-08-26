@@ -19,6 +19,7 @@ import (
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -106,7 +107,7 @@ func SetupTestNoop(
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
+	storageProviders, err := executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

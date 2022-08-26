@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -108,7 +109,7 @@ var devstackCmd = &cobra.Command{
 			map[storage.StorageSourceType]storage.StorageProvider, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopStorageProviders(cm)
+				return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
 			}
 
 			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
