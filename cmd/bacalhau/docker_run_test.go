@@ -755,13 +755,19 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
+		ODR.Inputs = make([]string, 0)
+		ODR.InputVolumes = make([]string, 0)
+
 		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 			"docker", "run",
 			"--api-host", host,
 			"--api-port", port,
+			"-v", "123:/",
 			"--verifier", "deterministic",
 			"--concurrency", strconv.Itoa(args.NodeCount),
 			"--confidence", strconv.Itoa(args.Confidence),
+			"--sharding-glob-pattern", "/data/*.txt",
+			"--sharding-batch-size", "1",
 			"ubuntu", "echo", "hello",
 		)
 
