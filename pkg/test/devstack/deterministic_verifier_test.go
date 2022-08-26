@@ -149,6 +149,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 
 		jobDeal := executor.JobDeal{
 			Concurrency: args.nodeCount,
+			Confidence:  args.confidence,
 		}
 
 		// wait for other nodes to catch up
