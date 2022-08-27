@@ -1,9 +1,9 @@
 ---
-sidebar_label: 'Bacalhau Apply'
+sidebar_label: 'Bacalhau Create'
 sidebar_position: 2
 ---
 
-# Bacalhau Apply
+# Bacalhau Create
 
 Submit a job to the network in a declarative way by writing a jobspec instead of writing a command. JSON and YAML formats are accepted.
 
@@ -11,7 +11,7 @@ Submit a job to the network in a declarative way by writing a jobspec instead of
 
 
 ```bash
-  bacalhau apply -f FILENAME
+  bacalhau create -f FILENAME
 ```
 
 ## Examples
