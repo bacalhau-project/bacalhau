@@ -24,7 +24,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalMillis = 10
+const ControlLoopIntervalMillis = 100
 const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
