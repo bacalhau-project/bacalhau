@@ -117,17 +117,26 @@ func (node *RequesterNode) subscriptionEventBid(
 			return false
 		}
 
+		globalEvents, err := node.controller.GetJobEvents(ctx, job.ID)
+		if err != nil {
+			threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
+			return false
+		}
+
 		// a map of shard index onto an array of node ids we have farmed the job out to
 		assignedNodes := map[int][]string{}
 		bidCount := 0
 
-		for _, localEvent := range localEvents {
-			threadLogger.Debug().Msgf("localEvent: %+v", localEvent)
-			if localEvent.EventName == executor.JobLocalEventBid {
+		for _, globalEvent := range globalEvents {
+			if globalEvent.EventName == executor.JobEventBid {
 				// TODO: group by node_id, so that one node can't make multiple
 				// bids to increase the counter
 				bidCount += 1
 			}
+		}
+
+		for _, localEvent := range localEvents {
+			threadLogger.Debug().Msgf("localEvent: %+v", localEvent)
 			if localEvent.EventName == executor.JobLocalEventBidAccepted {
 				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
 				if !ok {
