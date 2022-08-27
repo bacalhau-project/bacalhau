@@ -493,11 +493,10 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
-	//nolint:gocritic // temporary comment out
-	// err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
-	// if err != nil {
-	// 	return err
-	// }
+	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
+	if err != nil {
+		return err
+	}
 
 	executionState := executor.GetStateFromEvent(ev.EventName)
 
