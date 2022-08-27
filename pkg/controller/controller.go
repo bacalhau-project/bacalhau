@@ -493,6 +493,8 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev executor.JobEven
 		return err
 	}
 
+	// TODO: gc events for a job once it's finalized or timed out or something,
+	// so we don't grow memory unboundedly
 	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
 	if err != nil {
 		return err
