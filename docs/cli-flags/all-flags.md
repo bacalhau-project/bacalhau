@@ -6,7 +6,7 @@ sidebar_position: 1
 # CLI Commands
 
 ```bash
-  apply       Submit a job.json or job.yaml file and run it on the network
+  create       Submit a job.json or job.yaml file and run it on the network
   completion  Generate the autocompletion script for the specified shell
   describe    Describe a job on the network
   devstack    Start a cluster of bacalhau nodes for testing and development
