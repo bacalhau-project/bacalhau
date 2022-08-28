@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,8 +24,11 @@ import (
 )
 
 const (
-	JSONFormat string = "json"
-	YAMLFormat string = "yaml"
+	JSONFormat    string = "json"
+	YAMLFormat    string = "yaml"
+	JSONExtension string = ".json"
+	YAMLExtension string = ".yaml"
+	YMLExtension  string = ".yml"
 )
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -192,16 +194,18 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 }
 
+//nolint
 func ConvertJobspecToFile(
 	jobSpec *executor.JobSpec,
 	fileName string,
 	extension string,
-) (err error) {
+) (err error) { //nolint:ireturn
+
 	fmt.Println(extension)
-	if extension == ".json" {
+	if extension == JSONExtension {
 		jobspecfile, _ := json.Marshal(jobSpec)
 		var jobspectmp executor.JobSpec
-		json.Unmarshal(jobspecfile, &jobspectmp)
+		_ = json.Unmarshal(jobspecfile, &jobspectmp)
 
 		jobspectmp.APIVersion = "v1alpha1"
 		jobspectmp.EngineName = "docker"
@@ -215,15 +219,15 @@ func ConvertJobspecToFile(
 		}
 		fmt.Println(string(jobspecfilenew))
 		indentedjson, _ := json.MarshalIndent(jobspectmp, "", "    ")
-		err = ioutil.WriteFile(fileName, indentedjson, 0644)
+		err = os.WriteFile(fileName, indentedjson, 0644)
 		if err != nil {
 			panic("Unable to write data into the file")
 		}
 	}
-	if extension == ".yaml" || extension == ".yml" {
+	if extension == YAMLExtension || extension == YMLExtension {
 		jobspecfile, _ := yaml.Marshal(jobSpec)
 		var jobspectmp executor.JobSpec
-		yaml.Unmarshal(jobspecfile, &jobspectmp)
+		_ = yaml.Unmarshal(jobspecfile, &jobspectmp)
 
 		jobspectmp.APIVersion = "v1alpha1"
 		jobspectmp.EngineName = "docker"
@@ -236,7 +240,7 @@ func ConvertJobspecToFile(
 			return err
 		}
 		fmt.Println(string(jobspecfilenew))
-		err = ioutil.WriteFile(fileName, jobspecfilenew, 0644)
+		err = os.WriteFile(fileName, jobspecfilenew, 0644)
 		if err != nil {
 			panic("Unable to write data into the file")
 		}
