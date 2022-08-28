@@ -3,8 +3,10 @@ package bacalhau
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -187,6 +190,59 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 		settings.OutputDir, "Directory to write the output to.")
 	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+}
+
+func ConvertJobspecToFile(
+	jobSpec *executor.JobSpec,
+	fileName string,
+	extension string,
+) (err error) {
+	fmt.Println(extension)
+	if extension == ".json" {
+		jobspecfile, _ := json.Marshal(jobSpec)
+		var jobspectmp executor.JobSpec
+		json.Unmarshal(jobspecfile, &jobspectmp)
+
+		jobspectmp.APIVersion = "v1alpha1"
+		jobspectmp.EngineName = "docker"
+		jobspectmp.VerifierName = "noop"
+		jobspectmp.PublisherName = "ipfs"
+		jobspecfilenew, err := json.Marshal(jobspectmp)
+
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		fmt.Println(string(jobspecfilenew))
+		indentedjson, _ := json.MarshalIndent(jobspectmp, "", "    ")
+		err = ioutil.WriteFile(fileName, indentedjson, 0644)
+		if err != nil {
+			panic("Unable to write data into the file")
+		}
+	}
+	if extension == ".yaml" || extension == ".yml" {
+		jobspecfile, _ := yaml.Marshal(jobSpec)
+		var jobspectmp executor.JobSpec
+		yaml.Unmarshal(jobspecfile, &jobspectmp)
+
+		jobspectmp.APIVersion = "v1alpha1"
+		jobspectmp.EngineName = "docker"
+		jobspectmp.VerifierName = "noop"
+		jobspectmp.PublisherName = "ipfs"
+		jobspecfilenew, err := yaml.Marshal(jobspectmp)
+
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		fmt.Println(string(jobspecfilenew))
+		err = ioutil.WriteFile(fileName, jobspecfilenew, 0644)
+		if err != nil {
+			panic("Unable to write data into the file")
+		}
+	}
+
+	return nil
 }
 
 func ExecuteJob(ctx context.Context,

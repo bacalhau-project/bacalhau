@@ -458,6 +458,38 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 	}
 }
 
+func (suite *DockerRunSuite) TestRun_GenericGenerateAndDryRun() {
+	tests := []struct {
+		filename string
+		flag     string
+		command  []string
+	}{
+		{filename: "job-test.yaml", flag: "", command: []string{"ubuntu", "echo", "hello"}},
+		{filename: "job-test.json", flag: "", command: []string{"ubuntu", "echo", "hello"}},
+		{filename: "job-test.yaml", flag: "--dry-run", command: []string{"ubuntu", "echo", "hello"}},
+		{filename: "job-test.json", flag: "--dry-run", command: []string{"ubuntu", "echo", "hello"}},
+	}
+	for _, o := range tests {
+		var args []string
+		args = append(args, "docker", "run", "--local", "-f", o.filename)
+		if o.flag == "--dry-run" {
+			args = append(args, "--dry-run")
+		}
+		args = append(args, o.command...)
+		*ODR = *NewDockerRunOptions()
+		_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+		require.NoError(suite.T(), err, "Error submitting job. Job number: %d")
+
+		byteGenerated, err := ioutil.ReadFile("./" + o.filename)
+		require.NoError(suite.T(), err)
+		byteFile, err := ioutil.ReadFile("../../testdata/" + o.filename)
+		require.NoError(suite.T(), err)
+		require.Equal(suite.T(), byteGenerated, byteFile, "Test Path not equal to Path from job.")
+
+		os.Remove(o.filename)
+
+	}
+}
 func (suite *DockerRunSuite) TestRun_CreatedAt() {
 	tests := []struct {
 		numberOfJobs int

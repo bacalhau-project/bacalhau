@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -45,20 +46,22 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine        string   // Executor - executor.Executor
-	Verifier      string   // Verifier - verifier.Verifier
-	Publisher     string   // Publisher - publisher.Publisher
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	CPU           string
-	Memory        string
-	GPU           string
-	WorkingDir    string   // Working directory for docker
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+	DryRun         bool
+	Engine         string   // Executor - executor.Executor
+	Verifier       string   // Verifier - verifier.Verifier
+	Publisher      string   // Publisher - publisher.Publisher
+	Inputs         []string // Array of input CIDs
+	InputUrls      []string // Array of input URLs (will be copied to IPFS)
+	InputVolumes   []string // Array of input volumes in 'CID:mount point' form
+	OutputVolumes  []string // Array of output volumes in 'name:mount point' form
+	OutputFileName string   // convert jobspec into a json/yaml file
+	Env            []string // Array of environment variables
+	Concurrency    int      // Number of concurrent jobs to run
+	CPU            string
+	Memory         string
+	GPU            string
+	WorkingDir     string   // Working directory for docker
+	Labels         []string // Labels for the job on the Bacalhau network (for searching)
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -78,12 +81,14 @@ type DockerRunOptions struct {
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
+		DryRun:                           false,
 		Engine:                           "docker",
 		Verifier:                         "noop",
 		Publisher:                        "ipfs",
 		Inputs:                           []string{},
 		InputUrls:                        []string{},
 		InputVolumes:                     []string{},
+		OutputFileName:                   "",
 		OutputVolumes:                    []string{},
 		Env:                              []string{},
 		Concurrency:                      1,
@@ -112,7 +117,10 @@ func NewDockerRunOptions() *DockerRunOptions {
 
 func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is idomatic
 	dockerCmd.AddCommand(dockerRunCmd)
-
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.DryRun, "dry-run", ODR.DryRun,
+		`Run a Job withtout Submitting it to the network`,
+	)
 	// TODO: don't make jobEngine specifiable in the docker subcommand
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.Engine, "engine", ODR.Engine,
@@ -140,6 +148,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.OutputVolumes, "output-volumes", "o", ODR.OutputVolumes,
+		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
+	)
+	dockerRunCmd.PersistentFlags().StringVarP(
+		&ODR.OutputFileName, "output-jobspec", "f", ODR.OutputFileName,
 		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
@@ -315,20 +327,30 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("error executing job: %s", err)
 		}
-
-		err = ExecuteJob(ctx,
-			cm,
-			cmd,
-			jobSpec,
-			jobDeal,
-			ODR.IsLocal,
-			ODR.WaitForJobToFinish,
-			ODR.DockerRunDownloadFlags)
-
+		if !ODR.DryRun {
+			err = ExecuteJob(ctx,
+				cm,
+				cmd,
+				jobSpec,
+				jobDeal,
+				ODR.IsLocal,
+				ODR.WaitForJobToFinish,
+				ODR.DockerRunDownloadFlags)
+		}
 		if err != nil {
 			return fmt.Errorf("error executing job: %s", err)
 		}
+		if ODR.OutputFileName != "" {
+			extension := filepath.Ext(ODR.OutputFileName)
+			if !(extension == ".yaml" || extension == ".yml" || extension == ".json") {
+				return fmt.Errorf("extension type not supported, please use a valid extension like .json, .yaml, .yml ")
 
+			}
+			err := ConvertJobspecToFile(jobSpec, ODR.OutputFileName, extension)
+			if err != nil {
+				return fmt.Errorf("error generating job file: %s", err)
+			}
+		}
 		return nil
 	},
 }
