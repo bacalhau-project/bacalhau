@@ -13,6 +13,7 @@ import (
 	"github.com/BTBurke/k8sresource"
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 )
 
@@ -75,8 +76,8 @@ func ConvertGPUString(val string) uint64 {
 	return ret
 }
 
-func ParseResourceUsageConfig(usage ResourceUsageConfig) ResourceUsageData {
-	return ResourceUsageData{
+func ParseResourceUsageConfig(usage model.ResourceUsageConfig) model.ResourceUsageData {
+	return model.ResourceUsageData{
 		CPU:    ConvertCPUString(usage.CPU),
 		Memory: ConvertMemoryString(usage.Memory),
 		Disk:   ConvertMemoryString(usage.Disk),
@@ -137,21 +138,21 @@ func numSystemGPUs() (uint64, error) {
 }
 
 // what resources does this compute node actually have?
-func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, error) {
+func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUsageData, error) {
 	// this is used mainly for tests to be deterministic
 	allowOverCommit := os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
 
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
-		return ResourceUsageData{}, err
+		return model.ResourceUsageData{}, err
 	}
 	gpus, err := numSystemGPUs()
 	if err != nil {
-		return ResourceUsageData{}, err
+		return model.ResourceUsageData{}, err
 	}
 
 	// the actual resources we have
-	physcialResources := ResourceUsageData{
+	physcialResources := model.ResourceUsageData{
 		CPU:    float64(runtime.NumCPU()),
 		Memory: memory.TotalMemory(),
 		Disk:   diskSpace,
@@ -204,7 +205,7 @@ func getSystemResources(limitConfig ResourceUsageConfig) (ResourceUsageData, err
 }
 
 // given a "required" usage and a "limit" of usage - can we run the requirement
-func checkResourceUsage(wants, limits ResourceUsageData) bool {
+func checkResourceUsage(wants, limits model.ResourceUsageData) bool {
 	zeroWants := wants.CPU <= 0 &&
 		wants.Memory <= 0 &&
 		wants.Disk <= 0 &&
@@ -227,8 +228,8 @@ func checkResourceUsage(wants, limits ResourceUsageData) bool {
 		wants.GPU <= limits.GPU
 }
 
-func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData {
-	return ResourceUsageData{
+func subtractResourceUsage(current, totals model.ResourceUsageData) model.ResourceUsageData {
+	return model.ResourceUsageData{
 		CPU:    totals.CPU - current.CPU,
 		Memory: totals.Memory - current.Memory,
 		Disk:   totals.Disk - current.Disk,
@@ -236,25 +237,9 @@ func subtractResourceUsage(current, totals ResourceUsageData) ResourceUsageData 
 	}
 }
 
-func FlattenShardID(jobID string, shardIndex int) string {
-	return fmt.Sprintf("%s:%d", jobID, shardIndex)
-}
-
-func ExplodeShardID(id string) (jobID string, shardIndex int, err error) {
-	parts := strings.Split(id, ":")
-	if len(parts) != 2 {
-		return "", 0, fmt.Errorf("invalid shard id: %s", id)
-	}
-	intVar, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return "", 0, err
-	}
-	return parts[0], intVar, nil
-}
-
 // add the shards in random order so we get some kind of general coverage across
 // the network - otherwise all nodes are racing each other for the same shards
-func GenerateShardIndexes(shardCount int, requirements ResourceUsageData) []int {
+func GenerateShardIndexes(shardCount int, requirements model.ResourceUsageData) []int {
 	shardIndexes := []int{}
 	for i := 0; i < shardCount; i++ {
 		shardIndexes = append(shardIndexes, i)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -13,16 +13,16 @@ import (
 // func NewNoopStorageDrivers(
 // 	cm *system.CleanupManager,
 // 	config noop_storage.StorageConfig,
-// ) (map[executor.EngineType]executor.Executor, error) {
+// ) (map[model.EngineType]executor.Executor, error) {
 // 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	return map[executor.EngineType]executor.Executor{
-// 		executor.EngineDocker: noopExecutor,
-// 		executor.EngineNoop:   noopExecutor,
+// 	return map[model.EngineType]executor.Executor{
+// 		model.EngineDocker: noopExecutor,
+// 		model.EngineNoop:   noopExecutor,
 // 	}, nil
 // }
 
@@ -30,16 +30,16 @@ import (
 func NewNoopExecutors(
 	cm *system.CleanupManager,
 	config noop_executor.ExecutorConfig,
-) (map[executor.EngineType]executor.Executor, error) {
+) (map[model.EngineType]executor.Executor, error) {
 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return map[executor.EngineType]executor.Executor{
-		executor.EngineDocker: noopExecutor,
-		executor.EngineNoop:   noopExecutor,
+	return map[model.EngineType]executor.Executor{
+		model.EngineDocker: noopExecutor,
+		model.EngineNoop:   noopExecutor,
 	}, nil
 }
 
@@ -51,7 +51,7 @@ func NewNoopExecutor(
 	if err != nil {
 		return nil, err
 	}
-	return executors[executor.EngineNoop], nil
+	return executors[model.EngineNoop], nil
 }
 
 func BlankNoopExecutorConfig() noop_executor.ExecutorConfig {
@@ -65,10 +65,10 @@ func NewNoopExecutorConfig(
 ) noop_executor.ExecutorConfig {
 	return noop_executor.ExecutorConfig{
 		ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-			HasStorageLocally: func(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+			HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
 				return hasStorage, nil
 			},
-			GetVolumeSize: func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+			GetVolumeSize: func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 				return volumeSize, nil
 			},
 			JobHandler: handler,
@@ -81,7 +81,7 @@ func HasStorageNoopExecutorConfig(
 ) noop_executor.ExecutorConfig {
 	return noop_executor.ExecutorConfig{
 		ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-			HasStorageLocally: func(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+			HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
 				return hasStorage, nil
 			},
 		},

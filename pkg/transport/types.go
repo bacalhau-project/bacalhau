@@ -3,11 +3,11 @@ package transport
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 // SubscribeFn is provided by an in-process listener as an event callback.
-type SubscribeFn func(context.Context, executor.JobEvent)
+type SubscribeFn func(context.Context, model.JobEvent)
 
 // Transport is an interface representing a communication channel between
 // nodes, through which they can submit, bid on and complete jobs.
@@ -32,7 +32,7 @@ type Transport interface {
 	/////////////////////////////////////////////////////////////
 
 	// This emits an event across the network to other nodes
-	Publish(ctx context.Context, ev executor.JobEvent) error
+	Publish(ctx context.Context, ev model.JobEvent) error
 
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
@@ -43,10 +43,10 @@ type Transport interface {
 // the data structure a client can use to render a view of the state of the world
 // e.g. this is used to render the CLI table and results list
 type ListResponse struct {
-	Jobs map[string]executor.Job
+	Jobs map[string]model.Job
 }
 
 // data structure for a Version response
 type VersionResponse struct {
-	VersionInfo executor.VersionInfo
+	VersionInfo model.VersionInfo
 }

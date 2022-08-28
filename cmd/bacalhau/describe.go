@@ -5,8 +5,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -76,7 +76,7 @@ type jobDescription struct {
 	ClientID        string                  `yaml:"ClientID"`
 	RequesterNodeID string                  `yaml:"RequesterNodeId"`
 	Spec            jobSpecDescription      `yaml:"Spec"`
-	Deal            executor.JobDeal        `yaml:"Deal"`
+	Deal            model.JobDeal           `yaml:"Deal"`
 	Shards          []shardStateDescription `yaml:"Shards"`
 	CreatedAt       time.Time               `yaml:"Start Time"`
 	Events          []eventDescription      `yaml:"Events"`

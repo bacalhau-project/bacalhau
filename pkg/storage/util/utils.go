@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 )
 
 func GetStorageProvider(
 	ctx context.Context,
-	engine storage.StorageSourceType,
-	providers map[storage.StorageSourceType]storage.StorageProvider,
+	engine model.StorageSourceType,
+	providers map[model.StorageSourceType]storage.StorageProvider,
 ) (storage.StorageProvider, error) {
 	if _, ok := providers[engine]; !ok {
 		return nil, fmt.Errorf("no matching storage provider found: %s", engine)

@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -63,7 +62,7 @@ func (apiClient *APIClient) Alive() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient) List(ctx context.Context) (map[string]executor.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, error) {
 	req := listRequest{
 		ClientID: system.GetClientID(),
 	}
@@ -78,14 +77,14 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]executor.Job, 
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 // TODO(optimisation): #452 implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Job, foundJob bool, err error) {
 	if jobID == "" {
-		return executor.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
 	jobs, err := apiClient.List(ctx)
 	if err != nil {
-		return executor.Job{}, false, err
+		return model.Job{}, false, err
 	}
 
 	// TODO: #453 make this deterministic, return the first match alphabetically
@@ -97,12 +96,12 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job executor
 		}
 	}
 
-	return executor.Job{}, false, nil
+	return model.Job{}, false, nil
 }
 
-func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states executor.JobState, err error) {
+func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
 	if jobID == "" {
-		return executor.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
+		return model.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
 
 	req := stateRequest{
@@ -112,27 +111,27 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (stat
 
 	var res stateResponse
 	if err := apiClient.post(ctx, "states", req, &res); err != nil {
-		return executor.JobState{}, err
+		return model.JobState{}, err
 	}
 
 	return res.State, nil
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
-	jobLoader := func(ctx context.Context, jobID string) (executor.Job, error) {
+	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
 		job, ok, err := apiClient.Get(ctx, jobID)
 		if !ok {
-			return executor.Job{}, fmt.Errorf("no job found with id %s", jobID)
+			return model.Job{}, fmt.Errorf("no job found with id %s", jobID)
 		}
 		return job, err
 	}
-	stateLoader := func(ctx context.Context, jobID string) (executor.JobState, error) {
+	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
 	}
 	return job.NewStateResolver(jobLoader, stateLoader)
 }
 
-func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []executor.JobEvent, err error) {
+func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobEvent, err error) {
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
 	}
@@ -150,7 +149,7 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 	return res.Events, nil
 }
 
-func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []executor.JobLocalEvent, err error) {
+func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetLocalEvents call")
 	}
@@ -168,7 +167,7 @@ func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (l
 	return res.LocalEvents, nil
 }
 
-func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []storage.StorageSpec, err error) {
+func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []model.StorageSpec, err error) {
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetResults call")
 	}
@@ -189,11 +188,11 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Submit(
 	ctx context.Context,
-	spec executor.JobSpec,
-	deal executor.JobDeal,
+	spec model.JobSpec,
+	deal model.JobDeal,
 	buildContext *bytes.Buffer,
-) (executor.Job, error) {
-	data := executor.JobCreatePayload{
+) (model.Job, error) {
+	data := model.JobCreatePayload{
 		ClientID: system.GetClientID(),
 		Spec:     spec,
 		Deal:     deal,
@@ -205,12 +204,12 @@ func (apiClient *APIClient) Submit(
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return executor.Job{}, err
+		return model.Job{}, err
 	}
 
 	signature, err := system.SignForClient(jsonData)
 	if err != nil {
-		return executor.Job{}, err
+		return model.Job{}, err
 	}
 
 	var res submitResponse
@@ -221,14 +220,14 @@ func (apiClient *APIClient) Submit(
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
-		return executor.Job{}, err
+		return model.Job{}, err
 	}
 
 	return res.Job, nil
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Version(ctx context.Context) (*executor.VersionInfo, error) {
+func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, error) {
 	req := listRequest{
 		ClientID: system.GetClientID(),
 	}

@@ -19,7 +19,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -66,8 +66,8 @@ func (suite *VersionSuite) Test_Version() {
 }
 
 type ThisVersions struct {
-	ClientVersion executor.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion executor.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion model.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
+	ServerVersion model.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {

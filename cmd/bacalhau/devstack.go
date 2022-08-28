@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -104,7 +105,7 @@ var devstackCmd = &cobra.Command{
 		defer cancel()
 
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
-			map[storage.StorageSourceType]storage.StorageProvider, error) {
+			map[model.StorageSourceType]storage.StorageProvider, error) {
 
 			if ODs.IsNoop {
 				return executor_util.NewNoopStorageProviders(cm)
@@ -116,7 +117,7 @@ var devstackCmd = &cobra.Command{
 		}
 
 		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
-			map[executor.EngineType]executor.Executor, error) {
+			map[model.EngineType]executor.Executor, error) {
 
 			if ODs.IsNoop {
 				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
@@ -137,7 +138,7 @@ var devstackCmd = &cobra.Command{
 			ipfsMultiAddress string,
 			nodeIndex int,
 			ctrl *controller.Controller,
-		) (map[verifier.VerifierType]verifier.Verifier, error) {
+		) (map[model.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
 				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 			}
@@ -148,7 +149,7 @@ var devstackCmd = &cobra.Command{
 			ipfsMultiAddress string,
 			nodeIndex int,
 			ctrl *controller.Controller,
-		) (map[publisher.PublisherType]publisher.Publisher, error) {
+		) (map[model.PublisherType]publisher.Publisher, error) {
 			if ODs.IsNoop {
 				return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
 			}

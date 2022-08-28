@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -40,7 +41,7 @@ func (driver *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 	localPath, err := driver.getPathToVolume(ctx, volume)
@@ -53,7 +54,7 @@ func (driver *StorageProvider) HasStorageLocally(ctx context.Context, volume sto
 	return true, nil
 }
 
-func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeSize")
 	defer span.End()
 	localPath, err := driver.getPathToVolume(ctx, volume)
@@ -65,7 +66,7 @@ func (driver *StorageProvider) GetVolumeSize(ctx context.Context, volume storage
 
 func (driver *StorageProvider) PrepareStorage(
 	ctx context.Context,
-	storageSpec storage.StorageSpec,
+	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
@@ -82,7 +83,7 @@ func (driver *StorageProvider) PrepareStorage(
 
 func (driver *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	storageSpec storage.StorageSpec,
+	storageSpec model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
 	return nil
@@ -91,17 +92,17 @@ func (driver *StorageProvider) CleanupStorage(
 func (driver *StorageProvider) Upload(
 	ctx context.Context,
 	localPath string,
-) (storage.StorageSpec, error) {
-	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+) (model.StorageSpec, error) {
+	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	return []storage.StorageSpec{
+func (driver *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	return []model.StorageSpec{
 		spec,
 	}, nil
 }
 
-func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume storage.StorageSpec) (string, error) {
+func (driver *StorageProvider) getPathToVolume(ctx context.Context, volume model.StorageSpec) (string, error) {
 	var buffer bytes.Buffer
 	err := driver.localPathTemplate.Execute(&buffer, volume)
 	if err != nil {

@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
-type JobLoader func(ctx context.Context, id string) (executor.Job, error)
-type StateLoader func(ctx context.Context, id string) (executor.JobState, error)
+type JobLoader func(ctx context.Context, id string) (model.Job, error)
+type StateLoader func(ctx context.Context, id string) (model.JobState, error)
 
 // a function that is given a map of nodeid -> job states
 // and will throw an error if anything about that is wrong
-type CheckStatesFunction func(executor.JobState) (bool, error)
+type CheckStatesFunction func(model.JobState) (bool, error)
 
 type StateResolver struct {
 	jobLoader       JobLoader
@@ -37,11 +36,11 @@ func NewStateResolver(
 	}
 }
 
-func (resolver *StateResolver) GetJob(ctx context.Context, id string) (executor.Job, error) {
+func (resolver *StateResolver) GetJob(ctx context.Context, id string) (model.Job, error) {
 	return resolver.jobLoader(ctx, id)
 }
 
-func (resolver *StateResolver) GetJobState(ctx context.Context, id string) (executor.JobState, error) {
+func (resolver *StateResolver) GetJobState(ctx context.Context, id string) (model.JobState, error) {
 	return resolver.stateLoader(ctx, id)
 }
 
@@ -50,10 +49,10 @@ func (resolver *StateResolver) SetWaitTime(maxWaitAttempts int, delay time.Durat
 	resolver.waitDelay = delay
 }
 
-func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]executor.JobShardState, error) {
+func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]model.JobShardState, error) {
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
-		return []executor.JobShardState{}, err
+		return []model.JobShardState{}, err
 	}
 	return FlattenShardStates(jobState), nil
 }
@@ -64,7 +63,7 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 		return "", err
 	}
 
-	var currentJobState executor.JobStateType
+	var currentJobState model.JobStateType
 	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.State > currentJobState {
 			currentJobState = shardState.State
@@ -164,19 +163,19 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 		ctx,
 		jobID,
 		totalShards,
-		WaitThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
+		WaitThrowErrors([]model.JobStateType{
+			model.JobStateCancelled,
+			model.JobStateError,
 		}),
-		WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStatePublished: totalShards,
+		WaitForJobStates(map[model.JobStateType]int{
+			model.JobStatePublished: totalShards,
 		}),
 	)
 }
 
 type ResultsShard struct {
 	ShardIndex int
-	Results    storage.StorageSpec
+	Results    model.StorageSpec
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
@@ -237,11 +236,11 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 }
 
 type ShardStateChecker func(
-	shardStates []executor.JobShardState,
+	shardStates []model.JobShardState,
 	concurrency int,
 ) (bool, error)
 
-// iterate each shard and pass off []executor.JobShardState to the given function
+// iterate each shard and pass off []model.JobShardState to the given function
 // every shard must return true for this function to return true
 // this is useful for example to say "do we have enough to begin verification"
 func (resolver *StateResolver) CheckShardStates(
@@ -276,8 +275,8 @@ func (resolver *StateResolver) CheckShardStates(
 	return true, nil
 }
 
-func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
-	ret := []executor.JobShardState{}
+func FlattenShardStates(jobState model.JobState) []model.JobShardState {
+	ret := []model.JobShardState{}
 	for _, nodeState := range jobState.Nodes {
 		for _, shardState := range nodeState.Shards { //nolint:gocritic
 			ret = append(ret, shardState)
@@ -286,8 +285,8 @@ func FlattenShardStates(jobState executor.JobState) []executor.JobShardState {
 	return ret
 }
 
-func GetFilteredShardStates(jobState executor.JobState, filterState executor.JobStateType) []executor.JobShardState {
-	ret := []executor.JobShardState{}
+func GetFilteredShardStates(jobState model.JobState, filterState model.JobStateType) []model.JobShardState {
+	ret := []model.JobShardState{}
 	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.State == filterState {
 			ret = append(ret, shardState)
@@ -296,11 +295,11 @@ func GetFilteredShardStates(jobState executor.JobState, filterState executor.Job
 	return ret
 }
 
-func GetCompletedShardStates(jobState executor.JobState) []executor.JobShardState {
-	return GetFilteredShardStates(jobState, executor.JobStatePublished)
+func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
+	return GetFilteredShardStates(jobState, model.JobStatePublished)
 }
 
-func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shardIndex int) bool {
+func HasShardReachedCapacity(job model.Job, jobState model.JobState, shardIndex int) bool {
 	allShards := GroupShardStates(FlattenShardStates(jobState))
 	shardStates, ok := allShards[shardIndex]
 	if !ok {
@@ -311,9 +310,9 @@ func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shard
 	acceptedBidsSeen := 0
 
 	for _, shardState := range shardStates { //nolint:gocritic
-		if shardState.State == executor.JobStateBidding {
+		if shardState.State == model.JobStateBidding {
 			bidsSeen++
-		} else if shardState.State == executor.JobStateWaiting {
+		} else if shardState.State == model.JobStateWaiting {
 			acceptedBidsSeen++
 		}
 	}
@@ -330,12 +329,12 @@ func HasShardReachedCapacity(job executor.Job, jobState executor.JobState, shard
 }
 
 // group states by shard index so we can easily iterate over a whole set of them
-func GroupShardStates(flatShards []executor.JobShardState) map[int][]executor.JobShardState {
-	ret := map[int][]executor.JobShardState{}
+func GroupShardStates(flatShards []model.JobShardState) map[int][]model.JobShardState {
+	ret := map[int][]model.JobShardState{}
 	for _, shardState := range flatShards { //nolint:gocritic
 		arr, ok := ret[shardState.ShardIndex]
 		if !ok {
-			arr = []executor.JobShardState{}
+			arr = []model.JobShardState{}
 		}
 		arr = append(arr, shardState)
 		ret[shardState.ShardIndex] = arr
@@ -343,8 +342,8 @@ func GroupShardStates(flatShards []executor.JobShardState) map[int][]executor.Jo
 	return ret
 }
 
-func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobStateType]int {
-	discoveredStateCount := map[executor.JobStateType]int{}
+func GetShardStateTotals(shardStates []model.JobShardState) map[model.JobStateType]int {
+	discoveredStateCount := map[model.JobStateType]int{}
 	for _, shardState := range shardStates { //nolint:gocritic
 		discoveredStateCount[shardState.State]++
 	}
@@ -352,8 +351,8 @@ func GetShardStateTotals(shardStates []executor.JobShardState) map[executor.JobS
 }
 
 // error if there are any errors in any of the states
-func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
-	return func(jobState executor.JobState) (bool, error) {
+func WaitThrowErrors(errorStates []model.JobStateType) CheckStatesFunction {
+	return func(jobState model.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		for _, shard := range allShardStates { //nolint:gocritic
 			if shard.State.IsError() {
@@ -365,8 +364,8 @@ func WaitThrowErrors(errorStates []executor.JobStateType) CheckStatesFunction {
 }
 
 // wait for the given number of different states to occur
-func WaitForJobStates(requiredStateCounts map[executor.JobStateType]int) CheckStatesFunction {
-	return func(jobState executor.JobState) (bool, error) {
+func WaitForJobStates(requiredStateCounts map[model.JobStateType]int) CheckStatesFunction {
+	return func(jobState model.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		discoveredStateCount := GetShardStateTotals(allShardStates)
 		log.Trace().Msgf("WaitForJobShouldHaveStates:\nrequired = %+v,\nactual = %+v\n", requiredStateCounts, discoveredStateCount)
@@ -385,7 +384,7 @@ func WaitForJobStates(requiredStateCounts map[executor.JobStateType]int) CheckSt
 
 // if there are > X states then error
 func WaitDontExceedCount(count int) CheckStatesFunction {
-	return func(jobState executor.JobState) (bool, error) {
+	return func(jobState model.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		if len(allShardStates) > count {
 			return false, fmt.Errorf("there are more states: %d than expected: %d", len(allShardStates), count)
