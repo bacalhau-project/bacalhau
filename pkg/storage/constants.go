@@ -1,7 +1,5 @@
 package storage
 
-import ()
-
 // StorageVolumeConnector is how an upstream storage source will present
 // the volume to a job - examples are "bind" or "library"
 //

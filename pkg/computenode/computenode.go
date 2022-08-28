@@ -178,7 +178,8 @@ func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
 	bidShards := node.capacityManager.GetNextItems()
 
 	log.Debug().Msgf("len(bidShards)=%d", len(bidShards))
-	for _, shard := range bidShards {
+	for i := range bidShards {
+		shard := bidShards[i]
 		shardState, shardStateFound := node.shardStateManager.Get(shard.ID())
 		if !shardStateFound {
 			continue
@@ -232,11 +233,11 @@ func (node *ComputeNode) subscriptionSetup() {
 			if jobEvent.TargetNodeID != node.id {
 				return
 			}
-			shard := model.JobShard {
-				Job: job,
+			shard := model.JobShard{
+				Job:   job,
 				Index: jobEvent.ShardIndex,
 			}
-			switch jobEvent.EventName {			
+			switch jobEvent.EventName {
 			// we have been given the goahead to run the job
 			case model.JobEventBidAccepted:
 				node.subscriptionEventBidAccepted(ctx, jobEvent, shard)
@@ -372,7 +373,7 @@ subscriptions -> bid accepted
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
 	var span trace.Span
-	
+
 	_, span = node.newSpanForJob(ctx, shard.Job.ID, "JobEventBidAccepted")
 	defer span.End()
 
@@ -410,7 +411,7 @@ func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, j
 }
 
 func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	//TODO
+	// TODO: implement
 }
 
 /*
@@ -542,7 +543,6 @@ func (node *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]
 }
 
 func (node *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) error {
-
 	verifier, err := node.getVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
 		return err

@@ -206,7 +206,6 @@ type shardStateMachine struct {
 
 func (m *shardStateMachineManager) newStateMachine(
 	shard model.JobShard, node *ComputeNode, requirements model.ResourceUsageData) *shardStateMachine {
-
 	stateMachine := &shardStateMachine{
 		Shard:        shard,
 		manager:      m,
