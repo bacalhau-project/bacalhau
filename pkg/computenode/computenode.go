@@ -28,8 +28,6 @@ const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalMillis = 100
 const DelayBeforeBidMillisecondRange = 100
 
-const OTELServiceName = "computenode"
-
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
 	// job resource limits
@@ -93,8 +91,8 @@ func constructComputeNode(
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
+	// TODO: instrument with trace
 	ctx := context.Background()
-
 	nodeID, err := c.HostID(ctx)
 	if err != nil {
 		return nil, err
@@ -170,10 +168,6 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
 func (node *ComputeNode) controlLoopBidOnJobs() {
-	// Creating an inner logger for controlloop to make switching easier
-	controlLoopLogger := log.Debug()
-	controlLoopLogger.Msgf("[%s] starting controlLoopBidOnJobs because %s, acq lock", node.id[:8])
-
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidShards := node.capacityManager.GetNextItems()
@@ -183,41 +177,35 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 		shard := bidShards[i]
 		shardState, shardStateFound := node.shardStateManager.Get(shard.ID())
 		if !shardStateFound {
-			controlLoopLogger.Msgf("Shard state not found on node %s and shardID %s", node.id, shard.ID())
 			continue
 		}
-		controlLoopLogger.Msgf("Shard state found on node %s and shardID %s", node.id, shard.ID())
 
 		if shardState.bidSent {
 			// possible race condition where a bid was sent for the shard after
 			// preparing the candidates in GetNextItems()
-			controlLoopLogger.Msgf("node %s has already bid on job shard %s", node.id, shard.ID())
+			log.Trace().Msgf("node %s has already bid on job shard %s", node.id, shard)
 			continue
 		}
-		controlLoopLogger.Msgf("Node %s has bid on job shardID %s", node.id, shard.ID())
+
 		jobState, err := node.controller.GetJobState(context.Background(), shard.Job.ID)
 		if err != nil {
 			shardState.Fail("error getting job state from controller")
 			continue
 		}
-
-		j, err := node.controller.GetJob(context.Background(), shard.Job.ID)
+		job, err := node.controller.GetJob(context.Background(), shard.Job.ID)
 		if err != nil {
 			shardState.Fail("error getting job instance from controller")
 			continue
 		}
-		controlLoopLogger.Msgf("Got job instance from controller for job %s", j.ID)
 
-		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(j, jobState, shard.Index)
+		hasShardReachedCapacity := jobutils.HasShardReachedCapacity(job, jobState, shard.Index)
 		if hasShardReachedCapacity {
-			controlLoopLogger.Msgf("node %s: shard %s has already reached capacity - not bidding", node.id, shard)
+			log.Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", node.id, shard)
 			shardState.Fail("shard has reached capacity")
 			continue
 		}
-		controlLoopLogger.Msgf("Shard %d has not reached capacity - bidding on job %s", shard.ID(), j.ID)
 
 		shardState.Bid()
-		controlLoopLogger.Msgf("Bidding on job %s finished.", j.ID)
 	}
 }
 
@@ -263,14 +251,16 @@ func (node *ComputeNode) subscriptionSetup() {
 /*
 subscriptions -> created
 */
-func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent type.JobEvent{}, j type.Job{}) {
+func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, job model.Job) {
+	var span trace.Span
+	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventCreated")
+	defer span.End()
+
 	// Increment the number of jobs seen by this compute node:
 	jobsReceived.With(prometheus.Labels{
 		"node_id":   node.id,
-		"client_id": j.ClientID,
+		"client_id": job.ClientID,
 	}).Inc()
-
-	ctx, jobDistanceSpan := system.Span(ctx, OTELServiceName, "CalculatingJobDistance")
 
 	// Decide whether we should even consider bidding on the job, early exit if
 	// we're not in the active set for this job, given the hash distances.
@@ -290,11 +280,8 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 	if jobNodeDistanceDelayMs > 0 {
 		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
 	}
-	jobDistanceSpan.End()
 
 	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
-
-	ctx, decidingToBidOnJobSpan := system.Span(ctx, OTELServiceName, "DecidingToBidOnJob")
 
 	// A new job has arrived - decide if we want to bid on it:
 	selected, processedRequirements, err := node.SelectJob(ctx, JobSelectionPolicyProbeData{
@@ -308,10 +295,6 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		return
 	}
 
-	decidingToBidOnJobSpan.End()
-
-	ctx, selectingJobSpan := system.Span(ctx, OTELServiceName, "SelectingJob")
-
 	if selected {
 		err = node.controller.SelectJob(ctx, jobEvent.JobID)
 		if err != nil {
@@ -320,11 +303,11 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 		}
 
 		// now explode the job into shards and add each shard to the backlog
-		shardIndexes := capacitymanager.GenerateShardIndexes(j.ExecutionPlan.TotalShards, processedRequirements)
+		shardIndexes := capacitymanager.GenerateShardIndexes(job.ExecutionPlan.TotalShards, processedRequirements)
 
 		// even if an error is returned, some shards might have been partially added to the backlog
 		for _, shardIndex := range shardIndexes {
-			shard := model.JobShard{Job: j, Index: shardIndex}
+			shard := model.JobShard{Job: job, Index: shardIndex}
 			node.shardStateManager.StartShardStateIfNecessery(shard, node, processedRequirements)
 		}
 		if err != nil {
@@ -332,7 +315,6 @@ func (node *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent 
 			return
 		}
 	}
-	selectingJobSpan.End()
 }
 
 func hash(s string) int {
@@ -386,6 +368,7 @@ subscriptions -> bid accepted
 */
 func (node *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
 	var span trace.Span
+
 	_, span = node.newSpanForJob(ctx, shard.Job.ID, "JobEventBidAccepted")
 	defer span.End()
 
@@ -686,11 +669,12 @@ func (node *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherTy
 	return publisher, nil
 }
 
-func newSpanForNode(ctx context.Context, nodeID, name string) (context.Context, trace.Span) {
+func (node *ComputeNode) newSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
 	return system.Span(ctx, "compute_node/compute_node", name,
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("nodeID", nodeID),
+			attribute.String("nodeID", node.id),
+			attribute.String("jobID", jobID),
 		),
 	)
 }
