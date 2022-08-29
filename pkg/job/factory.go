@@ -10,20 +10,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-<<<<<<< HEAD
-func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
+func ConstructJobFromEvent(ev model.JobEvent) model.Job {
 	log.Debug().Msgf("Constructing job ID: %s", ev.JobID)
 	log.Trace().Msgf("Full job event: %+v", ev)
-	return executor.Job{
-||||||| a086720c
-func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
-	return executor.Job{
-=======
-func ConstructJobFromEvent(ev model.JobEvent) model.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
 	return model.Job{
->>>>>>> main
 		ID:              ev.JobID,
 		RequesterNodeID: ev.SourceNodeID,
 		ClientID:        ev.ClientID,
