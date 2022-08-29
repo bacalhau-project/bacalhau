@@ -288,9 +288,6 @@ func (m *shardStateMachine) transitionedTo(newState shardStateType) {
 func enqueuedState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardEnqueued)
 
-	// trigger the bidding loop as soon as the shard state is updated to enqueued.
-	go m.node.controlLoopBidOnJobs("job enqueud")
-
 	for {
 		req := <-m.req
 		switch req.action {
@@ -432,9 +429,5 @@ func errorState(m *shardStateMachine) StateFn {
 // we always reach this state, whether the job completed successfully or due to a failure.
 func completedState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardCompleted)
-
-	// once we've finished this shard - let's see if we should
-	// bid on another shard or if we've finished the job
-	go m.node.controlLoopBidOnJobs("job completed")
 	return nil
 }
