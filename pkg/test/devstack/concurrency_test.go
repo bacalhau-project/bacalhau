@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -78,17 +79,27 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	resolver := apiClient.GetJobStateResolver()
 
-	err = resolver.Wait(
-		ctx,
-		createdJob.ID,
-		3,
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateError,
-		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: 2,
-			model.JobStateCancelled: 1,
-		}),
-	)
+	stateChecker := func() error {
+		return resolver.Wait(
+			ctx,
+			createdJob.ID,
+			3,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateError,
+			}),
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStatePublished: 2,
+			}),
+		)
+	}
+
+	err = stateChecker()
+	require.NoError(suite.T(), err)
+
+	// wait a small time and then check again to make sure another JobStatePublished
+	// did not sneak in afterwards
+	time.Sleep(time.Second * 3)
+
+	err = stateChecker()
 	require.NoError(suite.T(), err)
 }
