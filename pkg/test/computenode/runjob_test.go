@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -53,14 +54,16 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
 	require.NoError(suite.T(), err)
 
-	result, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
+	require.NoError(suite.T(), err)
+
+	err = computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
-	}, 0)
+	}, 0, result)
 	require.NoError(suite.T(), err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	require.DirExists(suite.T(), result, "The job result folder exists")
 	require.FileExists(suite.T(), stdoutPath, "The stdout file exists")
 
 	dat, err := os.ReadFile(stdoutPath)
@@ -79,9 +82,9 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	_, err := computeNode.ExecuteJobShard(context.Background(), executor.Job{
+	err := computeNode.RunShardExecution(context.Background(), executor.Job{
 		ID:   "test",
 		Spec: executor.JobSpec{},
-	}, 0)
+	}, 0, "")
 	require.Error(suite.T(), err)
 }

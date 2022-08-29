@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -30,8 +31,9 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
-	engine executor.EngineType,
+	e executor.EngineType,
 	v verifier.VerifierType,
+	p publisher.PublisherType,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -42,10 +44,13 @@ func ConstructDockerJob( //nolint:funlen
 	concurrency int,
 	annotations []string,
 	workingDir string,
+	shardingGlobPattern string,
+	shardingBasePath string,
+	shardingBatchSize int,
 	doNotTrack bool,
-) (executor.JobSpec, executor.JobDeal, error) {
+) (*executor.JobSpec, *executor.JobDeal, error) {
 	if concurrency <= 0 {
-		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return &executor.JobSpec{}, &executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
 	jobResources := capacitymanager.ResourceUsageConfig{
 		CPU:    cpu,
@@ -56,11 +61,11 @@ func ConstructDockerJob( //nolint:funlen
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return &executor.JobSpec{}, &executor.JobDeal{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return &executor.JobSpec{}, &executor.JobDeal{}, err
 	}
 
 	var jobAnnotations []string
@@ -83,13 +88,23 @@ func ConstructDockerJob( //nolint:funlen
 		err := system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
-			return executor.JobSpec{}, executor.JobDeal{}, err
+			return &executor.JobSpec{}, &executor.JobDeal{}, err
 		}
 	}
 
+	// Weird bug that sharding basepath fails if has a trailing slash
+	shardingBasePath = strings.TrimSuffix(shardingBasePath, "/")
+
+	jobShardingConfig := executor.JobShardingConfig{
+		GlobPattern: shardingGlobPattern,
+		BasePath:    shardingBasePath,
+		BatchSize:   shardingBatchSize,
+	}
+
 	spec := executor.JobSpec{
-		Engine:   engine,
-		Verifier: v,
+		Engine:    e,
+		Verifier:  v,
+		Publisher: p,
 		Docker: executor.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,
@@ -101,6 +116,7 @@ func ConstructDockerJob( //nolint:funlen
 		Contexts:    jobContexts,
 		Outputs:     jobOutputs,
 		Annotations: jobAnnotations,
+		Sharding:    jobShardingConfig,
 		DoNotTrack:  doNotTrack,
 	}
 
@@ -113,7 +129,7 @@ func ConstructDockerJob( //nolint:funlen
 		Concurrency: concurrency,
 	}
 
-	return spec, deal, nil
+	return &spec, &deal, nil
 }
 
 func ConstructLanguageJob(
@@ -167,9 +183,10 @@ func ConstructLanguageJob(
 	}
 
 	spec := executor.JobSpec{
-		Engine: executor.EngineLanguage,
+		Engine:   executor.EngineLanguage,
+		Verifier: verifier.VerifierNoop,
 		// TODO: should this always be ipfs?
-		Verifier: verifier.VerifierIpfs,
+		Publisher: publisher.PublisherIpfs,
 		Language: executor.JobSpecLanguage{
 			Language:         language,
 			LanguageVersion:  languageVersion,

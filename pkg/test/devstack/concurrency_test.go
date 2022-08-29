@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -61,11 +62,12 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
-		Docker:   testCase.GetJobSpec(),
-		Inputs:   inputStorageList,
-		Outputs:  testCase.Outputs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
+		Docker:    testCase.GetJobSpec(),
+		Inputs:    inputStorageList,
+		Outputs:   testCase.Outputs,
 	}
 
 	jobDeal := executor.JobDeal{
@@ -88,7 +90,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 			executor.JobStateError,
 		}),
 		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateComplete:  2,
+			executor.JobStatePublished: 2,
 			executor.JobStateCancelled: 1,
 		}),
 	)

@@ -1,7 +1,6 @@
 package devstack
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,6 +12,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -35,7 +36,9 @@ func SetupTest(
 
 	cm := system.NewCleanupManager()
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: ipfsMultiAddress,
+		})
 	}
 	getExecutors := func(
 		ipfsMultiAddress string,
@@ -49,8 +52,12 @@ func SetupTest(
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
 			cm,
-			ipfsMultiAddress,
-			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+			executor_util.StandardExecutorOptions{
+				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+				Storage: executor_util.StandardStorageProviderOptions{
+					IPFSMultiaddress: ipfsMultiAddress,
+				},
+			},
 		)
 	}
 	getVerifiers := func(
@@ -61,13 +68,17 @@ func SetupTest(
 		map[verifier.VerifierType]verifier.Verifier,
 		error,
 	) {
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return ctrl.GetJob(ctx, id)
-		}
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return ctrl.GetJobState(ctx, id)
-		}
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	}
+	getPublishers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[publisher.PublisherType]publisher.Publisher,
+		error,
+	) {
+		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
 		cm,
@@ -76,6 +87,7 @@ func SetupTest(
 		getStorageProviders,
 		getExecutors,
 		getVerifiers,
+		getPublishers,
 		config,
 		"",
 		false,

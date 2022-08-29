@@ -40,3 +40,4 @@ shards
 __pycache__
 stderr
 stdout
+unittests.xml

@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type DownloadSettings struct {
+type IPFSDownloadSettings struct {
 	TimeoutSecs    int
 	OutputDir      string
 	IPFSSwarmAddrs string
@@ -36,11 +36,17 @@ func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
 	job executor.Job,
 	results []storage.StorageSpec,
-	settings DownloadSettings,
+	settings IPFSDownloadSettings,
 ) error {
 	if len(results) == 0 {
 		log.Debug().Msg("No results to download")
 		return nil
+	}
+
+	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
+	if err != nil {
+		log.Error().Msgf("Failed to get absolute path for output dir: %s", err)
+		return err
 	}
 
 	// NOTE: we have to spin up a temporary IPFS node as we don't
@@ -68,11 +74,12 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// it's "name" and "path" is named after the shard index
 	// so we write the shard output to our scratch folder
 	// and then merge each outout volume into the global results
+	log.Info().Msgf("Found %d result shards, downloading to temporary folder.", len(results))
 	for _, result := range results {
 		shardDownloadDir := filepath.Join(scratchFolder, result.Cid)
 
 		err = func() error {
-			log.Info().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
+			log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
 
 			ctx, cancel := context.WithDeadline(context.Background(),
 				time.Now().Add(time.Second*time.Duration(settings.TimeoutSecs)))
@@ -93,12 +100,12 @@ func DownloadJob( //nolint:funlen,gocyclo
 		// for this output volume
 		for _, outputVolume := range job.Spec.Outputs {
 			volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
-			volumeOutputDir := filepath.Join(settings.OutputDir, "volumes", outputVolume.Name)
+			volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 			err = os.MkdirAll(volumeOutputDir, os.ModePerm)
 			if err != nil {
 				return err
 			}
-			log.Info().Msgf("Copying output volume %s", outputVolume.Name)
+			log.Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
 			// find $SOURCE_DIR -name '*' -type f -exec mv -f {} $TARGET_DIR \;
 			err = system.RunCommand("bash", []string{
 				"-c",
@@ -119,7 +126,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 				fmt.Sprintf(
 					"cat %s >> %s",
 					filepath.Join(shardDownloadDir, filename),
-					filepath.Join(settings.OutputDir, filename),
+					filepath.Join(finalOutputDirAbs, filename),
 				),
 			})
 			if err != nil {
@@ -127,7 +134,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 			}
 		}
 
-		shardOutputDir := filepath.Join(settings.OutputDir, "shards", result.Name)
+		shardOutputDir := filepath.Join(finalOutputDirAbs, "shards", result.Name)
 		// make a directory for the individual shard logs
 		err = os.MkdirAll(shardOutputDir, os.ModePerm)
 		if err != nil {

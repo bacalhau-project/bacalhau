@@ -44,16 +44,14 @@ func (suite *DescribeSuite) TearDownAllSuite() {
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
-	tableSortReverse = false
-
 	tests := []struct {
 		numberOfAcceptNodes int
 		numberOfRejectNodes int
 		jobState            string
 	}{
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobStateComplete.String()}, // Run and accept
-		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobStateComplete.String()}, // Run and accept
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobStateComplete.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
+		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
 	}
 
 	numOfJobsTests := []struct {

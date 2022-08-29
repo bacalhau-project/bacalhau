@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
@@ -67,8 +68,9 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherNoop,
 		Docker: executor.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
@@ -116,8 +118,8 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	node, err := stack.GetNode(ctx, nodeIDs[0])
 	require.NoError(suite.T(), err)
 
-	outputPath := filepath.Join(outputDir, state.ResultsID)
-	err = node.IpfsClient.Get(ctx, state.ResultsID, outputPath)
+	outputPath := filepath.Join(outputDir, string(state.VerificationProposal))
+	err = node.IpfsClient.Get(ctx, string(state.VerificationProposal), outputPath)
 	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))

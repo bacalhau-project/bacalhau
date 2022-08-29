@@ -57,11 +57,14 @@ all: build
 # Run go fmt against code
 fmt:
 	@${GO} fmt ./cmd/... 
+	@${GO} fmt ./pkg/... 
 
 
 # Run go vet against code
 vet:
 	@${GO} vet ./cmd/...
+	@${GO} vet ./pkg/... 
+
 
 ## Run all pre-commit hooks
 ################################################################################
@@ -171,6 +174,10 @@ devstack:
 devstack-100:
 	go run . devstack --nodes 100
 
+.PHONY: devstack-250
+devstack-250:
+	go run . devstack --nodes 250
+
 .PHONY: devstack-20
 devstack-20:
 	go run . devstack --nodes 20
@@ -226,7 +233,7 @@ test-and-report: build-bacalhau
 	CGO_ENABLED=${CGO} \
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
-			--junitfile unittests.xml
+			--junitfile unittests.xml \
 			--format standard-quiet \
 			-- \
 				-p 1 \

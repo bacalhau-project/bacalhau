@@ -50,8 +50,6 @@ func (suite *GetSuite) TearDownAllSuite() {
 }
 
 func (suite *GetSuite) TestGetJob() {
-	tableSortReverse = false
-
 	const NumberOfNodes = 3
 
 	numOfJobsTests := []struct {

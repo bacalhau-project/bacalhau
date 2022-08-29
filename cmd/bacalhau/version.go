@@ -50,10 +50,15 @@ type VersionOptions struct {
 	args []string
 }
 
+// NewOptions returns initialized Options
+func NewVersionOptions() *VersionOptions {
+	return &VersionOptions{}
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
 		err := oV.Validate(cmd)
 		if err != nil {
 			log.Error().Msgf("error validating version - %s", err)
@@ -124,9 +129,4 @@ func (oV *VersionOptions) Run(cmd *cobra.Command) error {
 	}
 
 	return nil
-}
-
-// NewOptions returns initialized Options
-func NewVersionOptions() *VersionOptions {
-	return &VersionOptions{}
 }

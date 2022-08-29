@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -16,6 +18,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -72,18 +76,29 @@ type GetVerifiersFunc func(
 	error,
 )
 
+type GetPublishersFunc func(
+	ipfsMultiAddress string,
+	nodeIndex int,
+	ctrl *controller.Controller,
+) (
+	map[publisher.PublisherType]publisher.Publisher,
+	error,
+)
+
 func NewDevStackForRunLocal(
 	cm *system.CleanupManager,
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, ipfsMultiAddress)
+		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: ipfsMultiAddress,
+		})
 	}
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
-		ctrl *controller.Controller,
+		_ *controller.Controller,
 	) (
 		map[executor.EngineType]executor.Executor,
 		error,
@@ -92,25 +107,33 @@ func NewDevStackForRunLocal(
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
 			cm,
-			ipfsMultiAddress,
-			fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+			executor_util.StandardExecutorOptions{
+				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
+				Storage: executor_util.StandardStorageProviderOptions{
+					IPFSMultiaddress: ipfsMultiAddress,
+				},
+			},
 		)
 	}
 	getVerifiers := func(
 		ipfsMultiAddress string,
-		nodeIndex int,
+		_ int,
 		ctrl *controller.Controller,
 	) (
 		map[verifier.VerifierType]verifier.Verifier,
 		error,
 	) {
-		jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-			return ctrl.GetJob(ctx, id)
-		}
-		stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-			return ctrl.GetJobState(ctx, id)
-		}
-		return verifier_util.NewIPFSVerifiers(cm, ipfsMultiAddress, jobLoader, stateLoader)
+		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	}
+	getPublishers := func(
+		ipfsMultiAddress string,
+		nodeIndex int,
+		ctrl *controller.Controller,
+	) (
+		map[publisher.PublisherType]publisher.Publisher,
+		error,
+	) {
+		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 
 	return NewDevStack(
@@ -119,6 +142,7 @@ func NewDevStackForRunLocal(
 		getStorageProviders,
 		getExecutors,
 		getVerifiers,
+		getPublishers,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality:            computenode.Anywhere,
@@ -137,10 +161,11 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
+	count, _ int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
+	getPublishers GetPublishersFunc,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 	peer string,
@@ -262,6 +287,11 @@ func NewDevStack(
 			return nil, err
 		}
 
+		publishers, err := getPublishers(ipfsAPIAddrs[0], i, ctrl)
+		if err != nil {
+			return nil, err
+		}
+
 		//////////////////////////////////////
 		// Requestor node
 		//////////////////////////////////////
@@ -283,6 +313,7 @@ func NewDevStack(
 			ctrl,
 			executors,
 			verifiers,
+			publishers,
 			config,
 		)
 		if err != nil {
@@ -308,7 +339,7 @@ func NewDevStack(
 			"0.0.0.0",
 			apiPort,
 			ctrl,
-			verifiers,
+			publishers,
 		)
 		go func(ctx context.Context) {
 			var gerr error // don't capture outer scope
@@ -328,8 +359,7 @@ func NewDevStack(
 			return nil, err
 		}
 
-		// TODO: #393 Why is ctx unused if it's passed in? Shouldn't cm do something with it?
-		go func(ctx context.Context) { //nolint:unparam // Ok to be unused?
+		go func(ctx context.Context) { //nolint:unparam
 			var gerr error // don't capture outer scope
 			if gerr = system.ListenAndServeMetrics(cm, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
@@ -362,6 +392,22 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, devStackNode)
+	}
+
+	// only start profiling after we've set everything up!
+	// do a GC before we start profiling
+	runtime.GC()
+
+	log.Trace().Msg("============= STARTING PROFILING ============")
+	// devstack always records a cpu profile, it will be generally useful.
+	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
+	f, err := os.Create(cpuprofile)
+	if err != nil {
+		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
+	}
+	defer f.Close()
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}
 
 	return &DevStack{
@@ -434,7 +480,7 @@ export BACALHAU_API_PORT=%s`,
 		devStackAPIHost,
 		devStackAPIPort,
 	)
-	log.Info().Msg(logString)
+	log.Debug().Msg(logString)
 }
 
 func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {

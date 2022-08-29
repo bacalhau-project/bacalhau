@@ -1,6 +1,6 @@
 FROM golang:1.18.3-buster
 
-RUN curl -s -L -O https://dist.ipfs.io/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
+RUN curl -s -L -O https://dist.ipfs.tech/go-ipfs/v0.12.2/go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
 RUN tar -xvzf go-ipfs_v0.12.2_${{ matrix.target_os }}-${{ matrix.target_arch }}.tar.gz
 WORKDIR ./go-ipfs
 RUN sudo bash install.sh

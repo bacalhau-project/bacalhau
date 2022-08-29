@@ -44,20 +44,25 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpe
 	return 0, nil
 }
 
-func (e *Executor) RunShard(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
+func (e *Executor) RunShard(
+	ctx context.Context,
+	job executor.Job,
+	shardIndex int,
+	jobResultsDir string,
+) error {
 	if job.Spec.Language.Language != "python" && job.Spec.Language.LanguageVersion != "3.10" {
-		return "", fmt.Errorf("only python 3.10 is supported")
+		return fmt.Errorf("only python 3.10 is supported")
 	}
 
 	if job.Spec.Language.Deterministic {
 		log.Debug().Msgf("running deterministic python 3.10")
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
-		return e.executors[executor.EnginePythonWasm].RunShard(ctx, job, shardIndex)
+		return e.executors[executor.EnginePythonWasm].RunShard(ctx, job, shardIndex, jobResultsDir)
 	} else {
 		log.Debug().Msgf("running arbitrary python 3.10")
 		// TODO: Instantiate a docker with python:3.10 image
-		return "", fmt.Errorf("arbitrary python not supported yet")
+		return fmt.Errorf("arbitrary python not supported yet")
 	}
 }
 

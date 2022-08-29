@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -38,9 +40,6 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	noopVerifiers, err := verifier_utils.NewNoopVerifiers(cleanupManager)
-	require.NoError(t, err)
-
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
@@ -52,6 +51,18 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 		inmemoryDatastore,
 		inprocessTransport,
 		noopStorageProviders,
+	)
+	require.NoError(t, err)
+
+	noopPublishers, err := publisher_utils.NewNoopPublishers(
+		cleanupManager,
+		c.GetStateResolver(),
+	)
+	require.NoError(t, err)
+
+	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
+		cleanupManager,
+		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
@@ -67,7 +78,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c, noopVerifiers)
+	s := NewServer(host, port, c, noopPublishers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
@@ -133,32 +144,35 @@ func TailFile(count int, path string) ([]byte, error) {
 
 func MakeEchoJob() (executor.JobSpec, executor.JobDeal) {
 	randomSuffix, _ := uuid.NewUUID()
-	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"echo",
 		randomSuffix.String(),
 	})
 }
 
 func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineDocker, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
 func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineNoop, verifier.VerifierIpfs, []string{
+	return MakeJob(executor.EngineNoop, verifier.VerifierNoop, publisher.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
-func MakeJob(engineType executor.EngineType,
+func MakeJob(
+	engineType executor.EngineType,
 	verifierType verifier.VerifierType,
+	publisherType publisher.PublisherType,
 	entrypointArray []string) (executor.JobSpec, executor.JobDeal) {
 	jobSpec := executor.JobSpec{
-		Engine:   engineType,
-		Verifier: verifierType,
+		Engine:    engineType,
+		Verifier:  verifierType,
+		Publisher: publisherType,
 		Docker: executor.JobSpecDocker{
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,

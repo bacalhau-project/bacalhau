@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -76,11 +77,12 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierIpfs,
-		Docker:   testCase.GetJobSpec(),
-		Inputs:   inputStorageList,
-		Outputs:  testCase.Outputs,
+		Engine:    executor.EngineDocker,
+		Verifier:  verifier.VerifierNoop,
+		Publisher: publisher.PublisherIpfs,
+		Docker:    testCase.GetJobSpec(),
+		Inputs:    inputStorageList,
+		Outputs:   testCase.Outputs,
 	}
 
 	jobDeal := executor.JobDeal{
@@ -103,7 +105,7 @@ func devStackDockerStorageTest(
 			executor.JobStateError,
 		}),
 		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateComplete: len(nodeIDs),
+			executor.JobStatePublished: len(nodeIDs),
 		}),
 	)
 	require.NoError(t, err)
@@ -118,9 +120,10 @@ func devStackDockerStorageTest(
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(t, err)
+		require.NotEmpty(t, shard.PublishedResult.Cid)
 
-		outputPath := filepath.Join(outputDir, shard.ResultsID)
-		err = node.IpfsClient.Get(ctx, shard.ResultsID, outputPath)
+		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
+		err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputPath)

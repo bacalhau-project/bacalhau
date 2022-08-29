@@ -17,8 +17,10 @@ wait_file() {
 
 function cleanup {
 	echo "Done. Exiting normally."
-	BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
-	kill -2 "${BACALHAU_PID}"
+	if [ -f "/tmp/bacalhau-devstack.pid" ]; then
+		BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
+		kill -2 "${BACALHAU_PID}"
+	fi
 	rm -f /tmp/bacalhau-devstack.p*
 	exit 0 
 }
@@ -34,12 +36,15 @@ export PREDICTABLE_API_PORT=1
 
 ${BACALHAU_BIN} devstack &
 
-wait_file "/tmp/bacalhau-devstack.pid" 15
+wait_file "/tmp/bacalhau-devstack.pid" 1500
 
 # trunk-ignore(shellcheck/SC2155)
 export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
 
-./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
+# Wait for the Bacalhau API to be ready
+for i in 1 2 3 4 5; do curl -sSf localhost:${API_PORT}/healthz > /dev/null && break || sleep 1; done
+
+# ./submit.sh "${BACALHAU_BIN}" "${API_PORT}"
 ./explode.sh "${BACALHAU_BIN}" "${API_PORT}"
 
 while : ; do

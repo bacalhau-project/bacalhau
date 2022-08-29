@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -21,6 +22,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -188,6 +191,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		seenJobs := []SeenJobRecord{}
 		var seenJobsMutex sync.Mutex
+		seenJobsMutex.EnableTracerWithOpts(sync.Opts{
+			Threshold: 10 * time.Millisecond,
+			Id:        "TestTotalResourceLimits.seenJobsMutex",
+		})
 
 		addSeenJob := func(job SeenJobRecord) {
 			seenJobsMutex.Lock()
@@ -201,7 +208,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, job executor.Job, shardIndex int) (string, error) {
+		jobHandler := func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -216,7 +223,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return "/tmp", nil
+			return nil
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
@@ -244,9 +251,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
-			spec, deal, err := job.ConstructDockerJob(
+			jobSpec, jobDeal, err := job.ConstructDockerJob(
 				executor.EngineNoop,
 				verifier.VerifierNoop,
+				publisher.PublisherNoop,
 				jobResources.CPU,
 				jobResources.Memory,
 				"0", // zero GPU for now
@@ -263,14 +271,17 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				1,
 				[]string{},
 				"",
+				"", // sharding base path
+				"", // sharding glob pattern
+				1,  // sharding batch size
 				true,
 			)
 
 			require.NoError(suite.T(), err)
 			_, err = ctrl.SubmitJob(context.Background(), executor.JobCreatePayload{
 				ClientID: "123",
-				Spec:     spec,
-				Deal:     deal,
+				Spec:     *jobSpec,
+				Deal:     *jobDeal,
 			})
 			require.NoError(suite.T(), err)
 
@@ -282,7 +293,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// we can check the seenJobs because that is easier
 		waiter := &system.FunctionWaiter{
 			Name:        "wait for jobs",
-			MaxAttempts: 10,
+			MaxAttempts: 1000,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
 				return testCase.wait.handler(seenJobs)
@@ -533,21 +544,33 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		datastore, err := inmemory.NewInMemoryDatastore()
 		require.NoError(suite.T(), err)
 
-		storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+		storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: apiAddress,
+		})
 		require.NoError(suite.T(), err)
 
-		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
-		require.NoError(suite.T(), err)
+		executors, err := executor_util.NewStandardExecutors(cm, executor_util.StandardExecutorOptions{
+			DockerID: "devstacknode0",
+			Storage: executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: apiAddress,
+			},
+		})
 
-		verifiers, err := verifier_util.NewIPFSVerifiers(
-			cm,
-			apiAddress,
-			job.NewNoopJobLoader(),
-			job.NewNoopStateLoader(),
-		)
 		require.NoError(suite.T(), err)
 
 		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+		require.NoError(suite.T(), err)
+
+		verifiers, err := verifier_util.NewNoopVerifiers(
+			cm,
+			ctrl.GetStateResolver(),
+		)
+		require.NoError(suite.T(), err)
+
+		publishers, err := publisher_util.NewNoopPublishers(
+			cm,
+			ctrl.GetStateResolver(),
+		)
 		require.NoError(suite.T(), err)
 
 		_, err = computenode.NewComputeNode(
@@ -555,6 +578,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 			ctrl,
 			executors,
 			verifiers,
+			publishers,
 			computenode.ComputeNodeConfig{},
 		)
 		require.NoError(suite.T(), err)
