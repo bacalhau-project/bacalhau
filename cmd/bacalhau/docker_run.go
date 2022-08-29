@@ -251,6 +251,9 @@ var dockerRunCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := context.Background()
 
+		ctx, span := system.Span(ctx, "RunJob", "RootSpan")
+		defer span.End()
+
 		ODR.Image = cmdArgs[0]
 		ODR.Entrypoint = cmdArgs[1:]
 

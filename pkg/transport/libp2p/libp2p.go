@@ -238,7 +238,7 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobE
 		return err
 	}
 
-	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	log.Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
 	return t.jobEventTopic.Publish(ctx, bs)
 }
 
@@ -271,7 +271,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
-		log.Debug().Msgf(
+		log.Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
 			t.host.ID().String()[:8],

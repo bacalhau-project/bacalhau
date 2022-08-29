@@ -8,6 +8,7 @@ import (
 	"os"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/joho/godotenv"
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -30,6 +31,8 @@ type cleanupFn func() error
 var CleanupTracer cleanupFn
 
 func init() { //nolint:gochecknoinits // use of init here is idomatic
+	_ = godotenv.Load() // Load environment variables from .env file - necessary here for dev keys
+
 	tp, cleanup, err := hcProvider()
 	if err != nil {
 		// don't error here because for CLI users they get a red message
@@ -57,23 +60,26 @@ func init() { //nolint:gochecknoinits // use of init here is idomatic
 
 // Span creates and starts a new span, and a context containing it.
 // For more information see the otel.Tracer.Start(...) docs:
-//
-//	https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
-func Span(ctx context.Context, svcName, spanName string,
+// https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
+// ctx: the context to use for the span
+// tracerName: the name of the service that the span is for - will be prefixed with "tracer/".
+//		Will create a new one if one with the same name does not exist
+// spanName: the name of the span, inside the service
+// opts: additional options to configure the span from trace.SpanStartOption
+func Span(ctx context.Context, tracerName, spanName string,
 	opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	svc := fmt.Sprintf("bacalhau.org/%s", svcName)
-	spn := fmt.Sprintf("%s/%s", svcName, spanName)
-
 	// Always include environment info in spans:
 	opts = append(opts, trace.WithAttributes(
 		attribute.String("environment", GetEnvironment().String()),
 	))
 
-	return tracer(svc).Start(ctx, spn, opts...)
+	spanName = fmt.Sprintf("service/%s", spanName)
+
+	return Tracer(tracerName).Start(ctx, spanName, opts...)
 }
 
-func tracer(svcName string) trace.Tracer {
-	return otel.GetTracerProvider().Tracer(svcName)
+func Tracer(tracerName string) trace.Tracer {
+	return otel.GetTracerProvider().Tracer(tracerName)
 }
 
 // loggerProvider provides traces that are exported to a trace logger as JSON.
@@ -96,12 +102,21 @@ func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 //
 //	export HONEYCOMB_KEY="<honeycomb api key>"
 func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
-	if os.Getenv("HONEYCOMB_KEY") == "" {
+	honeycombDataset := os.Getenv("HONEYCOMB_DATASET")
+	if honeycombDataset == "" {
+		honeycombDataset = "bacalhau-unset-dataset"
+	}
+	log.Trace().Msgf("using honeycomb dataset: %s", honeycombDataset)
+
+	honeycombKey := os.Getenv("HONEYCOMB_KEY")
+	log.Trace().Msgf("using honeycomb key: %s", honeycombKey)
+
+	if honeycombKey == "" {
 		return nil, nil, fmt.Errorf(
 			"error creating honeycomb exporter: please ensure that \"HONEYCOMB_KEY\" has been set")
 	}
 
-	exp, err := hcExporter()
+	exp, err := hcExporter(honeycombKey, honeycombDataset)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating honeycomb exporter: %w", err)
 	}
@@ -120,14 +135,14 @@ func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 }
 
 // hcExporter returns a SpanExporter configured for Honeycomb.
-func hcExporter() (*otlptrace.Exporter, error) {
+func hcExporter(honeycombKey, honeycombDataset string) (*otlptrace.Exporter, error) {
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 		otlptracegrpc.WithTLSCredentials(
 			credentials.NewClientTLSFromCert(nil, "")),
 		otlptracegrpc.WithHeaders(map[string]string{
-			"x-honeycomb-team":    os.Getenv("HONEYCOMB_KEY"),
-			"x-honeycomb-dataset": "bacalhau",
+			"x-honeycomb-team":    honeycombKey,
+			"x-honeycomb-dataset": honeycombDataset,
 		}),
 	}
 

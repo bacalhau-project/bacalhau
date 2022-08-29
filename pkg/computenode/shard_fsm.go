@@ -295,7 +295,7 @@ func enqueuedState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardEnqueued)
 
 	// trigger the bidding loop as soon as the shard state is updated to enqueued.
-	go m.node.controlLoopBidOnJobs("job enqueud")
+	go m.node.controlLoopBidOnJobs("job enqueued")
 
 	for {
 		req := <-m.req

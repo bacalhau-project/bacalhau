@@ -51,7 +51,10 @@ require (
 	mvdan.cc/sh/v3 v3.5.1
 )
 
-require github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
+require (
+	github.com/joho/godotenv v1.4.0
+	github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
+)
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect

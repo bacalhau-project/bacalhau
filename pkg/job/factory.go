@@ -15,7 +15,8 @@ import (
 )
 
 func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
+	log.Debug().Msgf("Constructing job ID: %s", ev.JobID)
+	log.Trace().Msgf("Full job event: %+v", ev)
 	return executor.Job{
 		ID:              ev.JobID,
 		RequesterNodeID: ev.SourceNodeID,

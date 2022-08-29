@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2312
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -20,18 +21,19 @@ function install-docker() {
 }
 
 function install-gpu() {
-  if [ "${GPU_NODE}" = "true" ]; then
+  if [[ "${GPU_NODE}" = "true" ]]; then
     echo "Installing GPU drivers"
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID | sed -e 's/\.//g') \
-      && wget https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/cuda-keyring_1.0-1_all.deb \
+    distribution=$(. /etc/os-release;echo "${ID}${VERSION_ID}" | sed -e 's/\.//g') \
+      && wget https://developer.download.nvidia.com/compute/cuda/repos/"${distribution}"/x86_64/cuda-keyring_1.0-1_all.deb \
       && sudo dpkg -i cuda-keyring_1.0-1_all.deb
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+    distribution=$(. /etc/os-release;echo "${ID}${VERSION_ID}") \
       && curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-      && curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+      && curl -s -L https://nvidia.github.io/libnvidia-container/"${distribution}"/libnvidia-container.list | \
             sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
             sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
     sudo apt-get update && sudo apt-get install -y \
-      linux-headers-$(uname -r) \
+      linux-headers-"$(uname -r)" \
       cuda-drivers \
       nvidia-docker2
     sudo systemctl restart docker
@@ -68,7 +70,7 @@ function install-bacalhau() {
 }
 
 function install-prometheus() {
-  if [ -z "$PROMETHEUS_VERSION" ] || [ -z "$GRAFANA_CLOUD_API_ENDPOINT" ] || [ -z "$GRAFANA_CLOUD_API_USER" ] || [ -z "$GRAFANA_CLOUD_API_KEY" ]; then
+  if [[ -z "${PROMETHEUS_VERSION}" ]] || [[ -z "${GRAFANA_CLOUD_API_ENDPOINT}" ]] || [[ -z "${GRAFANA_CLOUD_API_USER}" ]] || [[ -z "${GRAFANA_CLOUD_API_KEY}" ]]; then
     echo 'PROMETHEUS_VERSION or any of the GRAFANA_CLOUD_API_* env variables are undefined. Skipping Prometheus installation.'
   else
     sudo apt -y update
@@ -109,7 +111,7 @@ EOF
 
 function mount-disk() { 
   # wait for /dev/sdb to exist
-  while [ ! -e /dev/sdb ]; do
+  while [[ ! -e /dev/sdb ]]; do
     sleep 1
     echo "waiting for /dev/sdb to exist"
   done
@@ -123,7 +125,7 @@ function init-ipfs() {
   sudo mkdir -p /data/ipfs
   export IPFS_PATH=/data/ipfs
 
-  if [ ! -e /data/ipfs/version ]; then
+  if [[ ! -e /data/ipfs/version ]]; then
     ipfs init
   fi
 }
@@ -132,22 +134,24 @@ function init-ipfs() {
 function install-secrets() {
   # set defaults
   export HONEYCOMB_KEY=""
+  export HONEYCOMB_DATASET="bacalhau_production"
   export GRAFANA_CLOUD_API_KEY=""
-  if [ -e /data/secrets.sh ]; then
+  if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
 
   # load new values if they were provided
-  if [ ! -z "${SECRETS_HONEYCOMB_KEY}" ]; then
+  if [[ -n "${SECRETS_HONEYCOMB_KEY}" ]]; then
     export HONEYCOMB_KEY="${SECRETS_HONEYCOMB_KEY}"
   fi
-  if [ ! -z "${SECRETS_GRAFANA_CLOUD_API_KEY}" ]; then
+  if [[ -n "${SECRETS_GRAFANA_CLOUD_API_KEY}" ]]; then
     export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
   fi
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
 export HONEYCOMB_KEY="${HONEYCOMB_KEY}"
+export HONEYCOMB_DATASET="${HONEYCOMB_DATASET}"
 export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
 EOG
 
@@ -161,10 +165,10 @@ EOG
 function init-bacalhau() {
   export BACALHAU_NODE_PRIVATE_KEY_PATH="/data/.bacalhau/private_key.${BACALHAU_PORT}"
   sudo mkdir -p /data/.bacalhau
-  if [ "$TERRAFORM_NODE_INDEX" == "0" ] && [ -n "$BACALHAU_UNSAFE_CLUSTER" ] && [ ! -f "$BACALHAU_NODE_PRIVATE_KEY_PATH" ]; then
+  if [[ "${TERRAFORM_NODE_INDEX}" == "0" ]] && [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]] && [[ ! -f "${BACALHAU_NODE_PRIVATE_KEY_PATH}" ]]; then
     echo "WE ARE NOW INSTALLING THE UNSAFE KEY YO"
-    sudo cp /terraform_node/bacalhau-unsafe-private-key "$BACALHAU_NODE_PRIVATE_KEY_PATH"
-    sudo chmod 0600 "$BACALHAU_NODE_PRIVATE_KEY_PATH"
+    sudo cp /terraform_node/bacalhau-unsafe-private-key "${BACALHAU_NODE_PRIVATE_KEY_PATH}"
+    sudo chmod 0600 "${BACALHAU_NODE_PRIVATE_KEY_PATH}"
   fi
 }
 

@@ -200,23 +200,31 @@ func ExecuteJob(ctx context.Context,
 ) error {
 	var apiClient *publicapi.APIClient
 	if isLocal {
+		_, localDevStackSpan := system.Span(ctx, "RunJob", "LocalDevStackStarting")
+
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
+		localDevStackSpan.End()
+
 		apiURI := stack.Nodes[0].APIServer.GetURI()
 		apiClient = publicapi.NewAPIClient(apiURI)
 	} else {
 		apiClient = getAPIClient()
 	}
 
+	_, submitJobSpan := system.Span(ctx, "RunJob", "SubmitJob")
 	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
 	if err != nil {
 		return err
 	}
+	submitJobSpan.End()
 
 	cmd.Printf("%s\n", j.ID)
 	if waitForJobToFinish {
+		_, waitForJobToFinishSpan := system.Span(ctx, "RunJob", "WaitForJobToFinish")
+
 		resolver := apiClient.GetJobStateResolver()
 		resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
 		err = resolver.WaitUntilComplete(ctx, j.ID)
@@ -248,6 +256,7 @@ func ExecuteJob(ctx context.Context,
 			cmd.Println()
 			cmd.Println(string(body))
 		}
+		waitForJobToFinishSpan.End()
 	}
 	return nil
 }
