@@ -12,12 +12,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -52,13 +55,14 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 // Simple job resource limits tests
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits model.ResourceUsageConfig, expectedResult bool) {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
 		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
 			},
 		}, noop_executor.ExecutorConfig{})
+		computeNode, cm := stack.ComputeNode, stack.CleanupManager
 		computeNode, cm := stack.ComputeNode, stack.CleanupManager
 		defer func() {
 			// sleep here otherwise the compute node tries to register cleanup handlers too late
@@ -529,50 +533,13 @@ const IpfsMetadataSize = 8
 func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 	runTest := func(text string, expected uint64) {
+		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+		defer stack.CleanupManager.Cleanup()
 
-		cm := system.NewCleanupManager()
-
-		// TODO @enricorotundo #493: use SetupTestDockerIpfs instead?
-		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
+		cid, err := stack.IpfsStack.AddTextToNodes(1, []byte(text))
 		require.NoError(suite.T(), err)
 
-		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
-		transport, err := inprocess.NewInprocessTransport()
-		require.NoError(suite.T(), err)
-
-		datastore, err := inmemory.NewInMemoryDatastore()
-		require.NoError(suite.T(), err)
-
-		storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
-		require.NoError(suite.T(), err)
-
-		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
-		require.NoError(suite.T(), err)
-
-		verifiers, err := verifier_util.NewIPFSVerifiers(
-			cm,
-			apiAddress,
-			job.NewNoopJobLoader(),
-			job.NewNoopStateLoader(),
-		)
-		require.NoError(suite.T(), err)
-
-		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
-		require.NoError(suite.T(), err)
-
-		_, err = computenode.NewComputeNode(
-			cm,
-			ctrl,
-			executors,
-			verifiers,
-			computenode.ComputeNodeConfig{},
-		)
-		require.NoError(suite.T(), err)
-
-		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
-		require.NoError(suite.T(), err)
-
-		executor := stack.Executors[model.EngineDocker]
+		executor := stack.Executors[executor.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,

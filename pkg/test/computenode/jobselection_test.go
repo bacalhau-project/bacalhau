@@ -134,7 +134,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		}))
 		defer svr.Close()
 
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
@@ -162,7 +162,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
@@ -183,7 +183,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 
 // TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 
 	_, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{

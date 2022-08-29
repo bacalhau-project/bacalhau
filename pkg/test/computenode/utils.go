@@ -8,125 +8,14 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 )
 
-// Setup a docker ipfs devstack to run compute node tests against
-func SetupTestDockerIpfs(
-	t *testing.T,
-	config computenode.ComputeNodeConfig, //nolint:gocritic
-) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
-	// TODO @enricorotundo #493: needed here?
-	// system.InitConfigForTesting(t)
-	
-	cm := system.NewCleanupManager()
 
-	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
-	require.NoError(t, err)
-
-	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
-	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
-
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
-	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
-
-	storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
-	require.NoError(t, err)
-	executors, err := executor_util.NewStandardExecutors(
-		cm,
-		apiAddress,
-		fmt.Sprintf("devstacknode0-%s", ipfsID),
-	)
-	require.NoError(t, err)
-
-	verifiers, err := verifier_util.NewIPFSVerifiers(
-		cm,
-		apiAddress,
-		job.NewNoopJobLoader(),
-		job.NewNoopStateLoader(),
-	)
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
-	require.NoError(t, err)
-
-	computeNode, err := computenode.NewComputeNode(
-		cm,
-		ctrl,
-		executors,
-		verifiers,
-		config,
-	)
-	require.NoError(t, err)
-
-	return computeNode, ipfsStack, cm
-}
-
-// TODO @enricorotundo #493: move this to dedicated test tooling package?
-// TODO @enricorotundo #493: REFACTOR - align SetupTestNoop with SetupTestDockerIpfs
-// setup a full noop stack to run tests against
-func SetupTestNoop(
-	t *testing.T,
-	//nolint:gocritic
-	computeNodeconfig computenode.ComputeNodeConfig,
-	noopExecutorConfig noop_executor.ExecutorConfig,
-) (*computenode.ComputeNode, *requesternode.RequesterNode, *controller.Controller, *system.CleanupManager) {
-	cm := system.NewCleanupManager()
-
-	transport, err := inprocess.NewInprocessTransport()
-	require.NoError(t, err)
-
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
-	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
-	require.NoError(t, err)
-
-	verifiers, err := verifier_util.NewNoopVerifiers(cm)
-	require.NoError(t, err)
-
-	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
-	require.NoError(t, err)
-
-	requestorNode, err := requesternode.NewRequesterNode(
-		cm,
-		ctrl,
-		verifiers,
-		requesternode.RequesterNodeConfig{},
-	)
-	require.NoError(t, err)
-
-	computeNode, err := computenode.NewComputeNode(
-		cm,
-		ctrl,
-		executors,
-		verifiers,
-		computeNodeconfig,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := context.Background()
-	err = ctrl.Start(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = transport.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	return computeNode, requestorNode, ctrl, cm
-}
 
 func GetJobSpec(cid string) executor.JobSpec {
 	inputs := []storage.StorageSpec{}
