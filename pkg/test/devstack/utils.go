@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -21,8 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var StorageNames = []storage.StorageSourceType{
-	storage.StorageSourceIPFS,
+var StorageNames = []model.StorageSourceType{
+	model.StorageSourceIPFS,
 }
 
 func SetupTest(
@@ -34,7 +35,7 @@ func SetupTest(
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
@@ -44,7 +45,7 @@ func SetupTest(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[executor.EngineType]executor.Executor,
+		map[model.EngineType]executor.Executor,
 		error,
 	) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
@@ -64,7 +65,7 @@ func SetupTest(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[verifier.VerifierType]verifier.Verifier,
+		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
 		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
@@ -74,7 +75,7 @@ func SetupTest(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[publisher.PublisherType]publisher.Publisher,
+		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
 		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)

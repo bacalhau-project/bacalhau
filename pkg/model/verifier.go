@@ -1,8 +1,7 @@
-package verifier
+package model
 
 import (
 	"fmt"
-	"strings"
 )
 
 //go:generate stringer -type=VerifierType --trimprefix=Verifier
@@ -42,10 +41,4 @@ func VerifierTypes() []VerifierType {
 	}
 
 	return res
-}
-
-func equal(a, b string) bool {
-	a = strings.TrimSpace(a)
-	b = strings.TrimSpace(b)
-	return strings.EqualFold(a, b)
 }

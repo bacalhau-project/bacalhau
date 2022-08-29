@@ -7,8 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/rs/zerolog/log"
 )
@@ -31,21 +30,21 @@ func SafeAnnotationRegex() *regexp.Regexp {
 }
 
 func NewNoopJobLoader() JobLoader {
-	jobLoader := func(ctx context.Context, id string) (executor.Job, error) {
-		return executor.Job{}, nil
+	jobLoader := func(ctx context.Context, id string) (model.Job, error) {
+		return model.Job{}, nil
 	}
 	return jobLoader
 }
 
 func NewNoopStateLoader() StateLoader {
-	stateLoader := func(ctx context.Context, id string) (executor.JobState, error) {
-		return executor.JobState{}, nil
+	stateLoader := func(ctx context.Context, id string) (model.JobState, error) {
+		return model.JobState{}, nil
 	}
 	return stateLoader
 }
 
-func buildJobInputs(inputVolumes, inputUrls []string) ([]storage.StorageSpec, error) {
-	jobInputs := []storage.StorageSpec{}
+func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
+	jobInputs := []model.StorageSpec{}
 
 	for _, inputURL := range inputUrls {
 		// split using LastIndex to support port numbers in URL
@@ -55,10 +54,10 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]storage.StorageSpec, er
 		// should loop through all available storage providers?
 		_, err := urldownload.IsURLSupported(rawURL)
 		if err != nil {
-			return []storage.StorageSpec{}, err
+			return []model.StorageSpec{}, err
 		}
-		jobInputs = append(jobInputs, storage.StorageSpec{
-			Engine: storage.StorageSourceURLDownload,
+		jobInputs = append(jobInputs, model.StorageSpec{
+			Engine: model.StorageSourceURLDownload,
 			URL:    rawURL,
 			Path:   path,
 		})
@@ -67,12 +66,12 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]storage.StorageSpec, er
 	for _, inputVolume := range inputVolumes {
 		slices := strings.Split(inputVolume, ":")
 		if len(slices) != 2 {
-			return []storage.StorageSpec{}, fmt.Errorf("invalid input volume: %s", inputVolume)
+			return []model.StorageSpec{}, fmt.Errorf("invalid input volume: %s", inputVolume)
 		}
-		jobInputs = append(jobInputs, storage.StorageSpec{
+		jobInputs = append(jobInputs, model.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
+			Engine: model.StorageSourceIPFS,
 			Cid:    slices[0],
 			Path:   slices[1],
 		})
@@ -80,8 +79,8 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]storage.StorageSpec, er
 	return jobInputs, nil
 }
 
-func buildJobOutputs(outputVolumes []string) ([]storage.StorageSpec, error) {
-	outputVolumesMap := make(map[string]storage.StorageSpec)
+func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
+	outputVolumesMap := make(map[string]model.StorageSpec)
 	outputVolumes = append(outputVolumes, "outputs:/outputs")
 
 	for _, outputVolume := range outputVolumes {
@@ -101,16 +100,16 @@ func buildJobOutputs(outputVolumes []string) ([]storage.StorageSpec, error) {
 			)
 		}
 
-		outputVolumesMap[slices[1]] = storage.StorageSpec{
+		outputVolumesMap[slices[1]] = model.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: storage.StorageSourceIPFS,
+			Engine: model.StorageSourceIPFS,
 			Name:   slices[0],
 			Path:   slices[1],
 		}
 	}
 
-	returnOutputVolumes := []storage.StorageSpec{}
+	returnOutputVolumes := []model.StorageSpec{}
 	for _, storageSpec := range outputVolumesMap {
 		returnOutputVolumes = append(returnOutputVolumes, storageSpec)
 	}

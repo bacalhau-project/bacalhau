@@ -7,26 +7,25 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type InMemoryDatastore struct {
 	// we keep pointers to these things because we will update them partially
-	jobs        map[string]*executor.Job
-	states      map[string]*executor.JobState
-	events      map[string][]executor.JobEvent
-	localEvents map[string][]executor.JobLocalEvent
+	jobs        map[string]*model.Job
+	states      map[string]*model.JobState
+	events      map[string][]model.JobEvent
+	localEvents map[string][]model.JobLocalEvent
 	mtx         sync.RWMutex
 }
 
 func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	res := &InMemoryDatastore{
-		jobs:        map[string]*executor.Job{},
-		states:      map[string]*executor.JobState{},
-		events:      map[string][]executor.JobEvent{},
-		localEvents: map[string][]executor.JobLocalEvent{},
+		jobs:        map[string]*model.Job{},
+		states:      map[string]*model.JobState{},
+		events:      map[string][]model.JobEvent{},
+		localEvents: map[string][]model.JobLocalEvent{},
 	}
 	res.mtx.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -35,48 +34,48 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	return res, nil
 }
 
-func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (executor.Job, error) {
+func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	job, ok := d.jobs[id]
 	if !ok {
-		return executor.Job{}, fmt.Errorf("no job found: %s", id)
+		return model.Job{}, fmt.Errorf("no job found: %s", id)
 	}
 	return *job, nil
 }
 
-func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error) {
+func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
-		return []executor.JobEvent{}, fmt.Errorf("no job found: %s", id)
+		return []model.JobEvent{}, fmt.Errorf("no job found: %s", id)
 	}
 	result, ok := d.events[id]
 	if !ok {
-		result = []executor.JobEvent{}
+		result = []model.JobEvent{}
 	}
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error) {
+func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
-		return []executor.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
+		return []model.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
 	}
 	result, ok := d.localEvents[id]
 	if !ok {
-		result = []executor.JobLocalEvent{}
+		result = []model.JobLocalEvent{}
 	}
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]executor.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	result := []executor.Job{}
+	result := []model.Job{}
 	if query.ID != "" {
 		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {
@@ -91,7 +90,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	return result, nil
 }
 
-func (d *InMemoryDatastore) AddJob(ctx context.Context, job executor.Job) error {
+func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[job.ID]
@@ -102,7 +101,7 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, job executor.Job) error 
 	return nil
 }
 
-func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev executor.JobEvent) error {
+func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev model.JobEvent) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
@@ -111,14 +110,14 @@ func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev execu
 	}
 	eventArr, ok := d.events[jobID]
 	if !ok {
-		eventArr = []executor.JobEvent{}
+		eventArr = []model.JobEvent{}
 	}
 	eventArr = append(eventArr, ev)
 	d.events[jobID] = eventArr
 	return nil
 }
 
-func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev executor.JobLocalEvent) error {
+func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev model.JobLocalEvent) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
@@ -127,14 +126,14 @@ func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev 
 	}
 	eventArr, ok := d.localEvents[jobID]
 	if !ok {
-		eventArr = []executor.JobLocalEvent{}
+		eventArr = []model.JobLocalEvent{}
 	}
 	eventArr = append(eventArr, ev)
 	d.localEvents[jobID] = eventArr
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error {
+func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
@@ -145,22 +144,22 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	return nil
 }
 
-func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (executor.JobState, error) {
+func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
-		return executor.JobState{}, fmt.Errorf("no job found: %s", jobID)
+		return model.JobState{}, fmt.Errorf("no job found: %s", jobID)
 	}
 	state, ok := d.states[jobID]
 	if !ok {
-		return executor.JobState{}, nil
+		return model.JobState{}, nil
 	}
 	// copy job state because it has mutable fields (Nodes), we should return a
 	// value that isn't concurrently being modified
 	// XXX what about the mutable fields within JobNodeState :-(
-	newJobState := executor.JobState{
-		Nodes: map[string]executor.JobNodeState{},
+	newJobState := model.JobState{
+		Nodes: map[string]model.JobNodeState{},
 	}
 	for idx, node := range state.Nodes {
 		newJobState.Nodes[idx] = node
@@ -172,7 +171,7 @@ func (d *InMemoryDatastore) UpdateShardState(
 	ctx context.Context,
 	jobID, nodeID string,
 	shardIndex int,
-	update executor.JobShardState,
+	update model.JobShardState,
 ) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -182,19 +181,19 @@ func (d *InMemoryDatastore) UpdateShardState(
 	}
 	jobState, ok := d.states[jobID]
 	if !ok {
-		jobState = &executor.JobState{
-			Nodes: map[string]executor.JobNodeState{},
+		jobState = &model.JobState{
+			Nodes: map[string]model.JobNodeState{},
 		}
 	}
 	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
-		nodeState = executor.JobNodeState{
-			Shards: map[int]executor.JobShardState{},
+		nodeState = model.JobNodeState{
+			Shards: map[int]model.JobShardState{},
 		}
 	}
 	shardSate, ok := nodeState.Shards[shardIndex]
 	if !ok {
-		shardSate = executor.JobShardState{
+		shardSate = model.JobShardState{
 			NodeID:     nodeID,
 			ShardIndex: shardIndex,
 		}
@@ -209,7 +208,7 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.VerificationProposal = update.VerificationProposal
 	}
 
-	if storage.IsValidStorageSourceType(update.PublishedResult.Engine) {
+	if model.IsValidStorageSourceType(update.PublishedResult.Engine) {
 		shardSate.PublishedResult = update.PublishedResult
 	}
 

@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/noop"
@@ -10,7 +11,7 @@ import (
 func NewNoopVerifiers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (map[verifier.VerifierType]verifier.Verifier, error) {
+) (map[model.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		cm,
 		resolver,
@@ -19,7 +20,7 @@ func NewNoopVerifiers(
 		return nil, err
 	}
 
-	return map[verifier.VerifierType]verifier.Verifier{
-		verifier.VerifierNoop: noopVerifier,
+	return map[model.VerifierType]verifier.Verifier{
+		model.VerifierNoop: noopVerifier,
 	}, nil
 }
