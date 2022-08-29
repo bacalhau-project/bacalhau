@@ -40,6 +40,7 @@ func SetupTest(
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
+	// TODO @enricorotundo #493: needed every time?
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()

@@ -482,7 +482,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
 		defer cm.Cleanup()
 
-		cid, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(text))
+		cid, _ := ipfsStack.AddTextToNodes(1, []byte(text))
 
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -529,10 +529,47 @@ const IpfsMetadataSize = 8
 func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 	runTest := func(text string, expected uint64) {
-		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
-		defer stack.CleanupManager.Cleanup()
 
-		cid, err := stack.IpfsStack.AddTextToNodes(1, []byte(text))
+		cm := system.NewCleanupManager()
+
+		// TODO @enricorotundo #493: use SetupTestDockerIpfs instead?
+		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
+		require.NoError(suite.T(), err)
+
+		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
+		transport, err := inprocess.NewInprocessTransport()
+		require.NoError(suite.T(), err)
+
+		datastore, err := inmemory.NewInMemoryDatastore()
+		require.NoError(suite.T(), err)
+
+		storageProviders, err := executor_util.NewStandardStorageProviders(cm, apiAddress)
+		require.NoError(suite.T(), err)
+
+		executors, err := executor_util.NewStandardExecutors(cm, apiAddress, "devstacknode0")
+		require.NoError(suite.T(), err)
+
+		verifiers, err := verifier_util.NewIPFSVerifiers(
+			cm,
+			apiAddress,
+			job.NewNoopJobLoader(),
+			job.NewNoopStateLoader(),
+		)
+		require.NoError(suite.T(), err)
+
+		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+		require.NoError(suite.T(), err)
+
+		_, err = computenode.NewComputeNode(
+			cm,
+			ctrl,
+			executors,
+			verifiers,
+			computenode.ComputeNodeConfig{},
+		)
+		require.NoError(suite.T(), err)
+
+		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
 		require.NoError(suite.T(), err)
 
 		executor := stack.Executors[model.EngineDocker]
