@@ -39,10 +39,11 @@ func (suite *IPFSHostStorageSuite) SetupTest() {
 }
 
 func (suite *IPFSHostStorageSuite) TearDownTest() {
+
 }
 
 func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
-
+	
 }
 
 type getStorageFunc func(cm *system.CleanupManager, api string) (

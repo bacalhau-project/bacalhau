@@ -56,6 +56,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
 func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 }
+
+// Simple job resource limits tests
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
 		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
@@ -470,7 +472,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		})
 		defer cm.Cleanup()
 
-		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
+		cid, _ := ipfsStack.AddTextToNodes(1, []byte(text))
 
 		result, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -520,6 +522,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 		cm := system.NewCleanupManager()
 
+		// TODO @enricorotundo #493: use SetupTestDockerIpfs instead?
 		ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
 		require.NoError(suite.T(), err)
 

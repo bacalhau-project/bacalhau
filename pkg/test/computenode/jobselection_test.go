@@ -42,8 +42,8 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 
 }
 
-// test that when we have RejectStatelessJobs turned on
-// we don't accept a job with no volumes
+// TestJobSelectionNoVolumes tests that when we have RejectStatelessJobs
+// turned on we don't accept a job with no volumes
 // but when it's not turned on the job is actually selected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	runTest := func(rejectSetting, expectedResult bool) {
@@ -63,6 +63,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	runTest(false, true)
 }
 
+// JobSelectionLocality tests that data locality is respected
+// when selecting a job
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 
 	// get the CID so we can use it in the tests below but without it actually being
@@ -108,6 +110,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	runTest(computenode.Anywhere, false, true)
 }
 
+// TestJobSelectionHttp tests that we can select a job based on
+// an http hook
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 	runTest := func(failMode, expectedResult bool) {
 		svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,10 +139,14 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
+	// hook says no - we don't accept
 	runTest(true, false)
+	// hook says yes - we accept
 	runTest(false, true)
 }
 
+// TestJobSelectionExec tests that we can select a job based on
+// an external command hook
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 	runTest := func(failMode, expectedResult bool) {
 		command := "exit 0"
@@ -157,10 +165,13 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
+	// hook says no - we don't accept
 	runTest(true, false)
+	// hook says yes - we accept
 	runTest(false, true)
 }
 
+// TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
 	computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()

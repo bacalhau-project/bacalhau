@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	// noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -36,6 +37,7 @@ func (suite *ComputeNodeRunJobSuite) SetupTest() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TearDownTest() {
+	
 }
 
 func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
@@ -69,6 +71,8 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	// TODO @enricorotundo #493: replace with SetupTestNoop
+	// computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.NewDefaultComputeNodeConfig(), noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
 	// it seems when we return an error so quickly we need to sleep a little bit
