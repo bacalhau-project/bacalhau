@@ -9,13 +9,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -67,11 +65,11 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"bash",
@@ -81,7 +79,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: 1,
 	}
 
@@ -96,12 +94,12 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		ctx,
 		submittedJob.ID,
 		len(nodeIDs),
-		job.WaitThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
+		job.WaitThrowErrors([]model.JobStateType{
+			model.JobStateCancelled,
+			model.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStateError: len(nodeIDs),
+		job.WaitForJobStates(map[model.JobStateType]int{
+			model.JobStateError: len(nodeIDs),
 		}),
 	)
 	require.NoError(suite.T(), err)

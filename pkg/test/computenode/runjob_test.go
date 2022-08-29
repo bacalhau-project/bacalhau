@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -55,10 +55,15 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
 	require.NoError(suite.T(), err)
 
-	err = computeNode.RunShardExecution(context.Background(), executor.Job{
+	job := model.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
-	}, 0, result)
+	}
+	shard := model.JobShard{
+		Job:   job,
+		Index: 0,
+	}
+	err = computeNode.RunShardExecution(context.Background(), shard, result)
 	require.NoError(suite.T(), err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
@@ -78,9 +83,14 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	err := computeNode.RunShardExecution(context.Background(), executor.Job{
+	job := model.Job{
 		ID:   "test",
-		Spec: executor.JobSpec{},
-	}, 0, "")
+		Spec: model.JobSpec{},
+	}
+	shard := model.JobShard{
+		Job:   job,
+		Index: 0,
+	}
+	err := computeNode.RunShardExecution(context.Background(), shard, "")
 	require.Error(suite.T(), err)
 }

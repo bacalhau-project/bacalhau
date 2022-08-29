@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -264,17 +262,17 @@ var dockerRunCmd = &cobra.Command{
 			ODR.WaitForJobToFinish = true
 		}
 
-		engineType, err := executor.ParseEngineType(ODR.Engine)
+		engineType, err := model.ParseEngineType(ODR.Engine)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := verifier.ParseVerifierType(ODR.Verifier)
+		verifierType, err := model.ParseVerifierType(ODR.Verifier)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := publisher.ParsePublisherType(ODR.Publisher)
+		publisherType, err := model.ParsePublisherType(ODR.Publisher)
 		if err != nil {
 			return err
 		}

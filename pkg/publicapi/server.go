@@ -20,11 +20,10 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/version"
@@ -46,7 +45,7 @@ const ServerReadHeaderTimeout = 10 * time.Second
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	Controller  *controller.Controller
-	Publishers  map[publisher.PublisherType]publisher.Publisher
+	Publishers  map[model.PublisherType]publisher.Publisher
 	Host        string
 	Port        int
 	componentMu sync.Mutex
@@ -57,7 +56,7 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
-	publishers map[publisher.PublisherType]publisher.Publisher,
+	publishers map[model.PublisherType]publisher.Publisher,
 ) *APIServer {
 	a := &APIServer{
 		Controller: c,
@@ -129,7 +128,7 @@ type listRequest struct {
 }
 
 type listResponse struct {
-	Jobs map[string]executor.Job `json:"jobs"`
+	Jobs map[string]model.Job `json:"jobs"`
 }
 
 type stateRequest struct {
@@ -138,7 +137,7 @@ type stateRequest struct {
 }
 
 type stateResponse struct {
-	State executor.JobState `json:"state"`
+	State model.JobState `json:"state"`
 }
 
 type resultsRequest struct {
@@ -147,7 +146,7 @@ type resultsRequest struct {
 }
 
 type resultsResponse struct {
-	Results []storage.StorageSpec `json:"results"`
+	Results []model.StorageSpec `json:"results"`
 }
 
 type eventsRequest struct {
@@ -156,7 +155,7 @@ type eventsRequest struct {
 }
 
 type eventsResponse struct {
-	Events []executor.JobEvent `json:"events"`
+	Events []model.JobEvent `json:"events"`
 }
 
 type localEventsRequest struct {
@@ -165,7 +164,7 @@ type localEventsRequest struct {
 }
 
 type localEventsResponse struct {
-	LocalEvents []executor.JobLocalEvent `json:"localEvents"`
+	LocalEvents []model.JobLocalEvent `json:"localEvents"`
 }
 
 type versionRequest struct {
@@ -173,7 +172,7 @@ type versionRequest struct {
 }
 
 type versionResponse struct {
-	VersionInfo *executor.VersionInfo `json:"version_info"`
+	VersionInfo *model.VersionInfo `json:"version_info"`
 }
 
 func (apiServer *APIServer) id(res http.ResponseWriter, req *http.Request) {
@@ -230,7 +229,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rawJobs := map[string]executor.Job{}
+	rawJobs := map[string]model.Job{}
 
 	for _, listJob := range list { //nolint:gocritic
 		rawJobs[listJob.ID] = listJob
@@ -276,7 +275,7 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	publisher, err := apiServer.getPublisher(req.Context(), publisher.PublisherIpfs)
+	publisher, err := apiServer.getPublisher(req.Context(), model.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -365,7 +364,7 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 
 type submitRequest struct {
 	// The data needed to submit and run a job on the network:
-	Data executor.JobCreatePayload `json:"data"`
+	Data model.JobCreatePayload `json:"data"`
 
 	// A base64-encoded signature of the data, signed by the client:
 	ClientSignature string `json:"signature"`
@@ -375,7 +374,7 @@ type submitRequest struct {
 }
 
 type submitResponse struct {
-	Job executor.Job `json:"job"`
+	Job model.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
@@ -431,8 +430,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, storage.StorageSpec{
-			Engine: storage.StorageSourceIPFS,
+		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, model.StorageSpec{
+			Engine: model.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/job",
 		})
@@ -458,7 +457,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getPublisher(ctx context.Context, typ publisher.PublisherType) (publisher.Publisher, error) {
+func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
 	apiServer.componentMu.Lock()
 	defer apiServer.componentMu.Unlock()
 

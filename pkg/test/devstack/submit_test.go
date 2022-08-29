@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -54,14 +54,14 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	_, missingSpecError := apiClient.Submit(ctx, executor.JobSpec{}, executor.JobDeal{
+	_, missingSpecError := apiClient.Submit(ctx, model.JobSpec{}, model.JobDeal{
 		Concurrency: 1,
 	}, nil)
 
 	require.Error(suite.T(), missingSpecError)
 
-	_, missingDealError := apiClient.Submit(ctx, executor.JobSpec{
-		Engine: executor.EngineDocker,
-	}, executor.JobDeal{}, nil)
+	_, missingDealError := apiClient.Submit(ctx, model.JobSpec{
+		Engine: model.EngineDocker,
+	}, model.JobDeal{}, nil)
 	require.Error(suite.T(), missingDealError)
 }

@@ -2,6 +2,8 @@ package verifier
 
 import (
 	"context"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type VerifierResult struct {
@@ -25,8 +27,7 @@ type Verifier interface {
 	// the results after verification
 	GetShardResultPath(
 		ctx context.Context,
-		jobID string,
-		shardIndex int,
+		shard model.JobShard,
 	) (string, error)
 
 	// compute node
@@ -38,8 +39,7 @@ type Verifier interface {
 	// and encrypt that hash with the public key of the requester
 	GetShardProposal(
 		ctx context.Context,
-		jobID string,
-		shardIndex int,
+		shard model.JobShard,
 		shardResultPath string,
 	) ([]byte, error)
 

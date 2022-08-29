@@ -17,6 +17,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -54,7 +55,7 @@ type GetStorageProvidersFunc func(
 	ipfsMultiAddress string,
 	nodeIndex int,
 ) (
-	map[storage.StorageSourceType]storage.StorageProvider,
+	map[model.StorageSourceType]storage.StorageProvider,
 	error,
 )
 
@@ -63,7 +64,7 @@ type GetExecutorsFunc func(
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
-	map[executor.EngineType]executor.Executor,
+	map[model.EngineType]executor.Executor,
 	error,
 )
 
@@ -72,7 +73,7 @@ type GetVerifiersFunc func(
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
-	map[verifier.VerifierType]verifier.Verifier,
+	map[model.VerifierType]verifier.Verifier,
 	error,
 )
 
@@ -81,7 +82,7 @@ type GetPublishersFunc func(
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
-	map[publisher.PublisherType]publisher.Publisher,
+	map[model.PublisherType]publisher.Publisher,
 	error,
 )
 
@@ -90,7 +91,7 @@ func NewDevStackForRunLocal(
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
@@ -100,7 +101,7 @@ func NewDevStackForRunLocal(
 		nodeIndex int,
 		_ *controller.Controller,
 	) (
-		map[executor.EngineType]executor.Executor,
+		map[model.EngineType]executor.Executor,
 		error,
 	) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
@@ -120,7 +121,7 @@ func NewDevStackForRunLocal(
 		_ int,
 		ctrl *controller.Controller,
 	) (
-		map[verifier.VerifierType]verifier.Verifier,
+		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
 		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
@@ -130,7 +131,7 @@ func NewDevStackForRunLocal(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[publisher.PublisherType]publisher.Publisher,
+		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
 		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
@@ -148,7 +149,7 @@ func NewDevStackForRunLocal(
 				Locality:            computenode.Anywhere,
 				RejectStatelessJobs: false,
 			}, CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
+				ResourceLimitTotal: model.ResourceUsageConfig{
 					GPU: jobGPU,
 				},
 			},
