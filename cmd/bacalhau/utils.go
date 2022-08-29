@@ -201,7 +201,7 @@ func ConvertJobspecToFile(
 	extension string,
 ) (err error) { //nolint:ireturn
 
-	fmt.Println(extension)
+	// fmt.Println(extension)
 	if extension == JSONExtension {
 		jobspecfile, _ := json.Marshal(jobSpec)
 		var jobspectmp executor.JobSpec
@@ -239,7 +239,7 @@ func ConvertJobspecToFile(
 			fmt.Println(err)
 			return err
 		}
-		fmt.Println(string(jobspecfilenew))
+		// fmt.Println(string(jobspecfilenew))
 		err = os.WriteFile(fileName, jobspecfilenew, 0644)
 		if err != nil {
 			panic("Unable to write data into the file")

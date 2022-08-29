@@ -150,8 +150,8 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.OutputVolumes, "output-volumes", "o", ODR.OutputVolumes,
 		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
 	)
-	dockerRunCmd.PersistentFlags().StringVarP(
-		&ODR.OutputFileName, "output-jobspec", "f", ODR.OutputFileName,
+	dockerRunCmd.PersistentFlags().StringVar(
+		&ODR.OutputFileName, "output-jobspec", ODR.OutputFileName,
 		`name:path of the output data volumes. 'outputs:/outputs' is always added.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
