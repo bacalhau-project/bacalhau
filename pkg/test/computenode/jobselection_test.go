@@ -42,8 +42,8 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 
 }
 
-// test that when we have RejectStatelessJobs turned on
-// we don't accept a job with no volumes
+// TestJobSelectionNoVolumes tests that when we have RejectStatelessJobs
+// turned on we don't accept a job with no volumes
 // but when it's not turned on the job is actually selected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	ctx := context.Background()
@@ -64,6 +64,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	runTest(false, true)
 }
 
+// JobSelectionLocality tests that data locality is respected
+// when selecting a job
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	ctx := context.Background()
 
@@ -110,6 +112,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	runTest(computenode.Anywhere, false, true)
 }
 
+// TestJobSelectionHttp tests that we can select a job based on
+// an http hook
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 	ctx := context.Background()
 	runTest := func(failMode, expectedResult bool) {
@@ -138,10 +142,14 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
+	// hook says no - we don't accept
 	runTest(true, false)
+	// hook says yes - we accept
 	runTest(false, true)
 }
 
+// TestJobSelectionExec tests that we can select a job based on
+// an external command hook
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 	ctx := context.Background()
 	runTest := func(failMode, expectedResult bool) {
@@ -161,10 +169,13 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
+	// hook says no - we don't accept
 	runTest(true, false)
+	// hook says yes - we accept
 	runTest(false, true)
 }
 
+// TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
 	ctx := context.Background()
 	computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})

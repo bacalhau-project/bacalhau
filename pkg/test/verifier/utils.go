@@ -1,4 +1,4 @@
-package ipfs
+package verifier
 
 import (
 	"testing"
@@ -6,15 +6,14 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 // TODO @enricorotundo #493: duplicate?
 // TODO @enricorotundo #493: move next to SetupTestDockerIpfs ?
 func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	stack, err := devstack.NewDevStackIPFS(cm, ctx, nodes)
-	require.NoError(t, err)
+	stack, err := devstack.NewDevStackIPFS(cm, nodes)
+	require.NoError(t, err, "unable to create devstack")
 
 	return stack, cm
 }

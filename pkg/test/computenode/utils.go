@@ -24,12 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setup a docker ipfs stack to run compute node tests against
+// Setup a docker ipfs devstack to run compute node tests against
 func SetupTestDockerIpfs(
 	t *testing.T,
 	ctx context.Context,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
+	// TODO @enricorotundo #493: needed here?
+	// system.InitConfigForTesting(t)
+	
 	cm := system.NewCleanupManager()
 
 	ipfsStack, err := devstack.NewDevStackIPFS(cm, ctx, 1)
@@ -92,6 +95,9 @@ func SetupTestDockerIpfs(
 	return computeNode, ipfsStack, cm
 }
 
+// TODO @enricorotundo #493: move this to dedicated test tooling package?
+// TODO @enricorotundo #493: REFACTOR - align SetupTestNoop with SetupTestDockerIpfs
+// setup a full noop stack to run tests against
 func SetupTestNoop(
 	t *testing.T,
 	//nolint:gocritic

@@ -42,6 +42,7 @@ func (suite *ExecutorDockerExecutorSuite) SetupTest() {
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
+	
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownAllSuite() {
