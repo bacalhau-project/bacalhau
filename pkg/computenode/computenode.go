@@ -24,7 +24,7 @@ import (
 
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
-const ControlLoopIntervalMinutes = 10
+const ControlLoopIntervalMillis = 100
 const DelayBeforeBidMillisecondRange = 100
 
 type ComputeNodeConfig struct {
@@ -140,11 +140,7 @@ func constructComputeNode(
 */
 
 func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
-	// this won't hurt our throughput becauase we are calling
-	// controlLoopBidOnJobs right away as soon as a created event is
-	// seen or a job has finished
-
-	ticker := time.NewTicker(time.Minute * ControlLoopIntervalMinutes)
+	ticker := time.NewTicker(time.Millisecond * ControlLoopIntervalMillis)
 	ctx, cancelFunction := context.WithCancel(context.Background())
 
 	cm.RegisterCallback(func() error {
@@ -155,7 +151,7 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 	for {
 		select {
 		case <-ticker.C:
-			node.controlLoopBidOnJobs("tick")
+			node.controlLoopBidOnJobs()
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -170,13 +166,11 @@ func (node *ComputeNode) controlLoopSetup(cm *system.CleanupManager) {
 //   - if there is enough in the remaining then bid
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
-func (node *ComputeNode) controlLoopBidOnJobs(debug string) {
-	log.Debug().Msgf("[%s] starting controlLoopBidOnJobs because %s, acq lock", node.id[:8], debug)
+func (node *ComputeNode) controlLoopBidOnJobs() {
 	node.bidMu.Lock()
 	defer node.bidMu.Unlock()
 	bidJobIds := node.capacityManager.GetNextItems()
 
-	log.Debug().Msgf("len(bidJobIds)=%d", len(bidJobIds))
 	for _, flatID := range bidJobIds {
 		jobID, shardIndex, err := capacitymanager.ExplodeShardID(flatID)
 		if err != nil {
