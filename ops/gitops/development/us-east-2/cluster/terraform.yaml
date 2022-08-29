@@ -1,0 +1,43 @@
+apiVersion: infra.contrib.fluxcd.io/v1alpha1
+kind: Terraform
+metadata:
+  name: tf-manifest
+spec:
+  disableDriftDetection: true
+  interval: 1m
+  path: ./ops/terraform
+  vars:
+  - name: bacalhau_version
+    value: v0.1.43
+  - name: bacalhau_port
+    value: 1235
+  - name: bacalhau_connect_node0
+    value: QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD
+  - name: ipfs_version
+    value: v0.12.2
+  - name: gcp_project
+    value: bacalhau-development
+  - name: instance_count
+    value: 2
+  - name: region
+    value: europe-north1
+  - name: region
+    value: europe-north1-c
+  - name: volume_size_gb
+    value: 10
+  - name: volume_size_gb
+    value: e2-standard-4
+  - name: protect_resources
+    value: true
+  - name: auto_subnets
+    value: false
+  - name: ingress_cidrs
+    value: ["0.0.0.0/0"]
+  - name: ssh_access_cidrs
+    value: ["0.0.0.0/0"]
+  - name: num_gpu_machines
+    value: 0
+  sourceRef:
+    kind: GitRepository
+    name: helloworld
+    namespace: flux-system
