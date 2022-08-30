@@ -32,14 +32,23 @@ type TestStack struct {
 	Executors      map[executor.EngineType]executor.Executor
 }
 
-// Setup a docker ipfs devstack to run compute node tests against (formerly SetupTestDockerIpfs)
+// Setup a docker ipfs devstack to run compute node tests against 
+// (formerly SetupTestDockerIpfs)
 func NewDockerIpfsStack(
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) *TestStack {
+	return NewDockerIpfsStackMultiNode(t, config, 1)
+}
+
+func NewDockerIpfsStackMultiNode(
+	t *testing.T,
+	config computenode.ComputeNodeConfig, //nolint:gocritic
+	nodes int,
+) *TestStack {
 	cm := system.NewCleanupManager()
 
-	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
+	ipfsStack, err := devstack.NewDevStackIPFS(cm, nodes)
 	require.NoError(t, err)
 
 	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
