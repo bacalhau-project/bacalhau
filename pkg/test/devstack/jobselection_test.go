@@ -4,15 +4,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -71,18 +68,18 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(stack, model.StorageSourceIPFS, testCase.addFilesCount)
 
-		jobSpec := executor.JobSpec{
-			Engine:    executor.EngineDocker,
-			Verifier:  verifier.VerifierNoop,
-			Publisher: publisher.PublisherNoop,
+		jobSpec := model.JobSpec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherNoop,
 			Docker:    scenario.GetJobSpec(),
 			Inputs:    inputStorageList,
 			Outputs:   scenario.Outputs,
 		}
 
-		jobDeal := executor.JobDeal{
+		jobDeal := model.JobDeal{
 			Concurrency: testCase.nodeCount,
 		}
 
@@ -98,12 +95,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			submittedJob.ID,
 			len(nodeIDs),
 			job.WaitDontExceedCount(testCase.expectedAccepts),
-			job.WaitThrowErrors([]executor.JobStateType{
-				executor.JobStateCancelled,
-				executor.JobStateError,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateCancelled,
+				model.JobStateError,
 			}),
-			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStatePublished: testCase.expectedAccepts,
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStatePublished: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

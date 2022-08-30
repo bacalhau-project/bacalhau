@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -34,8 +33,8 @@ type IPFSDownloadSettings struct {
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
-	job executor.Job,
-	results []storage.StorageSpec,
+	job model.Job,
+	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
 ) error {
 	if len(results) == 0 {

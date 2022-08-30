@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/go-resty/resty/v2"
@@ -51,18 +52,18 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	_, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 	return false, nil
 }
 
 // Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
-func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
+func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
@@ -93,10 +94,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec stora
 	return volume, nil
 }
 
-// func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
+// func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	storageSpec storage.StorageSpec,
+	storageSpec model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
 	pathToCleanup := filepath.Dir(volume.Source)
@@ -111,17 +112,17 @@ func (sp *StorageProvider) CleanupStorage(
 }
 
 // we don't "upload" anything to a URL
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
-	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
 // for the url download - explode will always result in a single item
 // mounted at the path specified in the spec
-func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	return []storage.StorageSpec{
+func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	return []model.StorageSpec{
 		{
 			Name:   spec.Name,
-			Engine: storage.StorageSourceURLDownload,
+			Engine: model.StorageSourceURLDownload,
 			Path:   spec.Path,
 			URL:    spec.URL,
 		},

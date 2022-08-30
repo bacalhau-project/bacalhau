@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -18,21 +17,21 @@ import (
 
 
 
-func GetJobSpec(cid string) executor.JobSpec {
-	inputs := []storage.StorageSpec{}
+func GetJobSpec(cid string) model.JobSpec {
+	inputs := []model.StorageSpec{}
 	if cid != "" {
-		inputs = []storage.StorageSpec{
+		inputs = []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    cid,
 				Path:   "/test_file.txt",
 			},
 		}
 	}
-	return executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
-		Docker: executor.JobSpecDocker{
+	return model.JobSpec{
+		Engine:   model.EngineDocker,
+		Verifier: model.VerifierNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"cat",
@@ -52,8 +51,8 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 }
 
 //nolint:unused,deadcode
-func getResources(c, m, d string) capacitymanager.ResourceUsageConfig {
-	return capacitymanager.ResourceUsageConfig{
+func getResources(c, m, d string) model.ResourceUsageConfig {
+	return model.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
 		Disk:   d,
@@ -61,8 +60,8 @@ func getResources(c, m, d string) capacitymanager.ResourceUsageConfig {
 }
 
 //nolint:unused,deadcode
-func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
-	var res []capacitymanager.ResourceUsageConfig
+func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
+	var res []model.ResourceUsageConfig
 	for _, d := range data {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}
@@ -72,14 +71,20 @@ func getResourcesArray(data [][]string) []capacitymanager.ResourceUsageConfig {
 func RunJobGetStdout(
 	t *testing.T,
 	computeNode *computenode.ComputeNode,
-	spec executor.JobSpec,
+	spec model.JobSpec,
 ) string {
 	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
 	require.NoError(t, err)
-	err = computeNode.RunShardExecution(context.Background(), executor.Job{
+
+	job := model.Job{
 		ID:   "test",
 		Spec: spec,
-	}, 0, result)
+	}
+	shard := model.JobShard{
+		Job:   job,
+		Index: 0,
+	}
+	err = computeNode.RunShardExecution(context.Background(), shard, result)
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

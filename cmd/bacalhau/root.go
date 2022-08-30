@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -28,16 +29,30 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)
 
+	defaultAPIHost := system.Envs[system.Production].APIHost
+	defaultAPIPort := system.Envs[system.Production].APIPort
+
+	if config.GetAPIHost() != "" {
+		defaultAPIHost = config.GetAPIHost()
+	}
+
+	if config.GetAPIPort() != "" {
+		intPort, err := strconv.Atoi(config.GetAPIPort())
+		if err == nil {
+			defaultAPIPort = intPort
+		}
+	}
+
 	RootCmd.AddCommand(getCmd)
 	RootCmd.AddCommand(listCmd)
 	RootCmd.AddCommand(describeCmd)
 	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
-		&apiHost, "api-host", system.Envs[system.Production].APIHost,
+		&apiHost, "api-host", defaultAPIHost,
 		`The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set.`,
 	)
 	RootCmd.PersistentFlags().IntVar(
-		&apiPort, "api-port", system.Envs[system.Production].APIPort,
+		&apiPort, "api-port", defaultAPIPort,
 		`The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
 	RootCmd.AddCommand(versionCmd)

@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -54,6 +52,7 @@ type DockerRunOptions struct {
 	OutputVolumes []string // Array of output volumes in 'name:mount point' form
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
+	Confidence    int      // Minimum number of nodes that must agree on a verification result
 	CPU           string
 	Memory        string
 	GPU           string
@@ -87,6 +86,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		OutputVolumes:                    []string{},
 		Env:                              []string{},
 		Concurrency:                      1,
+		Confidence:                       0,
 		CPU:                              "",
 		Memory:                           "",
 		GPU:                              "",
@@ -149,6 +149,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	dockerRunCmd.PersistentFlags().IntVarP(
 		&ODR.Concurrency, "concurrency", "c", ODR.Concurrency,
 		`How many nodes should run the job`,
+	)
+	dockerRunCmd.PersistentFlags().IntVar(
+		&ODR.Confidence, "confidence", ODR.Confidence,
+		`The minimum number of nodes that must agree on a verification result`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.CPU, "cpu", ODR.CPU,
@@ -264,17 +268,17 @@ var dockerRunCmd = &cobra.Command{
 			ODR.WaitForJobToFinish = true
 		}
 
-		engineType, err := executor.ParseEngineType(ODR.Engine)
+		engineType, err := model.ParseEngineType(ODR.Engine)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := verifier.ParseVerifierType(ODR.Verifier)
+		verifierType, err := model.ParseVerifierType(ODR.Verifier)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := publisher.ParsePublisherType(ODR.Publisher)
+		publisherType, err := model.ParsePublisherType(ODR.Publisher)
 		if err != nil {
 			return err
 		}
@@ -305,6 +309,7 @@ var dockerRunCmd = &cobra.Command{
 			ODR.Entrypoint,
 			ODR.Image,
 			ODR.Concurrency,
+			ODR.Confidence,
 			ODR.Labels,
 			ODR.WorkingDir,
 			ODR.ShardingGlobPattern,

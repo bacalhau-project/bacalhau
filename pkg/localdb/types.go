@@ -3,7 +3,7 @@ package localdb
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type JobQuery struct {
@@ -18,19 +18,19 @@ type JobQuery struct {
 // The LocalDB and Transport interfaces could be swapped out for some kind
 // of smart contract implementation (e.g. FVM)
 type LocalDB interface {
-	GetJob(ctx context.Context, id string) (executor.Job, error)
-	GetJobState(ctx context.Context, jobID string) (executor.JobState, error)
-	GetJobEvents(ctx context.Context, id string) ([]executor.JobEvent, error)
-	GetJobLocalEvents(ctx context.Context, id string) ([]executor.JobLocalEvent, error)
-	GetJobs(ctx context.Context, query JobQuery) ([]executor.Job, error)
-	AddJob(ctx context.Context, job executor.Job) error
-	AddEvent(ctx context.Context, jobID string, event executor.JobEvent) error
-	AddLocalEvent(ctx context.Context, jobID string, event executor.JobLocalEvent) error
-	UpdateJobDeal(ctx context.Context, jobID string, deal executor.JobDeal) error
+	GetJob(ctx context.Context, id string) (model.Job, error)
+	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
+	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
+	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
+	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
+	AddJob(ctx context.Context, job model.Job) error
+	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
+	AddLocalEvent(ctx context.Context, jobID string, event model.JobLocalEvent) error
+	UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error
 	UpdateShardState(
 		ctx context.Context,
 		jobID, nodeID string,
 		shardIndex int,
-		state executor.JobShardState,
+		state model.JobShardState,
 	) error
 }

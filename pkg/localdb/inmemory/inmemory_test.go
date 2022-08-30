@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,15 +18,15 @@ func TestInMemoryDataStore(t *testing.T) {
 	store, err := NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	err = store.AddJob(context.Background(), executor.Job{
+	err = store.AddJob(context.Background(), model.Job{
 		ID: jobId,
 	})
 	require.NoError(t, err)
 
-	err = store.AddEvent(context.Background(), jobId, executor.JobEvent{
+	err = store.AddEvent(context.Background(), jobId, model.JobEvent{
 		JobID:        jobId,
 		SourceNodeID: nodeId,
-		EventName:    executor.JobEventBid,
+		EventName:    model.JobEventBid,
 	})
 	require.NoError(t, err)
 
@@ -34,18 +34,18 @@ func TestInMemoryDataStore(t *testing.T) {
 		jobId,
 		nodeId,
 		shardIndex,
-		executor.JobShardState{
+		model.JobShardState{
 			NodeID:               nodeId,
 			ShardIndex:           shardIndex,
-			State:                executor.JobStateBidding,
+			State:                model.JobStateBidding,
 			Status:               "hello",
 			VerificationProposal: []byte("apples"),
 		},
 	)
 	require.NoError(t, err)
 
-	err = store.AddLocalEvent(context.Background(), jobId, executor.JobLocalEvent{
-		EventName: executor.JobLocalEventSelected,
+	err = store.AddLocalEvent(context.Background(), jobId, model.JobLocalEvent{
+		EventName: model.JobLocalEventSelected,
 	})
 	require.NoError(t, err)
 
@@ -56,12 +56,12 @@ func TestInMemoryDataStore(t *testing.T) {
 	// events, err := store.GetJobEvents(context.Background(), jobId)
 	// require.NoError(t, err)
 	// require.Equal(t, 1, len(events))
-	// require.Equal(t, executor.JobEventBid, events[0].EventName)
+	// require.Equal(t, model.JobEventBid, events[0].EventName)
 
 	localEvents, err := store.GetJobLocalEvents(context.Background(), jobId)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(localEvents))
-	require.Equal(t, executor.JobLocalEventSelected, localEvents[0].EventName)
+	require.Equal(t, model.JobLocalEventSelected, localEvents[0].EventName)
 
 	jobState, err := store.GetJobState(context.Background(), jobId)
 	require.NoError(t, err)
@@ -72,6 +72,6 @@ func TestInMemoryDataStore(t *testing.T) {
 	shardState, ok := nodeState.Shards[shardIndex]
 	require.True(t, ok)
 
-	require.Equal(t, executor.JobStateBidding, shardState.State)
+	require.Equal(t, model.JobStateBidding, shardState.State)
 	require.Equal(t, "hello", shardState.Status)
 }

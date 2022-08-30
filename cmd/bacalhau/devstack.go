@@ -14,10 +14,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -104,10 +107,10 @@ var devstackCmd = &cobra.Command{
 		defer cancel()
 
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
-			map[storage.StorageSourceType]storage.StorageProvider, error) {
+			map[model.StorageSourceType]storage.StorageProvider, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopStorageProviders(cm)
+				return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
 			}
 
 			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
@@ -115,8 +118,8 @@ var devstackCmd = &cobra.Command{
 			})
 		}
 
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
-			map[executor.EngineType]executor.Executor, error) {
+		getExecutors := func(ipfsMultiAddress string, nodeIndex int, isBadActor bool, ctrl *controller.Controller) (
+			map[model.EngineType]executor.Executor, error) {
 
 			if ODs.IsNoop {
 				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
@@ -125,7 +128,8 @@ var devstackCmd = &cobra.Command{
 			return executor_util.NewStandardExecutors(
 				cm,
 				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("devstacknode%d", nodeIndex),
+					DockerID:   fmt.Sprintf("devstacknode%d", nodeIndex),
+					IsBadActor: isBadActor,
 					Storage: executor_util.StandardStorageProviderOptions{
 						IPFSMultiaddress: ipfsMultiAddress,
 					},
@@ -134,21 +138,26 @@ var devstackCmd = &cobra.Command{
 		}
 
 		getVerifiers := func(
-			ipfsMultiAddress string,
+			transport *libp2p.LibP2PTransport,
 			nodeIndex int,
 			ctrl *controller.Controller,
-		) (map[verifier.VerifierType]verifier.Verifier, error) {
+		) (map[model.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
 				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
 			}
-			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+			return verifier_util.NewStandardVerifiers(
+				cm,
+				ctrl.GetStateResolver(),
+				transport.Encrypt,
+				transport.Decrypt,
+			)
 		}
 
 		getPublishers := func(
 			ipfsMultiAddress string,
 			nodeIndex int,
 			ctrl *controller.Controller,
-		) (map[publisher.PublisherType]publisher.Publisher, error) {
+		) (map[model.PublisherType]publisher.Publisher, error) {
 			if ODs.IsNoop {
 				return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
 			}

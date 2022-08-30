@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
@@ -70,26 +71,31 @@ func dockerExecutorStorageTest(
 			stack.IpfsStack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
-		job := executor.Job{
+		job := model.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
-			Spec: executor.JobSpec{
-				Engine:  executor.EngineDocker,
+			Spec: model.JobSpec{
+				Engine:  model.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: executor.JobDeal{
+			Deal: model.JobDeal{
 				Concurrency: TEST_NODE_COUNT,
 			},
 			CreatedAt: time.Now(),
 		}
 
+		shard := model.JobShard{
+			Job:   job,
+			Index: 0,
+		}
+
 		resultsDirectory, err := ioutil.TempDir("", "bacalhau-dockerExecutorStorageTest")
 		require.NoError(t, err)
 
-		err = dockerExecutor.RunShard(ctx, job, 0, resultsDirectory)
+		err = dockerExecutor.RunShard(ctx, shard, resultsDirectory)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(resultsDirectory)
