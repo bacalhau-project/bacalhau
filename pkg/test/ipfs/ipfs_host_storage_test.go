@@ -59,7 +59,6 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 			return apicopy.NewStorageProvider(cm, ctx, api)
 		},
 	)
-
 }
 
 func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
@@ -113,8 +112,12 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
-	result, err := system.RunCommandGetResults("sudo", []string{
-		"cat",
+	// TODO @enricorotundo #493: make sure sudo is not needed here
+	// result, err := system.RunCommandGetResults("sudo", []string{
+	// 	"cat",
+	// 	volume.Source,
+	// })
+	result, err := system.RunCommandGetResults("cat", []string{
 		volume.Source,
 	})
 	require.NoError(t, err)
@@ -169,8 +172,13 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
-	result, err := system.RunCommandGetResults("sudo", []string{
-		"cat",
+	
+	// TODO @enricorotundo #493: make sure sudo is not needed here
+	// result, err := system.RunCommandGetResults("sudo", []string{
+	// 	"cat",
+	// 	fmt.Sprintf("%s/file.txt", volume.Source),
+	// })
+	result, err := system.RunCommandGetResults("cat", []string{
 		fmt.Sprintf("%s/file.txt", volume.Source),
 	})
 	require.NoError(t, err)
