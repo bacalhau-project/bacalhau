@@ -4,13 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -49,30 +46,30 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		apiClient *publicapi.APIClient,
 		args DeterministicVerifierTestArgs,
 	) (string, error) {
-		jobSpec := executor.JobSpec{
-			Engine:    executor.EngineDocker,
-			Verifier:  verifier.VerifierDeterministic,
-			Publisher: publisher.PublisherNoop,
-			Docker: executor.JobSpecDocker{
+		jobSpec := model.JobSpec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierDeterministic,
+			Publisher: model.PublisherNoop,
+			Docker: model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					`echo hello`,
 				},
 			},
-			Inputs: []storage.StorageSpec{
+			Inputs: []model.StorageSpec{
 				{
-					Engine: storage.StorageSourceIPFS,
+					Engine: model.StorageSourceIPFS,
 					Cid:    "123",
 				},
 			},
-			Outputs: []storage.StorageSpec{},
-			Sharding: executor.JobShardingConfig{
+			Outputs: []model.StorageSpec{},
+			Sharding: model.JobShardingConfig{
 				GlobPattern: "/data/*.txt",
 				BatchSize:   1,
 			},
 		}
 
-		jobDeal := executor.JobDeal{
+		jobDeal := model.JobDeal{
 			Concurrency: args.NodeCount,
 			Confidence:  args.Confidence,
 		}

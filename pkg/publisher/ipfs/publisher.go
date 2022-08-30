@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
@@ -45,27 +45,25 @@ func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
 
 func (publisher *IPFSPublisher) PublishShardResult(
 	ctx context.Context,
+	shard model.JobShard,
 	hostID string,
-	jobID string,
-	shardIndex int,
 	shardResultPath string,
-) (storage.StorageSpec, error) {
+) (model.StorageSpec, error) {
 	ctx, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
 	log.Debug().Msgf(
-		"Uploading results folder to ipfs: %s %s %d %s",
+		"Uploading results folder to ipfs: %s %s %s",
 		hostID,
-		jobID,
-		shardIndex,
+		shard,
 		shardResultPath,
 	)
 	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
 	if err != nil {
-		return storage.StorageSpec{}, err
+		return model.StorageSpec{}, err
 	}
-	return storage.StorageSpec{
-		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", jobID, shardIndex, hostID),
-		Engine: storage.StorageSourceIPFS,
+	return model.StorageSpec{
+		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		Engine: model.StorageSourceIPFS,
 		Cid:    cid,
 	}, nil
 }
@@ -73,8 +71,8 @@ func (publisher *IPFSPublisher) PublishShardResult(
 func (publisher *IPFSPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
-) ([]storage.StorageSpec, error) {
-	results := []storage.StorageSpec{}
+) ([]model.StorageSpec, error) {
+	results := []model.StorageSpec{}
 	ctx, span := newSpan(ctx, "ComposeResultSet")
 	defer span.End()
 	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)

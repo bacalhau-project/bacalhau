@@ -4,30 +4,27 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
-	if reflect.DeepEqual(executor.JobSpec{}, spec) {
+func VerifyJob(spec model.JobSpec, deal model.JobDeal) error {
+	if reflect.DeepEqual(model.JobSpec{}, spec) {
 		return fmt.Errorf("job spec is empty")
 	}
 
-	if reflect.DeepEqual(executor.JobDeal{}, deal) {
+	if reflect.DeepEqual(model.JobDeal{}, deal) {
 		return fmt.Errorf("job spec is empty")
 	}
 
-	if !executor.IsValidEngineType(spec.Engine) {
+	if !model.IsValidEngineType(spec.Engine) {
 		return fmt.Errorf("invalid executor type: %s", spec.Engine.String())
 	}
 
-	if !verifier.IsValidVerifierType(spec.Verifier) {
+	if !model.IsValidVerifierType(spec.Verifier) {
 		return fmt.Errorf("invalid verifier type: %s", spec.Verifier.String())
 	}
 
-	if !publisher.IsValidPublisherType(spec.Publisher) {
+	if !model.IsValidPublisherType(spec.Publisher) {
 		return fmt.Errorf("invalid publisher type: %s", spec.Publisher.String())
 	}
 
@@ -36,7 +33,7 @@ func VerifyJob(spec executor.JobSpec, deal executor.JobDeal) error {
 	}
 
 	for _, inputVolume := range spec.Inputs {
-		if !storage.IsValidStorageSourceType(inputVolume.Engine) {
+		if !model.IsValidStorageSourceType(inputVolume.Engine) {
 			return fmt.Errorf("invalid input volume type: %s", inputVolume.Engine.String())
 		}
 	}

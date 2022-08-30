@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
@@ -108,17 +109,16 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 // Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
 func (m *shardStateMachineManager) StartShardStateIfNecessery(
-	jobID string, shardIndex int, node *ComputeNode, requirements capacitymanager.ResourceUsageData) {
+	shard model.JobShard, node *ComputeNode, requirements model.ResourceUsageData) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	flatID := capacitymanager.FlattenShardID(jobID, shardIndex)
 
-	if _, ok := m.shardStates[flatID]; !ok {
-		shardState := m.newStateMachine(jobID, shardIndex, node, requirements)
+	if _, ok := m.shardStates[shard.ID()]; !ok {
+		shardState := m.newStateMachine(shard, node, requirements)
 		go func() {
 			shardState.Run()
 		}()
-		m.shardStates[flatID] = shardState
+		m.shardStates[shard.ID()] = shardState
 		m.shardStatesList = append(m.shardStatesList, shardState)
 	} // else, fsm was already running
 }
@@ -183,16 +183,14 @@ func (m *shardStateMachineManager) cleanupCompleted() {
 			firstActive = index
 			break
 		}
-		delete(m.shardStates, item.flatID)
+		delete(m.shardStates, item.Shard.ID())
 	}
 	m.shardStatesList = m.shardStatesList[firstActive:]
 }
 
 type shardStateMachine struct {
-	jobID      string
-	shardIndex int
-	flatID     string
-	capacity   capacitymanager.CapacityManagerItem
+	Shard    model.JobShard
+	capacity capacitymanager.CapacityManagerItem
 
 	manager *shardStateMachineManager
 	node    *ComputeNode
@@ -207,16 +205,12 @@ type shardStateMachine struct {
 }
 
 func (m *shardStateMachineManager) newStateMachine(
-	jobID string, shardIndex int, node *ComputeNode, requirements capacitymanager.ResourceUsageData) *shardStateMachine {
-	flatID := capacitymanager.FlattenShardID(jobID, shardIndex)
-
+	shard model.JobShard, node *ComputeNode, requirements model.ResourceUsageData) *shardStateMachine {
 	stateMachine := &shardStateMachine{
-		jobID:        jobID,
-		shardIndex:   shardIndex,
-		flatID:       flatID,
+		Shard:        shard,
 		manager:      m,
 		node:         node,
-		capacity:     capacitymanager.CapacityManagerItem{ID: flatID, Requirements: requirements},
+		capacity:     capacitymanager.CapacityManagerItem{Shard: shard, Requirements: requirements},
 		req:          make(chan shardStateRequest),
 		currentState: shardInitialState,
 	}
@@ -230,7 +224,7 @@ func (m *shardStateMachineManager) newStateMachine(
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.id[:8], m.flatID, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.id[:8], m.Shard, m.currentState)
 }
 
 // run the state machineuntil it is completed.
@@ -294,14 +288,11 @@ func (m *shardStateMachine) transitionedTo(newState shardStateType) {
 func enqueuedState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardEnqueued)
 
-	// trigger the bidding loop as soon as the shard state is updated to enqueued.
-	go m.node.controlLoopBidOnJobs("job enqueud")
-
 	for {
 		req := <-m.req
 		switch req.action {
 		case actionBid:
-			err := m.node.BidOnJob(context.Background(), m.jobID, m.shardIndex)
+			err := m.node.BidOnJob(context.Background(), m.Shard)
 			if err != nil {
 				m.errorMsg = err.Error()
 				return errorState
@@ -349,7 +340,7 @@ func runningState(m *shardStateMachine) StateFn {
 	// but what the compute node verifier wants to pass to the requester
 	// node verifier
 	ctx := context.Background()
-	proposal, err := m.node.RunShard(ctx, m.jobID, m.shardIndex)
+	proposal, err := m.node.RunShard(ctx, m.Shard)
 	if err == nil {
 		m.resultProposal = proposal
 		return publishingToVerifierState
@@ -366,8 +357,8 @@ func publishingToVerifierState(m *shardStateMachine) StateFn {
 	ctx := context.Background()
 	err := m.node.controller.ShardExecutionFinished(
 		ctx,
-		m.jobID,
-		m.shardIndex,
+		m.Shard.Job.ID,
+		m.Shard.Index,
 		fmt.Sprintf("Got results proposal of length: %d", len(m.resultProposal)),
 		m.resultProposal,
 	)
@@ -403,7 +394,7 @@ func publishingToRequesterState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardPublishingToRequester)
 
 	ctx := context.Background()
-	err := m.node.PublishShard(ctx, m.jobID, m.shardIndex)
+	err := m.node.PublishShard(ctx, m.Shard)
 	if err != nil {
 		m.errorMsg = err.Error()
 		return errorState
@@ -422,8 +413,8 @@ func errorState(m *shardStateMachine) StateFn {
 		ctx := context.Background()
 		err := m.node.controller.ShardError(
 			ctx,
-			m.jobID,
-			m.shardIndex,
+			m.Shard.Job.ID,
+			m.Shard.Index,
 			errMessage,
 		)
 		if err != nil {
@@ -438,9 +429,5 @@ func errorState(m *shardStateMachine) StateFn {
 // we always reach this state, whether the job completed successfully or due to a failure.
 func completedState(m *shardStateMachine) StateFn {
 	m.transitionedTo(shardCompleted)
-
-	// once we've finished this shard - let's see if we should
-	// bid on another shard or if we've finished the job
-	go m.node.controlLoopBidOnJobs("job completed")
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -63,7 +63,7 @@ func (suite *GetSuite) TestGetJob() {
 	defer os.RemoveAll(outputDir)
 	for _, n := range numOfJobsTests {
 		func() {
-			var submittedJob executor.Job
+			var submittedJob model.Job
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()

@@ -14,15 +14,12 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -123,9 +120,9 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
 	require.NoError(suite.T(), err)
 
-	results, err := ipfsProvider.Explode(ctx, storage.StorageSpec{
+	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
 		Path:   "/input",
-		Engine: storage.StorageSourceIPFS,
+		Engine: model.StorageSourceIPFS,
 		Cid:    directoryCid,
 	})
 	require.NoError(suite.T(), err)
@@ -158,11 +155,10 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	if _, err := exec.LookPath("ulimit"); err == nil {
 		// Test to see how many files can be open on this system...
 		cmd := exec.Command("ulimit", "-n")
-		err := cmd.Run()
+		out, err := cmd.Output()
 		require.NoError(suite.T(), err)
 
-		out, _ := cmd.CombinedOutput()
-		ulimitValue, err = strconv.Atoi(string(out))
+		ulimitValue, err = strconv.Atoi(strings.TrimSpace(string(out)))
 		require.NoError(suite.T(), err)
 	} else {
 		var rLimit syscall.Rlimit
@@ -197,11 +193,11 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherIpfs,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherIpfs,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
@@ -210,27 +206,27 @@ func (suite *ShardingSuite) TestEndToEnd() {
 				`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//'); echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []storage.StorageSpec{
+		Outputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Name:   "results",
 				Path:   "/output",
 			},
 		},
-		Sharding: executor.JobShardingConfig{
+		Sharding: model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   batchSize,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -337,32 +333,32 @@ func (suite *ShardingSuite) TestNoShards() {
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
 				`echo "where did all the files go?"`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []storage.StorageSpec{},
-		Sharding: executor.JobShardingConfig{
+		Outputs: []model.StorageSpec{},
+		Sharding: model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   1,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -406,33 +402,33 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
 				`ls -la /inputs`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/inputs",
 			},
 		},
-		Outputs: []storage.StorageSpec{},
-		Sharding: executor.JobShardingConfig{
+		Outputs: []model.StorageSpec{},
+		Sharding: model.JobShardingConfig{
 			BasePath:    "/inputs",
 			GlobPattern: "*.mp4",
 			BatchSize:   1,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 

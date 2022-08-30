@@ -15,7 +15,7 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/libp2p/go-libp2p"
@@ -171,7 +171,7 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *LibP2PTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
+func (t *LibP2PTransport) Publish(ctx context.Context, ev model.JobEvent) error {
 	return t.writeJobEvent(ctx, ev)
 }
 
@@ -272,11 +272,11 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 // we can pass our tracing context to remote peers
 type jobEventEnvelope struct {
 	SentTime  time.Time              `json:"sent_time"`
-	JobEvent  executor.JobEvent      `json:"job_event"`
+	JobEvent  model.JobEvent         `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event executor.JobEvent) error {
+func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 

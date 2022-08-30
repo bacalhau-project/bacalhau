@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
-type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume storage.StorageSpec) (bool, error)
-type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume storage.StorageSpec) (uint64, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error
+type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
+type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) error
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
@@ -25,13 +25,13 @@ type ExecutorConfig struct {
 }
 
 type Executor struct {
-	Jobs   []executor.Job
+	Jobs   []model.Job
 	Config ExecutorConfig
 }
 
 func NewExecutor() (*Executor, error) {
 	Executor := &Executor{
-		Jobs: []executor.Job{},
+		Jobs: []model.Job{},
 	}
 	return Executor, nil
 }
@@ -53,7 +53,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	if e.Config.ExternalHooks.HasStorageLocally != nil {
 		handler := e.Config.ExternalHooks.HasStorageLocally
 		return handler(ctx, volume)
@@ -61,7 +61,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.Storage
 	return true, nil
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	if e.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := e.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)
@@ -71,14 +71,13 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume storage.StorageSpec
 
 func (e *Executor) RunShard(
 	ctx context.Context,
-	job executor.Job,
-	shardIndex int,
+	shard model.JobShard,
 	jobResultsDir string,
 ) error {
-	e.Jobs = append(e.Jobs, job)
+	e.Jobs = append(e.Jobs, shard.Job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
-		return handler(ctx, job, shardIndex, jobResultsDir)
+		return handler(ctx, shard, jobResultsDir)
 	}
 	return nil
 }

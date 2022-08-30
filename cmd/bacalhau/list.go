@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -137,7 +137,7 @@ var listCmd = &cobra.Command{
 
 		t.SetColumnConfigs(columnConfig)
 
-		jobArray := []executor.Job{}
+		jobArray := []model.Job{}
 		for _, j := range jobs {
 			if OL.IDFilter != "" {
 				if j.ID == OL.IDFilter || shortID(false, j.ID) == OL.IDFilter {
@@ -169,7 +169,7 @@ var listCmd = &cobra.Command{
 				jobIDs = append(jobIDs, j.ID)
 			}
 			jobIDs = ReverseList(jobIDs)
-			jobArray = []executor.Job{}
+			jobArray = []model.Job{}
 			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}
@@ -184,7 +184,7 @@ var listCmd = &cobra.Command{
 				j.Spec.Engine.String(),
 			}
 
-			if j.Spec.Engine == executor.EngineDocker {
+			if j.Spec.Engine == model.EngineDocker {
 				jobDesc = append(jobDesc, j.Spec.Docker.Image)
 				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
 			}

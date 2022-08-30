@@ -16,6 +16,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -88,7 +89,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			unsealedPath = fmt.Sprintf("%s/{{.Cid}}", basePath)
 		}
 
-		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress: ipfsMultiAddress,
 			})
@@ -99,7 +100,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			isBadActor bool,
 			ctrl *controller.Controller,
 		) (
-			map[executor.EngineType]executor.Executor,
+			map[model.EngineType]executor.Executor,
 			error,
 		) {
 			ipfsParts := strings.Split(ipfsMultiAddress, "/")
@@ -120,7 +121,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (
-			map[verifier.VerifierType]verifier.Verifier,
+			map[model.VerifierType]verifier.Verifier,
 			error,
 		) {
 			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
@@ -130,7 +131,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (
-			map[publisher.PublisherType]publisher.Publisher,
+			map[model.PublisherType]publisher.Publisher,
 			error,
 		) {
 			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
@@ -155,28 +156,28 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			cid = directoryCid
 		}
 
-		jobSpec := executor.JobSpec{
-			Engine:    executor.EngineDocker,
-			Verifier:  verifier.VerifierNoop,
-			Publisher: publisher.PublisherIpfs,
-			Docker: executor.JobSpecDocker{
+		jobSpec := model.JobSpec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherIpfs,
+			Docker: model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"bash", "-c",
 					`cat /inputs/file.txt`,
 				},
 			},
-			Inputs: []storage.StorageSpec{
+			Inputs: []model.StorageSpec{
 				{
-					Engine: storage.StorageSourceIPFS,
+					Engine: model.StorageSourceIPFS,
 					Cid:    cid,
 					Path:   "/inputs",
 				},
 			},
-			Outputs: []storage.StorageSpec{},
+			Outputs: []model.StorageSpec{},
 		}
 
-		jobDeal := executor.JobDeal{
+		jobDeal := model.JobDeal{
 			Concurrency: 1,
 		}
 
@@ -191,12 +192,12 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			ctx,
 			submittedJob.ID,
 			1,
-			job.WaitThrowErrors([]executor.JobStateType{
-				executor.JobStateCancelled,
-				executor.JobStateError,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateCancelled,
+				model.JobStateError,
 			}),
-			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStatePublished: 1,
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStatePublished: 1,
 			}),
 		)
 		require.NoError(suite.T(), err)

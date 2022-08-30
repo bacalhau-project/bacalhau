@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
@@ -44,19 +44,17 @@ func (deterministicVerifier *DeterministicVerifier) IsInstalled(ctx context.Cont
 
 func (deterministicVerifier *DeterministicVerifier) GetShardResultPath(
 	ctx context.Context,
-	jobID string,
-	shardIndex int,
+	shard model.JobShard,
 ) (string, error) {
-	return deterministicVerifier.results.EnsureShardResultsDir(jobID, shardIndex)
+	return deterministicVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)
 }
 
 func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	ctx context.Context,
-	jobID string,
-	shardIndex int,
+	shard model.JobShard,
 	shardResultPath string,
 ) ([]byte, error) {
-	job, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	job, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +79,7 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	jobID string,
 ) (bool, error) {
 	return deterministicVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
-		shardStates []executor.JobShardState,
+		shardStates []model.JobShardState,
 		concurrency int,
 	) (bool, error) {
 		return deterministicVerifier.results.CheckShardStates(shardStates, concurrency)
@@ -90,8 +88,8 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 
 func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	ctx context.Context,
-	jobData executor.Job,
-	shardStates []executor.JobShardState,
+	jobData model.Job,
+	shardStates []model.JobShardState,
 ) map[string][]*verifier.VerifierResult {
 	// group the verifier results by their reported hash
 	// then pick the largest group and verify all of those
@@ -103,7 +101,7 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	for _, shardState := range shardStates { //nolint:gocritic
 		// we've already called IsExecutionComplete so will assume any shard state
 		// that is not JobStateVerifying we can safely ignore
-		if shardState.State != executor.JobStateVerifying {
+		if shardState.State != model.JobStateVerifying {
 			continue
 		}
 
@@ -139,8 +137,8 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 
 func (deterministicVerifier *DeterministicVerifier) verifyShard(
 	ctx context.Context,
-	jobData executor.Job,
-	shardStates []executor.JobShardState,
+	jobData model.Job,
+	shardStates []model.JobShardState,
 ) ([]verifier.VerifierResult, error) {
 	confidence := jobData.Deal.Confidence
 

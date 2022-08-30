@@ -3,8 +3,8 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
@@ -36,16 +36,14 @@ func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error)
 
 func (noopVerifier *NoopVerifier) GetShardResultPath(
 	ctx context.Context,
-	jobID string,
-	shardIndex int,
+	shard model.JobShard,
 ) (string, error) {
-	return noopVerifier.results.EnsureShardResultsDir(jobID, shardIndex)
+	return noopVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)
 }
 
 func (noopVerifier *NoopVerifier) GetShardProposal(
 	ctx context.Context,
-	jobID string,
-	shardIndex int,
+	shard model.JobShard,
 	shardResultPath string,
 ) ([]byte, error) {
 	return []byte{}, nil
@@ -58,7 +56,7 @@ func (noopVerifier *NoopVerifier) IsExecutionComplete(
 	jobID string,
 ) (bool, error) {
 	return noopVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
-		shardStates []executor.JobShardState,
+		shardStates []model.JobShardState,
 		concurrency int,
 	) (bool, error) {
 		return noopVerifier.results.CheckShardStates(shardStates, concurrency)
@@ -77,7 +75,7 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 		return results, err
 	}
 	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
-		if shardState.State != executor.JobStateVerifying {
+		if shardState.State != model.JobStateVerifying {
 			continue
 		}
 		results = append(results, verifier.VerifierResult{

@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/deterministic"
@@ -13,7 +14,7 @@ func NewStandardVerifiers(
 	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
-) (map[verifier.VerifierType]verifier.Verifier, error) {
+) (map[model.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		cm,
 		resolver,
@@ -32,16 +33,16 @@ func NewStandardVerifiers(
 		return nil, err
 	}
 
-	return map[verifier.VerifierType]verifier.Verifier{
-		verifier.VerifierNoop:          noopVerifier,
-		verifier.VerifierDeterministic: deterministicVerifier,
+	return map[model.VerifierType]verifier.Verifier{
+		model.VerifierNoop:          noopVerifier,
+		model.VerifierDeterministic: deterministicVerifier,
 	}, nil
 }
 
 func NewNoopVerifiers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (map[verifier.VerifierType]verifier.Verifier, error) {
+) (map[model.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		cm,
 		resolver,
@@ -50,8 +51,8 @@ func NewNoopVerifiers(
 		return nil, err
 	}
 
-	return map[verifier.VerifierType]verifier.Verifier{
-		verifier.VerifierNoop:          noopVerifier,
-		verifier.VerifierDeterministic: noopVerifier,
+	return map[model.VerifierType]verifier.Verifier{
+		model.VerifierNoop:          noopVerifier,
+		model.VerifierDeterministic: noopVerifier,
 	}, nil
 }

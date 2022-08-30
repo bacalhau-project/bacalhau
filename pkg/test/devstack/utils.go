@@ -16,6 +16,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -28,8 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var StorageNames = []storage.StorageSourceType{
-	storage.StorageSourceIPFS,
+var StorageNames = []model.StorageSourceType{
+	model.StorageSourceIPFS,
 }
 
 func SetupTest(
@@ -41,7 +42,7 @@ func SetupTest(
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
@@ -52,7 +53,7 @@ func SetupTest(
 		isBadActor bool,
 		ctrl *controller.Controller,
 	) (
-		map[executor.EngineType]executor.Executor,
+		map[model.EngineType]executor.Executor,
 		error,
 	) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
@@ -73,7 +74,7 @@ func SetupTest(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[verifier.VerifierType]verifier.Verifier,
+		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
 		return verifier_util.NewStandardVerifiers(
@@ -88,7 +89,7 @@ func SetupTest(
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[publisher.PublisherType]publisher.Publisher,
+		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
 		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
@@ -196,14 +197,14 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 	defer cm.Cleanup()
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{
 			ExternalHooks: noop_storage.StorageConfigExternalHooks{
-				Explode: func(ctx context.Context, storageSpec storage.StorageSpec) ([]storage.StorageSpec, error) {
-					results := []storage.StorageSpec{}
+				Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
+					results := []model.StorageSpec{}
 					for i := 0; i < args.ShardCount; i++ {
-						results = append(results, storage.StorageSpec{
-							Engine: storage.StorageSourceIPFS,
+						results = append(results, model.StorageSpec{
+							Engine: model.StorageSourceIPFS,
 							Cid:    fmt.Sprintf("123%d", i),
 							Path:   fmt.Sprintf("/data/file%d.txt", i),
 						})
@@ -218,16 +219,16 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		nodeIndex int,
 		isBadActor bool,
 		ctrl *controller.Controller,
-	) (map[executor.EngineType]executor.Executor, error) {
+	) (map[model.EngineType]executor.Executor, error) {
 		return executor_util.NewNoopExecutors(
 			cm,
 			noop_executor.ExecutorConfig{
 				IsBadActor: isBadActor,
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
-						jobStdout := fmt.Sprintf("hello world %d", shardIndex)
+					JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) error {
+						jobStdout := fmt.Sprintf("hello world %d", shard.Index)
 						if isBadActor {
-							jobStdout = fmt.Sprintf("i am bad and deserve to fail %d", shardIndex)
+							jobStdout = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
 						}
 						return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0600) //nolint:gomnd
 					},
@@ -240,7 +241,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[verifier.VerifierType]verifier.Verifier,
+		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
 		return verifier_util.NewStandardVerifiers(
@@ -255,7 +256,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[publisher.PublisherType]publisher.Publisher,
+		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
 		return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
@@ -288,12 +289,12 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctx,
 		jobID,
 		args.NodeCount*args.ShardCount,
-		job.WaitThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
+		job.WaitThrowErrors([]model.JobStateType{
+			model.JobStateCancelled,
+			model.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStatePublished: args.NodeCount * args.ShardCount,
+		job.WaitForJobStates(map[model.JobStateType]int{
+			model.JobStatePublished: args.NodeCount * args.ShardCount,
 		}),
 	)
 	require.NoError(t, err)

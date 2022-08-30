@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 )
@@ -38,7 +38,7 @@ func (results *Results) EnsureShardResultsDir(jobID string, shardIndex int) (str
 }
 
 func (results *Results) CheckShardStates(
-	shardStates []executor.JobShardState,
+	shardStates []model.JobShardState,
 	concurrency int,
 ) (bool, error) {
 	if len(shardStates) < concurrency {
@@ -46,7 +46,7 @@ func (results *Results) CheckShardStates(
 	}
 	hasExecutedCount := 0
 	for _, state := range shardStates { //nolint:gocritic
-		if state.State == executor.JobStateError || state.State == executor.JobStateVerifying {
+		if state.State == model.JobStateError || state.State == model.JobStateVerifying {
 			hasExecutedCount++
 		}
 	}

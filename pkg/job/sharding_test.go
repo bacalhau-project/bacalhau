@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -39,18 +39,18 @@ func (suite *JobShardingSuite) TearDownAllSuite() {
 
 }
 
-func explodeStringArray(arr []string) []storage.StorageSpec {
-	results := []storage.StorageSpec{}
+func explodeStringArray(arr []string) []model.StorageSpec {
+	results := []model.StorageSpec{}
 	for _, str := range arr {
-		results = append(results, storage.StorageSpec{
-			Engine: storage.StorageSourceIPFS,
+		results = append(results, model.StorageSpec{
+			Engine: model.StorageSourceIPFS,
 			Path:   str,
 		})
 	}
 	return results
 }
 
-func joinStringArray(arr []storage.StorageSpec) []string {
+func joinStringArray(arr []model.StorageSpec) []string {
 	results := []string{}
 	for _, str := range arr {
 		results = append(results, str.Path)

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/phayes/freeport"
 
@@ -62,12 +62,12 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	requesterNodeID, err := requesterNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
 
-	computeNodeTransport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
-		if ev.EventName == executor.JobEventBidAccepted {
+	computeNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+		if ev.EventName == model.JobEventBidAccepted {
 			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
 			require.NoError(suite.T(), err)
-			err = computeNodeTransport.Publish(ctx, executor.JobEvent{
-				EventName:            executor.JobEventResultsProposed,
+			err = computeNodeTransport.Publish(ctx, model.JobEvent{
+				EventName:            model.JobEventResultsProposed,
 				SourceNodeID:         computeNodeID,
 				TargetNodeID:         requesterNodeID,
 				VerificationProposal: encryptedData,
@@ -78,8 +78,8 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
-	requesterNodeTransport.Subscribe(func(ctx context.Context, ev executor.JobEvent) {
-		if ev.EventName == executor.JobEventResultsProposed {
+	requesterNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+		if ev.EventName == model.JobEventResultsProposed {
 			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
 			require.NoError(suite.T(), err)
 			require.Equal(suite.T(), TestData, string(decryptedData), "the decrypted data should be the same as the original data")
@@ -90,8 +90,8 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 
 	time.Sleep(time.Second * 1)
 
-	err = requesterNodeTransport.Publish(ctx, executor.JobEvent{
-		EventName:    executor.JobEventBidAccepted,
+	err = requesterNodeTransport.Publish(ctx, model.JobEvent{
+		EventName:    model.JobEventBidAccepted,
 		SourceNodeID: requesterNodeID,
 		TargetNodeID: computeNodeID,
 	})
