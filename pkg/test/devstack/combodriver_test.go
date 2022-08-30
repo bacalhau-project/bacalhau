@@ -54,7 +54,7 @@ func (suite *ComboDriverSuite) TearDownAllSuite() {
 
 }
 
-// test that the combo driver gives preference to the filecoin unsealed driver
+// Test that the combo driver gives preference to the filecoin unsealed driver
 // also that this does not affect normal jobs where the CID resides on the IPFS driver
 func (suite *ComboDriverSuite) TestComboDriver() {
 	exampleText := "hello world"

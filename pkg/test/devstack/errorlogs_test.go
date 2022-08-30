@@ -41,6 +41,7 @@ func (suite *DevstackErrorLogsSuite) SetupTest() {
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownTest() {
+
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {

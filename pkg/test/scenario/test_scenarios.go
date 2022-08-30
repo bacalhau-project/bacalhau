@@ -1,6 +1,5 @@
 package scenario
 
-// TODO @enricorotundo #493: check if senarios can be move to testing tooling package
 
 import (
 	"testing"
