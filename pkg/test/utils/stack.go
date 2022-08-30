@@ -15,8 +15,10 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
@@ -29,10 +31,10 @@ type TestStack struct {
 	Controller     *controller.Controller
 	CleanupManager *system.CleanupManager
 	IpfsStack      *devstack.DevStackIPFS
-	Executors      map[executor.EngineType]executor.Executor
+	Executors      map[model.EngineType]executor.Executor
 }
 
-// Setup a docker ipfs devstack to run compute node tests against 
+// Setup a docker ipfs devstack to run compute node tests against
 // (formerly SetupTestDockerIpfs)
 func NewDockerIpfsStack(
 	t *testing.T,
@@ -128,7 +130,7 @@ func NewNoopStack(
 	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	storageProviders, err := executor_util.NewNoopStorageProviders(cm)
+	storageProviders, err := executor_util.NewNoopStorageProviders(cm, noop.StorageConfig{})
 	require.NoError(t, err)
 
 	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)

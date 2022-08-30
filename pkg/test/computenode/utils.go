@@ -8,14 +8,10 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
-
-
 
 func GetJobSpec(cid string) model.JobSpec {
 	inputs := []model.StorageSpec{}
