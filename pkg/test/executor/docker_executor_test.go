@@ -2,11 +2,15 @@ package docker
 
 import (
 	"context"
+	// "fmt"
 	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+
+	// "github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -40,7 +44,7 @@ func (suite *ExecutorDockerExecutorSuite) SetupTest() {
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
-	
+
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownAllSuite() {
@@ -63,22 +67,11 @@ func dockerExecutorStorageTest(
 		stack := testutils.NewDockerIpfsStack(t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.CleanupManager.Cleanup()
 
-		dockerExecutor := stack.Executors[model.EngineDocker]
+		dockerExecutor := stack.Executors[executor.EngineDocker]
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
+			stack.IpfsStack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
-
-		isInstalled, err := dockerExecutor.IsInstalled(ctx)
-		require.NoError(t, err)
-		require.True(t, isInstalled)
-
-		for _, inputStorageSpec := range inputStorageList {
-			hasStorage, err := dockerExecutor.HasStorageLocally(
-				ctx, inputStorageSpec)
-			require.NoError(t, err)
-			require.True(t, hasStorage)
-		}
 
 		job := executor.Job{
 			ID:              "test-job",
