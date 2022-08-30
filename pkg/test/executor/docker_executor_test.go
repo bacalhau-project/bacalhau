@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -65,10 +63,10 @@ func dockerExecutorStorageTest(
 		stack := testutils.NewDockerIpfsStack(t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.CleanupManager.Cleanup()
 
-		dockerExecutor := stack.Executors[executor.EngineDocker]
+		dockerExecutor := stack.Executors[model.EngineDocker]
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack.IpfsStack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
+			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)

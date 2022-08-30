@@ -12,15 +12,12 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -55,7 +52,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 // Simple job resource limits tests
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits capacitymanager.ResourceUsageConfig, expectedResult bool) {
+	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits model.ResourceUsageConfig, expectedResult bool) {
 		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
@@ -538,7 +535,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cid, err := stack.IpfsStack.AddTextToNodes(1, []byte(text))
 		require.NoError(suite.T(), err)
 
-		executor := stack.Executors[executor.EngineDocker]
+		executor := stack.Executors[model.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
