@@ -2,18 +2,21 @@ package docker
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+
+	// "github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -42,14 +45,14 @@ func (suite *ExecutorDockerExecutorSuite) SetupTest() {
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
-	
+
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownAllSuite() {
 
 }
 
-const TEST_STORAGE_DRIVER_NAME = "testdriver"
+// const TEST_STORAGE_DRIVER_NAME = "testdriver"
 const TEST_NODE_COUNT = 1
 
 func dockerExecutorStorageTest(
@@ -61,27 +64,14 @@ func dockerExecutorStorageTest(
 	// and output mode that we are looping over internally
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
-		stack, cm := ipfs.SetupTest(t, ctx, TEST_NODE_COUNT)
-		defer ipfs.TeardownTest(stack, cm)
 
-		tr := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/executor/dockerexecutortest/dockerExecutorStorageTest")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
+		stack := testutils.NewDockerIpfsStack(t, computenode.NewDefaultComputeNodeConfig())
+		defer stack.CleanupManager.Cleanup()
 
-		storageDriver, err := getStorageDriver(ctx, stack)
-		require.NoError(t, err)
-
-		dockerExecutor, err := docker.NewExecutor(
-			cm,
-			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
-			map[model.StorageSourceType]storage.StorageProvider{
-				model.StorageSourceIPFS: storageDriver,
-			})
-		require.NoError(t, err)
+		dockerExecutor := stack.Executors[executor.EngineDocker]
 
 		inputStorageList, err := testCase.SetupStorage(
-			ctx, stack, model.StorageSourceIPFS, TEST_NODE_COUNT)
+			stack.IpfsStack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
@@ -95,7 +85,7 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := model.Job{
+		job := executor.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
