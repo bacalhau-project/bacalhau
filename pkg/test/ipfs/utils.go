@@ -9,13 +9,10 @@ import (
 	"golang.org/x/net/context"
 )
 
-// TODO @enricorotundo #493: duplicate?
-// TODO @enricorotundo #493: move next to SetupTestDockerIpfs ?
 func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 	stack, err := devstack.NewDevStackIPFS(cm, ctx, nodes)
 	require.NoError(t, err)
-
 	return stack, cm
 }
 

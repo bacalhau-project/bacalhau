@@ -36,13 +36,14 @@ func (suite *DevstackJobSelectionSuite) SetupTest() {
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownTest() {
+
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownAllSuite() {
 
 }
 
-// re-use the docker executor tests but full end to end with libp2p transport
+// Re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
