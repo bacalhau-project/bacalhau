@@ -36,7 +36,6 @@ type TestStack struct {
 func NewDockerIpfsStack(
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
-	// ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
 ) *TestStack {
 	cm := system.NewCleanupManager()
 
@@ -108,7 +107,6 @@ func NewNoopStack(
 	//nolint:gocritic
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
-	// ) (*computenode.ComputeNode, *requesternode.RequesterNode, *controller.Controller, *system.CleanupManager) {
 ) *TestStack {
 	cm := system.NewCleanupManager()
 
