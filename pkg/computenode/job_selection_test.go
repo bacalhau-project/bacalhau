@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/test/tooling"
+	"github.com/filecoin-project/bacalhau/pkg/computenode/tooling"
 	"github.com/stretchr/testify/require"
 )
 
