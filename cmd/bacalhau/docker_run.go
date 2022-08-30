@@ -52,6 +52,7 @@ type DockerRunOptions struct {
 	OutputVolumes []string // Array of output volumes in 'name:mount point' form
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
+	Confidence    int      // Minimum number of nodes that must agree on a verification result
 	CPU           string
 	Memory        string
 	GPU           string
@@ -85,6 +86,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		OutputVolumes:                    []string{},
 		Env:                              []string{},
 		Concurrency:                      1,
+		Confidence:                       0,
 		CPU:                              "",
 		Memory:                           "",
 		GPU:                              "",
@@ -147,6 +149,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	dockerRunCmd.PersistentFlags().IntVarP(
 		&ODR.Concurrency, "concurrency", "c", ODR.Concurrency,
 		`How many nodes should run the job`,
+	)
+	dockerRunCmd.PersistentFlags().IntVar(
+		&ODR.Confidence, "confidence", ODR.Confidence,
+		`The minimum number of nodes that must agree on a verification result`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.CPU, "cpu", ODR.CPU,
@@ -303,6 +309,7 @@ var dockerRunCmd = &cobra.Command{
 			ODR.Entrypoint,
 			ODR.Image,
 			ODR.Concurrency,
+			ODR.Confidence,
 			ODR.Labels,
 			ODR.WorkingDir,
 			ODR.ShardingGlobPattern,

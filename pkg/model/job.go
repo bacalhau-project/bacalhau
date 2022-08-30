@@ -13,6 +13,10 @@ type Job struct {
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"requester_node_id"`
 
+	// The public key of the requestor node that created this job
+	// This can be used to encrypt messages back to the creator
+	RequesterPublicKey []byte `json:"requester_public_key"`
+
 	// The ID of the client that created this job.
 	ClientID string `json:"client_id"`
 
@@ -99,8 +103,9 @@ type JobShardState struct {
 	Status string `json:"status"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	VerificationProposal []byte      `json:"verification_proposal"`
-	PublishedResult      StorageSpec `json:"published_results"`
+	VerificationProposal []byte             `json:"verification_proposal"`
+	VerificationResult   VerificationResult `json:"verification_result"`
+	PublishedResult      StorageSpec        `json:"published_results"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -109,6 +114,11 @@ type JobDeal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"concurrency"`
+	// The number of nodes that must agree on a verification result
+	// this is used by the different verifiers - for example the
+	// deterministic verifier requires the winning group size
+	// to be at least this size
+	Confidence int `json:"confidence"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -217,12 +227,23 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"job_execution_plan"`
 	// this is only defined in "update_deal" events
-	JobDeal              JobDeal     `json:"job_deal"`
-	Status               string      `json:"status"`
-	VerificationProposal []byte      `json:"verification_proposal"`
-	PublishedResult      StorageSpec `json:"published_results"`
+	JobDeal              JobDeal            `json:"job_deal"`
+	Status               string             `json:"status"`
+	VerificationProposal []byte             `json:"verification_proposal"`
+	VerificationResult   VerificationResult `json:"verification_result"`
+	PublishedResult      StorageSpec        `json:"published_results"`
 
-	EventTime time.Time `json:"event_time"`
+	EventTime       time.Time `json:"event_time"`
+	SenderPublicKey []byte    `json:"public_key"`
+}
+
+// we need to use a struct for the result because:
+// a) otherwise we don't know if VerificationResult==false
+// means "I've not verified yet" or "verification failed"
+// b) we might want to add further fields to the result later
+type VerificationResult struct {
+	Complete bool `json:"complete"`
+	Result   bool `json:"result"`
 }
 
 type JobCreatePayload struct {

@@ -62,6 +62,7 @@ type GetStorageProvidersFunc func(
 type GetExecutorsFunc func(
 	ipfsMultiAddress string,
 	nodeIndex int,
+	isBadActor bool,
 	ctrl *controller.Controller,
 ) (
 	map[model.EngineType]executor.Executor,
@@ -69,7 +70,7 @@ type GetExecutorsFunc func(
 )
 
 type GetVerifiersFunc func(
-	ipfsMultiAddress string,
+	transport *libp2p.LibP2PTransport,
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
@@ -99,6 +100,7 @@ func NewDevStackForRunLocal(
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
+		isBadActor bool,
 		_ *controller.Controller,
 	) (
 		map[model.EngineType]executor.Executor,
@@ -117,14 +119,19 @@ func NewDevStackForRunLocal(
 		)
 	}
 	getVerifiers := func(
-		ipfsMultiAddress string,
+		transport *libp2p.LibP2PTransport,
 		_ int,
 		ctrl *controller.Controller,
 	) (
 		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
-		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+		return verifier_util.NewStandardVerifiers(
+			cm,
+			ctrl.GetStateResolver(),
+			transport.Encrypt,
+			transport.Decrypt,
+		)
 	}
 	getPublishers := func(
 		ipfsMultiAddress string,
@@ -162,7 +169,7 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, _ int, //nolint:unparam // Incorrectly assumed as unused
+	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
@@ -278,12 +285,18 @@ func NewDevStack(
 			return nil, err
 		}
 
-		executors, err := getExecutors(ipfsAPIAddrs[0], i, ctrl)
+		isBadActor := false
+
+		if badActors > 0 {
+			isBadActor = i >= count-badActors
+		}
+
+		executors, err := getExecutors(ipfsAPIAddrs[0], i, isBadActor, ctrl)
 		if err != nil {
 			return nil, err
 		}
 
-		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i, ctrl)
+		verifiers, err := getVerifiers(transport, i, ctrl)
 		if err != nil {
 			return nil, err
 		}

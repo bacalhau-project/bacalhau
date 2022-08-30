@@ -35,8 +35,7 @@ var (
 )
 
 type DescribeOptions struct {
-	Filename    string // Filename for job (can be .json or .yaml)
-	Concurrency int    // Number of concurrent jobs to run
+	Filename string // Filename for job (can be .json or .yaml)
 }
 
 func NewDescribeOptions() *DescribeOptions {
@@ -49,6 +48,7 @@ type eventDescription struct {
 	Event       string `yaml:"Event"`
 	Time        string `yaml:"Time"`
 	Concurrency int    `yaml:"Concurrency"`
+	Confidence  int    `yaml:"Confidence"`
 	SourceNode  string `yaml:"SourceNode"`
 	TargetNode  string `yaml:"TargetNode"`
 	Status      string `yaml:"Status"`
@@ -63,6 +63,7 @@ type shardNodeStateDescription struct {
 	Node     string `yaml:"Node"`
 	State    string `yaml:"State"`
 	Status   string `yaml:"Status"`
+	Verified bool   `yaml:"Verified"`
 	ResultID string `yaml:"ResultID"`
 }
 
@@ -103,6 +104,7 @@ type jobSpecDockerDescription struct {
 
 type jobDealDescription struct {
 	Concurrency   int      `yaml:"Concurrency"`
+	Confidence    int      `yaml:"Confidence"`
 	AssignedNodes []string `yaml:"Assigned Nodes"`
 }
 
@@ -158,6 +160,7 @@ var describeCmd = &cobra.Command{
 
 		jobDealDesc := jobDealDescription{}
 		jobDealDesc.Concurrency = j.Deal.Concurrency
+		jobDealDesc.Confidence = j.Deal.Confidence
 
 		jobSpecDesc.Verifier = j.Spec.Verifier.String()
 		jobSpecDesc.Docker = jobDockerDesc
@@ -185,7 +188,8 @@ var describeCmd = &cobra.Command{
 				Node:     shard.NodeID,
 				State:    shard.State.String(),
 				Status:   shard.Status,
-				ResultID: string(shard.VerificationProposal),
+				Verified: shard.VerificationResult.Result,
+				ResultID: shard.PublishedResult.Cid,
 			})
 			shardDescriptions[shard.ShardIndex] = shardDescription
 		}
@@ -211,6 +215,7 @@ var describeCmd = &cobra.Command{
 				Status:      event.Status,
 				Time:        event.EventTime.String(),
 				Concurrency: event.JobDeal.Concurrency,
+				Confidence:  event.JobDeal.Confidence,
 				SourceNode:  event.SourceNodeID,
 				TargetNode:  event.TargetNodeID,
 			})

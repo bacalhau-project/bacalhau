@@ -22,6 +22,7 @@ import (
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
@@ -96,6 +97,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		getExecutors := func(
 			ipfsMultiAddress string,
 			nodeIndex int,
+			isBadActor bool,
 			ctrl *controller.Controller,
 		) (
 			map[model.EngineType]executor.Executor,
@@ -115,7 +117,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			)
 		}
 		getVerifiers := func(
-			ipfsMultiAddress string,
+			transport *libp2p.LibP2PTransport,
 			nodeIndex int,
 			ctrl *controller.Controller,
 		) (
