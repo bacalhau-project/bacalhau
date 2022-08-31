@@ -24,8 +24,9 @@ type StandardStorageProviderOptions struct {
 }
 
 type StandardExecutorOptions struct {
-	DockerID string
-	Storage  StandardStorageProviderOptions
+	DockerID   string
+	IsBadActor bool
+	Storage    StandardStorageProviderOptions
 }
 
 func NewStandardStorageProviders(
@@ -93,8 +94,9 @@ func NewStandardStorageProviders(
 
 func NewNoopStorageProviders(
 	cm *system.CleanupManager,
+	config noop_storage.StorageConfig,
 ) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewStorageProvider(cm)
+	noopStorage, err := noop_storage.NewStorageProvider(cm, config)
 	if err != nil {
 		return nil, err
 	}

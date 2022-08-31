@@ -2,6 +2,10 @@ package libp2p
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -15,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -40,6 +45,7 @@ type LibP2PTransport struct {
 	pubSub               *pubsub.PubSub
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
+	privateKey           crypto.PrivKey
 }
 
 func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
@@ -100,6 +106,7 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		host:                 h,
 		port:                 port,
 		peers:                usePeers,
+		privateKey:           prvKey,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
@@ -172,6 +179,50 @@ func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
+}
+
+func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
+	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	publicKeyBytes, err := unmarshalledPublicKey.Raw()
+	if err != nil {
+		return nil, err
+	}
+	genericPublicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	rsaPublicKey, ok := genericPublicKey.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("could not cast public key to RSA")
+	}
+	return rsa.EncryptOAEP(
+		sha512.New(),
+		rand.Reader,
+		rsaPublicKey,
+		data,
+		nil,
+	)
+}
+
+func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
+	privateKeyBytes, err := t.privateKey.Raw()
+	if err != nil {
+		return nil, err
+	}
+	rsaPrivateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	return rsa.DecryptOAEP(
+		sha512.New(),
+		rand.Reader,
+		rsaPrivateKey,
+		data,
+		nil,
+	)
 }
 
 /*
@@ -288,6 +339,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// NOTE: Do not use msg.ReceivedFrom as the original sender, it's not. It's
 	// the node which gossiped the message to us, which might be different.
 	// (was: ev.SourceNodeID = msg.ReceivedFrom.String())
+	ev.SenderPublicKey = msg.Key
 
 	var wg realsync.WaitGroup
 	func() {

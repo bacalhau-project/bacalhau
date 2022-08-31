@@ -6,6 +6,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
+type EncrypterFunction func(ctx context.Context, data []byte, publicKeyBytes []byte) ([]byte, error)
+type DecrypterFunction func(ctx context.Context, data []byte) ([]byte, error)
+
 type VerifierResult struct {
 	JobID      string
 	NodeID     string

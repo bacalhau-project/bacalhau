@@ -80,6 +80,9 @@ precommit:
 .PHONY: build
 build: build-bacalhau
 
+.PHONY: build-dev
+build-dev: build
+	sudo cp bin/linux_amd64/bacalhau /usr/local/bin
 
 ################################################################################
 # Target: build-bacalhau

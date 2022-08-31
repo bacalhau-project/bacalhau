@@ -11,16 +11,27 @@ import (
 )
 
 func ConstructJobFromEvent(ev model.JobEvent) model.Job {
+<<<<<<< HEAD
 	log.Debug().Msgf("Constructing job ID: %s", ev.JobID)
 	log.Trace().Msgf("Full job event: %+v", ev)
+||||||| 304d83a8
+	log.Debug().Msgf("Constructing job from event: %+v", ev)
+=======
+	log.Debug().Msgf("Constructing job from event: %+v", ev)
+	publicKey := ev.SenderPublicKey
+	if publicKey == nil {
+		publicKey = []byte{}
+	}
+>>>>>>> main
 	return model.Job{
-		ID:              ev.JobID,
-		RequesterNodeID: ev.SourceNodeID,
-		ClientID:        ev.ClientID,
-		Spec:            ev.JobSpec,
-		Deal:            ev.JobDeal,
-		ExecutionPlan:   ev.JobExecutionPlan,
-		CreatedAt:       time.Now(),
+		ID:                 ev.JobID,
+		RequesterNodeID:    ev.SourceNodeID,
+		RequesterPublicKey: publicKey,
+		ClientID:           ev.ClientID,
+		Spec:               ev.JobSpec,
+		Deal:               ev.JobDeal,
+		ExecutionPlan:      ev.JobExecutionPlan,
+		CreatedAt:          time.Now(),
 	}
 }
 
@@ -39,6 +50,7 @@ func ConstructDockerJob( //nolint:funlen
 	entrypoint []string,
 	image string,
 	concurrency int,
+	confidence int,
 	annotations []string,
 	workingDir string,
 	shardingGlobPattern string,
@@ -124,6 +136,7 @@ func ConstructDockerJob( //nolint:funlen
 
 	deal := model.JobDeal{
 		Concurrency: concurrency,
+		Confidence:  confidence,
 	}
 
 	return &spec, &deal, nil
@@ -135,6 +148,7 @@ func ConstructLanguageJob(
 	outputVolumes []string,
 	env []string,
 	concurrency int,
+	confidence int,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,
@@ -202,6 +216,7 @@ func ConstructLanguageJob(
 
 	deal := model.JobDeal{
 		Concurrency: concurrency,
+		Confidence:  confidence,
 	}
 
 	return spec, deal, nil

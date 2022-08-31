@@ -89,6 +89,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					[]string{}, // entrypoint
 					"",         // image
 					1,          // concurrency
+					0,          // confidence
 					[]string{}, // annotations
 					"",         // working dir
 					"",         // sharding base path

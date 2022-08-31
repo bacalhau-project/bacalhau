@@ -2,37 +2,31 @@ package noop
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
-	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	"github.com/rs/zerolog/log"
+	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type NoopVerifier struct {
-	StateResolver *job.StateResolver
-	// where do we copy the results from jobs temporarily?
-	ResultsDir string
+	stateResolver *job.StateResolver
+	results       *results.Results
 }
 
 func NewNoopVerifier(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
-	dir, err := ioutil.TempDir("", "bacalhau-noop-verifier")
+	results, err := results.NewResults()
 	if err != nil {
 		return nil, err
 	}
-
 	return &NoopVerifier{
-		StateResolver: resolver,
-		ResultsDir:    dir,
+		stateResolver: resolver,
+		results:       results,
 	}, nil
 }
 
@@ -44,7 +38,7 @@ func (noopVerifier *NoopVerifier) GetShardResultPath(
 	ctx context.Context,
 	shard model.JobShard,
 ) (string, error) {
-	return noopVerifier.ensureShardResultsDir(shard)
+	return noopVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)
 }
 
 func (noopVerifier *NoopVerifier) GetShardProposal(
@@ -61,22 +55,11 @@ func (noopVerifier *NoopVerifier) IsExecutionComplete(
 	ctx context.Context,
 	jobID string,
 ) (bool, error) {
-	return noopVerifier.StateResolver.CheckShardStates(ctx, jobID, func(
+	return noopVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
 		shardStates []model.JobShardState,
 		concurrency int,
 	) (bool, error) {
-		if len(shardStates) < concurrency {
-			return false, nil
-		}
-		// count how many shard states have progress through the
-		// "I have run this" stage
-		hasExecutedCount := 0
-		for _, state := range shardStates { //nolint:gocritic
-			if state.State == model.JobStateError || state.State == model.JobStateVerifying {
-				hasExecutedCount++
-			}
-		}
-		return hasExecutedCount >= concurrency, nil
+		return noopVerifier.results.CheckShardStates(shardStates, concurrency)
 	})
 }
 
@@ -87,7 +70,7 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 	ctx, span := newSpan(ctx, "VerifyJob")
 	defer span.End()
 	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.StateResolver.GetJobState(ctx, jobID)
+	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
@@ -103,18 +86,6 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 		})
 	}
 	return results, nil
-}
-
-func (noopVerifier *NoopVerifier) getShardResultsDir(shard model.JobShard) string {
-	return fmt.Sprintf("%s/%s/%d", noopVerifier.ResultsDir, shard.Job.ID, shard.Index)
-}
-
-func (noopVerifier *NoopVerifier) ensureShardResultsDir(shard model.JobShard) (string, error) {
-	dir := noopVerifier.getShardResultsDir(shard)
-	err := os.MkdirAll(dir, util.OS_ALL_RWX)
-	info, _ := os.Stat(dir)
-	log.Trace().Msgf("Created job results dir (%s). Permissions: %s", dir, info.Mode())
-	return dir, err
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

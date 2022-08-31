@@ -141,7 +141,13 @@ var listCmd = &cobra.Command{
 		tw := table.NewWriter()
 		tw.SetOutputMirror(cmd.OutOrStderr())
 		if !OL.HideHeader {
+<<<<<<< HEAD
 			tw.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
+||||||| 304d83a8
+			t.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
+=======
+			t.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
+>>>>>>> main
 		}
 
 		columnConfig := []table.ColumnConfig{}
@@ -212,8 +218,19 @@ var listCmd = &cobra.Command{
 			}
 			stateSummarySpan.End()
 
+<<<<<<< HEAD
 			_, resultSummarySpan := t.Start(ctx, "resolvingjobresult")
 			resultSummary, err := resolver.ResultSummary(ctx, j.ID)
+||||||| 304d83a8
+			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
+=======
+			verifiedSummary, err := resolver.VerifiedSummary(context.Background(), j.ID)
+			if err != nil {
+				return err
+			}
+
+			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
+>>>>>>> main
 			if err != nil {
 				return err
 			}
@@ -225,6 +242,7 @@ var listCmd = &cobra.Command{
 					shortID(OL.OutputWide, j.ID),
 					shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
 					shortenString(OL.OutputWide, stateSummary),
+					shortenString(OL.OutputWide, verifiedSummary),
 					shortenString(OL.OutputWide, resultSummary),
 				},
 			})

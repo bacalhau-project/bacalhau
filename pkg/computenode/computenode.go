@@ -411,7 +411,11 @@ func (node *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, j
 }
 
 func (node *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	// TODO: implement
+	if shardState, ok := node.shardStateManager.Get(shard.ID()); ok {
+		shardState.Publish()
+	} else {
+		log.Debug().Msgf("Received results rejected for unknown shard %s", shard)
+	}
 }
 
 /*

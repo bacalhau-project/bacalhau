@@ -271,7 +271,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewNoopVerifiers(cm, controller.GetStateResolver())
+		verifiers, err := verifier_util.NewStandardVerifiers(
+			cm,
+			controller.GetStateResolver(),
+			transport.Encrypt,
+			transport.Decrypt,
+		)
 		if err != nil {
 			return err
 		}
