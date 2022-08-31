@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type AllProviderFetcher func(ctx context.Context) ([]storage.StorageProvider, error)
-type ReadProviderFetcher func(ctx context.Context, spec storage.StorageSpec) (storage.StorageProvider, error)
+type ReadProviderFetcher func(ctx context.Context, spec model.StorageSpec) (storage.StorageProvider, error)
 type WriteProviderFetcher func(ctx context.Context) (storage.StorageProvider, error)
 
 type ComboStorageProvider struct {
@@ -52,7 +53,7 @@ func (driver *ComboStorageProvider) IsInstalled(ctx context.Context) (bool, erro
 	return true, nil
 }
 
-func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, storageSpec storage.StorageSpec) (bool, error) {
+func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, storageSpec model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 	provider, err := driver.getReadProvider(ctx, storageSpec)
@@ -62,7 +63,7 @@ func (driver *ComboStorageProvider) HasStorageLocally(ctx context.Context, stora
 	return provider.HasStorageLocally(ctx, storageSpec)
 }
 
-func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSpec storage.StorageSpec) (uint64, error) {
+func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSpec model.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeSize")
 	defer span.End()
 	provider, err := driver.getReadProvider(ctx, storageSpec)
@@ -74,7 +75,7 @@ func (driver *ComboStorageProvider) GetVolumeSize(ctx context.Context, storageSp
 
 func (driver *ComboStorageProvider) PrepareStorage(
 	ctx context.Context,
-	storageSpec storage.StorageSpec,
+	storageSpec model.StorageSpec,
 ) (storage.StorageVolume, error) {
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
@@ -87,7 +88,7 @@ func (driver *ComboStorageProvider) PrepareStorage(
 
 func (driver *ComboStorageProvider) CleanupStorage(
 	ctx context.Context,
-	storageSpec storage.StorageSpec,
+	storageSpec model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
@@ -100,15 +101,15 @@ func (driver *ComboStorageProvider) CleanupStorage(
 func (driver *ComboStorageProvider) Upload(
 	ctx context.Context,
 	localPath string,
-) (storage.StorageSpec, error) {
+) (model.StorageSpec, error) {
 	provider, err := driver.getWriteProvider(ctx)
 	if err != nil {
-		return storage.StorageSpec{}, err
+		return model.StorageSpec{}, err
 	}
 	return provider.Upload(ctx, localPath)
 }
 
-func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec storage.StorageSpec) ([]storage.StorageSpec, error) {
+func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
 	provider, err := driver.getReadProvider(ctx, storageSpec)
 	if err != nil {
 		return nil, err
@@ -119,7 +120,7 @@ func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec sto
 	return provider.Explode(ctx, storageSpec)
 }
 
-func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec storage.StorageSpec) (storage.StorageProvider, error) {
+func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec model.StorageSpec) (storage.StorageProvider, error) {
 	return driver.ReadFetcher(ctx, spec)
 }
 

@@ -17,6 +17,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -102,14 +103,14 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
 	return sp.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	_, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	return 0, nil
@@ -121,7 +122,7 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Sto
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
-	storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
+	storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
@@ -147,19 +148,19 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
+	storageSpec model.StorageSpec, volume storage.StorageVolume) error {
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 
 	return nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
-	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	return []storage.StorageSpec{}, fmt.Errorf("not implemented")
+func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	return []model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
 func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {

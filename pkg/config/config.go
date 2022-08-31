@@ -37,6 +37,14 @@ func GetStoragePath() string {
 	return storagePath
 }
 
+func GetAPIHost() string {
+	return os.Getenv("BACALHAU_HOST")
+}
+
+func GetAPIPort() string {
+	return os.Getenv("BACALHAU_PORT")
+}
+
 // by default we wait 2 minutes for the IPFS network to resolve a CID
 // tests will override this using config.SetVolumeSizeRequestTimeout(2)
 var getVolumeSizeRequestTimeoutSeconds int64 = 120

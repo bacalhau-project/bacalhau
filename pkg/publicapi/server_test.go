@@ -7,9 +7,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -101,11 +100,11 @@ func (suite *ServerSuite) TestVarz() {
 
 }
 
-func makeJob() (*executor.JobSpec, *executor.JobDeal) {
-	jobSpec := executor.JobSpec{
-		Engine:   executor.EngineDocker,
-		Verifier: verifier.VerifierNoop,
-		Docker: executor.JobSpecDocker{
+func makeJob() (*model.JobSpec, *model.JobDeal) {
+	jobSpec := model.JobSpec{
+		Engine:   model.EngineDocker,
+		Verifier: model.VerifierNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"cat",
@@ -114,7 +113,7 @@ func makeJob() (*executor.JobSpec, *executor.JobDeal) {
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: 1,
 	}
 

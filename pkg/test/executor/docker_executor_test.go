@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
@@ -70,13 +70,13 @@ func dockerExecutorStorageTest(
 		dockerExecutor, err := docker.NewExecutor(
 			cm,
 			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
-			map[storage.StorageSourceType]storage.StorageProvider{
-				storage.StorageSourceIPFS: storageDriver,
+			map[model.StorageSourceType]storage.StorageProvider{
+				model.StorageSourceIPFS: storageDriver,
 			})
 		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
+			stack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
@@ -90,26 +90,31 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := executor.Job{
+		job := model.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
-			Spec: executor.JobSpec{
-				Engine:  executor.EngineDocker,
+			Spec: model.JobSpec{
+				Engine:  model.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: executor.JobDeal{
+			Deal: model.JobDeal{
 				Concurrency: TEST_NODE_COUNT,
 			},
 			CreatedAt: time.Now(),
 		}
 
+		shard := model.JobShard{
+			Job:   job,
+			Index: 0,
+		}
+
 		resultsDirectory, err := ioutil.TempDir("", "bacalhau-dockerExecutorStorageTest")
 		require.NoError(t, err)
 
-		err = dockerExecutor.RunShard(ctx, job, 0, resultsDirectory)
+		err = dockerExecutor.RunShard(ctx, shard, resultsDirectory)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(resultsDirectory)

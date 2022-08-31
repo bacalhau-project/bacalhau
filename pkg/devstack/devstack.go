@@ -17,6 +17,7 @@ import (
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -54,25 +55,26 @@ type GetStorageProvidersFunc func(
 	ipfsMultiAddress string,
 	nodeIndex int,
 ) (
-	map[storage.StorageSourceType]storage.StorageProvider,
+	map[model.StorageSourceType]storage.StorageProvider,
 	error,
 )
 
 type GetExecutorsFunc func(
 	ipfsMultiAddress string,
 	nodeIndex int,
+	isBadActor bool,
 	ctrl *controller.Controller,
 ) (
-	map[executor.EngineType]executor.Executor,
+	map[model.EngineType]executor.Executor,
 	error,
 )
 
 type GetVerifiersFunc func(
-	ipfsMultiAddress string,
+	transport *libp2p.LibP2PTransport,
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
-	map[verifier.VerifierType]verifier.Verifier,
+	map[model.VerifierType]verifier.Verifier,
 	error,
 )
 
@@ -81,7 +83,7 @@ type GetPublishersFunc func(
 	nodeIndex int,
 	ctrl *controller.Controller,
 ) (
-	map[publisher.PublisherType]publisher.Publisher,
+	map[model.PublisherType]publisher.Publisher,
 	error,
 )
 
@@ -90,7 +92,7 @@ func NewDevStackForRunLocal(
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[storage.StorageSourceType]storage.StorageProvider, error) {
+	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
 		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
@@ -98,9 +100,10 @@ func NewDevStackForRunLocal(
 	getExecutors := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
+		isBadActor bool,
 		_ *controller.Controller,
 	) (
-		map[executor.EngineType]executor.Executor,
+		map[model.EngineType]executor.Executor,
 		error,
 	) {
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
@@ -116,21 +119,26 @@ func NewDevStackForRunLocal(
 		)
 	}
 	getVerifiers := func(
-		ipfsMultiAddress string,
+		transport *libp2p.LibP2PTransport,
 		_ int,
 		ctrl *controller.Controller,
 	) (
-		map[verifier.VerifierType]verifier.Verifier,
+		map[model.VerifierType]verifier.Verifier,
 		error,
 	) {
-		return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+		return verifier_util.NewStandardVerifiers(
+			cm,
+			ctrl.GetStateResolver(),
+			transport.Encrypt,
+			transport.Decrypt,
+		)
 	}
 	getPublishers := func(
 		ipfsMultiAddress string,
 		nodeIndex int,
 		ctrl *controller.Controller,
 	) (
-		map[publisher.PublisherType]publisher.Publisher,
+		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
 		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
@@ -148,7 +156,7 @@ func NewDevStackForRunLocal(
 				Locality:            computenode.Anywhere,
 				RejectStatelessJobs: false,
 			}, CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: capacitymanager.ResourceUsageConfig{
+				ResourceLimitTotal: model.ResourceUsageConfig{
 					GPU: jobGPU,
 				},
 			},
@@ -161,7 +169,7 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
-	count, _ int, //nolint:unparam // Incorrectly assumed as unused
+	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
 	getVerifiers GetVerifiersFunc,
@@ -277,12 +285,18 @@ func NewDevStack(
 			return nil, err
 		}
 
-		executors, err := getExecutors(ipfsAPIAddrs[0], i, ctrl)
+		isBadActor := false
+
+		if badActors > 0 {
+			isBadActor = i >= count-badActors
+		}
+
+		executors, err := getExecutors(ipfsAPIAddrs[0], i, isBadActor, ctrl)
 		if err != nil {
 			return nil, err
 		}
 
-		verifiers, err := getVerifiers(ipfsAPIAddrs[0], i, ctrl)
+		verifiers, err := getVerifiers(transport, i, ctrl)
 		if err != nil {
 			return nil, err
 		}

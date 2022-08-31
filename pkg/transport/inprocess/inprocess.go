@@ -7,7 +7,7 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/google/uuid"
 )
@@ -17,7 +17,7 @@ import (
 type InProcessTransport struct {
 	id                 string
 	subscribeFunctions []transport.SubscribeFn
-	seenEvents         []executor.JobEvent
+	seenEvents         []model.JobEvent
 	mutex              sync.Mutex
 }
 
@@ -58,7 +58,7 @@ func (t *InProcessTransport) HostID(ctx context.Context) (string, error) {
 	return t.id, nil
 }
 
-func (t *InProcessTransport) GetEvents() []executor.JobEvent {
+func (t *InProcessTransport) GetEvents() []model.JobEvent {
 	return t.seenEvents
 }
 
@@ -68,7 +68,7 @@ func (t *InProcessTransport) GetEvents() []executor.JobEvent {
 
 */
 
-func (t *InProcessTransport) Publish(ctx context.Context, ev executor.JobEvent) error {
+func (t *InProcessTransport) Publish(ctx context.Context, ev model.JobEvent) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.seenEvents = append(t.seenEvents, ev)

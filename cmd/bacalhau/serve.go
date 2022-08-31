@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -144,16 +145,16 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() (totalLimits, jobLimits capacitymanager.ResourceUsageConfig) {
+func getCapacityManagerConfig() (totalLimits, jobLimits model.ResourceUsageConfig) {
 	// the total amount of CPU / Memory the system can be using at one time
-	totalResourceLimit := capacitymanager.ResourceUsageConfig{
+	totalResourceLimit := model.ResourceUsageConfig{
 		CPU:    OS.LimitTotalCPU,
 		Memory: OS.LimitTotalMemory,
 		GPU:    OS.LimitTotalGPU,
 	}
 
 	// the per job CPU / Memory limits
-	jobResourceLimit := capacitymanager.ResourceUsageConfig{
+	jobResourceLimit := model.ResourceUsageConfig{
 		CPU:    OS.LimitJobCPU,
 		Memory: OS.LimitJobMemory,
 		GPU:    OS.LimitJobGPU,
@@ -270,7 +271,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewNoopVerifiers(cm, controller.GetStateResolver())
+		verifiers, err := verifier_util.NewStandardVerifiers(
+			cm,
+			controller.GetStateResolver(),
+			transport.Encrypt,
+			transport.Decrypt,
+		)
 		if err != nil {
 			return err
 		}

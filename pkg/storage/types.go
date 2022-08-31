@@ -2,50 +2,28 @@ package storage
 
 import (
 	"context"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 type StorageProvider interface {
 	IsInstalled(context.Context) (bool, error)
 
-	HasStorageLocally(context.Context, StorageSpec) (bool, error)
+	HasStorageLocally(context.Context, model.StorageSpec) (bool, error)
 
 	// how big is the given volume in terms of resource consumption?
-	GetVolumeSize(context.Context, StorageSpec) (uint64, error)
+	GetVolumeSize(context.Context, model.StorageSpec) (uint64, error)
 
-	PrepareStorage(context.Context, StorageSpec) (StorageVolume, error)
+	PrepareStorage(context.Context, model.StorageSpec) (StorageVolume, error)
 
-	CleanupStorage(context.Context, StorageSpec, StorageVolume) error
+	CleanupStorage(context.Context, model.StorageSpec, StorageVolume) error
 
 	// given a local file path - "store" it and return a StorageSpec
-	Upload(context.Context, string) (StorageSpec, error)
+	Upload(context.Context, string) (model.StorageSpec, error)
 
 	// given a StorageSpec - explode it into a list of storage specs it contains
 	// each file path will be appended to the "path" of the storage spec
-	Explode(context.Context, StorageSpec) ([]StorageSpec, error)
-}
-
-// StorageSpec represents some data on a storage engine. Storage engines are
-// specific to particular execution engines, as different execution engines
-// will mount data in different ways.
-type StorageSpec struct {
-	// Engine is the execution engine that can mount the spec's data.
-	Engine     StorageSourceType `json:"engine,omitempty" yaml:"engine,omitempty"`
-	EngineName string            `json:"engine_name" yaml:"engine_name"`
-
-	// Name of the spec's data, for reference.
-	Name string `json:"name" yaml:"name"`
-
-	// The unique ID of the data, where it makes sense (for example, in an
-	// IPFS storage spec this will be the data's CID).
-	Cid string `json:"cid" yaml:"cid"`
-
-	// Source URL of the data
-	URL string `json:"url" yaml:"url"`
-
-	// The path that the spec's data should be mounted on, where it makes
-	// sense (for example, in a Docker storage spec this will be a filesystem
-	// path).
-	Path string `json:"path" yaml:"path"`
+	Explode(context.Context, model.StorageSpec) ([]model.StorageSpec, error)
 }
 
 // a storage entity that is consumed are produced by a job

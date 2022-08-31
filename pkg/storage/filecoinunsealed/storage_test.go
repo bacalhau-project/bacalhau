@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -23,12 +23,12 @@ type FilecoinUnsealedSuite struct {
 	suite.Suite
 }
 
-func (suite *FilecoinUnsealedSuite) prepareCid(cid string) storage.StorageSpec {
+func (suite *FilecoinUnsealedSuite) prepareCid(cid string) model.StorageSpec {
 	folderPath := fmt.Sprintf("%s/%s", tempDir, cid)
 	err := os.MkdirAll(folderPath, os.ModePerm)
 	require.NoError(suite.T(), err)
-	return storage.StorageSpec{
-		Engine: storage.StorageSourceFilecoinUnsealed,
+	return model.StorageSpec{
+		Engine: model.StorageSourceFilecoinUnsealed,
 		Cid:    cid,
 		Path:   folderPath,
 	}

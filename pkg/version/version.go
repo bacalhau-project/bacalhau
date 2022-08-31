@@ -20,17 +20,17 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
 // Get returns the overall codebase version. It's for detecting
 // what code a binary was built from.
-func Get() *executor.VersionInfo {
+func Get() *model.VersionInfo {
 	// These variables typically come from -ldflags settings and in
 	// their absence fallback to the settings in pkg/version/base.go
 
-	versionInfo := &executor.VersionInfo{}
+	versionInfo := &model.VersionInfo{}
 	s, err := semver.NewVersion(GITVERSION)
 	if err != nil {
 		log.Fatal().Msgf("Could not parse GITVERSION during build - %s", GITVERSION)

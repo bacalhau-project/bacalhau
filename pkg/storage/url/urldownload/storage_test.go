@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -43,8 +43,8 @@ func TestHasStorageLocally(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	spec := storage.StorageSpec{
-		Engine: storage.StorageSourceURLDownload,
+	spec := model.StorageSpec{
+		Engine: model.StorageSourceURLDownload,
 		URL:    "foo",
 		Path:   "foo",
 	}
@@ -74,8 +74,8 @@ func TestPrepareStorage(t *testing.T) {
 	}
 
 	serverURL := ts.URL
-	spec := storage.StorageSpec{
-		Engine: storage.StorageSourceURLDownload,
+	spec := model.StorageSpec{
+		Engine: model.StorageSourceURLDownload,
 		URL:    serverURL + "/testfile",
 		Path:   "/foo",
 	}

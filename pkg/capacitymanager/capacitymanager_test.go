@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func (m *MockCapacityTracker) addToActive(item CapacityManagerItem) {
 
 func (m *MockCapacityTracker) moveToActive(itemID string) {
 	for i, v := range m.backlog {
-		if v.ID == itemID {
+		if v.Shard.Job.ID == itemID {
 			m.backlog = append(m.backlog[:i], m.backlog[i+1:]...)
 			m.addToActive(v)
 			return
@@ -36,13 +37,13 @@ func (m *MockCapacityTracker) moveToActive(itemID string) {
 
 func (m *MockCapacityTracker) remove(itemID string) {
 	for i, v := range m.backlog {
-		if v.ID == itemID {
+		if v.Shard.Job.ID == itemID {
 			m.backlog = append(m.backlog[:i], m.backlog[i+1:]...)
 			break
 		}
 	}
 	for i, v := range m.active {
-		if v.ID == itemID {
+		if v.Shard.Job.ID == itemID {
 			m.active = append(m.active[:i], m.active[i+1:]...)
 			break
 		}
@@ -61,8 +62,8 @@ func (m *MockCapacityTracker) ActiveIterator(handler func(item CapacityManagerIt
 	}
 }
 
-func getResources(c, m, d string) ResourceUsageConfig {
-	return ResourceUsageConfig{
+func getResources(c, m, d string) model.ResourceUsageConfig {
+	return model.ResourceUsageConfig{
 		CPU:    c,
 		Memory: m,
 		Disk:   d,
@@ -70,8 +71,8 @@ func getResources(c, m, d string) ResourceUsageConfig {
 }
 
 //nolint:unused,deadcode
-func getResourcesArray(data [][]string) []ResourceUsageConfig {
-	var res []ResourceUsageConfig
+func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
+	var res []model.ResourceUsageConfig
 	for _, d := range data {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}
@@ -86,9 +87,9 @@ func TestConstructionErrors(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		limitTotal  ResourceUsageConfig
-		limitJob    ResourceUsageConfig
-		defaults    ResourceUsageConfig
+		limitTotal  model.ResourceUsageConfig
+		limitJob    model.ResourceUsageConfig
+		defaults    model.ResourceUsageConfig
 		expectError string
 	}{
 		{
@@ -168,12 +169,12 @@ func TestFilter(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		limitTotal     ResourceUsageConfig
-		limitJob       ResourceUsageConfig
-		defaults       ResourceUsageConfig
-		value          ResourceUsageConfig
+		limitTotal     model.ResourceUsageConfig
+		limitJob       model.ResourceUsageConfig
+		defaults       model.ResourceUsageConfig
+		value          model.ResourceUsageConfig
 		expectedOk     bool
-		expectedResult ResourceUsageConfig
+		expectedResult model.ResourceUsageConfig
 	}{
 		{
 			"sanity",
@@ -272,12 +273,12 @@ func TestGetNextItems(t *testing.T) {
 	// for longer than other jobs
 	type TestJob struct {
 		iterations int
-		usage      ResourceUsageConfig
+		usage      model.ResourceUsageConfig
 	}
 
 	testCases := []struct {
 		name  string
-		limit ResourceUsageConfig
+		limit model.ResourceUsageConfig
 		jobs  []TestJob
 		// a csv array of the currently running jobs for each iteration
 		// this will be based on the "iterations" setting of the job
@@ -400,8 +401,12 @@ func TestGetNextItems(t *testing.T) {
 				idString := fmt.Sprintf("%d", id)
 				counterMap[idString] = 0
 				iterationMap[idString] = job.iterations
+				shard := model.JobShard{
+					Job:   model.Job{ID: idString},
+					Index: 0,
+				}
 				capacityTracker.addToBacklog(CapacityManagerItem{
-					ID:           idString,
+					Shard:        shard,
 					Requirements: ParseResourceUsageConfig(job.usage),
 				})
 			}
@@ -415,11 +420,11 @@ func TestGetNextItems(t *testing.T) {
 				// the iteration counter and remove them
 				// if they have "completed"
 				capacityTracker.ActiveIterator(func(item CapacityManagerItem) {
-					counterMap[item.ID]++
-					if counterMap[item.ID] >= iterationMap[item.ID] {
-						toRemove = append(toRemove, item.ID)
+					counterMap[item.Shard.Job.ID]++
+					if counterMap[item.Shard.Job.ID] >= iterationMap[item.Shard.Job.ID] {
+						toRemove = append(toRemove, item.Shard.Job.ID)
 					} else {
-						running = append(running, item.ID)
+						running = append(running, item.Shard.Job.ID)
 					}
 				})
 
@@ -432,9 +437,9 @@ func TestGetNextItems(t *testing.T) {
 
 				// mark each new item as active and start it's
 				// iteration counter at zero
-				for _, id := range nextItems {
-					capacityTracker.moveToActive(id)
-					running = append(running, id)
+				for _, shard := range nextItems {
+					capacityTracker.moveToActive(shard.Job.ID)
+					running = append(running, shard.Job.ID)
 				}
 
 				sort.Strings(running)
@@ -475,10 +480,10 @@ func TestNewCapacityManager(t *testing.T) {
 
 	// Test job limits cannot be greater than Total limits
 	_, err = NewCapacityManager(capacityTracker, Config{
-		ResourceLimitJob: ResourceUsageConfig{
+		ResourceLimitJob: model.ResourceUsageConfig{
 			CPU: "5",
 		},
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			CPU: "1",
 		},
 	})
@@ -486,10 +491,10 @@ func TestNewCapacityManager(t *testing.T) {
 		t.Fatal("job CPU limit should fail when greater than the default total limit (which defaults to the system limit)")
 	}
 	_, err = NewCapacityManager(capacityTracker, Config{
-		ResourceLimitJob: ResourceUsageConfig{
+		ResourceLimitJob: model.ResourceUsageConfig{
 			Memory: "5",
 		},
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			Memory: "1",
 		},
 	})
@@ -497,10 +502,10 @@ func TestNewCapacityManager(t *testing.T) {
 		t.Fatal("job Memory limit should fail when greater than the default total limit (which defaults to the system limit)")
 	}
 	_, err = NewCapacityManager(capacityTracker, Config{
-		ResourceLimitJob: ResourceUsageConfig{
+		ResourceLimitJob: model.ResourceUsageConfig{
 			GPU: "5",
 		},
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			GPU: "0", // Setting this to 0 makes the `GetSystemResources` call ok
 		},
 	})
@@ -515,13 +520,13 @@ func TestNewCapacityManager(t *testing.T) {
 
 	// Test that the default job limits are always greater than the job limit set here
 	_, err = NewCapacityManager(capacityTracker, Config{
-		ResourceLimitJob: ResourceUsageConfig{
+		ResourceLimitJob: model.ResourceUsageConfig{
 			GPU: "0",
 		},
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			GPU: "0", // Setting this to 0 makes the `GetSystemResources` call ok
 		},
-		ResourceRequirementsDefault: ResourceUsageConfig{
+		ResourceRequirementsDefault: model.ResourceUsageConfig{
 			GPU: "1",
 		},
 	})
@@ -534,12 +539,12 @@ func TestFilterRequirements(t *testing.T) {
 	capacityTracker := &MockCapacityTracker{}
 
 	m, err := NewCapacityManager(capacityTracker, Config{
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
 			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
 		},
-		ResourceRequirementsDefault: ResourceUsageConfig{
+		ResourceRequirementsDefault: model.ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
 			GPU:    "0",
@@ -549,7 +554,7 @@ func TestFilterRequirements(t *testing.T) {
 		t.Fatal(err)
 	}
 	ok, req := m.FilterRequirements(
-		ResourceUsageData{},
+		model.ResourceUsageData{},
 	)
 	if !ok {
 		t.Error("Should be ok, but is not")
@@ -569,12 +574,12 @@ func TestGetFreeSpace(t *testing.T) {
 	capacityTracker := &MockCapacityTracker{}
 
 	m, err := NewCapacityManager(capacityTracker, Config{
-		ResourceLimitTotal: ResourceUsageConfig{
+		ResourceLimitTotal: model.ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
 			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
 		},
-		ResourceRequirementsDefault: ResourceUsageConfig{
+		ResourceRequirementsDefault: model.ResourceUsageConfig{
 			CPU:    "1",
 			Memory: "1Gi",
 			GPU:    "0",
@@ -584,8 +589,11 @@ func TestGetFreeSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 	capacityTracker.addToActive(CapacityManagerItem{
-		ID: "test",
-		Requirements: ResourceUsageData{
+		Shard: model.JobShard{
+			Job:   model.Job{ID: "test"},
+			Index: 0,
+		},
+		Requirements: model.ResourceUsageData{
 			CPU:    1,
 			Memory: 1073741824,
 			GPU:    0,

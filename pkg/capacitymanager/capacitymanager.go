@@ -2,6 +2,8 @@ package capacitymanager
 
 import (
 	"fmt"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 const DefaultJobCPU = "100m"
@@ -13,17 +15,17 @@ const DefaultJobGPU = "0"
 type Config struct {
 	// the total amount of CPU and RAM we want to
 	// give to running bacalhau jobs
-	ResourceLimitTotal ResourceUsageConfig
+	ResourceLimitTotal model.ResourceUsageConfig
 	// limit the max CPU / Memory usage for any single job
-	ResourceLimitJob ResourceUsageConfig
+	ResourceLimitJob model.ResourceUsageConfig
 	// if a job does not state how much CPU or Memory is used
 	// what values should we assume?
-	ResourceRequirementsDefault ResourceUsageConfig
+	ResourceRequirementsDefault model.ResourceUsageConfig
 }
 
 type CapacityManagerItem struct {
-	ID           string
-	Requirements ResourceUsageData
+	Shard        model.JobShard
+	Requirements model.ResourceUsageData
 }
 
 type CapacityTracker interface {
@@ -52,9 +54,9 @@ type CapacityManager struct {
 	// amounts we will get an error
 	// if job resource limit is more than total resource limit
 	// then we will error (in the case both values are supplied)
-	resourceLimitsTotal            ResourceUsageData
-	resourceLimitsJob              ResourceUsageData
-	resourceRequirementsJobDefault ResourceUsageData
+	resourceLimitsTotal            model.ResourceUsageData
+	resourceLimitsJob              model.ResourceUsageData
+	resourceRequirementsJobDefault model.ResourceUsageData
 
 	capacityTracker CapacityTracker
 }
@@ -183,7 +185,7 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 // we fill in defaults along the way and return the "processed version"
 // to ever run - this is based on the "resourceLimitsJob" not the total
 // because we might be busy now but could run the job later
-func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageData) (bool, ResourceUsageData) {
+func (manager *CapacityManager) FilterRequirements(requirements model.ResourceUsageData) (bool, model.ResourceUsageData) {
 	if requirements.CPU <= 0 {
 		requirements.CPU = manager.resourceRequirementsJobDefault.CPU
 	}
@@ -200,8 +202,8 @@ func (manager *CapacityManager) FilterRequirements(requirements ResourceUsageDat
 	return isOk, requirements
 }
 
-func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
-	currentResourceUsage := ResourceUsageData{}
+func (manager *CapacityManager) GetFreeSpace() model.ResourceUsageData {
+	currentResourceUsage := model.ResourceUsageData{}
 
 	manager.capacityTracker.ActiveIterator(func(item CapacityManagerItem) {
 		currentResourceUsage.CPU += item.Requirements.CPU
@@ -221,18 +223,18 @@ func (manager *CapacityManager) GetFreeSpace() ResourceUsageData {
 //   - if there is enough in the remaining then bid
 //   - add each bid on job to the "projected resources"
 //   - repeat until project resources >= total resources or no more jobs in queue
-func (manager *CapacityManager) GetNextItems() []string {
+func (manager *CapacityManager) GetNextItems() []model.JobShard {
 	// the list of job ids that we have capacity to run
-	ids := []string{}
+	shards := []model.JobShard{}
 
 	freeSpace := manager.GetFreeSpace()
 
 	manager.capacityTracker.BacklogIterator(func(item CapacityManagerItem) {
 		if checkResourceUsage(item.Requirements, freeSpace) {
-			ids = append(ids, item.ID)
+			shards = append(shards, item.Shard)
 			freeSpace = subtractResourceUsage(item.Requirements, freeSpace)
 		}
 	})
 
-	return ids
+	return shards
 }

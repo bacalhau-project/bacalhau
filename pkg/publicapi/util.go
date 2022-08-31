@@ -10,16 +10,15 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
@@ -43,7 +42,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager)
+	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	c, err := controller.NewController(
@@ -142,38 +141,38 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeEchoJob() (executor.JobSpec, executor.JobDeal) {
+func MakeEchoJob() (model.JobSpec, model.JobDeal) {
 	randomSuffix, _ := uuid.NewUUID()
-	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
+	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
 		"echo",
 		randomSuffix.String(),
 	})
 }
 
-func MakeGenericJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineDocker, verifier.VerifierNoop, publisher.PublisherNoop, []string{
+func MakeGenericJob() (model.JobSpec, model.JobDeal) {
+	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
-func MakeNoopJob() (executor.JobSpec, executor.JobDeal) {
-	return MakeJob(executor.EngineNoop, verifier.VerifierNoop, publisher.PublisherNoop, []string{
+func MakeNoopJob() (model.JobSpec, model.JobDeal) {
+	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
 		"cat",
 		"/data/file.txt",
 	})
 }
 
 func MakeJob(
-	engineType executor.EngineType,
-	verifierType verifier.VerifierType,
-	publisherType publisher.PublisherType,
-	entrypointArray []string) (executor.JobSpec, executor.JobDeal) {
-	jobSpec := executor.JobSpec{
+	engineType model.EngineType,
+	verifierType model.VerifierType,
+	publisherType model.PublisherType,
+	entrypointArray []string) (model.JobSpec, model.JobDeal) {
+	jobSpec := model.JobSpec{
 		Engine:    engineType,
 		Verifier:  verifierType,
 		Publisher: publisherType,
-		Docker: executor.JobSpecDocker{
+		Docker: model.JobSpecDocker{
 			Image:      "ubuntu:latest",
 			Entrypoint: entrypointArray,
 		},
@@ -181,7 +180,7 @@ func MakeJob(
 		// Outputs: testCase.Outputs,
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: 1,
 	}
 

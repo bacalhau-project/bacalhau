@@ -5,9 +5,8 @@ package scenario
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 const HelloWorld = "hello world"
@@ -31,8 +30,8 @@ func CatFileToStdout(t *testing.T) TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		GetJobSpec: func() executor.JobSpecDocker {
-			return executor.JobSpecDocker{
+		GetJobSpec: func() model.JobSpecDocker {
+			return model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"cat",
@@ -58,14 +57,14 @@ func CatFileToVolume(t *testing.T) TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		Outputs: []storage.StorageSpec{
+		Outputs: []model.StorageSpec{
 			{
 				Name: "test",
 				Path: "/output_data",
 			},
 		},
-		GetJobSpec: func() executor.JobSpecDocker {
-			return executor.JobSpecDocker{
+		GetJobSpec: func() model.JobSpecDocker {
+			return model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"bash",
@@ -91,8 +90,8 @@ func GrepFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			2,
 		),
-		GetJobSpec: func() executor.JobSpecDocker {
-			return executor.JobSpecDocker{
+		GetJobSpec: func() model.JobSpecDocker {
+			return model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"grep",
@@ -119,8 +118,8 @@ func SedFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			5, //nolint:gomnd // magic number ok for testing
 		),
-		GetJobSpec: func() executor.JobSpecDocker {
-			return executor.JobSpecDocker{
+		GetJobSpec: func() model.JobSpecDocker {
+			return model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"sed",
@@ -148,8 +147,8 @@ func AwkFile(t *testing.T) TestCase {
 			ExpectedModeContains,
 			501, //nolint:gomnd // magic number appropriate for test
 		),
-		GetJobSpec: func() executor.JobSpecDocker {
-			return executor.JobSpecDocker{
+		GetJobSpec: func() model.JobSpecDocker {
+			return model.JobSpecDocker{
 				Image: "ubuntu:latest",
 				Entrypoint: []string{
 					"awk",
