@@ -127,8 +127,8 @@ func (node *RequesterNode) subscriptionEventBid(
 		assignedNodes := map[int][]string{}
 		bidCount := 0
 
-		for _, globalEvent := range globalEvents {
-			if globalEvent.EventName == model.JobEventBid {
+		for i := range globalEvents {
+			if globalEvents[i].EventName == model.JobEventBid {
 				// TODO: group by node_id, so that one node can't make multiple
 				// bids to increase the counter
 				bidCount += 1
@@ -170,8 +170,8 @@ func (node *RequesterNode) subscriptionEventBid(
 
 	if accepted {
 		// TODO: don't accept THIS bid, necessarily, instead accept
-		// concurrency-many bids randomly from the bids that haven't been
-		// accepted yet in localEvents.
+		// (concurrency-acceptedSoFar) many bids randomly from the bids that
+		// haven't been accepted yet in localEvents.
 
 		log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
 		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
