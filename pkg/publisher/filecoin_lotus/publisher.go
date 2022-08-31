@@ -1,4 +1,4 @@
-package filecoin_lotus
+package filecoinlotus
 
 import (
 	"context"
@@ -114,7 +114,7 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	ctx, span := newSpan(ctx, "tarResultsDir")
+	_, span := newSpan(ctx, "tarResultsDir")
 	defer span.End()
 	tempDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
 	if err != nil {
@@ -171,7 +171,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
-	ctx, span := newSpan(ctx, "runLotusCommand")
+	_, span := newSpan(ctx, "runLotusCommand")
 	defer span.End()
 	return system.RunCommandGetResults(lotusPublisher.Config.ExecutablePath, args)
 }

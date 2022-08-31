@@ -1,4 +1,4 @@
-package filecoin_lotus
+package filecoinlotus
 
 import (
 	"context"
