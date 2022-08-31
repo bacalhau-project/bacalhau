@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
 - terraform.yaml
 
-namespace: default
+namespace: bacalhau-development
