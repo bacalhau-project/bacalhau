@@ -12,12 +12,13 @@ func _() {
 	_ = x[StorageSourceIPFS-1]
 	_ = x[StorageSourceURLDownload-2]
 	_ = x[StorageSourceFilecoinUnsealed-3]
-	_ = x[storageSourceDone-4]
+	_ = x[StorageSourceFilecoin-4]
+	_ = x[storageSourceDone-5]
 }
 
-const _StorageSourceType_name = "storageSourceUnknownIPFSURLDownloadFilecoinUnsealedstorageSourceDone"
+const _StorageSourceType_name = "storageSourceUnknownIPFSURLDownloadFilecoinUnsealedFilecoinstorageSourceDone"
 
-var _StorageSourceType_index = [...]uint8{0, 20, 24, 35, 51, 68}
+var _StorageSourceType_index = [...]uint8{0, 20, 24, 35, 51, 59, 76}
 
 func (i StorageSourceType) String() string {
 	if i < 0 || i >= StorageSourceType(len(_StorageSourceType_index)-1) {

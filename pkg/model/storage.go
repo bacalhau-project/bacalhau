@@ -17,6 +17,7 @@ const (
 	StorageSourceIPFS
 	StorageSourceURLDownload
 	StorageSourceFilecoinUnsealed
+	StorageSourceFilecoin
 	storageSourceDone // must be last
 )
 
