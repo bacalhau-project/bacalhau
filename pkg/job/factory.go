@@ -11,18 +11,14 @@ import (
 )
 
 func ConstructJobFromEvent(ev model.JobEvent) model.Job {
-<<<<<<< HEAD
-	log.Debug().Msgf("Constructing job ID: %s", ev.JobID)
+	log.Debug().Msgf("Constructing job from event: %+v", ev.JobID)
 	log.Trace().Msgf("Full job event: %+v", ev)
-||||||| 304d83a8
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
-=======
-	log.Debug().Msgf("Constructing job from event: %+v", ev)
+
 	publicKey := ev.SenderPublicKey
 	if publicKey == nil {
 		publicKey = []byte{}
 	}
->>>>>>> main
+
 	return model.Job{
 		ID:                 ev.JobID,
 		RequesterNodeID:    ev.SourceNodeID,
