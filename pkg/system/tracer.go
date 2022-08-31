@@ -134,7 +134,7 @@ func GetSpanFromContext(ctx context.Context) oteltrace.Span {
 // https://pkg.go.dev/go.opentelemetry.io/otel/trace#Tracer
 // ctx: the context to use for the span
 // tracerName: the name of the service that the span is for - will be prefixed with "tracer/".
-//		Will create a new one if one with the same name does not exist
+// Will create a new one if one with the same name does not exist
 // spanName: the name of the span, inside the service
 // opts: additional options to configure the span from trace.SpanStartOption
 func Span(ctx context.Context, tracerName, spanName string,
