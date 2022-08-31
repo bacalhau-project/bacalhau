@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -122,20 +123,30 @@ var listCmd = &cobra.Command{
 	Long:    listLong,
 	Example: listExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jobs, err := getAPIClient().List(context.Background())
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := context.Background()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		defer rootSpan.End()
+
+		_, listSpan := t.Start(ctx, "requestinglistfromserver")
+		jobs, err := getAPIClient().List(ctx)
 		if err != nil {
 			return err
 		}
+		listSpan.End()
 
-		t := table.NewWriter()
-		t.SetOutputMirror(cmd.OutOrStderr())
+		tw := table.NewWriter()
+		tw.SetOutputMirror(cmd.OutOrStderr())
 		if !OL.HideHeader {
-			t.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
+			tw.AppendHeader(table.Row{"creation_time", "id", "job", "state", "result"})
 		}
 
 		columnConfig := []table.ColumnConfig{}
 
-		t.SetColumnConfigs(columnConfig)
+		tw.SetColumnConfigs(columnConfig)
 
 		jobArray := []model.Job{}
 		for _, j := range jobs {
@@ -152,6 +163,7 @@ var listCmd = &cobra.Command{
 		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
 		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 
+		_, sortingSpan := t.Start(ctx, "sortingreturnedjobs")
 		sort.Slice(jobArray, func(i, j int) bool {
 			switch OL.SortBy {
 			case ColumnID:
@@ -174,11 +186,13 @@ var listCmd = &cobra.Command{
 				jobArray = append(jobArray, jobs[id])
 			}
 		}
+		sortingSpan.End()
 
 		numberInTable := Min(OL.MaxJobs, len(jobArray))
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
+		ctx, resolvingJobDetailsSpan := t.Start(ctx, "resolvingjobdetails")
 		for _, j := range jobArray[0:numberInTable] {
 			jobDesc := []string{
 				j.Spec.Engine.String(),
@@ -191,17 +205,21 @@ var listCmd = &cobra.Command{
 
 			resolver := getAPIClient().GetJobStateResolver()
 
-			stateSummary, err := resolver.StateSummary(context.Background(), j.ID)
+			_, stateSummarySpan := t.Start(ctx, "resolvingjobstate")
+			stateSummary, err := resolver.StateSummary(ctx, j.ID)
 			if err != nil {
 				return err
 			}
+			stateSummarySpan.End()
 
-			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
+			_, resultSummarySpan := t.Start(ctx, "resolvingjobresult")
+			resultSummary, err := resolver.ResultSummary(ctx, j.ID)
 			if err != nil {
 				return err
 			}
+			resultSummarySpan.End()
 
-			t.AppendRows([]table.Row{
+			tw.AppendRows([]table.Row{
 				{
 					shortenTime(OL.OutputWide, j.CreatedAt),
 					shortID(OL.OutputWide, j.ID),
@@ -211,8 +229,10 @@ var listCmd = &cobra.Command{
 				},
 			})
 		}
+		resolvingJobDetailsSpan.End()
+
 		if OL.NoStyle {
-			t.SetStyle(table.Style{
+			tw.SetStyle(table.Style{
 				Name:   "StyleDefault",
 				Box:    table.StyleBoxDefault,
 				Color:  table.ColorOptionsDefault,
@@ -228,7 +248,7 @@ var listCmd = &cobra.Command{
 				Title: table.TitleOptionsDefault,
 			})
 		} else {
-			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
+			tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
 		if OL.OutputFormat == JSONFormat {
@@ -240,7 +260,7 @@ var listCmd = &cobra.Command{
 			cmd.Printf("%s\n", msgBytes)
 			return nil
 		} else {
-			t.Render()
+			tw.Render()
 		}
 
 		return nil

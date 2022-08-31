@@ -168,14 +168,17 @@ var devstackCmd = &cobra.Command{
 		}
 
 		portFileName := "/tmp/bacalhau-devstack.port"
-		_, err := os.Stat(portFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
-		}
 		pidFileName := "/tmp/bacalhau-devstack.pid"
-		_, err = os.Stat(pidFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+
+		if _, ignore := os.LookupEnv("IGNORE_PORT_CONFLICT"); !ignore {
+			_, err := os.Stat(portFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+			}
+			_, err = os.Stat(pidFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+			}
 		}
 
 		stack, err := devstack.NewDevStack(

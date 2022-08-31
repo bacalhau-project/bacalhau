@@ -217,17 +217,23 @@ func (apiServer *APIServer) peers(res http.ResponseWriter, req *http.Request) {
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
+	ctx, t := system.GetTracerFromRequest(req)
+
+	_, unMarshallSpan := t.Start(ctx, "unmarshallinglistrequest")
 	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	unMarshallSpan.End()
 
-	list, err := apiServer.Controller.GetJobs(req.Context(), localdb.JobQuery{})
+	ctx, getJobsSpan := t.Start(ctx, "gettingjobs")
+	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	getJobsSpan.End()
 
 	rawJobs := map[string]model.Job{}
 
@@ -235,6 +241,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		rawJobs[listJob.ID] = listJob
 	}
 
+	_, marshallSpan := t.Start(ctx, "marshallingresponse")
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: rawJobs,
@@ -243,6 +250,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	marshallSpan.End()
 }
 
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
@@ -345,13 +353,18 @@ func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Reque
 }
 
 func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {
+	ctx, t := system.GetTracerFromRequest(req)
+
+	_, unMarshallSpan := t.Start(ctx, "unmarshallingversionrequest")
 	var versionReq versionRequest
 	err := json.NewDecoder(req.Body).Decode(&versionReq)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	unMarshallSpan.End()
 
+	_, respondingSpan := t.Start(ctx, "encodingversionresponse")
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(versionResponse{
 		VersionInfo: version.Get(),
@@ -360,6 +373,7 @@ func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	respondingSpan.End()
 }
 
 type submitRequest struct {
