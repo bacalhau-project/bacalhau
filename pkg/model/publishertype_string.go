@@ -11,12 +11,13 @@ func _() {
 	_ = x[publisherUnknown-0]
 	_ = x[PublisherNoop-1]
 	_ = x[PublisherIpfs-2]
-	_ = x[publisherDone-3]
+	_ = x[PublisherFilecoin-3]
+	_ = x[publisherDone-4]
 }
 
-const _PublisherType_name = "publisherUnknownNoopIpfspublisherDone"
+const _PublisherType_name = "publisherUnknownNoopIpfsFilecoinpublisherDone"
 
-var _PublisherType_index = [...]uint8{0, 16, 20, 24, 37}
+var _PublisherType_index = [...]uint8{0, 16, 20, 24, 32, 45}
 
 func (i PublisherType) String() string {
 	if i < 0 || i >= PublisherType(len(_PublisherType_index)-1) {

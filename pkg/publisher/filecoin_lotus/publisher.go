@@ -3,6 +3,8 @@ package filecoin_lotus
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -13,7 +15,10 @@ import (
 )
 
 type FilecoinLotusPublisherConfig struct {
-	ExecutablePath string
+	ExecutablePath  string
+	MinerAddress    string
+	StoragePrice    string
+	StorageDuration string
 }
 
 type FilecoinLotusPublisher struct {
@@ -29,6 +34,15 @@ func NewFilecoinLotusPublisher(
 	processedConfig, err := processConfig(config)
 	if err != nil {
 		return nil, err
+	}
+	if config.MinerAddress == "" {
+		return nil, fmt.Errorf("MinerAddress is required")
+	}
+	if config.StoragePrice == "" {
+		return nil, fmt.Errorf("StoragePrice is required")
+	}
+	if config.StorageDuration == "" {
+		return nil, fmt.Errorf("StorageDuration is required")
 	}
 	return &FilecoinLotusPublisher{
 		StateResolver: resolver,
@@ -60,10 +74,25 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 		shard,
 		shardResultPath,
 	)
+	tarFile, err := lotusPublisher.tarResultsDir(ctx, shardResultPath)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	contentCid, err := lotusPublisher.importData(ctx, tarFile)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	dealCid, err := lotusPublisher.createDeal(ctx, contentCid)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
 	return model.StorageSpec{
 		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
 		Engine: model.StorageSourceFilecoin,
-		Cid:    "123",
+		Cid:    contentCid,
+		Metadata: map[string]string{
+			"deal_cid": dealCid,
+		},
 	}, nil
 }
 
@@ -82,6 +111,63 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 		results = append(results, shardResult.Results)
 	}
 	return results, nil
+}
+
+func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
+	ctx, span := newSpan(ctx, "tarResultsDir")
+	defer span.End()
+	tempDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
+	if err != nil {
+		return "", err
+	}
+	tempFile := fmt.Sprintf("%s/results.tar", tempDir)
+	_, err = system.RunCommandGetResults("tar", []string{
+		"-cvf",
+		tempFile,
+		resultsDir,
+	})
+	if err != nil {
+		return "", err
+	}
+	return tempFile, nil
+}
+
+func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, filePath string) (string, error) {
+	ctx, span := newSpan(ctx, "importData")
+	defer span.End()
+	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "import", filePath})
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(strings.TrimSpace(rawOutput), " ")
+	return parts[len(parts)-1], nil
+}
+
+func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, contentCid string) (string, error) {
+	ctx, span := newSpan(ctx, "createDeal")
+	defer span.End()
+	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{
+		"client", "deal",
+		contentCid,
+		lotusPublisher.Config.MinerAddress,
+		lotusPublisher.Config.StoragePrice,
+		lotusPublisher.Config.StorageDuration,
+	})
+	if err != nil {
+		return "", err
+	}
+	dealCid := ""
+	for _, line := range strings.Split(strings.TrimSpace(rawOutput), "\n") {
+		if !strings.Contains(line, lotusPublisher.Config.MinerAddress) {
+			continue
+		}
+		parts := strings.Split(strings.TrimSpace(line), " ")
+		dealCid = parts[len(parts)-1]
+	}
+	if dealCid == "" {
+		return "", fmt.Errorf("no deal cid found in output")
+	}
+	return dealCid, nil
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
