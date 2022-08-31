@@ -13,8 +13,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -60,7 +60,7 @@ func getAPIClient() *publicapi.APIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *executor.VersionInfo) error {
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.VersionInfo) error {
 	if clientVersion == nil {
 		log.Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
@@ -192,8 +192,8 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
-	jobSpec *executor.JobSpec,
-	jobDeal *executor.JobDeal,
+	jobSpec *model.JobSpec,
+	jobDeal *model.JobDeal,
 	isLocal bool,
 	waitForJobToFinish bool,
 	dockerRunDownloadFlags ipfs.IPFSDownloadSettings,

@@ -3,7 +3,7 @@ package publisher
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 // Publisher is the interface for publishing results of a job
@@ -24,11 +24,10 @@ type Publisher interface {
 	// (e.g. notify slack)
 	PublishShardResult(
 		ctx context.Context,
-		jobID string,
+		shard model.JobShard,
 		hostID string,
-		shardIndex int,
 		shardResultPath string,
-	) (storage.StorageSpec, error)
+	) (model.StorageSpec, error)
 
 	// return a slice of storage specs that when re-assembled
 	// constitutes a complete set of results for a job
@@ -40,5 +39,5 @@ type Publisher interface {
 	ComposeResultReferences(
 		ctx context.Context,
 		jobID string,
-	) ([]storage.StorageSpec, error)
+	) ([]model.StorageSpec, error)
 }

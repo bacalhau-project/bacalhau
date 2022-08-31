@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -145,7 +145,7 @@ func MapByteArray(vs []byte, f func(byte) byte) []byte {
 	return vsm
 }
 
-func GetJobStateStringArray(states []executor.JobStateType) []string {
+func GetJobStateStringArray(states []model.JobStateType) []string {
 	ret := []string{}
 	for _, state := range states {
 		ret = append(ret, state.String())

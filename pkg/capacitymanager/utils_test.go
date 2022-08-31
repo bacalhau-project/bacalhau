@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -39,16 +40,16 @@ func (suite *ResourceUsageUtilsSuite) TearDownTest() {
 func (suite *ResourceUsageUtilsSuite) TearDownAllSuite() {
 
 }
-func c(cpu, mem, gpu string) ResourceUsageConfig {
-	return ResourceUsageConfig{
+func c(cpu, mem, gpu string) model.ResourceUsageConfig {
+	return model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: mem,
 		GPU:    gpu,
 	}
 }
 
-func d(cpu float64, mem uint64, gpu uint64) ResourceUsageData {
-	return ResourceUsageData{
+func d(cpu float64, mem uint64, gpu uint64) model.ResourceUsageData {
+	return model.ResourceUsageData{
 		CPU:    cpu,
 		Memory: mem,
 		GPU:    gpu,
@@ -59,8 +60,8 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 
 	tests := []struct {
 		name     string
-		input    ResourceUsageConfig
-		expected ResourceUsageData
+		input    model.ResourceUsageConfig
+		expected model.ResourceUsageData
 	}{
 		{
 			name:     "basic",
@@ -117,8 +118,8 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	tests := []struct {
 		name        string
 		shouldError bool
-		input       ResourceUsageConfig
-		expected    ResourceUsageData
+		input       model.ResourceUsageConfig
+		expected    model.ResourceUsageData
 	}{
 		{
 			name:        "should return what the system has",
@@ -175,12 +176,12 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 
 func TestSubtractResourceUsage(t *testing.T) {
 	res := subtractResourceUsage(
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
 			GPU:    2,
 		},
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    1,
 			Memory: (datasize.GB * 1).Bytes(),
 			GPU:    4,
@@ -200,12 +201,12 @@ func TestSubtractResourceUsage(t *testing.T) {
 func TestCheckResourceUsage(t *testing.T) {
 	// Test when resources are ok, should return true
 	ok := checkResourceUsage(
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
 			GPU:    2,
 		},
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    1,
 			Memory: (datasize.GB * 1).Bytes(),
 			GPU:    4,
@@ -217,12 +218,12 @@ func TestCheckResourceUsage(t *testing.T) {
 
 	// test when resources are not ok
 	ok = checkResourceUsage(
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
 			GPU:    2,
 		},
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    1,
 			Memory: (datasize.GB * 1).Bytes(),
 			GPU:    0,
@@ -232,12 +233,12 @@ func TestCheckResourceUsage(t *testing.T) {
 		t.Error("checkResourceUsage returned true")
 	}
 	ok = checkResourceUsage(
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
 			GPU:    2,
 		},
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0,
 			Memory: (datasize.GB * 1).Bytes(),
 			GPU:    4,
@@ -247,12 +248,12 @@ func TestCheckResourceUsage(t *testing.T) {
 		t.Error("checkResourceUsage returned true")
 	}
 	ok = checkResourceUsage(
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    0.5,
 			Memory: (datasize.MB * 512).Bytes(),
 			GPU:    2,
 		},
-		ResourceUsageData{
+		model.ResourceUsageData{
 			CPU:    1,
 			Memory: (datasize.GB * 0).Bytes(),
 			GPU:    4,

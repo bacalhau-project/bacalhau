@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -51,7 +52,7 @@ type getStorageFunc func(cm *system.CleanupManager, api string) (
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
-		storage.StorageSourceIPFS,
+		model.StorageSourceIPFS,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
@@ -64,7 +65,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
-		storage.StorageSourceIPFS,
+		model.StorageSourceIPFS,
 		func(cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
@@ -73,7 +74,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	)
 }
 
-func runFileTest(t *testing.T, engine storage.StorageSourceType, getStorageDriver getStorageFunc) {
+func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
 	// get a single IPFS server
 	ctx, span := newSpan(engine.String())
 	defer span.End()
@@ -92,7 +93,7 @@ func runFileTest(t *testing.T, engine storage.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
-	storage := storage.StorageSpec{
+	storage := model.StorageSpec{
 		Engine: engine,
 		Cid:    fileCid,
 		Path:   "/data/file.txt",
@@ -120,7 +121,7 @@ func runFileTest(t *testing.T, engine storage.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 }
 
-func runFolderTest(t *testing.T, engine storage.StorageSourceType, getStorageDriver getStorageFunc) {
+func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
 	ctx, span := newSpan(engine.String())
 	defer span.End()
 
@@ -145,7 +146,7 @@ func runFolderTest(t *testing.T, engine storage.StorageSourceType, getStorageDri
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
-	storage := storage.StorageSpec{
+	storage := model.StorageSpec{
 		Engine: engine,
 		Cid:    folderCid,
 		Path:   "/data/folder",

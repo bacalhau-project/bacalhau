@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -33,8 +33,8 @@ var oV = &VersionOptions{}
 
 // Versions is a struct for version information
 type Versions struct {
-	ClientVersion *executor.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion *executor.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion *model.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
+	ServerVersion *model.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic

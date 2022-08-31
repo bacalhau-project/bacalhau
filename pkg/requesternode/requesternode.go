@@ -8,8 +8,8 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
@@ -23,7 +23,7 @@ type RequesterNode struct {
 	id             string
 	config         RequesterNodeConfig //nolint:gocritic
 	controller     *controller.Controller
-	verifiers      map[verifier.VerifierType]verifier.Verifier
+	verifiers      map[model.VerifierType]verifier.Verifier
 	componentMutex sync.Mutex
 	bidMutex       sync.Mutex
 	verifyMutex    sync.Mutex
@@ -32,7 +32,7 @@ type RequesterNode struct {
 func NewRequesterNode(
 	cm *system.CleanupManager,
 	c *controller.Controller,
-	verifiers map[verifier.VerifierType]verifier.Verifier,
+	verifiers map[model.VerifierType]verifier.Verifier,
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
@@ -70,7 +70,7 @@ func NewRequesterNode(
 subscriptions
 */
 func (node *RequesterNode) subscriptionSetup() {
-	node.controller.Subscribe(func(ctx context.Context, jobEvent executor.JobEvent) {
+	node.controller.Subscribe(func(ctx context.Context, jobEvent model.JobEvent) {
 		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
 		if err != nil {
 			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
@@ -81,11 +81,11 @@ func (node *RequesterNode) subscriptionSetup() {
 			return
 		}
 		switch jobEvent.EventName {
-		case executor.JobEventBid:
+		case model.JobEventBid:
 			node.subscriptionEventBid(ctx, job, jobEvent)
-		case executor.JobEventResultsProposed:
+		case model.JobEventResultsProposed:
 			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
-		case executor.JobEventError:
+		case model.JobEventError:
 			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
 		}
 	})
@@ -93,8 +93,8 @@ func (node *RequesterNode) subscriptionSetup() {
 
 func (node *RequesterNode) subscriptionEventBid(
 	ctx context.Context,
-	job executor.Job,
-	jobEvent executor.JobEvent,
+	job model.Job,
+	jobEvent model.JobEvent,
 ) {
 	node.bidMutex.Lock()
 	defer node.bidMutex.Unlock()
@@ -128,7 +128,7 @@ func (node *RequesterNode) subscriptionEventBid(
 		bidCount := 0
 
 		for _, globalEvent := range globalEvents {
-			if globalEvent.EventName == executor.JobEventBid {
+			if globalEvent.EventName == model.JobEventBid {
 				// TODO: group by node_id, so that one node can't make multiple
 				// bids to increase the counter
 				bidCount += 1
@@ -137,7 +137,7 @@ func (node *RequesterNode) subscriptionEventBid(
 
 		for _, localEvent := range localEvents {
 			threadLogger.Debug().Msgf("localEvent: %+v", localEvent)
-			if localEvent.EventName == executor.JobLocalEventBidAccepted {
+			if localEvent.EventName == model.JobLocalEventBidAccepted {
 				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
 				if !ok {
 					assignedNodesForShard = []string{}
@@ -194,8 +194,8 @@ func (node *RequesterNode) subscriptionEventBid(
 // we mark the job as "verifying" to prevent duplicate verification
 func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 	ctx context.Context,
-	job executor.Job,
-	jobEvent executor.JobEvent,
+	job model.Job,
+	jobEvent model.JobEvent,
 ) {
 	node.verifyMutex.Lock()
 	defer node.verifyMutex.Unlock()
@@ -215,7 +215,7 @@ func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 
 func (node *RequesterNode) attemptVerification(
 	ctx context.Context,
-	job executor.Job,
+	job model.Job,
 ) error {
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
 	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
@@ -231,7 +231,7 @@ func (node *RequesterNode) attemptVerification(
 		return nil
 	}
 	// check that we have not already verified this job
-	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(executor.JobLocalEventVerified))
+	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(model.JobLocalEventVerified))
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (node *RequesterNode) attemptVerification(
 }
 
 //nolint:dupl // methods are not duplicates
-func (node *RequesterNode) getVerifier(ctx context.Context, typ verifier.VerifierType) (verifier.Verifier, error) {
+func (node *RequesterNode) getVerifier(ctx context.Context, typ model.VerifierType) (verifier.Verifier, error) {
 	node.componentMutex.Lock()
 	defer node.componentMutex.Unlock()
 

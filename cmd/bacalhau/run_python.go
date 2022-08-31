@@ -39,6 +39,7 @@ type LanguageRunOptions struct {
 	OutputVolumes []string // Array of output volumes in 'name:mount point' form
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
+	Confidence    int      // Minimum number of nodes that must agree on a verification result
 	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
@@ -70,6 +71,7 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		OutputVolumes:    []string{},
 		Env:              []string{},
 		Concurrency:      1,
+		Confidence:       0,
 		Labels:           []string{},
 		Command:          "",
 		RequirementsPath: "",
@@ -109,6 +111,10 @@ func init() {
 	runPythonCmd.PersistentFlags().IntVar(
 		&OLR.Concurrency, "concurrency", OLR.Concurrency,
 		`How many nodes should run the job`,
+	)
+	runPythonCmd.PersistentFlags().IntVar(
+		&OLR.Confidence, "confidence", OLR.Confidence,
+		`The minimum number of nodes that must agree on a verification result`,
 	)
 	runPythonCmd.PersistentFlags().StringVarP(
 		&OLR.Command, "command", "c", OLR.Command,
@@ -178,6 +184,7 @@ var runPythonCmd = &cobra.Command{
 			OLR.OutputVolumes,
 			[]string{}, // no env vars (yet)
 			OLR.Concurrency,
+			OLR.Confidence,
 			OLR.MinBids,
 			"python",
 			"3.10",

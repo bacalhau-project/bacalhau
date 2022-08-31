@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
@@ -12,7 +13,7 @@ func NewIPFSPublishers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	ipfsMultiAddress string,
-) (map[publisher.PublisherType]publisher.Publisher, error) {
+) (map[model.PublisherType]publisher.Publisher, error) {
 	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
 	if err != nil {
 		return nil, err
@@ -23,23 +24,23 @@ func NewIPFSPublishers(
 		return nil, err
 	}
 
-	return map[publisher.PublisherType]publisher.Publisher{
-		publisher.PublisherNoop: noopPublisher,
-		publisher.PublisherIpfs: ipfsPublisher,
+	return map[model.PublisherType]publisher.Publisher{
+		model.PublisherNoop: noopPublisher,
+		model.PublisherIpfs: ipfsPublisher,
 	}, nil
 }
 
 func NewNoopPublishers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (map[publisher.PublisherType]publisher.Publisher, error) {
+) (map[model.PublisherType]publisher.Publisher, error) {
 	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[publisher.PublisherType]publisher.Publisher{
-		publisher.PublisherNoop: noopPublisher,
-		publisher.PublisherIpfs: noopPublisher,
+	return map[model.PublisherType]publisher.Publisher{
+		model.PublisherNoop: noopPublisher,
+		model.PublisherIpfs: noopPublisher,
 	}, nil
 }

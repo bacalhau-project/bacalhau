@@ -8,12 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -43,12 +40,14 @@ var (
 type CreateOptions struct {
 	Filename    string // Filename for job (can be .json or .yaml)
 	Concurrency int    // Number of concurrent jobs to run
+	Confidence  int    // Minimum number of nodes that must agree on a verification result
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
 		Filename:    "",
 		Concurrency: 1,
+		Confidence:  0,
 	}
 }
 
@@ -56,6 +55,10 @@ func init() { //nolint:gochecknoinits
 	createCmd.PersistentFlags().IntVarP(
 		&OC.Concurrency, "concurrency", "c", OC.Concurrency,
 		`How many nodes should run the job`,
+	)
+	createCmd.PersistentFlags().IntVar(
+		&OC.Confidence, "confidence", OC.Confidence,
+		`The minimum number of nodes that must agree on a verification result`,
 	)
 }
 
@@ -89,7 +92,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		jobSpec := &executor.JobSpec{}
+		jobSpec := &model.JobSpec{}
 
 		if fileextension == ".json" {
 			err = json.Unmarshal(byteResult, &jobSpec)
@@ -107,22 +110,22 @@ var createCmd = &cobra.Command{
 
 		// the spec might use string version or proper numeric versions
 		// let's convert them to the numeric version
-		engineType, err := executor.EnsureEngineType(jobSpec.Engine, jobSpec.EngineName)
+		engineType, err := model.EnsureEngineType(jobSpec.Engine, jobSpec.EngineName)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := verifier.EnsureVerifierType(jobSpec.Verifier, jobSpec.VerifierName)
+		verifierType, err := model.EnsureVerifierType(jobSpec.Verifier, jobSpec.VerifierName)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := publisher.EnsurePublisherType(jobSpec.Publisher, jobSpec.PublisherName)
+		publisherType, err := model.EnsurePublisherType(jobSpec.Publisher, jobSpec.PublisherName)
 		if err != nil {
 			return err
 		}
 
-		parsedInputs, err := storage.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
+		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
 		if err != nil {
 			return err
 		}
@@ -132,8 +135,9 @@ var createCmd = &cobra.Command{
 		jobSpec.Publisher = publisherType
 		jobSpec.Inputs = parsedInputs
 
-		jobDeal := &executor.JobDeal{
+		jobDeal := &model.JobDeal{
 			Concurrency: OC.Concurrency,
+			Confidence:  OC.Confidence,
 		}
 
 		err = ExecuteJob(ctx,

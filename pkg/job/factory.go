@@ -5,25 +5,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 )
 
-func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
+func ConstructJobFromEvent(ev model.JobEvent) model.Job {
 	log.Debug().Msgf("Constructing job from event: %+v", ev)
-	return executor.Job{
-		ID:              ev.JobID,
-		RequesterNodeID: ev.SourceNodeID,
-		ClientID:        ev.ClientID,
-		Spec:            ev.JobSpec,
-		Deal:            ev.JobDeal,
-		ExecutionPlan:   ev.JobExecutionPlan,
-		CreatedAt:       time.Now(),
+	publicKey := ev.SenderPublicKey
+	if publicKey == nil {
+		publicKey = []byte{}
+	}
+	return model.Job{
+		ID:                 ev.JobID,
+		RequesterNodeID:    ev.SourceNodeID,
+		RequesterPublicKey: publicKey,
+		ClientID:           ev.ClientID,
+		Spec:               ev.JobSpec,
+		Deal:               ev.JobDeal,
+		ExecutionPlan:      ev.JobExecutionPlan,
+		CreatedAt:          time.Now(),
 	}
 }
 
@@ -31,9 +32,9 @@ func ConstructJobFromEvent(ev executor.JobEvent) executor.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
-	e executor.EngineType,
-	v verifier.VerifierType,
-	p publisher.PublisherType,
+	e model.EngineType,
+	v model.VerifierType,
+	p model.PublisherType,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -42,6 +43,7 @@ func ConstructDockerJob( //nolint:funlen
 	entrypoint []string,
 	image string,
 	concurrency int,
+	confidence int,
 	minBids int,
 	annotations []string,
 	workingDir string,
@@ -49,24 +51,24 @@ func ConstructDockerJob( //nolint:funlen
 	shardingBasePath string,
 	shardingBatchSize int,
 	doNotTrack bool,
-) (*executor.JobSpec, *executor.JobDeal, error) {
+) (*model.JobSpec, *model.JobDeal, error) {
 	if concurrency <= 0 {
-		return &executor.JobSpec{}, &executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return &model.JobSpec{}, &model.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
-	jobResources := capacitymanager.ResourceUsageConfig{
+	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
 		GPU:    gpu,
 	}
-	jobContexts := []storage.StorageSpec{}
+	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return &executor.JobSpec{}, &executor.JobDeal{}, err
+		return &model.JobSpec{}, &model.JobDeal{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return &executor.JobSpec{}, &executor.JobDeal{}, err
+		return &model.JobSpec{}, &model.JobDeal{}, err
 	}
 
 	var jobAnnotations []string
@@ -89,24 +91,24 @@ func ConstructDockerJob( //nolint:funlen
 		err := system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
-			return &executor.JobSpec{}, &executor.JobDeal{}, err
+			return &model.JobSpec{}, &model.JobDeal{}, err
 		}
 	}
 
 	// Weird bug that sharding basepath fails if has a trailing slash
 	shardingBasePath = strings.TrimSuffix(shardingBasePath, "/")
 
-	jobShardingConfig := executor.JobShardingConfig{
+	jobShardingConfig := model.JobShardingConfig{
 		GlobPattern: shardingGlobPattern,
 		BasePath:    shardingBasePath,
 		BatchSize:   shardingBatchSize,
 	}
 
-	spec := executor.JobSpec{
+	spec := model.JobSpec{
 		Engine:    e,
 		Verifier:  v,
 		Publisher: p,
-		Docker: executor.JobSpecDocker{
+		Docker: model.JobSpecDocker{
 			Image:      image,
 			Entrypoint: entrypoint,
 			Env:        env,
@@ -126,8 +128,9 @@ func ConstructDockerJob( //nolint:funlen
 		spec.Docker.WorkingDir = workingDir
 	}
 
-	deal := executor.JobDeal{
+	deal := model.JobDeal{
 		Concurrency: concurrency,
+		Confidence:  confidence,
 		MinBids:     minBids,
 	}
 
@@ -140,6 +143,7 @@ func ConstructLanguageJob(
 	outputVolumes []string,
 	env []string,
 	concurrency int,
+	confidence int,
 	minBids int,
 	// See JobSpecLanguage
 	language string,
@@ -151,22 +155,22 @@ func ConstructLanguageJob(
 	deterministic bool,
 	annotations []string,
 	doNotTrack bool,
-) (executor.JobSpec, executor.JobDeal, error) {
+) (model.JobSpec, model.JobDeal, error) {
 	// TODO refactor this wrt ConstructDockerJob
 
 	if concurrency <= 0 {
-		return executor.JobSpec{}, executor.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return model.JobSpec{}, model.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
 	}
 
-	jobContexts := []storage.StorageSpec{}
+	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return model.JobSpec{}, model.JobDeal{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return executor.JobSpec{}, executor.JobDeal{}, err
+		return model.JobSpec{}, model.JobDeal{}, err
 	}
 
 	var jobAnnotations []string
@@ -185,16 +189,16 @@ func ConstructLanguageJob(
 			strings.Join(unSafeAnnotations, ", "))
 	}
 
-	spec := executor.JobSpec{
-		Engine:   executor.EngineLanguage,
-		Verifier: verifier.VerifierNoop,
+	spec := model.JobSpec{
+		Engine:   model.EngineLanguage,
+		Verifier: model.VerifierNoop,
 		// TODO: should this always be ipfs?
-		Publisher: publisher.PublisherIpfs,
-		Language: executor.JobSpecLanguage{
+		Publisher: model.PublisherIpfs,
+		Language: model.JobSpecLanguage{
 			Language:         language,
 			LanguageVersion:  languageVersion,
 			Deterministic:    deterministic,
-			Context:          storage.StorageSpec{},
+			Context:          model.StorageSpec{},
 			Command:          command,
 			ProgramPath:      programPath,
 			RequirementsPath: requirementsPath,
@@ -206,8 +210,9 @@ func ConstructLanguageJob(
 		DoNotTrack:  doNotTrack,
 	}
 
-	deal := executor.JobDeal{
+	deal := model.JobDeal{
 		Concurrency: concurrency,
+		Confidence:  confidence,
 	}
 
 	return spec, deal, nil
