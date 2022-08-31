@@ -119,24 +119,50 @@ func (node *RequesterNode) subscriptionEventBid(
 	bidCount := 0
 	candidateBids := []model.JobEvent{}
 
+	// let's see how many bids we have already accepted
+	// it's important this comes from "local events"
+	// otherwise we are in a race with the network and could
+	// end up accepting many more bids than our concurrency
+	localEvents, err := node.controller.GetJobLocalEvents(ctx, job.ID)
+	if err != nil {
+		threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
+		return
+	}
+
+	globalEvents, err := node.controller.GetJobEvents(ctx, job.ID)
+	if err != nil {
+		threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
+		return
+	}
+
+	shardLocalEvents := []model.JobLocalEvent{}
+	shardGlobalEvents := []model.JobEvent{}
+
+	for _, localEvent := range localEvents {
+		if localEvent.EventName == model.JobLocalEventBidAccepted && localEvent.ShardIndex == jobEvent.ShardIndex {
+			shardLocalEvents = append(shardLocalEvents, localEvent)
+		}
+	}
+
+	for _, globalEvent := range globalEvents {
+		if globalEvent.EventName == model.JobEventBid && globalEvent.ShardIndex == jobEvent.ShardIndex {
+			shardGlobalEvents = append(shardGlobalEvents, globalEvent)
+		}
+	}
+
+	// we don't have enough bids to decide which to accept
+	if len(shardGlobalEvents) < job.Deal.MinBids {
+		return
+	}
+
+	// we have exactly min bids so we shuffle abd then
+	// accept concurrency number and reject the rest
+
+	// we have more than min bids so we check if we have space or not
+	// (i.e. do the same as we were before)
+
 	// TODO: make min bids per shard
 	accepted := func() bool {
-
-		// let's see how many bids we have already accepted
-		// it's important this comes from "local events"
-		// otherwise we are in a race with the network and could
-		// end up accepting many more bids than our concurrency
-		localEvents, err := node.controller.GetJobLocalEvents(ctx, job.ID)
-		if err != nil {
-			threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
-			return false
-		}
-
-		globalEvents, err := node.controller.GetJobEvents(ctx, job.ID)
-		if err != nil {
-			threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
-			return false
-		}
 
 		// a map of shard index onto an array of node ids we have farmed the job out to
 		assignedNodes := map[int][]string{}
@@ -162,19 +188,19 @@ func (node *RequesterNode) subscriptionEventBid(
 			if globalEvents[i].ShardIndex != jobEvent.ShardIndex {
 				continue
 			}
-			if globalEvents[i].EventName == model.JobEventBid {
-				// TODO: group by node_id, so that one node can't make multiple
-				// bids to increase the counter
-				bidCount += 1
-
-				// if we have already accepted a bid from this node, don't accept another
-				if contains(assignedNodesForShard, globalEvents[i].TargetNodeID) {
-					bidsAcceptedSoFar += 1
-					continue
-				}
-
-				candidateBids = append(candidateBids, globalEvents[i])
+			if globalEvents[i].EventName != model.JobEventBid {
+				continue
 			}
+
+			bidCount += 1
+
+			// if we have already accepted a bid from this node, don't accept another
+			if contains(assignedNodesForShard, globalEvents[i].TargetNodeID) {
+				bidsAcceptedSoFar += 1
+				continue
+			}
+
+			candidateBids = append(candidateBids, globalEvents[i])
 		}
 
 		// we have already reached concurrency for this shard
