@@ -38,7 +38,7 @@ type TestStack struct {
 // but without a libp2p transport - it's useful for testing storage drivers or executors
 // it uses:
 //  * a cluster of real IPFS nodes that form an isolated network
-//    * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
+//  * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
 //  * in process transport
 //  * in memory datastore
 //  * "standard" storage providers - i.e. the default storage stack as used by devstack
