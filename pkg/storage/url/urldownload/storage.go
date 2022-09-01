@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -60,7 +59,7 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Stora
 }
 
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
+	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
 
 	_, err := IsURLSupported(storageSpec.URL)
@@ -96,7 +95,7 @@ func (sp *StorageProvider) CleanupStorage(
 	storageSpec model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
+	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
 	defer span.End()
 
 	pathToCleanup := filepath.Dir(volume.Source)
@@ -136,10 +135,6 @@ func IsURLSupported(rawURL string) (bool, error) {
 		return true, nil
 	}
 	return false, fmt.Errorf("protocol scheme in URL not supported: %s", rawURL)
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "storage/url/url_download", apiName)
 }
 
 // Compile time interface check:
