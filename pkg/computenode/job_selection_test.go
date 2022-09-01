@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode/tooling"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/test/tooling"
 	"github.com/stretchr/testify/require"
 )
 

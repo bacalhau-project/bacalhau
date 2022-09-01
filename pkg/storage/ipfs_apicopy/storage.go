@@ -106,8 +106,8 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 
 //nolint:lll // Exception to the long rule
 func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
-	return system.RunCommand("sudo", []string{
-		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
+	return system.RunCommand("rm", []string{
+		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
 	})
 }
 

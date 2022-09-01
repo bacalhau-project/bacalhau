@@ -150,21 +150,21 @@ test-one:
 
 .PHONY: test-devstack
 test-devstack:
-	TEST=TestDevStack make test-one
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/pkg/test/devstack/
 
 .PHONY: test-commands
 test-commands:
-	TEST=TestCommands make test-one
+	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
-.PHONY: test-badactors
-test-badactors:
-	TEST=TestCatchBadActors make test-one
+# .PHONY: test-badactors
+# test-badactors:
+# 	TEST=TestCatchBadActors make test-one
 
-.PHONY: test-pythonwasm
-test-pythonwasm:
-# TestSimplestPythonWasmDashC
-	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
-#	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+# .PHONY: test-pythonwasm
+# test-pythonwasm:
+# # TestSimplestPythonWasmDashC
+# 	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplePythonWasm$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
+# #	LOG_LEVEL=debug go test -v -count 1 -timeout 3000s -run ^TestSimplestPythonWasmDashC$$ github.com/filecoin-project/bacalhau/pkg/test/devstack/
 
 ################################################################################
 # Target: devstack

@@ -12,6 +12,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -37,6 +38,7 @@ func (suite *ComputeNodeRunJobSuite) SetupTest() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TearDownTest() {
+
 }
 
 func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
@@ -46,7 +48,8 @@ func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
 // a simple sanity test of the RunJob with docker executor
 func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	EXAMPLE_TEXT := "hello"
-	computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
 	defer cm.Cleanup()
 
 	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
@@ -76,7 +79,8 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
-	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 
 	// it seems when we return an error so quickly we need to sleep a little bit

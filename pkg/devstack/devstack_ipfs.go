@@ -23,7 +23,7 @@ type DevStackIPFS struct {
 	CleanupManager *system.CleanupManager
 }
 
-// a devstack but with only IPFS servers connected to each other
+// A devstack but with only IPFS servers connected to each other
 func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
 	nodes := []*DevStackNodeIPFS{}
 	for i := 0; i < count; i++ {
