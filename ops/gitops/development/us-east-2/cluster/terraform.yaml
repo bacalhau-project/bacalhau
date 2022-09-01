@@ -6,7 +6,7 @@ spec:
   runnerPodTemplate:
     spec:
       env:
-      - name: "GOOGLE_CREDENTIAL"
+      - name: "GOOGLE_APPLICATION_CREDENTIALS"
         valueFrom:
           secretKeyRef:
             name: google-login
