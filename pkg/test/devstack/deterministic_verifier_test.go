@@ -41,6 +41,7 @@ func (suite *DeterministicVerifierSuite) TearDownAllSuite() {
 // test that the combo driver gives preference to the filecoin unsealed driver
 // also that this does not affect normal jobs where the CID resides on the IPFS driver
 func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
+	ctx := context.Background()
 
 	apiSubmitJob := func(
 		apiClient *publicapi.APIClient,
@@ -74,13 +75,13 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			Confidence:  args.Confidence,
 		}
 
-		submittedJob, err := apiClient.Submit(context.Background(), jobSpec, jobDeal, nil)
+		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
 		if err != nil {
 			return "", err
 		}
 		return submittedJob.ID, nil
 	}
 
-	RunDeterministicVerifierTests(suite.T(), apiSubmitJob)
+	RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 
 }

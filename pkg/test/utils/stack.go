@@ -46,13 +46,14 @@ type TestStack struct {
 // * noop verifiers - don't use this stack if you are testing verification
 // * IPFS publishers - using the same IPFS cluster as the storage driver
 func NewDockerIpfsStackMultiNode(
+	ctx context.Context,
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 	nodes int,
 ) *TestStack {
 	cm := system.NewCleanupManager()
 
-	ipfsStack, err := devstack.NewDevStackIPFS(cm, nodes)
+	ipfsStack, err := devstack.NewDevStackIPFS(ctx, cm, nodes)
 	require.NoError(t, err)
 
 	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
@@ -64,11 +65,12 @@ func NewDockerIpfsStackMultiNode(
 
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 
-	storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+	storageProviders, err := executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 		IPFSMultiaddress: apiAddress,
 	})
 	require.NoError(t, err)
 	executors, err := executor_util.NewStandardExecutors(
+		ctx,
 		cm,
 		executor_util.StandardExecutorOptions{
 			DockerID: fmt.Sprintf("devstacknode0-%s", ipfsID),
@@ -79,16 +81,18 @@ func NewDockerIpfsStackMultiNode(
 	)
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(
+		ctx,
 		cm,
 		ctrl.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	publishers, err := publisher_util.NewIPFSPublishers(
+		ctx,
 		cm,
 		ctrl.GetStateResolver(),
 		apiAddress,
@@ -96,6 +100,7 @@ func NewDockerIpfsStackMultiNode(
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
+		ctx,
 		cm,
 		ctrl,
 		executors,
@@ -118,10 +123,11 @@ func NewDockerIpfsStackMultiNode(
 // This is a shortcut to NewDockerIpfsStackMultiNode but with 1 node
 // (formerly SetupTestDockerIpfs)
 func NewDockerIpfsStack(
+	ctx context.Context,
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) *TestStack {
-	return NewDockerIpfsStackMultiNode(t, config, 1)
+	return NewDockerIpfsStackMultiNode(ctx, t, config, 1)
 }
 
 // Noop stack is designed to be a "as mocked as possible" stack to write tests against
@@ -137,8 +143,8 @@ func NewDockerIpfsStack(
 // * noop verifiers
 // * noop publishers
 func NewNoopStack(
+	ctx context.Context,
 	t *testing.T,
-	//nolint:gocritic
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 ) *TestStack {
@@ -150,22 +156,23 @@ func NewNoopStack(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
+	executors, err := executor_util.NewNoopExecutors(ctx, cm, noopExecutorConfig)
 	require.NoError(t, err)
 
-	storageProviders, err := executor_util.NewNoopStorageProviders(cm, noop.StorageConfig{})
+	storageProviders, err := executor_util.NewNoopStorageProviders(ctx, cm, noop.StorageConfig{})
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	verifiers, err := verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	publishers, err := publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
+	publishers, err := publisher_util.NewNoopPublishers(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(
+		ctx,
 		cm,
 		ctrl,
 		verifiers,
@@ -174,6 +181,7 @@ func NewNoopStack(
 	require.NoError(t, err)
 
 	computeNode, err := computenode.NewComputeNode(
+		ctx,
 		cm,
 		ctrl,
 		executors,
@@ -185,7 +193,6 @@ func NewNoopStack(
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
 	err = ctrl.Start(ctx)
 	if err != nil {
 		t.Fatal(err)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type InMemoryDatastore struct {
@@ -76,6 +77,11 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	result := []model.Job{}
+
+	t := system.GetTracer()
+	_, span := t.Start(ctx, "InMemoryDatastore.GetJobs")
+	defer span.End()
+
 	if query.ID != "" {
 		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {

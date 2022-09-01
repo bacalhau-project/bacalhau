@@ -90,7 +90,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		}
 
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress: ipfsMultiAddress,
 			})
 		}
@@ -106,6 +106,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			ipfsParts := strings.Split(ipfsMultiAddress, "/")
 			ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 			return executor_util.NewStandardExecutors(
+				ctx,
 				cm,
 				executor_util.StandardExecutorOptions{
 					DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
@@ -124,7 +125,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			map[model.VerifierType]verifier.Verifier,
 			error,
 		) {
-			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+			return verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
 		}
 		getPublishers := func(
 			ipfsMultiAddress string,
@@ -134,9 +135,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			map[model.PublisherType]publisher.Publisher,
 			error,
 		) {
-			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
+			return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 		}
 		stack, err := devstack.NewDevStack(
+			ctx,
 			cm,
 			1,
 			0,
@@ -151,7 +153,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		require.NoError(suite.T(), err)
 
 		if !unsealedMode {
-			directoryCid, err := stack.AddFileToNodes(1, basePath)
+			directoryCid, err := stack.AddFileToNodes(ctx, 1, basePath)
 			require.NoError(suite.T(), err)
 			cid = directoryCid
 		}

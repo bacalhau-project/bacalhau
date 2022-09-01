@@ -15,6 +15,7 @@ type NoopPublisher struct {
 }
 
 func NewNoopPublisher(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (*NoopPublisher, error) {

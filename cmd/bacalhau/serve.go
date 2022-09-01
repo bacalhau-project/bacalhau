@@ -209,8 +209,10 @@ var serveCmd = &cobra.Command{
 
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTracer)
+		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
+
+		ctx := context.Background()
 
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults
 		if OS.PeerConnect == "none" {
@@ -226,17 +228,18 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		transport, err := libp2p.NewTransport(cm, OS.HostPort, peers)
+		transport, err := libp2p.NewTransport(ctx, cm, OS.HostPort, peers)
 		if err != nil {
 			return err
 		}
 
-		hostID, err := transport.HostID(context.Background())
+		hostID, err := transport.HostID(ctx)
 		if err != nil {
 			return err
 		}
 
 		storageProviders, err := executor_util.NewStandardStorageProviders(
+			ctx,
 			cm,
 			executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress:     OS.IPFSConnect,
@@ -248,6 +251,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		controller, err := controller.NewController(
+			ctx,
 			cm,
 			datastore,
 			transport,
@@ -258,6 +262,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		executors, err := executor_util.NewStandardExecutors(
+			ctx,
 			cm,
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
@@ -272,6 +277,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		verifiers, err := verifier_util.NewStandardVerifiers(
+			ctx,
 			cm,
 			controller.GetStateResolver(),
 			transport.Encrypt,
@@ -281,7 +287,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		publishers, err := publisher_util.NewIPFSPublishers(cm, controller.GetStateResolver(), OS.IPFSConnect)
+		publishers, err := publisher_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
 		if err != nil {
 			return err
 		}
@@ -300,6 +306,7 @@ var serveCmd = &cobra.Command{
 		requesterNodeConfig := requesternode.RequesterNodeConfig{}
 
 		_, err = requesternode.NewRequesterNode(
+			ctx,
 			cm,
 			controller,
 			verifiers,
@@ -309,6 +316,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 		_, err = computenode.NewComputeNode(
+			ctx,
 			cm,
 			controller,
 			executors,
@@ -321,6 +329,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		apiServer := publicapi.NewServer(
+			ctx,
 			OS.HostAddress,
 			apiPort,
 			controller,
@@ -328,7 +337,7 @@ var serveCmd = &cobra.Command{
 		)
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
+		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
 		go func(ctx context.Context) {
@@ -346,9 +355,8 @@ var serveCmd = &cobra.Command{
 			}
 		}(ctx)
 
-		// TODO: #352 should system.ListenAndServeMetrix take ctx?
 		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
-			if err = system.ListenAndServeMetrics(cm, OS.MetricsPort); err != nil {
+			if err = system.ListenAndServeMetrics(ctx, cm, OS.MetricsPort); err != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(ctx)

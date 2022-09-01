@@ -1,6 +1,8 @@
 package util
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -10,12 +12,14 @@ import (
 )
 
 func NewStandardVerifiers(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
 ) (map[model.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
+		ctx,
 		cm,
 		resolver,
 	)
@@ -24,6 +28,7 @@ func NewStandardVerifiers(
 	}
 
 	deterministicVerifier, err := deterministic.NewDeterministicVerifier(
+		ctx,
 		cm,
 		resolver,
 		encrypter,
@@ -40,10 +45,12 @@ func NewStandardVerifiers(
 }
 
 func NewNoopVerifiers(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (map[model.VerifierType]verifier.Verifier, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
+		ctx,
 		cm,
 		resolver,
 	)

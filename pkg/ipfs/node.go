@@ -125,16 +125,16 @@ func (cfg *Config) getPeerAddrs() []string {
 // NewNode creates a new IPFS node in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
-func NewNode(cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(cm, Config{
+func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return NewNodeWithConfig(ctx, cm, Config{
 		PeerAddrs: peerAddrs,
 	})
 }
 
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(cm, Config{
+func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return NewNodeWithConfig(ctx, cm, Config{
 		Mode:      ModeLocal,
 		PeerAddrs: peerAddrs,
 	})
@@ -142,7 +142,7 @@ func NewLocalNode(cm *system.CleanupManager, peerAddrs []string) (*Node, error) 
 
 // NewNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func NewNodeWithConfig(cm *system.CleanupManager, cfg Config) (*Node, error) {
+func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
@@ -152,7 +152,7 @@ func NewNodeWithConfig(cm *system.CleanupManager, cfg Config) (*Node, error) {
 	}
 
 	// go-ipfs uses contexts for lifecycle management:
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	cm.RegisterCallback(func() error {
 		cancel()
 		return nil

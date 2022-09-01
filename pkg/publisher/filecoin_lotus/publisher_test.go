@@ -88,7 +88,8 @@ func (suite *FilecoinPublisherSuite) TestIsInstalled() {
 }
 
 func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
-	resultsDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
+	tmpDirPrefix := "bacalhau-filecoin-lotus-test"
+	resultsDir, err := ioutil.TempDir("", tmpDirPrefix)
 	require.NoError(suite.T(), err)
 	err = os.WriteFile(fmt.Sprintf("%s/file.txt", resultsDir), []byte("hello"), 0644)
 	require.NoError(suite.T(), err)
@@ -115,7 +116,8 @@ func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	firstLine := logLines[0]
 	logLines = logLines[1:]
 
-	require.True(suite.T(), strings.Contains(firstLine, "command: client import /tmp/bacalhau-filecoin-lotus"))
+	require.True(suite.T(), strings.Contains(firstLine, "command: client import"))
+	require.True(suite.T(), strings.Contains(firstLine, tmpDirPrefix))
 
 	expectedLogs := fmt.Sprintf(`Import 3, Root %s
 command: client deal %s %s %s %s

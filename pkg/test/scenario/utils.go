@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -36,20 +37,22 @@ const (
 	ExpectedModeContains
 )
 
-type IGetStorageDriver func(stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
-type ISetupStorage func(stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error)
+type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
+
+//nolint:lll
+type ISetupStorage func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error)
 type ICheckResults func(resultsDir string)
 type IGetJobSpec func() model.JobSpecDocker
 
 /*
 Storage Drivers
 */
-func FuseStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
+func FuseStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return fusedocker.NewStorageProvider(
-		stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
+		ctx, stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
 
-func APICopyStorageDriverFactoryHandler(stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
+func APICopyStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return apicopy.NewStorageProvider(
 		stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
@@ -85,11 +88,13 @@ var StorageDriverFactoriesAPICopy = []StorageDriverFactory{
 
 func singleFileSetupStorageWithData(
 	t *testing.T,
+	ctx context.Context,
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
-		fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
+	//nolint:lll
+	return func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
+		fileCid, err := stack.AddTextToNodes(ctx, nodeCount, []byte(fileContents))
 		require.NoError(t, err)
 		inputStorageSpecs := []model.StorageSpec{
 			{
@@ -104,11 +109,13 @@ func singleFileSetupStorageWithData(
 
 func singleFileSetupStorageWithFile(
 	t *testing.T,
+	ctx context.Context,
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
-	return func(stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
-		fileCid, err := stack.AddFileToNodes(nodeCount, filePath)
+	//nolint:lll
+	return func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
+		fileCid, err := stack.AddFileToNodes(ctx, nodeCount, filePath)
 		require.NoError(t, err)
 		inputStorageSpecs := []model.StorageSpec{
 			{
@@ -137,6 +144,7 @@ func singleFileGetData(
 
 func singleFileResultsChecker(
 	t *testing.T,
+	ctx context.Context,
 	outputFilePath string,
 	expectedString string,
 	expectedMode IExpectedMode,

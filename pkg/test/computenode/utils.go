@@ -65,6 +65,7 @@ func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 }
 
 func RunJobGetStdout(
+	ctx context.Context,
 	t *testing.T,
 	computeNode *computenode.ComputeNode,
 	spec model.JobSpec,
@@ -80,7 +81,7 @@ func RunJobGetStdout(
 		Job:   job,
 		Index: 0,
 	}
-	err = computeNode.RunShardExecution(context.Background(), shard, result)
+	err = computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

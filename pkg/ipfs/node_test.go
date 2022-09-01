@@ -51,14 +51,14 @@ func (suite *NodeSuite) TestFunctionality() {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	n1, err := NewLocalNode(cm, nil)
+	n1, err := NewLocalNode(ctx, cm, nil)
 	require.NoError(suite.T(), err)
 
 	addrs, err := n1.SwarmAddresses()
 	require.NoError(suite.T(), err)
 
 	var n2 *Node
-	n2, err = NewLocalNode(cm, addrs) // connect to first node
+	n2, err = NewLocalNode(ctx, cm, addrs) // connect to first node
 	require.NoError(suite.T(), err)
 
 	// Create a file in a temp dir to upload to the nodes:

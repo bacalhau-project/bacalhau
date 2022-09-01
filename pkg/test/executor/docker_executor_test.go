@@ -60,14 +60,25 @@ func dockerExecutorStorageTest(
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
 
-		stack := testutils.NewDockerIpfsStack(t, computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDockerIpfsStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.CleanupManager.Cleanup()
 
 		dockerExecutor := stack.Executors[model.EngineDocker]
 
-		inputStorageList, err := testCase.SetupStorage(
+		inputStorageList, err := testCase.SetupStorage(ctx,
 			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
+
+		isInstalled, err := dockerExecutor.IsInstalled(ctx)
+		require.NoError(t, err)
+		require.True(t, isInstalled)
+
+		for _, inputStorageSpec := range inputStorageList {
+			hasStorage, err := dockerExecutor.HasStorageLocally(
+				ctx, inputStorageSpec)
+			require.NoError(t, err)
+			require.True(t, hasStorage)
+		}
 
 		job := model.Job{
 			ID:              "test-job",
