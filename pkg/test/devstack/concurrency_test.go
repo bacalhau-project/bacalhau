@@ -27,7 +27,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackConcurrencySuite) SetupAllSuite() {
-
+	
 }
 
 // Before each test
@@ -36,6 +36,7 @@ func (suite *DevstackConcurrencySuite) SetupTest() {
 }
 
 func (suite *DevstackConcurrencySuite) TearDownTest() {
+
 }
 
 func (suite *DevstackConcurrencySuite) TearDownAllSuite() {

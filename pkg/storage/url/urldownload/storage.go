@@ -102,8 +102,9 @@ func (sp *StorageProvider) CleanupStorage(
 ) error {
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
-	return system.RunCommand("sudo", []string{
-		"rm", "-rf", pathToCleanup,
+
+	return system.RunCommand("rm", []string{
+		"-rf", pathToCleanup,
 	})
 }
 
