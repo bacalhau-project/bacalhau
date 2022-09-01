@@ -17,6 +17,7 @@ const (
 	StorageSourceIPFS
 	StorageSourceURLDownload
 	StorageSourceFilecoinUnsealed
+	StorageSourceFilecoin
 	storageSourceDone // must be last
 )
 
@@ -85,4 +86,7 @@ type StorageSpec struct {
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
 	Path string `json:"path" yaml:"path"`
+
+	// Additional properties specific to each driver
+	Metadata map[string]string `json:"metadata" yaml:"metadata"`
 }

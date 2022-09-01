@@ -126,7 +126,7 @@ func dirSize(path string) (uint64, error) {
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "storage/ipfs/api_copy", apiName)
+	return system.Span(ctx, "storage/filecoin/unsealed", apiName)
 }
 
 // Compile time interface check:
