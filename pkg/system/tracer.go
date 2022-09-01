@@ -136,6 +136,7 @@ func Tracer(tracerName string) oteltrace.Tracer {
 }
 
 // loggerProvider provides traces that are exported to a trace logger as JSON.
+//
 //nolint:unused,deadcode // mistaken unused
 func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	exp, err := stdouttrace.New(
@@ -155,6 +156,7 @@ func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 // should be configured by setting the following environment variable:
 //
 //	export HONEYCOMB_KEY="<honeycomb api key>"
+//
 //nolint:unused,deadcode // mistaken unused
 func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	honeycombDataset := os.Getenv("HONEYCOMB_DATASET")
