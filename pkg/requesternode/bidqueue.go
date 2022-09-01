@@ -62,7 +62,7 @@ func getGlobalShardBidEvents(
 		return nil, err
 	}
 	shardGlobalEvents := []model.JobEvent{}
-	for _, globalEvent := range globalEvents {
+	for _, globalEvent := range globalEvents { //nolint:gocritic
 		if globalEvent.EventName == model.JobEventBid && globalEvent.ShardIndex == shardIndex {
 			shardGlobalEvents = append(shardGlobalEvents, globalEvent)
 		}
@@ -79,18 +79,21 @@ func getCandidateBids(
 	acceptedEvents []model.JobLocalEvent,
 	rejectedEvents []model.JobLocalEvent,
 ) []model.JobEvent {
-	allRespondedEvents := append(acceptedEvents, rejectedEvents...)
+	allRespondedEvents := []model.JobLocalEvent{}
+	allRespondedEvents = append(allRespondedEvents, acceptedEvents...)
+	allRespondedEvents = append(allRespondedEvents, rejectedEvents...)
+
 	hostsResponded := map[string]bool{}
 
 	// loop over existing responses and build a map of hosts we've already responded to
-	for _, respondedEvent := range allRespondedEvents {
+	for _, respondedEvent := range allRespondedEvents { //nolint:gocritic
 		hostsResponded[respondedEvent.TargetNodeID] = true
 	}
 
 	candidateBids := []model.JobEvent{}
 
 	// loop over bidEvents and filter out the ones we've already responded to
-	for _, bidEvent := range bidEvents {
+	for _, bidEvent := range bidEvents { //nolint:gocritic
 		if _, ok := hostsResponded[bidEvent.SourceNodeID]; !ok {
 			candidateBids = append(candidateBids, bidEvent)
 		}

@@ -91,15 +91,6 @@ func (node *RequesterNode) subscriptionSetup() {
 	})
 }
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
 func (node *RequesterNode) subscriptionEventBid(
 	ctx context.Context,
 	job model.Job,
