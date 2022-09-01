@@ -7,7 +7,7 @@ metadata:
 ---
 # Source: tf-controller/charts/tf-controller/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: tf-runner-rolebinding
 roleRef:
