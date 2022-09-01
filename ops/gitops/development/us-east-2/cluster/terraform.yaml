@@ -4,6 +4,16 @@ metadata:
   name: tf-manifest
 spec:
   disableDriftDetection: true
+  backendConfig:
+    customConfiguration: |
+      terraform {
+        backend "gcs" {
+          # this bucket lives in the bacalhau-cicd google project
+          # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
+          bucket = "bacalhau-global-storage"
+          prefix = "terraform/state"
+        }
+      }
   interval: 1m
   path: ./ops/terraform
   vars:
@@ -39,5 +49,4 @@ spec:
     value: 0
   sourceRef:
     kind: GitRepository
-    name: helloworld
-    namespace: flux-system
+    name: bacalhau
