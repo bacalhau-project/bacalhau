@@ -5,9 +5,15 @@ metadata:
 spec:
   runnerPodTemplate:
     spec:
-      envFrom:
-      - secretRef:
-          name: google-login
+    #   envFrom:
+    #   - secretRef:
+    #       name: google-login
+      env:
+      - name: "GOOGLE_CREDENTIAL"
+        valueFrom:
+          secretRef:
+            name: google-login
+            key: "GOOGLE_CREDENTIAL"
   disableDriftDetection: true
   backendConfig:
     customConfiguration: |
