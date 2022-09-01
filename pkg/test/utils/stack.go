@@ -37,14 +37,14 @@ type TestStack struct {
 // Docker IPFS stack is designed to be a "as real as possible" stack to write tests against
 // but without a libp2p transport - it's useful for testing storage drivers or executors
 // it uses:
-//  * a cluster of real IPFS nodes that form an isolated network
-//  * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
-//  * in process transport
-//  * in memory datastore
-//  * "standard" storage providers - i.e. the default storage stack as used by devstack
-//  * "standard" executors - i.e. the default executor stack as used by devstack
-//  * noop verifiers - don't use this stack if you are testing verification
-//  * IPFS publishers - using the same IPFS cluster as the storage driver
+// * a cluster of real IPFS nodes that form an isolated network
+// * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
+// * in process transport
+// * in memory datastore
+// * "standard" storage providers - i.e. the default storage stack as used by devstack
+// * "standard" executors - i.e. the default executor stack as used by devstack
+// * noop verifiers - don't use this stack if you are testing verification
+// * IPFS publishers - using the same IPFS cluster as the storage driver
 func NewDockerIpfsStackMultiNode(
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
@@ -130,12 +130,12 @@ func NewDockerIpfsStack(
 // then this is the stack for you (as opposed to "did IPFS actually save the data" in which case
 // you want NewDockerIpfsStackMultiNode)
 // it uses:
-//  * in process transport
-//  * in memory datastore
-//  * noop storage providers
-//  * noop executors
-//  * noop verifiers
-//  * noop publishers
+// * in process transport
+// * in memory datastore
+// * noop storage providers
+// * noop executors
+// * noop verifiers
+// * noop publishers
 func NewNoopStack(
 	t *testing.T,
 	//nolint:gocritic
