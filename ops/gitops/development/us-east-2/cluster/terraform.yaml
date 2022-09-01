@@ -3,6 +3,11 @@ kind: Terraform
 metadata:
   name: tf-manifest
 spec:
+  runnerPodTemplate:
+    spec:
+      envFrom:
+        secretRef:
+          name: google-login
   disableDriftDetection: true
   backendConfig:
     customConfiguration: |
