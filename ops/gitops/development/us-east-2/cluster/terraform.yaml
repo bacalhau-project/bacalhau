@@ -6,7 +6,7 @@ spec:
   runnerPodTemplate:
     spec:
       envFrom:
-        secretRef:
+      - secretRef:
           name: google-login
   disableDriftDetection: true
   backendConfig:
