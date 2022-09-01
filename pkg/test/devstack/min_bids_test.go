@@ -47,6 +47,7 @@ type minBidsTestCase struct {
 	concurrency    int
 	minBids        int
 	expectedResult map[model.JobStateType]int
+	errorStates    []model.JobStateType
 }
 
 func (suite *MinBidsSuite) TestMinBids() {
@@ -100,9 +101,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			ctx,
 			createdJob.ID,
 			3,
-			job.WaitThrowErrors([]model.JobStateType{
-				model.JobStateError,
-			}),
+			job.WaitThrowErrors(testCase.errorStates),
 			job.WaitForJobStates(testCase.expectedResult),
 		)
 		require.NoError(suite.T(), err)
@@ -110,15 +109,18 @@ func (suite *MinBidsSuite) TestMinBids() {
 	}
 
 	// sanity test that with min bids at zero and 1 node we get the job through
-	// runTest(minBidsTestCase{
-	// 	nodes:       1,
-	// 	shards:      1,
-	// 	concurrency: 1,
-	// 	minBids:     0,
-	// 	expectedResult: map[model.JobStateType]int{
-	// 		model.JobStatePublished: 1,
-	// 	},
-	// })
+	runTest(minBidsTestCase{
+		nodes:       1,
+		shards:      1,
+		concurrency: 1,
+		minBids:     0,
+		expectedResult: map[model.JobStateType]int{
+			model.JobStatePublished: 1,
+		},
+		errorStates: []model.JobStateType{
+			model.JobStateError,
+		},
+	})
 
 	// test that when min bids is concurrency we get the job through
 	runTest(minBidsTestCase{
@@ -128,6 +130,28 @@ func (suite *MinBidsSuite) TestMinBids() {
 		minBids:     3,
 		expectedResult: map[model.JobStateType]int{
 			model.JobStatePublished: 3,
+		},
+		errorStates: []model.JobStateType{
+			model.JobStateError,
+		},
+	})
+
+	// test that no bids are made because there are not enough nodes on the network
+	// to satisfy the min bids
+	runTest(minBidsTestCase{
+		nodes:       3,
+		shards:      1,
+		concurrency: 3,
+		minBids:     5,
+		expectedResult: map[model.JobStateType]int{
+			model.JobStateBidding: 3,
+		},
+		errorStates: []model.JobStateType{
+			model.JobStateError,
+			model.JobStateWaiting,
+			model.JobStateRunning,
+			model.JobStateVerifying,
+			model.JobStatePublished,
 		},
 	})
 
