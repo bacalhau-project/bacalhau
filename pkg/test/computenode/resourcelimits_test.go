@@ -59,8 +59,9 @@ func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 				ResourceRequirementsDefault: defaultJobResourceLimits,
 			},
 		}, noop_executor.ExecutorConfig{})
-		computeNode, cm := stack.ComputeNode, stack.CleanupManager
-		computeNode, cm := stack.ComputeNode, stack.CleanupManager
+
+		computeNode, cm := stack.ComputeNode, stack.CleanupManager 
+
 		defer func() {
 			// sleep here otherwise the compute node tries to register cleanup handlers too late
 			time.Sleep(time.Millisecond * 10)
@@ -536,9 +537,68 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cid, err := stack.IpfsStack.AddTextToNodes(1, []byte(text))
 		require.NoError(suite.T(), err)
 
+<<<<<<< HEAD
 		executor := stack.Executors[model.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
+||||||| 758b7d31
+		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
+		transport, err := inprocess.NewInprocessTransport()
+		require.NoError(suite.T(), err)
+
+		datastore, err := inmemory.NewInMemoryDatastore()
+		require.NoError(suite.T(), err)
+
+		storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			IPFSMultiaddress: apiAddress,
+		})
+		require.NoError(suite.T(), err)
+
+		executors, err := executor_util.NewStandardExecutors(cm, executor_util.StandardExecutorOptions{
+			DockerID: "devstacknode0",
+			Storage: executor_util.StandardStorageProviderOptions{
+				IPFSMultiaddress: apiAddress,
+			},
+		})
+
+		require.NoError(suite.T(), err)
+
+		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+		require.NoError(suite.T(), err)
+
+		verifiers, err := verifier_util.NewNoopVerifiers(
+			cm,
+			ctrl.GetStateResolver(),
+		)
+		require.NoError(suite.T(), err)
+
+		publishers, err := publisher_util.NewNoopPublishers(
+			cm,
+			ctrl.GetStateResolver(),
+		)
+		require.NoError(suite.T(), err)
+
+		_, err = computenode.NewComputeNode(
+			cm,
+			ctrl,
+			executors,
+			verifiers,
+			publishers,
+			computenode.ComputeNodeConfig{},
+		)
+		require.NoError(suite.T(), err)
+
+		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
+		require.NoError(suite.T(), err)
+
+		executor := executors[model.EngineDocker]
+
+		result, err := executor.GetVolumeSize(context.Background(), model.StorageSpec{
+=======
+		executor := stack.Executors[model.EngineDocker]
+
+		result, err := executor.GetVolumeSize(context.Background(), model.StorageSpec{
+>>>>>>> main
 			Engine: model.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/",

@@ -69,7 +69,18 @@ func dockerExecutorStorageTest(
 			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
-		job := executor.Job{
+		isInstalled, err := dockerExecutor.IsInstalled(ctx)
+		require.NoError(t, err)
+		require.True(t, isInstalled)
+
+		for _, inputStorageSpec := range inputStorageList {
+			hasStorage, err := dockerExecutor.HasStorageLocally(
+				ctx, inputStorageSpec)
+			require.NoError(t, err)
+			require.True(t, hasStorage)
+		}
+
+		job := model.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
