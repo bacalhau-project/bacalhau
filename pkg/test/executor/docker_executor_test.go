@@ -60,10 +60,15 @@ func dockerExecutorStorageTest(
 	// and output mode that we are looping over internally
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
-		stack, cm := ipfs.SetupTest(t, TEST_NODE_COUNT)
+		stack, cm := ipfs.SetupTest(t, ctx, TEST_NODE_COUNT)
 		defer ipfs.TeardownTest(stack, cm)
 
-		storageDriver, err := getStorageDriver(stack)
+		tr := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/executor/dockerexecutortest/dockerExecutorStorageTest")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		storageDriver, err := getStorageDriver(ctx, stack)
 		require.NoError(t, err)
 
 		dockerExecutor, err := docker.NewExecutor(
@@ -75,7 +80,7 @@ func dockerExecutorStorageTest(
 		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(
-			stack, model.StorageSourceIPFS, TEST_NODE_COUNT)
+			ctx, stack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)

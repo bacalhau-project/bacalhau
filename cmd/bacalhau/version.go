@@ -68,6 +68,7 @@ var versionCmd = &cobra.Command{
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
 		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		_, validateSpan := t.Start(ctx, "validate")
 		err := oV.Validate(cmd)

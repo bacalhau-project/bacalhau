@@ -51,14 +51,14 @@ func (suite *NodeSuite) TestFunctionality() {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 
-	n1, err := NewLocalNode(cm, nil)
+	n1, err := NewLocalNode(cm, ctx, nil)
 	require.NoError(suite.T(), err)
 
 	addrs, err := n1.SwarmAddresses()
 	require.NoError(suite.T(), err)
 
 	var n2 *Node
-	n2, err = NewLocalNode(cm, addrs) // connect to first node
+	n2, err = NewLocalNode(cm, ctx, addrs) // connect to first node
 	require.NoError(suite.T(), err)
 
 	// Create a file in a temp dir to upload to the nodes:
@@ -74,7 +74,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.NoError(suite.T(), err)
 
 	// Upload a file to the second client:
-	cl2, err := n2.Client()
+	cl2, err := n2.Client(ctx)
 	require.NoError(suite.T(), err)
 	require.NoError(suite.T(), cl2.WaitUntilAvailable(ctx))
 
@@ -88,7 +88,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.True(suite.T(), isPinned)
 
 	// Download the file from the first client:
-	cl1, err := n1.Client()
+	cl1, err := n1.Client(ctx)
 	require.NoError(suite.T(), err)
 	require.NoError(suite.T(), cl1.WaitUntilAvailable(ctx))
 

@@ -27,11 +27,12 @@ import (
 // setup a docker ipfs stack to run compute node tests against
 func SetupTestDockerIpfs(
 	t *testing.T,
+	ctx context.Context,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) (*computenode.ComputeNode, *devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
-	ipfsStack, err := devstack.NewDevStackIPFS(cm, 1)
+	ipfsStack, err := devstack.NewDevStackIPFS(cm, ctx, 1)
 	require.NoError(t, err)
 
 	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
@@ -43,12 +44,13 @@ func SetupTestDockerIpfs(
 
 	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
 
-	storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+	storageProviders, err := executor_util.NewStandardStorageProviders(cm, ctx, executor_util.StandardStorageProviderOptions{
 		IPFSMultiaddress: apiAddress,
 	})
 	require.NoError(t, err)
 	executors, err := executor_util.NewStandardExecutors(
 		cm,
+		ctx,
 		executor_util.StandardExecutorOptions{
 			DockerID: fmt.Sprintf("devstacknode0-%s", ipfsID),
 			Storage: executor_util.StandardStorageProviderOptions{
@@ -58,17 +60,19 @@ func SetupTestDockerIpfs(
 	)
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(cm, ctx, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
 	verifiers, err := verifier_util.NewNoopVerifiers(
 		cm,
+		ctx,
 		ctrl.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	publishers, err := publisher_util.NewIPFSPublishers(
 		cm,
+		ctx,
 		ctrl.GetStateResolver(),
 		apiAddress,
 	)
@@ -76,6 +80,7 @@ func SetupTestDockerIpfs(
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
+		ctx,
 		ctrl,
 		executors,
 		verifiers,
@@ -90,6 +95,7 @@ func SetupTestDockerIpfs(
 func SetupTestNoop(
 	t *testing.T,
 	//nolint:gocritic
+	ctx context.Context,
 	computeNodeconfig computenode.ComputeNodeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 ) (*computenode.ComputeNode, *requesternode.RequesterNode, *controller.Controller, *system.CleanupManager) {
@@ -101,23 +107,24 @@ func SetupTestNoop(
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	executors, err := executor_util.NewNoopExecutors(cm, noopExecutorConfig)
+	executors, err := executor_util.NewNoopExecutors(cm, ctx, noopExecutorConfig)
 	require.NoError(t, err)
 
-	storageProviders, err := executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
+	storageProviders, err := executor_util.NewNoopStorageProviders(cm, ctx, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(cm, ctx, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
-	verifiers, err := verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+	verifiers, err := verifier_util.NewNoopVerifiers(cm, ctx, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	publishers, err := publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
+	publishers, err := publisher_util.NewNoopPublishers(cm, ctx, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
 	requestorNode, err := requesternode.NewRequesterNode(
 		cm,
+		ctx,
 		ctrl,
 		verifiers,
 		requesternode.RequesterNodeConfig{},
@@ -126,6 +133,7 @@ func SetupTestNoop(
 
 	computeNode, err := computenode.NewComputeNode(
 		cm,
+		ctx,
 		ctrl,
 		executors,
 		verifiers,
@@ -136,7 +144,6 @@ func SetupTestNoop(
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
 	err = ctrl.Start(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -202,6 +209,7 @@ func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 
 func RunJobGetStdout(
 	t *testing.T,
+	ctx context.Context,
 	computeNode *computenode.ComputeNode,
 	spec model.JobSpec,
 ) string {
@@ -216,7 +224,7 @@ func RunJobGetStdout(
 		Job:   job,
 		Index: 0,
 	}
-	err = computeNode.RunShardExecution(context.Background(), shard, result)
+	err = computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(t, err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)

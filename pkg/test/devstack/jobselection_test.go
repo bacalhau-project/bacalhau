@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -56,10 +57,18 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	runTest := func(testCase TestCase) {
-		ctx, span := newSpan(testCase.name)
-		defer span.End()
+		ctx := context.Background()
+
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/jobselectiontest/testselectalljobs")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		scenario := scenario.CatFileToStdout(suite.T())
-		stack, cm := SetupTest(suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+		stack, cm := SetupTest(suite.T(), ctx, testCase.nodeCount, 0, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
 		defer TeardownTest(stack, cm)
@@ -67,7 +76,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, model.StorageSourceIPFS, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(ctx, stack, model.StorageSourceIPFS, testCase.addFilesCount)
 
 		jobSpec := model.JobSpec{
 			Engine:    model.EngineDocker,

@@ -40,6 +40,7 @@ const ServerReadHeaderTimeout = 10 * time.Second
 
 // NewServer returns a new API server for a requester node.
 func NewServer(
+	ctx context.Context,
 	host string,
 	port int,
 	c *controller.Controller,
@@ -165,5 +166,5 @@ func verifySubmitRequest(req *submitRequest) error {
 }
 
 func instrument(name string, fn http.HandlerFunc) http.Handler {
-	return otelhttp.NewHandler(fn, fmt.Sprintf("publicapi/%s", name))
+	return otelhttp.NewHandler(fn, fmt.Sprintf("pkg/publicapi/%s", name))
 }

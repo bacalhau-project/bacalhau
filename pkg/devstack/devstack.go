@@ -31,7 +31,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackNode struct {
@@ -89,11 +88,12 @@ type GetPublishersFunc func(
 
 func NewDevStackForRunLocal(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+		return executor_util.NewStandardStorageProviders(cm, ctx, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
 	}
@@ -110,6 +110,7 @@ func NewDevStackForRunLocal(
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
 			cm,
+			ctx,
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
 				Storage: executor_util.StandardStorageProviderOptions{
@@ -128,6 +129,7 @@ func NewDevStackForRunLocal(
 	) {
 		return verifier_util.NewStandardVerifiers(
 			cm,
+			ctx,
 			ctrl.GetStateResolver(),
 			transport.Encrypt,
 			transport.Decrypt,
@@ -141,11 +143,12 @@ func NewDevStackForRunLocal(
 		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
-		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
+		return publisher_util.NewIPFSPublishers(cm, ctx, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 
 	return NewDevStack(
 		cm,
+		ctx,
 		count, 0,
 		getStorageProviders,
 		getExecutors,
@@ -169,6 +172,7 @@ func NewDevStackForRunLocal(
 //nolint:funlen,gocyclo
 func NewDevStack(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
@@ -179,7 +183,8 @@ func NewDevStack(
 	peer string,
 	publicIPFSMode bool,
 ) (*DevStack, error) {
-	ctx, span := newSpan("NewDevStack")
+	t := system.GetTracer()
+	_, span := t.Start(ctx, "newdevstack")
 	defer span.End()
 
 	nodes := []*DevStackNode{}
@@ -201,18 +206,18 @@ func NewDevStack(
 		}
 
 		if publicIPFSMode {
-			ipfsNode, err = ipfs.NewNode(cm, []string{})
+			ipfsNode, err = ipfs.NewNode(cm, ctx, []string{})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 			}
 		} else {
-			ipfsNode, err = ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
+			ipfsNode, err = ipfs.NewLocalNode(cm, ctx, ipfsSwarmAddrs)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 			}
 		}
 
-		ipfsClient, err := ipfsNode.Client()
+		ipfsClient, err := ipfsNode.Client(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
@@ -259,7 +264,7 @@ func NewDevStack(
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
-		transport, err := libp2p.NewTransport(cm, libp2pPort, []string{libp2pPeer})
+		transport, err := libp2p.NewTransport(cm, ctx, libp2pPort, []string{libp2pPeer})
 		if err != nil {
 			return nil, err
 		}
@@ -277,6 +282,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		ctrl, err := controller.NewController(
 			cm,
+			ctx,
 			inmemoryDatastore,
 			transport,
 			storageProviders,
@@ -311,6 +317,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		requesterNode, err := requesternode.NewRequesterNode(
 			cm,
+			ctx,
 			ctrl,
 			verifiers,
 			requesternode.RequesterNodeConfig{},
@@ -324,6 +331,7 @@ func NewDevStack(
 		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
 			cm,
+			ctx,
 			ctrl,
 			executors,
 			verifiers,
@@ -350,6 +358,7 @@ func NewDevStack(
 		}
 
 		apiServer := publicapi.NewServer(
+			ctx,
 			"0.0.0.0",
 			apiPort,
 			ctrl,
@@ -360,7 +369,7 @@ func NewDevStack(
 			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
 				panic(gerr) // if api server can't run, devstack should stop
 			}
-		}(context.Background())
+		}(ctx)
 
 		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
 
@@ -375,10 +384,10 @@ func NewDevStack(
 
 		go func(ctx context.Context) { //nolint:unparam
 			var gerr error // don't capture outer scope
-			if gerr = system.ListenAndServeMetrics(cm, metricsPort); gerr != nil {
+			if gerr = system.ListenAndServeMetrics(cm, ctx, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
-		}(context.Background())
+		}(ctx)
 
 		//////////////////////////////////////
 		// intra-connections
@@ -497,14 +506,14 @@ export BACALHAU_API_PORT=%s`,
 	log.Debug().Msg(logString)
 }
 
-func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, error) {
+func (stack *DevStack) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {
 	var res string
 	for i, node := range stack.Nodes {
 		if i >= nodeCount {
 			continue
 		}
 
-		cid, err := node.IpfsClient.Put(context.Background(), filePath)
+		cid, err := node.IpfsClient.Put(ctx, filePath)
 		if err != nil {
 			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
 		}
@@ -516,7 +525,7 @@ func (stack *DevStack) AddFileToNodes(nodeCount int, filePath string) (string, e
 	return res, nil
 }
 
-func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
+func (stack *DevStack) AddTextToNodes(ctx context.Context, nodeCount int, fileContent []byte) (string, error) {
 	testDir, err := ioutil.TempDir("", "bacalhau-test")
 	if err != nil {
 		return "", err
@@ -528,7 +537,7 @@ func (stack *DevStack) AddTextToNodes(nodeCount int, fileContent []byte) (string
 		return "", err
 	}
 
-	return stack.AddFileToNodes(nodeCount, testFilePath)
+	return stack.AddFileToNodes(ctx, nodeCount, testFilePath)
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
@@ -570,8 +579,4 @@ func (stack *DevStack) GetShortIds() ([]string, error) {
 		shortids = append(shortids, system.ShortID(id))
 	}
 	return shortids, nil
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "devstack", name)
 }

@@ -33,10 +33,13 @@ type IPFSDownloadSettings struct {
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
 	cm *system.CleanupManager,
+	ctx context.Context,
 	job model.Job,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
 ) error {
+	t := system.GetTracer()
+
 	if len(results) == 0 {
 		log.Debug().Msg("No results to download")
 		return nil
@@ -48,16 +51,18 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
+	spinningUpIPFSCtx, spinningUpIPFSSpan := t.Start(ctx, "spinningupipfs")
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
 	log.Debug().Msg("Spinning up IPFS node...")
-	n, err := NewNode(cm, strings.Split(settings.IPFSSwarmAddrs, ","))
+	n, err := NewNode(cm, spinningUpIPFSCtx, strings.Split(settings.IPFSSwarmAddrs, ","))
 	if err != nil {
 		return err
 	}
+	spinningUpIPFSSpan.End()
 
 	log.Debug().Msg("Connecting client to new IPFS node...")
-	cl, err := n.Client()
+	cl, err := n.Client(ctx)
 	if err != nil {
 		return err
 	}

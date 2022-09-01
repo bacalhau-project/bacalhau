@@ -20,10 +20,11 @@ type IPFSPublisher struct {
 
 func NewIPFSPublisher(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	resolver *job.StateResolver,
 	ipfsAPIAddr string,
 ) (*IPFSPublisher, error) {
-	cl, err := ipfs.NewClient(ipfsAPIAddr)
+	cl, err := ipfs.NewClient(ctx, ipfsAPIAddr)
 	if err != nil {
 		return nil, err
 	}

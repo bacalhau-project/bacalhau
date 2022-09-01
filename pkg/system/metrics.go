@@ -13,7 +13,7 @@ import (
 const ServerReadHeaderTimeout = 10 * time.Second
 
 // ListenAndServeMetrics serves prometheus metrics on the specified port.
-func ListenAndServeMetrics(cm *CleanupManager, port int) error {
+func ListenAndServeMetrics(cm *CleanupManager, ctx context.Context, port int) error {
 	sm := http.NewServeMux()
 	sm.Handle("/metrics", promhttp.Handler())
 
@@ -24,7 +24,7 @@ func ListenAndServeMetrics(cm *CleanupManager, port int) error {
 	}
 
 	cm.RegisterCallback(func() error {
-		return srv.Shutdown(context.Background())
+		return srv.Shutdown(ctx)
 	})
 
 	log.Debug().Msgf("Starting metrics server on port %d...", port)

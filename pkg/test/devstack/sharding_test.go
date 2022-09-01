@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -99,14 +100,18 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	const nodeCount = 1
 	const folderCount = 10
 	const fileCount = 10
-	ctx, span := newSpan("sharding_explodecid")
-	defer span.End()
-	system.InitConfigForTesting(suite.T())
-
+	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	stack, err := devstack.NewDevStackIPFS(cm, nodeCount)
+	system.InitConfigForTesting(suite.T())
+
+	stack, err := devstack.NewDevStackIPFS(cm, ctx, nodeCount)
 	require.NoError(suite.T(), err)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/explodecid")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	node := stack.Nodes[0]
 
@@ -114,10 +119,10 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
+	ipfsProvider, err := apicopy.NewStorageProvider(cm, ctx, node.IpfsClient.APIAddress())
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
@@ -176,21 +181,27 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	const batchSize = 10
 	const batchCount = totalFiles / batchSize
 	const nodeCount = 3
-	ctx, span := newSpan("sharding_endtoend")
-	defer span.End()
+
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
 		suite.T(),
+		ctx,
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testendtoend")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	dirPath, err := prepareFolderWithFiles(totalFiles)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{
@@ -268,6 +279,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 	err = ipfs.DownloadJob(
 		cm,
+		ctx,
 		submittedJob,
 		jobResults,
 		ipfs.IPFSDownloadSettings{
@@ -316,21 +328,26 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 func (suite *ShardingSuite) TestNoShards() {
 	const nodeCount = 1
-	ctx, span := newSpan("sharding_noshards")
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
 		suite.T(),
+		ctx,
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testnoshards")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	dirPath, err := prepareFolderWithFiles(0)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{
@@ -371,22 +388,26 @@ func (suite *ShardingSuite) TestNoShards() {
 
 func (suite *ShardingSuite) TestExplodeVideos() {
 	const nodeCount = 1
-	ctx, span := newSpan("sharding_video_files")
-	defer span.End()
+	ctx := context.Background()
+	stack, cm := SetupTest(
+		suite.T(),
+		ctx,
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/devstack/shardingtest/testexplodevideos")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
 		"Prominent Late Gothic styled architecture.mp4",
 	}
-
-	stack, cm := SetupTest(
-		suite.T(),
-		nodeCount,
-		0,
-		computenode.NewDefaultComputeNodeConfig(),
-	)
-	defer TeardownTest(stack, cm)
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
 	require.NoError(suite.T(), err)
@@ -399,7 +420,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{

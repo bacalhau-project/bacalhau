@@ -22,6 +22,7 @@ type DeterministicVerifier struct {
 
 func NewDeterministicVerifier(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,

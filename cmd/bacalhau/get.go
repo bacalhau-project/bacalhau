@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
@@ -60,12 +61,21 @@ var getCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
+		ctx := context.Background()
+
+		t := system.GetTracer()
+		var rootSpan oteltrace.Span
+		ctx, rootSpan = system.NewRootSpan(ctx, t, "cmd/bacalhau/get")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		jobID := cmdArgs[0]
 
 		log.Info().Msgf("Fetching results of job '%s'...", jobID)
 
-		j, ok, err := getAPIClient().Get(context.Background(), jobID)
+		getCtx, getSpan := t.Start(ctx, "get")
+		j, ok, err := getAPIClient().Get(getCtx, jobID)
+		getSpan.End()
 
 		if !ok {
 			cmd.Printf("No job ID found matching ID: %s", jobID)
@@ -76,17 +86,22 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		results, err := getAPIClient().GetResults(context.Background(), j.ID)
+		getResultsCtx, getResultsSpan := t.Start(ctx, "getresults")
+		results, err := getAPIClient().GetResults(getResultsCtx, j.ID)
 		if err != nil {
 			return err
 		}
+		getResultsSpan.End()
 
+		downloadJobCtx, downloadJobSpan := t.Start(ctx, "downloadjob")
 		err = ipfs.DownloadJob(
 			cm,
+			downloadJobCtx,
 			j,
 			results,
 			OG.IPFSDownloadSettings,
 		)
+		downloadJobSpan.End()
 
 		if err != nil {
 			return err

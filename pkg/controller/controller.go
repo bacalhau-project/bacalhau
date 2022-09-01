@@ -42,11 +42,12 @@ type Controller struct {
 
 func NewController(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	db localdb.LocalDB,
 	tx transport.Transport,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
 ) (*Controller, error) {
-	nodeID, err := tx.HostID(context.Background())
+	nodeID, err := tx.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}

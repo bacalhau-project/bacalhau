@@ -155,7 +155,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
+			devstack, cm := devstack_tests.SetupTest(suite.T(), ctx, 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -686,6 +686,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	ctx := context.Background()
 	const nodeCount = 1
 
 	videos := []string{
@@ -696,6 +697,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	stack, cm := devstack_tests.SetupTest(
 		suite.T(),
+		ctx,
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -715,7 +717,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
@@ -746,6 +748,7 @@ type deterministicVerifierTestArgs struct {
 }
 
 func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
+	ctx := context.Background()
 
 	apiSubmitJob := func(
 		apiClient *publicapi.APIClient,
@@ -778,5 +781,5 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		return jobId, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(suite.T(), apiSubmitJob)
+	devstack_tests.RunDeterministicVerifierTests(suite.T(), ctx, apiSubmitJob)
 }

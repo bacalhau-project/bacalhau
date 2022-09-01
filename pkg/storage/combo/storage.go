@@ -22,6 +22,7 @@ type ComboStorageProvider struct {
 
 func NewStorageProvider(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	allFetcher AllProviderFetcher,
 	readFetcher ReadProviderFetcher,
 	writeFetcher WriteProviderFetcher,

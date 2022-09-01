@@ -31,19 +31,20 @@ type StandardExecutorOptions struct {
 
 func NewStandardStorageProviders(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	options StandardStorageProviderOptions,
 ) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, options.IPFSMultiaddress)
+	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, ctx, options.IPFSMultiaddress)
 	if err != nil {
 		return nil, err
 	}
 
-	urlDownloadStorage, err := urldownload.NewStorageProvider(cm)
+	urlDownloadStorage, err := urldownload.NewStorageProvider(cm, ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoinunsealed.NewStorageProvider(cm, options.FilecoinUnsealedPath)
+	filecoinUnsealedStorage, err := filecoinunsealed.NewStorageProvider(cm, ctx, options.FilecoinUnsealedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +57,7 @@ func NewStandardStorageProviders(
 	if options.FilecoinUnsealedPath != "" {
 		comboDriver, err := combo.NewStorageProvider(
 			cm,
+			ctx,
 			func(ctx context.Context) ([]storage.StorageProvider, error) {
 				return []storage.StorageProvider{
 					filecoinUnsealedStorage,
@@ -94,9 +96,10 @@ func NewStandardStorageProviders(
 
 func NewNoopStorageProviders(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	config noop_storage.StorageConfig,
 ) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewStorageProvider(cm, config)
+	noopStorage, err := noop_storage.NewStorageProvider(cm, ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +111,10 @@ func NewNoopStorageProviders(
 
 func NewStandardExecutors(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	executorOptions StandardExecutorOptions,
 ) (map[model.EngineType]executor.Executor, error) {
-	storageProviders, err := NewStandardStorageProviders(cm, executorOptions.Storage)
+	storageProviders, err := NewStandardStorageProviders(cm, ctx, executorOptions.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +147,7 @@ func NewStandardExecutors(
 // return noop executors for all engines
 func NewNoopExecutors(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	config noop_executor.ExecutorConfig,
 ) (map[model.EngineType]executor.Executor, error) {
 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)

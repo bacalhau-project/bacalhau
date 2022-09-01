@@ -31,12 +31,12 @@ type RequesterNode struct {
 
 func NewRequesterNode(
 	cm *system.CleanupManager,
+	ctx context.Context,
 	c *controller.Controller,
 	verifiers map[model.VerifierType]verifier.Verifier,
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
-	ctx := context.Background()
 	nodeID, err := c.HostID(ctx)
 	if err != nil {
 		return nil, err

@@ -31,7 +31,7 @@ type Client struct {
 
 // NewClient creates an API client for the given ipfs node API multiaddress.
 // NOTE: the API address is _not_ the same as the swarm address
-func NewClient(apiAddr string) (*Client, error) {
+func NewClient(ctx context.Context, apiAddr string) (*Client, error) {
 	addr, err := ma.NewMultiaddr(apiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse api address '%s': %w", apiAddr, err)

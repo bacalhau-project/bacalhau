@@ -200,9 +200,9 @@ func ExecuteJob(ctx context.Context,
 ) error {
 	var apiClient *publicapi.APIClient
 	if isLocal {
-		_, localDevStackSpan := system.Span(ctx, "RunJob", "LocalDevStackStarting")
-
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobSpec.Resources.GPU)
+		t := system.GetTracer()
+		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, localDevStackCtx, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
@@ -242,6 +242,7 @@ func ExecuteJob(ctx context.Context,
 			}
 			err = ipfs.DownloadJob(
 				cm,
+				ctx,
 				j,
 				results,
 				dockerRunDownloadFlags,

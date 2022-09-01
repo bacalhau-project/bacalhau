@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -43,11 +44,18 @@ func (suite *DevstackConcurrencySuite) TearDownAllSuite() {
 }
 
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
-	ctx, span := newSpan("TestConcurrencyLimit")
-	defer span.End()
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := context.Background()
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/concurrencytest")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	stack, cm := SetupTest(
 		suite.T(),
+		ctx,
 		3,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -55,7 +63,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	defer TeardownTest(stack, cm)
 
 	testCase := scenario.CatFileToVolume(suite.T())
-	inputStorageList, err := testCase.SetupStorage(stack, model.StorageSourceIPFS, 3)
+	inputStorageList, err := testCase.SetupStorage(ctx, stack, model.StorageSourceIPFS, 3)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{

@@ -46,15 +46,16 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 // we don't accept a job with no volumes
 // but when it's not turned on the job is actually selected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
+	ctx := context.Background()
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -64,21 +65,22 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
+	ctx := context.Background()
 
 	// get the CID so we can use it in the tests below but without it actually being
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := (func() (string, error) {
-		_, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+		_, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.NewDefaultComputeNodeConfig())
 		defer cm.Cleanup()
-		return ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+		return ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 	}())
 	require.NoError(suite.T(), err)
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
 			},
@@ -86,11 +88,11 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 		defer cm.Cleanup()
 
 		if shouldAddData {
-			_, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+			_, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 			require.NoError(suite.T(), err)
 		}
 
-		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(cid))
+		result, _, err := computeNode.SelectJob(ctx, GetProbeData(cid))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -109,6 +111,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
+	ctx := context.Background()
 	runTest := func(failMode, expectedResult bool) {
 		svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(suite.T(), r.Method, "POST")
@@ -123,14 +126,14 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		}))
 		defer svr.Close()
 
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -140,19 +143,20 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
+	ctx := context.Background()
 	runTest := func(failMode, expectedResult bool) {
 		command := "exit 0"
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -162,10 +166,11 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	ctx := context.Background()
+	computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
-	_, _, err := computeNode.SelectJob(context.Background(), computenode.JobSelectionPolicyProbeData{
+	_, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 		NodeID: "test",
 		JobID:  "test",
 	})

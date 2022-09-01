@@ -26,7 +26,7 @@ type StorageProvider struct {
 	HTTPClient *resty.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
+func NewStorageProvider(cm *system.CleanupManager, ctx context.Context) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {

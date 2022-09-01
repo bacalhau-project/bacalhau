@@ -130,6 +130,7 @@ var listCmd = &cobra.Command{
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
 		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		_, listSpan := t.Start(ctx, "requestinglistfromserver")
 		jobs, err := getAPIClient().List(ctx)

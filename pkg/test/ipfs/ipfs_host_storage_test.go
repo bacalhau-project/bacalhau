@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type IPFSHostStorageSuite struct {
@@ -46,17 +45,17 @@ func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
 
 }
 
-type getStorageFunc func(cm *system.CleanupManager, api string) (
+type getStorageFunc func(cm *system.CleanupManager, ctx context.Context, api string) (
 	storage.StorageProvider, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(cm *system.CleanupManager, api string) (
+		func(cm *system.CleanupManager, ctx context.Context, api string) (
 			storage.StorageProvider, error) {
 
-			return apicopy.NewStorageProvider(cm, api)
+			return apicopy.NewStorageProvider(cm, ctx, api)
 		},
 	)
 
@@ -66,30 +65,33 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(cm *system.CleanupManager, api string) (
+		func(cm *system.CleanupManager, ctx context.Context, api string) (
 			storage.StorageProvider, error) {
 
-			return apicopy.NewStorageProvider(cm, api)
+			return apicopy.NewStorageProvider(cm, ctx, api)
 		},
 	)
 }
 
 func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
+	ctx := context.Background()
 	// get a single IPFS server
-	ctx, span := newSpan(engine.String())
-	defer span.End()
-
-	stack, cm := SetupTest(t, 1)
+	stack, cm := SetupTest(t, ctx, 1)
 	defer TeardownTest(stack, cm)
+
+	tr := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
-	fileCid, err := stack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+	fileCid, err := stack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
-	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(cm, ctx, ipfsNodeAddress)
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -122,8 +124,15 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 }
 
 func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
-	ctx, span := newSpan(engine.String())
-	defer span.End()
+	ctx := context.Background()
+	// get a single IPFS server
+	stack, cm := SetupTest(t, ctx, 1)
+	defer TeardownTest(stack, cm)
+
+	tr := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, tr, "pkg/test/ipfs/runFolderTest")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
 	require.NoError(t, err)
@@ -132,17 +141,13 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	err = os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
 	require.NoError(t, err)
 
-	// get a single IPFS server
-	stack, cm := SetupTest(t, 1)
-	defer TeardownTest(stack, cm)
-
 	// add this file to the server
-	folderCid, err := stack.AddFolderToNodes(1, dir)
+	folderCid, err := stack.AddFolderToNodes(ctx, 1, dir)
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
-	storageDriver, err := getStorageDriver(cm, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(cm, ctx, ipfsNodeAddress)
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -174,8 +179,4 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "ipfs_host_storage_test", name)
 }

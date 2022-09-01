@@ -24,7 +24,7 @@ type DevStackIPFS struct {
 }
 
 // a devstack but with only IPFS servers connected to each other
-func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
+func NewDevStackIPFS(cm *system.CleanupManager, ctx context.Context, count int) (*DevStackIPFS, error) {
 	nodes := []*DevStackNodeIPFS{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -41,12 +41,12 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error
 			}
 		}
 
-		ipfsNode, err := ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
+		ipfsNode, err := ipfs.NewLocalNode(cm, ctx, ipfsSwarmAddrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		ipfsClient, err := ipfsNode.Client()
+		ipfsClient, err := ipfsNode.Client(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
@@ -84,7 +84,7 @@ curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.RepoPath, node.IpfsNode.APIPo
 	log.Trace().Msg(logString + "\n")
 }
 
-func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
+func (stack *DevStackIPFS) addItemToNodes(ctx context.Context, nodeCount int, filePath string, isDirectory bool) (string, error) {
 	var res string
 	for i, node := range stack.Nodes {
 		if node == nil {
@@ -94,7 +94,7 @@ func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDire
 			continue
 		}
 
-		cid, err := node.IpfsClient.Put(context.Background(), filePath)
+		cid, err := node.IpfsClient.Put(ctx, filePath)
 		if err != nil {
 			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
 		}
@@ -106,15 +106,15 @@ func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDire
 	return res, nil
 }
 
-func (stack *DevStackIPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
-	return stack.addItemToNodes(nodeCount, filePath, false)
+func (stack *DevStackIPFS) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {
+	return stack.addItemToNodes(ctx, nodeCount, filePath, false)
 }
 
-func (stack *DevStackIPFS) AddFolderToNodes(nodeCount int, folderPath string) (string, error) {
-	return stack.addItemToNodes(nodeCount, folderPath, true)
+func (stack *DevStackIPFS) AddFolderToNodes(ctx context.Context, nodeCount int, folderPath string) (string, error) {
+	return stack.addItemToNodes(ctx, nodeCount, folderPath, true)
 }
 
-func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
+func (stack *DevStackIPFS) AddTextToNodes(ctx context.Context, nodeCount int, fileContent []byte) (string, error) {
 	testDir, err := ioutil.TempDir("", "bacalhau-test")
 
 	if err != nil {
@@ -128,5 +128,5 @@ func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (st
 		return "", err
 	}
 
-	return stack.AddFileToNodes(nodeCount, testFilePath)
+	return stack.AddFileToNodes(ctx, nodeCount, testFilePath)
 }

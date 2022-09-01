@@ -45,11 +45,12 @@ func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
 
 // a simple sanity test of the RunJob with docker executor
 func (suite *ComputeNodeRunJobSuite) TestRunJob() {
+	ctx := context.Background()
 	EXAMPLE_TEXT := "hello"
-	computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
-	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+	cid, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 	require.NoError(suite.T(), err)
 
 	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
@@ -63,7 +64,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 		Job:   job,
 		Index: 0,
 	}
-	err = computeNode.RunShardExecution(context.Background(), shard, result)
+	err = computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(suite.T(), err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
@@ -76,7 +77,8 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
-	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	ctx := context.Background()
+	computeNode, _, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.NewDefaultComputeNodeConfig())
 	defer cm.Cleanup()
 
 	// it seems when we return an error so quickly we need to sleep a little bit
@@ -91,6 +93,6 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 		Job:   job,
 		Index: 0,
 	}
-	err := computeNode.RunShardExecution(context.Background(), shard, "")
+	err := computeNode.RunShardExecution(ctx, shard, "")
 	require.Error(suite.T(), err)
 }

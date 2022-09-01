@@ -16,7 +16,9 @@ import (
 
 func TestNewStorageProvider(t *testing.T) {
 	cm := system.NewCleanupManager()
-	sp, err := NewStorageProvider(cm)
+	ctx := context.Background()
+
+	sp, err := NewStorageProvider(cm, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,11 +40,13 @@ func TestNewStorageProvider(t *testing.T) {
 
 func TestHasStorageLocally(t *testing.T) {
 	cm := system.NewCleanupManager()
-	sp, err := NewStorageProvider(cm)
+	ctx := context.Background()
+
+	sp, err := NewStorageProvider(cm, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.Background()
+
 	spec := model.StorageSpec{
 		Engine: model.StorageSourceURLDownload,
 		URL:    "foo",
@@ -68,7 +72,8 @@ func TestPrepareStorage(t *testing.T) {
 	defer ts.Close()
 
 	cm := system.NewCleanupManager()
-	sp, err := NewStorageProvider(cm)
+	ctx := context.Background()
+	sp, err := NewStorageProvider(cm, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +85,6 @@ func TestPrepareStorage(t *testing.T) {
 		Path:   "/foo",
 	}
 
-	ctx := context.Background()
 	volume, err := sp.PrepareStorage(ctx, spec)
 	if err != nil {
 		t.Fatal(err)
