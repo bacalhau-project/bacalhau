@@ -10,7 +10,7 @@ import (
 
 func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	cm.RegisterCallback(system.CleanupTracer)
+	cm.RegisterCallback(system.CleanupTraceProvider)
 	stack, err := devstack.NewDevStackIPFS(cm, nodes)
 	require.NoError(t, err)
 

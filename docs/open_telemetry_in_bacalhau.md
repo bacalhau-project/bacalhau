@@ -39,3 +39,5 @@ In outline form:
   * The trace.start function or withspan block are good ways to make a new span in the current trace.
 
 Some more docs - https://www.honeycomb.io/blog/ask-miss-o11y-opentelemetry-baggage/
+
+https://github.com/honeycombio/example-greeting-service/tree/main/golang

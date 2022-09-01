@@ -209,7 +209,7 @@ var serveCmd = &cobra.Command{
 
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTracer)
+		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
 
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults

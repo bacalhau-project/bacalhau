@@ -99,7 +99,7 @@ var devstackCmd = &cobra.Command{
 
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTracer)
+		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
@@ -178,7 +178,7 @@ var devstackCmd = &cobra.Command{
 		portFileName := "/tmp/bacalhau-devstack.port"
 		pidFileName := "/tmp/bacalhau-devstack.pid"
 
-		if _, ignore := os.LookupEnv("IGNORE_PORT_CONFLICT"); !ignore {
+		if _, ignore := os.LookupEnv("IGNORE_PORT_FILES"); !ignore {
 			_, err := os.Stat(portFileName)
 			if err == nil {
 				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)

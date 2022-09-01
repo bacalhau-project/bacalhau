@@ -34,7 +34,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
 	cleanupManager := system.NewCleanupManager()
-	cleanupManager.RegisterCallback(system.CleanupTracer)
+	cleanupManager.RegisterCallback(system.CleanupTraceProvider)
 
 	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)

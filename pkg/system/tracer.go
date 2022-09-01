@@ -32,8 +32,10 @@ const (
 	TracerNameKey model.KeyString = "TracerName"
 )
 
+var tracer oteltrace.Tracer
+
 type cleanupFn func() error
-type cleanupTraceProviderFn func(context.Context) error
+type cleanupTraceProviderFn func() error
 
 // CleanupTracer should be called at the end of a node's execution to send all
 // remaining traces to the exporter before the process ends.
@@ -41,31 +43,7 @@ var CleanupTracer cleanupFn
 var CleanupTraceProviderFn cleanupTraceProviderFn
 
 func init() { //nolint:gochecknoinits // use of init here is idomatic
-	_ = godotenv.Load() // Load environment variables from .env file - necessary here for dev keys
-
-	tp, cleanup, err := hcProvider()
-	if err != nil {
-		// don't error here because for CLI users they get a red message
-		log.Debug().Msgf("error initializing http tracer: %v", err)
-		log.Debug().Msg("failed to initialize http tracer, falling back to debug tracer")
-
-		tp, cleanup, err = loggerProvider()
-		if err != nil {
-			log.Error().Msgf("error initializing debug tracer: %v", err)
-			log.Warn().Msg("failed to initialize debug tracer, will proceed without trace instrumentation")
-			return // not fatal
-		}
-	}
-
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
-
-	CleanupTracer = cleanup
+	_, _ = NewTraceProvider()
 }
 
 func NewTraceProvider() (*sdktrace.TracerProvider, error) {
@@ -95,24 +73,28 @@ func NewTraceProvider() (*sdktrace.TracerProvider, error) {
 
 	CleanupTraceProviderFn = cleanup
 
+	tracer = tp.Tracer(version.TracerName())
+
 	return tp, nil
 }
 
-func CleanupTraceProvider(tp *sdktrace.TracerProvider, ctx context.Context) error {
-	return CleanupTraceProviderFn(ctx)
+func CleanupTraceProvider() error {
+	return CleanupTraceProviderFn()
 }
 
-func GetTracer(opts ...oteltrace.TracerOption) oteltrace.Tracer {
+func GetTracer() oteltrace.Tracer {
+	return tracer
+}
+
+func GetTracerWithOpts(opts ...oteltrace.TracerOption) oteltrace.Tracer {
 	tp := otel.GetTracerProvider()
 	return tp.Tracer(version.TracerName(), opts...)
 }
 
-func GetTracerFromRequest(req *http.Request) (context.Context, oteltrace.Tracer) {
+func GetSpanFromRequest(req *http.Request, name string) (context.Context, oteltrace.Span) {
 	ctx := req.Context()
-	span := oteltrace.SpanFromContext(ctx)
-	defer span.End()
-	t := span.TracerProvider().Tracer(version.TracerName())
-	return ctx, t
+	_, span := tracer.Start(ctx, name)
+	return ctx, span
 }
 
 //nolint:lll // long line is ok here
@@ -146,14 +128,15 @@ func Span(ctx context.Context, tracerName, spanName string,
 
 	spanName = fmt.Sprintf("service/%s", spanName)
 
-	return Tracer(tracerName).Start(ctx, spanName, opts...)
+	return Tracer(version.TracerName()).Start(ctx, spanName, opts...)
 }
 
 func Tracer(tracerName string) oteltrace.Tracer {
-	return otel.GetTracerProvider().Tracer(tracerName)
+	return tracer
 }
 
 // loggerProvider provides traces that are exported to a trace logger as JSON.
+//nolint:unused,deadcode // mistaken unused
 func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	exp, err := stdouttrace.New(
 		stdouttrace.WithPrettyPrint(),
@@ -172,6 +155,7 @@ func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 // should be configured by setting the following environment variable:
 //
 //	export HONEYCOMB_KEY="<honeycomb api key>"
+//nolint:unused,deadcode // mistaken unused
 func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
 	honeycombDataset := os.Getenv("HONEYCOMB_DATASET")
 	if honeycombDataset == "" {
@@ -307,12 +291,12 @@ func jsonLogger() io.Writer {
 //
 //nolint:unparam // will add tracing
 func cleanupForTP(tp *sdktrace.TracerProvider) cleanupTraceProviderFn {
-	return func(ctx context.Context) error {
-		if err := tp.Shutdown(ctx); err != nil {
+	// TODO: The below is wrong - we need to shut down the trace provider and take the context from the caller.
+	return func() error {
+		if err := tp.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf(
 				"error shutting down trace provider: %+v", err)
 		}
-
 		return nil
 	}
 }
@@ -321,7 +305,7 @@ func cleanupForTP(tp *sdktrace.TracerProvider) cleanupTraceProviderFn {
 // memory to the exporter and releases any tracing resources.
 // TODO: #288 Use trace to close out span
 //
-//nolint:unparam // will add tracing
+//nolint:unparam,unused // will add tracing, mistaken unused
 func cleanupFor(name string, tp *sdktrace.TracerProvider, exp sdktrace.SpanExporter) cleanupFn {
 	return func() error {
 		if err := tp.Shutdown(context.Background()); err != nil {
