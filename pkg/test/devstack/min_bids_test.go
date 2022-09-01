@@ -110,13 +110,24 @@ func (suite *MinBidsSuite) TestMinBids() {
 	}
 
 	// sanity test that with min bids at zero and 1 node we get the job through
+	// runTest(minBidsTestCase{
+	// 	nodes:       1,
+	// 	shards:      1,
+	// 	concurrency: 1,
+	// 	minBids:     0,
+	// 	expectedResult: map[model.JobStateType]int{
+	// 		model.JobStatePublished: 1,
+	// 	},
+	// })
+
+	// test that when min bids is concurrency we get the job through
 	runTest(minBidsTestCase{
-		nodes:       1,
+		nodes:       3,
 		shards:      1,
-		concurrency: 1,
-		minBids:     0,
+		concurrency: 3,
+		minBids:     3,
 		expectedResult: map[model.JobStateType]int{
-			model.JobStatePublished: 1,
+			model.JobStatePublished: 3,
 		},
 	})
 

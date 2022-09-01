@@ -3,7 +3,6 @@ package requesternode
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
@@ -115,134 +114,26 @@ func (node *RequesterNode) subscriptionEventBid(
 	defer span.End()
 
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
-	bidsAcceptedSoFar := 0
-	bidCount := 0
-	candidateBids := []model.JobEvent{}
+	bidQueueResults, err := processIncomingBid(ctx, node.controller, job, jobEvent)
 
-	// let's see how many bids we have already accepted
-	// it's important this comes from "local events"
-	// otherwise we are in a race with the network and could
-	// end up accepting many more bids than our concurrency
-	localEvents, err := node.controller.GetJobLocalEvents(ctx, job.ID)
 	if err != nil {
-		threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
+		threadLogger.Warn().Msgf("There was an error calling processIncomingBid %s: %s", job.ID, err)
 		return
 	}
 
-	globalEvents, err := node.controller.GetJobEvents(ctx, job.ID)
-	if err != nil {
-		threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
-		return
-	}
-
-	shardLocalEvents := []model.JobLocalEvent{}
-	shardGlobalEvents := []model.JobEvent{}
-
-	for _, localEvent := range localEvents {
-		if localEvent.EventName == model.JobLocalEventBidAccepted && localEvent.ShardIndex == jobEvent.ShardIndex {
-			shardLocalEvents = append(shardLocalEvents, localEvent)
-		}
-	}
-
-	for _, globalEvent := range globalEvents {
-		if globalEvent.EventName == model.JobEventBid && globalEvent.ShardIndex == jobEvent.ShardIndex {
-			shardGlobalEvents = append(shardGlobalEvents, globalEvent)
-		}
-	}
-
-	// we don't have enough bids to decide which to accept
-	if len(shardGlobalEvents) < job.Deal.MinBids {
-		return
-	}
-
-	// we have exactly min bids so we shuffle abd then
-	// accept concurrency number and reject the rest
-
-	// we have more than min bids so we check if we have space or not
-	// (i.e. do the same as we were before)
-
-	// TODO: make min bids per shard
-	accepted := func() bool {
-
-		// a map of shard index onto an array of node ids we have farmed the job out to
-		assignedNodes := map[int][]string{}
-
-		for _, localEvent := range localEvents {
-			threadLogger.Debug().Msgf("localEvent: %+v", localEvent)
-			if localEvent.EventName == model.JobLocalEventBidAccepted {
-				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
-				if !ok {
-					assignedNodesForShard = []string{}
-				}
-				assignedNodesForShard = append(assignedNodesForShard, localEvent.TargetNodeID)
-				assignedNodes[localEvent.ShardIndex] = assignedNodesForShard
+	for _, bidQueueResult := range bidQueueResults {
+		if bidQueueResult.accepted {
+			log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
+			err := node.controller.AcceptJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
 			}
-		}
-
-		assignedNodesForShard, ok := assignedNodes[jobEvent.ShardIndex]
-		if !ok {
-			assignedNodesForShard = []string{}
-		}
-
-		for i := range globalEvents {
-			if globalEvents[i].ShardIndex != jobEvent.ShardIndex {
-				continue
+		} else {
+			log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
+			err := node.controller.RejectJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
 			}
-			if globalEvents[i].EventName != model.JobEventBid {
-				continue
-			}
-
-			bidCount += 1
-
-			// if we have already accepted a bid from this node, don't accept another
-			if contains(assignedNodesForShard, globalEvents[i].TargetNodeID) {
-				bidsAcceptedSoFar += 1
-				continue
-			}
-
-			candidateBids = append(candidateBids, globalEvents[i])
-		}
-
-		// we have already reached concurrency for this shard
-		// so let's reject this bid
-		if len(assignedNodesForShard) >= job.Deal.Concurrency {
-			//nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job shard %s %d already reached concurrency of %d %+v", job.ID, jobEvent.ShardIndex, job.Deal.Concurrency, assignedNodesForShard)
-			return false
-		}
-
-		return true
-	}()
-
-	if accepted {
-		// TODO: don't accept THIS bid, necessarily, instead accept
-		// (concurrency-acceptedSoFar) many bids randomly from the bids that
-		// haven't been accepted yet in localEvents.
-
-		wantToAccept := job.Deal.Concurrency - bidsAcceptedSoFar
-
-		// shuffle candidateBids
-		rand.Shuffle(len(candidateBids), func(i, j int) {
-			candidateBids[i], candidateBids[j] = candidateBids[j], candidateBids[i]
-		})
-
-		if wantToAccept > 0 && bidCount > job.Deal.MinBids {
-			bidsToAccept := candidateBids[:wantToAccept]
-
-			for _, bid := range bidsToAccept {
-				log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, bid.JobID, bid.ShardIndex)
-				err := node.controller.AcceptJobBid(ctx, bid.JobID, bid.SourceNodeID, bid.ShardIndex)
-				if err != nil {
-					threadLogger.Error().Err(err)
-				}
-			}
-		}
-
-	} else {
-		log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
-		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
-		if err != nil {
-			threadLogger.Error().Err(err)
 		}
 	}
 }
