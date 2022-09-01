@@ -1,4 +1,4 @@
-apiVersion: infra.contrib.fluxcd.io/v1alpha1
+:apiVersion: infra.contrib.fluxcd.io/v1alpha1
 kind: Terraform
 metadata:
   name: tf-manifest
@@ -12,8 +12,6 @@ spec:
   backendConfig:
     customConfiguration: |
       backend "gcs" {
-        # this bucket lives in the bacalhau-cicd google project
-        # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
         bucket = "bacalhau-global-storage"
         prefix = "terraform/state"
       }
