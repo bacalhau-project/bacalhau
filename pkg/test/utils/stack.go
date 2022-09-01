@@ -34,15 +34,17 @@ type TestStack struct {
 	Executors      map[model.EngineType]executor.Executor
 }
 
-// Setup a docker ipfs devstack to run compute node tests against
-// (formerly SetupTestDockerIpfs)
-func NewDockerIpfsStack(
-	t *testing.T,
-	config computenode.ComputeNodeConfig, //nolint:gocritic
-) *TestStack {
-	return NewDockerIpfsStackMultiNode(t, config, 1)
-}
-
+// Docker IPFS stack is designed to be a "as real as possible" stack to write tests against
+// but without a libp2p transport - it's useful for testing storage drivers or executors
+// it uses:
+//  * a cluster of real IPFS nodes that form an isolated network
+//    * you can use the IpfsStack.Add{File,Folder,Text}ToNodes functions to add content and get CIDs
+//  * in process transport
+//  * in memory datastore
+//  * "standard" storage providers - i.e. the default storage stack as used by devstack
+//  * "standard" executors - i.e. the default executor stack as used by devstack
+//  * noop verifiers - don't use this stack if you are testing verification
+//  * IPFS publishers - using the same IPFS cluster as the storage driver
 func NewDockerIpfsStackMultiNode(
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
@@ -112,7 +114,28 @@ func NewDockerIpfsStackMultiNode(
 	}
 }
 
-// Setup a full noop stack to run tests against (formerly SetupTestNoop)
+// Setup a docker ipfs devstack to run compute node tests against
+// This is a shortcut to NewDockerIpfsStackMultiNode but with 1 node
+// (formerly SetupTestDockerIpfs)
+func NewDockerIpfsStack(
+	t *testing.T,
+	config computenode.ComputeNodeConfig, //nolint:gocritic
+) *TestStack {
+	return NewDockerIpfsStackMultiNode(t, config, 1)
+}
+
+// Noop stack is designed to be a "as mocked as possible" stack to write tests against
+// it's useful for testing the bidding workflow between requester node and compute nodes
+// if you are writing a test that is concerned with "did this control loop emit this event"
+// then this is the stack for you (as opposed to "did IPFS actually save the data" in which case
+// you want NewDockerIpfsStackMultiNode)
+// it uses:
+//  * in process transport
+//  * in memory datastore
+//  * noop storage providers
+//  * noop executors
+//  * noop verifiers
+//  * noop publishers
 func NewNoopStack(
 	t *testing.T,
 	//nolint:gocritic
