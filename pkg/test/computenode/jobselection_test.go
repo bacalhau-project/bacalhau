@@ -11,6 +11,7 @@ import (
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -48,14 +49,14 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	ctx := context.Background()
 	runTest := func(rejectSetting, expectedResult bool) {
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
 		}, noop_executor.ExecutorConfig{})
-		defer cm.Cleanup()
+		defer stack.CleanupManager.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := stack.ComputeNode.SelectJob(context.Background(), GetProbeData(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -74,7 +75,9 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := (func() (string, error) {
-		_, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+		ipfsStack, cm := stack.IpfsStack, stack.CleanupManager
+
 		defer cm.Cleanup()
 		return ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 	}())
@@ -82,11 +85,12 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		computeNode, ipfsStack, cm := SetupTestDockerIpfs(suite.T(), ctx, computenode.ComputeNodeConfig{
+		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
 			},
 		})
+		computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
 		defer cm.Cleanup()
 
 		if shouldAddData {
@@ -130,11 +134,12 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		}))
 		defer svr.Close()
 
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
 		}, noop_executor.ExecutorConfig{})
+		computeNode, cm := stack.ComputeNode, stack.CleanupManager
 		defer cm.Cleanup()
 
 		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
@@ -157,11 +162,12 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		if failMode {
 			command = "exit 1"
 		}
-		computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{
+		computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
 		}, noop_executor.ExecutorConfig{})
+		computeNode, cm := stack.ComputeNode, stack.CleanupManager
 		defer cm.Cleanup()
 
 		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
@@ -177,8 +183,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 
 // TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	ctx := context.Background()
-	computeNode, _, _, cm := SetupTestNoop(suite.T(), ctx, computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	computeNode, _, _, cm := SetupTestNoop(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	defer cm.Cleanup()
 
 	_, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
