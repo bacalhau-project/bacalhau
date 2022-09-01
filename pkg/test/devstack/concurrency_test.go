@@ -28,7 +28,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackConcurrencySuite) SetupAllSuite() {
-	
+
 }
 
 // Before each test
@@ -55,8 +55,8 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
 		3,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),

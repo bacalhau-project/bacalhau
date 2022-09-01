@@ -95,8 +95,8 @@ var getCmd = &cobra.Command{
 
 		downloadJobCtx, downloadJobSpan := t.Start(ctx, "downloadjob")
 		err = ipfs.DownloadJob(
-			cm,
 			downloadJobCtx,
+			cm,
 			j,
 			results,
 			OG.IPFSDownloadSettings,

@@ -202,7 +202,7 @@ func ExecuteJob(ctx context.Context,
 	if isLocal {
 		t := system.GetTracer()
 		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, localDevStackCtx, 1, jobSpec.Resources.GPU)
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(localDevStackCtx, cm, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
@@ -241,8 +241,8 @@ func ExecuteJob(ctx context.Context,
 				return fmt.Errorf("no results found")
 			}
 			err = ipfs.DownloadJob(
-				cm,
 				ctx,
+				cm,
 				j,
 				results,
 				dockerRunDownloadFlags,

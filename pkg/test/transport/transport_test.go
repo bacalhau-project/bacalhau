@@ -64,7 +64,7 @@ func setupTest(t *testing.T) (
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 
-	noopStorage, err := storage_noop.NewStorageProvider(cm, ctx, storage_noop.StorageConfig{})
+	noopStorage, err := storage_noop.NewStorageProvider(ctx, cm, storage_noop.StorageConfig{})
 	require.NoError(t, err)
 
 	storageProviders := map[model.StorageSourceType]storage.StorageProvider{
@@ -80,13 +80,13 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, ctx, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
-	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, ctx, ctrl.GetStateResolver())
+	noopVerifier, err := verifier_noop.NewNoopVerifier(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, ctx, ctrl.GetStateResolver())
+	noopPublisher, err := publisher_noop.NewNoopPublisher(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
 	executors := map[model.EngineType]executor.Executor{
@@ -102,8 +102,8 @@ func setupTest(t *testing.T) (
 	}
 
 	_, err = computenode.NewComputeNode(
-		cm,
 		ctx,
+		cm,
 		ctrl,
 		executors,
 		verifiers,
@@ -113,8 +113,8 @@ func setupTest(t *testing.T) (
 	require.NoError(t, err)
 
 	_, err = requesternode.NewRequesterNode(
-		cm,
 		ctx,
+		cm,
 		ctrl,
 		verifiers,
 		requesternode.RequesterNodeConfig{},
@@ -143,11 +143,11 @@ func (suite *TransportSuite) TestTransportSanity() {
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(suite.T(), err)
-	ctrl, err := controller.NewController(cm, ctx, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
-		cm,
 		ctx,
+		cm,
 		ctrl,
 		executors,
 		verifiers,
@@ -156,8 +156,8 @@ func (suite *TransportSuite) TestTransportSanity() {
 	)
 	require.NoError(suite.T(), err)
 	_, err = requesternode.NewRequesterNode(
-		cm,
 		ctx,
+		cm,
 		ctrl,
 		verifiers,
 		requesternode.RequesterNodeConfig{},

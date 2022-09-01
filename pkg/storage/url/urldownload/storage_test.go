@@ -16,9 +16,8 @@ import (
 
 func TestNewStorageProvider(t *testing.T) {
 	cm := system.NewCleanupManager()
-	ctx := context.Background()
 
-	sp, err := NewStorageProvider(cm, ctx)
+	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +41,7 @@ func TestHasStorageLocally(t *testing.T) {
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 
-	sp, err := NewStorageProvider(cm, ctx)
+	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +72,7 @@ func TestPrepareStorage(t *testing.T) {
 
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
-	sp, err := NewStorageProvider(cm, ctx)
+	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
 	}

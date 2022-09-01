@@ -110,10 +110,10 @@ var devstackCmd = &cobra.Command{
 			map[model.StorageSourceType]storage.StorageProvider, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopStorageProviders(cm, ctx, noop_storage.StorageConfig{})
+				return executor_util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
 			}
 
-			return executor_util.NewStandardStorageProviders(cm, ctx, executor_util.StandardStorageProviderOptions{
+			return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress: ipfsMultiAddress,
 			})
 		}
@@ -122,12 +122,12 @@ var devstackCmd = &cobra.Command{
 			map[model.EngineType]executor.Executor, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopExecutors(cm, ctx, noop_executor.ExecutorConfig{})
+				return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{})
 			}
 
 			return executor_util.NewStandardExecutors(
-				cm,
 				ctx,
+				cm,
 				executor_util.StandardExecutorOptions{
 					DockerID:   fmt.Sprintf("devstacknode%d", nodeIndex),
 					IsBadActor: isBadActor,
@@ -144,11 +144,11 @@ var devstackCmd = &cobra.Command{
 			ctrl *controller.Controller,
 		) (map[model.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
-				return verifier_util.NewNoopVerifiers(cm, ctx, ctrl.GetStateResolver())
+				return verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
 			}
 			return verifier_util.NewStandardVerifiers(
-				cm,
 				ctx,
+				cm,
 				ctrl.GetStateResolver(),
 				transport.Encrypt,
 				transport.Decrypt,
@@ -161,9 +161,9 @@ var devstackCmd = &cobra.Command{
 			ctrl *controller.Controller,
 		) (map[model.PublisherType]publisher.Publisher, error) {
 			if ODs.IsNoop {
-				return publisher_util.NewNoopPublishers(cm, ctx, ctrl.GetStateResolver())
+				return publisher_util.NewNoopPublishers(ctx, cm, ctrl.GetStateResolver())
 			}
-			return publisher_util.NewIPFSPublishers(cm, ctx, ctrl.GetStateResolver(), ipfsMultiAddress)
+			return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 		}
 
 		jobSelectionPolicy := getJobSelectionConfig()
@@ -192,8 +192,8 @@ var devstackCmd = &cobra.Command{
 		}
 
 		stack, err := devstack.NewDevStack(
-			cm,
 			ctx,
+			cm,
 			ODs.NumberOfNodes,
 			ODs.NumberOfBadActors,
 			getStorageProviders,

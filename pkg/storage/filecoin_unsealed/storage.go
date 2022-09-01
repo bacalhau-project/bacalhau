@@ -21,7 +21,7 @@ type StorageProvider struct {
 	localPathTemplate       *template.Template
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ctx context.Context, localPathTemplate string) (*StorageProvider, error) {
+func NewStorageProvider(cm *system.CleanupManager, localPathTemplate string) (*StorageProvider, error) {
 	t := template.New("bacalhau-storage-filecoin-unsealed-path")
 	t, err := t.Parse(localPathTemplate)
 	if err != nil {

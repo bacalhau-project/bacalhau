@@ -49,12 +49,12 @@ Storage Drivers
 */
 func FuseStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return fusedocker.NewStorageProvider(
-		stack.CleanupManager, ctx, stack.Nodes[0].IpfsClient.APIAddress())
+		ctx, stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
 
 func APICopyStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
 	return apicopy.NewStorageProvider(
-		stack.CleanupManager, ctx, stack.Nodes[0].IpfsClient.APIAddress())
+		stack.CleanupManager, stack.Nodes[0].IpfsClient.APIAddress())
 }
 
 var FuseStorageDriverFactory = StorageDriverFactory{

@@ -48,7 +48,7 @@ type LibP2PTransport struct {
 	privateKey           crypto.PrivKey
 }
 
-func NewTransport(cm *system.CleanupManager, ctx context.Context, port int, peers []string) (*LibP2PTransport, error) {
+func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
 	usePeers := []string{}
 
 	for _, p := range peers {

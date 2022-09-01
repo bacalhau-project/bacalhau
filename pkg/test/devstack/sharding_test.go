@@ -105,7 +105,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 	system.InitConfigForTesting(suite.T())
 
-	stack, err := devstack.NewDevStackIPFS(cm, ctx, nodeCount)
+	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
 	require.NoError(suite.T(), err)
 
 	t := system.GetTracer()
@@ -122,7 +122,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorageProvider(cm, ctx, node.IpfsClient.APIAddress())
+	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
@@ -185,8 +185,9 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
+
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -278,8 +279,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	log.Info().Msgf("Downloading results to %s", downloadFolder)
 
 	err = ipfs.DownloadJob(
-		cm,
 		ctx,
+		cm,
 		submittedJob,
 		jobResults,
 		ipfs.IPFSDownloadSettings{
@@ -331,8 +332,9 @@ func (suite *ShardingSuite) TestNoShards() {
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
+
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -390,8 +392,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	const nodeCount = 1
 	ctx := context.Background()
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
+
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),

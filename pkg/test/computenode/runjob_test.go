@@ -49,7 +49,7 @@ func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
 func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	ctx := context.Background()
 	EXAMPLE_TEXT := "hello"
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
 	defer cm.Cleanup()
 
@@ -80,7 +80,8 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	ctx := context.Background()
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 

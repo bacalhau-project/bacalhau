@@ -12,17 +12,17 @@ import (
 )
 
 func NewIPFSPublishers(
-	cm *system.CleanupManager,
 	ctx context.Context,
+	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 ) (map[model.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, ctx, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(cm, ctx, resolver, ipfsMultiAddress)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, resolver, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -34,11 +34,11 @@ func NewIPFSPublishers(
 }
 
 func NewNoopPublishers(
-	cm *system.CleanupManager,
 	ctx context.Context,
+	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (map[model.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, ctx, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}

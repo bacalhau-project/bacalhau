@@ -39,14 +39,14 @@ type StorageProvider struct {
 	Config StorageConfig
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ctx context.Context, config StorageConfig) (*StorageProvider, error) {
+func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		Config: config,
 	}
 	return storageHandler, nil
 }
 
-func NewStorageProviderWithConfig(cm *system.CleanupManager, ctx context.Context, config StorageConfig) (*StorageProvider, error) {
+func NewStorageProviderWithConfig(ctx context.Context, cm *system.CleanupManager, config StorageConfig) (*StorageProvider, error) {
 	storageHandler := &StorageProvider{
 		Config: config,
 	}

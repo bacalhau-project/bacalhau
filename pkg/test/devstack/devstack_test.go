@@ -55,8 +55,8 @@ func devStackDockerStorageTest(
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
-		t,
 		ctx,
+		t,
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),

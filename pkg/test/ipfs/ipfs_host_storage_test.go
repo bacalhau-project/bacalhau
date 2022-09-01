@@ -43,20 +43,20 @@ func (suite *IPFSHostStorageSuite) TearDownTest() {
 }
 
 func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
-	
+
 }
 
-type getStorageFunc func(cm *system.CleanupManager, ctx context.Context, api string) (
+type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
 	storage.StorageProvider, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(cm *system.CleanupManager, ctx context.Context, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return apicopy.NewStorageProvider(cm, ctx, api)
+			return apicopy.NewStorageProvider(cm, api)
 		},
 	)
 }
@@ -65,10 +65,10 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 	runFolderTest(
 		suite.T(),
 		model.StorageSourceIPFS,
-		func(cm *system.CleanupManager, ctx context.Context, api string) (
+		func(ctx context.Context, cm *system.CleanupManager, api string) (
 			storage.StorageProvider, error) {
 
-			return apicopy.NewStorageProvider(cm, ctx, api)
+			return apicopy.NewStorageProvider(cm, api)
 		},
 	)
 }
@@ -76,7 +76,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
 	ctx := context.Background()
 	// get a single IPFS server
-	stack, cm := SetupTest(t, ctx, 1)
+	stack, cm := SetupTest(ctx, t, 1)
 	defer TeardownTest(stack, cm)
 
 	tr := system.GetTracer()
@@ -91,7 +91,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
-	storageDriver, err := getStorageDriver(cm, ctx, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -130,7 +130,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDriver getStorageFunc) {
 	ctx := context.Background()
 	// get a single IPFS server
-	stack, cm := SetupTest(t, ctx, 1)
+	stack, cm := SetupTest(ctx, t, 1)
 	defer TeardownTest(stack, cm)
 
 	tr := system.GetTracer()
@@ -151,7 +151,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 
 	// construct an ipfs docker storage client
 	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
-	storageDriver, err := getStorageDriver(cm, ctx, ipfsNodeAddress)
+	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
 	require.NoError(t, err)
 
 	// the storage spec for the cid we added
@@ -172,7 +172,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
-	
+
 	// TODO @enricorotundo #493: make sure sudo is not needed here
 	// result, err := system.RunCommandGetResults("sudo", []string{
 	// 	"cat",

@@ -17,8 +17,8 @@ type NoopVerifier struct {
 }
 
 func NewNoopVerifier(
-	cm *system.CleanupManager,
-	ctx context.Context,
+	ctx context.Context, cm *system.CleanupManager,
+
 	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
 	results, err := results.NewResults()

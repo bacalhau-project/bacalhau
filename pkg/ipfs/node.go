@@ -125,16 +125,16 @@ func (cfg *Config) getPeerAddrs() []string {
 // NewNode creates a new IPFS node in default mode, which creates an IPFS
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
-func NewNode(cm *system.CleanupManager, ctx context.Context, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(cm, ctx, Config{
+func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return NewNodeWithConfig(ctx, cm, Config{
 		PeerAddrs: peerAddrs,
 	})
 }
 
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
-func NewLocalNode(cm *system.CleanupManager, ctx context.Context, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(cm, ctx, Config{
+func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	return NewNodeWithConfig(ctx, cm, Config{
 		Mode:      ModeLocal,
 		PeerAddrs: peerAddrs,
 	})
@@ -142,7 +142,7 @@ func NewLocalNode(cm *system.CleanupManager, ctx context.Context, peerAddrs []st
 
 // NewNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func NewNodeWithConfig(cm *system.CleanupManager, ctx context.Context, cfg Config) (*Node, error) {
+func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
@@ -167,7 +167,7 @@ func NewNodeWithConfig(cm *system.CleanupManager, ctx context.Context, cfg Confi
 		log.Error().Msgf("ipfs node failed to connect to peers: %s", err)
 	}
 
-	if err = serveAPI(cm, ctx, node, repoPath); err != nil {
+	if err = serveAPI(cm, node, repoPath); err != nil {
 		log.Error().Msgf("ipfs node failed to serve API: %s", err)
 	}
 
@@ -270,7 +270,7 @@ func (n *Node) LogDetails() {
 }
 
 // Client returns an API client for interacting with the node.
-func (n *Node) Client(ctx context.Context) (*Client, error) {
+func (n *Node) Client() (*Client, error) {
 	addrs, err := n.APIAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch api addresses: %w", err)
@@ -279,7 +279,7 @@ func (n *Node) Client(ctx context.Context) (*Client, error) {
 		return nil, fmt.Errorf("error creating client: node has no available api addresses")
 	}
 
-	return NewClient(ctx, addrs[0])
+	return NewClient(addrs[0])
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
@@ -314,7 +314,7 @@ func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode,
 }
 
 // serveAPI starts a new API server for the node on the given address.
-func serveAPI(cm *system.CleanupManager, ctx context.Context, node *core.IpfsNode, repoPath string) error {
+func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) error {
 	cfg, err := node.Repo.Config()
 	if err != nil {
 		return fmt.Errorf("failed to get repo config: %w", err)

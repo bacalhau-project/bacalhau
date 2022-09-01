@@ -82,6 +82,6 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		return submittedJob.ID, nil
 	}
 
-	RunDeterministicVerifierTests(suite.T(), ctx, apiSubmitJob)
+	RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 
 }

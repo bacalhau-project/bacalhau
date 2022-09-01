@@ -52,15 +52,16 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
 
 // Simple job resource limits tests
 func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
+	ctx := context.Background()
 	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits model.ResourceUsageConfig, expectedResult bool) {
-		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitJob:            jobResourceLimits,
 				ResourceRequirementsDefault: defaultJobResourceLimits,
 			},
 		}, noop_executor.ExecutorConfig{})
 
-		computeNode, cm := stack.ComputeNode, stack.CleanupManager 
+		computeNode, cm := stack.ComputeNode, stack.CleanupManager
 
 		defer func() {
 			// sleep here otherwise the compute node tries to register cleanup handlers too late
@@ -225,8 +226,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		stack := testutils.NewNoopStack(
-			suite.T(),
 			ctx,
+			suite.T(),
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
 					ResourceLimitTotal: testCase.totalLimits,
@@ -398,14 +399,14 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	ctx := context.Background()
 	CPU_LIMIT := "100m"
 
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result := RunJobGetStdout(suite.T(), ctx, computeNode, model.JobSpec{
+	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.JobSpec{
 		Engine:   model.EngineDocker,
 		Verifier: model.VerifierNoop,
 		Resources: model.ResourceUsageConfig{
@@ -443,11 +444,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	ctx := context.Background()
 	MEMORY_LIMIT := "100mb"
 
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 
-	result := RunJobGetStdout(suite.T(), ctx, computeNode, model.JobSpec{
+	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.JobSpec{
 		Engine:   model.EngineDocker,
 		Verifier: model.VerifierNoop,
 		Resources: model.ResourceUsageConfig{
@@ -473,7 +474,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 	ctx := context.Background()
 
 	runTest := func(text, diskSize string, expected bool) {
-		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitTotal: model.ResourceUsageConfig{
 					// so we have a compute node with 1 byte of disk space
@@ -484,7 +485,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
 		defer cm.Cleanup()
 
-		cid, _ := ipfsStack.AddTextToNodes(1, []byte(text))
+		cid, _ := ipfsStack.AddTextToNodes(ctx, 1, []byte(text))
 
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -529,76 +530,18 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 const IpfsMetadataSize = 8
 
 func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
+	ctx := context.Background()
 
 	runTest := func(text string, expected uint64) {
-		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		defer stack.CleanupManager.Cleanup()
 
-		cid, err := stack.IpfsStack.AddTextToNodes(1, []byte(text))
+		cid, err := stack.IpfsStack.AddTextToNodes(ctx, 1, []byte(text))
 		require.NoError(suite.T(), err)
 
-<<<<<<< HEAD
 		executor := stack.Executors[model.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
-||||||| 758b7d31
-		apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
-		transport, err := inprocess.NewInprocessTransport()
-		require.NoError(suite.T(), err)
-
-		datastore, err := inmemory.NewInMemoryDatastore()
-		require.NoError(suite.T(), err)
-
-		storageProviders, err := executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
-			IPFSMultiaddress: apiAddress,
-		})
-		require.NoError(suite.T(), err)
-
-		executors, err := executor_util.NewStandardExecutors(cm, executor_util.StandardExecutorOptions{
-			DockerID: "devstacknode0",
-			Storage: executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress: apiAddress,
-			},
-		})
-
-		require.NoError(suite.T(), err)
-
-		ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
-		require.NoError(suite.T(), err)
-
-		verifiers, err := verifier_util.NewNoopVerifiers(
-			cm,
-			ctrl.GetStateResolver(),
-		)
-		require.NoError(suite.T(), err)
-
-		publishers, err := publisher_util.NewNoopPublishers(
-			cm,
-			ctrl.GetStateResolver(),
-		)
-		require.NoError(suite.T(), err)
-
-		_, err = computenode.NewComputeNode(
-			cm,
-			ctrl,
-			executors,
-			verifiers,
-			publishers,
-			computenode.ComputeNodeConfig{},
-		)
-		require.NoError(suite.T(), err)
-
-		cid, err := ipfsStack.AddTextToNodes(1, []byte(text))
-		require.NoError(suite.T(), err)
-
-		executor := executors[model.EngineDocker]
-
-		result, err := executor.GetVolumeSize(context.Background(), model.StorageSpec{
-=======
-		executor := stack.Executors[model.EngineDocker]
-
-		result, err := executor.GetVolumeSize(context.Background(), model.StorageSpec{
->>>>>>> main
 			Engine: model.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/",

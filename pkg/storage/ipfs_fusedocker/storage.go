@@ -48,9 +48,9 @@ type StorageProvider struct {
 	DockerClient *dockerclient.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ctx context.Context, ipfsAPIAddress string) (
+func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIAddress string) (
 	*StorageProvider, error) {
-	api, err := ipfs.NewClient(ctx, ipfsAPIAddress)
+	api, err := ipfs.NewClient(ipfsAPIAddress)
 	if err != nil {
 		return nil, err
 	}

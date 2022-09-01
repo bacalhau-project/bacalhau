@@ -9,9 +9,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-func SetupTest(t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
+func SetupTest(ctx context.Context, t *testing.T, nodes int) (*devstack.DevStackIPFS, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
-	stack, err := devstack.NewDevStackIPFS(cm, ctx, nodes)
+	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodes)
 	require.NoError(t, err)
 	return stack, cm
 }

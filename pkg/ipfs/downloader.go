@@ -32,8 +32,8 @@ type IPFSDownloadSettings struct {
 // * make new folder for output volume
 // * iterate over each shard and merge files in output folder to results dir
 func DownloadJob( //nolint:funlen,gocyclo
-	cm *system.CleanupManager,
-	ctx context.Context,
+	ctx context.Context, cm *system.CleanupManager,
+
 	job model.Job,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
@@ -51,18 +51,18 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	spinningUpIPFSCtx, spinningUpIPFSSpan := t.Start(ctx, "spinningupipfs")
+	spinningUpIPFSCtx, spinningUpIPFSSpan := t.Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
 	// NOTE: we have to spin up a temporary IPFS node as we don't
 	// generally have direct access to a remote node's API server.
 	log.Debug().Msg("Spinning up IPFS node...")
-	n, err := NewNode(cm, spinningUpIPFSCtx, strings.Split(settings.IPFSSwarmAddrs, ","))
+	n, err := NewNode(spinningUpIPFSCtx, cm, strings.Split(settings.IPFSSwarmAddrs, ","))
 	if err != nil {
 		return err
 	}
 	spinningUpIPFSSpan.End()
 
 	log.Debug().Msg("Connecting client to new IPFS node...")
-	cl, err := n.Client(ctx)
+	cl, err := n.Client()
 	if err != nil {
 		return err
 	}
@@ -79,17 +79,20 @@ func DownloadJob( //nolint:funlen,gocyclo
 	// so we write the shard output to our scratch folder
 	// and then merge each outout volume into the global results
 	log.Info().Msgf("Found %d result shards, downloading to temporary folder.", len(results))
+
+	downloadingResultsLoopCtx, downloadingResultsLoopSpan := t.Start(ctx, "pkg/ipfs.DownloadJob.DownloadingResultsLoop")
 	for _, result := range results {
+		oneResultCtx, oneResultSpan := t.Start(downloadingResultsLoopCtx, "pkg/ipfs.DownloadJob.Result")
 		shardDownloadDir := filepath.Join(scratchFolder, result.Cid)
 
 		err = func() error {
 			log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
 
-			ctx, cancel := context.WithDeadline(context.Background(),
+			innerCtx, cancel := context.WithDeadline(oneResultCtx,
 				time.Now().Add(time.Second*time.Duration(settings.TimeoutSecs)))
 			defer cancel()
 
-			return cl.Get(ctx, result.Cid, shardDownloadDir)
+			return cl.Get(innerCtx, result.Cid, shardDownloadDir)
 		}()
 
 		if err != nil {
@@ -99,7 +102,9 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 			return err
 		}
+		oneResultSpan.End()
 
+		_, movingFilesSpan := t.Start(oneResultCtx, "pkg/ipfs.DownloadJob.MovingFiles")
 		// we move all the contents of the output volume to the global results dir
 		// for this output volume
 		for _, outputVolume := range job.Spec.Outputs {
@@ -159,7 +164,9 @@ func DownloadJob( //nolint:funlen,gocyclo
 				return err
 			}
 		}
+		movingFilesSpan.End()
 	}
+	downloadingResultsLoopSpan.End()
 
 	return nil
 }

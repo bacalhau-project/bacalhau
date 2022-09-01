@@ -49,14 +49,14 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	ctx := context.Background()
 	runTest := func(rejectSetting, expectedResult bool) {
-		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer stack.CleanupManager.Cleanup()
 
-		result, _, err := stack.ComputeNode.SelectJob(context.Background(), GetProbeData(""))
+		result, _, err := stack.ComputeNode.SelectJob(ctx, GetProbeData(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -75,7 +75,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := (func() (string, error) {
-		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		ipfsStack, cm := stack.IpfsStack, stack.CleanupManager
 
 		defer cm.Cleanup()
@@ -85,7 +85,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		stack := testutils.NewDockerIpfsStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
 			},
@@ -134,7 +134,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		}))
 		defer svr.Close()
 
-		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
@@ -162,7 +162,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 		if failMode {
 			command = "exit 1"
 		}
-		stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				ProbeExec: command,
 			},
@@ -183,7 +183,8 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 
 // TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	stack := testutils.NewNoopStack(suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
+	ctx := context.Background()
+	stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
 	computeNode, cm := stack.ComputeNode, stack.CleanupManager
 	defer cm.Cleanup()
 

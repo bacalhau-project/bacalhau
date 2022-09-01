@@ -228,7 +228,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		transport, err := libp2p.NewTransport(cm, ctx, OS.HostPort, peers)
+		transport, err := libp2p.NewTransport(ctx, cm, OS.HostPort, peers)
 		if err != nil {
 			return err
 		}
@@ -239,8 +239,8 @@ var serveCmd = &cobra.Command{
 		}
 
 		storageProviders, err := executor_util.NewStandardStorageProviders(
-			cm,
 			ctx,
+			cm,
 			executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress:     OS.IPFSConnect,
 				FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
@@ -251,8 +251,8 @@ var serveCmd = &cobra.Command{
 		}
 
 		controller, err := controller.NewController(
-			cm,
 			ctx,
+			cm,
 			datastore,
 			transport,
 			storageProviders,
@@ -262,8 +262,8 @@ var serveCmd = &cobra.Command{
 		}
 
 		executors, err := executor_util.NewStandardExecutors(
-			cm,
 			ctx,
+			cm,
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
 				Storage: executor_util.StandardStorageProviderOptions{
@@ -277,8 +277,8 @@ var serveCmd = &cobra.Command{
 		}
 
 		verifiers, err := verifier_util.NewStandardVerifiers(
-			cm,
 			ctx,
+			cm,
 			controller.GetStateResolver(),
 			transport.Encrypt,
 			transport.Decrypt,
@@ -287,7 +287,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		publishers, err := publisher_util.NewIPFSPublishers(cm, ctx, controller.GetStateResolver(), OS.IPFSConnect)
+		publishers, err := publisher_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
 		if err != nil {
 			return err
 		}
@@ -306,8 +306,8 @@ var serveCmd = &cobra.Command{
 		requesterNodeConfig := requesternode.RequesterNodeConfig{}
 
 		_, err = requesternode.NewRequesterNode(
-			cm,
 			ctx,
+			cm,
 			controller,
 			verifiers,
 			requesterNodeConfig,
@@ -316,8 +316,8 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 		_, err = computenode.NewComputeNode(
-			cm,
 			ctx,
+			cm,
 			controller,
 			executors,
 			verifiers,
@@ -356,7 +356,7 @@ var serveCmd = &cobra.Command{
 		}(ctx)
 
 		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
-			if err = system.ListenAndServeMetrics(cm, ctx, OS.MetricsPort); err != nil {
+			if err = system.ListenAndServeMetrics(ctx, cm, OS.MetricsPort); err != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(ctx)

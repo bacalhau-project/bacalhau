@@ -24,7 +24,7 @@ type DevStackIPFS struct {
 }
 
 // A devstack but with only IPFS servers connected to each other
-func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
+func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
 	nodes := []*DevStackNodeIPFS{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -41,12 +41,12 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error
 			}
 		}
 
-		ipfsNode, err := ipfs.NewLocalNode(cm, ctx, ipfsSwarmAddrs)
+		ipfsNode, err := ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 
-		ipfsClient, err := ipfsNode.Client(ctx)
+		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}

@@ -34,8 +34,8 @@ var StorageNames = []model.StorageSourceType{
 }
 
 func SetupTest(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	nodes int, badActors int,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
@@ -45,7 +45,7 @@ func SetupTest(
 	cm := system.NewCleanupManager()
 
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, ctx, executor_util.StandardStorageProviderOptions{
+		return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
 	}
@@ -61,8 +61,8 @@ func SetupTest(
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
-			cm,
 			ctx,
+			cm,
 			executor_util.StandardExecutorOptions{
 				DockerID:   fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
 				IsBadActor: isBadActor,
@@ -81,8 +81,8 @@ func SetupTest(
 		error,
 	) {
 		return verifier_util.NewStandardVerifiers(
-			cm,
 			ctx,
+			cm,
 			ctrl.GetStateResolver(),
 			transport.Encrypt,
 			transport.Decrypt,
@@ -96,11 +96,11 @@ func SetupTest(
 		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
-		return publisher_util.NewIPFSPublishers(cm, ctx, ctrl.GetStateResolver(), ipfsMultiAddress)
+		return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 	stack, err := devstack.NewDevStack(
-		cm,
 		ctx,
+		cm,
 		nodes,
 		badActors,
 		getStorageProviders,
@@ -134,15 +134,15 @@ type DeterministicVerifierTestArgs struct {
 }
 
 func RunDeterministicVerifierTests(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	submitJob func(
 		apiClient *publicapi.APIClient,
 		args DeterministicVerifierTestArgs,
 	) (string, error),
 ) {
 	// test that we must have more than one node to run the job
-	RunDeterministicVerifierTest(t, ctx, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      1,
 		ShardCount:     2,
 		BadActors:      0,
@@ -152,7 +152,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that if all nodes agree then all are verified
-	RunDeterministicVerifierTest(t, ctx, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      3,
 		ShardCount:     2,
 		BadActors:      0,
@@ -162,7 +162,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that if one node mis-behaves we catch it but the others are verified
-	RunDeterministicVerifierTest(t, ctx, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      3,
 		ShardCount:     2,
 		BadActors:      1,
@@ -172,7 +172,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that is there is a draw between good and bad actors then none are verified
-	RunDeterministicVerifierTest(t, ctx, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      2,
 		ShardCount:     2,
 		BadActors:      1,
@@ -182,7 +182,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that with a larger group the confidence setting gives us a lower threshold
-	RunDeterministicVerifierTest(t, ctx, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      5,
 		ShardCount:     2,
 		BadActors:      2,
@@ -193,8 +193,8 @@ func RunDeterministicVerifierTests(
 }
 
 func RunDeterministicVerifierTest( //nolint:funlen
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	submitJob func(
 		apiClient *publicapi.APIClient,
 		args DeterministicVerifierTestArgs,
@@ -204,7 +204,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewNoopStorageProviders(cm, ctx, noop_storage.StorageConfig{
+		return executor_util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{
 			ExternalHooks: noop_storage.StorageConfigExternalHooks{
 				Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
 					results := []model.StorageSpec{}
@@ -227,8 +227,8 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctrl *controller.Controller,
 	) (map[model.EngineType]executor.Executor, error) {
 		return executor_util.NewNoopExecutors(
-			cm,
 			ctx,
+			cm,
 			noop_executor.ExecutorConfig{
 				IsBadActor: isBadActor,
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
@@ -252,8 +252,8 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		error,
 	) {
 		return verifier_util.NewStandardVerifiers(
-			cm,
 			ctx,
+			cm,
 			ctrl.GetStateResolver(),
 			transport.Encrypt,
 			transport.Decrypt,
@@ -267,11 +267,11 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
-		return publisher_util.NewNoopPublishers(cm, ctx, ctrl.GetStateResolver())
+		return publisher_util.NewNoopPublishers(ctx, cm, ctrl.GetStateResolver())
 	}
 	stack, err := devstack.NewDevStack(
-		cm,
 		ctx,
+		cm,
 		args.NodeCount,
 		args.BadActors,
 		getStorageProviders,

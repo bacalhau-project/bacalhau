@@ -44,8 +44,9 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
+
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),

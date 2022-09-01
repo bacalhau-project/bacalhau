@@ -155,7 +155,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(suite.T(), ctx, 1, 0, computenode.ComputeNodeConfig{})
+			devstack, cm := devstack_tests.SetupTest(ctx, suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -696,8 +696,8 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 	}
 
 	stack, cm := devstack_tests.SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -781,5 +781,5 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		return jobId, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(suite.T(), ctx, apiSubmitJob)
+	devstack_tests.RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 }

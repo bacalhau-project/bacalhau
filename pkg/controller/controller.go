@@ -41,8 +41,8 @@ type Controller struct {
 */
 
 func NewController(
-	cm *system.CleanupManager,
 	ctx context.Context,
+	cm *system.CleanupManager,
 	db localdb.LocalDB,
 	tx transport.Transport,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,

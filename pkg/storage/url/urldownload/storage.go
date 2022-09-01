@@ -26,7 +26,7 @@ type StorageProvider struct {
 	HTTPClient *resty.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ctx context.Context) (*StorageProvider, error) {
+func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {
@@ -47,14 +47,10 @@ func NewStorageProvider(cm *system.CleanupManager, ctx context.Context) (*Storag
 }
 
 func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	_, span := newSpan(ctx, "IsInstalled")
-	defer span.End()
 	return true, nil
 }
 
 func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	_, span := newSpan(ctx, "HasStorageLocally")
-	defer span.End()
 	return false, nil
 }
 
@@ -64,7 +60,7 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Stora
 }
 
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	_, span := newSpan(ctx, "PrepareStorage")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
 
 	_, err := IsURLSupported(storageSpec.URL)
@@ -100,6 +96,9 @@ func (sp *StorageProvider) CleanupStorage(
 	storageSpec model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
+	defer span.End()
+
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 

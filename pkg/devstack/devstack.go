@@ -87,13 +87,13 @@ type GetPublishersFunc func(
 )
 
 func NewDevStackForRunLocal(
-	cm *system.CleanupManager,
-	ctx context.Context,
+	ctx context.Context, cm *system.CleanupManager,
+
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, ctx, executor_util.StandardStorageProviderOptions{
+		return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
 	}
@@ -109,8 +109,8 @@ func NewDevStackForRunLocal(
 		ipfsParts := strings.Split(ipfsMultiAddress, "/")
 		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
 		return executor_util.NewStandardExecutors(
-			cm,
 			ctx,
+			cm,
 			executor_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
 				Storage: executor_util.StandardStorageProviderOptions{
@@ -128,8 +128,8 @@ func NewDevStackForRunLocal(
 		error,
 	) {
 		return verifier_util.NewStandardVerifiers(
-			cm,
 			ctx,
+			cm,
 			ctrl.GetStateResolver(),
 			transport.Encrypt,
 			transport.Decrypt,
@@ -143,12 +143,12 @@ func NewDevStackForRunLocal(
 		map[model.PublisherType]publisher.Publisher,
 		error,
 	) {
-		return publisher_util.NewIPFSPublishers(cm, ctx, ctrl.GetStateResolver(), ipfsMultiAddress)
+		return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 	}
 
 	return NewDevStack(
-		cm,
 		ctx,
+		cm,
 		count, 0,
 		getStorageProviders,
 		getExecutors,
@@ -171,8 +171,8 @@ func NewDevStackForRunLocal(
 
 //nolint:funlen,gocyclo
 func NewDevStack(
-	cm *system.CleanupManager,
 	ctx context.Context,
+	cm *system.CleanupManager,
 	count, badActors int, //nolint:unparam // Incorrectly assumed as unused
 	getStorageProviders GetStorageProvidersFunc,
 	getExecutors GetExecutorsFunc,
@@ -206,18 +206,18 @@ func NewDevStack(
 		}
 
 		if publicIPFSMode {
-			ipfsNode, err = ipfs.NewNode(cm, ctx, []string{})
+			ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 			}
 		} else {
-			ipfsNode, err = ipfs.NewLocalNode(cm, ctx, ipfsSwarmAddrs)
+			ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 			}
 		}
 
-		ipfsClient, err := ipfsNode.Client(ctx)
+		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
@@ -264,7 +264,7 @@ func NewDevStack(
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
-		transport, err := libp2p.NewTransport(cm, ctx, libp2pPort, []string{libp2pPeer})
+		transport, err := libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
 		if err != nil {
 			return nil, err
 		}
@@ -281,8 +281,8 @@ func NewDevStack(
 		// Controller
 		//////////////////////////////////////
 		ctrl, err := controller.NewController(
-			cm,
 			ctx,
+			cm,
 			inmemoryDatastore,
 			transport,
 			storageProviders,
@@ -316,8 +316,8 @@ func NewDevStack(
 		// Requestor node
 		//////////////////////////////////////
 		requesterNode, err := requesternode.NewRequesterNode(
-			cm,
 			ctx,
+			cm,
 			ctrl,
 			verifiers,
 			requesternode.RequesterNodeConfig{},
@@ -330,8 +330,8 @@ func NewDevStack(
 		// Compute node
 		//////////////////////////////////////
 		computeNode, err := computenode.NewComputeNode(
-			cm,
 			ctx,
+			cm,
 			ctrl,
 			executors,
 			verifiers,
@@ -384,7 +384,7 @@ func NewDevStack(
 
 		go func(ctx context.Context) { //nolint:unparam
 			var gerr error // don't capture outer scope
-			if gerr = system.ListenAndServeMetrics(cm, ctx, metricsPort); gerr != nil {
+			if gerr = system.ListenAndServeMetrics(ctx, cm, metricsPort); gerr != nil {
 				log.Error().Msgf("Cannot serve metrics: %v", err)
 			}
 		}(ctx)

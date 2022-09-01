@@ -65,8 +65,8 @@ func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 }
 
 func RunJobGetStdout(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	computeNode *computenode.ComputeNode,
 	spec model.JobSpec,
 ) string {

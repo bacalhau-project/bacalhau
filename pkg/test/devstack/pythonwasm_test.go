@@ -63,7 +63,7 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := SetupTest(suite.T(), ctx, nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, suite.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
@@ -150,7 +150,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(suite.T(), ctx, 1, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
@@ -190,7 +190,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(suite.T(), ctx, 1, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()

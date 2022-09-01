@@ -56,8 +56,8 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
-		suite.T(),
 		ctx,
+		suite.T(),
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),

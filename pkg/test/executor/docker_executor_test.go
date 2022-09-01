@@ -60,12 +60,12 @@ func dockerExecutorStorageTest(
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
 
-		stack := testutils.NewDockerIpfsStack(t, computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDockerIpfsStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.CleanupManager.Cleanup()
 
 		dockerExecutor := stack.Executors[model.EngineDocker]
 
-		inputStorageList, err := testCase.SetupStorage(
+		inputStorageList, err := testCase.SetupStorage(ctx,
 			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
 		require.NoError(t, err)
 

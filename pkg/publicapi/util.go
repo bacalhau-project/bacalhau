@@ -44,12 +44,12 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(cm, ctx, noop_storage.StorageConfig{})
+	noopStorageProviders, err := util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	c, err := controller.NewController(
-		cm,
 		ctx,
+		cm,
 		inmemoryDatastore,
 		inprocessTransport,
 		noopStorageProviders,
@@ -57,22 +57,22 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	require.NoError(t, err)
 
 	noopPublishers, err := publisher_utils.NewNoopPublishers(
-		cm,
 		ctx,
+		cm,
 		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
-		cm,
 		ctx,
+		cm,
 		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	_, err = requesternode.NewRequesterNode(
-		cm,
 		ctx,
+		cm,
 		c,
 		noopVerifiers,
 		requesternode.RequesterNodeConfig{},
