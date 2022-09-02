@@ -189,17 +189,52 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 }
 
+type RunTimeSettings struct {
+	WaitForJobToFinish               bool // Wait for the job to execute before exiting
+	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
+	WaitForJobTimeoutSecs            int  // Job time out in seconds
+	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
+	IsLocal                          bool // Job should be executed locally
+
+}
+
+func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
+	cmd.PersistentFlags().BoolVar(
+		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`,
+	)
+
+	cmd.PersistentFlags().IntVarP(
+		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
+		`Timeout for getting the results of a job in --wait`,
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.IsLocal, "local", settings.IsLocal,
+		`Run the job locally. Docker is required`,
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.WaitForJobToFinishAndPrintOutput, "download", settings.WaitForJobToFinishAndPrintOutput,
+		`Download the results and print stdout once the job has completed (implies --wait).`,
+	)
+
+	cmd.PersistentFlags().IntVar(
+		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
+	)
+}
+
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	jobSpec *model.JobSpec,
 	jobDeal *model.JobDeal,
-	isLocal bool,
-	waitForJobToFinish bool,
-	dockerRunDownloadFlags ipfs.IPFSDownloadSettings,
+	runtimeSettings RunTimeSettings,
+	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
-	if isLocal {
+	if runtimeSettings.IsLocal {
 		t := system.GetTracer()
 		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
 		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(localDevStackCtx, cm, 1, jobSpec.Resources.GPU)
@@ -222,17 +257,17 @@ func ExecuteJob(ctx context.Context,
 	submitJobSpan.End()
 
 	cmd.Printf("%s\n", j.ID)
-	if waitForJobToFinish {
+	if runtimeSettings.WaitForJobToFinish {
 		_, waitForJobToFinishSpan := system.Span(ctx, "RunJob", "WaitForJobToFinish")
 
 		resolver := apiClient.GetJobStateResolver()
-		resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+		resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
 		err = resolver.WaitUntilComplete(ctx, j.ID)
 		if err != nil {
 			return err
 		}
 
-		if ODR.WaitForJobToFinishAndPrintOutput {
+		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
 			results, err := apiClient.GetResults(ctx, j.ID)
 			if err != nil {
 				return err
@@ -245,12 +280,12 @@ func ExecuteJob(ctx context.Context,
 				cm,
 				j,
 				results,
-				dockerRunDownloadFlags,
+				downloadSettings,
 			)
 			if err != nil {
 				return err
 			}
-			body, err := os.ReadFile(filepath.Join(dockerRunDownloadFlags.OutputDir, "stdout"))
+			body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
 			if err != nil {
 				return err
 			}

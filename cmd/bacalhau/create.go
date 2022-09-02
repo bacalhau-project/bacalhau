@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -38,16 +39,19 @@ var (
 )
 
 type CreateOptions struct {
-	Filename    string // Filename for job (can be .json or .yaml)
-	Concurrency int    // Number of concurrent jobs to run
-	Confidence  int    // Minimum number of nodes that must agree on a verification result
+	Filename        string                    // Filename for job (can be .json or .yaml)
+	Concurrency     int                       // Number of concurrent jobs to run
+	Confidence      int                       // Minimum number of nodes that must agree on a verification result
+	RunTimeSettings RunTimeSettings           // Run time settings for execution (e.g. wait, get, etc after submission)
+	DownloadFlags   ipfs.IPFSDownloadSettings // Settings for running Download
 }
 
 func NewCreateOptions() *CreateOptions {
 	return &CreateOptions{
-		Filename:    "",
-		Concurrency: 1,
-		Confidence:  0,
+		Filename:        "",
+		Concurrency:     1,
+		Confidence:      0,
+		RunTimeSettings: RunTimeSettings{},
 	}
 }
 
@@ -60,6 +64,9 @@ func init() { //nolint:gochecknoinits
 		&OC.Confidence, "confidence", OC.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
+
+	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
+	setupDownloadFlags(createCmd, &OC.DownloadFlags)
 }
 
 var createCmd = &cobra.Command{
@@ -72,6 +79,11 @@ var createCmd = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := context.Background()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/create")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
@@ -145,9 +157,9 @@ var createCmd = &cobra.Command{
 			cmd,
 			jobSpec,
 			jobDeal,
-			ODR.IsLocal,
-			ODR.WaitForJobToFinish,
-			ODR.DockerRunDownloadFlags)
+			OC.RunTimeSettings,
+			OC.DownloadFlags,
+		)
 
 		if err != nil {
 			return fmt.Errorf("error executing job: %s", err)

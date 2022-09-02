@@ -62,13 +62,11 @@ type DockerRunOptions struct {
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
 
-	SkipSyntaxChecking               bool                      // Verify the syntax using shellcheck
-	WaitForJobToFinish               bool                      // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool                      // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int                       // Job time out in seconds
-	IPFSGetTimeOut                   int                       // Timeout for IPFS in seconds
-	IsLocal                          bool                      // Job should be executed locally
-	DockerRunDownloadFlags           ipfs.IPFSDownloadSettings // Settings for running Download
+	SkipSyntaxChecking bool // Verify the syntax using shellcheck
+
+	RunTimeSettings RunTimeSettings // Settings for running the job
+
+	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -77,32 +75,34 @@ type DockerRunOptions struct {
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
-		Engine:                           "docker",
-		Verifier:                         "noop",
-		Publisher:                        "ipfs",
-		Inputs:                           []string{},
-		InputUrls:                        []string{},
-		InputVolumes:                     []string{},
-		OutputVolumes:                    []string{},
-		Env:                              []string{},
-		Concurrency:                      1,
-		Confidence:                       0,
-		CPU:                              "",
-		Memory:                           "",
-		GPU:                              "",
-		SkipSyntaxChecking:               false,
-		WorkingDir:                       "",
-		Labels:                           []string{},
-		WaitForJobToFinish:               false,
-		WaitForJobToFinishAndPrintOutput: false,
-		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		DockerRunDownloadFlags: ipfs.IPFSDownloadSettings{
+		Engine:             "docker",
+		Verifier:           "noop",
+		Publisher:          "ipfs",
+		Inputs:             []string{},
+		InputUrls:          []string{},
+		InputVolumes:       []string{},
+		OutputVolumes:      []string{},
+		Env:                []string{},
+		Concurrency:        1,
+		Confidence:         0,
+		CPU:                "",
+		Memory:             "",
+		GPU:                "",
+		SkipSyntaxChecking: false,
+		WorkingDir:         "",
+		Labels:             []string{},
+		DownloadFlags: ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,
 			OutputDir:      ".",
 			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 		},
-		IPFSGetTimeOut: 10,
-		IsLocal:        false,
+		RunTimeSettings: RunTimeSettings{
+			WaitForJobToFinish:               false,
+			WaitForJobToFinishAndPrintOutput: false,
+			WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
+			IPFSGetTimeOut:                   10,
+			IsLocal:                          false,
+		},
 
 		ShardingGlobPattern: "",
 		ShardingBasePath:    "/inputs",
@@ -181,37 +181,12 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.WaitForJobToFinish, "wait", ODR.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVarP(
-		&ODR.IPFSGetTimeOut, "gettimeout", "g", ODR.IPFSGetTimeOut,
-		`Timeout for getting the results of a job in --wait`,
-	)
-
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.IsLocal, "local", ODR.IsLocal,
-		`Run the job locally. Docker is required`,
-	)
-
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.WaitForJobToFinishAndPrintOutput, "download", ODR.WaitForJobToFinishAndPrintOutput,
-		`Download the results and print stdout once the job has completed (implies --wait).`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.WaitForJobTimeoutSecs, "wait-timeout-secs", ODR.WaitForJobTimeoutSecs,
-		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
-	)
-
-	dockerRunCmd.Flags().IntVar(&ODR.DockerRunDownloadFlags.TimeoutSecs, "download-timeout-secs",
-		ODR.DockerRunDownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	dockerRunCmd.Flags().StringVar(&ODR.DockerRunDownloadFlags.OutputDir, "output-dir",
-		ODR.DockerRunDownloadFlags.OutputDir, "Directory to write the output to.")
-	dockerRunCmd.Flags().StringVar(&ODR.DockerRunDownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
-		ODR.DockerRunDownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+	dockerRunCmd.Flags().IntVar(&ODR.DownloadFlags.TimeoutSecs, "download-timeout-secs",
+		ODR.DownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
+	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.OutputDir, "output-dir",
+		ODR.DownloadFlags.OutputDir, "Directory to write the output to.")
+	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
+		ODR.DownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
@@ -227,6 +202,8 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.ShardingBatchSize, "sharding-batch-size", ODR.ShardingBatchSize,
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
+
+	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
 
 var dockerCmd = &cobra.Command{
@@ -255,83 +232,12 @@ var dockerRunCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := context.Background()
 
-		ctx, span := system.Span(ctx, "RunJob", "RootSpan")
-		defer span.End()
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/dockerRun")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		ODR.Image = cmdArgs[0]
-		ODR.Entrypoint = cmdArgs[1:]
-
-		ODR.DockerRunDownloadFlags = ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    ODR.DockerRunDownloadFlags.TimeoutSecs,
-			OutputDir:      ODR.DockerRunDownloadFlags.OutputDir,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		}
-
-		if ODR.WaitForJobToFinishAndPrintOutput {
-			ODR.WaitForJobToFinish = true
-		}
-
-		engineType, err := model.ParseEngineType(ODR.Engine)
-		if err != nil {
-			return err
-		}
-
-		verifierType, err := model.ParseVerifierType(ODR.Verifier)
-		if err != nil {
-			return err
-		}
-
-		publisherType, err := model.ParsePublisherType(ODR.Publisher)
-		if err != nil {
-			return err
-		}
-
-		for _, i := range ODR.Inputs {
-			ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-		}
-
-		if len(ODR.WorkingDir) > 0 {
-			err = system.ValidateWorkingDir(ODR.WorkingDir)
-
-			if err != nil {
-				return fmt.Errorf("invalid working directory: %s", err)
-			}
-		}
-
-		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
-			engineType,
-			verifierType,
-			publisherType,
-			ODR.CPU,
-			ODR.Memory,
-			ODR.GPU,
-			ODR.InputUrls,
-			ODR.InputVolumes,
-			ODR.OutputVolumes,
-			ODR.Env,
-			ODR.Entrypoint,
-			ODR.Image,
-			ODR.Concurrency,
-			ODR.Confidence,
-			ODR.Labels,
-			ODR.WorkingDir,
-			ODR.ShardingGlobPattern,
-			ODR.ShardingBasePath,
-			ODR.ShardingBatchSize,
-			doNotTrack,
-		)
-		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
-		}
-
-		err = ExecuteJob(ctx,
-			cm,
-			cmd,
-			jobSpec,
-			jobDeal,
-			ODR.IsLocal,
-			ODR.WaitForJobToFinish,
-			ODR.DockerRunDownloadFlags)
+		err := ProcessAndExecuteJob(ctx, cm, cmd, cmdArgs, ODR)
 
 		if err != nil {
 			return fmt.Errorf("error executing job: %s", err)
@@ -339,4 +245,86 @@ var dockerRunCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func ProcessAndExecuteJob(ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	cmdArgs []string,
+	ODR *DockerRunOptions) error {
+
+	ODR.Image = cmdArgs[0]
+	ODR.Entrypoint = cmdArgs[1:]
+
+	ODR.DownloadFlags = ipfs.IPFSDownloadSettings{
+		TimeoutSecs:    ODR.DownloadFlags.TimeoutSecs,
+		OutputDir:      ODR.DownloadFlags.OutputDir,
+		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+	}
+
+	if ODR.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
+		ODR.RunTimeSettings.WaitForJobToFinish = true
+	}
+
+	engineType, err := model.ParseEngineType(ODR.Engine)
+	if err != nil {
+		return err
+	}
+
+	verifierType, err := model.ParseVerifierType(ODR.Verifier)
+	if err != nil {
+		return err
+	}
+
+	publisherType, err := model.ParsePublisherType(ODR.Publisher)
+	if err != nil {
+		return err
+	}
+
+	for _, i := range ODR.Inputs {
+		ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+	}
+
+	if len(ODR.WorkingDir) > 0 {
+		err = system.ValidateWorkingDir(ODR.WorkingDir)
+
+		if err != nil {
+			return fmt.Errorf("invalid working directory: %s", err)
+		}
+	}
+
+	jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
+		engineType,
+		verifierType,
+		publisherType,
+		ODR.CPU,
+		ODR.Memory,
+		ODR.GPU,
+		ODR.InputUrls,
+		ODR.InputVolumes,
+		ODR.OutputVolumes,
+		ODR.Env,
+		ODR.Entrypoint,
+		ODR.Image,
+		ODR.Concurrency,
+		ODR.Confidence,
+		ODR.Labels,
+		ODR.WorkingDir,
+		ODR.ShardingGlobPattern,
+		ODR.ShardingBasePath,
+		ODR.ShardingBatchSize,
+		doNotTrack,
+	)
+	if err != nil {
+		return fmt.Errorf("error executing job: %s", err)
+	}
+
+	return ExecuteJob(ctx,
+		cm,
+		cmd,
+		jobSpec,
+		jobDeal,
+		ODR.RunTimeSettings,
+		ODR.DownloadFlags)
+
 }
