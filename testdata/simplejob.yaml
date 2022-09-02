@@ -1,0 +1,17 @@
+apiVersion: v1alpha1
+engine_name: docker
+verifier_name: noop
+publisher_name: ipfs
+job_spec_docker:
+  image: ubuntu
+  entrypoint:
+    - /bin/bash
+    - -c
+    - echo "simple job output"
+  env: []
+resources:
+  cpu: ""
+  gpu: ""
+  memory: ""
+  disk: ""
+annotations: null

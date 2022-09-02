@@ -64,9 +64,8 @@ func init() { //nolint:gochecknoinits
 		&OC.Confidence, "confidence", OC.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
-
-	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
 	setupDownloadFlags(createCmd, &OC.DownloadFlags)
+	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
 }
 
 var createCmd = &cobra.Command{

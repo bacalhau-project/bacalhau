@@ -508,13 +508,18 @@ export BACALHAU_API_PORT_%d=%d`,
 	}
 
 	// Just convenience below - print out the last of the nodes information as the global variable
-	logString += fmt.Sprintf(`
+	summaryShellVariablesString := fmt.Sprintf(`
 export BACALHAU_API_HOST=%s
 export BACALHAU_API_PORT=%s`,
 		devStackAPIHost,
 		devStackAPIPort,
 	)
+
 	log.Debug().Msg(logString)
+
+	log.Info().Msg("Devstack is ready!")
+	log.Info().Msg("To use the devstack, run the following commands in your shell:")
+	log.Info().Msg(summaryShellVariablesString)
 }
 
 func (stack *DevStack) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {

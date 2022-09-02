@@ -251,42 +251,41 @@ func ProcessAndExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	cmdArgs []string,
-	ODR *DockerRunOptions) error {
+	odr *DockerRunOptions) error {
+	odr.Image = cmdArgs[0]
+	odr.Entrypoint = cmdArgs[1:]
 
-	ODR.Image = cmdArgs[0]
-	ODR.Entrypoint = cmdArgs[1:]
-
-	ODR.DownloadFlags = ipfs.IPFSDownloadSettings{
-		TimeoutSecs:    ODR.DownloadFlags.TimeoutSecs,
-		OutputDir:      ODR.DownloadFlags.OutputDir,
+	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
+		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+		OutputDir:      odr.DownloadFlags.OutputDir,
 		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 	}
 
-	if ODR.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
-		ODR.RunTimeSettings.WaitForJobToFinish = true
+	if odr.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
+		odr.RunTimeSettings.WaitForJobToFinish = true
 	}
 
-	engineType, err := model.ParseEngineType(ODR.Engine)
+	engineType, err := model.ParseEngineType(odr.Engine)
 	if err != nil {
 		return err
 	}
 
-	verifierType, err := model.ParseVerifierType(ODR.Verifier)
+	verifierType, err := model.ParseVerifierType(odr.Verifier)
 	if err != nil {
 		return err
 	}
 
-	publisherType, err := model.ParsePublisherType(ODR.Publisher)
+	publisherType, err := model.ParsePublisherType(odr.Publisher)
 	if err != nil {
 		return err
 	}
 
-	for _, i := range ODR.Inputs {
-		ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+	for _, i := range odr.Inputs {
+		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 	}
 
-	if len(ODR.WorkingDir) > 0 {
-		err = system.ValidateWorkingDir(ODR.WorkingDir)
+	if len(odr.WorkingDir) > 0 {
+		err = system.ValidateWorkingDir(odr.WorkingDir)
 
 		if err != nil {
 			return fmt.Errorf("invalid working directory: %s", err)
@@ -297,22 +296,22 @@ func ProcessAndExecuteJob(ctx context.Context,
 		engineType,
 		verifierType,
 		publisherType,
-		ODR.CPU,
-		ODR.Memory,
-		ODR.GPU,
-		ODR.InputUrls,
-		ODR.InputVolumes,
-		ODR.OutputVolumes,
-		ODR.Env,
-		ODR.Entrypoint,
-		ODR.Image,
-		ODR.Concurrency,
-		ODR.Confidence,
-		ODR.Labels,
-		ODR.WorkingDir,
-		ODR.ShardingGlobPattern,
-		ODR.ShardingBasePath,
-		ODR.ShardingBatchSize,
+		odr.CPU,
+		odr.Memory,
+		odr.GPU,
+		odr.InputUrls,
+		odr.InputVolumes,
+		odr.OutputVolumes,
+		odr.Env,
+		odr.Entrypoint,
+		odr.Image,
+		odr.Concurrency,
+		odr.Confidence,
+		odr.Labels,
+		odr.WorkingDir,
+		odr.ShardingGlobPattern,
+		odr.ShardingBasePath,
+		odr.ShardingBatchSize,
 		doNotTrack,
 	)
 	if err != nil {
@@ -324,7 +323,6 @@ func ProcessAndExecuteJob(ctx context.Context,
 		cmd,
 		jobSpec,
 		jobDeal,
-		ODR.RunTimeSettings,
-		ODR.DownloadFlags)
-
+		odr.RunTimeSettings,
+		odr.DownloadFlags)
 }
