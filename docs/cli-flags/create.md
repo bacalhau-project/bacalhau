@@ -11,7 +11,7 @@ Submit a job to the network in a declarative way by writing a jobspec instead of
 
 
 ```bash
-  bacalhau create -f FILENAME
+  bacalhau create FILENAME
 ```
 
 ## Examples
