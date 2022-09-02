@@ -60,5 +60,3 @@ spec:
   sourceRef:
     kind: GitRepository
     name: bacalhau
-
-export GOOGLE_APPLICATION_CREDENTIALS="$(echo $(GOOGLE_CREDENTIAL) > /etc/creds)"
