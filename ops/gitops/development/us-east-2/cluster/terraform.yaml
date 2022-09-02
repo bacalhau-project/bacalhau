@@ -5,14 +5,18 @@ metadata:
 spec:
   runnerPodTemplate:
     spec:
+      volumeMounts:
+      - name: google-auth
+        mountPath: "/etc/google-auth"
+        readOnly: true
+      volumes:
+        - name: google-auth
+          secret:
+            secretName: google-login
+            optional: false
       env:
-      - name: "GOOGLE_USE_DEFAULT_CREDENTIALS"
-        value: "false"
-      - name: "GOOGLE_CREDENTIAL"
-        valueFrom:
-          secretKeyRef:
-            name: google-login
-            key: "GOOGLE_CREDENTIAL"
+      - name: "GOOGLE_APPLICATION_CREDENTIALS"
+        value: "/etc/google-auth/key.json"
   disableDriftDetection: true
   backendConfig:
     customConfiguration: |
@@ -56,3 +60,5 @@ spec:
   sourceRef:
     kind: GitRepository
     name: bacalhau
+
+export GOOGLE_APPLICATION_CREDENTIALS="$(echo $(GOOGLE_CREDENTIAL) > /etc/creds)"
