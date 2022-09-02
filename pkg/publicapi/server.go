@@ -10,6 +10,8 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
+	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/limiter"
 	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -70,21 +72,26 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	if err != nil {
 		return err
 	}
+
+	throttle := func(h http.Handler) http.Handler {
+		return tollbooth.LimitHandler(tollbooth.NewLimiter(1000, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}), h)
+	}
+
 	sm := http.NewServeMux()
-	sm.Handle("/list", instrument("list", apiServer.list))
-	sm.Handle("/states", instrument("states", apiServer.states))
-	sm.Handle("/results", instrument("results", apiServer.results))
-	sm.Handle("/events", instrument("events", apiServer.events))
-	sm.Handle("/local_events", instrument("local_events", apiServer.localEvents))
-	sm.Handle("/id", instrument("id", apiServer.id))
-	sm.Handle("/peers", instrument("peers", apiServer.peers))
-	sm.Handle("/submit", instrument("submit", apiServer.submit))
-	sm.Handle("/version", instrument("version", apiServer.version))
-	sm.Handle("/healthz", instrument("healthz", apiServer.healthz))
-	sm.Handle("/logz", instrument("logz", apiServer.logz))
-	sm.Handle("/varz", instrument("varz", apiServer.varz))
-	sm.Handle("/livez", instrument("livez", apiServer.livez))
-	sm.Handle("/readyz", instrument("readyz", apiServer.readyz))
+	sm.Handle("/list", throttle(instrument("list", apiServer.list)))
+	sm.Handle("/states", throttle(instrument("states", apiServer.states)))
+	sm.Handle("/results", throttle(instrument("results", apiServer.results)))
+	sm.Handle("/events", throttle(instrument("events", apiServer.events)))
+	sm.Handle("/local_events", throttle(instrument("local_events", apiServer.localEvents)))
+	sm.Handle("/id", throttle(instrument("id", apiServer.id)))
+	sm.Handle("/peers", throttle(instrument("peers", apiServer.peers)))
+	sm.Handle("/submit", throttle(instrument("submit", apiServer.submit)))
+	sm.Handle("/version", throttle(instrument("version", apiServer.version)))
+	sm.Handle("/healthz", throttle(instrument("healthz", apiServer.healthz)))
+	sm.Handle("/logz", throttle(instrument("logz", apiServer.logz)))
+	sm.Handle("/varz", throttle(instrument("varz", apiServer.varz)))
+	sm.Handle("/livez", throttle(instrument("livez", apiServer.livez)))
+	sm.Handle("/readyz", throttle(instrument("readyz", apiServer.readyz)))
 	sm.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{

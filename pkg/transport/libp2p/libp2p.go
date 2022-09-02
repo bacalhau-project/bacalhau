@@ -91,9 +91,6 @@ func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peer
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
 
 	jobEventTopic, err := ps.Join(JobEventChannel)
 	if err != nil {
