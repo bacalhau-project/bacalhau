@@ -448,7 +448,6 @@ func (stack *DevStack) PrintNodeInfo() {
 	devStackAPIHost := "0.0.0.0"
 
 	for nodeIndex, node := range stack.Nodes {
-
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IpfsNode.SwarmAddresses()
 		if err != nil {
