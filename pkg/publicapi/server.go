@@ -74,7 +74,12 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 
 	throttle := func(h http.Handler) http.Handler {
-		return tollbooth.LimitHandler(tollbooth.NewLimiter(1000, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}), h)
+		return tollbooth.LimitHandler(
+			tollbooth.NewLimiter(
+				1000, //nolint:gomnd
+				&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}),
+			h,
+		)
 	}
 
 	sm := http.NewServeMux()
