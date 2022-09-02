@@ -82,7 +82,12 @@ func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peer
 		return nil
 	})
 
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true))
+	pgParams := pubsub.NewPeerGaterParams(
+		0.33,
+		pubsub.ScoreParameterDecay(2*time.Minute),
+		pubsub.ScoreParameterDecay(10*time.Minute),
+	)
+	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams))
 	if err != nil {
 		return nil, err
 	}
