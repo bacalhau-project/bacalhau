@@ -62,6 +62,7 @@ func (apiClient *APIClient) Alive() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
+// TODO: #454 implement pagination
 func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, error) {
 	req := listRequest{
 		ClientID: system.GetClientID(),
