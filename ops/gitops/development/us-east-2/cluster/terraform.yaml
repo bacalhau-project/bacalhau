@@ -41,11 +41,11 @@ spec:
     value: 2
   - name: region
     value: europe-north1
-  - name: region
+  - name: zone
     value: europe-north1-c
   - name: volume_size_gb
     value: 10
-  - name: volume_size_gb
+  - name: machine_type
     value: e2-standard-4
   - name: protect_resources
     value: true
