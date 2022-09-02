@@ -12,7 +12,7 @@ spec:
       volumes:
       - name: google-auth
         secret:
-          secretName: google-login
+          secretName: google-auth
           optional: false
       env:
       - name: "GOOGLE_APPLICATION_CREDENTIALS"
