@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackSuite struct {
@@ -39,14 +38,11 @@ func (suite *DevStackSuite) SetupTest() {
 }
 
 func (suite *DevStackSuite) TearDownTest() {
+
 }
 
 func (suite *DevStackSuite) TearDownAllSuite() {
 
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "devstack_test", name)
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -56,10 +52,10 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	ctx, span := newSpan(testCase.Name)
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		t,
 		nodeCount,
 		0,
@@ -70,7 +66,7 @@ func devStackDockerStorageTest(
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, model.StorageSourceIPFS, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(ctx, stack, model.StorageSourceIPFS, nodeCount)
 	require.NoError(t, err)
 
 	jobSpec := model.JobSpec{

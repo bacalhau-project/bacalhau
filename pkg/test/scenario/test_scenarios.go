@@ -1,8 +1,7 @@
 package scenario
 
-// TODO @enricorotundo #493: check if senarios can be move to testing tooling package
-
 import (
+	"context"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -16,15 +15,18 @@ const stdoutString = "stdout"
 const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
 
 func CatFileToStdout(t *testing.T) TestCase {
+	ctx := context.Background()
 	return TestCase{
 		Name: "cat_file_to_stdout",
 		SetupStorage: singleFileSetupStorageWithData(
 			t,
+			ctx,
 			HelloWorld,
 			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
+			ctx,
 			stdoutString,
 			HelloWorld,
 			ExpectedModeEquals,
@@ -43,15 +45,18 @@ func CatFileToStdout(t *testing.T) TestCase {
 }
 
 func CatFileToVolume(t *testing.T) TestCase {
+	ctx := context.Background()
 	return TestCase{
 		Name: "cat_file_to_volume",
 		SetupStorage: singleFileSetupStorageWithData(
 			t,
+			ctx,
 			CatProgram,
 			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
+			ctx,
 			"test/output_file.txt",
 			CatProgram,
 			ExpectedModeEquals,
@@ -76,15 +81,18 @@ func CatFileToVolume(t *testing.T) TestCase {
 }
 
 func GrepFile(t *testing.T) TestCase {
+	ctx := context.Background()
 	return TestCase{
 		Name: "grep_file",
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
+			ctx,
 			"../../../testdata/grep_file.txt",
 			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
+			ctx,
 			stdoutString,
 			"kiwi is delicious",
 			ExpectedModeContains,
@@ -104,15 +112,18 @@ func GrepFile(t *testing.T) TestCase {
 }
 
 func SedFile(t *testing.T) TestCase {
+	ctx := context.Background()
 	return TestCase{
 		Name: "sed_file",
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
+			ctx,
 			"../../../testdata/sed_file.txt",
 			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
+			ctx,
 			stdoutString,
 			"LISBON",
 			ExpectedModeContains,
@@ -133,15 +144,18 @@ func SedFile(t *testing.T) TestCase {
 }
 
 func AwkFile(t *testing.T) TestCase {
+	ctx := context.Background()
 	return TestCase{
 		Name: "awk_file",
 		SetupStorage: singleFileSetupStorageWithFile(
 			t,
+			ctx,
 			"../../../testdata/awk_file.txt",
 			SimpleMountPath,
 		),
 		ResultsChecker: singleFileResultsChecker(
 			t,
+			ctx,
 			stdoutString,
 			"LISBON",
 			ExpectedModeContains,

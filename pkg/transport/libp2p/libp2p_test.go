@@ -51,11 +51,11 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	computeNodeTransport, err := NewTransport(cm, computeNodePort, []string{})
+	computeNodeTransport, err := NewTransport(ctx, cm, computeNodePort, []string{})
 	require.NoError(suite.T(), err)
 	computeNodeID, err := computeNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
-	requesterNodeTransport, err := NewTransport(cm, requesterNodePort, []string{
+	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodePort, []string{
 		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID),
 	})
 	require.NoError(suite.T(), err)

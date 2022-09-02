@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,6 +40,7 @@ func (suite *DevstackErrorLogsSuite) SetupTest() {
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownTest() {
+
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {
@@ -51,10 +53,10 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	stderr := "oranges"
 	exitCode := "19"
 
-	ctx, span := newSpan("TestErrorContainer")
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
 		1,
 		0,

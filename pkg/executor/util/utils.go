@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
-	"github.com/filecoin-project/bacalhau/pkg/storage/filecoinunsealed"
+	filecoinunsealed "github.com/filecoin-project/bacalhau/pkg/storage/filecoin_unsealed"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/storage/url/urldownload"
@@ -30,6 +30,7 @@ type StandardExecutorOptions struct {
 }
 
 func NewStandardStorageProviders(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
 ) (map[model.StorageSourceType]storage.StorageProvider, error) {
@@ -93,10 +94,11 @@ func NewStandardStorageProviders(
 }
 
 func NewNoopStorageProviders(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
 ) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewStorageProvider(cm, config)
+	noopStorage, err := noop_storage.NewStorageProvider(ctx, cm, config)
 	if err != nil {
 		return nil, err
 	}
@@ -107,10 +109,11 @@ func NewNoopStorageProviders(
 }
 
 func NewStandardExecutors(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
 ) (map[model.EngineType]executor.Executor, error) {
-	storageProviders, err := NewStandardStorageProviders(cm, executorOptions.Storage)
+	storageProviders, err := NewStandardStorageProviders(ctx, cm, executorOptions.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +145,7 @@ func NewStandardExecutors(
 
 // return noop executors for all engines
 func NewNoopExecutors(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	config noop_executor.ExecutorConfig,
 ) (map[model.EngineType]executor.Executor, error) {

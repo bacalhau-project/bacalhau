@@ -99,7 +99,7 @@ var devstackCmd = &cobra.Command{
 
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTracer)
+		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
@@ -110,10 +110,10 @@ var devstackCmd = &cobra.Command{
 			map[model.StorageSourceType]storage.StorageProvider, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{})
+				return executor_util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
 			}
 
-			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
+			return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
 				IPFSMultiaddress: ipfsMultiAddress,
 			})
 		}
@@ -122,10 +122,11 @@ var devstackCmd = &cobra.Command{
 			map[model.EngineType]executor.Executor, error) {
 
 			if ODs.IsNoop {
-				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
+				return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{})
 			}
 
 			return executor_util.NewStandardExecutors(
+				ctx,
 				cm,
 				executor_util.StandardExecutorOptions{
 					DockerID:   fmt.Sprintf("devstacknode%d", nodeIndex),
@@ -143,9 +144,10 @@ var devstackCmd = &cobra.Command{
 			ctrl *controller.Controller,
 		) (map[model.VerifierType]verifier.Verifier, error) {
 			if ODs.IsNoop {
-				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
+				return verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
 			}
 			return verifier_util.NewStandardVerifiers(
+				ctx,
 				cm,
 				ctrl.GetStateResolver(),
 				transport.Encrypt,
@@ -159,9 +161,9 @@ var devstackCmd = &cobra.Command{
 			ctrl *controller.Controller,
 		) (map[model.PublisherType]publisher.Publisher, error) {
 			if ODs.IsNoop {
-				return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
+				return publisher_util.NewNoopPublishers(ctx, cm, ctrl.GetStateResolver())
 			}
-			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
+			return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
 		}
 
 		jobSelectionPolicy := getJobSelectionConfig()
@@ -176,17 +178,21 @@ var devstackCmd = &cobra.Command{
 		}
 
 		portFileName := "/tmp/bacalhau-devstack.port"
-		_, err := os.Stat(portFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
-		}
 		pidFileName := "/tmp/bacalhau-devstack.pid"
-		_, err = os.Stat(pidFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+
+		if _, ignore := os.LookupEnv("IGNORE_PORT_FILES"); !ignore {
+			_, err := os.Stat(portFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+			}
+			_, err = os.Stat(pidFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+			}
 		}
 
 		stack, err := devstack.NewDevStack(
+			ctx,
 			cm,
 			ODs.NumberOfNodes,
 			ODs.NumberOfBadActors,

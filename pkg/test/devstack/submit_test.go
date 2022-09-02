@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -40,16 +41,22 @@ func (suite *DevstackSubmitSuite) TearDownAllSuite() {
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
-	ctx, span := newSpan("TestEmptySpec")
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
+
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)

@@ -23,9 +23,11 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"go.opencensus.io/trace"
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,15 +61,29 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := context.Background()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		_, validateSpan := t.Start(ctx, "validate")
 		err := oV.Validate(cmd)
 		if err != nil {
 			log.Error().Msgf("error validating version - %s", err)
 		}
+		validateSpan.End()
 
-		err = oV.Run(cmd)
+		// Adding the span to the context so functions inside will be children
+		ctx, runSpan := t.Start(ctx, "run")
+		err = oV.Run(ctx, cmd)
 		if err != nil {
 			log.Error().Msgf("error running version - %s", err)
 		}
+		runSpan.End()
 
 		return nil
 	},
@@ -87,21 +103,27 @@ func (oV *VersionOptions) Validate(cmd *cobra.Command) error {
 }
 
 // Run executes version command
-func (oV *VersionOptions) Run(cmd *cobra.Command) error {
+func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	var (
 		versions Versions
 	)
 
+	_, clientVersionSpan := trace.StartSpan(ctx, "clientversion")
 	versions.ClientVersion = version.Get()
+	clientVersionSpan.End()
 
 	if !oV.ClientOnly {
-		serverVersion, err := getAPIClient().Version(context.Background())
+		var serverVersionCallSpan *trace.Span
+		ctx, serverVersionCallSpan = trace.StartSpan(ctx, "serverversioncall")
+
+		serverVersion, err := getAPIClient().Version(ctx)
 		if err != nil {
 			log.Error().Msgf("could not get server version")
 			return err
 		}
 
 		versions.ServerVersion = serverVersion
+		serverVersionCallSpan.End()
 	}
 
 	switch oV.Output {

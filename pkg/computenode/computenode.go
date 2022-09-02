@@ -65,6 +65,7 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 }
 
 func NewComputeNode(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	c *controller.Controller,
 	executors map[model.EngineType]executor.Executor,

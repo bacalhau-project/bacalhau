@@ -48,7 +48,7 @@ type LibP2PTransport struct {
 	privateKey           crypto.PrivKey
 }
 
-func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
+func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
 	usePeers := []string{}
 
 	for _, p := range peers {
@@ -76,7 +76,7 @@ func NewTransport(cm *system.CleanupManager, port int, peers []string) (*LibP2PT
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	cm.RegisterCallback(func() error {
 		cancel()
 		return nil
@@ -289,7 +289,7 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEven
 		return err
 	}
 
-	log.Debug().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	log.Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
 	return t.jobEventTopic.Publish(ctx, bs)
 }
 
@@ -322,7 +322,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
-		log.Debug().Msgf(
+		log.Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
 			t.host.ID().String()[:8],

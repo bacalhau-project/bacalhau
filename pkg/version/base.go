@@ -16,6 +16,8 @@ limitations under the License.
 
 package version
 
+import "fmt"
+
 // Base version information.
 //
 // This is the fallback data used when version information from git is not
@@ -27,9 +29,17 @@ package version
 // https://www.digitalocean.com/community/tutorials/using-ldflags-to-set-version-information-for-go-applications
 
 var (
-	GITVERSION string = "v0.0.0-xxxxxxx"
-	GITCOMMIT  string = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	BUILDDATE  string = "1970-01-01T00:00:00Z" // build date in ISO8601 format, output of $(date -u +'%Y-%m-%dT%H:%M:%SZ')
-	GOOS       string = "aaaaa"
-	GOARCH     string = "bbb00"
+	// These variables typically come from -ldflags settings.
+	// When not provided, we default to these values.
+	GITVERSION   string = "v0.0.0-xxxxxxx"
+	GITCOMMIT    string = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	BUILDDATE    string = "1970-01-01T00:00:00Z" // build date in ISO8601 format, output of $(date -u +'%Y-%m-%dT%H:%M:%SZ')
+	GOOS         string = "aaaaa"
+	GOARCH       string = "bbb00"
+	TRACERPREFIX string = "bacalhau-"
 )
+
+// name is the Tracer name used to identify this instrumentation library.
+func TracerName() string {
+	return fmt.Sprintf(TRACERPREFIX + GITVERSION)
+}
