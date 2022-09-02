@@ -10,10 +10,10 @@ spec:
         mountPath: "/etc/google-auth"
         readOnly: true
       volumes:
-        - name: google-auth
-          secret:
-            secretName: google-login
-            optional: false
+      - name: google-auth
+        secret:
+          secretName: google-login
+          optional: false
       env:
       - name: "GOOGLE_APPLICATION_CREDENTIALS"
         value: "/etc/google-auth/key.json"
