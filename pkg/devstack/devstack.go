@@ -448,12 +448,22 @@ func (stack *DevStack) PrintNodeInfo() {
 	devStackAPIHost := "0.0.0.0"
 
 	for nodeIndex, node := range stack.Nodes {
+
+		swarmAddrrs := ""
+		swarmAddresses, err := node.IpfsNode.SwarmAddresses()
+		if err != nil {
+			log.Error().Msgf("Cannot get swarm addresses for node %d", nodeIndex)
+		} else {
+			swarmAddrrs = strings.Join(swarmAddresses, ",")
+		}
+
 		logString += fmt.Sprintf(`
 -------------------------------
 node %d
 -------------------------------
 
 export BACALHAU_IPFS_API_PORT_%d=%d
+export BACALHAU_IPFS_SWARM_ADDRESSES_%d=%s
 export BACALHAU_IPFS_PATH_%d=%s
 export BACALHAU_API_HOST_%d=%s
 export BACALHAU_API_PORT_%d=%d
@@ -463,6 +473,8 @@ curl -XPOST http://127.0.0.1:%d/api/v0/id
 			nodeIndex,
 			nodeIndex,
 			node.IpfsNode.APIPort,
+			nodeIndex,
+			swarmAddrrs,
 			nodeIndex,
 			node.IpfsNode.RepoPath,
 			nodeIndex,
