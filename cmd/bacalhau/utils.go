@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -245,15 +246,14 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
-	t := system.GetTracer()
+	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ProcessAndExecuteJob")
+	defer span.End()
 
 	if runtimeSettings.IsLocal {
-		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(localDevStackCtx, cm, 1, jobSpec.Resources.GPU)
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
-		localDevStackSpan.End()
 
 		apiURI := stack.Nodes[0].APIServer.GetURI()
 		apiClient = publicapi.NewAPIClient(apiURI)
@@ -261,24 +261,17 @@ func ExecuteJob(ctx context.Context,
 		apiClient = getAPIClient()
 	}
 
-	submitJobCtx, submitJobSpan := t.Start(ctx, "submitjob")
-	j, err := apiClient.Submit(submitJobCtx, *jobSpec, *jobDeal, nil)
+	j, err := submitJob(ctx, apiClient, jobSpec, jobDeal)
 	if err != nil {
 		return err
 	}
-	submitJobSpan.End()
 
 	cmd.Printf("%s\n", j.ID)
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
-		waitForJobToFinishCtx, waitForJobToFinishSpan := t.Start(ctx, "waitforjobtofinish")
-		resolver := apiClient.GetJobStateResolver()
-		resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
-		err = resolver.WaitUntilComplete(waitForJobToFinishCtx, j.ID)
+		err := waitForJobToFinish(ctx, apiClient, j, cmd, cm, runtimeSettings, downloadSettings)
 		if err != nil {
 			return err
 		}
-		waitForJobToFinishSpan.End()
-
 		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
 			results, err := getResults(ctx, apiClient, j)
 			if err != nil {
@@ -290,9 +283,42 @@ func ExecuteJob(ctx context.Context,
 				return err
 			}
 		}
-		waitForJobToFinishSpan.End()
 	}
 	return nil
+}
+
+func waitForJobToFinish(ctx context.Context,
+	apiClient *publicapi.APIClient,
+	j model.Job,
+	cmd *cobra.Command,
+	cm *system.CleanupManager,
+	runtimeSettings RunTimeSettings,
+	downloadSettings ipfs.IPFSDownloadSettings) error {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
+	defer span.End()
+
+	resolver := apiClient.GetJobStateResolver()
+	resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
+	err := resolver.WaitUntilComplete(ctx, j.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func submitJob(ctx context.Context,
+	apiClient *publicapi.APIClient,
+	jobSpec *model.JobSpec,
+	jobDeal *model.JobDeal) (model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
+	defer span.End()
+
+	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	if err != nil {
+		return model.Job{}, errors.Wrap(err, "failed to submit job")
+	}
+	return j, err
 }
 
 func getResults(ctx context.Context, apiClient *publicapi.APIClient, j model.Job) ([]model.StorageSpec, error) {

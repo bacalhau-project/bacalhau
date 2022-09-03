@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -226,21 +227,26 @@ var dockerRunCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		err := ProcessAndExecuteJob(ctx, cm, cmd, cmdArgs, ODR)
-
+		jobSpec, jobDeal, err := CreateJobSpecAndDeal(ctx, cmdArgs, ODR)
 		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			return errors.Wrap(err, "CreateJobSpecAndDeal:")
+		}
+
+		err = ExecuteJob(ctx, cm, cmd, jobSpec, jobDeal, ODR.RunTimeSettings, ODR.DownloadFlags)
+		if err != nil {
+			return errors.Wrap(err, "ExecuteJob:")
 		}
 
 		return nil
 	},
 }
 
-func ProcessAndExecuteJob(ctx context.Context,
-	cm *system.CleanupManager,
-	cmd *cobra.Command,
+func CreateJobSpecAndDeal(ctx context.Context,
 	cmdArgs []string,
-	odr *DockerRunOptions) error {
+	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
+	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
+	defer span.End()
+
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
@@ -256,17 +262,17 @@ func ProcessAndExecuteJob(ctx context.Context,
 
 	engineType, err := model.ParseEngineType(odr.Engine)
 	if err != nil {
-		return err
+		return &model.JobSpec{}, &model.JobDeal{}, err
 	}
 
 	verifierType, err := model.ParseVerifierType(odr.Verifier)
 	if err != nil {
-		return err
+		return &model.JobSpec{}, &model.JobDeal{}, err
 	}
 
 	publisherType, err := model.ParsePublisherType(odr.Publisher)
 	if err != nil {
-		return err
+		return &model.JobSpec{}, &model.JobDeal{}, err
 	}
 
 	for _, i := range odr.Inputs {
@@ -277,7 +283,7 @@ func ProcessAndExecuteJob(ctx context.Context,
 		err = system.ValidateWorkingDir(odr.WorkingDir)
 
 		if err != nil {
-			return fmt.Errorf("invalid working directory: %s", err)
+			return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
 	}
 
@@ -304,14 +310,8 @@ func ProcessAndExecuteJob(ctx context.Context,
 		doNotTrack,
 	)
 	if err != nil {
-		return fmt.Errorf("error executing job: %s", err)
+		return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 	}
 
-	return ExecuteJob(ctx,
-		cm,
-		cmd,
-		jobSpec,
-		jobDeal,
-		odr.RunTimeSettings,
-		odr.DownloadFlags)
+	return jobSpec, jobDeal, nil
 }

@@ -91,19 +91,23 @@ var devstackCmd = &cobra.Command{
 	Long:    devStackLong,
 	Example: devstackExample,
 	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := context.Background()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/devstack")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		config.DevstackSetShouldPrintInfo()
 
 		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
 			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}
 
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
 		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
+		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
 		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
