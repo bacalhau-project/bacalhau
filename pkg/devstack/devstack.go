@@ -501,6 +501,7 @@ func (stack *DevStack) PrintNodeInfo() {
 	logString := ""
 	devStackAPIPort := ""
 	devStackAPIHost := "0.0.0.0"
+	devStackIPFSSwarmAddress := ""
 
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
@@ -558,14 +559,18 @@ export BACALHAU_API_PORT_%d=%d`,
 		)
 
 		// Just setting this to the last one, really doesn't matter
+		swarmAddressesList, _ := node.IpfsNode.SwarmAddresses()
+		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
 		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
 	}
 
 	// Just convenience below - print out the last of the nodes information as the global variable
 	summaryShellVariablesString := fmt.Sprintf(`
+export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
 export BACALHAU_API_PORT=%s`,
+		devStackIPFSSwarmAddress,
 		devStackAPIHost,
 		devStackAPIPort,
 	)
