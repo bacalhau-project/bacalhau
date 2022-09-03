@@ -47,3 +47,4 @@ https://github.com/honeycombio/example-greeting-service/tree/main/golang
 * Generally, add context where possible. However, for things that do not require a context, you can skip using it for cleanliness. For example, if you have a function which provisions a struct, or does other things that we do not expect to be traced, you can skip adding context to it.
   * Realize, of course, that this may come back to bite you if you want to add tracing to that function later.
   * However, if you trace the entire function, and this is a sub function, you will get a trace for the entire function, which may be enough to isolate the problem tracing is designed to provide.
+* A good rule of thumb is if you have something that is long enough to be a span, it should be a function.

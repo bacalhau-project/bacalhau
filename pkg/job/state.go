@@ -58,6 +58,9 @@ func (resolver *StateResolver) GetShards(ctx context.Context, jobID string) ([]m
 }
 
 func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.StateSummary")
+	defer span.End()
+
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return "", err
@@ -74,6 +77,9 @@ func (resolver *StateResolver) StateSummary(ctx context.Context, jobID string) (
 }
 
 func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.VerifiedSummary")
+	defer span.End()
+
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return "", err
@@ -94,6 +100,9 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 }
 
 func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.ResultSummary")
+	defer span.End()
+
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return "", err
@@ -172,8 +181,11 @@ func (resolver *StateResolver) Wait(
 }
 
 // this is an auto wait where we auto calculate how many shard
-// sates we expect to see and we use that to pass to WaitForJobStates
+// states we expect to see and we use that to pass to WaitForJobStates
 func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID string) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.WaitUntilComplete")
+	defer span.End()
+
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return err
@@ -199,6 +211,9 @@ type ResultsShard struct {
 }
 
 func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.GetResults")
+	defer span.End()
+
 	results := []ResultsShard{}
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
@@ -268,6 +283,9 @@ func (resolver *StateResolver) CheckShardStates(
 	jobID string,
 	shardStateChecker ShardStateChecker,
 ) (bool, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/job.")
+	defer span.End()
+
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return false, err

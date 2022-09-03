@@ -95,9 +95,9 @@ var devstackCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := context.Background()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/devstack")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
 		defer rootSpan.End()
+
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		config.DevstackSetShouldPrintInfo()
@@ -237,6 +237,8 @@ var devstackCmd = &cobra.Command{
 		}
 
 		<-ctx.Done() // block until killed
+
+		log.Info().Msg("Shutting down devstack")
 		return nil
 	},
 }
