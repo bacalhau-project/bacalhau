@@ -61,7 +61,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 			},
 		}, noop_executor.ExecutorConfig{})
 
-		computeNode, cm := stack.ComputeNode, stack.CleanupManager
+		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 
 		defer func() {
 			// sleep here otherwise the compute node tries to register cleanup handlers too late
@@ -242,7 +242,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				},
 			},
 		)
-		ctrl, cm := stack.Controller, stack.CleanupManager
+		ctrl, cm := stack.Node.Controller, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
 		for _, jobResources := range testCase.jobs {
@@ -400,7 +400,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	CPU_LIMIT := "100m"
 
 	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, cm := stack.ComputeNode, stack.CleanupManager
+	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
 	// this will give us a numerator and denominator that should end up at the
@@ -445,7 +445,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	MEMORY_LIMIT := "100mb"
 
 	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, cm := stack.ComputeNode, stack.CleanupManager
+	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
 	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.JobSpec{
@@ -482,7 +482,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 				},
 			},
 		})
-		computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
+		computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
 		cid, _ := ipfsStack.AddTextToNodes(ctx, 1, []byte(text))
@@ -534,12 +534,12 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 	runTest := func(text string, expected uint64) {
 		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-		defer stack.CleanupManager.Cleanup()
+		defer stack.Node.CleanupManager.Cleanup()
 
 		cid, err := stack.IpfsStack.AddTextToNodes(ctx, 1, []byte(text))
 		require.NoError(suite.T(), err)
 
-		executor := stack.Executors[model.EngineDocker]
+		executor := stack.Node.Executors[model.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,

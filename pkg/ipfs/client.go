@@ -24,7 +24,7 @@ import (
 // Client instances manually by connecting to an ipfs node's API multiaddr,
 // or automatically from an active Node instance.
 type Client struct {
-	api  icore.CoreAPI
+	API  icore.CoreAPI
 	addr string
 }
 
@@ -43,7 +43,7 @@ func NewClient(apiAddr string) (*Client, error) {
 
 	log.Debug().Msgf("Created IPFS client for node API address: %s", apiAddr)
 	return &Client{
-		api:  api,
+		API:  api,
 		addr: apiAddr,
 	}, nil
 }
@@ -75,7 +75,7 @@ func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 
 // ID returns the node's ipfs ID.
 func (cl *Client) ID(ctx context.Context) (string, error) {
-	key, err := cl.api.Key().Self(ctx)
+	key, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func (cl *Client) ID(ctx context.Context) (string, error) {
 	return key.ID().String(), nil
 }
 
-// APIAddress returns api address that was used to connect to the node.
+// APIAddress returns Api address that was used to connect to the node.
 func (cl *Client) APIAddress() string {
 	return cl.addr
 }
@@ -98,7 +98,7 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("error fetching node's ipfs id: %w", err)
 	}
 
-	addrs, err := cl.api.Swarm().LocalAddrs(ctx)
+	addrs, err := cl.API.Swarm().LocalAddrs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching node's swarm addresses: %w", err)
 	}
@@ -125,7 +125,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
-	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
+	node, err := cl.API.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
@@ -165,7 +165,7 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		icoreoptions.Unixfs.Pin(true),
 	}
 
-	ipfsPath, err := cl.api.Unixfs().Add(ctx, node, addOptions...)
+	ipfsPath, err := cl.API.Unixfs().Add(ctx, node, addOptions...)
 	if err != nil {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
@@ -191,7 +191,7 @@ func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 	ctx, span := system.GetTracer().Start(ctx, "kg/ipfs.Stat")
 	defer span.End()
 
-	node, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	node, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
@@ -210,7 +210,7 @@ func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetCidSize")
 	defer span.End()
 
-	stat, err := cl.api.Object().Stat(ctx, icorepath.New(cid))
+	stat, err := cl.API.Object().Stat(ctx, icorepath.New(cid))
 	if err != nil {
 		return 0, err
 	}
@@ -223,7 +223,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.NodesWithCID")
 	defer span.End()
 
-	ch, err := cl.api.Dht().FindProviders(ctx, icorepath.New(cid))
+	ch, err := cl.API.Dht().FindProviders(ctx, icorepath.New(cid))
 	if err != nil {
 		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
 	}
@@ -264,12 +264,12 @@ func (cl *Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, er
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetTreeNode")
 	defer span.End()
 
-	ipldNode, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	ipldNode, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
 	if err != nil {
 		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
 
-	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.api.Dag()), []string{})
+	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.API.Dag()), []string{})
 }
 
 func getNodeType(node ipld.Node) (IPLDType, error) {

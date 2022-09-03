@@ -6,18 +6,14 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -46,7 +42,7 @@ type ServeOptions struct {
 	IPFSConnect                     string // The IPFS multiaddress to connect to.
 	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data
 	HostAddress                     string // The host address to listen on.
-	HostPort                        int    // The host port to listen on.
+	SwarmPort                       int    // The host port for libp2p network.
 	JobSelectionDataLocality        string // The data locality to use for job selection.
 	JobSelectionDataRejectStateless bool   // Whether to reject jobs that don't specify any data.
 	JobSelectionProbeHTTP           string // The HTTP URL to use for job selection.
@@ -66,12 +62,12 @@ func NewServeOptions() *ServeOptions {
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
 		HostAddress:                     "0.0.0.0",
-		HostPort:                        DefaultSwarmPort,
+		SwarmPort:                       DefaultSwarmPort,
+		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
 		JobSelectionProbeHTTP:           "",
 		JobSelectionProbeExec:           "",
-		MetricsPort:                     2112,
 		LimitTotalCPU:                   "",
 		LimitTotalMemory:                "",
 		LimitTotalGPU:                   "",
@@ -127,6 +123,15 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	)
 }
 
+func getPeers() []string {
+	if OS.PeerConnect == "none" {
+		return []string{}
+	} else if OS.PeerConnect == "" {
+		return DefaultBootstrapAddresses
+	}
+	return strings.Split(OS.PeerConnect, ",")
+}
+
 func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
 	typedJobSelectionDataLocality := computenode.Anywhere
@@ -145,7 +150,7 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() (totalLimits, jobLimits model.ResourceUsageConfig) {
+func getCapacityManagerConfig() capacitymanager.Config {
 	// the total amount of CPU / Memory the system can be using at one time
 	totalResourceLimit := model.ResourceUsageConfig{
 		CPU:    OS.LimitTotalCPU,
@@ -160,7 +165,10 @@ func getCapacityManagerConfig() (totalLimits, jobLimits model.ResourceUsageConfi
 		GPU:    OS.LimitJobGPU,
 	}
 
-	return totalResourceLimit, jobResourceLimit
+	return capacitymanager.Config{
+		ResourceLimitTotal: totalResourceLimit,
+		ResourceLimitJob:   jobResourceLimit,
+	}
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -181,7 +189,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The host to listen on (for both api and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&OS.HostPort, "port", OS.HostPort,
+		&OS.SwarmPort, "swarm-port", OS.SwarmPort,
 		`The port to listen on for swarm connections.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
@@ -212,158 +220,52 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
 
-		ctx := context.Background()
-
-		peers := DefaultBootstrapAddresses // Default to connecting to defaults
-		if OS.PeerConnect == "none" {
-			peers = []string{} // Only connect to peers if not none
-		} else if OS.PeerConnect != "" {
-			peers = []string{OS.PeerConnect} // Otherwise set peers according to the user options
-		}
-
-		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
-
-		datastore, err := inmemory.NewInMemoryDatastore()
-		if err != nil {
-			return err
-		}
-
-		transport, err := libp2p.NewTransport(ctx, cm, OS.HostPort, peers)
-		if err != nil {
-			return err
-		}
-
-		hostID, err := transport.HostID(ctx)
-		if err != nil {
-			return err
-		}
-
-		storageProviders, err := executor_util.NewStandardStorageProviders(
-			ctx,
-			cm,
-			executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress:     OS.IPFSConnect,
-				FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		controller, err := controller.NewController(
-			ctx,
-			cm,
-			datastore,
-			transport,
-			storageProviders,
-		)
-		if err != nil {
-			return err
-		}
-
-		executors, err := executor_util.NewStandardExecutors(
-			ctx,
-			cm,
-			executor_util.StandardExecutorOptions{
-				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
-				Storage: executor_util.StandardStorageProviderOptions{
-					IPFSMultiaddress:     OS.IPFSConnect,
-					FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-				},
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		verifiers, err := verifier_util.NewStandardVerifiers(
-			ctx,
-			cm,
-			controller.GetStateResolver(),
-			transport.Encrypt,
-			transport.Decrypt,
-		)
-		if err != nil {
-			return err
-		}
-
-		publishers, err := publisher_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
-		if err != nil {
-			return err
-		}
-
-		jobSelectionPolicy := getJobSelectionConfig()
-		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
-
-		computeNodeConfig := computenode.ComputeNodeConfig{
-			JobSelectionPolicy: jobSelectionPolicy,
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: totalResourceLimit,
-				ResourceLimitJob:   jobResourceLimit,
-			},
-		}
-
-		requesterNodeConfig := requesternode.RequesterNodeConfig{}
-
-		_, err = requesternode.NewRequesterNode(
-			ctx,
-			cm,
-			controller,
-			verifiers,
-			requesterNodeConfig,
-		)
-		if err != nil {
-			return err
-		}
-		_, err = computenode.NewComputeNode(
-			ctx,
-			cm,
-			controller,
-			executors,
-			verifiers,
-			publishers,
-			computeNodeConfig,
-		)
-		if err != nil {
-			return err
-		}
-
-		apiServer := publicapi.NewServer(
-			ctx,
-			OS.HostAddress,
-			apiPort,
-			controller,
-			publishers,
-		)
-
 		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(ctx)
+		ctx, cancel := system.WithSignalShutdown(context.Background())
 		defer cancel()
 
-		go func(ctx context.Context) {
-			if err = apiServer.ListenAndServe(ctx, cm); err != nil {
-				log.Fatal().Msgf("Api server can't run, bacalhau should stop: %+v", err)
-			}
-		}(ctx)
+		// Establishing p2p connection
+		peers := getPeers()
+		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
 
-		go func(ctx context.Context) {
-			if err = controller.Start(ctx); err != nil {
-				log.Fatal().Msgf("Controller can't run, bacalhau should stop: %+v", err)
-			}
-			if err = transport.Start(ctx); err != nil {
-				log.Fatal().Msgf("Transport can't run, bacalhau should stop: %+v", err)
-			}
-		}(ctx)
+		transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
+		if err != nil {
+			return err
+		}
 
-		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
-			if err = system.ListenAndServeMetrics(ctx, cm, OS.MetricsPort); err != nil {
-				log.Error().Msgf("Cannot serve metrics: %v", err)
-			}
-		}(ctx)
+		// Establishing IPFS connection
+		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+		if err != nil {
+			return err
+		}
 
-		log.Debug().Msgf("libp2p server started: %d", OS.HostPort)
+		// Create node config from cmd arguments
+		nodeConfig := node.NodeConfig{
+			IPFSClient:           ipfs,
+			CleanupManager:       cm,
+			Transport:            transport,
+			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+			HostAddress:          OS.HostAddress,
+			APIPort:              apiPort,
+			MetricsPort:          OS.MetricsPort,
+			ComputeNodeConfig: computenode.ComputeNodeConfig{
+				JobSelectionPolicy:    getJobSelectionConfig(),
+				CapacityManagerConfig: getCapacityManagerConfig(),
+			},
+			RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		}
 
-		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
+		// Create node
+		node, err := node.NewStandardNode(ctx, nodeConfig)
+		if err != nil {
+			return err
+		}
+
+		// Start node
+		err = node.Start(ctx)
+		if err != nil {
+			return err
+		}
 
 		<-ctx.Done() // block until killed
 		return nil

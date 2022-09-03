@@ -91,6 +91,10 @@ func (ctrl *Controller) Start(ctx context.Context) error {
 		return ctrl.Shutdown(ctx)
 	})
 
+	if err := ctrl.transport.Start(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 

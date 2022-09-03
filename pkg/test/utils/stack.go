@@ -4,34 +4,24 @@ package testutils
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-	"github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: Evaluate if TestStack type is needed. It seems to wrap a single node, which already
+// exposes an IPFS client, and bunch of other IPFS clients.
 type TestStack struct {
-	ComputeNode    *computenode.ComputeNode
-	RequestorNode  *requesternode.RequesterNode
-	Controller     *controller.Controller
-	CleanupManager *system.CleanupManager
-	IpfsStack      *devstack.DevStackIPFS
-	Executors      map[model.EngineType]executor.Executor
+	Node      *node.Node
+	IpfsStack *devstack.DevStackIPFS
 }
 
 // Docker IPFS stack is designed to be a "as real as possible" stack to write tests against
@@ -48,7 +38,7 @@ type TestStack struct {
 func NewDockerIpfsStackMultiNode(
 	ctx context.Context,
 	t *testing.T,
-	config computenode.ComputeNodeConfig, //nolint:gocritic
+	computeNodeConfig computenode.ComputeNodeConfig, //nolint:gocritic
 	nodes int,
 ) *TestStack {
 	cm := system.NewCleanupManager()
@@ -56,66 +46,26 @@ func NewDockerIpfsStackMultiNode(
 	ipfsStack, err := devstack.NewDevStackIPFS(ctx, cm, nodes)
 	require.NoError(t, err)
 
-	apiAddress := ipfsStack.Nodes[0].IpfsClient.APIAddress()
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
+	nodeConfig := node.NodeConfig{
+		IPFSClient:          ipfsStack.IPFSClients[0],
+		CleanupManager:      cm,
+		Transport:           transport,
+		ComputeNodeConfig:   computeNodeConfig,
+		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+	}
 
-	ipfsID := ipfsStack.Nodes[0].IpfsNode.ID()
+	injector := node.NewStandardNodeDepdencyInjector()
+	injector.VerifiersFactory = devstack.NewNoopVerifiersFactory()
 
-	storageProviders, err := executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
-		IPFSMultiaddress: apiAddress,
-	})
-	require.NoError(t, err)
-	executors, err := executor_util.NewStandardExecutors(
-		ctx,
-		cm,
-		executor_util.StandardExecutorOptions{
-			DockerID: fmt.Sprintf("devstacknode0-%s", ipfsID),
-			Storage: executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress: apiAddress,
-			},
-		},
-	)
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
-	require.NoError(t, err)
-
-	verifiers, err := verifier_util.NewNoopVerifiers(
-		ctx,
-		cm,
-		ctrl.GetStateResolver(),
-	)
-	require.NoError(t, err)
-
-	publishers, err := publisher_util.NewIPFSPublishers(
-		ctx,
-		cm,
-		ctrl.GetStateResolver(),
-		apiAddress,
-	)
-	require.NoError(t, err)
-
-	computeNode, err := computenode.NewComputeNode(
-		ctx,
-		cm,
-		ctrl,
-		executors,
-		verifiers,
-		publishers,
-		config,
-	)
+	node, err := node.NewNode(ctx, nodeConfig, injector)
 	require.NoError(t, err)
 
 	return &TestStack{
-		ComputeNode:    computeNode,
-		IpfsStack:      ipfsStack,
-		Controller:     ctrl,
-		CleanupManager: cm,
-		Executors:      executors,
+		Node:      node,
+		IpfsStack: ipfsStack,
 	}
 }
 
@@ -153,59 +103,20 @@ func NewNoopStack(
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	datastore, err := inmemory.NewInMemoryDatastore()
-	require.NoError(t, err)
-
-	executors, err := executor_util.NewNoopExecutors(ctx, cm, noopExecutorConfig)
-	require.NoError(t, err)
-
-	storageProviders, err := executor_util.NewNoopStorageProviders(ctx, cm, noop.StorageConfig{})
-	require.NoError(t, err)
-
-	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
-	require.NoError(t, err)
-
-	verifiers, err := verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
-	require.NoError(t, err)
-
-	publishers, err := publisher_util.NewNoopPublishers(ctx, cm, ctrl.GetStateResolver())
-	require.NoError(t, err)
-
-	requestorNode, err := requesternode.NewRequesterNode(
-		ctx,
-		cm,
-		ctrl,
-		verifiers,
-		requesternode.RequesterNodeConfig{},
-	)
-	require.NoError(t, err)
-
-	computeNode, err := computenode.NewComputeNode(
-		ctx,
-		cm,
-		ctrl,
-		executors,
-		verifiers,
-		publishers,
-		computeNodeconfig,
-	)
-	if err != nil {
-		t.Fatal(err)
+	nodeConfig := node.NodeConfig{
+		CleanupManager:      cm,
+		Transport:           transport,
+		ComputeNodeConfig:   computeNodeconfig,
+		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
 	}
 
-	err = ctrl.Start(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	node, err := node.NewNode(ctx, nodeConfig, devstack.NewNoopNodeDepdencyInjector())
+	require.NoError(t, err)
 
-	if err = transport.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
+	err = node.StartControllerOnly(ctx)
+	require.NoError(t, err)
 
 	return &TestStack{
-		ComputeNode:    computeNode,
-		RequestorNode:  requestorNode,
-		Controller:     ctrl,
-		CleanupManager: cm,
+		Node: node,
 	}
 }

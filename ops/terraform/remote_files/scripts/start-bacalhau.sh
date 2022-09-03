@@ -31,5 +31,5 @@ fi
 bacalhau serve \
   --job-selection-data-locality anywhere \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
-  --port "${BACALHAU_PORT}" \
+  --swarm-port "${BACALHAU_PORT}" \
   --peer "${CONNECT_PEER}"

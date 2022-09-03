@@ -42,8 +42,8 @@ func (suite *NodeSuite) TearDownAllSuite() {
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:
-//   1. local IPFS can be created using the 'test' profile
-//   2. files can be uploaded/downloaded from the IPFS network
+//  1. local IPFS can be created using the 'test' profile
+//  2. files can be uploaded/downloaded from the IPFS network
 func (suite *NodeSuite) TestFunctionality() {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
@@ -83,7 +83,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.NotEmpty(suite.T(), cid)
 
 	// Validate file was uploaded and pinned
-	_, isPinned, err := cl2.api.Pin().IsPinned(ctx, icorepath.New(cid))
+	_, isPinned, err := cl2.API.Pin().IsPinned(ctx, icorepath.New(cid))
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), isPinned)
 
