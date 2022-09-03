@@ -33,6 +33,11 @@ This will start a 3 node bacalhau cluster connected with libp2p.
 
 Each node has it's own ipfs server isolated using the `IPFS_PATH` environment variable and it's own API RPC server isolated using a random port.
 
+If you would like to make it a bit more predictable and/or ignore errors (such as during CI), you can add the following before your execution:
+```
+IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1
+```
+
 Once everything has started up - you will see output like the following:
 
 ```bash
