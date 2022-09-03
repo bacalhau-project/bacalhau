@@ -180,7 +180,7 @@ var devstackCmd = &cobra.Command{
 		portFileName := "/tmp/bacalhau-devstack.port"
 		pidFileName := "/tmp/bacalhau-devstack.pid"
 
-		if _, ignore := os.LookupEnv("IGNORE_PORT_FILES"); !ignore {
+		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
 			_, err := os.Stat(portFileName)
 			if err == nil {
 				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)

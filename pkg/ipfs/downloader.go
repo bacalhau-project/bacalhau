@@ -21,6 +21,14 @@ type IPFSDownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
+func NewIPFSDownloadSettings() *IPFSDownloadSettings {
+	return &IPFSDownloadSettings{
+		TimeoutSecs:    10,
+		OutputDir:      ".",
+		IPFSSwarmAddrs: "",
+	}
+}
+
 // * make a temp dir
 // * download all cids into temp dir
 // * ensure top level output dir exists

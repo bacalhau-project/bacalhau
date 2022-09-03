@@ -51,7 +51,8 @@ func NewCreateOptions() *CreateOptions {
 		Filename:        "",
 		Concurrency:     1,
 		Confidence:      0,
-		RunTimeSettings: RunTimeSettings{},
+		DownloadFlags:   *ipfs.NewIPFSDownloadSettings(),
+		RunTimeSettings: *NewRunTimeSettings(),
 	}
 }
 

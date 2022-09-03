@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	CompleteStatus              = "Complete"
-	DefaultDockerRunWaitSeconds = 600
+	CompleteStatus = "Complete"
 )
 
 var (
@@ -91,18 +90,8 @@ func NewDockerRunOptions() *DockerRunOptions {
 		SkipSyntaxChecking: false,
 		WorkingDir:         "",
 		Labels:             []string{},
-		DownloadFlags: ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    10,
-			OutputDir:      ".",
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		},
-		RunTimeSettings: RunTimeSettings{
-			WaitForJobToFinish:               false,
-			WaitForJobToFinishAndPrintOutput: false,
-			WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-			IPFSGetTimeOut:                   10,
-			IsLocal:                          false,
-		},
+		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
 		ShardingBasePath:    "/inputs",

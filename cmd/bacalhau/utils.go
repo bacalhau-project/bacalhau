@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	JSONFormat string = "json"
-	YAMLFormat string = "yaml"
+	JSONFormat                  string = "json"
+	YAMLFormat                  string = "yaml"
+	DefaultDockerRunWaitSeconds        = 600
 )
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -198,6 +199,16 @@ type RunTimeSettings struct {
 
 }
 
+func NewRunTimeSettings() *RunTimeSettings {
+	return &RunTimeSettings{
+		WaitForJobToFinish:               false,
+		WaitForJobToFinishAndPrintOutput: false,
+		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:                   10,
+		IsLocal:                          false,
+	}
+}
+
 func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 	cmd.PersistentFlags().BoolVar(
 		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
@@ -304,7 +315,7 @@ func downloadResults(ctx context.Context,
 	j model.Job,
 	results []model.StorageSpec,
 	downloadSettings ipfs.IPFSDownloadSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "getresults")
+	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
 	defer span.End()
 
 	err := ipfs.DownloadJob(
