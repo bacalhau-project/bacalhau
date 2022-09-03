@@ -2,8 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"os"
-	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -49,18 +47,6 @@ func NewGetOptions() *GetOptions {
 }
 
 func init() { //nolint:gochecknoinits
-	switch system.GetEnvironment() {
-	case system.EnvironmentProd:
-		OG.IPFSDownloadSettings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
-	case system.EnvironmentDev:
-		// TODO: add more dev swarm addresses?
-		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
-			OG.IPFSDownloadSettings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
-		}
-	case system.EnvironmentStaging:
-		log.Warn().Msg("Staging environment has no IPFS swarm addresses attached")
-	}
-
 	setupDownloadFlags(getCmd, &OG.IPFSDownloadSettings)
 }
 
