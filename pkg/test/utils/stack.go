@@ -110,7 +110,10 @@ func NewNoopStack(
 		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
 	}
 
-	node, err := node.NewNode(ctx, nodeConfig, devstack.NewNoopNodeDepdencyInjector())
+	injector := devstack.NewNoopNodeDepdencyInjector()
+	injector.ExecutorsFactory = devstack.NewNoopExecutorsFactoryWithConfig(noopExecutorConfig)
+
+	node, err := node.NewNode(ctx, nodeConfig, injector)
 	require.NoError(t, err)
 
 	err = node.StartControllerOnly(ctx)
