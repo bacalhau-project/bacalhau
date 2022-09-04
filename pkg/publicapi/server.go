@@ -112,6 +112,9 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 }
 
 func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getPublisher")
+	defer span.End()
+
 	apiServer.componentMu.Lock()
 	defer apiServer.componentMu.Unlock()
 

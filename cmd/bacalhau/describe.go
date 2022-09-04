@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"sort"
 	"time"
 
@@ -118,7 +117,7 @@ var describeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/describe")

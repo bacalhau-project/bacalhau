@@ -48,3 +48,5 @@ https://github.com/honeycombio/example-greeting-service/tree/main/golang
   * Realize, of course, that this may come back to bite you if you want to add tracing to that function later.
   * However, if you trace the entire function, and this is a sub function, you will get a trace for the entire function, which may be enough to isolate the problem tracing is designed to provide.
 * A good rule of thumb is if you have something that is long enough to be a span, it should be a function.
+
+* After each boundary (e.g. a function calling another microservice (API call, HTTP call)), create a new RootSpan, and add the appropriate information to the attributes (e.g. JobID, NodeID) of the span with `system.AddJobIDFromBaggageToSpan(ctx, span)`

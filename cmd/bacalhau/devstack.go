@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -93,7 +92,7 @@ var devstackCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
 		defer rootSpan.End()

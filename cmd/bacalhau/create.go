@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -78,7 +77,7 @@ var createCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/create")

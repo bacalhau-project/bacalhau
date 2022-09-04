@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type IPFSPublisher struct {
@@ -71,9 +70,12 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
-	results := []model.StorageSpec{}
-	ctx, span := newSpan(ctx, "ComposeResultSet")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.ComposeResultReferences")
 	defer span.End()
+
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
+	results := []model.StorageSpec{}
 	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, err
@@ -82,10 +84,6 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 		results = append(results, shardResult.Results)
 	}
 	return results, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "publisher/ipfs", apiName)
 }
 
 // Compile-time check that Verifier implements the correct interface:

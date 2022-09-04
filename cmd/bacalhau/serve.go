@@ -199,6 +199,16 @@ var serveCmd = &cobra.Command{
 	Long:    serveLong,
 	Example: serveExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cm := system.NewCleanupManager()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+		defer cm.Cleanup()
+
+		ctx := cmd.Context()
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/serve")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		if OS.IPFSConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
 		}
@@ -206,13 +216,6 @@ var serveCmd = &cobra.Command{
 		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
-
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
-		ctx := context.Background()
 
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults
 		if OS.PeerConnect == "none" {

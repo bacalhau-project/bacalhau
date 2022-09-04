@@ -1,8 +1,6 @@
 package bacalhau
 
 import (
-	"context"
-
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -58,7 +56,7 @@ var getCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
 		defer span.End()

@@ -98,7 +98,7 @@ func NewDevStackForRunLocal(
 			IPFSMultiaddress: ipfsMultiAddress,
 		})
 	}
-	_, span := system.GetTracer().Start(ctx, "pkg/devstack.NewDevStackForRunLocal")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.NewDevStackForRunLocal")
 	defer span.End()
 
 	getExecutors := func(

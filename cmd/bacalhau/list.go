@@ -125,7 +125,7 @@ var listCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")

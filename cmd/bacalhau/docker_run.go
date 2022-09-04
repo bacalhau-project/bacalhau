@@ -220,7 +220,7 @@ var dockerRunCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/dockerRun")
@@ -244,7 +244,8 @@ var dockerRunCmd = &cobra.Command{
 func CreateJobSpecAndDeal(ctx context.Context,
 	cmdArgs []string,
 	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
-	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
 	defer span.End()
 
 	odr.Image = cmdArgs[0]

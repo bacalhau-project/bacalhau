@@ -246,7 +246,7 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
-	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ProcessAndExecuteJob")
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ProcessAndExecuteJob")
 	defer span.End()
 
 	if runtimeSettings.IsLocal {
@@ -268,6 +268,10 @@ func ExecuteJob(ctx context.Context,
 
 	cmd.Printf("%s\n", j.ID)
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
+		// We have a jobID now, add it to the context baggage
+		ctx = system.AddJobIDToBaggage(ctx, j.ID)
+		system.AddJobIDFromBaggageToSpan(ctx, span)
+
 		err := waitForJobToFinish(ctx, apiClient, j, cmd, cm, runtimeSettings, downloadSettings)
 		if err != nil {
 			return err
