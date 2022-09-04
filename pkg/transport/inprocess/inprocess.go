@@ -84,5 +84,17 @@ func (t *InProcessTransport) Subscribe(ctx context.Context, fn transport.Subscri
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
+/*
+encrypt / decrypt
+*/
+
+func (*InProcessTransport) Encrypt(ctx context.Context, data, encryptionKeyBytes []byte) ([]byte, error) {
+	return data, nil
+}
+
+func (*InProcessTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
+	return data, nil
+}
+
 // Static check to ensure that InProcessTransport implements Transport:
 var _ transport.Transport = (*InProcessTransport)(nil)

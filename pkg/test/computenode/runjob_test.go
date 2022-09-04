@@ -50,7 +50,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	ctx := context.Background()
 	EXAMPLE_TEXT := "hello"
 	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
+	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
 	cid, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
@@ -82,7 +82,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 	ctx := context.Background()
 	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, cm := stack.ComputeNode, stack.CleanupManager
+	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
 	// it seems when we return an error so quickly we need to sleep a little bit

@@ -90,7 +90,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
+	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
 	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
 	require.NoError(t, err)
 
@@ -150,7 +150,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
-	ipfsNodeAddress := stack.Nodes[0].IpfsClient.APIAddress()
+	ipfsNodeAddress := stack.IPFSClients[0].APIAddress()
 	storageDriver, err := getStorageDriver(ctx, cm, ipfsNodeAddress)
 	require.NoError(t, err)
 

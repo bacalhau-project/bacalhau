@@ -116,7 +116,7 @@ func devStackDockerStorageTest(
 		require.NotEmpty(t, shard.PublishedResult.Cid)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(t, err)
 
 		testCase.ResultsChecker(outputPath)

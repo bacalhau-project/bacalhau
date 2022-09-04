@@ -6,18 +6,14 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -46,7 +42,7 @@ type ServeOptions struct {
 	IPFSConnect                     string // The IPFS multiaddress to connect to.
 	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data
 	HostAddress                     string // The host address to listen on.
-	HostPort                        int    // The host port to listen on.
+	SwarmPort                       int    // The host port for libp2p network.
 	JobSelectionDataLocality        string // The data locality to use for job selection.
 	JobSelectionDataRejectStateless bool   // Whether to reject jobs that don't specify any data.
 	JobSelectionProbeHTTP           string // The HTTP URL to use for job selection.
@@ -66,12 +62,12 @@ func NewServeOptions() *ServeOptions {
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
 		HostAddress:                     "0.0.0.0",
-		HostPort:                        DefaultSwarmPort,
+		SwarmPort:                       DefaultSwarmPort,
+		MetricsPort:                     2112,
 		JobSelectionDataLocality:        "local",
 		JobSelectionDataRejectStateless: false,
 		JobSelectionProbeHTTP:           "",
 		JobSelectionProbeExec:           "",
-		MetricsPort:                     2112,
 		LimitTotalCPU:                   "",
 		LimitTotalMemory:                "",
 		LimitTotalGPU:                   "",
@@ -127,6 +123,15 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	)
 }
 
+func getPeers() []string {
+	if OS.PeerConnect == "none" {
+		return []string{}
+	} else if OS.PeerConnect == "" {
+		return DefaultBootstrapAddresses
+	}
+	return strings.Split(OS.PeerConnect, ",")
+}
+
 func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
 	typedJobSelectionDataLocality := computenode.Anywhere
@@ -145,7 +150,7 @@ func getJobSelectionConfig() computenode.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() (totalLimits, jobLimits model.ResourceUsageConfig) {
+func getCapacityManagerConfig() capacitymanager.Config {
 	// the total amount of CPU / Memory the system can be using at one time
 	totalResourceLimit := model.ResourceUsageConfig{
 		CPU:    OS.LimitTotalCPU,
@@ -160,7 +165,10 @@ func getCapacityManagerConfig() (totalLimits, jobLimits model.ResourceUsageConfi
 		GPU:    OS.LimitJobGPU,
 	}
 
-	return totalResourceLimit, jobResourceLimit
+	return capacitymanager.Config{
+		ResourceLimitTotal: totalResourceLimit,
+		ResourceLimitJob:   jobResourceLimit,
+	}
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -181,7 +189,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The host to listen on (for both api and swarm connections).`,
 	)
 	serveCmd.PersistentFlags().IntVar(
-		&OS.HostPort, "port", OS.HostPort,
+		&OS.SwarmPort, "swarm-port", OS.SwarmPort,
 		`The port to listen on for swarm connections.`,
 	)
 	serveCmd.PersistentFlags().IntVar(
@@ -216,6 +224,13 @@ var serveCmd = &cobra.Command{
 		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
+
+		// Cleanup manager ensures that resources are freed before exiting:
+		cm := system.NewCleanupManager()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+		defer cm.Cleanup()
+
+		ctx := context.Background()
 
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults
 		if OS.PeerConnect == "none" {
