@@ -113,7 +113,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	node := stack.Nodes[0]
+	node := stack.IPFSClients[0]
 
 	// make 10 folders each with 10 files
 	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
@@ -122,7 +122,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
+	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.APIAddress())
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
@@ -273,7 +273,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
 	require.NoError(suite.T(), err)
 
-	swarmAddresses, err := stack.Nodes[0].IpfsNode.SwarmAddresses()
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(suite.T(), err)
 
 	log.Info().Msgf("Downloading results to %s", downloadFolder)

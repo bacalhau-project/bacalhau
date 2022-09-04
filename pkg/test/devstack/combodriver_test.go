@@ -6,25 +6,15 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -89,67 +79,13 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			unsealedPath = fmt.Sprintf("%s/{{.Cid}}", basePath)
 		}
 
-		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-			return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress: ipfsMultiAddress,
-			})
+		options := devstack.DevStackOptions{
+			NumberOfNodes:        1,
+			PublicIPFSMode:       true,
+			FilecoinUnsealedPath: unsealedPath,
 		}
-		getExecutors := func(
-			ipfsMultiAddress string,
-			nodeIndex int,
-			isBadActor bool,
-			ctrl *controller.Controller,
-		) (
-			map[model.EngineType]executor.Executor,
-			error,
-		) {
-			ipfsParts := strings.Split(ipfsMultiAddress, "/")
-			ipfsSuffix := ipfsParts[len(ipfsParts)-1]
-			return executor_util.NewStandardExecutors(
-				ctx,
-				cm,
-				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
-					Storage: executor_util.StandardStorageProviderOptions{
-						IPFSMultiaddress:     ipfsMultiAddress,
-						FilecoinUnsealedPath: unsealedPath,
-					},
-				},
-			)
-		}
-		getVerifiers := func(
-			transport *libp2p.LibP2PTransport,
-			nodeIndex int,
-			ctrl *controller.Controller,
-		) (
-			map[model.VerifierType]verifier.Verifier,
-			error,
-		) {
-			return verifier_util.NewNoopVerifiers(ctx, cm, ctrl.GetStateResolver())
-		}
-		getPublishers := func(
-			ipfsMultiAddress string,
-			nodeIndex int,
-			ctrl *controller.Controller,
-		) (
-			map[model.PublisherType]publisher.Publisher,
-			error,
-		) {
-			return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
-		}
-		stack, err := devstack.NewDevStack(
-			ctx,
-			cm,
-			1,
-			0,
-			getStorageProviders,
-			getExecutors,
-			getVerifiers,
-			getPublishers,
-			computenode.NewDefaultComputeNodeConfig(),
-			"",
-			false,
-		)
+
+		stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig())
 		require.NoError(suite.T(), err)
 
 		if !unsealedMode {
@@ -218,7 +154,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(suite.T(), err)
 
 		dat, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))

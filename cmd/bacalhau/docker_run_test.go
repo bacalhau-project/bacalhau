@@ -163,7 +163,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
 
-			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
+			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(suite.T(), err)
 			ODR.DockerRunDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
 			ODR.DockerRunDownloadFlags.OutputDir = dir
