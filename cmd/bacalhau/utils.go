@@ -154,7 +154,7 @@ func ReverseList(s []string) []string {
 // this is mainly used in testing --local
 // go playground link https://go.dev/play/p/cuGIaIorWfD
 
-//nolint:unused,deadcode
+//nolint:unused
 func capture() func() (string, error) {
 	r, w, err := os.Pipe()
 	if err != nil {

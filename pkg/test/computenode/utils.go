@@ -46,7 +46,7 @@ func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
 	}
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func getResources(c, m, d string) model.ResourceUsageConfig {
 	return model.ResourceUsageConfig{
 		CPU:    c,
@@ -55,7 +55,7 @@ func getResources(c, m, d string) model.ResourceUsageConfig {
 	}
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 	var res []model.ResourceUsageConfig
 	for _, d := range data {

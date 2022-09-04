@@ -118,7 +118,7 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	//nolint:ineffassign,staticcheck,unusedparam
+	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/tarResultsDir")
 	defer span.End()
 
@@ -179,7 +179,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
-	//nolint:ineffassign,staticcheck,unusedparam
+	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
 	defer span.End()
 

@@ -114,7 +114,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func decompress(src io.Reader, dst string) error {
 	// ungzip
 	zr, err := gzip.NewReader(src)
@@ -184,7 +184,7 @@ func decompress(src io.Reader, dst string) error {
 
 // check for path traversal and correct forward slashes
 //
-//nolint:deadcode,unused
+//nolint:unused
 func validRelPath(p string) bool {
 	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {
 		return false
