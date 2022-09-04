@@ -13,15 +13,19 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -73,63 +77,14 @@ type GetPublishersFunc func(
 )
 
 func NewDevStackForRunLocal(
-	ctx context.Context, cm *system.CleanupManager,
-
+	ctx context.Context,
+	cm *system.CleanupManager,
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(ctx, cm, executor_util.StandardStorageProviderOptions{
-			IPFSMultiaddress: ipfsMultiAddress,
-		})
-	}
-	getExecutors := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		isBadActor bool,
-		_ *controller.Controller,
-	) (
-		map[model.EngineType]executor.Executor,
-		error,
-	) {
-		ipfsParts := strings.Split(ipfsMultiAddress, "/")
-		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
-		return executor_util.NewStandardExecutors(
-			ctx,
-			cm,
-			executor_util.StandardExecutorOptions{
-				DockerID: fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
-				Storage: executor_util.StandardStorageProviderOptions{
-					IPFSMultiaddress: ipfsMultiAddress,
-				},
-			},
-		)
-	}
-	getVerifiers := func(
-		transport *libp2p.LibP2PTransport,
-		_ int,
-		ctrl *controller.Controller,
-	) (
-		map[model.VerifierType]verifier.Verifier,
-		error,
-	) {
-		return verifier_util.NewStandardVerifiers(
-			ctx,
-			cm,
-			ctrl.GetStateResolver(),
-			transport.Encrypt,
-			transport.Decrypt,
-		)
-	}
-	getPublishers := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		ctrl *controller.Controller,
-	) (
-		map[model.PublisherType]publisher.Publisher,
-		error,
-	) {
-		return publisher_util.NewIPFSPublishers(ctx, cm, ctrl.GetStateResolver(), ipfsMultiAddress)
+	options := DevStackOptions{
+		NumberOfNodes:  count,
+		PublicIPFSMode: true,
 	}
 
 	computeNodeConfig := computenode.ComputeNodeConfig{
@@ -182,50 +137,32 @@ func NewDevStack(
 
 	nodes := []*node.Node{}
 	var firstNodeLibp2pPort int
+	var err error
 
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
-		var err error
-		var ipfsSwarmAddrs []string
-		var ipfsNode *ipfs.Node
 
+		var ipfsSwarmAddrs []string
 		if i > 0 {
-			ipfsSwarmAddrs, err = nodes[0].IpfsNode.SwarmAddresses()
+			ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
 		}
 
-		if publicIPFSMode {
-			ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-			}
-		} else {
-			ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-			}
-		}
+		// -----------------------------------
+		// IPFS
+		// -----------------------------------
+		ipfsNode, err := createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddrs)
 
 		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		ipfsAPIAddrs, err := ipfsNode.APIAddresses()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ipfs api addresses: %w", err)
-		}
-		if len(ipfsAPIAddrs) == 0 { // should never happen
-			return nil, fmt.Errorf("devstack ipfs node has no api addresses")
-		}
-
-		inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
-		if err != nil {
-			return nil, err
-		}
-
+		// -----------------------------------
+		// libp2p
+		// -----------------------------------
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
@@ -234,10 +171,11 @@ func NewDevStack(
 		libp2pPeer := ""
 
 		if i == 0 {
-			if peer != "" {
+			firstNodeLibp2pPort = libp2pPort
+			if options.Peer != "" {
 				// connect 0'th node to external peer if specified
-				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", peer)
-				libp2pPeer = peer
+				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+				libp2pPeer = options.Peer
 			}
 		} else {
 			var libp2pHostID string
@@ -251,7 +189,7 @@ func NewDevStack(
 			}
 
 			// connect this scheduler to the first
-			libp2pPeer = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNode.Libp2pPort, libp2pHostID)
+			libp2pPeer = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNodeLibp2pPort, libp2pHostID)
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
@@ -261,83 +199,8 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
-		// Storage, executors and verifiers
+		// port for API
 		//////////////////////////////////////
-		storageProviders, err := getStorageProviders(ipfsAPIAddrs[0], i)
-		if err != nil {
-			return nil, err
-		}
-
-		//////////////////////////////////////
-		// Controller
-		//////////////////////////////////////
-		ctrl, err := controller.NewController(
-			ctx,
-			cm,
-			inmemoryDatastore,
-			transport,
-			storageProviders,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		isBadActor := false
-
-		if badActors > 0 {
-			isBadActor = i >= count-badActors
-		}
-
-		executors, err := getExecutors(ipfsAPIAddrs[0], i, isBadActor, ctrl)
-		if err != nil {
-			return nil, err
-		}
-
-		verifiers, err := getVerifiers(transport, i, ctrl)
-		if err != nil {
-			return nil, err
-		}
-
-		publishers, err := getPublishers(ipfsAPIAddrs[0], i, ctrl)
-		if err != nil {
-			return nil, err
-		}
-
-		//////////////////////////////////////
-		// Requestor node
-		//////////////////////////////////////
-		requesterNode, err := requesternode.NewRequesterNode(
-			ctx,
-			cm,
-			ctrl,
-			verifiers,
-			requesternode.RequesterNodeConfig{},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		//////////////////////////////////////
-		// Compute node
-		//////////////////////////////////////
-		computeNode, err := computenode.NewComputeNode(
-			ctx,
-			cm,
-			ctrl,
-			executors,
-			verifiers,
-			publishers,
-			config,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		//////////////////////////////////////
-		// JSON RPC
-		//////////////////////////////////////
-
-		// predictable port for API
 		var apiPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			apiPort = 20000 + i
@@ -348,64 +211,45 @@ func NewDevStack(
 			}
 		}
 
-		apiServer := publicapi.NewServer(
-			ctx,
-			"0.0.0.0",
-			apiPort,
-			ctrl,
-			publishers,
-		)
-		go func(ctx context.Context) {
-			var gerr error // don't capture outer scope
-			if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
-				panic(gerr) // if api server can't run, devstack should stop
-			}
-		}(ctx)
-
-		log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
-
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
-
 		metricsPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
 
-		go func(ctx context.Context) { //nolint:unparam
-			var gerr error // don't capture outer scope
-			if gerr = system.ListenAndServeMetrics(ctx, cm, metricsPort); gerr != nil {
-				log.Error().Msgf("Cannot serve metrics: %v", err)
-			}
-		}(ctx)
-
 		//////////////////////////////////////
-		// intra-connections
+		// Create and Run Node
 		//////////////////////////////////////
+		isBadActor := (options.NumberOfBadActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadActors)
 
-		go func(ctx context.Context) {
-			if err = ctrl.Start(ctx); err != nil {
-				panic(err) // if controller can't run, devstack should stop
-			}
-			if err = transport.Start(ctx); err != nil {
-				panic(err) // if transport can't run, devstack should stop
-			}
-		}(context.Background())
-
-		log.Debug().Msgf("libp2p server started: %d", libp2pPort)
-
-		devStackNode := &DevStackNode{
-			ComputeNode:   computeNode,
-			RequesterNode: requesterNode,
-			Transport:     transport,
-			IpfsNode:      ipfsNode,
-			IpfsClient:    ipfsClient,
-			APIServer:     apiServer,
-			Libp2pPort:    libp2pPort,
+		nodeConfig := node.NodeConfig{
+			IPFSClient:           ipfsClient,
+			CleanupManager:       cm,
+			Transport:            transport,
+			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
+			HostAddress:          "0.0.0.0",
+			HostID:               strconv.Itoa(i),
+			APIPort:              apiPort,
+			MetricsPort:          metricsPort,
+			ComputeNodeConfig:    computeNodeConfig,
+			RequesterNodeConfig:  requesternode.RequesterNodeConfig{},
+			IsBadActor:           isBadActor,
 		}
 
-		nodes = append(nodes, devStackNode)
+		node, err := node.NewNode(ctx, nodeConfig, injector)
+		if err != nil {
+			return nil, err
+		}
+
+		// start the node
+		err = node.Start(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, node)
 	}
 
 	// only start profiling after we've set everything up!
@@ -435,217 +279,29 @@ func createIPFSNode(ctx context.Context,
 	ipfsSwarmAddrs []string) (*ipfs.Node, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.createipfsnode")
 	defer span.End()
-
-	var ipfsNode *ipfs.Node
+	//////////////////////////////////////
+	// IPFS
+	//////////////////////////////////////
 	var err error
+	var ipfsNode *ipfs.Node
 
 	if publicIPFSMode {
 		ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create ipfs node:")
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 	} else {
 		ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create ipfs node:")
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
 	}
 	return ipfsNode, nil
 }
 
-//nolint:funlen,gocyclo
-func createDevStackNode(
-	ctx context.Context,
-	cm *system.CleanupManager,
-	ipfsNode *ipfs.Node,
-	nodeIndex int,
-	libp2pPeer string,
-	isBadActor bool,
-	getStorageProviders GetStorageProvidersFunc,
-	getExecutors GetExecutorsFunc,
-	getVerifiers GetVerifiersFunc,
-	getPublishers GetPublishersFunc,
-	config computenode.ComputeNodeConfig,
-) (*DevStackNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.createdevstacknode")
-	defer span.End()
-
-	//////////////////////////////////////
-	// IPFS
-	//////////////////////////////////////
-	var err error
-
-	ipfsClient, err := ipfsNode.Client()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create ipfs client: %w")
-	}
-
-	ipfsAPIAddrs, err := ipfsNode.APIAddresses()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get ipfs api addresses: ")
-	}
-	if len(ipfsAPIAddrs) == 0 { // should never happen
-		return nil, fmt.Errorf("devstack ipfs node has no api addresses")
-	}
-
-	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
-	if err != nil {
-		return nil, err
-	}
-
-	libp2pPort, err := freeport.GetFreePort()
-	if err != nil {
-		return nil, err
-	}
-
-	transport, err := libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
-	if err != nil {
-		return nil, err
-	}
-
-	//////////////////////////////////////
-	// Storage, executors and verifiers
-	//////////////////////////////////////
-	storageProviders, err := getStorageProviders(ipfsAPIAddrs[0], nodeIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	//////////////////////////////////////
-	// Controller
-	//////////////////////////////////////
-	ctrl, err := controller.NewController(
-		ctx,
-		cm,
-		inmemoryDatastore,
-		transport,
-		storageProviders,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	executors, err := getExecutors(ipfsAPIAddrs[0], nodeIndex, isBadActor, ctrl)
-	if err != nil {
-		return nil, err
-	}
-
-	verifiers, err := getVerifiers(transport, nodeIndex, ctrl)
-	if err != nil {
-		return nil, err
-	}
-
-	publishers, err := getPublishers(ipfsAPIAddrs[0], nodeIndex, ctrl)
-	if err != nil {
-		return nil, err
-	}
-
-	//////////////////////////////////////
-	// Requestor node
-	//////////////////////////////////////
-	requesterNode, err := requesternode.NewRequesterNode(
-		ctx,
-		cm,
-		ctrl,
-		verifiers,
-		requesternode.RequesterNodeConfig{},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	//////////////////////////////////////
-	// Compute node
-	//////////////////////////////////////
-	computeNode, err := computenode.NewComputeNode(
-		ctx,
-		cm,
-		ctrl,
-		executors,
-		verifiers,
-		publishers,
-		config,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	//////////////////////////////////////
-	// JSON RPC
-	//////////////////////////////////////
-
-	// predictable port for API
-	var apiPort int
-	if os.Getenv("PREDICTABLE_API_PORT") != "" {
-		apiPort = 20000 + nodeIndex
-	} else {
-		apiPort, err = freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	apiServer := publicapi.NewServer(
-		ctx,
-		"0.0.0.0",
-		apiPort,
-		ctrl,
-		publishers,
-	)
-	go func(ctx context.Context) {
-		var gerr error // don't capture outer scope
-		if gerr = apiServer.ListenAndServe(ctx, cm); gerr != nil {
-			panic(gerr) // if api server can't run, devstack should stop
-		}
-	}(ctx)
-
-	log.Debug().Msgf("public API server started: 0.0.0.0:%d", apiPort)
-
-	//////////////////////////////////////
-	// metrics
-	//////////////////////////////////////
-
-	metricsPort, err := freeport.GetFreePort()
-	if err != nil {
-		return nil, err
-	}
-
-	go func(ctx context.Context) { //nolint:unparam
-		var gerr error // don't capture outer scope
-		if gerr = system.ListenAndServeMetrics(ctx, cm, metricsPort); gerr != nil {
-			log.Error().Msgf("Cannot serve metrics: %v", err)
-		}
-	}(ctx)
-
-	//////////////////////////////////////
-	// intra-connections
-	//////////////////////////////////////
-
-	go func(ctx context.Context) {
-		if err = ctrl.Start(ctx); err != nil {
-			panic(err) // if controller can't run, devstack should stop
-		}
-		if err = transport.Start(ctx); err != nil {
-			panic(err) // if transport can't run, devstack should stop
-		}
-	}(context.Background())
-
-	log.Debug().Msgf("libp2p server started: %d", libp2pPort)
-
-	devStackNode := &DevStackNode{
-		ComputeNode:   computeNode,
-		RequesterNode: requesterNode,
-		Transport:     transport,
-		IpfsNode:      ipfsNode,
-		IpfsClient:    ipfsClient,
-		APIServer:     apiServer,
-		Libp2pPort:    libp2pPort,
-	}
-
-	return devStackNode, nil
-}
-
 func (stack *DevStack) PrintNodeInfo() {
+	ctx := context.Background()
+
 	if !config.DevstackGetShouldPrintInfo() {
 		return
 	}
@@ -684,7 +340,7 @@ export BACALHAU_API_PORT_%d=%d`,
 		)
 
 		// Just setting this to the last one, really doesn't matter
-		swarmAddressesList, _ := node.IpfsNode.SwarmAddresses()
+		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(ctx)
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
 		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)

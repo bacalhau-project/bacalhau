@@ -37,7 +37,14 @@ type Transport interface {
 	// Subscribe registers a callback for updates about any change to a job
 	// or its results.  This is in-memory, global, singleton and scoped to the
 	// lifetime of the process so no need for an unsubscribe right now.
-	Subscribe(fn SubscribeFn)
+	Subscribe(ctx context.Context, fn SubscribeFn)
+
+	/////////////////////////////////////////////////////////////
+	/// Encrypt/Decrypt
+	/////////////////////////////////////////////////////////////
+	Encrypt(ctx context.Context, data, encryptionKeyBytes []byte) ([]byte, error)
+
+	Decrypt(ctx context.Context, data []byte) ([]byte, error)
 }
 
 // the data structure a client can use to render a view of the state of the world

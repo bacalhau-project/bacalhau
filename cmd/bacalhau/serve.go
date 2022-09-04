@@ -7,13 +7,19 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/controller"
+
+	"github.com/filecoin-project/bacalhau/pkg/executor/util"
+	executors_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	publishers_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	verifiers_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -207,6 +213,7 @@ var serveCmd = &cobra.Command{
 	Long:    serveLong,
 	Example: serveExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
@@ -225,13 +232,6 @@ var serveCmd = &cobra.Command{
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
 
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
-		ctx := context.Background()
-
 		peers := DefaultBootstrapAddresses // Default to connecting to defaults
 		if OS.PeerConnect == "none" {
 			peers = []string{} // Only connect to peers if not none
@@ -246,7 +246,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		transport, err := libp2p.NewTransport(ctx, cm, OS.HostPort, peers)
+		transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
 		if err != nil {
 			return err
 		}
@@ -256,10 +256,10 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		storageProviders, err := executor_util.NewStandardStorageProviders(
+		storageProviders, err := util.NewStandardStorageProviders(
 			ctx,
 			cm,
-			executor_util.StandardStorageProviderOptions{
+			util.StandardStorageProviderOptions{
 				IPFSMultiaddress:     OS.IPFSConnect,
 				FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 			},
@@ -279,12 +279,12 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		executors, err := executor_util.NewStandardExecutors(
+		executors, err := executors_util.NewStandardExecutors(
 			ctx,
 			cm,
-			executor_util.StandardExecutorOptions{
+			executors_util.StandardExecutorOptions{
 				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
-				Storage: executor_util.StandardStorageProviderOptions{
+				Storage: executors_util.StandardStorageProviderOptions{
 					IPFSMultiaddress:     OS.IPFSConnect,
 					FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 				},
@@ -294,7 +294,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		verifiers, err := verifier_util.NewStandardVerifiers(
+		verifiers, err := verifiers_util.NewStandardVerifiers(
 			ctx,
 			cm,
 			controller.GetStateResolver(),
@@ -305,20 +305,17 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		publishers, err := publisher_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
+		publishers, err := publishers_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
 		if err != nil {
 			return err
 		}
 
 		jobSelectionPolicy := getJobSelectionConfig()
-		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
+		capacityManagerConfig := getCapacityManagerConfig()
 
 		computeNodeConfig := computenode.ComputeNodeConfig{
-			JobSelectionPolicy: jobSelectionPolicy,
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: totalResourceLimit,
-				ResourceLimitJob:   jobResourceLimit,
-			},
+			JobSelectionPolicy:    jobSelectionPolicy,
+			CapacityManagerConfig: capacityManagerConfig,
 		}
 
 		requesterNodeConfig := requesternode.RequesterNodeConfig{}
@@ -379,7 +376,7 @@ var serveCmd = &cobra.Command{
 			}
 		}(ctx)
 
-		log.Debug().Msgf("libp2p server started: %d", OS.HostPort)
+		log.Debug().Msgf("libp2p server started: %d", OS.SwarmPort)
 
 		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
 
