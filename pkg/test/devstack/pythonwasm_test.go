@@ -137,7 +137,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
 	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 	require.NoError(suite.T(), err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)

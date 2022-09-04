@@ -119,7 +119,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	require.NoError(suite.T(), err)
 
 	outputPath := filepath.Join(outputDir, string(state.VerificationProposal))
-	err = node.IpfsClient.Get(ctx, string(state.VerificationProposal), outputPath)
+	err = node.IPFSClient.Get(ctx, string(state.VerificationProposal), outputPath)
 	require.NoError(suite.T(), err)
 
 	stdoutBytes, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
