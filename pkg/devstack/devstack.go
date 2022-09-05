@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -101,32 +102,26 @@ func NewDevStack(
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
-		//////////////////////////////////////
+		// -------------------------------------
 		// IPFS
-		//////////////////////////////////////
-		var err error
+		// -------------------------------------
 		var ipfsNode *ipfs.Node
+		var ipfsClient *ipfs.Client
 
-		if options.PublicIPFSMode {
-			ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
+		var ipfsSwarmAddrs []string
+		if i > 0 {
+			ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-			}
-		} else {
-			var ipfsSwarmAddrs []string
-			if i > 0 {
-				ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
-				}
-			}
-			ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
 		}
 
-		ipfsClient, err := ipfsNode.Client()
+		ipfsNode, err = createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		}
+
+		ipfsClient, err = ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
@@ -134,7 +129,8 @@ func NewDevStack(
 		//////////////////////////////////////
 		// libp2p
 		//////////////////////////////////////
-		libp2pPort, err := freeport.GetFreePort()
+		var libp2pPort int
+		libp2pPort, err = freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +160,8 @@ func NewDevStack(
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
-		transport, err := libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
+		var transport transport.Transport
+		transport, err = libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +182,8 @@ func NewDevStack(
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
-		metricsPort, err := freeport.GetFreePort()
+		var metricsPort int
+		metricsPort, err = freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -209,18 +207,19 @@ func NewDevStack(
 			IsBadActor:           isBadActor,
 		}
 
-		node, err := node.NewNode(ctx, nodeConfig, injector)
+		var n *node.Node
+		n, err = node.NewNode(ctx, nodeConfig, injector)
 		if err != nil {
 			return nil, err
 		}
 
 		// start the node
-		err = node.Start(ctx)
+		err = n.Start(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		nodes = append(nodes, node)
+		nodes = append(nodes, n)
 	}
 
 	// only start profiling after we've set everything up!

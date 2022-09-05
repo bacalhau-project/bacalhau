@@ -279,34 +279,24 @@ func ExecuteJob(ctx context.Context,
 			return err
 		}
 
-		err := waitForJobToFinish(ctx, apiClient, j, cmd, cm, runtimeSettings, downloadSettings)
+		err := waitForJobToFinish(ctx, apiClient, j, runtimeSettings)
 		if err != nil {
 			return err
 		}
 		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
-			results, err := apiClient.GetResults(ctx, j.ID)
+			results, err := getResults(ctx, apiClient, j)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error getting results")
 			}
+
 			if len(results) == 0 {
 				return fmt.Errorf("no results found")
 			}
-			err = ipfs.DownloadJob(
-				ctx,
-				cm,
-				j,
-				results,
-				downloadSettings,
-			)
+
+			err = downloadResults(ctx, cmd, cm, j, results, downloadSettings)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
 			}
-			body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
-			if err != nil {
-				return err
-			}
-			cmd.Println()
-			cmd.Println(string(body))
 		}
 	}
 	return nil
@@ -315,10 +305,7 @@ func ExecuteJob(ctx context.Context,
 func waitForJobToFinish(ctx context.Context,
 	apiClient *publicapi.APIClient,
 	j model.Job,
-	cmd *cobra.Command,
-	cm *system.CleanupManager,
-	runtimeSettings RunTimeSettings,
-	downloadSettings ipfs.IPFSDownloadSettings) error {
+	runtimeSettings RunTimeSettings) error {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
 	defer span.End()
 
