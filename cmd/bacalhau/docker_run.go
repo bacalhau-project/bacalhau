@@ -232,9 +232,17 @@ var dockerRunCmd = &cobra.Command{
 			return errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
 
-		err = ExecuteJob(ctx, cm, cmd, jobSpec, jobDeal, ODR.RunTimeSettings, ODR.DownloadFlags)
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.RunTimeSettings,
+			ODR.DownloadFlags,
+		)
+
 		if err != nil {
-			return errors.Wrap(err, "ExecuteJob:")
+			return fmt.Errorf("error executing job: %s", err)
 		}
 
 		return nil

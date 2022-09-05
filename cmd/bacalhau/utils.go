@@ -246,14 +246,17 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ProcessAndExecuteJob")
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
 	defer span.End()
 
 	if runtimeSettings.IsLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, jobSpec.Resources.GPU)
+		t := system.GetTracer()
+		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(localDevStackCtx, cm, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
+		localDevStackSpan.End()
 
 		apiURI := stack.Nodes[0].APIServer.GetURI()
 		apiClient = publicapi.NewAPIClient(apiURI)
@@ -287,6 +290,79 @@ func ExecuteJob(ctx context.Context,
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func ExecuteJob(ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	jobSpec *model.JobSpec,
+	jobDeal *model.JobDeal,
+	isLocal bool,
+	waitForJobToFinish bool,
+	dockerRunDownloadFlags ipfs.IPFSDownloadSettings,
+) error {
+	var apiClient *publicapi.APIClient
+	if isLocal {
+		t := system.GetTracer()
+		localDevStackCtx, localDevStackSpan := t.Start(ctx, "localdevstackstarting")
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(localDevStackCtx, cm, 1, jobSpec.Resources.GPU)
+		if errLocalDevStack != nil {
+			return errLocalDevStack
+		}
+		localDevStackSpan.End()
+
+		apiURI := stack.Nodes[0].APIServer.GetURI()
+		apiClient = publicapi.NewAPIClient(apiURI)
+	} else {
+		apiClient = getAPIClient()
+	}
+
+	_, submitJobSpan := system.Span(ctx, "RunJob", "SubmitJob")
+	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	if err != nil {
+		return err
+	}
+	submitJobSpan.End()
+
+	cmd.Printf("%s\n", j.ID)
+	if waitForJobToFinish {
+		_, waitForJobToFinishSpan := system.Span(ctx, "RunJob", "WaitForJobToFinish")
+
+		resolver := apiClient.GetJobStateResolver()
+		resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+		err = resolver.WaitUntilComplete(ctx, j.ID)
+		if err != nil {
+			return err
+		}
+
+		if ODR.WaitForJobToFinishAndPrintOutput {
+			results, err := apiClient.GetResults(ctx, j.ID)
+			if err != nil {
+				return err
+			}
+			if len(results) == 0 {
+				return fmt.Errorf("no results found")
+			}
+			err = ipfs.DownloadJob(
+				ctx,
+				cm,
+				j,
+				results,
+				dockerRunDownloadFlags,
+			)
+			if err != nil {
+				return err
+			}
+			body, err := os.ReadFile(filepath.Join(dockerRunDownloadFlags.OutputDir, "stdout"))
+			if err != nil {
+				return err
+			}
+			cmd.Println()
+			cmd.Println(string(body))
+		}
+		waitForJobToFinishSpan.End()
 	}
 	return nil
 }
