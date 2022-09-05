@@ -157,7 +157,8 @@ func NewDevStack(
 
 		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
-			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
+			log.Error().Err(err).Msgf("failed to create ipfs node: %w", err)
+			return nil, err
 		}
 
 		// -----------------------------------
