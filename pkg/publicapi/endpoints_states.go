@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -18,23 +19,21 @@ type stateResponse struct {
 }
 
 func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "apiServer/states")
+	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/states")
 	defer span.End()
-	t := system.GetTracer()
 
 	var stateReq stateRequest
 	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
-	_, getJobSpan := t.Start(ctx, "gettingjobstate")
-	jobState, err := apiServer.Controller.GetJobState(ctx, stateReq.JobID)
+	jobState, err := getJobStateFromRequest(ctx, apiServer, stateReq)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	getJobSpan.End()
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(stateResponse{
@@ -44,4 +43,11 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func getJobStateFromRequest(ctx context.Context, apiServer *APIServer, stateReq stateRequest) (model.JobState, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getJobStateFromRequest")
+	defer span.End()
+
+	return apiServer.Controller.GetJobState(ctx, stateReq.JobID)
 }

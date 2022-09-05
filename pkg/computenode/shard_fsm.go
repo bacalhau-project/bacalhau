@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
@@ -109,14 +110,21 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 // Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
 func (m *shardStateMachineManager) StartShardStateIfNecessery(
-	shard model.JobShard, node *ComputeNode, requirements model.ResourceUsageData) {
+	shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if _, ok := m.shardStates[shard.ID()]; !ok {
-		shardState := m.newStateMachine(shard, node, requirements)
+		shardState := m.newStateMachine(shard, n, requirements)
+
+		// ANCHOR: Start of the shard state machine span
+		ctx, span := system.GetTracer().Start(context.Background(), "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessery")
+		defer span.End()
+		ctx = system.AddNodeIDToBaggage(ctx, n.ID)
+		system.AddNodeIDFromBaggageToSpan(ctx, span)
+
 		go func() {
-			shardState.Run()
+			shardState.Run(ctx)
 		}()
 		m.shardStates[shard.ID()] = shardState
 		m.shardStatesList = append(m.shardStatesList, shardState)
@@ -224,37 +232,38 @@ func (m *shardStateMachineManager) newStateMachine(
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.id[:8], m.Shard, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:8], m.Shard, m.currentState)
 }
 
 // run the state machineuntil it is completed.
-func (m *shardStateMachine) Run() {
+func (m *shardStateMachine) Run(ctx context.Context) {
 	for state := enqueuedState; state != nil; {
-		state = state(m)
+		// TODO: #559 Should we create a new context and span for each state execution?
+		state = state(ctx, m)
 	}
 	// close the request channel.
 	// Check `sendRequest` comments for more details.
 	close(m.req)
 }
 
-func (m *shardStateMachine) Bid() {
-	m.sendRequest(shardStateRequest{action: actionBid})
+func (m *shardStateMachine) Bid(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionBid})
 }
 
-func (m *shardStateMachine) BidRejected() {
-	m.sendRequest(shardStateRequest{action: actionRejected})
+func (m *shardStateMachine) BidRejected(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionRejected})
 }
 
-func (m *shardStateMachine) Execute() {
-	m.sendRequest(shardStateRequest{action: actionRun})
+func (m *shardStateMachine) Execute(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionRun})
 }
 
-func (m *shardStateMachine) Publish() {
-	m.sendRequest(shardStateRequest{action: actionPublish})
+func (m *shardStateMachine) Publish(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionPublish})
 }
 
-func (m *shardStateMachine) Fail(reason string) {
-	m.sendRequest(shardStateRequest{action: actionFail, failureReason: reason})
+func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
+	m.sendRequest(ctx, shardStateRequest{action: actionFail, failureReason: reason})
 }
 
 // send a request to the state machine by enquing it in the request channel.
@@ -264,7 +273,7 @@ func (m *shardStateMachine) Fail(reason string) {
 // computenode when trying to send the request.
 // To mitigagte this, we close the channel when the fsm is completed, and handle
 // the panic gracefully here.
-func (m *shardStateMachine) sendRequest(request shardStateRequest) {
+func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
@@ -273,9 +282,9 @@ func (m *shardStateMachine) sendRequest(request shardStateRequest) {
 	m.req <- request
 }
 
-type StateFn func(*shardStateMachine) StateFn
+type StateFn func(context.Context, *shardStateMachine) StateFn
 
-func (m *shardStateMachine) transitionedTo(newState shardStateType) {
+func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	log.Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
@@ -283,16 +292,40 @@ func (m *shardStateMachine) transitionedTo(newState shardStateType) {
 	m.currentState = newState
 }
 
+// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
+func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardBidding)
+
+	for {
+		req := <-m.req
+		switch req.action {
+		case actionRun:
+			return runningState
+		case actionRejected:
+			return completedState
+		case actionFail:
+			m.errorMsg = req.failureReason
+			return errorState
+		default:
+			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+		}
+	}
+}
+
+// ------------------------------------
+// Job Shard State Machine Functions
+// ------------------------------------
+
 // The job has been selected by the computeNode, and currently enqueued and waiting for
 // available capacity to be reserved before actually bidding on the job.
-func enqueuedState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardEnqueued)
+func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardEnqueued)
 
 	for {
 		req := <-m.req
 		switch req.action {
 		case actionBid:
-			err := m.node.BidOnJob(context.Background(), m.Shard)
+			err := m.node.BidOnJob(ctx, m.Shard)
 			if err != nil {
 				m.errorMsg = err.Error()
 				return errorState
@@ -312,34 +345,19 @@ func enqueuedState(m *shardStateMachine) StateFn {
 	}
 }
 
-// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
-func biddingState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardBidding)
-
-	for {
-		req := <-m.req
-		switch req.action {
-		case actionRun:
-			return runningState
-		case actionRejected:
-			return completedState
-		case actionFail:
-			m.errorMsg = req.failureReason
-			return errorState
-		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
-		}
-	}
-}
-
 // the bid has been accepted and now we trigger the execution of the job.
-func runningState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardRunning)
+func runningState(ctx context.Context, m *shardStateMachine) StateFn {
+	// TODO: #558 Should we create a new span every time there's a state transition?
+	m.transitionedTo(ctx, shardRunning)
+
+	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.runningState")
+	defer span.End()
+	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	// we get a "proposal" from this method which is not the results
 	// but what the compute node verifier wants to pass to the requester
 	// node verifier
-	ctx := context.Background()
 	proposal, err := m.node.RunShard(ctx, m.Shard)
 	if err == nil {
 		m.resultProposal = proposal
@@ -351,10 +369,14 @@ func runningState(m *shardStateMachine) StateFn {
 }
 
 // the job has been executed and now we verify the results.
-func publishingToVerifierState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardPublishingToVerifier)
+func publishingToVerifierState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardPublishingToVerifier)
 
-	ctx := context.Background()
+	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.publishingToVerifierState")
+	defer span.End()
+	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
 	err := m.node.controller.ShardExecutionFinished(
 		ctx,
 		m.Shard.Job.ID,
@@ -372,8 +394,13 @@ func publishingToVerifierState(m *shardStateMachine) StateFn {
 }
 
 // the job has been executed and the results are being published.
-func verifyingResultsState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardVerifyingResults)
+func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardVerifyingResults)
+
+	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.verifyingResultsState")
+	defer span.End()
+	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	for {
 		req := <-m.req
@@ -390,10 +417,14 @@ func verifyingResultsState(m *shardStateMachine) StateFn {
 }
 
 // the job has been executed and the results are being published.
-func publishingToRequesterState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardPublishingToRequester)
+func publishingToRequesterState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardPublishingToRequester)
 
-	ctx := context.Background()
+	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.publishingToRequesterState")
+	defer span.End()
+	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
 	err := m.node.PublishShard(ctx, m.Shard)
 	if err != nil {
 		m.errorMsg = err.Error()
@@ -403,14 +434,18 @@ func publishingToRequesterState(m *shardStateMachine) StateFn {
 	}
 }
 
-func errorState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardError)
+func errorState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardError)
 	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
 	log.Error().Msgf(errMessage)
 
+	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.errorState")
+	defer span.End()
+	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
 	if m.bidSent {
 		// we sent a bid, so we need to publish our failure to the network
-		ctx := context.Background()
 		err := m.node.controller.ShardError(
 			ctx,
 			m.Shard.Job.ID,
@@ -427,7 +462,7 @@ func errorState(m *shardStateMachine) StateFn {
 }
 
 // we always reach this state, whether the job completed successfully or due to a failure.
-func completedState(m *shardStateMachine) StateFn {
-	m.transitionedTo(shardCompleted)
+func completedState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardCompleted)
 	return nil
 }

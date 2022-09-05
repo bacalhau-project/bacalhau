@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -18,8 +19,7 @@ import (
 )
 
 const (
-	CompleteStatus              = "Complete"
-	DefaultDockerRunWaitSeconds = 600
+	CompleteStatus = "Complete"
 )
 
 var (
@@ -62,13 +62,11 @@ type DockerRunOptions struct {
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
 
-	SkipSyntaxChecking               bool                      // Verify the syntax using shellcheck
-	WaitForJobToFinish               bool                      // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool                      // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int                       // Job time out in seconds
-	IPFSGetTimeOut                   int                       // Timeout for IPFS in seconds
-	IsLocal                          bool                      // Job should be executed locally
-	DockerRunDownloadFlags           ipfs.IPFSDownloadSettings // Settings for running Download
+	SkipSyntaxChecking bool // Verify the syntax using shellcheck
+
+	RunTimeSettings RunTimeSettings // Settings for running the job
+
+	DownloadFlags ipfs.IPFSDownloadSettings // Settings for running Download
 
 	ShardingGlobPattern string
 	ShardingBasePath    string
@@ -77,32 +75,24 @@ type DockerRunOptions struct {
 
 func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
-		Engine:                           "docker",
-		Verifier:                         "noop",
-		Publisher:                        "ipfs",
-		Inputs:                           []string{},
-		InputUrls:                        []string{},
-		InputVolumes:                     []string{},
-		OutputVolumes:                    []string{},
-		Env:                              []string{},
-		Concurrency:                      1,
-		Confidence:                       0,
-		CPU:                              "",
-		Memory:                           "",
-		GPU:                              "",
-		SkipSyntaxChecking:               false,
-		WorkingDir:                       "",
-		Labels:                           []string{},
-		WaitForJobToFinish:               false,
-		WaitForJobToFinishAndPrintOutput: false,
-		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		DockerRunDownloadFlags: ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    10,
-			OutputDir:      ".",
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		},
-		IPFSGetTimeOut: 10,
-		IsLocal:        false,
+		Engine:             "docker",
+		Verifier:           "noop",
+		Publisher:          "ipfs",
+		Inputs:             []string{},
+		InputUrls:          []string{},
+		InputVolumes:       []string{},
+		OutputVolumes:      []string{},
+		Env:                []string{},
+		Concurrency:        1,
+		Confidence:         0,
+		CPU:                "",
+		Memory:             "",
+		GPU:                "",
+		SkipSyntaxChecking: false,
+		WorkingDir:         "",
+		Labels:             []string{},
+		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
+		RunTimeSettings:    *NewRunTimeSettings(),
 
 		ShardingGlobPattern: "",
 		ShardingBasePath:    "/inputs",
@@ -181,37 +171,12 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.WaitForJobToFinish, "wait", ODR.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVarP(
-		&ODR.IPFSGetTimeOut, "gettimeout", "g", ODR.IPFSGetTimeOut,
-		`Timeout for getting the results of a job in --wait`,
-	)
-
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.IsLocal, "local", ODR.IsLocal,
-		`Run the job locally. Docker is required`,
-	)
-
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.WaitForJobToFinishAndPrintOutput, "download", ODR.WaitForJobToFinishAndPrintOutput,
-		`Download the results and print stdout once the job has completed (implies --wait).`,
-	)
-
-	dockerRunCmd.PersistentFlags().IntVar(
-		&ODR.WaitForJobTimeoutSecs, "wait-timeout-secs", ODR.WaitForJobTimeoutSecs,
-		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
-	)
-
-	dockerRunCmd.Flags().IntVar(&ODR.DockerRunDownloadFlags.TimeoutSecs, "download-timeout-secs",
-		ODR.DockerRunDownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	dockerRunCmd.Flags().StringVar(&ODR.DockerRunDownloadFlags.OutputDir, "output-dir",
-		ODR.DockerRunDownloadFlags.OutputDir, "Directory to write the output to.")
-	dockerRunCmd.Flags().StringVar(&ODR.DockerRunDownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
-		ODR.DockerRunDownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+	dockerRunCmd.Flags().IntVar(&ODR.DownloadFlags.TimeoutSecs, "download-timeout-secs",
+		ODR.DownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
+	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.OutputDir, "output-dir",
+		ODR.DownloadFlags.OutputDir, "Directory to write the output to.")
+	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
+		ODR.DownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
@@ -227,6 +192,8 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.ShardingBatchSize, "sharding-batch-size", ODR.ShardingBatchSize,
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
+
+	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
 
 var dockerCmd = &cobra.Command{
@@ -253,75 +220,16 @@ var dockerRunCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
-		ctx, span := system.Span(ctx, "RunJob", "RootSpan")
-		defer span.End()
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/dockerRun")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		ODR.Image = cmdArgs[0]
-		ODR.Entrypoint = cmdArgs[1:]
-
-		ODR.DockerRunDownloadFlags = ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    ODR.DockerRunDownloadFlags.TimeoutSecs,
-			OutputDir:      ODR.DockerRunDownloadFlags.OutputDir,
-			IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-		}
-
-		if ODR.WaitForJobToFinishAndPrintOutput {
-			ODR.WaitForJobToFinish = true
-		}
-
-		engineType, err := model.ParseEngineType(ODR.Engine)
+		jobSpec, jobDeal, err := CreateJobSpecAndDeal(ctx, cmdArgs, ODR)
 		if err != nil {
-			return err
-		}
-
-		verifierType, err := model.ParseVerifierType(ODR.Verifier)
-		if err != nil {
-			return err
-		}
-
-		publisherType, err := model.ParsePublisherType(ODR.Publisher)
-		if err != nil {
-			return err
-		}
-
-		for _, i := range ODR.Inputs {
-			ODR.InputVolumes = append(ODR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
-		}
-
-		if len(ODR.WorkingDir) > 0 {
-			err = system.ValidateWorkingDir(ODR.WorkingDir)
-
-			if err != nil {
-				return fmt.Errorf("invalid working directory: %s", err)
-			}
-		}
-
-		jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
-			engineType,
-			verifierType,
-			publisherType,
-			ODR.CPU,
-			ODR.Memory,
-			ODR.GPU,
-			ODR.InputUrls,
-			ODR.InputVolumes,
-			ODR.OutputVolumes,
-			ODR.Env,
-			ODR.Entrypoint,
-			ODR.Image,
-			ODR.Concurrency,
-			ODR.Confidence,
-			ODR.Labels,
-			ODR.WorkingDir,
-			ODR.ShardingGlobPattern,
-			ODR.ShardingBasePath,
-			ODR.ShardingBatchSize,
-			doNotTrack,
-		)
-		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			return errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
 
 		err = ExecuteJob(ctx,
@@ -329,9 +237,9 @@ var dockerRunCmd = &cobra.Command{
 			cmd,
 			jobSpec,
 			jobDeal,
-			ODR.IsLocal,
-			ODR.WaitForJobToFinish,
-			ODR.DockerRunDownloadFlags)
+			ODR.RunTimeSettings,
+			ODR.DownloadFlags,
+		)
 
 		if err != nil {
 			return fmt.Errorf("error executing job: %s", err)
@@ -339,4 +247,80 @@ var dockerRunCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func CreateJobSpecAndDeal(ctx context.Context,
+	cmdArgs []string,
+	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
+	defer span.End()
+
+	odr.Image = cmdArgs[0]
+	odr.Entrypoint = cmdArgs[1:]
+
+	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
+		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
+		OutputDir:      odr.DownloadFlags.OutputDir,
+		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+	}
+
+	if odr.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
+		odr.RunTimeSettings.WaitForJobToFinish = true
+	}
+
+	engineType, err := model.ParseEngineType(odr.Engine)
+	if err != nil {
+		return &model.JobSpec{}, &model.JobDeal{}, err
+	}
+
+	verifierType, err := model.ParseVerifierType(odr.Verifier)
+	if err != nil {
+		return &model.JobSpec{}, &model.JobDeal{}, err
+	}
+
+	publisherType, err := model.ParsePublisherType(odr.Publisher)
+	if err != nil {
+		return &model.JobSpec{}, &model.JobDeal{}, err
+	}
+
+	for _, i := range odr.Inputs {
+		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
+	}
+
+	if len(odr.WorkingDir) > 0 {
+		err = system.ValidateWorkingDir(odr.WorkingDir)
+
+		if err != nil {
+			return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+		}
+	}
+
+	jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
+		engineType,
+		verifierType,
+		publisherType,
+		odr.CPU,
+		odr.Memory,
+		odr.GPU,
+		odr.InputUrls,
+		odr.InputVolumes,
+		odr.OutputVolumes,
+		odr.Env,
+		odr.Entrypoint,
+		odr.Image,
+		odr.Concurrency,
+		odr.Confidence,
+		odr.Labels,
+		odr.WorkingDir,
+		odr.ShardingGlobPattern,
+		odr.ShardingBasePath,
+		odr.ShardingBatchSize,
+		doNotTrack,
+	)
+	if err != nil {
+		return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+	}
+
+	return jobSpec, jobDeal, nil
 }

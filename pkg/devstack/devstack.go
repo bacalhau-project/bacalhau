@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -36,8 +37,8 @@ type DevStack struct {
 }
 
 func NewDevStackForRunLocal(
-	ctx context.Context, cm *system.CleanupManager,
-
+	ctx context.Context,
+	cm *system.CleanupManager,
 	count int,
 	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
@@ -91,42 +92,36 @@ func NewDevStack(
 	computeNodeConfig computenode.ComputeNodeConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
-	t := system.GetTracer()
-	_, span := t.Start(ctx, "newdevstack")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
 	defer span.End()
 
 	nodes := []*node.Node{}
 	var firstNodeLibp2pPort int
+	var err error
 
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
-		//////////////////////////////////////
+		// -------------------------------------
 		// IPFS
-		//////////////////////////////////////
-		var err error
+		// -------------------------------------
 		var ipfsNode *ipfs.Node
+		var ipfsClient *ipfs.Client
 
-		if options.PublicIPFSMode {
-			ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
+		var ipfsSwarmAddrs []string
+		if i > 0 {
+			ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
-			}
-		} else {
-			var ipfsSwarmAddrs []string
-			if i > 0 {
-				ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
-				}
-			}
-			ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
 		}
 
-		ipfsClient, err := ipfsNode.Client()
+		ipfsNode, err = createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		}
+
+		ipfsClient, err = ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
@@ -134,7 +129,8 @@ func NewDevStack(
 		//////////////////////////////////////
 		// libp2p
 		//////////////////////////////////////
-		libp2pPort, err := freeport.GetFreePort()
+		var libp2pPort int
+		libp2pPort, err = freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +160,8 @@ func NewDevStack(
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
-		transport, err := libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
+		var transport transport.Transport
+		transport, err = libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +182,8 @@ func NewDevStack(
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
-		metricsPort, err := freeport.GetFreePort()
+		var metricsPort int
+		metricsPort, err = freeport.GetFreePort()
 		if err != nil {
 			return nil, err
 		}
@@ -209,18 +207,19 @@ func NewDevStack(
 			IsBadActor:           isBadActor,
 		}
 
-		node, err := node.NewNode(ctx, nodeConfig, injector)
+		var n *node.Node
+		n, err = node.NewNode(ctx, nodeConfig, injector)
 		if err != nil {
 			return nil, err
 		}
 
 		// start the node
-		err = node.Start(ctx)
+		err = n.Start(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		nodes = append(nodes, node)
+		nodes = append(nodes, n)
 	}
 
 	// only start profiling after we've set everything up!
@@ -244,7 +243,35 @@ func NewDevStack(
 	}, nil
 }
 
+func createIPFSNode(ctx context.Context,
+	cm *system.CleanupManager,
+	publicIPFSMode bool,
+	ipfsSwarmAddrs []string) (*ipfs.Node, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.createipfsnode")
+	defer span.End()
+	//////////////////////////////////////
+	// IPFS
+	//////////////////////////////////////
+	var err error
+	var ipfsNode *ipfs.Node
+
+	if publicIPFSMode {
+		ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		}
+	} else {
+		ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+		}
+	}
+	return ipfsNode, nil
+}
+
 func (stack *DevStack) PrintNodeInfo() {
+	ctx := context.Background()
+
 	if !config.DevstackGetShouldPrintInfo() {
 		return
 	}
@@ -283,14 +310,14 @@ export BACALHAU_API_PORT_%d=%d`,
 		)
 
 		// Just setting this to the last one, really doesn't matter
-		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(context.Background())
+		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(ctx)
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
 		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
 	}
 
 	// Just convenience below - print out the last of the nodes information as the global variable
-	logString += fmt.Sprintf(`
+	summaryShellVariablesString := fmt.Sprintf(`
 export BACALHAU_IPFS_SWARM_ADDRESSES=%s
 export BACALHAU_API_HOST=%s
 export BACALHAU_API_PORT=%s`,
@@ -298,7 +325,12 @@ export BACALHAU_API_PORT=%s`,
 		devStackAPIHost,
 		devStackAPIPort,
 	)
+
 	log.Debug().Msg(logString)
+
+	log.Info().Msg("Devstack is ready!")
+	log.Info().Msg("To use the devstack, run the following commands in your shell:")
+	log.Info().Msg(summaryShellVariablesString)
 }
 
 func (stack *DevStack) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {

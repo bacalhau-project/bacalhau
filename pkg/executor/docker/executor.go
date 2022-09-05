@@ -107,8 +107,11 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) error {
-	ctx, span := newSpan(ctx, "RunJob")
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/docker.RunShard")
 	defer span.End()
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+	system.AddNodeIDFromBaggageToSpan(ctx, span)
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data

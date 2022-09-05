@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type NoopPublisher struct {
@@ -25,8 +24,6 @@ func NewNoopPublisher(
 }
 
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	_, span := newSpan(ctx, "IsInstalled")
-	defer span.End()
 	return true, nil
 }
 
@@ -36,8 +33,10 @@ func (publisher *NoopPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
-	_, span := newSpan(ctx, "PublishShardResult")
+	//nolint:staticcheck,ineffassign
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.PublishShardResult")
 	defer span.End()
+
 	return model.StorageSpec{}, nil
 }
 
@@ -45,13 +44,11 @@ func (publisher *NoopPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
-	_, span := newSpan(ctx, "ComposeResultSet")
+	//nolint:staticcheck,ineffassign
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.ComposeResultReferences")
 	defer span.End()
-	return []model.StorageSpec{}, nil
-}
 
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "publisher/noop", apiName)
+	return []model.StorageSpec{}, nil
 }
 
 // Compile-time check that Verifier implements the correct interface:
