@@ -283,7 +283,7 @@ export BACALHAU_API_PORT_%d=%d`,
 		)
 
 		// Just setting this to the last one, really doesn't matter
-		swarmAddressesList, _ := node.IpfsNode.SwarmAddresses()
+		swarmAddressesList, _ := node.IPFSClient.SwarmAddresses(context.Background())
 		devStackIPFSSwarmAddress = strings.Join(swarmAddressesList, ",")
 		devStackAPIHost = stack.Nodes[nodeIndex].APIServer.Host
 		devStackAPIPort = fmt.Sprintf("%d", stack.Nodes[nodeIndex].APIServer.Port)
