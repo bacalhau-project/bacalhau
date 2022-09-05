@@ -78,7 +78,7 @@ func (t *InProcessTransport) Publish(ctx context.Context, ev model.JobEvent) err
 	return nil
 }
 
-func (t *InProcessTransport) Subscribe(fn transport.SubscribeFn) {
+func (t *InProcessTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)

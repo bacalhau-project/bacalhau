@@ -1,19 +1,20 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -207,6 +208,22 @@ var serveCmd = &cobra.Command{
 	Long:    serveLong,
 	Example: serveExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Cleanup manager ensures that resources are freed before exiting:
+		cm := system.NewCleanupManager()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+		defer cm.Cleanup()
+
+		ctx := cmd.Context()
+
+		// Context ensures main goroutine waits until killed with ctrl+c:
+		ctx, cancel := system.WithSignalShutdown(ctx)
+		defer cancel()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/serve")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		if OS.IPFSConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
 		}
@@ -214,15 +231,6 @@ var serveCmd = &cobra.Command{
 		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
-
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
-		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
-		defer cancel()
 
 		// Establishing p2p connection
 		peers := getPeers()

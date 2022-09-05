@@ -62,7 +62,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	requesterNodeID, err := requesterNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
 
-	computeNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		if ev.EventName == model.JobEventBidAccepted {
 			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
 			require.NoError(suite.T(), err)
@@ -78,7 +78,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
-	requesterNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	requesterNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		if ev.EventName == model.JobEventResultsProposed {
 			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
 			require.NoError(suite.T(), err)
