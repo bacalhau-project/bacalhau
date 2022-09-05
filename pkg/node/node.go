@@ -101,9 +101,6 @@ func NewNode(
 	ctx context.Context,
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/node.NewNode")
-	defer span.End()
-
 	if config.HostID == "" {
 		var err error
 		config.HostID, err = config.Transport.HostID(ctx)

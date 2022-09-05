@@ -7,22 +7,25 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor/util"
-	executors_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	publishers_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	verifiers_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
+
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/rs/zerolog/log"
 )
 
 var DefaultBootstrapAddresses = []string{
@@ -213,17 +216,6 @@ var serveCmd = &cobra.Command{
 	Long:    serveLong,
 	Example: serveExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
-		ctx := cmd.Context()
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/serve")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-
 		if OS.IPFSConnect == "" {
 			return fmt.Errorf("must specify ipfs-connect")
 		}
@@ -232,16 +224,44 @@ var serveCmd = &cobra.Command{
 			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
 		}
 
-		peers := DefaultBootstrapAddresses // Default to connecting to defaults
-		if OS.PeerConnect == "none" {
-			peers = []string{} // Only connect to peers if not none
-		} else if OS.PeerConnect != "" {
-			peers = []string{OS.PeerConnect} // Otherwise set peers according to the user options
-		}
+		// Cleanup manager ensures that resources are freed before exiting:
+		cm := system.NewCleanupManager()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+		defer cm.Cleanup()
 
+		// Context ensures main goroutine waits until killed with ctrl+c:
+		ctx, cancel := system.WithSignalShutdown(context.Background())
+		defer cancel()
+
+		// Establishing p2p connection
+		peers := getPeers()
 		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
 
 		datastore, err := inmemory.NewInMemoryDatastore()
+		if err != nil {
+			return err
+		}
+
+		// Establishing IPFS connection
+		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
+		if err != nil {
+			return err
+		}
+
+		// Create node config from cmd arguments
+		nodeConfig := node.NodeConfig{
+			IPFSClient:           ipfs,
+			CleanupManager:       cm,
+			Transport:            transport,
+			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+			HostAddress:          OS.HostAddress,
+			APIPort:              apiPort,
+			MetricsPort:          OS.MetricsPort,
+			ComputeNodeConfig: computenode.ComputeNodeConfig{
+				JobSelectionPolicy:    getJobSelectionConfig(),
+				CapacityManagerConfig: getCapacityManagerConfig(),
+			},
+		}
 		if err != nil {
 			return err
 		}
@@ -251,134 +271,33 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		hostID, err := transport.HostID(ctx)
-		if err != nil {
-			return err
-		}
-
-		storageProviders, err := util.NewStandardStorageProviders(
-			ctx,
-			cm,
-			util.StandardStorageProviderOptions{
-				IPFSMultiaddress:     OS.IPFSConnect,
-				FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+		// Create node config from cmd arguments
+		nodeConfig := node.NodeConfig{
+			IPFSClient:           ipfs,
+			CleanupManager:       cm,
+			Transport:            transport,
+			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+			HostAddress:          OS.HostAddress,
+			APIPort:              apiPort,
+			MetricsPort:          OS.MetricsPort,
+			ComputeNodeConfig: computenode.ComputeNodeConfig{
+				JobSelectionPolicy:    getJobSelectionConfig(),
+				CapacityManagerConfig: getCapacityManagerConfig(),
 			},
-		)
+			RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		}
+
+		// Create node
+		node, err := node.NewStandardNode(ctx, nodeConfig)
 		if err != nil {
 			return err
 		}
 
-		controller, err := controller.NewController(
-			ctx,
-			cm,
-			datastore,
-			transport,
-			storageProviders,
-		)
+		// Start node
+		err = node.Start(ctx)
 		if err != nil {
 			return err
 		}
-
-		executors, err := executors_util.NewStandardExecutors(
-			ctx,
-			cm,
-			executors_util.StandardExecutorOptions{
-				DockerID: fmt.Sprintf("bacalhau-%s", hostID),
-				Storage: executors_util.StandardStorageProviderOptions{
-					IPFSMultiaddress:     OS.IPFSConnect,
-					FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
-				},
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		verifiers, err := verifiers_util.NewStandardVerifiers(
-			ctx,
-			cm,
-			controller.GetStateResolver(),
-			transport.Encrypt,
-			transport.Decrypt,
-		)
-		if err != nil {
-			return err
-		}
-
-		publishers, err := publishers_util.NewIPFSPublishers(ctx, cm, controller.GetStateResolver(), OS.IPFSConnect)
-		if err != nil {
-			return err
-		}
-
-		jobSelectionPolicy := getJobSelectionConfig()
-		capacityManagerConfig := getCapacityManagerConfig()
-
-		computeNodeConfig := computenode.ComputeNodeConfig{
-			JobSelectionPolicy:    jobSelectionPolicy,
-			CapacityManagerConfig: capacityManagerConfig,
-		}
-
-		requesterNodeConfig := requesternode.RequesterNodeConfig{}
-
-		_, err = requesternode.NewRequesterNode(
-			ctx,
-			cm,
-			controller,
-			verifiers,
-			requesterNodeConfig,
-		)
-		if err != nil {
-			return err
-		}
-		_, err = computenode.NewComputeNode(
-			ctx,
-			cm,
-			controller,
-			executors,
-			verifiers,
-			publishers,
-			computeNodeConfig,
-		)
-		if err != nil {
-			return err
-		}
-
-		apiServer := publicapi.NewServer(
-			ctx,
-			OS.HostAddress,
-			apiPort,
-			controller,
-			publishers,
-		)
-
-		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(ctx)
-		defer cancel()
-
-		go func(ctx context.Context) {
-			if err = apiServer.ListenAndServe(ctx, cm); err != nil {
-				log.Fatal().Msgf("Api server can't run, bacalhau should stop: %+v", err)
-			}
-		}(ctx)
-
-		go func(ctx context.Context) {
-			if err = controller.Start(ctx); err != nil {
-				log.Fatal().Msgf("Controller can't run, bacalhau should stop: %+v", err)
-			}
-			if err = transport.Start(ctx); err != nil {
-				log.Fatal().Msgf("Transport can't run, bacalhau should stop: %+v", err)
-			}
-		}(ctx)
-
-		go func(ctx context.Context) { //nolint:unparam // ctx appropriate here
-			if err = system.ListenAndServeMetrics(ctx, cm, OS.MetricsPort); err != nil {
-				log.Error().Msgf("Cannot serve metrics: %v", err)
-			}
-		}(ctx)
-
-		log.Debug().Msgf("libp2p server started: %d", OS.SwarmPort)
-
-		log.Info().Msgf("Bacalhau compute node started - peer id is: %s", hostID)
 
 		<-ctx.Done() // block until killed
 		return nil

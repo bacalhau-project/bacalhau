@@ -13,18 +13,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -39,42 +34,6 @@ type DevStackOptions struct {
 type DevStack struct {
 	Nodes []*node.Node
 }
-
-type GetStorageProvidersFunc func(
-	ipfsMultiAddress string,
-	nodeIndex int,
-) (
-	map[model.StorageSourceType]storage.StorageProvider,
-	error,
-)
-
-type GetExecutorsFunc func(
-	ipfsMultiAddress string,
-	nodeIndex int,
-	isBadActor bool,
-	ctrl *controller.Controller,
-) (
-	map[model.EngineType]executor.Executor,
-	error,
-)
-
-type GetVerifiersFunc func(
-	transport *libp2p.LibP2PTransport,
-	nodeIndex int,
-	ctrl *controller.Controller,
-) (
-	map[model.VerifierType]verifier.Verifier,
-	error,
-)
-
-type GetPublishersFunc func(
-	ipfsMultiAddress string,
-	nodeIndex int,
-	ctrl *controller.Controller,
-) (
-	map[model.PublisherType]publisher.Publisher,
-	error,
-)
 
 func NewDevStackForRunLocal(
 	ctx context.Context,
@@ -142,28 +101,39 @@ func NewDevStack(
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
-		var ipfsSwarmAddrs []string
-		if i > 0 {
-			ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
+		//////////////////////////////////////
+		// IPFS
+		//////////////////////////////////////
+		var err error
+		var ipfsNode *ipfs.Node
+
+		if options.PublicIPFSMode {
+			ipfsNode, err = ipfs.NewNode(ctx, cm, []string{})
 			if err != nil {
-				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
+				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
+			}
+		} else {
+			var ipfsSwarmAddrs []string
+			if i > 0 {
+				ipfsSwarmAddrs, err = nodes[0].IPFSClient.SwarmAddresses(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
+				}
+			}
+			ipfsNode, err = ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 			}
 		}
 
-		// -----------------------------------
-		// IPFS
-		// -----------------------------------
-		ipfsNode, err := createIPFSNode(ctx, cm, options.PublicIPFSMode, ipfsSwarmAddrs)
-
 		ipfsClient, err := ipfsNode.Client()
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to create ipfs node: %w", err)
-			return nil, err
+			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		// -----------------------------------
+		//////////////////////////////////////
 		// libp2p
-		// -----------------------------------
+		//////////////////////////////////////
 		libp2pPort, err := freeport.GetFreePort()
 		if err != nil {
 			return nil, err
