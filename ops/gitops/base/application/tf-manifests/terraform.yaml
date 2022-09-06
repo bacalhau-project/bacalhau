@@ -8,7 +8,7 @@ spec:
     path: ./.terraform/environment
     secretRef:
       name: workspace
-      key: environment
+      key: workspace
   runnerPodTemplate:
     spec:
       volumeMounts:

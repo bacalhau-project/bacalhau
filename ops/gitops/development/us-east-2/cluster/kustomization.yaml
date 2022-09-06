@@ -7,6 +7,9 @@ namespace: bacalhau-development
 
 
 configMapGenerator:
+- name: workspace
+  files:
+  - workspace=workspace
 - envs:
   - values.env
   name: env-values
