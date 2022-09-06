@@ -5,11 +5,12 @@ resources:
 
 namespace: bacalhau-development
 
-
-configMapGenerator:
+secretGenerator:
 - name: workspace
   files:
   - workspace=workspace
+
+configMapGenerator:
 - envs:
   - values.env
   name: env-values

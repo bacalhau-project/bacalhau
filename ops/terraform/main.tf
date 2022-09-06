@@ -5,12 +5,12 @@ terraform {
       version = "4.34.0"
     }
   }
-  # backend "gcs" {
-  #   # this bucket lives in the bacalhau-cicd google project
-  #   # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
-  #   bucket = "bacalhau-global-storage"
-  #   prefix = "terraform/state"
-  # }
+  backend "gcs" {
+    # this bucket lives in the bacalhau-cicd google project
+    # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
+    bucket = "bacalhau-global-storage"
+    prefix = "terraform/state"
+  }
 }
 
 provider "google" {
