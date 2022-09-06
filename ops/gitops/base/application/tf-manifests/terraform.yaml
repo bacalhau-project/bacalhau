@@ -29,6 +29,11 @@ spec:
   varsFrom:
   - name: env-values
     kind: ConfigMap
+  vars:
+  - name: ingress_cidrs
+    value: ["0.0.0.0/0"]
+  - name: ssh_access_cidrs
+    value: ["0.0.0.0/0"]
   sourceRef:
     kind: GitRepository
     name: bacalhau
