@@ -9,6 +9,11 @@ spec:
     secretRef:
       name: workspace
       key: workspace
+  - secretRef:
+      name: override-vars
+      key: override.tf.json
+    location: workspace 
+    filename: ./override.tf.json
   runnerPodTemplate:
     spec:
       volumeMounts:
@@ -32,14 +37,6 @@ spec:
       }
   interval: 1m
   path: ./ops/terraform
-  varsFrom:
-  - name: env-values
-    kind: ConfigMap
-  vars:
-  - name: ingress_cidrs
-    value: ["0.0.0.0/0"]
-  - name: ssh_access_cidrs
-    value: ["0.0.0.0/0"]
   sourceRef:
     kind: GitRepository
     name: bacalhau
