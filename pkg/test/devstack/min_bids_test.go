@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -55,10 +56,13 @@ func (suite *MinBidsSuite) TestMinBids() {
 	runTest := func(
 		testCase minBidsTestCase,
 	) {
-		ctx, span := newSpan("TestMinBids")
+		ctx := context.Background()
+		t := system.GetTracer()
+		ctx, span := system.NewRootSpan(ctx, t, "pkg/test/devstack/min_bids_test")
 		defer span.End()
 
 		stack, cm := SetupTest(
+			ctx,
 			suite.T(),
 			testCase.nodes,
 			0,
@@ -69,7 +73,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		dirPath, err := prepareFolderWithFiles(testCase.shards)
 		require.NoError(suite.T(), err)
 
-		directoryCid, err := stack.AddFileToNodes(testCase.nodes, dirPath)
+		directoryCid, err := stack.AddFileToNodes(ctx, testCase.nodes, dirPath)
 		require.NoError(suite.T(), err)
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()
