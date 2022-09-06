@@ -22,6 +22,7 @@ type NodeConfig struct {
 	CleanupManager       *system.CleanupManager
 	Transport            transport.Transport
 	FilecoinUnsealedPath string
+	EstuaryAPIKey        string
 	HostAddress          string
 	HostID               string
 	APIPort              int

@@ -143,7 +143,7 @@ func (f *StandardPublishersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
 	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
-	return publisher_util.NewIPFSPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver(), nodeConfig.IPFSClient.APIAddress())
+	return publisher_util.NewIPFSPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver(), nodeConfig.IPFSClient.APIAddress(), nodeConfig.EstuaryAPIKey)
 }
 
 func NewStandardPublishersFactory() *StandardPublishersFactory {
