@@ -1,10 +1,14 @@
-package filecoinlotus
+package estuary
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -39,19 +43,10 @@ func NewEstuaryPublisher(
 func (estuaryPublisher *EstuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	ctx, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
-
-	// client := &http.Client{}
-	// req, err := http.NewRequest("GET", "https://icanhazdadjoke.com/", nil)
-	// if err != nil {
-	// 	fmt.Print(err.Error())
-	// }
-	// req.Header.Add("Accept", "application/json")
-	// req.Header.Add("Content-Type", "application/json")
-
-	// _, err := estuaryPublisher.runLotusCommand(ctx, []string{"version"})
-	// if err != nil {
-	// 	return false, err
-	// }
+	_, err := estuaryPublisher.doHTTPRequest("GET", getReadAPIUrl("/content/deals"), nil)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -69,19 +64,28 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 		shard,
 		shardResultPath,
 	)
-	// tarFile, err := estuaryPublisher.tarResultsDir(ctx, shardResultPath)
-	// if err != nil {
-	// 	return model.StorageSpec{}, err
-	// }
-	// contentCid, err := estuaryPublisher.importData(ctx, tarFile)
-	// if err != nil {
-	// 	return model.StorageSpec{}, err
-	// }
-	// dealCid, err := estuaryPublisher.createDeal(ctx, contentCid)
-	// if err != nil {
-	// 	return model.StorageSpec{}, err
-	// }
-	return model.StorageSpec{}, nil
+	tempDir, err := ioutil.TempDir("", "bacalhau-estuary-publisher")
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	carFile := fmt.Sprintf("%s/results.car", tempDir)
+	cid, err := car.CreateCar(ctx, shardResultPath, carFile, 1)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	fileReader, err := os.Open(carFile)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	_, err = estuaryPublisher.doHTTPRequest("POST", getWriteAPIUrl("/content/add-car"), fileReader)
+	if err != nil {
+		return model.StorageSpec{}, err
+	}
+	return model.StorageSpec{
+		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		Engine: model.StorageSourceEstuary,
+		Cid:    cid,
+	}, nil
 }
 
 func (estuaryPublisher *EstuaryPublisher) ComposeResultReferences(
@@ -94,23 +98,42 @@ func (estuaryPublisher *EstuaryPublisher) ComposeResultReferences(
 	return results, nil
 }
 
-func (estuaryPublisher *EstuaryPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	_, span := newSpan(ctx, "tarResultsDir")
-	defer span.End()
-	tempDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
+func (estuaryPublisher *EstuaryPublisher) doHTTPRequest(
+	method string,
+	url string,
+	body io.Reader,
+) ([]byte, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	tempFile := fmt.Sprintf("%s/results.tar", tempDir)
-	_, err = system.RunCommandGetResults("tar", []string{
-		"-cvf",
-		tempFile,
-		resultsDir,
-	})
+	req.Header.Add("Authorization", "Bearer "+estuaryPublisher.Config.APIKey)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return tempFile, nil
+	if res.StatusCode >= http.StatusNotFound {
+		return nil, fmt.Errorf("got error response code %d", res.StatusCode)
+	}
+	return ioutil.ReadAll(res.Body)
+}
+
+// We need 2 different API endpoints because uploading via the main API URL
+// gives a 404 and trying to read via the Upload URL gives a 404 :-(
+func getReadAPIUrl(path string) string {
+	baseUrl := os.Getenv("BACALHAU_ESTUARY_READ_API_URL")
+	if baseUrl == "" {
+		baseUrl = "https://api.estuary.tech"
+	}
+	return baseUrl + path
+}
+
+func getWriteAPIUrl(path string) string {
+	baseUrl := os.Getenv("BACALHAU_ESTUARY_WRITE_API_URL")
+	if baseUrl == "" {
+		baseUrl = "https://shuttle-6.estuary.tech"
+	}
+	return baseUrl + path
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
