@@ -59,6 +59,7 @@ export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
 ### secrets are installed in the install-node.sh script
 export SECRETS_HONEYCOMB_KEY="${var.honeycomb_api_key}"
 export SECRETS_GRAFANA_CLOUD_API_KEY="${var.grafana_cloud_api_key}"
+export SECRETS_ESTUARY_API_KEY="${var.estuary_api_key}"
 EOI
 
 ##############################

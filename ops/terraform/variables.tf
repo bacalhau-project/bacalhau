@@ -126,3 +126,8 @@ variable "grafana_cloud_api_endpoint" {
   type = string
   default = ""
 }
+
+variable "estuary_api_key" {
+  type    = string
+  default = ""
+}

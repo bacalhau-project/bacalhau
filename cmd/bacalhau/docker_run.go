@@ -114,6 +114,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.Verifier, "verifier", ODR.Verifier,
 		`What verification engine to use to run the job`,
 	)
+	dockerRunCmd.PersistentFlags().StringVar(
+		&ODR.Publisher, "publisher", ODR.Publisher,
+		`What publisher engine to use to publish the job results`,
+	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.Inputs, "inputs", "i", ODR.Inputs,
 		`CIDs to use on the job. Mounts them at '/inputs' in the execution.`,

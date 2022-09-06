@@ -18,6 +18,7 @@ const (
 	StorageSourceURLDownload
 	StorageSourceFilecoinUnsealed
 	StorageSourceFilecoin
+	StorageSourceEstuary
 	storageSourceDone // must be last
 )
 

@@ -12,6 +12,7 @@ const (
 	PublisherNoop
 	PublisherIpfs
 	PublisherFilecoin
+	PublisherEstuary
 	publisherDone // must be last
 )
 

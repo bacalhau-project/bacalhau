@@ -41,6 +41,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		NumberOfBadActors: 0,
 		Peer:              "",
 		PublicIPFSMode:    false,
+		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
 	}
 }
 

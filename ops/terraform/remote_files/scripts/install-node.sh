@@ -136,6 +136,7 @@ function install-secrets() {
   export HONEYCOMB_KEY=""
   export HONEYCOMB_DATASET="bacalhau_production"
   export GRAFANA_CLOUD_API_KEY=""
+  export ESTUARY_API_KEY=""
   if [[ -e /data/secrets.sh ]]; then
     source /data/secrets.sh
   fi
@@ -147,12 +148,16 @@ function install-secrets() {
   if [[ -n "${SECRETS_GRAFANA_CLOUD_API_KEY}" ]]; then
     export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
   fi
+  if [[ -n "${SECRETS_ESTUARY_API_KEY}" ]]; then
+    export ESTUARY_API_KEY="${SECRETS_ESTUARY_API_KEY}"
+  fi
 
   # write the secrets to persistent disk
   sudo tee /data/secrets.sh > /dev/null <<EOG
 export HONEYCOMB_KEY="${HONEYCOMB_KEY}"
 export HONEYCOMB_DATASET="${HONEYCOMB_DATASET}"
-export GRAFANA_CLOUD_API_KEY="${SECRETS_GRAFANA_CLOUD_API_KEY}"
+export GRAFANA_CLOUD_API_KEY="${GRAFANA_CLOUD_API_KEY}"
+export ESTUARY_API_KEY="${ESTUARY_API_KEY}"
 EOG
 
   # clean up variables file from any secret
