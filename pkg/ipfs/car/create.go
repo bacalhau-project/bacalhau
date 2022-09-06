@@ -25,36 +25,51 @@ func CreateCar(
 	ctx context.Context,
 	inputDirectory string,
 	outputFile string,
-) error {
+	// this can be 1 or 2
+	version int,
+) (string, error) {
 	// make a cid with the right length that we eventually will patch with the root.
 	hasher, err := multihash.GetHasher(multihash.SHA2_256)
 	if err != nil {
-		return err
+		return "", err
 	}
 	digest := hasher.Sum([]byte{})
 	hash, err := multihash.Encode(digest, multihash.SHA2_256)
 	if err != nil {
-		return err
+		return "", err
 	}
 	proxyRoot := cid.NewCidV1(uint64(multicodec.DagPb), hash)
 
 	options := []car.Option{}
+
+	switch version {
+	case 1:
+		options = []car.Option{blockstore.WriteAsCarV1(true)}
+	case 2:
+		// already the default
+	default:
+		return "", fmt.Errorf("invalid CAR version %d", version)
+	}
+
 	cdest, err := blockstore.OpenReadWrite(outputFile, []cid.Cid{proxyRoot}, options...)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Write the unixfs blocks into the store.
 	root, err := writeFiles(ctx, cdest, inputDirectory)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := cdest.Finalize(); err != nil {
-		return err
+		return "", err
 	}
 	// re-open/finalize with the final root.
-	return car.ReplaceRootsInFile(outputFile, []cid.Cid{root})
+	if err := car.ReplaceRootsInFile(outputFile, []cid.Cid{root}); err != nil {
+		return "", err
+	}
+	return root.String(), nil
 }
 
 func writeFiles(ctx context.Context, bs *blockstore.ReadWrite, paths ...string) (cid.Cid, error) {
