@@ -5,7 +5,8 @@ resources:
 
 namespace: bacalhau-development
 
+
 configMapGenerator:
-- name: env-values
-  files:
-  - values.yaml=values.yaml
+- envs:
+  - values.env
+  name: env-values
