@@ -4,3 +4,6 @@ resources:
 - repo.yaml
 - tf-runner-rbac.yaml
 - terraform.yaml
+
+configurations:
+  - kustomizeconfig.yaml

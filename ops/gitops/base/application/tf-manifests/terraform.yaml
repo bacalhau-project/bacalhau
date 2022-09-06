@@ -26,40 +26,9 @@ spec:
       }
   interval: 1m
   path: ./ops/terraform
-  # varsFrom:
-  # - kind: ConfigMap
-  #   name: env
-  vars:
-  - name: bacalhau_version
-    value: v0.1.43
-  - name: bacalhau_port
-    value: 1235
-  - name: bacalhau_connect_node0
-    value: QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD
-  - name: ipfs_version
-    value: v0.12.2
-  - name: gcp_project
-    value: bacalhau-development
-  - name: instance_count
-    value: 2
-  - name: region
-    value: europe-north1
-  - name: zone
-    value: europe-north1-c
-  - name: volume_size_gb
-    value: 10
-  - name: machine_type
-    value: e2-standard-4
-  - name: protect_resources
-    value: true
-  - name: auto_subnets
-    value: false
-  - name: ingress_cidrs
-    value: ["0.0.0.0/0"]
-  - name: ssh_access_cidrs
-    value: ["0.0.0.0/0"]
-  - name: num_gpu_machines
-    value: 0
+  varsFrom:
+  - name: env-values
+    kind: ConfigMap
   sourceRef:
     kind: GitRepository
     name: bacalhau

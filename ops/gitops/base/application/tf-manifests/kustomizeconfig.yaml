@@ -1,0 +1,8 @@
+nameReference:
+- kind: ConfigMap
+  version: v1
+  fieldSpecs:
+  - path: spec/varsFrom/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
