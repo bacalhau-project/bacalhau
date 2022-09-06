@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -40,7 +41,8 @@ var (
 type ServeOptions struct {
 	PeerConnect                     string // The libp2p multiaddress to connect to.
 	IPFSConnect                     string // The IPFS multiaddress to connect to.
-	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data
+	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                   string // The API key used when using the estuary API.
 	HostAddress                     string // The host address to listen on.
 	SwarmPort                       int    // The host port for libp2p network.
 	JobSelectionDataLocality        string // The data locality to use for job selection.
@@ -61,6 +63,7 @@ func NewServeOptions() *ServeOptions {
 		PeerConnect:                     "",
 		IPFSConnect:                     "",
 		FilecoinUnsealedPath:            "",
+		EstuaryAPIKey:                   os.Getenv("ESTUARY_API_KEY"),
 		HostAddress:                     "0.0.0.0",
 		SwarmPort:                       DefaultSwarmPort,
 		MetricsPort:                     2112,
@@ -185,6 +188,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The go template that can turn a filecoin CID into a local filepath with the unsealed data.`,
 	)
 	serveCmd.PersistentFlags().StringVar(
+		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
+		`The API key used when using the estuary API.`,
+	)
+	serveCmd.PersistentFlags().StringVar(
 		&OS.HostAddress, "host", OS.HostAddress,
 		`The host to listen on (for both api and swarm connections).`,
 	)
@@ -245,6 +252,7 @@ var serveCmd = &cobra.Command{
 			CleanupManager:       cm,
 			Transport:            transport,
 			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
+			EstuaryAPIKey:        OS.EstuaryAPIKey,
 			HostAddress:          OS.HostAddress,
 			APIPort:              apiPort,
 			MetricsPort:          OS.MetricsPort,
