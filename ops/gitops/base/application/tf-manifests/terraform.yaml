@@ -11,9 +11,9 @@ spec:
       key: workspace
   - secretRef:
       name: override-vars
-      key: override.tf.json
+      key: terraform.tfvars
     location: workspace 
-    path: ./override.tf.json
+    path: ./terraform.tfvars
   runnerPodTemplate:
     spec:
       volumeMounts:
