@@ -6,3 +6,10 @@ nameReference:
     group: infra.contrib.fluxcd.io
     version: v1alpha1
     kind: Terraform
+- kind: ConfigMap
+  version: v1
+  fieldSpecs:
+  - path: spec/fileMappings/secretRef/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
