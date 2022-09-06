@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -61,10 +62,14 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	outputPath := "/output"
 	fileContents := "pineapples"
 
-	ctx, span := newSpan("TestPythonWasmVolumes")
-	defer span.End()
-	stack, cm := SetupTest(suite.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
+	ctx := context.Background()
+	stack, cm := SetupTest(ctx, suite.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/pythonwasmvolumes")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
 	require.NoError(suite.T(), err)
@@ -82,7 +87,7 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		require.NoError(suite.T(), err)
 	}()
 
-	fileCid, err := stack.AddTextToNodes(nodeCount, []byte(fileContents))
+	fileCid, err := stack.AddTextToNodes(ctx, nodeCount, []byte(fileContents))
 	require.NoError(suite.T(), err)
 
 	// write bytes to main.py
@@ -132,7 +137,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
 	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 	require.NoError(suite.T(), err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
@@ -144,10 +149,14 @@ open("%s/test.txt", "w").write(open("%s").read())
 func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
-	ctx, span := newSpan("TestSimplestPythonWasmDashC")
-	defer span.End()
-	stack, cm := SetupTest(suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
+	ctx := context.Background()
+	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
@@ -180,10 +189,14 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
-	ctx, span := newSpan("TestSimplePythonWasm")
-	defer span.End()
-	stack, cm := SetupTest(suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
+	ctx := context.Background()
+	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
 	require.NoError(suite.T(), err)

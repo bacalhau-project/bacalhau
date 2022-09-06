@@ -46,9 +46,12 @@ func NewAPIClient(baseURI string) *APIClient {
 }
 
 // Alive calls the node's API server health check.
-func (apiClient *APIClient) Alive() (bool, error) {
+func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Alive")
+	defer span.End()
+
 	var body io.Reader
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiClient.BaseURI+"/livez", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiClient.BaseURI+"/livez", body)
 	if err != nil {
 		return false, nil
 	}
@@ -62,7 +65,11 @@ func (apiClient *APIClient) Alive() (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
+// TODO: #454 implement pagination
 func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
+	defer span.End()
+
 	req := listRequest{
 		ClientID: system.GetClientID(),
 	}
@@ -78,6 +85,9 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, err
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
 // TODO(optimisation): #452 implement with separate API call, don't filter list
 func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Job, foundJob bool, err error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
+	defer span.End()
+
 	if jobID == "" {
 		return model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
@@ -100,6 +110,9 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Jo
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
+	defer span.End()
+
 	if jobID == "" {
 		return model.JobState{}, fmt.Errorf("jobID must be non-empty in a GetJobStates call")
 	}
@@ -132,6 +145,9 @@ func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 }
 
 func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events []model.JobEvent, err error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetEvents")
+	defer span.End()
+
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetEvents call")
 	}
@@ -150,6 +166,9 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 }
 
 func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (localEvents []model.JobLocalEvent, err error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetLocalEvents")
+	defer span.End()
+
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetLocalEvents call")
 	}
@@ -168,6 +187,9 @@ func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (l
 }
 
 func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []model.StorageSpec, err error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetResults")
+	defer span.End()
+
 	if jobID == "" {
 		return nil, fmt.Errorf("jobID must be non-empty in a GetResults call")
 	}
@@ -192,6 +214,9 @@ func (apiClient *APIClient) Submit(
 	deal model.JobDeal,
 	buildContext *bytes.Buffer,
 ) (model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
+	defer span.End()
+
 	data := model.JobCreatePayload{
 		ClientID: system.GetClientID(),
 		Spec:     spec,
@@ -228,6 +253,9 @@ func (apiClient *APIClient) Submit(
 
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
+	defer span.End()
+
 	req := listRequest{
 		ClientID: system.GetClientID(),
 	}
@@ -241,6 +269,9 @@ func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, er
 }
 
 func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resData interface{}) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.post")
+	defer span.End()
+
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)

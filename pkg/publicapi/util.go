@@ -33,8 +33,10 @@ const TimeToWaitForHealthy = 50
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	system.InitConfigForTesting(t)
 
-	cleanupManager := system.NewCleanupManager()
-	cleanupManager.RegisterCallback(system.CleanupTracer)
+	cm := system.NewCleanupManager()
+	ctx := context.Background()
+
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	inprocessTransport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
@@ -42,11 +44,12 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(cleanupManager, noop_storage.StorageConfig{})
+	noopStorageProviders, err := util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	c, err := controller.NewController(
-		cleanupManager,
+		ctx,
+		cm,
 		inmemoryDatastore,
 		inprocessTransport,
 		noopStorageProviders,
@@ -54,19 +57,22 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	require.NoError(t, err)
 
 	noopPublishers, err := publisher_utils.NewNoopPublishers(
-		cleanupManager,
+		ctx,
+		cm,
 		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
-		cleanupManager,
+		ctx,
+		cm,
 		c.GetStateResolver(),
 	)
 	require.NoError(t, err)
 
 	_, err = requesternode.NewRequesterNode(
-		cleanupManager,
+		ctx,
+		cm,
 		c,
 		noopVerifiers,
 		requesternode.RequesterNodeConfig{},
@@ -77,21 +83,21 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	s := NewServer(host, port, c, noopPublishers)
+	s := NewServer(ctx, host, port, c, noopPublishers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cleanupManager))
+		require.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
-	require.NoError(t, waitForHealthy(cl))
+	require.NoError(t, waitForHealthy(ctx, cl))
 
-	return NewAPIClient(s.GetURI()), cleanupManager
+	return NewAPIClient(s.GetURI()), cm
 }
 
-func waitForHealthy(c *APIClient) error {
+func waitForHealthy(ctx context.Context, c *APIClient) error {
 	ch := make(chan bool)
 	go func() {
 		for {
-			alive, err := c.Alive()
+			alive, err := c.Alive(ctx)
 			if err == nil && alive {
 				ch <- true
 				return

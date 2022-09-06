@@ -51,18 +51,18 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	computeNodeTransport, err := NewTransport(cm, computeNodePort, []string{})
+	computeNodeTransport, err := NewTransport(ctx, cm, computeNodePort, []string{})
 	require.NoError(suite.T(), err)
 	computeNodeID, err := computeNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
-	requesterNodeTransport, err := NewTransport(cm, requesterNodePort, []string{
+	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodePort, []string{
 		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID),
 	})
 	require.NoError(suite.T(), err)
 	requesterNodeID, err := requesterNodeTransport.HostID(ctx)
 	require.NoError(suite.T(), err)
 
-	computeNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		if ev.EventName == model.JobEventBidAccepted {
 			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
 			require.NoError(suite.T(), err)
@@ -78,7 +78,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
-	requesterNodeTransport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	requesterNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		if ev.EventName == model.JobEventResultsProposed {
 			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
 			require.NoError(suite.T(), err)

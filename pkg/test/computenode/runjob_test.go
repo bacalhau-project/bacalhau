@@ -47,12 +47,13 @@ func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
 
 // a simple sanity test of the RunJob with docker executor
 func (suite *ComputeNodeRunJobSuite) TestRunJob() {
+	ctx := context.Background()
 	EXAMPLE_TEXT := "hello"
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, ipfsStack, cm := stack.ComputeNode, stack.IpfsStack, stack.CleanupManager
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
-	cid, err := ipfsStack.AddTextToNodes(1, []byte(EXAMPLE_TEXT))
+	cid, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
 	require.NoError(suite.T(), err)
 
 	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
@@ -66,7 +67,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 		Job:   job,
 		Index: 0,
 	}
-	err = computeNode.RunShardExecution(context.Background(), shard, result)
+	err = computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(suite.T(), err)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
@@ -79,8 +80,9 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 }
 
 func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
-	stack := testutils.NewDockerIpfsStack(suite.T(), computenode.NewDefaultComputeNodeConfig())
-	computeNode, cm := stack.ComputeNode, stack.CleanupManager
+	ctx := context.Background()
+	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
 	// it seems when we return an error so quickly we need to sleep a little bit
@@ -95,6 +97,6 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 		Job:   job,
 		Index: 0,
 	}
-	err := computeNode.RunShardExecution(context.Background(), shard, "")
+	err := computeNode.RunShardExecution(ctx, shard, "")
 	require.Error(suite.T(), err)
 }

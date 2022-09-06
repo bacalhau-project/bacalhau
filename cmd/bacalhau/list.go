@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rs/zerolog/log"
@@ -122,20 +123,29 @@ var listCmd = &cobra.Command{
 	Long:    listLong,
 	Example: listExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jobs, err := getAPIClient().List(context.Background())
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		jobs, err := getAPIClient().List(ctx)
 		if err != nil {
 			return err
 		}
 
-		t := table.NewWriter()
-		t.SetOutputMirror(cmd.OutOrStderr())
+		tw := table.NewWriter()
+		tw.SetOutputMirror(cmd.OutOrStderr())
 		if !OL.HideHeader {
-			t.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
+			tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
 		}
 
 		columnConfig := []table.ColumnConfig{}
 
-		t.SetColumnConfigs(columnConfig)
+		tw.SetColumnConfigs(columnConfig)
 
 		jobArray := []model.Job{}
 		for _, j := range jobs {
@@ -179,46 +189,14 @@ var listCmd = &cobra.Command{
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
-		for _, j := range jobArray[0:numberInTable] {
-			jobDesc := []string{
-				j.Spec.Engine.String(),
-			}
-
-			if j.Spec.Engine == model.EngineDocker {
-				jobDesc = append(jobDesc, j.Spec.Docker.Image)
-				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
-			}
-
-			resolver := getAPIClient().GetJobStateResolver()
-
-			stateSummary, err := resolver.StateSummary(context.Background(), j.ID)
-			if err != nil {
-				return err
-			}
-
-			verifiedSummary, err := resolver.VerifiedSummary(context.Background(), j.ID)
-			if err != nil {
-				return err
-			}
-
-			resultSummary, err := resolver.ResultSummary(context.Background(), j.ID)
-			if err != nil {
-				return err
-			}
-
-			t.AppendRows([]table.Row{
-				{
-					shortenTime(OL.OutputWide, j.CreatedAt),
-					shortID(OL.OutputWide, j.ID),
-					shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
-					shortenString(OL.OutputWide, stateSummary),
-					shortenString(OL.OutputWide, verifiedSummary),
-					shortenString(OL.OutputWide, resultSummary),
-				},
-			})
+		rows, err := resolvingJobDetails(ctx, jobArray, numberInTable)
+		if err != nil {
+			return err
 		}
+		tw.AppendRows(rows)
+
 		if OL.NoStyle {
-			t.SetStyle(table.Style{
+			tw.SetStyle(table.Style{
 				Name:   "StyleDefault",
 				Box:    table.StyleBoxDefault,
 				Color:  table.ColorOptionsDefault,
@@ -234,7 +212,7 @@ var listCmd = &cobra.Command{
 				Title: table.TitleOptionsDefault,
 			})
 		} else {
-			t.SetStyle(table.StyleColoredGreenWhiteOnBlack)
+			tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
 		}
 
 		if OL.OutputFormat == JSONFormat {
@@ -246,9 +224,56 @@ var listCmd = &cobra.Command{
 			cmd.Printf("%s\n", msgBytes)
 			return nil
 		} else {
-			t.Render()
+			tw.Render()
 		}
 
 		return nil
 	},
+}
+
+func resolvingJobDetails(ctx context.Context,
+	jobArray []model.Job,
+	lengthOfTable int) ([]table.Row, error) {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
+	defer span.End()
+
+	rows := []table.Row{}
+
+	// using indexing to avoid copying bytes
+	for i := range jobArray[0:lengthOfTable] {
+		jobDesc := []string{
+			jobArray[i].Spec.Engine.String(),
+		}
+
+		if jobArray[i].Spec.Engine == model.EngineDocker {
+			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
+		}
+
+		resolver := getAPIClient().GetJobStateResolver()
+
+		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		resultSummary, err := resolver.ResultSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		verifiedSummary, err := resolver.VerifiedSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, table.Row{
+			shortenTime(OL.OutputWide, jobArray[i].CreatedAt),
+			shortID(OL.OutputWide, jobArray[i].ID),
+			shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
+			shortenString(OL.OutputWide, stateSummary),
+			shortenString(OL.OutputWide, verifiedSummary),
+			shortenString(OL.OutputWide, resultSummary),
+		})
+	}
+	return rows, nil
 }

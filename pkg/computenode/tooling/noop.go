@@ -21,8 +21,8 @@ import (
 // 	}
 
 // 	return map[model.EngineType]executor.Executor{
-// 		model.EngineDocker: noopExecutor,
-// 		model.EngineNoop:   noopExecutor,
+// 		executor.EngineDocker: noopExecutor,
+// 		executor.EngineNoop:   noopExecutor,
 // 	}, nil
 // }
 

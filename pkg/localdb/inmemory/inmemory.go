@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type InMemoryDatastore struct {
@@ -35,6 +36,10 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 }
 
 func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJob")
+	defer span.End()
+
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	job, ok := d.jobs[id]
@@ -45,6 +50,10 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, e
 }
 
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobEvents")
+	defer span.End()
+
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
@@ -59,6 +68,10 @@ func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]mode
 }
 
 func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobLocalEvents")
+	defer span.End()
+
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
@@ -73,9 +86,13 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 }
 
 func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobs")
+	defer span.End()
+
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	result := []model.Job{}
+
 	if query.ID != "" {
 		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {
@@ -91,6 +108,10 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 }
 
 func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddJob")
+	defer span.End()
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	existingJob, ok := d.jobs[job.ID]
@@ -105,6 +126,10 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
 }
 
 func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev model.JobEvent) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddEvent")
+	defer span.End()
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
@@ -121,6 +146,10 @@ func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev model
 }
 
 func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev model.JobLocalEvent) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddLocalEvent")
+	defer span.End()
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
@@ -137,6 +166,10 @@ func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev 
 }
 
 func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.UpdateJobDeal")
+	defer span.End()
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
@@ -148,6 +181,11 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 }
 
 func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobState")
+	defer span.End()
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[jobID]
@@ -176,6 +214,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 	shardIndex int,
 	update model.JobShardState,
 ) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.UpdateShardState")
+	defer span.End()
+
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]

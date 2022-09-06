@@ -1,6 +1,8 @@
 package util
 
 import (
+	"context"
+
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -10,16 +12,17 @@ import (
 )
 
 func NewIPFSPublishers(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 ) (map[model.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(cm, resolver, ipfsMultiAddress)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, resolver, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -31,10 +34,11 @@ func NewIPFSPublishers(
 }
 
 func NewNoopPublishers(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (map[model.PublisherType]publisher.Publisher, error) {
-	noopPublisher, err := noop.NewNoopPublisher(cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}

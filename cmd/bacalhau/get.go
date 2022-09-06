@@ -1,9 +1,6 @@
 package bacalhau
 
 import (
-	"context"
-	"strings"
-
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -47,7 +44,6 @@ func NewGetOptions() *GetOptions {
 }
 
 func init() { //nolint:gochecknoinits
-	OG.IPFSDownloadSettings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	setupDownloadFlags(getCmd, &OG.IPFSDownloadSettings)
 }
 
@@ -60,12 +56,17 @@ var getCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/get")
+		defer span.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		jobID := cmdArgs[0]
 
 		log.Info().Msgf("Fetching results of job '%s'...", jobID)
 
-		j, ok, err := getAPIClient().Get(context.Background(), jobID)
+		j, ok, err := getAPIClient().Get(ctx, jobID)
 
 		if !ok {
 			cmd.Printf("No job ID found matching ID: %s", jobID)
@@ -76,12 +77,13 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		results, err := getAPIClient().GetResults(context.Background(), j.ID)
+		results, err := getAPIClient().GetResults(ctx, j.ID)
 		if err != nil {
 			return err
 		}
 
 		err = ipfs.DownloadJob(
+			ctx,
 			cm,
 			j,
 			results,

@@ -155,7 +155,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
+			devstack, cm := devstack_tests.SetupTest(ctx, suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -163,10 +163,10 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
 
-			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
+			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(suite.T(), err)
-			ODR.DockerRunDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			ODR.DockerRunDownloadFlags.OutputDir = dir
+			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			ODR.DownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -686,6 +686,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	ctx := context.Background()
 	const nodeCount = 1
 
 	videos := []string{
@@ -695,6 +696,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 	}
 
 	stack, cm := devstack_tests.SetupTest(
+		ctx,
 		suite.T(),
 		nodeCount,
 		0,
@@ -715,7 +717,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
@@ -746,6 +748,7 @@ type deterministicVerifierTestArgs struct {
 }
 
 func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
+	ctx := context.Background()
 
 	apiSubmitJob := func(
 		apiClient *publicapi.APIClient,
@@ -778,5 +781,5 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		return jobId, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(suite.T(), apiSubmitJob)
+	devstack_tests.RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 }

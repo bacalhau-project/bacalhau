@@ -13,19 +13,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type DevStackNodeIPFS struct {
-	IpfsNode   *ipfs.Node
-	IpfsClient *ipfs.Client
-}
-
 type DevStackIPFS struct {
-	Nodes          []*DevStackNodeIPFS
+	IPFSClients    []*ipfs.Client
 	CleanupManager *system.CleanupManager
 }
 
 // A devstack but with only IPFS servers connected to each other
-func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
-	nodes := []*DevStackNodeIPFS{}
+func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
+	clients := []*ipfs.Client{}
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 
@@ -35,13 +30,13 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error
 		var err error
 		var ipfsSwarmAddrs []string
 		if i > 0 {
-			ipfsSwarmAddrs, err = nodes[0].IpfsNode.SwarmAddresses()
+			ipfsSwarmAddrs, err = clients[0].SwarmAddresses(context.Background())
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}
 		}
 
-		ipfsNode, err := ipfs.NewLocalNode(cm, ipfsSwarmAddrs)
+		ipfsNode, err := ipfs.NewLocalNode(ctx, cm, ipfsSwarmAddrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 		}
@@ -51,16 +46,11 @@ func NewDevStackIPFS(cm *system.CleanupManager, count int) (*DevStackIPFS, error
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		devStackNode := &DevStackNodeIPFS{
-			IpfsNode:   ipfsNode,
-			IpfsClient: ipfsClient,
-		}
-
-		nodes = append(nodes, devStackNode)
+		clients = append(clients, ipfsClient)
 	}
 
 	stack := &DevStackIPFS{
-		Nodes:          nodes,
+		IPFSClients:    clients,
 		CleanupManager: cm,
 	}
 
@@ -75,18 +65,18 @@ ipfs
 
 command="add -q testdata/grep_file.txt"
 	`
-	for _, node := range stack.Nodes {
+	for _, node := range stack.IPFSClients {
 		logString += fmt.Sprintf(`
-cid=$(IPFS_PATH=%s ipfs $command)
-curl http://127.0.0.1:%d/api/v0/id`, node.IpfsNode.RepoPath, node.IpfsNode.APIPort)
+cid=$(ipfs --api %s ipfs $command)
+curl -XPOST %s`, node.APIAddress(), node.APIAddress())
 	}
 
 	log.Trace().Msg(logString + "\n")
 }
 
-func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDirectory bool) (string, error) {
+func (stack *DevStackIPFS) addItemToNodes(ctx context.Context, nodeCount int, filePath string, isDirectory bool) (string, error) {
 	var res string
-	for i, node := range stack.Nodes {
+	for i, node := range stack.IPFSClients {
 		if node == nil {
 			continue
 		}
@@ -94,27 +84,27 @@ func (stack *DevStackIPFS) addItemToNodes(nodeCount int, filePath string, isDire
 			continue
 		}
 
-		cid, err := node.IpfsClient.Put(context.Background(), filePath)
+		cid, err := node.Put(ctx, filePath)
 		if err != nil {
 			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
 		}
 
-		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.IpfsNode.ID())
+		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.APIAddress())
 		res = strings.TrimSpace(cid)
 	}
 
 	return res, nil
 }
 
-func (stack *DevStackIPFS) AddFileToNodes(nodeCount int, filePath string) (string, error) {
-	return stack.addItemToNodes(nodeCount, filePath, false)
+func (stack *DevStackIPFS) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {
+	return stack.addItemToNodes(ctx, nodeCount, filePath, false)
 }
 
-func (stack *DevStackIPFS) AddFolderToNodes(nodeCount int, folderPath string) (string, error) {
-	return stack.addItemToNodes(nodeCount, folderPath, true)
+func (stack *DevStackIPFS) AddFolderToNodes(ctx context.Context, nodeCount int, folderPath string) (string, error) {
+	return stack.addItemToNodes(ctx, nodeCount, folderPath, true)
 }
 
-func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (string, error) {
+func (stack *DevStackIPFS) AddTextToNodes(ctx context.Context, nodeCount int, fileContent []byte) (string, error) {
 	testDir, err := ioutil.TempDir("", "bacalhau-test")
 
 	if err != nil {
@@ -128,5 +118,5 @@ func (stack *DevStackIPFS) AddTextToNodes(nodeCount int, fileContent []byte) (st
 		return "", err
 	}
 
-	return stack.AddFileToNodes(nodeCount, testFilePath)
+	return stack.AddFileToNodes(ctx, nodeCount, testFilePath)
 }

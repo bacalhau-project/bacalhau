@@ -12,7 +12,7 @@ import (
 )
 
 func TestTracer(t *testing.T) {
-	defer system.CleanupTracer()
+	defer system.CleanupTraceProvider()
 
 	var sr SpanRecorder
 	tp := otel.GetTracerProvider().(*sdktrace.TracerProvider)

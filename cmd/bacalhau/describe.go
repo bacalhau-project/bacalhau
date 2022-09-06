@@ -1,12 +1,12 @@
 package bacalhau
 
 import (
-	"context"
 	"sort"
 	"time"
 
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -115,9 +115,18 @@ var describeCmd = &cobra.Command{
 	Example: describeExample,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/describe")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		inputJobID := cmdArgs[0]
 
-		j, ok, err := getAPIClient().Get(context.Background(), cmdArgs[0])
+		j, ok, err := getAPIClient().Get(ctx, cmdArgs[0])
 
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
@@ -129,19 +138,19 @@ var describeCmd = &cobra.Command{
 			return nil
 		}
 
-		jobState, err := getAPIClient().GetJobState(context.Background(), j.ID)
+		jobState, err := getAPIClient().GetJobState(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
 			return err
 		}
 
-		jobEvents, err := getAPIClient().GetEvents(context.Background(), j.ID)
+		jobEvents, err := getAPIClient().GetEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(context.Background(), j.ID)
+		localEvents, err := getAPIClient().GetLocalEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err

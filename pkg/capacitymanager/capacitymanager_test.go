@@ -70,7 +70,7 @@ func getResources(c, m, d string) model.ResourceUsageConfig {
 	}
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
 	var res []model.ResourceUsageConfig
 	for _, d := range data {

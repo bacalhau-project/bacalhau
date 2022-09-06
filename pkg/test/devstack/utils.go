@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -17,15 +15,10 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	noop_storage "github.com/filecoin-project/bacalhau/pkg/storage/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,6 +27,7 @@ var StorageNames = []model.StorageSourceType{
 }
 
 func SetupTest(
+	ctx context.Context,
 	t *testing.T,
 	nodes int, badActors int,
 	//nolint:gocritic
@@ -42,70 +36,13 @@ func SetupTest(
 	system.InitConfigForTesting(t)
 
 	cm := system.NewCleanupManager()
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
-			IPFSMultiaddress: ipfsMultiAddress,
-		})
+
+	options := devstack.DevStackOptions{
+		NumberOfNodes:     nodes,
+		NumberOfBadActors: badActors,
 	}
-	getExecutors := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		isBadActor bool,
-		ctrl *controller.Controller,
-	) (
-		map[model.EngineType]executor.Executor,
-		error,
-	) {
-		ipfsParts := strings.Split(ipfsMultiAddress, "/")
-		ipfsSuffix := ipfsParts[len(ipfsParts)-1]
-		return executor_util.NewStandardExecutors(
-			cm,
-			executor_util.StandardExecutorOptions{
-				DockerID:   fmt.Sprintf("devstacknode%d-%s", nodeIndex, ipfsSuffix),
-				IsBadActor: isBadActor,
-				Storage: executor_util.StandardStorageProviderOptions{
-					IPFSMultiaddress: ipfsMultiAddress,
-				},
-			},
-		)
-	}
-	getVerifiers := func(
-		transport *libp2p.LibP2PTransport,
-		nodeIndex int,
-		ctrl *controller.Controller,
-	) (
-		map[model.VerifierType]verifier.Verifier,
-		error,
-	) {
-		return verifier_util.NewStandardVerifiers(
-			cm,
-			ctrl.GetStateResolver(),
-			transport.Encrypt,
-			transport.Decrypt,
-		)
-	}
-	getPublishers := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		ctrl *controller.Controller,
-	) (
-		map[model.PublisherType]publisher.Publisher,
-		error,
-	) {
-		return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
-	}
-	stack, err := devstack.NewDevStack(
-		cm,
-		nodes,
-		badActors,
-		getStorageProviders,
-		getExecutors,
-		getVerifiers,
-		getPublishers,
-		config,
-		"",
-		false,
-	)
+
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig())
 	require.NoError(t, err)
 
 	// important to give the pubsub network time to connect
@@ -129,6 +66,7 @@ type DeterministicVerifierTestArgs struct {
 }
 
 func RunDeterministicVerifierTests(
+	ctx context.Context,
 	t *testing.T,
 	submitJob func(
 		apiClient *publicapi.APIClient,
@@ -136,7 +74,7 @@ func RunDeterministicVerifierTests(
 	) (string, error),
 ) {
 	// test that we must have more than one node to run the job
-	RunDeterministicVerifierTest(t, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      1,
 		ShardCount:     2,
 		BadActors:      0,
@@ -146,7 +84,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that if all nodes agree then all are verified
-	RunDeterministicVerifierTest(t, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      3,
 		ShardCount:     2,
 		BadActors:      0,
@@ -156,7 +94,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that if one node mis-behaves we catch it but the others are verified
-	RunDeterministicVerifierTest(t, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      3,
 		ShardCount:     2,
 		BadActors:      1,
@@ -166,7 +104,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that is there is a draw between good and bad actors then none are verified
-	RunDeterministicVerifierTest(t, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      2,
 		ShardCount:     2,
 		BadActors:      1,
@@ -176,7 +114,7 @@ func RunDeterministicVerifierTests(
 	})
 
 	// test that with a larger group the confidence setting gives us a lower threshold
-	RunDeterministicVerifierTest(t, submitJob, DeterministicVerifierTestArgs{
+	RunDeterministicVerifierTest(ctx, t, submitJob, DeterministicVerifierTestArgs{
 		NodeCount:      5,
 		ShardCount:     2,
 		BadActors:      2,
@@ -187,6 +125,7 @@ func RunDeterministicVerifierTests(
 }
 
 func RunDeterministicVerifierTest( //nolint:funlen
+	ctx context.Context,
 	t *testing.T,
 	submitJob func(
 		apiClient *publicapi.APIClient,
@@ -195,83 +134,55 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	args DeterministicVerifierTestArgs,
 ) {
 	cm := system.NewCleanupManager()
-	ctx := context.Background()
 	defer cm.Cleanup()
-	getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (map[model.StorageSourceType]storage.StorageProvider, error) {
-		return executor_util.NewNoopStorageProviders(cm, noop_storage.StorageConfig{
-			ExternalHooks: noop_storage.StorageConfigExternalHooks{
-				Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
-					results := []model.StorageSpec{}
-					for i := 0; i < args.ShardCount; i++ {
-						results = append(results, model.StorageSpec{
-							Engine: model.StorageSourceIPFS,
-							Cid:    fmt.Sprintf("123%d", i),
-							Path:   fmt.Sprintf("/data/file%d.txt", i),
-						})
+
+	options := devstack.DevStackOptions{
+		NumberOfNodes:     args.NodeCount,
+		NumberOfBadActors: args.BadActors,
+	}
+
+	storageProvidersFactory := devstack.NewNoopStorageProvidersFactoryWithConfig(noop_storage.StorageConfig{
+		ExternalHooks: noop_storage.StorageConfigExternalHooks{
+			Explode: func(ctx context.Context, storageSpec model.StorageSpec) ([]model.StorageSpec, error) {
+				results := []model.StorageSpec{}
+				for i := 0; i < args.ShardCount; i++ {
+					results = append(results, model.StorageSpec{
+						Engine: model.StorageSourceIPFS,
+						Cid:    fmt.Sprintf("123%d", i),
+						Path:   fmt.Sprintf("/data/file%d.txt", i),
+					})
+				}
+				return results, nil
+			},
+		},
+	})
+
+	executorsFactory := node.ExecutorsFactoryFunc(func(
+		ctx context.Context, nodeConfig node.NodeConfig) (map[model.EngineType]executor.Executor, error) {
+		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
+			IsBadActor: nodeConfig.IsBadActor,
+			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) error {
+					jobStdout := fmt.Sprintf("hello world %d", shard.Index)
+					if nodeConfig.IsBadActor {
+						jobStdout = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
 					}
-					return results, nil
+					return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0600) //nolint:gomnd
 				},
 			},
 		})
-	}
-	getExecutors := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		isBadActor bool,
-		ctrl *controller.Controller,
-	) (map[model.EngineType]executor.Executor, error) {
-		return executor_util.NewNoopExecutors(
-			cm,
-			noop_executor.ExecutorConfig{
-				IsBadActor: isBadActor,
-				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) error {
-						jobStdout := fmt.Sprintf("hello world %d", shard.Index)
-						if isBadActor {
-							jobStdout = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
-						}
-						return os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(jobStdout), 0600) //nolint:gomnd
-					},
-				},
-			},
-		)
-	}
-	getVerifiers := func(
-		transport *libp2p.LibP2PTransport,
-		nodeIndex int,
-		ctrl *controller.Controller,
-	) (
-		map[model.VerifierType]verifier.Verifier,
-		error,
-	) {
-		return verifier_util.NewStandardVerifiers(
-			cm,
-			ctrl.GetStateResolver(),
-			transport.Encrypt,
-			transport.Decrypt,
-		)
-	}
-	getPublishers := func(
-		ipfsMultiAddress string,
-		nodeIndex int,
-		ctrl *controller.Controller,
-	) (
-		map[model.PublisherType]publisher.Publisher,
-		error,
-	) {
-		return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
-	}
+	})
+
+	injector := node.NewStandardNodeDepdencyInjector()
+	injector.ExecutorsFactory = executorsFactory
+	injector.StorageProvidersFactory = storageProvidersFactory
+
 	stack, err := devstack.NewDevStack(
+		ctx,
 		cm,
-		args.NodeCount,
-		args.BadActors,
-		getStorageProviders,
-		getExecutors,
-		getVerifiers,
-		getPublishers,
+		options,
 		computenode.NewDefaultComputeNodeConfig(),
-		"",
-		false,
+		injector,
 	)
 	require.NoError(t, err)
 

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type IPFSPublisher struct {
@@ -19,6 +18,7 @@ type IPFSPublisher struct {
 }
 
 func NewIPFSPublisher(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	ipfsAPIAddr string,
@@ -36,9 +36,6 @@ func NewIPFSPublisher(
 }
 
 func (publisher *IPFSPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
-	defer span.End()
-
 	_, err := publisher.IPFSClient.ID(ctx)
 	return err == nil, err
 }
@@ -49,8 +46,9 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := newSpan(ctx, "PublishShardResult")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
 	defer span.End()
+
 	log.Debug().Msgf(
 		"Uploading results folder to ipfs: %s %s %s",
 		hostID,
@@ -72,9 +70,12 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
-	results := []model.StorageSpec{}
-	ctx, span := newSpan(ctx, "ComposeResultSet")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.ComposeResultReferences")
 	defer span.End()
+
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
+	results := []model.StorageSpec{}
 	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, err
@@ -83,10 +84,6 @@ func (publisher *IPFSPublisher) ComposeResultReferences(
 		results = append(results, shardResult.Results)
 	}
 	return results, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "publisher/ipfs", apiName)
 }
 
 // Compile-time check that Verifier implements the correct interface:

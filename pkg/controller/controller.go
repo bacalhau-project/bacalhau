@@ -41,12 +41,13 @@ type Controller struct {
 */
 
 func NewController(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	db localdb.LocalDB,
 	tx transport.Transport,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
 ) (*Controller, error) {
-	nodeID, err := tx.HostID(context.Background())
+	nodeID, err := tx.HostID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (ctrl *Controller) GetLocalDB() localdb.LocalDB {
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
-	ctrl.transport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	ctrl.transport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		err := ctrl.handleEvent(ctx, ev)
 		if err != nil {
 			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
@@ -89,6 +90,10 @@ func (ctrl *Controller) Start(ctx context.Context) error {
 	ctrl.cleanupManager.RegisterCallback(func() error {
 		return ctrl.Shutdown(ctx)
 	})
+
+	if err := ctrl.transport.Start(ctx); err != nil {
+		return err
+	}
 
 	return nil
 }
