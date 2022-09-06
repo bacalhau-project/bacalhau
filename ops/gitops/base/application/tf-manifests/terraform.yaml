@@ -3,6 +3,12 @@ kind: Terraform
 metadata:
   name: tf-manifest
 spec:
+  fileMappings:
+  - location: workspace
+    path: ./.terraform/environment
+    secretRef:
+    - name: workspace
+      key: environment
   runnerPodTemplate:
     spec:
       volumeMounts:
@@ -17,8 +23,6 @@ spec:
       env:
       - name: "GOOGLE_APPLICATION_CREDENTIALS"
         value: "/etc/google-auth/key.json"
-      - name: "TF_WORKSPACE"
-        value: "development"
   disableDriftDetection: true
   backendConfig:
     customConfiguration: |
