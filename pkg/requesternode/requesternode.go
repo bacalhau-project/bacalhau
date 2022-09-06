@@ -37,15 +37,7 @@ func NewRequesterNode(
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
-	nodeID, err := c.HostID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	threadLogger := logger.LoggerWithRuntimeInfo(nodeID)
-	if err != nil {
-		threadLogger.Error().Err(err)
-		return nil, err
-	}
+	nodeID := c.HostID()
 	requesterNode := &RequesterNode{
 		id:         nodeID,
 		config:     config,

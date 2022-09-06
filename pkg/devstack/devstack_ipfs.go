@@ -3,12 +3,8 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -72,51 +68,4 @@ curl -XPOST %s`, node.APIAddress(), node.APIAddress())
 	}
 
 	log.Trace().Msg(logString + "\n")
-}
-
-func (stack *DevStackIPFS) addItemToNodes(ctx context.Context, nodeCount int, filePath string, isDirectory bool) (string, error) {
-	var res string
-	for i, node := range stack.IPFSClients {
-		if node == nil {
-			continue
-		}
-		if i >= nodeCount {
-			continue
-		}
-
-		cid, err := node.Put(ctx, filePath)
-		if err != nil {
-			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
-		}
-
-		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.APIAddress())
-		res = strings.TrimSpace(cid)
-	}
-
-	return res, nil
-}
-
-func (stack *DevStackIPFS) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {
-	return stack.addItemToNodes(ctx, nodeCount, filePath, false)
-}
-
-func (stack *DevStackIPFS) AddFolderToNodes(ctx context.Context, nodeCount int, folderPath string) (string, error) {
-	return stack.addItemToNodes(ctx, nodeCount, folderPath, true)
-}
-
-func (stack *DevStackIPFS) AddTextToNodes(ctx context.Context, nodeCount int, fileContent []byte) (string, error) {
-	testDir, err := ioutil.TempDir("", "bacalhau-test")
-
-	if err != nil {
-		return "", err
-	}
-
-	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW|util.OS_ALL_R)
-
-	if err != nil {
-		return "", err
-	}
-
-	return stack.AddFileToNodes(ctx, nodeCount, testFilePath)
 }

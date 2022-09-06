@@ -2,6 +2,7 @@ package computenode
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +34,8 @@ func (suite *ComputeNodeJobSelectionSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ComputeNodeJobSelectionSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TearDownTest() {
@@ -74,13 +76,13 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	// added to the server (so we can test locality anywhere)
 	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
-	cid, err := (func() (string, error) {
+	cid, err := func() (string, error) {
 		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		ipfsStack, cm := stack.IpfsStack, stack.Node.CleanupManager
 
 		defer cm.Cleanup()
-		return ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
-	}())
+		return devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
+	}()
 	require.NoError(suite.T(), err)
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
@@ -94,7 +96,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 		defer cm.Cleanup()
 
 		if shouldAddData {
-			_, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
+			_, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 			require.NoError(suite.T(), err)
 		}
 

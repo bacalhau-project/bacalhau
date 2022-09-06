@@ -32,7 +32,7 @@ func (suite *DescribeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
 

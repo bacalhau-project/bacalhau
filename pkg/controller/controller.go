@@ -47,10 +47,7 @@ func NewController(
 	tx transport.Transport,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
 ) (*Controller, error) {
-	nodeID, err := tx.HostID(ctx)
-	if err != nil {
-		return nil, err
-	}
+	nodeID := tx.HostID()
 	ctrl := &Controller{
 		cleanupManager:   cm,
 		id:               nodeID,
@@ -102,8 +99,8 @@ func (ctrl *Controller) Shutdown(ctx context.Context) error {
 	return ctrl.cleanJobContexts(ctx)
 }
 
-func (ctrl *Controller) HostID(ctx context.Context) (string, error) {
-	return ctrl.id, nil
+func (ctrl *Controller) HostID() string {
+	return ctrl.id
 }
 
 // called by compute nodes and requestor nodes

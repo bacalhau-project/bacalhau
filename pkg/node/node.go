@@ -103,11 +103,7 @@ func NewNode(
 	config NodeConfig,
 	injector NodeDependencyInjector) (*Node, error) {
 	if config.HostID == "" {
-		var err error
-		config.HostID, err = config.Transport.HostID(ctx)
-		if err != nil {
-			return nil, err
-		}
+		config.HostID = config.Transport.HostID()
 	}
 
 	datastore, err := inmemory.NewInMemoryDatastore()

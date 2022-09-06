@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -34,7 +35,8 @@ func (suite *ComputeNodeRunJobSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ComputeNodeRunJobSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ComputeNodeRunJobSuite) TearDownTest() {
@@ -53,7 +55,7 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
-	cid, err := ipfsStack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
+	cid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 	require.NoError(suite.T(), err)
 
 	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")

@@ -38,7 +38,7 @@ func (suite *GetSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *GetSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
 

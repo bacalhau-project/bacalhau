@@ -30,7 +30,8 @@ func (suite *DevstackSubmitSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackSubmitSuite) TearDownTest() {

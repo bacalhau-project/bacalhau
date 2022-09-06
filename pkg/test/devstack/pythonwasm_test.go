@@ -3,6 +3,7 @@ package devstack
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -38,7 +39,8 @@ func (suite *DevstackPythonWASMSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackPythonWASMSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackPythonWASMSuite) TearDownTest() {
@@ -87,7 +89,7 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		require.NoError(suite.T(), err)
 	}()
 
-	fileCid, err := stack.AddTextToNodes(ctx, nodeCount, []byte(fileContents))
+	fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	// write bytes to main.py

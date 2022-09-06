@@ -9,6 +9,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 
 	"github.com/stretchr/testify/require"
@@ -51,15 +52,15 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	require.NoError(suite.T(), err)
 	requesterNodePort, err := freeport.GetFreePort()
 	require.NoError(suite.T(), err)
-	computeNodeTransport, err := NewTransport(ctx, cm, computeNodePort, []string{})
+	computeNodeTransport, err := NewTransport(ctx, cm, computeNodePort, []multiaddr.Multiaddr{})
 	require.NoError(suite.T(), err)
-	computeNodeID, err := computeNodeTransport.HostID(ctx)
+	computeNodeID := computeNodeTransport.HostID()
 	require.NoError(suite.T(), err)
-	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodePort, []string{
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID),
-	})
+	addr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", computeNodePort, computeNodeID))
 	require.NoError(suite.T(), err)
-	requesterNodeID, err := requesterNodeTransport.HostID(ctx)
+	requesterNodeTransport, err := NewTransport(ctx, cm, requesterNodePort, []multiaddr.Multiaddr{addr})
+	require.NoError(suite.T(), err)
+	requesterNodeID := requesterNodeTransport.HostID()
 	require.NoError(suite.T(), err)
 
 	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {

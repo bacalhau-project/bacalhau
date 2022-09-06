@@ -33,7 +33,7 @@ func SetupTest(
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
-	system.InitConfigForTesting(t)
+	require.NoError(t, system.InitConfigForTesting())
 
 	cm := system.NewCleanupManager()
 
