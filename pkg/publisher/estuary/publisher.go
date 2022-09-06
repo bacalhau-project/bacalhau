@@ -41,9 +41,9 @@ func NewEstuaryPublisher(
 }
 
 func (estuaryPublisher *EstuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
+	_, span := newSpan(ctx, "IsInstalled")
 	defer span.End()
-	_, err := estuaryPublisher.doHTTPRequest("GET", getReadAPIUrl("/content/deals"), nil)
+	_, err := estuaryPublisher.doHTTPRequest(ctx, "GET", getReadAPIURL("/content/deals"), nil)
 	if err != nil {
 		return false, err
 	}
@@ -77,7 +77,7 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	_, err = estuaryPublisher.doHTTPRequest("POST", getWriteAPIUrl("/content/add-car"), fileReader)
+	_, err = estuaryPublisher.doHTTPRequest(ctx, "POST", getWriteAPIURL("/content/add-car"), fileReader)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -93,17 +93,18 @@ func (estuaryPublisher *EstuaryPublisher) ComposeResultReferences(
 	jobID string,
 ) ([]model.StorageSpec, error) {
 	results := []model.StorageSpec{}
-	ctx, span := newSpan(ctx, "ComposeResultSet")
+	_, span := newSpan(ctx, "ComposeResultSet")
 	defer span.End()
 	return results, nil
 }
 
 func (estuaryPublisher *EstuaryPublisher) doHTTPRequest(
+	ctx context.Context,
 	method string,
 	url string,
 	body io.Reader,
 ) ([]byte, error) {
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -112,28 +113,29 @@ func (estuaryPublisher *EstuaryPublisher) doHTTPRequest(
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 	if res.StatusCode >= http.StatusNotFound {
 		return nil, fmt.Errorf("got error response code %d", res.StatusCode)
 	}
-	return ioutil.ReadAll(res.Body)
+	return io.ReadAll(res.Body)
 }
 
 // We need 2 different API endpoints because uploading via the main API URL
 // gives a 404 and trying to read via the Upload URL gives a 404 :-(
-func getReadAPIUrl(path string) string {
-	baseUrl := os.Getenv("BACALHAU_ESTUARY_READ_API_URL")
-	if baseUrl == "" {
-		baseUrl = "https://api.estuary.tech"
+func getReadAPIURL(path string) string {
+	baseURL := os.Getenv("BACALHAU_ESTUARY_READ_API_URL")
+	if baseURL == "" {
+		baseURL = "https://api.estuary.tech"
 	}
-	return baseUrl + path
+	return baseURL + path
 }
 
-func getWriteAPIUrl(path string) string {
-	baseUrl := os.Getenv("BACALHAU_ESTUARY_WRITE_API_URL")
-	if baseUrl == "" {
-		baseUrl = "https://shuttle-6.estuary.tech"
+func getWriteAPIURL(path string) string {
+	baseURL := os.Getenv("BACALHAU_ESTUARY_WRITE_API_URL")
+	if baseURL == "" {
+		baseURL = "https://shuttle-6.estuary.tech"
 	}
-	return baseUrl + path
+	return baseURL + path
 }
 
 func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {

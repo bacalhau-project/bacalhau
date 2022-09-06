@@ -97,7 +97,7 @@ func writeFiles(ctx context.Context, bs *blockstore.ReadWrite, paths ...string) 
 			if err != nil {
 				return err
 			}
-			bs.Put(ctx, blk)
+			bs.Put(ctx, blk) //nolint:errcheck
 			return nil
 		}, nil
 	}
