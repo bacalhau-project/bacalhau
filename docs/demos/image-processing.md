@@ -24,7 +24,7 @@ bacalhau docker run \
   -v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
   -o results:/output_images \
   dpokidov/imagemagick \
-  -- magick mogrify -resize 100x100 -quality 100 -path /output_images /input_images/*.jpg
+  -- magick mogrify -resize 100x100 -quality 100 -path /output_images '/input_images/*.jpg'
 ```
 
 ```bash
