@@ -173,9 +173,6 @@ func (node *ComputeNode) controlLoopBidOnJobs() {
 	defer node.bidMu.Unlock()
 	bidShards := node.capacityManager.GetNextItems()
 
-	// VERY noisy - prints every tick
-	log.Trace().Msgf("Number of Bid Shards=%d", len(bidShards))
-
 	if len(bidShards) > 0 {
 		log.Debug().Msgf("Found %d BidShards => Starting loop", len(bidShards))
 	}
