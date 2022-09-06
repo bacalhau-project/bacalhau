@@ -13,7 +13,7 @@ spec:
       name: override-vars
       key: override.tf.json
     location: workspace 
-    filename: ./override.tf.json
+    path: ./override.tf.json
   runnerPodTemplate:
     spec:
       volumeMounts:
