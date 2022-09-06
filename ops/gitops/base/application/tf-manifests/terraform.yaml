@@ -7,7 +7,7 @@ spec:
   - location: workspace
     path: ./.terraform/environment
     secretRef:
-    - name: workspace
+      name: workspace
       key: environment
   runnerPodTemplate:
     spec:
