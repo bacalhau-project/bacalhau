@@ -30,6 +30,7 @@ type DevStackOptions struct {
 	Peer                 string // Connect node 0 to another network node
 	PublicIPFSMode       bool   // Use public IPFS nodes
 	FilecoinUnsealedPath string
+	EstuaryAPIKey        string
 }
 type DevStack struct {
 	Nodes []*node.Node
@@ -200,6 +201,7 @@ func NewDevStack(
 			CleanupManager:       cm,
 			Transport:            transport,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
+			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
 			HostID:               strconv.Itoa(i),
 			APIPort:              apiPort,
