@@ -9,8 +9,11 @@ secretGenerator:
 - name: workspace
   files:
   - workspace=workspace
+- name: override-vars
+  files:
+  - override.tf.json=development.tfvars
 
-configMapGenerator:
-- envs:
-  - values.env
-  name: env-values
+# configMapGenerator:
+# - envs:
+#   - values.env
+#   name: env-values
