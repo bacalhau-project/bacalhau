@@ -26,6 +26,9 @@ spec:
       }
   interval: 1m
   path: ./ops/terraform
+  # varsFrom:
+  # - kind: ConfigMap
+  #   name: env
   vars:
   - name: bacalhau_version
     value: v0.1.43

@@ -1,17 +1,23 @@
-provider "google" {
-  project = var.gcp_project
-  region  = var.region
-  zone    = var.zone
-}
-
-# terraform {
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+      version = "4.34.0"
+    }
+  }
 #   backend "gcs" {
 #     # this bucket lives in the bacalhau-cicd google project
 #     # https://console.cloud.google.com/storage/browser/bacalhau-global-storage;tab=objects?project=bacalhau-cicd
 #     bucket = "bacalhau-global-storage"
 #     prefix = "terraform/state"
 #   }
-# }
+}
+
+provider "google" {
+  project = var.gcp_project
+  region  = var.region
+  zone    = var.zone
+}
 
 // A single Google Cloud Engine instance
 resource "google_compute_instance" "bacalhau_vm" {
