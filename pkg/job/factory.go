@@ -47,6 +47,7 @@ func ConstructDockerJob( //nolint:funlen
 	image string,
 	concurrency int,
 	confidence int,
+	minBids int,
 	annotations []string,
 	workingDir string,
 	shardingGlobPattern string,
@@ -133,6 +134,7 @@ func ConstructDockerJob( //nolint:funlen
 	deal := model.JobDeal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
+		MinBids:     minBids,
 	}
 
 	return &spec, &deal, nil
@@ -145,6 +147,7 @@ func ConstructLanguageJob(
 	env []string,
 	concurrency int,
 	confidence int,
+	minBids int,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,

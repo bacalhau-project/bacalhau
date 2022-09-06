@@ -41,6 +41,7 @@ type LanguageRunOptions struct {
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
 	Confidence    int      // Minimum number of nodes that must agree on a verification result
+	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
@@ -193,6 +194,7 @@ var runPythonCmd = &cobra.Command{
 			[]string{}, // no env vars (yet)
 			OLR.Concurrency,
 			OLR.Confidence,
+			OLR.MinBids,
 			"python",
 			"3.10",
 			OLR.Command,

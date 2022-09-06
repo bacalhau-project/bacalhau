@@ -90,6 +90,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					"",         // image
 					1,          // concurrency
 					0,          // confidence
+					0,          // min bids
 					[]string{}, // annotations
 					"",         // working dir
 					"",         // sharding base path

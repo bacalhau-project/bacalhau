@@ -53,6 +53,7 @@ type DockerRunOptions struct {
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
 	Confidence    int      // Minimum number of nodes that must agree on a verification result
+	MinBids       int      // Minimum number of bids before they will be accepted (at random)
 	CPU           string
 	Memory        string
 	GPU           string
@@ -85,6 +86,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Env:                []string{},
 		Concurrency:        1,
 		Confidence:         0,
+		MinBids:            0, // 0 means no minimum before bidding
 		CPU:                "",
 		Memory:             "",
 		GPU:                "",
@@ -143,6 +145,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	dockerRunCmd.PersistentFlags().IntVar(
 		&ODR.Confidence, "confidence", ODR.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
+	)
+	dockerRunCmd.PersistentFlags().IntVar(
+		&ODR.MinBids, "min-bids", ODR.MinBids,
+		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.CPU, "cpu", ODR.CPU,
@@ -253,7 +259,7 @@ func CreateJobSpecAndDeal(ctx context.Context,
 	cmdArgs []string,
 	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
+	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
 	defer span.End()
 
 	odr.Image = cmdArgs[0]
@@ -311,6 +317,7 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		odr.Image,
 		odr.Concurrency,
 		odr.Confidence,
+		odr.MinBids,
 		odr.Labels,
 		odr.WorkingDir,
 		odr.ShardingGlobPattern,
