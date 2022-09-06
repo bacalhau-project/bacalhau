@@ -88,16 +88,16 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	go func() {
 		require.NoError(t, s.ListenAndServe(context.Background(), cm))
 	}()
-	require.NoError(t, waitForHealthy(cl))
+	require.NoError(t, waitForHealthy(ctx, cl))
 
 	return NewAPIClient(s.GetURI()), cm
 }
 
-func waitForHealthy(c *APIClient) error {
+func waitForHealthy(ctx context.Context, c *APIClient) error {
 	ch := make(chan bool)
 	go func() {
 		for {
-			alive, err := c.Alive()
+			alive, err := c.Alive(ctx)
 			if err == nil && alive {
 				ch <- true
 				return

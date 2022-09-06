@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -65,6 +66,9 @@ var RootCmd = &cobra.Command{
 }
 
 func Execute() {
+	// ANCHOR: Set global context here
+	RootCmd.SetContext(context.Background())
+
 	doNotTrack = false
 	if doNotTrackValue, foundDoNotTrack := os.LookupEnv("DO_NOT_TRACK"); foundDoNotTrack {
 		doNotTrackInt, err := strconv.Atoi(doNotTrackValue)

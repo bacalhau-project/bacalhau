@@ -16,7 +16,7 @@ jobs:
     environment:
       GOVER: 1.18.3
       IPFS_VERSION: v0.12.2
-      GOLANGCILINT: v1.48.0
+      GOLANGCILINT: v1.49.0
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>

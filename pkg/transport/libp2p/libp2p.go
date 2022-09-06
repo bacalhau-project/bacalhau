@@ -28,7 +28,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const JobEventChannel = "bacalhau-job-event"
@@ -49,6 +48,15 @@ type LibP2PTransport struct {
 }
 
 func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []string) (*LibP2PTransport, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.NewTransport")
+	defer span.End()
+
+	ctx, cancel := context.WithCancel(ctx)
+	cm.RegisterCallback(func() error {
+		cancel()
+		return nil
+	})
+
 	usePeers := []string{}
 
 	for _, p := range peers {
@@ -76,16 +84,12 @@ func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peer
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	cm.RegisterCallback(func() error {
-		cancel()
-		return nil
-	})
-
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true))
-	if err != nil {
-		return nil, err
-	}
+	pgParams := pubsub.NewPeerGaterParams(
+		0.33, //nolint:gomnd
+		pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
+		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
+	)
+	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams))
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +134,10 @@ func (t *LibP2PTransport) HostID(ctx context.Context) (string, error) {
 }
 
 func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
+	defer span.End()
+
 	response := map[string][]peer.ID{}
 	for _, topic := range t.pubSub.GetTopics() {
 		peers := t.pubSub.ListPeers(topic)
@@ -139,6 +147,9 @@ func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, e
 }
 
 func (t *LibP2PTransport) Start(ctx context.Context) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Start")
+	defer span.End()
+
 	if len(t.subscribeFunctions) == 0 {
 		panic("Programming error: no subscribe func, please call Subscribe immediately after constructing interface")
 	}
@@ -160,6 +171,10 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 }
 
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
+	defer span.End()
+
 	closeErr := t.host.Close()
 
 	if closeErr != nil {
@@ -175,13 +190,21 @@ func (t *LibP2PTransport) Publish(ctx context.Context, ev model.JobEvent) error 
 	return t.writeJobEvent(ctx, ev)
 }
 
-func (t *LibP2PTransport) Subscribe(fn transport.SubscribeFn) {
+func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
+	defer span.End()
+
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
 func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
+	defer span.End()
+
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
 	if err != nil {
 		return nil, err
@@ -208,6 +231,10 @@ func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []by
 }
 
 func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
+	defer span.End()
+
 	privateKeyBytes, err := t.privateKey.Raw()
 	if err != nil {
 		return nil, err
@@ -232,7 +259,7 @@ func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, err
 */
 
 func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
-	ctx, span := newSpan(ctx, "Connect")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
 	defer span.End()
 
 	if len(t.peers) == 0 {
@@ -277,6 +304,9 @@ type jobEventEnvelope struct {
 }
 
 func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.writeJobEvent")
+	defer span.End()
+
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 
@@ -371,10 +401,6 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 		}
 		go t.readMessage(msg)
 	}
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "transport/libp2p", apiName)
 }
 
 // Compile-time interface check:

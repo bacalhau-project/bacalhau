@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime/debug"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -46,6 +47,10 @@ func init() { //nolint:gochecknoinits // use of init here is idomatic
 	_, _ = NewTraceProvider()
 }
 
+// ----------------------------------------
+// Tracer Setup and Teardown
+// ----------------------------------------
+
 func NewTraceProvider() (*sdktrace.TracerProvider, error) {
 	_ = godotenv.Load() // Load environment variables from .env file - necessary here for dev keys
 
@@ -82,6 +87,10 @@ func CleanupTraceProvider() error {
 	return CleanupTraceProviderFn()
 }
 
+// ----------------------------------------
+// Tracer helpers
+// ----------------------------------------
+
 func GetTracer() oteltrace.Tracer {
 	return tracer
 }
@@ -91,20 +100,24 @@ func GetTracerWithOpts(opts ...oteltrace.TracerOption) oteltrace.Tracer {
 	return tp.Tracer(version.TracerName(), opts...)
 }
 
-func GetSpanFromRequest(req *http.Request, name string) (context.Context, oteltrace.Span) {
-	ctx := req.Context()
-	_, span := tracer.Start(ctx, name)
-	return ctx, span
-}
+// ----------------------------------------
+// Span helpers
+// ----------------------------------------
 
-//nolint:lll // long line is ok here
-func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (context.Context, oteltrace.Span) {
+func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (
+	context.Context, oteltrace.Span) {
 	// Always include environment info in spans:
 	m0, _ := baggage.NewMember(string("environment"), GetEnvironment().String())
 	b, _ := baggage.New(m0)
 	ctx = baggage.ContextWithBaggage(ctx, b)
 
 	return t.Start(ctx, name)
+}
+
+func GetSpanFromRequest(req *http.Request, name string) (context.Context, oteltrace.Span) {
+	ctx := req.Context()
+	_, span := tracer.Start(ctx, name)
+	return ctx, span
 }
 
 func GetSpanFromContext(ctx context.Context) oteltrace.Span {
@@ -128,68 +141,12 @@ func Span(ctx context.Context, tracerName, spanName string,
 
 	spanName = fmt.Sprintf("service/%s", spanName)
 
-	return Tracer(version.TracerName()).Start(ctx, spanName, opts...)
+	return GetTracer().Start(ctx, spanName, opts...)
 }
 
-func Tracer(tracerName string) oteltrace.Tracer {
-	return tracer
-}
-
-// loggerProvider provides traces that are exported to a trace logger as JSON.
-//
-//nolint:unused,deadcode // mistaken unused
-func loggerProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
-	exp, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint(),
-		stdouttrace.WithWriter(jsonLogger()))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(exp))
-
-	return tp, cleanupFor("logger", tp, exp), nil
-}
-
-// httpProvider provides traces that are exported over GRPC to Honeycomb. It
-// should be configured by setting the following environment variable:
-//
-//	export HONEYCOMB_KEY="<honeycomb api key>"
-//
-//nolint:unused,deadcode // mistaken unused
-func hcProvider() (*sdktrace.TracerProvider, cleanupFn, error) {
-	honeycombDataset := os.Getenv("HONEYCOMB_DATASET")
-	if honeycombDataset == "" {
-		honeycombDataset = "bacalhau-unset-dataset"
-	}
-	log.Trace().Msgf("using honeycomb dataset: %s", honeycombDataset)
-
-	honeycombKey := os.Getenv("HONEYCOMB_KEY")
-	log.Trace().Msgf("using honeycomb key: %s", honeycombKey)
-
-	if honeycombKey == "" {
-		return nil, nil, fmt.Errorf(
-			"error creating honeycomb exporter: please ensure that \"HONEYCOMB_KEY\" has been set")
-	}
-
-	exp, err := hcExporter(honeycombKey, honeycombDataset)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating honeycomb exporter: %w", err)
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSyncer(exp), // TODO: use WithBatcher in prod
-		sdktrace.WithResource(
-			resource.NewWithAttributes(
-				semconv.SchemaURL,
-				semconv.ServiceNameKey.String("bacalhau"),
-			),
-		),
-	)
-
-	return tp, cleanupFor("honeycomb", tp, exp), nil
-}
+// ----------------------------------------
+// Providers
+// ----------------------------------------
 
 // httpProvider provides traces that are exported over GRPC to Honeycomb. It
 // should be configured by setting the following environment variable:
@@ -303,18 +260,51 @@ func cleanupForTP(tp *sdktrace.TracerProvider) cleanupTraceProviderFn {
 	}
 }
 
-// cleanupFor returns a cleanup function that flushes remaining spans in
-// memory to the exporter and releases any tracing resources.
-// TODO: #288 Use trace to close out span
-//
-//nolint:unparam,unused // will add tracing, mistaken unused
-func cleanupFor(name string, tp *sdktrace.TracerProvider, exp sdktrace.SpanExporter) cleanupFn {
-	return func() error {
-		if err := tp.Shutdown(context.Background()); err != nil {
-			return fmt.Errorf(
-				"error shutting down %s provider: %w", name, err)
-		}
+// ----------------------------------------
+// Baggage and Attribute helpers
+// ----------------------------------------
 
-		return nil
+func AddNodeIDToBaggage(ctx context.Context, nodeID string) context.Context {
+	return AddFieldToBaggage(ctx, model.TracerAttributeNameNodeID, nodeID)
+}
+
+func AddJobIDToBaggage(ctx context.Context, jobID string) context.Context {
+	return AddFieldToBaggage(ctx, model.TracerAttributeNameJobID, jobID)
+}
+
+func AddFieldToBaggage(ctx context.Context, key, value string) context.Context {
+	b := baggage.FromContext(ctx)
+	m, err := baggage.NewMember(key, value)
+	if err != nil {
+		log.Warn().Msgf("failed to add key %s to baggage: %s", key, err)
+	}
+
+	b, err = b.SetMember(m)
+	if err != nil {
+		log.Warn().Msgf("failed to add baggage member to baggage: %s", err)
+	}
+
+	return baggage.ContextWithBaggage(ctx, b)
+}
+
+func AddJobIDFromBaggageToSpan(ctx context.Context, span oteltrace.Span) {
+	AddAttributeToSpanFromBaggage(ctx, span, model.TracerAttributeNameJobID)
+}
+
+func AddNodeIDFromBaggageToSpan(ctx context.Context, span oteltrace.Span) {
+	AddAttributeToSpanFromBaggage(ctx, span, model.TracerAttributeNameNodeID)
+}
+
+func AddAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, name string) {
+	b := baggage.FromContext(ctx)
+	log.Debug().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
+	m := b.Member(name)
+	if m.Value() != "" {
+		span.SetAttributes(attribute.String(name, m.Value()))
+	} else {
+		log.Debug().Msgf("no value found for baggage key %s", name)
+		if log.Trace().Enabled() {
+			debug.PrintStack()
+		}
 	}
 }

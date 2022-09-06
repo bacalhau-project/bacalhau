@@ -105,59 +105,26 @@ func (node *RequesterNode) subscriptionEventBid(
 	defer span.End()
 
 	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
+	bidQueueResults, err := processIncomingBid(ctx, node.controller, job, jobEvent)
 
-	accepted := func() bool {
-		// let's see how many bids we have already accepted
-		// it's important this comes from "local events"
-		// otherwise we are in a race with the network and could
-		// end up accepting many more bids than our concurrency
-		localEvents, err := node.controller.GetJobLocalEvents(ctx, job.ID)
-		if err != nil {
-			threadLogger.Warn().Msgf("There was an error getting job events %s: %s", job.ID, err)
-			return false
-		}
+	if err != nil {
+		threadLogger.Warn().Msgf("There was an error calling processIncomingBid %s: %s", job.ID, err)
+		return
+	}
 
-		// a map of shard index onto an array of node ids we have farmed the job out to
-		assignedNodes := map[int][]string{}
-
-		for _, localEvent := range localEvents {
-			if localEvent.EventName == model.JobLocalEventBidAccepted {
-				assignedNodesForShard, ok := assignedNodes[localEvent.ShardIndex]
-				if !ok {
-					assignedNodesForShard = []string{}
-				}
-				assignedNodesForShard = append(assignedNodesForShard, localEvent.TargetNodeID)
-				assignedNodes[localEvent.ShardIndex] = assignedNodesForShard
+	for _, bidQueueResult := range bidQueueResults {
+		if bidQueueResult.accepted {
+			log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
+			err := node.controller.AcceptJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
 			}
-		}
-
-		assignedNodesForShard, ok := assignedNodes[jobEvent.ShardIndex]
-		if !ok {
-			assignedNodesForShard = []string{}
-		}
-
-		// we have already reached concurrency for this shard
-		// so let's reject this bid
-		if len(assignedNodesForShard) >= job.Deal.Concurrency {
-			//nolint:lll // Error message needs long line
-			threadLogger.Debug().Msgf("Rejected: Job shard %s %d already reached concurrency of %d %+v", job.ID, jobEvent.ShardIndex, job.Deal.Concurrency, assignedNodesForShard)
-			return false
-		}
-
-		return true
-	}()
-
-	if accepted {
-		log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
-		err := node.controller.AcceptJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
-		if err != nil {
-			threadLogger.Error().Err(err)
-		}
-	} else {
-		log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, jobEvent.JobID, jobEvent.ShardIndex)
-		err := node.controller.RejectJobBid(ctx, jobEvent.JobID, jobEvent.SourceNodeID, jobEvent.ShardIndex)
-		if err != nil {
-			threadLogger.Error().Err(err)
+		} else {
+			log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
+			err := node.controller.RejectJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			if err != nil {
+				threadLogger.Error().Err(err)
+			}
 		}
 	}
 }

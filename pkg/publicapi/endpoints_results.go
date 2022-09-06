@@ -18,9 +18,8 @@ type resultsResponse struct {
 }
 
 func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "apiServer/results")
+	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/publicapi/results")
 	defer span.End()
-	t := system.GetTracer()
 
 	var stateReq stateRequest
 	if err := json.NewDecoder(req.Body).Decode(&stateReq); err != nil {
@@ -28,21 +27,20 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	getPublisherCtx, getPublisherSpan := t.Start(ctx, "gettingpublisher")
-	publisher, err := apiServer.getPublisher(getPublisherCtx, model.PublisherIpfs)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	getPublisherSpan.End()
+	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	composeResultsCtx, composeResultsSpan := t.Start(ctx, "composingresults")
-	results, err := publisher.ComposeResultReferences(composeResultsCtx, stateReq.JobID)
+	publisher, err := apiServer.getPublisher(ctx, model.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	composeResultsSpan.End()
+
+	results, err := publisher.ComposeResultReferences(ctx, stateReq.JobID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(resultsResponse{

@@ -119,6 +119,12 @@ type JobDeal struct {
 	// deterministic verifier requires the winning group size
 	// to be at least this size
 	Confidence int `json:"confidence"`
+	// The minimum number of bids that must be received before the requestor
+	// node will randomly accept concurrency-many of them. This allows the
+	// requestor node to get some level of guarantee that the execution of the
+	// jobs will be spread evenly across the network (assuming that this value
+	// is some large proportion of the size of the network).
+	MinBids int `json:"min_bids"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some

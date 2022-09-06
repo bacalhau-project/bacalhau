@@ -125,19 +125,17 @@ var listCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		_, listSpan := t.Start(ctx, "requestinglistfromserver")
 		jobs, err := getAPIClient().List(ctx)
 		if err != nil {
 			return err
 		}
-		listSpan.End()
 
 		tw := table.NewWriter()
 		tw.SetOutputMirror(cmd.OutOrStderr())
@@ -164,7 +162,6 @@ var listCmd = &cobra.Command{
 		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
 		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 
-		_, sortingSpan := t.Start(ctx, "sortingreturnedjobs")
 		sort.Slice(jobArray, func(i, j int) bool {
 			switch OL.SortBy {
 			case ColumnID:
@@ -187,58 +184,16 @@ var listCmd = &cobra.Command{
 				jobArray = append(jobArray, jobs[id])
 			}
 		}
-		sortingSpan.End()
 
 		numberInTable := Min(OL.MaxJobs, len(jobArray))
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
-		ctx, resolvingJobDetailsSpan := t.Start(ctx, "resolvingjobdetails")
-		for _, j := range jobArray[0:numberInTable] {
-			jobDesc := []string{
-				j.Spec.Engine.String(),
-			}
-
-			if j.Spec.Engine == model.EngineDocker {
-				jobDesc = append(jobDesc, j.Spec.Docker.Image)
-				jobDesc = append(jobDesc, strings.Join(j.Spec.Docker.Entrypoint, " "))
-			}
-
-			resolver := getAPIClient().GetJobStateResolver()
-
-			_, stateSummarySpan := t.Start(ctx, "resolvingjobstate")
-			stateSummary, err := resolver.StateSummary(ctx, j.ID)
-			if err != nil {
-				return err
-			}
-			stateSummarySpan.End()
-
-			_, resultSummarySpan := t.Start(ctx, "resolvingjobresult")
-			resultSummary, err := resolver.ResultSummary(ctx, j.ID)
-			if err != nil {
-				return err
-			}
-			resultSummarySpan.End()
-
-			_, verifiedSummarySpan := t.Start(ctx, "resolvingjobverification")
-			verifiedSummary, err := resolver.VerifiedSummary(ctx, j.ID)
-			if err != nil {
-				return err
-			}
-			verifiedSummarySpan.End()
-
-			tw.AppendRows([]table.Row{
-				{
-					shortenTime(OL.OutputWide, j.CreatedAt),
-					shortID(OL.OutputWide, j.ID),
-					shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
-					shortenString(OL.OutputWide, stateSummary),
-					shortenString(OL.OutputWide, verifiedSummary),
-					shortenString(OL.OutputWide, resultSummary),
-				},
-			})
+		rows, err := resolvingJobDetails(ctx, jobArray, numberInTable)
+		if err != nil {
+			return err
 		}
-		resolvingJobDetailsSpan.End()
+		tw.AppendRows(rows)
 
 		if OL.NoStyle {
 			tw.SetStyle(table.Style{
@@ -274,4 +229,51 @@ var listCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func resolvingJobDetails(ctx context.Context,
+	jobArray []model.Job,
+	lengthOfTable int) ([]table.Row, error) {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
+	defer span.End()
+
+	rows := []table.Row{}
+
+	// using indexing to avoid copying bytes
+	for i := range jobArray[0:lengthOfTable] {
+		jobDesc := []string{
+			jobArray[i].Spec.Engine.String(),
+		}
+
+		if jobArray[i].Spec.Engine == model.EngineDocker {
+			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
+		}
+
+		resolver := getAPIClient().GetJobStateResolver()
+
+		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		resultSummary, err := resolver.ResultSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		verifiedSummary, err := resolver.VerifiedSummary(ctx, jobArray[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, table.Row{
+			shortenTime(OL.OutputWide, jobArray[i].CreatedAt),
+			shortID(OL.OutputWide, jobArray[i].ID),
+			shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
+			shortenString(OL.OutputWide, stateSummary),
+			shortenString(OL.OutputWide, verifiedSummary),
+			shortenString(OL.OutputWide, resultSummary),
+		})
+	}
+	return rows, nil
 }

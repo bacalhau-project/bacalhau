@@ -80,7 +80,7 @@ func (ctrl *Controller) GetLocalDB() localdb.LocalDB {
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
-	ctrl.transport.Subscribe(func(ctx context.Context, ev model.JobEvent) {
+	ctrl.transport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
 		err := ctrl.handleEvent(ctx, ev)
 		if err != nil {
 			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
@@ -248,6 +248,15 @@ func (ctrl *Controller) RejectJobBid(
 		return fmt.Errorf("RejectJobBid: nodeID cannot be empty")
 	}
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
+	err := ctrl.localdb.AddLocalEvent(jobCtx, jobID, model.JobLocalEvent{
+		EventName:    model.JobLocalEventBidRejected,
+		JobID:        jobID,
+		TargetNodeID: nodeID,
+		ShardIndex:   shardIndex,
+	})
+	if err != nil {
+		return err
+	}
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_RejectJobBid")
 	ev := ctrl.constructEvent(jobID, model.JobEventBidRejected)
 	// the target node is the "nodeID" because the requester node calls this
@@ -505,11 +514,12 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev model.JobEvent) 
 		return err
 	}
 
-	//nolint:gocritic // temporary comment out
-	// err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
-	// if err != nil {
-	// 	return err
-	// }
+	// TODO: gc events for a job once it's finalized or timed out or something,
+	// so we don't grow memory unboundedly
+	err = ctrl.localdb.AddEvent(ctx, ev.JobID, ev)
+	if err != nil {
+		return err
+	}
 
 	executionState := model.GetStateFromEvent(ev.EventName)
 

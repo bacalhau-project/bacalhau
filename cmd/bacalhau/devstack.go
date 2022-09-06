@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -74,25 +73,29 @@ var devstackCmd = &cobra.Command{
 	Long:    devStackLong,
 	Example: devstackExample,
 	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
+		defer rootSpan.End()
+
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		config.DevstackSetShouldPrintInfo()
 
 		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
 			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}
 
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-		defer cm.Cleanup()
-
 		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
+		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
 		portFileName := "/tmp/bacalhau-devstack.port"
 		pidFileName := "/tmp/bacalhau-devstack.pid"
 
-		if _, ignore := os.LookupEnv("IGNORE_PORT_FILES"); !ignore {
+		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
 			_, err := os.Stat(portFileName)
 			if err == nil {
 				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
@@ -144,6 +147,8 @@ var devstackCmd = &cobra.Command{
 		}
 
 		<-ctx.Done() // block until killed
+
+		log.Info().Msg("Shutting down devstack")
 		return nil
 	},
 }

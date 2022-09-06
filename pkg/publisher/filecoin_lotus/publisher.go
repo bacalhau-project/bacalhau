@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type FilecoinLotusPublisherConfig struct {
@@ -51,8 +50,9 @@ func NewFilecoinLotusPublisher(
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
 	defer span.End()
+
 	_, err := lotusPublisher.runLotusCommand(ctx, []string{"version"})
 	if err != nil {
 		return false, err
@@ -66,8 +66,9 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 	hostID string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
-	ctx, span := newSpan(ctx, "PublishShardResult")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/PublishShardResult")
 	defer span.End()
+
 	log.Debug().Msgf(
 		"Uploading results folder to filecoin lotus: %s %s %s",
 		hostID,
@@ -100,9 +101,12 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
-	results := []model.StorageSpec{}
-	ctx, span := newSpan(ctx, "ComposeResultSet")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/ComposeResultReferences")
 	defer span.End()
+
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
+	results := []model.StorageSpec{}
 	shardResults, err := lotusPublisher.StateResolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, err
@@ -114,8 +118,10 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	_, span := newSpan(ctx, "tarResultsDir")
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/tarResultsDir")
 	defer span.End()
+
 	tempDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
 	if err != nil {
 		return "", err
@@ -133,8 +139,9 @@ func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context,
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, filePath string) (string, error) {
-	ctx, span := newSpan(ctx, "importData")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
 	defer span.End()
+
 	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "import", filePath})
 	if err != nil {
 		return "", err
@@ -144,8 +151,9 @@ func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, fi
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, contentCid string) (string, error) {
-	ctx, span := newSpan(ctx, "createDeal")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
 	defer span.End()
+
 	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{
 		"client", "deal",
 		contentCid,
@@ -171,8 +179,10 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
-	_, span := newSpan(ctx, "runLotusCommand")
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
 	defer span.End()
+
 	return system.RunCommandGetResults(lotusPublisher.Config.ExecutablePath, args)
 }
 
@@ -185,10 +195,6 @@ func processConfig(config FilecoinLotusPublisherConfig) (FilecoinLotusPublisherC
 		config.ExecutablePath = result
 	}
 	return config, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "publisher/filecoin_lotus", apiName)
 }
 
 // Compile-time check that Verifier implements the correct interface:

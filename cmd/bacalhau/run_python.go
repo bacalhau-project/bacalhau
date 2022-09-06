@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -40,6 +41,7 @@ type LanguageRunOptions struct {
 	Env           []string // Array of environment variables
 	Concurrency   int      // Number of concurrent jobs to run
 	Confidence    int      // Minimum number of nodes that must agree on a verification result
+	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
@@ -153,6 +155,14 @@ var runPythonCmd = &cobra.Command{
 	Example: languageRunExample,
 	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		// error if determinism is false
 		if !OLR.Deterministic {
@@ -184,6 +194,7 @@ var runPythonCmd = &cobra.Command{
 			[]string{}, // no env vars (yet)
 			OLR.Concurrency,
 			OLR.Confidence,
+			OLR.MinBids,
 			"python",
 			"3.10",
 			OLR.Command,
@@ -210,7 +221,7 @@ var runPythonCmd = &cobra.Command{
 			// tar + gzip
 			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel", OLR.ContextPath)
 			time.Sleep(1 * time.Second)
-			err = compress(OLR.ContextPath, &buf)
+			err = compress(ctx, OLR.ContextPath, &buf)
 			if err != nil {
 				return err
 			}
@@ -222,7 +233,6 @@ var runPythonCmd = &cobra.Command{
 
 		}
 
-		ctx := context.Background()
 		job, err := getAPIClient().Submit(ctx, spec, deal, &buf)
 		if err != nil {
 			return err
@@ -239,7 +249,11 @@ var runPythonCmd = &cobra.Command{
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 
 //nolint:gocyclo
-func compress(src string, buf io.Writer) error {
+func compress(ctx context.Context, src string, buf io.Writer) error {
+	//nolint:ineffassign,staticcheck
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/runPython.compress")
+	defer span.End()
+
 	// tar > gzip > buf
 	zr := gzip.NewWriter(buf)
 	tw := tar.NewWriter(zr)
