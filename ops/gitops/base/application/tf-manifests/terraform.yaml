@@ -17,8 +17,8 @@ spec:
       env:
       - name: "GOOGLE_APPLICATION_CREDENTIALS"
         value: "/etc/google-auth/key.json"
-      - name: TF_WORKSPACE
-        value: development
+      - name: "TF_WORKSPACE"
+        value: "development"
   disableDriftDetection: true
   backendConfig:
     customConfiguration: |
