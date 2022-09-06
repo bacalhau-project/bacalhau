@@ -11,7 +11,7 @@ secretGenerator:
   - workspace=workspace
 - name: override-vars
   files:
-  - override.tf.json=development.tfvars
+  - terraform.tfvars=development.tfvars
 
 # configMapGenerator:
 # - envs:

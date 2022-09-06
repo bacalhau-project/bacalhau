@@ -1,4 +1,3 @@
-{
 bacalhau_version       = "v0.1.43"
 bacalhau_port          = "1235"
 bacalhau_connect_node0 = "QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD"
@@ -14,4 +13,3 @@ auto_subnets           = false
 ingress_cidrs          = ["0.0.0.0/0"]
 ssh_access_cidrs       = ["0.0.0.0/0"]
 num_gpu_machines       = 0
-}
