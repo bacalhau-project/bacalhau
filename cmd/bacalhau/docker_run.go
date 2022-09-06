@@ -78,7 +78,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 	return &DockerRunOptions{
 		Engine:             "docker",
 		Verifier:           "noop",
-		Publisher:          "ipfs",
+		Publisher:          "estuary",
 		Inputs:             []string{},
 		InputUrls:          []string{},
 		InputVolumes:       []string{},
