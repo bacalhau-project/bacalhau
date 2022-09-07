@@ -2,9 +2,9 @@ package filecoinunsealed
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -24,7 +24,7 @@ type FilecoinUnsealedSuite struct {
 }
 
 func (suite *FilecoinUnsealedSuite) prepareCid(cid string) model.StorageSpec {
-	folderPath := fmt.Sprintf("%s/%s", tempDir, cid)
+	folderPath := filepath.Join(tempDir, cid)
 	err := os.MkdirAll(folderPath, os.ModePerm)
 	require.NoError(suite.T(), err)
 	return model.StorageSpec{
@@ -52,7 +52,7 @@ func (suite *FilecoinUnsealedSuite) SetupTest() {
 	ctx = context.Background()
 	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-unsealed-test")
 	require.NoError(suite.T(), setupErr)
-	driver, setupErr = NewStorageProvider(cm, fmt.Sprintf("%s/{{.Cid}}", tempDir))
+	driver, setupErr = NewStorageProvider(cm, filepath.Join(tempDir, "{{.Cid}}"))
 	require.NoError(suite.T(), setupErr)
 }
 
@@ -85,7 +85,7 @@ func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
 	cid := "123"
 	fileContents := "hello world"
 	spec := suite.prepareCid(cid)
-	filePath := fmt.Sprintf("%s/%s", spec.Path, "file")
+	filePath := filepath.Join(spec.Path, "file")
 	err := os.WriteFile(filePath, []byte(fileContents), 0644)
 	require.NoError(suite.T(), err)
 	volumeSize, err := driver.GetVolumeSize(ctx, spec)

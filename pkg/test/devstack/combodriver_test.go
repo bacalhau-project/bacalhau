@@ -62,10 +62,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		cid := "apples"
 		basePath, err := os.MkdirTemp("", "combo-driver-test")
 		require.NoError(suite.T(), err)
-		filePath := fmt.Sprintf("%s/file.txt", basePath)
+		filePath := filepath.Join(basePath, "file.txt")
 		if unsealedMode {
-			os.MkdirAll(fmt.Sprintf("%s/%s", basePath, cid), os.ModePerm)
-			filePath = fmt.Sprintf("%s/%s/file.txt", basePath, cid)
+			os.MkdirAll(filepath.Join(basePath, cid), os.ModePerm)
+			filePath = filepath.Join(basePath, cid, "file.txt")
 		}
 		err = os.WriteFile(
 			filePath,

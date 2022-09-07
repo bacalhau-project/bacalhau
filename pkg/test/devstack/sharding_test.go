@@ -420,7 +420,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	require.NoError(suite.T(), err)
 	for _, video := range videos {
 		err = os.WriteFile(
-			fmt.Sprintf("%s/%s", dirPath, video),
+			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)
