@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
@@ -106,10 +108,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 
 //nolint:lll // Exception to the long rule
 func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
-	_, err := system.UnsafeForUserCodeRunCommand("rm", []string{
-		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
-	})
-	return err
+	return os.RemoveAll(filepath.Join(dockerIPFS.LocalDir, storageSpec.Cid))
 }
 
 func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
@@ -157,7 +156,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid)
+	outputPath := filepath.Join(dockerIPFS.LocalDir, storageSpec.Cid)
 
 	// If the output path already exists, we already have the data, as
 	// ipfsClient.Get(...) renames the result path atomically after it has
