@@ -40,3 +40,4 @@ spec:
   sourceRef:
     kind: GitRepository
     name: bacalhau
+    namespace: flux-system
