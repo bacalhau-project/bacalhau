@@ -4,6 +4,7 @@ kind: Kustomization
 metadata:
   name: tenant-secrets
 spec:
+  targetNamespace: bacalhau-staging
   interval: 10m
   decryption:
     provider: sops
