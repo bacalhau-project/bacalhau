@@ -6,7 +6,9 @@ metadata:
 spec:
   interval: 10m
   decryption:
-    secretRef: tenant-sops-gpg
+    provider: sops
+    secretRef:
+      name: tenant-sops-gpg
   sourceRef:
     kind: GitRepository
     name: podinfo
