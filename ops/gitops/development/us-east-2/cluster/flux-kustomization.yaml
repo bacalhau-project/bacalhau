@@ -11,7 +11,7 @@ spec:
       name: tenant-sops-gpg
   sourceRef:
     kind: GitRepository
-    name: podinfo
+    name: bacalhau
     namespace: flux-system
   path: "./ops/gitops/development/us-east-2/secrets"
   prune: true
