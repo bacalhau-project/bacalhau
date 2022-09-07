@@ -211,6 +211,7 @@ func hcExporter(honeycombKey, honeycombDataset string) (*otlptrace.Exporter, err
 		}),
 	}
 
+	// TODO: #580 Should this be cmd.Context()?
 	return otlptrace.New(context.Background(),
 		otlptracegrpc.NewClient(opts...))
 }
@@ -250,7 +251,7 @@ func jsonLogger() io.Writer {
 //
 //nolint:unparam // will add tracing
 func cleanupForTP(tp *sdktrace.TracerProvider) cleanupTraceProviderFn {
-	// TODO: The below is wrong - we need to shut down the trace provider and take the context from the caller.
+	// TODO: #581 The below is wrong - we need to shut down the trace provider and take the context from the caller.
 	return func() error {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf(

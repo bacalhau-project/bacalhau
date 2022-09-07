@@ -748,7 +748,7 @@ func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType)
 }
 
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.JobSpec) (uint64, error) {
-	e, err := n.getExecutor(context.Background(), spec.Engine)
+	e, err := n.getExecutor(ctx, spec.Engine)
 	if err != nil {
 		return 0, err
 	}

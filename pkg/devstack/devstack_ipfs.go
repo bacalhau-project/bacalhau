@@ -30,7 +30,7 @@ func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) 
 		var err error
 		var ipfsSwarmAddrs []string
 		if i > 0 {
-			ipfsSwarmAddrs, err = clients[0].SwarmAddresses(context.Background())
+			ipfsSwarmAddrs, err = clients[0].SwarmAddresses(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get ipfs swarm addresses: %w", err)
 			}

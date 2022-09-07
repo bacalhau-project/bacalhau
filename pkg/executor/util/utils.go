@@ -118,7 +118,7 @@ func NewStandardExecutors(
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewExecutor(cm, executorOptions.DockerID, storageProviders)
+	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProviders)
 
 	if err != nil {
 		return nil, err
@@ -130,12 +130,12 @@ func NewStandardExecutors(
 
 	// language executors wrap other executors, so pass them a reference to all
 	// the executors so they can look up the ones they need
-	exLang, err := language.NewExecutor(cm, executors)
+	exLang, err := language.NewExecutor(ctx, cm, executors)
 	executors[model.EngineLanguage] = exLang
 	if err != nil {
 		return nil, err
 	}
-	exPythonWasm, err := pythonwasm.NewExecutor(cm, executors)
+	exPythonWasm, err := pythonwasm.NewExecutor(ctx, cm, executors)
 	executors[model.EnginePythonWasm] = exPythonWasm
 	if err != nil {
 		return nil, err

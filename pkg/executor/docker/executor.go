@@ -43,6 +43,7 @@ type Executor struct {
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	id string,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
@@ -65,7 +66,7 @@ func NewExecutor(
 	}
 
 	cm.RegisterCallback(func() error {
-		de.cleanupAll()
+		de.cleanupAll(ctx)
 		return nil
 	})
 
@@ -78,7 +79,7 @@ func (e *Executor) getStorageProvider(ctx context.Context, engine model.StorageS
 
 // IsInstalled checks if docker itself is installed.
 func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
-	return docker.IsInstalled(e.Client), nil
+	return docker.IsInstalled(ctx, e.Client), nil
 }
 
 func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
@@ -288,7 +289,7 @@ func (e *Executor) RunShard(
 		return fmt.Errorf("failed to start container: %w", err)
 	}
 
-	defer e.cleanupJob(shard)
+	defer e.cleanupJob(ctx, shard)
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -363,25 +364,25 @@ func (e *Executor) RunShard(
 	return containerError
 }
 
-func (e *Executor) cleanupJob(shard model.JobShard) {
+func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	if config.ShouldKeepStack() {
 		return
 	}
 
-	err := docker.RemoveContainer(e.Client, e.jobContainerName(shard))
+	err := docker.RemoveContainer(ctx, e.Client, e.jobContainerName(shard))
 	if err != nil {
 		log.Error().Msgf("Docker remove container error: %s", err.Error())
 		debug.PrintStack()
 	}
 }
 
-func (e *Executor) cleanupAll() {
+func (e *Executor) cleanupAll(ctx context.Context) {
 	if config.ShouldKeepStack() {
 		return
 	}
 
 	log.Debug().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
-	containersWithLabel, err := docker.GetContainersWithLabel(e.Client, "bacalhau-executor", e.ID)
+	containersWithLabel, err := docker.GetContainersWithLabel(ctx, e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
@@ -389,7 +390,7 @@ func (e *Executor) cleanupAll() {
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
 	//nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
-		err = docker.RemoveContainer(e.Client, container.ID)
+		err = docker.RemoveContainer(ctx, e.Client, container.ID)
 		if err != nil {
 			log.Error().Msgf("Non-critical error cleaning up container: %s", err.Error())
 		}

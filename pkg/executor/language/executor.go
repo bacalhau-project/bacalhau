@@ -23,6 +23,7 @@ type Executor struct {
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	executors map[model.EngineType]executor.Executor,
 ) (*Executor, error) {
