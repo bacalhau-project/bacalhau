@@ -1,6 +1,11 @@
 version: 0.1
+plugins:
+  sources:
+    - id: trunk
+      ref: v0.0.3
+      uri: https://github.com/trunk-io/plugins
 cli:
-  version: 0.16.1-beta
+  version: 0.17.0-beta
 lint:
   enabled:
     - actionlint@1.6.15
