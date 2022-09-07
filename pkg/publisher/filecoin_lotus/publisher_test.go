@@ -64,7 +64,7 @@ func (suite *FilecoinPublisherSuite) SetupTest() {
 	os.Setenv("LOTUS_TEST_CONTENT_CID", TestContentCid)
 	os.Setenv("LOTUS_TEST_DEAL_CID", TestDealCid)
 	driver, setupErr = NewFilecoinLotusPublisher(cm, resolver, FilecoinLotusPublisherConfig{
-		ExecutablePath:  "../../../testdata/mocks/lotus.sh",
+		ExecutablePath:  MockLotusExecutable,
 		MinerAddress:    TestMinerAddress,
 		StoragePrice:    TestStoragePrice,
 		StorageDuration: TestStorageDuration,
