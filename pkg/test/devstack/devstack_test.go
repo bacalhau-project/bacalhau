@@ -2,10 +2,11 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -100,7 +101,7 @@ func devStackDockerStorageTest(
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: len(nodeIDs),
+			model.JobStateCompleted: len(nodeIDs),
 		}),
 	)
 	require.NoError(t, err)

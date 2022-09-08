@@ -204,7 +204,7 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 			model.JobStateError,
 		}),
 		WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: totalShards,
+			model.JobStateCompleted: totalShards,
 		}),
 	)
 }
@@ -350,7 +350,7 @@ func GetVerifiedShardStates(jobState model.JobState) int {
 }
 
 func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
-	return GetFilteredShardStates(jobState, model.JobStatePublished)
+	return GetFilteredShardStates(jobState, model.JobStateCompleted)
 }
 
 func HasShardReachedCapacity(ctx context.Context, j model.Job, jobState model.JobState, shardIndex int) bool {

@@ -2,9 +2,10 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -99,7 +100,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 				model.JobStateError,
 			}),
 			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStatePublished: 2,
+				model.JobStateCompleted: 2,
 			}),
 		)
 	}
