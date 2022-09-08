@@ -126,8 +126,15 @@ func (cfg *Config) getPeerAddrs() []string {
 // repo in a temporary directory, uses the public libp2p nodes as peers and
 // generates a repo keypair with 2048 bits.
 func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
+	// filter out any empty peer addresses
+	filteredPeerAddrs := make([]string, 0, len(peerAddrs))
+	for _, addr := range peerAddrs {
+		if addr != "" {
+			filteredPeerAddrs = append(filteredPeerAddrs, addr)
+		}
+	}
 	return NewNodeWithConfig(ctx, cm, Config{
-		PeerAddrs: peerAddrs,
+		PeerAddrs: filteredPeerAddrs,
 	})
 }
 
