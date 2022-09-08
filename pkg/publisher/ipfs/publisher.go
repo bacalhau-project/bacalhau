@@ -49,6 +49,11 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
 	defer span.End()
 
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
 	log.Debug().Msgf(
 		"Uploading results folder to ipfs: %s %s %s",
 		hostID,

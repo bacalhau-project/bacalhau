@@ -58,6 +58,11 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 ) (model.StorageSpec, error) {
 	ctx, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
+	fmt.Printf(" --------------------------------------\n")
 	log.Debug().Msgf(
 		"Uploading results folder to estuary: %s %s %s",
 		hostID,
