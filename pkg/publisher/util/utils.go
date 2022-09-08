@@ -2,9 +2,7 @@ package util
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
@@ -30,9 +28,6 @@ func NewIPFSPublishers(
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("estuaryAPIKey --------------------------------------\n")
-	spew.Dump(estuaryAPIKey)
 
 	// we don't want to enforce that every compute node needs to have an estuary API key
 	// and so let's only add the

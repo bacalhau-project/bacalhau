@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -57,7 +58,17 @@ func CreateCar(
 	}
 
 	// Write the unixfs blocks into the store.
-	root, err := writeFiles(ctx, cdest, inputDirectory)
+	files, err := ioutil.ReadDir(inputDirectory)
+	if err != nil {
+		return "", err
+	}
+
+	carFilePaths := []string{}
+	for _, file := range files {
+		carFilePaths = append(carFilePaths, fmt.Sprintf("%s/%s", inputDirectory, file.Name()))
+	}
+
+	root, err := writeFiles(ctx, cdest, carFilePaths...)
 	if err != nil {
 		return "", err
 	}
