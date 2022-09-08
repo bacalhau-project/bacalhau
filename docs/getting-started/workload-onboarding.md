@@ -1,77 +1,220 @@
 ---
-sidebar_label: 'Onboard Your Workload' sidebar_position: 2
+sidebar_label: 'Onboard Your Workload'
+sidebar_position: 2
 ---
 import ReactPlayer from 'react-player'
 
 # Onboarding Your Workloads
 
-## Steps to onboard your workload
+This page describes how to convert your workload into a Bacalhau format. To migrate your workload, follow the instructions below for the job format you want to use. Also, don't forget to check out the examples for more inspiration.
 
-### 1. Modify your workload scripts
+<!-- vscode-markdown-toc -->
+* [Docker](#Docker)
+	* [Prerequisites and Limitations](#PrerequisitesandLimitations)
+	* [Onboarding](#Onboarding)
+		* [1. (Optional) Read Data From the `/inputs` Directory](#OptionalReadDataFromtheinputsDirectory)
+		* [2. (Optional) Write Data to the `/outputs` Directory](#OptionalWriteDatatotheoutputsDirectory)
+		* [3. (Optional) Write Data To an Output Directory](#OptionalWriteDataToanOutputDirectory)
+		* [4. (Optional) Build and Push Your Image To a Public Registry](#OptionalBuildandPushYourImageToaPublicRegistry)
+		* [5. Test Your Container](#TestYourContainer)
+		* [6. (Optional) Upload the Input Data to IPFS](#OptionalUploadtheInputDatatoIPFS)
+		* [7. Run the Workload on Bacalhau](#RuntheWorkloadonBacalhau)
+	* [Examples](#Examples)
+* [Support](#Support)
 
-#### Inputs
+<!-- vscode-markdown-toc-config
+	numbering=false
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
 
-_Note: all ingres/egres networking is disabled from the Bacalhau cluster, which will impact your workload if it pulls input data directly via HTTP._
+:::tip
 
-Option 1) Mount input data folder via Docker mount & IPFS
-Use docker mounts for inputs if your data needs to be consumed from IPFS and your workload allows **directory paths** (not individual files) as inputs.
-* Modify your workload (scripts) so that any input files are read from a [local directory](https://docs.bacalhau.org/about-bacalhau/architecture#input--output-volumes) mounted to the Docker container.
-* Any input files in your script, must be modified to read from files in an "input" folder in your project that can be mounted via IPFS.
+We will be adding more job formats soon!
 
-Option 2) Mount external HTTP/S URL as a path within Docker container. Per the [Run command CLI flags documentation](https://docs.bacalhau.org/cli-flags/all-flags#run), the ```--input-urls strings``` flag can be used to mount data from an external URL (HTTP/S) to a specified PATH within the Docker container.
+:::
 
-Option 3) Embed input data in the Docker image
-You can choose to embed your workload's input data within the docker image. As a result, your ```bacalhau docker run``` command will not require an input volume mount from IPFS.
+## <a name='Docker'></a>Docker
 
-#### Outputs
+These instructions show you how to migrate a workload that is based on a Docker container into a format that will work with Bacalhau.
 
-Modify your workload so that any output files are written to an "output/" folder. This will allow for the clear/specific mounting of the output folder when the "bacalhau docker run" command is executed. 
+### <a name='PrerequisitesandLimitations'></a>Prerequisites and Limitations
 
-Please see this [modified script example here](https://github.com/wesfloyd/bacalhau_socat_test/blob/9e51e48d6f9efa4adc8125fe97004c204e387fe5/main.py#L31).
+To help provide a safe, secure network for all users we add several runtime restrictions:
 
+1. All ingress/egress networking is disabled. You won't be able to pull data/code/weights/etc. from an external source.
+2. Data passing is implemented using Docker volumes, using [Bacalhau's input/output volumes](../about-bacalhau/architecture.md#input--output-volumes).
 
-### 2. Build the docker container
-Build a an **x86_64 / amd64** based docker image for your workload ([example here](https://docs.docker.com/language/python/build-images/)) and push the image to a [public docker registry](https://codefresh.io/docs/docs/integrations/docker-registries/). 
+The following lists current limitations:
 
-Tips:
-- To set the working directory for your container you may either:
-  - A) Set the WORKDIR via the Dockerfile for your workload ([example here](https://github.com/wesfloyd/bacalhau_socat_test/blob/main/Dockerfile)).
-  - B) Set the ```--workdir``` flag when executing your workload via the [Bacalhau CLI](https://docs.bacalhau.org/cli-flags/all-flags#run).
-- x86 Platform: do not build your docker image on a arm64 (Apple Silicon) Mac, the Bacalhau testnet is running x86_64 servers, so the docker images must be built on the same CPU architecture. You may execute bacalhau jobs from the CLI on a Mac, but please avoid building your docker images there._
+* Public container registries only
+* Containers must have an `x86_64` CPU architecture
+* The `--inputs` and `--input-voumes` flags do not support CID subpaths. Directories only.
+* The `--input-urls` flag does not support URL directories. Single files only.
 
+### <a name='Onboarding'></a>Onboarding
 
-### 3. Test the docker image locally
-Executing the following style of command to test your docker image locally:
+#### <a name='OptionalReadDataFromtheinputsDirectory'></a>1. (Optional) Read Data From the `/inputs` Directory
 
+If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
+
+We assume you are reading from a directory called `/inputs`, which is the default.
+
+:::tip
+
+You can specify which directory the data is written to with the `--input-volumes` CLI flag.
+
+:::
+
+#### <a name='OptionalWriteDatatotheoutputsDirectory'></a>2. (Optional) Write Data to the `/outputs` Directory
+
+If you need to return data from your container, you will do this via a Docker volume, so you need to modify your code to write to a local directory.
+
+We assume you are writing to a directory called `/outputs`, which is the default.
+
+:::tip
+
+You can specify which directory the data is written to with the `--output-volumes` CLI flag.
+
+:::
+
+#### <a name='OptionalWriteDataToanOutputDirectory'></a>3. (Optional) Write Data To an Output Directory
+
+If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
+
+#### <a name='OptionalBuildandPushYourImageToaPublicRegistry'></a>4. (Optional) Build and Push Your Image To a Public Registry
+
+If you haven't already, [build your image](https://docs.docker.com/engine/reference/commandline/build/) and [push it](https://docs.docker.com/engine/reference/commandline/push/) to a publicly accessible container registry.
+
+:::caution
+
+All Bacalhau nodes are of an `x86_64` architecture, therefore containers must be built for `x86_64` systems.
+
+:::
+
+For example:
+
+```bash
+export IMAGE=myuser/myimage:latest
+docker build -t ${IMAGE} .
+docker image push ${IMAGE}
 ```
-docker run -v /host-mount-location:/container-input-location/  \
-  -o output-folder-name:/container-output-location/ \
-  IMAGENAME [CMD]
+
+#### <a name='TestYourContainer'></a>5. Test Your Container
+
+Execute the following command to test your docker image locally, changing the environment variables as necessary:
+
+```bash
+export LOCAL_INPUT_DIR=$PWD
+export LOCAL_OUTPUT_DIR=$PWD
+export CMD=(sh -c 'ls /inputs; echo do something useful > /outputs/stdout')
+docker run --rm \
+  -v ${LOCAL_INPUT_DIR}:/inputs  \
+  -v ${LOCAL_OUTPUT_DIR}:/outputs \
+  ${IMAGE} \
+  ${CMD}
 ```
 
-### 4. Migrate input data for the workload to IPFS
+For example:
+
+```bash
+export IMAGE=ubuntu
+docker run --rm \
+  -v ${LOCAL_INPUT_DIR}:/inputs  \
+  -v ${LOCAL_OUTPUT_DIR}:/outputs \
+  ${IMAGE} \
+  ${CMD}
+cat stdout
+```
+
+Results in:
+
+```bash
+...file listing...
+do something useful
+```
+
+#### <a name='OptionalUploadtheInputDatatoIPFS'></a>6. (Optional) Upload the Input Data to IPFS
+
+We recommend uploading your data to IPFS for persistent storage:
+
+* Bacalhau is designed to perform the computation next to the data
+* Distributing data across the solar system with IPFS distributes the Bacalhau computation
+* Distributing computation improves performance by scaling, and improves resiliency via redundancy
+* Using IPFS CIDs as inputs enables repeatable and cacheable execution
+
+:::tip
+
+The following guides explain how to store data on the IPFS network.
+
 - Leverage an IPFS “pinning service” such as:
   - [Web3.Storage](https://web3.storage/account/)
   - [Estuary](https://estuary.tech/sign-in)
   - [Manually pin your files to IPFS](https://docs.ipfs.io/how-to/pin-files/) with your own IPFS server.
 - If uploading a folder of input files, consider [uploading with this script](https://web3.storage/docs/#create-the-upload-script). However, please note that any content uploaded to Web3.storage is [also wrapped in a parent directory](https://web3.storage/docs/how-tos/store/#directory-wrapping). You will need to take care to reference the inner directory CID in your bacalhau command.
 
+:::
 
-### 5. Run the workload on Bacalhau:
+#### <a name='RuntheWorkloadonBacalhau'></a>7. Run the Workload on Bacalhau
 
-**Note:** Bacalhau does **not** support subpaths within a CID. You must reference the CID of an atomic folder in your `bacalhau docker run` command.
-```
-bacalhau docker run -v CID:/container-input-location/ \
-    -o output-folder-name:/container-output-location/ IMAGENAME
+To run your workload using input data stored in IPFS use the following command:
+
+```bash
+bacalhau docker run --inputs ${CID} ${IMAGE} ${CMD}
 
 bacalhau list 
 
 bacalhau get JOB_ID
 ```
 
+For example, running:
 
+```bash
+cid=$(bacalhau docker run ubuntu echo hello)
+bacalhau list --id-filter $cid
+sleep 5
+bacalhau list --id-filter $cid
+bacalhau get $cid
+ls shards
+```
 
-## Example Onboarded Workload
+Results in:
+
+```bash
+ CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Verifying                      
+ CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
+ 10:26:00  24440f0d  Docker ubuntu echo h...  Published            /ipfs/bafybeiflj3kha... 
+11:26:09.107 | INF bacalhau/get.go:67 > Fetching results of job '24440f0d-3c06-46af-9adf-cb524aa43961'...
+11:26:10.528 | INF ipfs/downloader.go:115 > Found 1 result shards, downloading to temporary folder.
+11:26:13.144 | INF ipfs/downloader.go:195 > Combining shard from output volume 'outputs' to final location: '/Users/phil/source/filecoin-project/docs.bacalhau.org'
+job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
+```
+
+:::caution
+
+The `--inputs` flag does not support CID subpaths. Directories only.
+
+:::
+
+Alternatively, run your workload with a publicly accessible http(s) URL, which will download the data temporarily into IPFS:
+
+```bash
+export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
+bacalhau docker run --input-urls ${URL}:/inputs ${IMAGE} ${CMD}
+
+bacalhau list 
+
+bacalhau get JOB_ID
+```
+
+:::caution
+
+The `--input-urls` flag does not support URL directories. Single files only.
+
+:::
+
+### <a name='Examples'></a>Examples
 
 Here is an example of an onboarded workload leveraging the Surface Ocean CO₂ Atlas (SOCAT) to Bacalhau:
 - [Youtube: Bacalhau SOCAT Workload Demo](https://www.youtube.com/watch?v=t2AHD8yJhLY)
@@ -81,10 +224,6 @@ Here is an example of an onboarded workload leveraging the Surface Ocean CO₂ A
 
 Here is an example of running a job live on the Bacalhau network: [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
-
-
-
-
-## Support
+## <a name='Support'></a>Support
 
 Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or in case of any issues.
