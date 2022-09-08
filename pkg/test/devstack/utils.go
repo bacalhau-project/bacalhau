@@ -205,7 +205,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: args.NodeCount * args.ShardCount,
+			model.JobStateCompleted: args.NodeCount * args.ShardCount,
 		}),
 	)
 	require.NoError(t, err)

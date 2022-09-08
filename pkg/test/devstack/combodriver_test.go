@@ -136,7 +136,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 				model.JobStateError,
 			}),
 			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStatePublished: 1,
+				model.JobStateCompleted: 1,
 			}),
 		)
 		require.NoError(suite.T(), err)

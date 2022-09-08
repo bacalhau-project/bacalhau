@@ -301,7 +301,7 @@ const (
 	JobStateVerifying
 
 	// our results have been processed and published
-	JobStatePublished
+	JobStateCompleted
 
 	jobStateDone // must be last
 )
@@ -310,7 +310,7 @@ const (
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
-	return state == JobStatePublished || state == JobStateError || state == JobStateCancelled
+	return state == JobStateCompleted || state == JobStateError || state == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -319,7 +319,7 @@ func (state JobStateType) IsTerminal() bool {
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (state JobStateType) IsComplete() bool {
-	return state == JobStatePublished || state == JobStateError
+	return state == JobStateCompleted || state == JobStateError
 }
 
 func (state JobStateType) IsError() bool {
@@ -390,7 +390,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateVerifying
 
 	case JobEventResultsPublished:
-		return JobStatePublished
+		return JobStateCompleted
 
 	default:
 		return jobStateUnknown
