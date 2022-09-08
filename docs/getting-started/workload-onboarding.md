@@ -8,37 +8,17 @@ import ReactPlayer from 'react-player'
 
 This page describes how to convert your workload into a Bacalhau format. To migrate your workload, follow the instructions below for the job format you want to use. Also, don't forget to check out the examples for more inspiration.
 
-<!-- vscode-markdown-toc -->
-* [Docker](#Docker)
-	* [Prerequisites and Limitations](#PrerequisitesandLimitations)
-	* [Onboarding](#Onboarding)
-		* [1. (Optional) Read Data From the `/inputs` Directory](#OptionalReadDataFromtheinputsDirectory)
-		* [2. (Optional) Write Data to the `/outputs` Directory](#OptionalWriteDatatotheoutputsDirectory)
-		* [3. (Optional) Write Data To an Output Directory](#OptionalWriteDataToanOutputDirectory)
-		* [4. (Optional) Build and Push Your Image To a Public Registry](#OptionalBuildandPushYourImageToaPublicRegistry)
-		* [5. Test Your Container](#TestYourContainer)
-		* [6. (Optional) Upload the Input Data to IPFS](#OptionalUploadtheInputDatatoIPFS)
-		* [7. Run the Workload on Bacalhau](#RuntheWorkloadonBacalhau)
-	* [Examples](#Examples)
-* [Support](#Support)
-
-<!-- vscode-markdown-toc-config
-	numbering=false
-	autoSave=true
-	/vscode-markdown-toc-config -->
-<!-- /vscode-markdown-toc -->
-
 :::tip
 
 We will be adding more job formats soon!
 
 :::
 
-## <a name='Docker'></a>Docker
+## Docker
 
 These instructions show you how to migrate a workload that is based on a Docker container into a format that will work with Bacalhau.
 
-### <a name='PrerequisitesandLimitations'></a>Prerequisites and Limitations
+### Prerequisites and Limitations
 
 To help provide a safe, secure network for all users we add several runtime restrictions:
 
@@ -52,9 +32,9 @@ The following lists current limitations:
 * The `--inputs` and `--input-voumes` flags do not support CID subpaths. Directories only.
 * The `--input-urls` flag does not support URL directories. Single files only.
 
-### <a name='Onboarding'></a>Onboarding
+### Onboarding
 
-#### <a name='OptionalReadDataFromtheinputsDirectory'></a>1. (Optional) Read Data From the `/inputs` Directory
+#### 1. (Optional) Read Data From the `/inputs` Directory
 
 If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
 
@@ -66,7 +46,7 @@ You can specify which directory the data is written to with the `--input-volumes
 
 :::
 
-#### <a name='OptionalWriteDatatotheoutputsDirectory'></a>2. (Optional) Write Data to the `/outputs` Directory
+#### 2. (Optional) Write Data to the `/outputs` Directory
 
 If you need to return data from your container, you will do this via a Docker volume, so you need to modify your code to write to a local directory.
 
@@ -78,11 +58,11 @@ You can specify which directory the data is written to with the `--output-volume
 
 :::
 
-#### <a name='OptionalWriteDataToanOutputDirectory'></a>3. (Optional) Write Data To an Output Directory
+#### 3. (Optional) Write Data To an Output Directory
 
 If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
 
-#### <a name='OptionalBuildandPushYourImageToaPublicRegistry'></a>4. (Optional) Build and Push Your Image To a Public Registry
+#### 4. (Optional) Build and Push Your Image To a Public Registry
 
 If you haven't already, [build your image](https://docs.docker.com/engine/reference/commandline/build/) and [push it](https://docs.docker.com/engine/reference/commandline/push/) to a publicly accessible container registry.
 
@@ -100,7 +80,7 @@ docker build -t ${IMAGE} .
 docker image push ${IMAGE}
 ```
 
-#### <a name='TestYourContainer'></a>5. Test Your Container
+#### 5. Test Your Container
 
 Execute the following command to test your docker image locally, changing the environment variables as necessary:
 
@@ -134,7 +114,7 @@ Results in:
 do something useful
 ```
 
-#### <a name='OptionalUploadtheInputDatatoIPFS'></a>6. (Optional) Upload the Input Data to IPFS
+#### 6. (Optional) Upload the Input Data to IPFS
 
 We recommend uploading your data to IPFS for persistent storage:
 
@@ -155,7 +135,7 @@ The following guides explain how to store data on the IPFS network.
 
 :::
 
-#### <a name='RuntheWorkloadonBacalhau'></a>7. Run the Workload on Bacalhau
+#### 7. Run the Workload on Bacalhau
 
 To run your workload using input data stored in IPFS use the following command:
 
@@ -214,7 +194,7 @@ The `--input-urls` flag does not support URL directories. Single files only.
 
 :::
 
-### <a name='Examples'></a>Examples
+### Examples
 
 Here is an example of an onboarded workload leveraging the Surface Ocean CO₂ Atlas (SOCAT) to Bacalhau:
 - [Youtube: Bacalhau SOCAT Workload Demo](https://www.youtube.com/watch?v=t2AHD8yJhLY)
@@ -224,6 +204,6 @@ Here is an example of an onboarded workload leveraging the Surface Ocean CO₂ A
 
 Here is an example of running a job live on the Bacalhau network: [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
-## <a name='Support'></a>Support
+## Support
 
 Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or in case of any issues.
