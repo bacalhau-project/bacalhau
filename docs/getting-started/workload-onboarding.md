@@ -146,11 +146,11 @@ bacalhau get JOB_ID
 For example, running:
 
 ```bash
-cid=$(bacalhau docker run ubuntu echo hello)
-bacalhau list --id-filter $cid
+job_id=$(bacalhau docker run ubuntu echo hello)
+bacalhau list --id-filter $job_id
 sleep 5
-bacalhau list --id-filter $cid
-bacalhau get $cid
+bacalhau list --id-filter $job_id
+bacalhau get $job_id
 ls shards
 ```
 
