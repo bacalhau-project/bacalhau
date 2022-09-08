@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -58,7 +58,7 @@ func CreateCar(
 	}
 
 	// Write the unixfs blocks into the store.
-	files, err := ioutil.ReadDir(inputDirectory)
+	files, err := os.ReadDir(inputDirectory)
 	if err != nil {
 		return "", err
 	}
