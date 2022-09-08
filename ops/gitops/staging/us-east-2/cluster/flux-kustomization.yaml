@@ -14,5 +14,5 @@ spec:
     kind: GitRepository
     name: bacalhau
     namespace: flux-system
-  path: "./ops/gitops/development/us-east-2/secrets"
+  path: "./ops/gitops/staging/us-east-2/secrets"
   prune: true
