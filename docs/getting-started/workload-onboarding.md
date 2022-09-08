@@ -58,11 +58,7 @@ You can specify which directory the data is written to with the `--output-volume
 
 :::
 
-#### 3. (Optional) Write Data To an Output Directory
-
-If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
-
-#### 4. (Optional) Build and Push Your Image To a Public Registry
+#### 3. (Optional) Build and Push Your Image To a Public Registry
 
 If you haven't already, [build your image](https://docs.docker.com/engine/reference/commandline/build/) and [push it](https://docs.docker.com/engine/reference/commandline/push/) to a publicly accessible container registry.
 
@@ -80,7 +76,7 @@ docker build -t ${IMAGE} .
 docker image push ${IMAGE}
 ```
 
-#### 5. Test Your Container
+#### 4. Test Your Container
 
 Execute the following command to test your docker image locally, changing the environment variables as necessary:
 
@@ -114,7 +110,7 @@ Results in:
 do something useful
 ```
 
-#### 6. (Optional) Upload the Input Data to IPFS
+#### 5. (Optional) Upload the Input Data to IPFS
 
 We recommend uploading your data to IPFS for persistent storage:
 
@@ -135,7 +131,7 @@ The following guides explain how to store data on the IPFS network.
 
 :::
 
-#### 7. Run the Workload on Bacalhau
+#### 6. Run the Workload on Bacalhau
 
 To run your workload using input data stored in IPFS use the following command:
 
