@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // SubscribeFn is provided by an in-process listener as an event callback.
@@ -25,7 +26,10 @@ type Transport interface {
 
 	// HostID returns a unique string per host in whatever network the
 	// scheduler is connecting to. Must be unique per instance.
-	HostID(ctx context.Context) (string, error)
+	HostID() string
+
+	// Returns the listen addresses of the Host
+	HostAddrs() ([]multiaddr.Multiaddr, error)
 
 	/////////////////////////////////////////////////////////////
 	/// EVENT HANDLING

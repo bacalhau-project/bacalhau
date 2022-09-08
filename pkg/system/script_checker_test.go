@@ -26,7 +26,7 @@ func (suite *SystemScriptCheckerSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *SystemScriptCheckerSuite) SetupTest() {
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 }
 
 func (suite *SystemScriptCheckerSuite) TearDownTest() {

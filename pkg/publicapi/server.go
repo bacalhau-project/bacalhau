@@ -68,10 +68,7 @@ func (apiServer *APIServer) GetURI() string {
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	hostID, err := apiServer.Controller.HostID(ctx)
-	if err != nil {
-		return err
-	}
+	hostID := apiServer.Controller.HostID()
 
 	throttle := func(h http.Handler) http.Handler {
 		return tollbooth.LimitHandler(
@@ -113,7 +110,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		return srv.Shutdown(ctx)
 	})
 
-	err = srv.ListenAndServe()
+	err := srv.ListenAndServe()
 	if err == http.ErrServerClosed {
 		log.Debug().Msgf(
 			"API server closed for host %s on %s.", hostID, srv.Addr)

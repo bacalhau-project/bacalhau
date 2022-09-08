@@ -37,7 +37,8 @@ package bacalhau
 
 // // Before each test
 // func (suite *ExamplesTestSuite) SetupTest() {
-// 	system.InitConfigForTesting(suite.T())
+// 	err :=system.InitConfigForTesting()
+//  require.NoError(t, err)
 // 	suite.rootCmd = bacalhau.RootCmd
 // }
 

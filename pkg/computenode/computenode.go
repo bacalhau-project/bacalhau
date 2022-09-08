@@ -96,13 +96,10 @@ func constructComputeNode(
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
+	_, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
 	defer span.End()
 
-	nodeID, err := c.HostID(ctx)
-	if err != nil {
-		return nil, err
-	}
+	nodeID := c.HostID()
 
 	shardStateManager, err := NewShardComputeStateMachineManager()
 	if err != nil {

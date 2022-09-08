@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -127,13 +128,21 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	)
 }
 
-func getPeers() []string {
+func getPeers() []multiaddr.Multiaddr {
+	var peersStrings []string
 	if OS.PeerConnect == "none" {
-		return []string{}
+		peersStrings = []string{}
 	} else if OS.PeerConnect == "" {
-		return DefaultBootstrapAddresses
+		peersStrings = DefaultBootstrapAddresses
+	} else {
+		peersStrings = strings.Split(OS.PeerConnect, ",")
 	}
-	return strings.Split(OS.PeerConnect, ",")
+	// convert peers stringsto multiaddrs
+	peers := make([]multiaddr.Multiaddr, len(peersStrings))
+	for i, peer := range peersStrings {
+		peers[i], _ = multiaddr.NewMultiaddr(peer)
+	}
+	return peers
 }
 
 func getJobSelectionConfig() computenode.JobSelectionPolicy {
@@ -241,7 +250,7 @@ var serveCmd = &cobra.Command{
 
 		// Establishing p2p connection
 		peers := getPeers()
-		log.Debug().Msgf("libp2p connecting to: %s", strings.Join(peers, ", "))
+		log.Debug().Msgf("libp2p connecting to: %s", peers)
 
 		transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
 		if err != nil {

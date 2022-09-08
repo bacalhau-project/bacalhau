@@ -58,7 +58,7 @@ func (suite *UtilsSuite) TestSafeRegex() {
 }
 
 func (suite *UtilsSuite) TestVersionCheck() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 
 	// OK: Normal operation
 	err := ensureValidVersion(context.TODO(), &model.VersionInfo{

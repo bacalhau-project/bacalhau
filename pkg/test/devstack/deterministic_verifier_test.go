@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -28,7 +29,8 @@ func (suite *DeterministicVerifierSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DeterministicVerifierSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DeterministicVerifierSuite) TearDownTest() {

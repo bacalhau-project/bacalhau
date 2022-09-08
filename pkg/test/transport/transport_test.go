@@ -44,7 +44,8 @@ func (suite *TransportSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *TransportSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *TransportSuite) TearDownTest() {
