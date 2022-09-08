@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"testing"
 	"time"
 
@@ -33,7 +34,8 @@ func (suite *DevstackConcurrencySuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackConcurrencySuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackConcurrencySuite) TearDownTest() {
@@ -63,8 +65,8 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	)
 	defer TeardownTest(stack, cm)
 
-	testCase := scenario.CatFileToVolume(suite.T())
-	inputStorageList, err := testCase.SetupStorage(ctx, stack, model.StorageSourceIPFS, 3)
+	testCase := scenario.CatFileToVolume()
+	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{

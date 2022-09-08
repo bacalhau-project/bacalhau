@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -40,7 +41,8 @@ func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
@@ -486,7 +488,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		cid, _ := ipfsStack.AddTextToNodes(ctx, 1, []byte(text))
+		cid, _ := devstack.AddTextToNodes(ctx, []byte(text), ipfsStack.IPFSClients[0])
 
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -537,7 +539,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
-		cid, err := stack.IpfsStack.AddTextToNodes(ctx, 1, []byte(text))
+		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
 		require.NoError(suite.T(), err)
 
 		executor := stack.Node.Executors[model.EngineDocker]

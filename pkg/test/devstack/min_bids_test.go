@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -32,7 +33,8 @@ func (suite *MinBidsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *MinBidsSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *MinBidsSuite) TearDownTest() {
@@ -73,7 +75,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		dirPath, err := prepareFolderWithFiles(testCase.shards)
 		require.NoError(suite.T(), err)
 
-		directoryCid, err := stack.AddFileToNodes(ctx, testCase.nodes, dirPath)
+		directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
 		require.NoError(suite.T(), err)
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()

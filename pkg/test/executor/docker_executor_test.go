@@ -36,7 +36,8 @@ func (suite *ExecutorDockerExecutorSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ExecutorDockerExecutorSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
@@ -66,7 +67,7 @@ func dockerExecutorStorageTest(
 		dockerExecutor := stack.Node.Executors[model.EngineDocker]
 
 		inputStorageList, err := testCase.SetupStorage(ctx,
-			stack.IpfsStack, model.StorageSourceIPFS, TEST_NODE_COUNT)
+			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:TEST_NODE_COUNT]...)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
@@ -107,7 +108,8 @@ func dockerExecutorStorageTest(
 		err = dockerExecutor.RunShard(ctx, shard, resultsDirectory)
 		require.NoError(t, err)
 
-		testCase.ResultsChecker(resultsDirectory)
+		err = testCase.ResultsChecker(resultsDirectory)
+		require.NoError(t, err)
 	}
 
 	for _, storageDriverFactory := range storageDriverFactories {
@@ -120,7 +122,7 @@ func dockerExecutorStorageTest(
 func (suite *ExecutorDockerExecutorSuite) TestCatFileStdout() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.CatFileToStdout(suite.T()),
+		scenario.CatFileToStdout(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -128,7 +130,7 @@ func (suite *ExecutorDockerExecutorSuite) TestCatFileStdout() {
 func (suite *ExecutorDockerExecutorSuite) TestCatFileOutputVolume() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.CatFileToVolume(suite.T()),
+		scenario.CatFileToVolume(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -136,7 +138,7 @@ func (suite *ExecutorDockerExecutorSuite) TestCatFileOutputVolume() {
 func (suite *ExecutorDockerExecutorSuite) TestGrepFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.GrepFile(suite.T()),
+		scenario.GrepFile(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -144,7 +146,7 @@ func (suite *ExecutorDockerExecutorSuite) TestGrepFile() {
 func (suite *ExecutorDockerExecutorSuite) TestSedFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.SedFile(suite.T()),
+		scenario.SedFile(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -152,7 +154,7 @@ func (suite *ExecutorDockerExecutorSuite) TestSedFile() {
 func (suite *ExecutorDockerExecutorSuite) TestAwkFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.AwkFile(suite.T()),
+		scenario.AwkFile(),
 		scenario.StorageDriverFactories,
 	)
 }

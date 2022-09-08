@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -35,7 +36,8 @@ func (suite *IPFSHostStorageSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *IPFSHostStorageSuite) TearDownTest() {
@@ -86,7 +88,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
-	fileCid, err := stack.AddTextToNodes(ctx, 1, []byte(EXAMPLE_TEXT))
+	fileCid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
@@ -146,7 +148,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// add this file to the server
-	folderCid, err := stack.AddFolderToNodes(ctx, 1, dir)
+	folderCid, err := devstack.AddFileToNodes(ctx, dir, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client

@@ -36,7 +36,7 @@ func NewIPFSPublishers(
 
 	// we don't want to enforce that every compute node needs to have an estuary API key
 	// and so let's only add the
-	var estuaryPublisher publisher.Publisher = noopPublisher
+	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
 		estuaryPublisher, err = estuary.NewEstuaryPublisher(cm, resolver, estuary.EstuaryPublisherConfig{
 			APIKey: estuaryAPIKey,

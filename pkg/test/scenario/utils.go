@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -14,7 +15,6 @@ import (
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	fusedocker "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_fusedocker"
 	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/require"
 )
 
 type TestCase struct {
@@ -40,8 +40,8 @@ const (
 type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
 
 //nolint:lll
-type ISetupStorage func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error)
-type ICheckResults func(resultsDir string)
+type ISetupStorage func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error)
+type ICheckResults func(resultsDir string) error
 type IGetJobSpec func() model.JobSpecDocker
 
 /*
@@ -87,15 +87,16 @@ var StorageDriverFactoriesAPICopy = []StorageDriverFactory{
 */
 
 func singleFileSetupStorageWithData(
-	t *testing.T,
 	ctx context.Context,
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
 	//nolint:lll
-	return func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
-		fileCid, err := stack.AddTextToNodes(ctx, nodeCount, []byte(fileContents))
-		require.NoError(t, err)
+	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
+		fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), clients...)
+		if err != nil {
+			return nil, err
+		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
 				Engine: driverName,
@@ -103,20 +104,22 @@ func singleFileSetupStorageWithData(
 				Path:   mountPath,
 			},
 		}
+		log.Debug().Msgf("Added file with cid %s", fileCid)
 		return inputStorageSpecs, nil
 	}
 }
 
 func singleFileSetupStorageWithFile(
-	t *testing.T,
 	ctx context.Context,
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
 	//nolint:lll
-	return func(ctx context.Context, stack devstack.IDevStack, driverName model.StorageSourceType, nodeCount int) ([]model.StorageSpec, error) {
-		fileCid, err := stack.AddFileToNodes(ctx, nodeCount, filePath)
-		require.NoError(t, err)
+	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
+		fileCid, err := devstack.AddFileToNodes(ctx, filePath, clients...)
+		if err != nil {
+			return nil, err
+		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
 				Engine: driverName,
@@ -143,28 +146,36 @@ func singleFileGetData(
 }
 
 func singleFileResultsChecker(
-	t *testing.T,
 	ctx context.Context,
 	outputFilePath string,
 	expectedString string,
 	expectedMode IExpectedMode,
 	expectedLines int,
 ) ICheckResults {
-	return func(resultsDir string) {
+	return func(resultsDir string) error {
 		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
-		log.Trace().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
+		log.Debug().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
 
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
-		require.Equal(t, expectedLines, actualLineCount, fmt.Sprintf("Count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount))
+		if actualLineCount != expectedLines {
+			return fmt.Errorf("count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount)
+		}
 
 		if expectedMode == ExpectedModeEquals {
-			require.Equal(t, expectedString, string(resultsContent))
+			if string(resultsContent) != expectedString {
+				return fmt.Errorf("content mismatch:\nExpected: %s\nActual: %s", expectedString, resultsContent)
+			}
 		} else if expectedMode == ExpectedModeContains {
-			require.True(t, strings.Contains(string(resultsContent), expectedString))
+			if !strings.Contains(string(resultsContent), expectedString) {
+				return fmt.Errorf("content mismatch:\nExpected Contains: %s\nActual: %s", expectedString, resultsContent)
+			}
 		} else {
-			t.Fail()
+			return fmt.Errorf("unknown expected mode: %d", expectedMode)
 		}
+		return nil
 	}
 }

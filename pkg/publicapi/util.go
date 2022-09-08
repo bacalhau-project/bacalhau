@@ -31,7 +31,8 @@ const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
-	system.InitConfigForTesting(t)
+	err := system.InitConfigForTesting()
+	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()
 	ctx := context.Background()

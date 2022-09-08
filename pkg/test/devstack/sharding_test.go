@@ -43,7 +43,8 @@ func (suite *ShardingSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ShardingSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ShardingSuite) TearDownTest() {
@@ -103,7 +104,8 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 
 	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
 	require.NoError(suite.T(), err)
@@ -119,7 +121,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
 	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.APIAddress())
@@ -202,7 +204,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	dirPath, err := prepareFolderWithFiles(totalFiles)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{
@@ -349,7 +351,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	dirPath, err := prepareFolderWithFiles(0)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{
@@ -423,7 +425,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{

@@ -31,7 +31,7 @@ func (suite *NodeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *NodeSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 }
 
 func (suite *NodeSuite) TearDownTest() {

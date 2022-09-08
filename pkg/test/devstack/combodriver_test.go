@@ -36,7 +36,8 @@ func (suite *ComboDriverSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ComboDriverSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ComboDriverSuite) TearDownTest() {
@@ -89,7 +90,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		require.NoError(suite.T(), err)
 
 		if !unsealedMode {
-			directoryCid, err := stack.AddFileToNodes(ctx, 1, basePath)
+			directoryCid, err := devstack.AddFileToNodes(ctx, basePath, stack.Nodes[0].IPFSClient)
 			require.NoError(suite.T(), err)
 			cid = directoryCid
 		}

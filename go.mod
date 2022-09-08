@@ -62,12 +62,14 @@ require (
 	github.com/multiformats/go-multicodec v0.5.0
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/pkg/errors v0.9.1
-	go.opencensus.io v0.23.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 )
 
-require github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+require (
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	go.opencensus.io v0.23.0 // indirect
+)
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect

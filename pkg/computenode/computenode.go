@@ -96,13 +96,10 @@ func constructComputeNode(
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
+	_, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
 	defer span.End()
 
-	nodeID, err := c.HostID(ctx)
-	if err != nil {
-		return nil, err
-	}
+	nodeID := c.HostID()
 
 	shardStateManager, err := NewShardComputeStateMachineManager()
 	if err != nil {
@@ -748,7 +745,7 @@ func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType)
 }
 
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.JobSpec) (uint64, error) {
-	e, err := n.getExecutor(context.Background(), spec.Engine)
+	e, err := n.getExecutor(ctx, spec.Engine)
 	if err != nil {
 		return 0, err
 	}

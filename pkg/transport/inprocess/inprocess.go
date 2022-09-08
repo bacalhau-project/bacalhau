@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
@@ -54,8 +55,12 @@ func (t *InProcessTransport) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *InProcessTransport) HostID(ctx context.Context) (string, error) {
-	return t.id, nil
+func (t *InProcessTransport) HostID() string {
+	return t.id
+}
+
+func (t *InProcessTransport) HostAddrs() ([]multiaddr.Multiaddr, error) {
+	return []multiaddr.Multiaddr{}, nil
 }
 
 func (t *InProcessTransport) GetEvents() []model.JobEvent {

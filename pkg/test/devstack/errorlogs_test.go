@@ -36,7 +36,8 @@ func (suite *DevstackErrorLogsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackErrorLogsSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownTest() {

@@ -2,6 +2,7 @@ package devstack
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -34,7 +35,8 @@ func (suite *DevStackSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevStackSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevStackSuite) TearDownTest() {
@@ -66,7 +68,7 @@ func devStackDockerStorageTest(
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(ctx, stack, model.StorageSourceIPFS, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(t, err)
 
 	jobSpec := model.JobSpec{
@@ -119,14 +121,15 @@ func devStackDockerStorageTest(
 		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(t, err)
 
-		testCase.ResultsChecker(outputPath)
+		err = testCase.ResultsChecker(outputPath)
+		require.NoError(t, err)
 	}
 }
 
 func (suite *DevStackSuite) TestCatFileStdout() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.CatFileToStdout(suite.T()),
+		scenario.CatFileToStdout(),
 		3,
 	)
 }
@@ -134,7 +137,7 @@ func (suite *DevStackSuite) TestCatFileStdout() {
 func (suite *DevStackSuite) TestCatFileOutputVolume() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.CatFileToVolume(suite.T()),
+		scenario.CatFileToVolume(),
 		1,
 	)
 }
@@ -142,7 +145,7 @@ func (suite *DevStackSuite) TestCatFileOutputVolume() {
 func (suite *DevStackSuite) TestGrepFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.GrepFile(suite.T()),
+		scenario.GrepFile(),
 		3,
 	)
 }
@@ -150,7 +153,7 @@ func (suite *DevStackSuite) TestGrepFile() {
 func (suite *DevStackSuite) TestSedFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.SedFile(suite.T()),
+		scenario.SedFile(),
 		3,
 	)
 }
@@ -158,7 +161,7 @@ func (suite *DevStackSuite) TestSedFile() {
 func (suite *DevStackSuite) TestAwkFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.AwkFile(suite.T()),
+		scenario.AwkFile(),
 		3,
 	)
 }

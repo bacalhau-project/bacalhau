@@ -25,7 +25,7 @@ func (suite *SystemContextSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *SystemContextSuite) SetupTest() {
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 }
 
 func (suite *SystemContextSuite) TearDownTest() {

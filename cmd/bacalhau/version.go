@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"go.opencensus.io/trace"
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,7 +62,7 @@ var versionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
-		ctx := context.Background()
+		ctx := cmd.Context()
 
 		t := system.GetTracer()
 		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
@@ -107,15 +106,17 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	var (
 		versions Versions
 	)
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
 
-	_, clientVersionSpan := trace.StartSpan(ctx, "clientversion")
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	versions.ClientVersion = version.Get()
-	clientVersionSpan.End()
 
 	if !oV.ClientOnly {
-		var serverVersionCallSpan *trace.Span
-		ctx, serverVersionCallSpan = trace.StartSpan(ctx, "serverversioncall")
-
 		serverVersion, err := getAPIClient().Version(ctx)
 		if err != nil {
 			log.Error().Msgf("could not get server version")
@@ -123,7 +124,6 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		}
 
 		versions.ServerVersion = serverVersion
-		serverVersionCallSpan.End()
 	}
 
 	switch oV.Output {

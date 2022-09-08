@@ -24,7 +24,7 @@ func (suite *SystemConfigSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *SystemConfigSuite) SetupTest() {
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 }
 
 func (suite *SystemConfigSuite) TearDownTest() {
@@ -41,7 +41,7 @@ func (suite *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
@@ -63,11 +63,11 @@ func (suite *SystemConfigSuite) TestGetClientID() {
 		}
 	}()
 
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 	id := GetClientID()
 	require.NotEmpty(suite.T(), id)
 
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 	id2 := GetClientID()
 	require.NotEmpty(suite.T(), id2)
 
@@ -82,7 +82,7 @@ func (suite *SystemConfigSuite) TestPublicKeyMatchesID() {
 		}
 	}()
 
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()

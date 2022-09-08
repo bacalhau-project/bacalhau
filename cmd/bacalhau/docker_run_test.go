@@ -5,6 +5,7 @@ import (
 	"context"
 	crand "crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -48,7 +49,7 @@ func (suite *DockerRunSuite) SetupSuite() {
 
 // Before each test
 func (suite *DockerRunSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
 
@@ -717,7 +718,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(ctx, nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
