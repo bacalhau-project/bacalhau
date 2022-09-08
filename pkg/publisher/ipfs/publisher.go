@@ -48,13 +48,6 @@ func (publisher *IPFSPublisher) PublishShardResult(
 ) (model.StorageSpec, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
 	defer span.End()
-
-	log.Debug().Msgf(
-		"Uploading results folder to ipfs: %s %s %s",
-		hostID,
-		shard,
-		shardResultPath,
-	)
 	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
