@@ -5,11 +5,13 @@ import ReactPlayer from 'react-player'
 
 # Getting Started with the Public Bacalhau Network
 
-## Install the CLI
+## Dependencies
+* Install the bacalhau CLI
 
 ```
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
+* Download and install (or update) [Docker Engine](https://docs.docker.com/engine/install/)
 
 ## Run a "hello world" job
 
