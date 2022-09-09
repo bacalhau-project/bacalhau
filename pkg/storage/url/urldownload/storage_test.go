@@ -10,12 +10,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 func TestNewStorageProvider(t *testing.T) {
 	cm := system.NewCleanupManager()
+
 	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
@@ -38,13 +39,15 @@ func TestNewStorageProvider(t *testing.T) {
 
 func TestHasStorageLocally(t *testing.T) {
 	cm := system.NewCleanupManager()
+	ctx := context.Background()
+
 	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.Background()
-	spec := storage.StorageSpec{
-		Engine: storage.StorageSourceURLDownload,
+
+	spec := model.StorageSpec{
+		Engine: model.StorageSourceURLDownload,
 		URL:    "foo",
 		Path:   "foo",
 	}
@@ -68,19 +71,19 @@ func TestPrepareStorage(t *testing.T) {
 	defer ts.Close()
 
 	cm := system.NewCleanupManager()
+	ctx := context.Background()
 	sp, err := NewStorageProvider(cm)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	serverURL := ts.URL
-	spec := storage.StorageSpec{
-		Engine: storage.StorageSourceURLDownload,
+	spec := model.StorageSpec{
+		Engine: model.StorageSourceURLDownload,
 		URL:    serverURL + "/testfile",
 		Path:   "/foo",
 	}
 
-	ctx := context.Background()
 	volume, err := sp.PrepareStorage(ctx, spec)
 	if err != nil {
 		t.Fatal(err)

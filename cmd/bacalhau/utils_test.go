@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -58,66 +58,66 @@ func (suite *UtilsSuite) TestSafeRegex() {
 }
 
 func (suite *UtilsSuite) TestVersionCheck() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 
 	// OK: Normal operation
-	err := ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err := ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v1.2.3",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: invalid semver
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "not-a-sem-ver",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: nil semver
-	err = ensureValidVersion(context.TODO(), nil, &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), nil, &model.VersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: development version
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v0.0.0-xxxxxxx",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: development version
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v1.2.0",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v0.0.0-xxxxxxx",
 	})
 	require.NoError(suite.T(), err)
 
 	// NOT OK: server is newer
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v1.2.3",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v1.2.4",
 	})
 	require.Error(suite.T(), err)
 
 	// NOT OK: client is newer
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v1.2.4",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.Error(suite.T(), err)
 
 	// https://github.com/filecoin-project/bacalhau/issues/495
-	err = ensureValidVersion(context.TODO(), &executor.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
 		GitVersion: "v0.1.37",
-	}, &executor.VersionInfo{
+	}, &model.VersionInfo{
 		GitVersion: "v0.1.36",
 	})
 	require.Error(suite.T(), err)

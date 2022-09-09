@@ -1,6 +1,7 @@
 package devstack
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,15 +15,12 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +43,8 @@ func (suite *ShardingSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ShardingSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ShardingSuite) TearDownTest() {
@@ -102,30 +101,35 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	const nodeCount = 1
 	const folderCount = 10
 	const fileCount = 10
-	ctx, span := newSpan("sharding_explodecid")
-	defer span.End()
-	system.InitConfigForTesting(suite.T())
-
+	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	stack, err := devstack.NewDevStackIPFS(cm, nodeCount)
+	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 
-	node := stack.Nodes[0]
+	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
+	require.NoError(suite.T(), err)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/explodecid")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
+	node := stack.IPFSClients[0]
 
 	// make 10 folders each with 10 files
 	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
-	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.IpfsClient.APIAddress())
+	ipfsProvider, err := apicopy.NewStorageProvider(cm, node.APIAddress())
 	require.NoError(suite.T(), err)
 
-	results, err := ipfsProvider.Explode(ctx, storage.StorageSpec{
+	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
 		Path:   "/input",
-		Engine: storage.StorageSourceIPFS,
+		Engine: model.StorageSourceIPFS,
 		Cid:    directoryCid,
 	})
 	require.NoError(suite.T(), err)
@@ -179,28 +183,35 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	const batchSize = 10
 	const batchCount = totalFiles / batchSize
 	const nodeCount = 3
-	ctx, span := newSpan("sharding_endtoend")
-	defer span.End()
+
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
+
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testendtoend")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	dirPath, err := prepareFolderWithFiles(totalFiles)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherIpfs,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherIpfs,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
@@ -209,27 +220,27 @@ func (suite *ShardingSuite) TestEndToEnd() {
 				`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//'); echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []storage.StorageSpec{
+		Outputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Name:   "results",
 				Path:   "/output",
 			},
 		},
-		Sharding: executor.JobShardingConfig{
+		Sharding: model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   batchSize,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -264,12 +275,13 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
 	require.NoError(suite.T(), err)
 
-	swarmAddresses, err := stack.Nodes[0].IpfsNode.SwarmAddresses()
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(suite.T(), err)
 
 	log.Info().Msgf("Downloading results to %s", downloadFolder)
 
 	err = ipfs.DownloadJob(
+		ctx,
 		cm,
 		submittedJob,
 		jobResults,
@@ -319,49 +331,55 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 func (suite *ShardingSuite) TestNoShards() {
 	const nodeCount = 1
-	ctx, span := newSpan("sharding_noshards")
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
+
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testnoshards")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	dirPath, err := prepareFolderWithFiles(0)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
 				`echo "where did all the files go?"`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []storage.StorageSpec{},
-		Sharding: executor.JobShardingConfig{
+		Outputs: []model.StorageSpec{},
+		Sharding: model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   1,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -374,22 +392,27 @@ func (suite *ShardingSuite) TestNoShards() {
 
 func (suite *ShardingSuite) TestExplodeVideos() {
 	const nodeCount = 1
-	ctx, span := newSpan("sharding_video_files")
-	defer span.End()
+	ctx := context.Background()
+	stack, cm := SetupTest(
+		ctx,
+		suite.T(),
+
+		nodeCount,
+		0,
+		computenode.NewDefaultComputeNodeConfig(),
+	)
+	defer TeardownTest(stack, cm)
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/devstack/shardingtest/testexplodevideos")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
 		"Prominent Late Gothic styled architecture.mp4",
 	}
-
-	stack, cm := SetupTest(
-		suite.T(),
-		nodeCount,
-		0,
-		computenode.NewDefaultComputeNodeConfig(),
-	)
-	defer TeardownTest(stack, cm)
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
 	require.NoError(suite.T(), err)
@@ -402,36 +425,36 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image: "ubuntu:latest",
 			Entrypoint: []string{
 				"bash", "-c",
 				`ls -la /inputs`,
 			},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/inputs",
 			},
 		},
-		Outputs: []storage.StorageSpec{},
-		Sharding: executor.JobShardingConfig{
+		Outputs: []model.StorageSpec{},
+		Sharding: model.JobShardingConfig{
 			BasePath:    "/inputs",
 			GlobPattern: "*.mp4",
 			BatchSize:   1,
 		},
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 

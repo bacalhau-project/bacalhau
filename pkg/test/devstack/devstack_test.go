@@ -6,19 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type DevStackSuite struct {
@@ -38,18 +36,16 @@ func (suite *DevStackSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevStackSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevStackSuite) TearDownTest() {
+
 }
 
 func (suite *DevStackSuite) TearDownAllSuite() {
 
-}
-
-func newSpan(name string) (context.Context, trace.Span) {
-	return system.Span(context.Background(), "devstack_test", name)
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport
@@ -59,10 +55,10 @@ func devStackDockerStorageTest(
 	testCase scenario.TestCase,
 	nodeCount int,
 ) {
-	ctx, span := newSpan(testCase.Name)
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		t,
 		nodeCount,
 		0,
@@ -73,19 +69,19 @@ func devStackDockerStorageTest(
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
 
-	inputStorageList, err := testCase.SetupStorage(stack, storage.StorageSourceIPFS, nodeCount)
+	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(t, err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherIpfs,
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherIpfs,
 		Docker:    testCase.GetJobSpec(),
 		Inputs:    inputStorageList,
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
@@ -100,12 +96,12 @@ func devStackDockerStorageTest(
 		ctx,
 		submittedJob.ID,
 		len(nodeIDs),
-		job.WaitThrowErrors([]executor.JobStateType{
-			executor.JobStateCancelled,
-			executor.JobStateError,
+		job.WaitThrowErrors([]model.JobStateType{
+			model.JobStateCancelled,
+			model.JobStateError,
 		}),
-		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStatePublished: len(nodeIDs),
+		job.WaitForJobStates(map[model.JobStateType]int{
+			model.JobStateCompleted: len(nodeIDs),
 		}),
 	)
 	require.NoError(t, err)
@@ -123,17 +119,18 @@ func devStackDockerStorageTest(
 		require.NotEmpty(t, shard.PublishedResult.Cid)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IpfsClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 		require.NoError(t, err)
 
-		testCase.ResultsChecker(outputPath)
+		err = testCase.ResultsChecker(outputPath)
+		require.NoError(t, err)
 	}
 }
 
 func (suite *DevStackSuite) TestCatFileStdout() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.CatFileToStdout(suite.T()),
+		scenario.CatFileToStdout(),
 		3,
 	)
 }
@@ -141,7 +138,7 @@ func (suite *DevStackSuite) TestCatFileStdout() {
 func (suite *DevStackSuite) TestCatFileOutputVolume() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.CatFileToVolume(suite.T()),
+		scenario.CatFileToVolume(),
 		1,
 	)
 }
@@ -149,7 +146,7 @@ func (suite *DevStackSuite) TestCatFileOutputVolume() {
 func (suite *DevStackSuite) TestGrepFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.GrepFile(suite.T()),
+		scenario.GrepFile(),
 		3,
 	)
 }
@@ -157,7 +154,7 @@ func (suite *DevStackSuite) TestGrepFile() {
 func (suite *DevStackSuite) TestSedFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.SedFile(suite.T()),
+		scenario.SedFile(),
 		3,
 	)
 }
@@ -165,7 +162,7 @@ func (suite *DevStackSuite) TestSedFile() {
 func (suite *DevStackSuite) TestAwkFile() {
 	devStackDockerStorageTest(
 		suite.T(),
-		scenario.AwkFile(suite.T()),
+		scenario.AwkFile(),
 		3,
 	)
 }

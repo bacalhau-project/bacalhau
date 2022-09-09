@@ -24,7 +24,7 @@ func (suite *SystemCleanupSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *SystemCleanupSuite) SetupTest() {
-	InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting())
 }
 
 func (suite *SystemCleanupSuite) TearDownTest() {

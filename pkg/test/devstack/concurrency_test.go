@@ -1,18 +1,19 @@
 package devstack
 
 import (
+	"context"
 	"testing"
+	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,10 +35,12 @@ func (suite *DevstackConcurrencySuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackConcurrencySuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackConcurrencySuite) TearDownTest() {
+
 }
 
 func (suite *DevstackConcurrencySuite) TearDownAllSuite() {
@@ -45,10 +48,17 @@ func (suite *DevstackConcurrencySuite) TearDownAllSuite() {
 }
 
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
-	ctx, span := newSpan("TestConcurrencyLimit")
-	defer span.End()
+	cm := system.NewCleanupManager()
+	defer cm.Cleanup()
+	ctx := context.Background()
+
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/concurrencytest")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
 		3,
 		0,
@@ -56,20 +66,20 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	)
 	defer TeardownTest(stack, cm)
 
-	testCase := scenario.CatFileToVolume(suite.T())
-	inputStorageList, err := testCase.SetupStorage(stack, storage.StorageSourceIPFS, 3)
+	testCase := scenario.CatFileToVolume()
+	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := executor.JobSpec{
-		Engine:    executor.EngineDocker,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
+	jobSpec := model.JobSpec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
 		Docker:    testCase.GetJobSpec(),
 		Inputs:    inputStorageList,
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := executor.JobDeal{
+	jobDeal := model.JobDeal{
 		Concurrency: 2,
 	}
 
@@ -81,17 +91,27 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	resolver := apiClient.GetJobStateResolver()
 
-	err = resolver.Wait(
-		ctx,
-		createdJob.ID,
-		3,
-		job.WaitThrowErrors([]executor.JobStateType{
-			executor.JobStateError,
-		}),
-		job.WaitForJobStates(map[executor.JobStateType]int{
-			executor.JobStatePublished: 2,
-			executor.JobStateCancelled: 1,
-		}),
-	)
+	stateChecker := func() error {
+		return resolver.Wait(
+			ctx,
+			createdJob.ID,
+			3,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateError,
+			}),
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStateCompleted: 2,
+			}),
+		)
+	}
+
+	err = stateChecker()
+	require.NoError(suite.T(), err)
+
+	// wait a small time and then check again to make sure another JobStatePublished
+	// did not sneak in afterwards
+	time.Sleep(time.Second * 3)
+
+	err = stateChecker()
 	require.NoError(suite.T(), err)
 }

@@ -2,18 +2,16 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/executor/docker"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -38,17 +36,19 @@ func (suite *ExecutorDockerExecutorSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ExecutorDockerExecutorSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownTest() {
+
 }
 
 func (suite *ExecutorDockerExecutorSuite) TearDownAllSuite() {
 
 }
 
-const TEST_STORAGE_DRIVER_NAME = "testdriver"
+// const TEST_STORAGE_DRIVER_NAME = "testdriver"
 const TEST_NODE_COUNT = 1
 
 func dockerExecutorStorageTest(
@@ -60,22 +60,14 @@ func dockerExecutorStorageTest(
 	// and output mode that we are looping over internally
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
-		stack, cm := ipfs.SetupTest(t, TEST_NODE_COUNT)
-		defer ipfs.TeardownTest(stack, cm)
 
-		storageDriver, err := getStorageDriver(stack)
-		require.NoError(t, err)
+		stack := testutils.NewDockerIpfsStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
+		defer stack.Node.CleanupManager.Cleanup()
 
-		dockerExecutor, err := docker.NewExecutor(
-			cm,
-			fmt.Sprintf("dockertest-%s", stack.Nodes[0].IpfsNode.ID()),
-			map[storage.StorageSourceType]storage.StorageProvider{
-				storage.StorageSourceIPFS: storageDriver,
-			})
-		require.NoError(t, err)
+		dockerExecutor := stack.Node.Executors[model.EngineDocker]
 
-		inputStorageList, err := testCase.SetupStorage(
-			stack, storage.StorageSourceIPFS, TEST_NODE_COUNT)
+		inputStorageList, err := testCase.SetupStorage(ctx,
+			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:TEST_NODE_COUNT]...)
 		require.NoError(t, err)
 
 		isInstalled, err := dockerExecutor.IsInstalled(ctx)
@@ -89,29 +81,35 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := executor.Job{
+		job := model.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
-			Spec: executor.JobSpec{
-				Engine:  executor.EngineDocker,
+			Spec: model.JobSpec{
+				Engine:  model.EngineDocker,
 				Docker:  testCase.GetJobSpec(),
 				Inputs:  inputStorageList,
 				Outputs: testCase.Outputs,
 			},
-			Deal: executor.JobDeal{
+			Deal: model.JobDeal{
 				Concurrency: TEST_NODE_COUNT,
 			},
 			CreatedAt: time.Now(),
 		}
 
+		shard := model.JobShard{
+			Job:   job,
+			Index: 0,
+		}
+
 		resultsDirectory, err := ioutil.TempDir("", "bacalhau-dockerExecutorStorageTest")
 		require.NoError(t, err)
 
-		err = dockerExecutor.RunShard(ctx, job, 0, resultsDirectory)
+		err = dockerExecutor.RunShard(ctx, shard, resultsDirectory)
 		require.NoError(t, err)
 
-		testCase.ResultsChecker(resultsDirectory)
+		err = testCase.ResultsChecker(resultsDirectory)
+		require.NoError(t, err)
 	}
 
 	for _, storageDriverFactory := range storageDriverFactories {
@@ -124,7 +122,7 @@ func dockerExecutorStorageTest(
 func (suite *ExecutorDockerExecutorSuite) TestCatFileStdout() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.CatFileToStdout(suite.T()),
+		scenario.CatFileToStdout(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -132,7 +130,7 @@ func (suite *ExecutorDockerExecutorSuite) TestCatFileStdout() {
 func (suite *ExecutorDockerExecutorSuite) TestCatFileOutputVolume() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.CatFileToVolume(suite.T()),
+		scenario.CatFileToVolume(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -140,7 +138,7 @@ func (suite *ExecutorDockerExecutorSuite) TestCatFileOutputVolume() {
 func (suite *ExecutorDockerExecutorSuite) TestGrepFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.GrepFile(suite.T()),
+		scenario.GrepFile(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -148,7 +146,7 @@ func (suite *ExecutorDockerExecutorSuite) TestGrepFile() {
 func (suite *ExecutorDockerExecutorSuite) TestSedFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.SedFile(suite.T()),
+		scenario.SedFile(),
 		scenario.StorageDriverFactories,
 	)
 }
@@ -156,7 +154,7 @@ func (suite *ExecutorDockerExecutorSuite) TestSedFile() {
 func (suite *ExecutorDockerExecutorSuite) TestAwkFile() {
 	dockerExecutorStorageTest(
 		suite.T(),
-		scenario.AwkFile(suite.T()),
+		scenario.AwkFile(),
 		scenario.StorageDriverFactories,
 	)
 }

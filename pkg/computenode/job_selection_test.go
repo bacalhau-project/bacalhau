@@ -7,9 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/test/tooling"
+	"github.com/filecoin-project/bacalhau/pkg/computenode/tooling"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,10 +16,10 @@ func getProbeDataWithVolume() JobSelectionPolicyProbeData {
 	return JobSelectionPolicyProbeData{
 		NodeID: "node-id",
 		JobID:  "job-id",
-		Spec: executor.JobSpec{
-			Inputs: []storage.StorageSpec{
+		Spec: model.JobSpec{
+			Inputs: []model.StorageSpec{
 				{
-					Engine: storage.StorageSourceIPFS,
+					Engine: model.StorageSourceIPFS,
 					Cid:    "volume-id",
 				},
 			},

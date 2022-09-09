@@ -13,6 +13,7 @@ import (
 	executorNoop "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_noop "github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -43,7 +44,8 @@ func (suite *TransportSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *TransportSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *TransportSuite) TearDownTest() {
@@ -61,12 +63,13 @@ func setupTest(t *testing.T) (
 	*system.CleanupManager,
 ) {
 	cm := system.NewCleanupManager()
+	ctx := context.Background()
 
-	noopStorage, err := storage_noop.NewStorageProvider(cm)
+	noopStorage, err := storage_noop.NewStorageProvider(ctx, cm, storage_noop.StorageConfig{})
 	require.NoError(t, err)
 
-	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{
-		storage.StorageSourceIPFS: noopStorage,
+	storageProviders := map[model.StorageSourceType]storage.StorageProvider{
+		model.StorageSourceIPFS: noopStorage,
 	}
 
 	noopExecutor, err := executorNoop.NewExecutor()
@@ -78,28 +81,29 @@ func setupTest(t *testing.T) (
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(t, err)
 
-	noopVerifier, err := verifier_noop.NewNoopVerifier(cm, ctrl.GetStateResolver())
+	noopVerifier, err := verifier_noop.NewNoopVerifier(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	noopPublisher, err := publisher_noop.NewNoopPublisher(cm, ctrl.GetStateResolver())
+	noopPublisher, err := publisher_noop.NewNoopPublisher(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	executors := map[executor.EngineType]executor.Executor{
-		executor.EngineNoop: noopExecutor,
+	executors := map[model.EngineType]executor.Executor{
+		model.EngineNoop: noopExecutor,
 	}
 
-	verifiers := map[verifier.VerifierType]verifier.Verifier{
-		verifier.VerifierNoop: noopVerifier,
+	verifiers := map[model.VerifierType]verifier.Verifier{
+		model.VerifierNoop: noopVerifier,
 	}
 
-	publishers := map[publisher.PublisherType]publisher.Publisher{
-		publisher.PublisherNoop: noopPublisher,
+	publishers := map[model.PublisherType]publisher.Publisher{
+		model.PublisherNoop: noopPublisher,
 	}
 
 	_, err = computenode.NewComputeNode(
+		ctx,
 		cm,
 		ctrl,
 		executors,
@@ -110,6 +114,7 @@ func setupTest(t *testing.T) (
 	require.NoError(t, err)
 
 	_, err = requesternode.NewRequesterNode(
+		ctx,
 		cm,
 		ctrl,
 		verifiers,
@@ -117,7 +122,6 @@ func setupTest(t *testing.T) (
 	)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	err = ctrl.Start(ctx)
 	require.NoError(t, err)
 
@@ -130,17 +134,20 @@ func setupTest(t *testing.T) (
 func (suite *TransportSuite) TestTransportSanity() {
 	cm := system.NewCleanupManager()
 	defer cm.Cleanup()
-	storageProviders := map[storage.StorageSourceType]storage.StorageProvider{}
-	executors := map[executor.EngineType]executor.Executor{}
-	verifiers := map[verifier.VerifierType]verifier.Verifier{}
-	publishers := map[publisher.PublisherType]publisher.Publisher{}
+	ctx := context.Background()
+
+	storageProviders := map[model.StorageSourceType]storage.StorageProvider{}
+	executors := map[model.EngineType]executor.Executor{}
+	verifiers := map[model.VerifierType]verifier.Verifier{}
+	publishers := map[model.PublisherType]publisher.Publisher{}
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(suite.T(), err)
-	ctrl, err := controller.NewController(cm, datastore, transport, storageProviders)
+	ctrl, err := controller.NewController(ctx, cm, datastore, transport, storageProviders)
 	require.NoError(suite.T(), err)
 	_, err = computenode.NewComputeNode(
+		ctx,
 		cm,
 		ctrl,
 		executors,
@@ -150,6 +157,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 	)
 	require.NoError(suite.T(), err)
 	_, err = requesternode.NewRequesterNode(
+		ctx,
 		cm,
 		ctrl,
 		verifiers,
@@ -163,26 +171,26 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := executor.JobSpec{
-		Engine:   executor.EngineNoop,
-		Verifier: verifier.VerifierNoop,
-		Docker: executor.JobSpecDocker{
+	spec := model.JobSpec{
+		Engine:   model.EngineNoop,
+		Verifier: model.VerifierNoop,
+		Docker: model.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 			},
 		},
 	}
 
-	deal := executor.JobDeal{
+	deal := model.JobDeal{
 		Concurrency: 1,
 	}
 
-	payload := executor.JobCreatePayload{
+	payload := model.JobCreatePayload{
 		ClientID: "123",
 		Spec:     spec,
 		Deal:     deal,
@@ -201,27 +209,27 @@ func (suite *TransportSuite) TestTransportEvents() {
 	transport, _, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := executor.JobSpec{
-		Engine:    executor.EngineNoop,
-		Verifier:  verifier.VerifierNoop,
-		Publisher: publisher.PublisherNoop,
-		Docker: executor.JobSpecDocker{
+	spec := model.JobSpec{
+		Engine:    model.EngineNoop,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker: model.JobSpecDocker{
 			Image:      "image",
 			Entrypoint: []string{"entrypoint"},
 			Env:        []string{"env"},
 		},
-		Inputs: []storage.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
-				Engine: storage.StorageSourceIPFS,
+				Engine: model.StorageSourceIPFS,
 			},
 		},
 	}
 
-	deal := executor.JobDeal{
+	deal := model.JobDeal{
 		Concurrency: 1,
 	}
 
-	payload := executor.JobCreatePayload{
+	payload := model.JobCreatePayload{
 		ClientID: "123",
 		Spec:     spec,
 		Deal:     deal,
@@ -232,12 +240,12 @@ func (suite *TransportSuite) TestTransportEvents() {
 	time.Sleep(time.Second * 1)
 
 	expectedEventNames := []string{
-		executor.JobEventCreated.String(),
-		executor.JobEventBid.String(),
-		executor.JobEventBidAccepted.String(),
-		executor.JobEventResultsProposed.String(),
-		executor.JobEventResultsAccepted.String(),
-		executor.JobEventResultsPublished.String(),
+		model.JobEventCreated.String(),
+		model.JobEventBid.String(),
+		model.JobEventBidAccepted.String(),
+		model.JobEventResultsProposed.String(),
+		model.JobEventResultsAccepted.String(),
+		model.JobEventResultsPublished.String(),
 	}
 	actualEventNames := []string{}
 

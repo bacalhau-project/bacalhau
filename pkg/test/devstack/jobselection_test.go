@@ -1,18 +1,18 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,17 +34,19 @@ func (suite *DevstackJobSelectionSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackJobSelectionSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownTest() {
+
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownAllSuite() {
 
 }
 
-// re-use the docker executor tests but full end to end with libp2p transport
+// Re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
@@ -59,10 +61,18 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	runTest := func(testCase TestCase) {
-		ctx, span := newSpan(testCase.name)
-		defer span.End()
-		scenario := scenario.CatFileToStdout(suite.T())
-		stack, cm := SetupTest(suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+		ctx := context.Background()
+
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/jobselectiontest/testselectalljobs")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		scenario := scenario.CatFileToStdout()
+		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
 		defer TeardownTest(stack, cm)
@@ -70,18 +80,19 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
 
-		inputStorageList, err := scenario.SetupStorage(stack, storage.StorageSourceIPFS, testCase.addFilesCount)
+		inputStorageList, err := scenario.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:testCase.addFilesCount])...)
+		require.NoError(suite.T(), err)
 
-		jobSpec := executor.JobSpec{
-			Engine:    executor.EngineDocker,
-			Verifier:  verifier.VerifierNoop,
-			Publisher: publisher.PublisherNoop,
+		jobSpec := model.JobSpec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherNoop,
 			Docker:    scenario.GetJobSpec(),
 			Inputs:    inputStorageList,
 			Outputs:   scenario.Outputs,
 		}
 
-		jobDeal := executor.JobDeal{
+		jobDeal := model.JobDeal{
 			Concurrency: testCase.nodeCount,
 		}
 
@@ -97,12 +108,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			submittedJob.ID,
 			len(nodeIDs),
 			job.WaitDontExceedCount(testCase.expectedAccepts),
-			job.WaitThrowErrors([]executor.JobStateType{
-				executor.JobStateCancelled,
-				executor.JobStateError,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateCancelled,
+				model.JobStateError,
 			}),
-			job.WaitForJobStates(map[executor.JobStateType]int{
-				executor.JobStatePublished: testCase.expectedAccepts,
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStateCompleted: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

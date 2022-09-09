@@ -14,10 +14,11 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -29,6 +30,7 @@ const (
 	JSONExtension string = ".json"
 	YAMLExtension string = ".yaml"
 	YMLExtension  string = ".yml"
+	DefaultDockerRunWaitSeconds        = 600
 )
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -65,7 +67,7 @@ func getAPIClient() *publicapi.APIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *executor.VersionInfo) error {
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.VersionInfo) error {
 	if clientVersion == nil {
 		log.Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
@@ -157,7 +159,7 @@ func ReverseList(s []string) []string {
 // this is mainly used in testing --local
 // go playground link https://go.dev/play/p/cuGIaIorWfD
 
-//nolint:unused,deadcode
+//nolint:unused
 func capture() func() (string, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -247,67 +249,188 @@ func ConvertJobspecToFile(
 	}
 
 	return nil
+
+type RunTimeSettings struct {
+	WaitForJobToFinish               bool // Wait for the job to execute before exiting
+	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
+	WaitForJobTimeoutSecs            int  // Job time out in seconds
+	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
+	IsLocal                          bool // Job should be executed locally
+
+}
+
+func NewRunTimeSettings() *RunTimeSettings {
+	return &RunTimeSettings{
+		WaitForJobToFinish:               false,
+		WaitForJobToFinishAndPrintOutput: false,
+		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:                   10,
+		IsLocal:                          false,
+	}
+}
+
+func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
+	cmd.PersistentFlags().BoolVar(
+		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`,
+	)
+
+	cmd.PersistentFlags().IntVarP(
+		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
+		`Timeout for getting the results of a job in --wait`,
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.IsLocal, "local", settings.IsLocal,
+		`Run the job locally. Docker is required`,
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.WaitForJobToFinishAndPrintOutput, "download", settings.WaitForJobToFinishAndPrintOutput,
+		`Download the results and print stdout once the job has completed (implies --wait).`,
+	)
+
+	cmd.PersistentFlags().IntVar(
+		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
+	)
 }
 
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
-	jobSpec *executor.JobSpec,
-	jobDeal *executor.JobDeal,
-	isLocal bool,
-	waitForJobToFinish bool,
-	dockerRunDownloadFlags ipfs.IPFSDownloadSettings,
+	jobSpec *model.JobSpec,
+	jobDeal *model.JobDeal,
+	runtimeSettings RunTimeSettings,
+	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
 	var apiClient *publicapi.APIClient
-	if isLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(cm, 1, jobSpec.Resources.GPU)
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
+	defer span.End()
+
+	if runtimeSettings.IsLocal {
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, jobSpec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
+
 		apiURI := stack.Nodes[0].APIServer.GetURI()
 		apiClient = publicapi.NewAPIClient(apiURI)
 	} else {
 		apiClient = getAPIClient()
 	}
 
-	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	j, err := submitJob(ctx, apiClient, jobSpec, jobDeal)
 	if err != nil {
 		return err
 	}
 
 	cmd.Printf("%s\n", j.ID)
-	if waitForJobToFinish {
+	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
+		// We have a jobID now, add it to the context baggage
+		ctx = system.AddJobIDToBaggage(ctx, j.ID)
+		system.AddJobIDFromBaggageToSpan(ctx, span)
+
 		resolver := apiClient.GetJobStateResolver()
-		resolver.SetWaitTime(ODR.WaitForJobTimeoutSecs, time.Second*1)
+		resolver.SetWaitTime(ODR.RunTimeSettings.WaitForJobTimeoutSecs, time.Second*1)
 		err = resolver.WaitUntilComplete(ctx, j.ID)
 		if err != nil {
 			return err
 		}
 
-		if ODR.WaitForJobToFinishAndPrintOutput {
-			results, err := apiClient.GetResults(ctx, j.ID)
+		err := waitForJobToFinish(ctx, apiClient, j, runtimeSettings)
+		if err != nil {
+			return err
+		}
+		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
+			results, err := getResults(ctx, apiClient, j)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error getting results")
 			}
+
 			if len(results) == 0 {
 				return fmt.Errorf("no results found")
 			}
-			err = ipfs.DownloadJob(
-				cm,
-				j,
-				results,
-				dockerRunDownloadFlags,
-			)
+
+			err = downloadResults(ctx, cmd, cm, j, results, downloadSettings)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
 			}
-			body, err := os.ReadFile(filepath.Join(dockerRunDownloadFlags.OutputDir, "stdout"))
-			if err != nil {
-				return err
-			}
-			cmd.Println()
-			cmd.Println(string(body))
 		}
 	}
+	return nil
+}
+
+func waitForJobToFinish(ctx context.Context,
+	apiClient *publicapi.APIClient,
+	j model.Job,
+	runtimeSettings RunTimeSettings) error {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
+	defer span.End()
+
+	resolver := apiClient.GetJobStateResolver()
+	resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
+	err := resolver.WaitUntilComplete(ctx, j.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func submitJob(ctx context.Context,
+	apiClient *publicapi.APIClient,
+	jobSpec *model.JobSpec,
+	jobDeal *model.JobDeal) (model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
+	defer span.End()
+
+	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	if err != nil {
+		return model.Job{}, errors.Wrap(err, "failed to submit job")
+	}
+	return j, err
+}
+
+func getResults(ctx context.Context, apiClient *publicapi.APIClient, j model.Job) ([]model.StorageSpec, error) {
+	ctx, span := system.GetTracer().Start(ctx, "getresults")
+	defer span.End()
+
+	results, err := apiClient.GetResults(ctx, j.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no results found")
+	}
+	return results, nil
+}
+
+func downloadResults(ctx context.Context,
+	cmd *cobra.Command,
+	cm *system.CleanupManager,
+	j model.Job,
+	results []model.StorageSpec,
+	downloadSettings ipfs.IPFSDownloadSettings) error {
+	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
+	defer span.End()
+
+	err := ipfs.DownloadJob(
+		ctx,
+		cm,
+		j,
+		results,
+		downloadSettings,
+	)
+	if err != nil {
+		return err
+	}
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
+	if err != nil {
+		return err
+	}
+	cmd.Println()
+	cmd.Println(string(body))
+
 	return nil
 }

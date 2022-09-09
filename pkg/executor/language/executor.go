@@ -12,19 +12,20 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type Executor struct {
-	Jobs []*executor.Job
+	Jobs []*model.Job
 
-	executors map[executor.EngineType]executor.Executor
+	executors map[model.EngineType]executor.Executor
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[executor.EngineType]executor.Executor,
+	executors map[model.EngineType]executor.Executor,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -36,29 +37,28 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpec) (uint64, error) {
+func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
 func (e *Executor) RunShard(
 	ctx context.Context,
-	job executor.Job,
-	shardIndex int,
+	shard model.JobShard,
 	jobResultsDir string,
 ) error {
-	if job.Spec.Language.Language != "python" && job.Spec.Language.LanguageVersion != "3.10" {
+	if shard.Job.Spec.Language.Language != "python" && shard.Job.Spec.Language.LanguageVersion != "3.10" {
 		return fmt.Errorf("only python 3.10 is supported")
 	}
 
-	if job.Spec.Language.Deterministic {
+	if shard.Job.Spec.Language.Deterministic {
 		log.Debug().Msgf("running deterministic python 3.10")
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
-		return e.executors[executor.EnginePythonWasm].RunShard(ctx, job, shardIndex, jobResultsDir)
+		return e.executors[model.EnginePythonWasm].RunShard(ctx, shard, jobResultsDir)
 	} else {
 		log.Debug().Msgf("running arbitrary python 3.10")
 		// TODO: Instantiate a docker with python:3.10 image

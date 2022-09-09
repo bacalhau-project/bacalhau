@@ -13,19 +13,20 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type Executor struct {
-	Jobs []*executor.Job
+	Jobs []*model.Job
 
-	executors map[executor.EngineType]executor.Executor
+	executors map[model.EngineType]executor.Executor
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[executor.EngineType]executor.Executor,
+	executors map[model.EngineType]executor.Executor,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -37,43 +38,43 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volumes storage.StorageSpec) (uint64, error) {
+func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
-func (e *Executor) RunShard(ctx context.Context, job executor.Job, shardIndex int, resultsDir string) error {
+func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) error {
 	log.Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
-	job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
-	if job.Spec.Language.Command != "" {
+	shard.Job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
+	if shard.Job.Spec.Language.Command != "" {
 		// pass command through to node wasm wrapper
-		job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", job.Spec.Language.Command}
-	} else if job.Spec.Language.ProgramPath != "" {
+		shard.Job.Spec.Docker.Entrypoint = []string{"node", "n.js", "-c", shard.Job.Spec.Language.Command}
+	} else if shard.Job.Spec.Language.ProgramPath != "" {
 		// pass command through to node wasm wrapper
-		job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", job.Spec.Language.ProgramPath)}
+		shard.Job.Spec.Docker.Entrypoint = []string{"node", "n.js", fmt.Sprintf("/pyodide_inputs/job/%s", shard.Job.Spec.Language.ProgramPath)}
 	}
-	job.Spec.Engine = executor.EngineDocker
+	shard.Job.Spec.Engine = model.EngineDocker
 
 	// prepend a path on each of the user supplied volumes to prevent an accidental
 	// collision with the internal pyodide filesystem
-	for idx, v := range job.Spec.Inputs {
-		job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	for idx, v := range shard.Job.Spec.Inputs {
+		shard.Job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
-	for idx, v := range job.Spec.Contexts {
-		job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	for idx, v := range shard.Job.Spec.Contexts {
+		shard.Job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
-	for idx, v := range job.Spec.Outputs {
-		job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
+	for idx, v := range shard.Job.Spec.Outputs {
+		shard.Job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	return e.executors[executor.EngineDocker].RunShard(ctx, job, shardIndex, resultsDir)
+	return e.executors[model.EngineDocker].RunShard(ctx, shard, resultsDir)
 }
 
 // Compile-time check that Executor implements the Executor interface.

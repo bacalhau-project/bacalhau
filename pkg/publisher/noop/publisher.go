@@ -4,10 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type NoopPublisher struct {
@@ -15,6 +14,7 @@ type NoopPublisher struct {
 }
 
 func NewNoopPublisher(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (*NoopPublisher, error) {
@@ -24,34 +24,31 @@ func NewNoopPublisher(
 }
 
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	_, span := newSpan(ctx, "IsInstalled")
-	defer span.End()
 	return true, nil
 }
 
 func (publisher *NoopPublisher) PublishShardResult(
 	ctx context.Context,
+	shard model.JobShard,
 	hostID string,
-	jobID string,
-	shardIndex int,
 	shardResultPath string,
-) (storage.StorageSpec, error) {
-	_, span := newSpan(ctx, "PublishShardResult")
+) (model.StorageSpec, error) {
+	//nolint:staticcheck,ineffassign
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.PublishShardResult")
 	defer span.End()
-	return storage.StorageSpec{}, nil
+
+	return model.StorageSpec{}, nil
 }
 
 func (publisher *NoopPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
-) ([]storage.StorageSpec, error) {
-	_, span := newSpan(ctx, "ComposeResultSet")
+) ([]model.StorageSpec, error) {
+	//nolint:staticcheck,ineffassign
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.ComposeResultReferences")
 	defer span.End()
-	return []storage.StorageSpec{}, nil
-}
 
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "publisher/noop", apiName)
+	return []model.StorageSpec{}, nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

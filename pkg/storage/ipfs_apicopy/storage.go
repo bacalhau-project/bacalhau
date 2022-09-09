@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
@@ -54,14 +55,14 @@ func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 	return err == nil, err
 }
 
-func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 	return dockerIPFS.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
-func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
@@ -81,7 +82,7 @@ func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume sto
 	}
 }
 
-func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
+func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
@@ -104,35 +105,35 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 }
 
 //nolint:lll // Exception to the long rule
-func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
-	return system.RunCommand("sudo", []string{
-		"rm", "-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
+func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+	return system.RunCommand("rm", []string{
+		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
 	})
 }
 
-func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
+func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
 	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
 	if err != nil {
-		return storage.StorageSpec{}, err
+		return model.StorageSpec{}, err
 	}
-	return storage.StorageSpec{
-		Engine: storage.StorageSourceIPFS,
+	return model.StorageSpec{
+		Engine: model.StorageSourceIPFS,
 		Cid:    cid,
 	}, nil
 }
 
-func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
+func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
 	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.Cid)
 	if err != nil {
-		return []storage.StorageSpec{}, err
+		return []model.StorageSpec{}, err
 	}
 	flatNodes, err := ipfs.FlattenTreeNode(ctx, treeNode)
 	if err != nil {
-		return []storage.StorageSpec{}, err
+		return []model.StorageSpec{}, err
 	}
 	basePath := strings.TrimPrefix(spec.Path, "/")
 	basePath = strings.TrimSuffix(basePath, "/")
-	specs := []storage.StorageSpec{}
+	specs := []model.StorageSpec{}
 	seenPaths := map[string]bool{}
 	for _, node := range flatNodes {
 		prepend := basePath
@@ -145,8 +146,8 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.Sto
 			continue
 		}
 		seenPaths[usePath] = true
-		specs = append(specs, storage.StorageSpec{
-			Engine: storage.StorageSourceIPFS,
+		specs = append(specs, model.StorageSpec{
+			Engine: model.StorageSourceIPFS,
 			Cid:    node.Cid.String(),
 			Path:   usePath,
 		})
@@ -154,7 +155,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec storage.Sto
 	return specs, nil
 }
 
-func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
+func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid)
 
 	// If the output path already exists, we already have the data, as

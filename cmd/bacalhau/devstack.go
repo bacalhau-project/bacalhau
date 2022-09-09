@@ -1,26 +1,15 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/publisher"
-	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/filecoin-project/bacalhau/pkg/verifier"
-	verifier_util "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/rs/zerolog/log"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -39,24 +28,20 @@ var (
 `))
 
 	// Set Defaults (probably a better way to do this)
-	ODs = NewDevStackOptions()
+	ODs = newDevStackOptions()
+
+	IsNoop = false
 
 	// For the -f flag
 )
 
-type DevStackOptions struct {
-	NumberOfNodes     int    // Number of nodes to start in the cluster
-	NumberOfBadActors int    // Number of nodes to be bad actors
-	IsNoop            bool   // Noop executor and verifier for all jobs
-	Peer              string // Connect node 0 to another network node
-}
-
-func NewDevStackOptions() *DevStackOptions {
-	return &DevStackOptions{
+func newDevStackOptions() *devstack.DevStackOptions {
+	return &devstack.DevStackOptions{
 		NumberOfNodes:     3,
 		NumberOfBadActors: 0,
-		IsNoop:            false,
 		Peer:              "",
+		PublicIPFSMode:    false,
+		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
 	}
 }
 
@@ -70,7 +55,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`How many nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.IsNoop, "noop", false,
+		&IsNoop, "noop", false,
 		`Use the noop executor and verifier for all jobs`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
@@ -88,109 +73,53 @@ var devstackCmd = &cobra.Command{
 	Long:    devStackLong,
 	Example: devstackExample,
 	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/devstack")
+		defer rootSpan.End()
+
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
 		config.DevstackSetShouldPrintInfo()
 
 		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
 			return fmt.Errorf("cannot have more bad actors than there are nodes")
 		}
 
-		// Cleanup manager ensures that resources are freed before exiting:
-		cm := system.NewCleanupManager()
-		cm.RegisterCallback(system.CleanupTracer)
-		defer cm.Cleanup()
-
 		// Context ensures main goroutine waits until killed with ctrl+c:
-		ctx, cancel := system.WithSignalShutdown(context.Background())
+		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
-		getStorageProviders := func(ipfsMultiAddress string, nodeIndex int) (
-			map[storage.StorageSourceType]storage.StorageProvider, error) {
+		portFileName := "/tmp/bacalhau-devstack.port"
+		pidFileName := "/tmp/bacalhau-devstack.pid"
 
-			if ODs.IsNoop {
-				return executor_util.NewNoopStorageProviders(cm)
+		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
+			_, err := os.Stat(portFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
 			}
-
-			return executor_util.NewStandardStorageProviders(cm, executor_util.StandardStorageProviderOptions{
-				IPFSMultiaddress: ipfsMultiAddress,
-			})
-		}
-
-		getExecutors := func(ipfsMultiAddress string, nodeIndex int, ctrl *controller.Controller) (
-			map[executor.EngineType]executor.Executor, error) {
-
-			if ODs.IsNoop {
-				return executor_util.NewNoopExecutors(cm, noop_executor.ExecutorConfig{})
+			_, err = os.Stat(pidFileName)
+			if err == nil {
+				log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
 			}
-
-			return executor_util.NewStandardExecutors(
-				cm,
-				executor_util.StandardExecutorOptions{
-					DockerID: fmt.Sprintf("devstacknode%d", nodeIndex),
-					Storage: executor_util.StandardStorageProviderOptions{
-						IPFSMultiaddress: ipfsMultiAddress,
-					},
-				},
-			)
 		}
-
-		getVerifiers := func(
-			ipfsMultiAddress string,
-			nodeIndex int,
-			ctrl *controller.Controller,
-		) (map[verifier.VerifierType]verifier.Verifier, error) {
-			if ODs.IsNoop {
-				return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
-			}
-			return verifier_util.NewNoopVerifiers(cm, ctrl.GetStateResolver())
-		}
-
-		getPublishers := func(
-			ipfsMultiAddress string,
-			nodeIndex int,
-			ctrl *controller.Controller,
-		) (map[publisher.PublisherType]publisher.Publisher, error) {
-			if ODs.IsNoop {
-				return publisher_util.NewNoopPublishers(cm, ctrl.GetStateResolver())
-			}
-			return publisher_util.NewIPFSPublishers(cm, ctrl.GetStateResolver(), ipfsMultiAddress)
-		}
-
-		jobSelectionPolicy := getJobSelectionConfig()
-		totalResourceLimit, jobResourceLimit := getCapacityManagerConfig()
 
 		computeNodeConfig := computenode.ComputeNodeConfig{
-			JobSelectionPolicy: jobSelectionPolicy,
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitTotal: totalResourceLimit,
-				ResourceLimitJob:   jobResourceLimit,
-			},
+			JobSelectionPolicy:    getJobSelectionConfig(),
+			CapacityManagerConfig: getCapacityManagerConfig(),
 		}
 
-		portFileName := "/tmp/bacalhau-devstack.port"
-		_, err := os.Stat(portFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+		var stack *devstack.DevStack
+		var stackErr error
+		if IsNoop {
+			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig)
+		} else {
+			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig)
 		}
-		pidFileName := "/tmp/bacalhau-devstack.pid"
-		_, err = os.Stat(pidFileName)
-		if err == nil {
-			log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
-		}
-
-		stack, err := devstack.NewDevStack(
-			cm,
-			ODs.NumberOfNodes,
-			ODs.NumberOfBadActors,
-			getStorageProviders,
-			getExecutors,
-			getVerifiers,
-			getPublishers,
-			computeNodeConfig,
-			ODs.Peer,
-			false,
-		)
-		if err != nil {
-			return err
+		if stackErr != nil {
+			return stackErr
 		}
 
 		stack.PrintNodeInfo()
@@ -218,6 +147,8 @@ var devstackCmd = &cobra.Command{
 		}
 
 		<-ctx.Done() // block until killed
+
+		log.Info().Msg("Shutting down devstack")
 		return nil
 	},
 }

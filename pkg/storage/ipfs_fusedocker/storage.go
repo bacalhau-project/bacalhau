@@ -17,6 +17,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -47,14 +48,14 @@ type StorageProvider struct {
 	DockerClient *dockerclient.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (
+func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIAddress string) (
 	*StorageProvider, error) {
 	api, err := ipfs.NewClient(ipfsAPIAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	peerID, err := api.ID(context.Background())
+	peerID, err := api.ID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (
 	})
 
 	cm.RegisterCallback(func() error {
-		return cleanupStorageDriver(storageHandler)
+		return cleanupStorageDriver(ctx, storageHandler)
 	})
 
 	log.Debug().Msgf(
@@ -102,14 +103,14 @@ func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume storage.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
 	return sp.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	_, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	return 0, nil
@@ -121,16 +122,16 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume storage.Sto
 // so - let's put the "start sidecar" into a loop we try a few times
 // TODO: work out what the underlying networking issue actually is
 func (sp *StorageProvider) PrepareStorage(ctx context.Context,
-	storageSpec storage.StorageSpec) (storage.StorageVolume, error) {
+	storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
-	err := sp.ensureSidecar(storageSpec.Cid)
+	err := sp.ensureSidecar(ctx, storageSpec.Cid)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	cidMountPath, err := sp.getCidMountPath(storageSpec.Cid)
+	cidMountPath, err := sp.getCidMountPath(ctx, storageSpec.Cid)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -147,23 +148,23 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec storage.StorageSpec, volume storage.StorageVolume) error {
+	storageSpec model.StorageSpec, volume storage.StorageVolume) error {
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 
 	return nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (storage.StorageSpec, error) {
-	return storage.StorageSpec{}, fmt.Errorf("not implemented")
+func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (sp *StorageProvider) Explode(ctx context.Context, spec storage.StorageSpec) ([]storage.StorageSpec, error) {
-	return []storage.StorageSpec{}, fmt.Errorf("not implemented")
+func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	return []model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {
-	sidecar, err := sp.getSidecar()
+func (sp *StorageProvider) cleanSidecar(ctx context.Context) (*dockertypes.Container, error) {
+	sidecar, err := sp.getSidecar(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {
 		// ahhh but it's not running
 		// so let's remove what is there
 		if sidecar.State != "running" {
-			err = docker.RemoveContainer(sp.DockerClient, sidecar.ID)
+			err = docker.RemoveContainer(ctx, sp.DockerClient, sidecar.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -181,13 +182,13 @@ func (sp *StorageProvider) cleanSidecar() (*dockertypes.Container, error) {
 	return sidecar, nil
 }
 
-func (sp *StorageProvider) ensureSidecar(cid string) error {
+func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error {
 	sp.Mutex.Lock()
 	defer sp.Mutex.Unlock()
 
 	// does the sidecar container already exist?
 	// we lookup by name
-	sidecar, err := sp.cleanSidecar()
+	sidecar, err := sp.cleanSidecar(ctx)
 	if err != nil {
 		return err
 	}
@@ -203,19 +204,19 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 			MaxAttempts: 3,
 			Delay:       time.Second * 1,
 			Handler: func() (bool, error) {
-				sidecar, err = sp.getSidecar()
+				sidecar, err = sp.getSidecar(ctx)
 				if err != nil {
 					return false, err
 				}
 
 				if sidecar != nil {
-					err = docker.RemoveContainer(sp.DockerClient, sidecar.ID)
+					err = docker.RemoveContainer(ctx, sp.DockerClient, sidecar.ID)
 					if err != nil {
 						return false, err
 					}
 				}
 
-				err = sp.startSidecar(context.Background())
+				err = sp.startSidecar(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -227,7 +228,7 @@ func (sp *StorageProvider) ensureSidecar(cid string) error {
 					MaxAttempts: 10,
 					Delay:       time.Second * 1,
 					Handler: func() (bool, error) {
-						return sp.canSeeFuseMount(cid), nil
+						return sp.canSeeFuseMount(ctx, cid), nil
 					},
 				}
 
@@ -335,11 +336,11 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 		return err
 	}
 
-	logs, err := docker.WaitForContainerLogs(sp.DockerClient, sidecarContainer.ID, MaxAttemptsForDocker, time.Second*2, "Daemon is ready")
+	logs, err := docker.WaitForContainerLogs(ctx, sp.DockerClient, sidecarContainer.ID, MaxAttemptsForDocker, time.Second*2, "Daemon is ready")
 
 	if err != nil {
 		log.Error().Msg(logs)
-		stopErr := cleanupStorageDriver(sp)
+		stopErr := cleanupStorageDriver(ctx, sp)
 		if stopErr != nil {
 			err = fmt.Errorf("original error: %s\nstop error: %s", err.Error(), stopErr.Error())
 		}
@@ -353,22 +354,22 @@ func (sp *StorageProvider) sidecarContainerName() string {
 	return fmt.Sprintf("bacalhau-ipfs-sidecar-%s", sp.ID)
 }
 
-func (sp *StorageProvider) getSidecar() (*dockertypes.Container, error) {
-	return docker.GetContainer(sp.DockerClient, sp.sidecarContainerName())
+func (sp *StorageProvider) getSidecar(ctx context.Context) (*dockertypes.Container, error) {
+	return docker.GetContainer(ctx, sp.DockerClient, sp.sidecarContainerName())
 }
 
 // read from the running container what mount folder we have assigned
 // we then use this for job container mounts for CID -> filepath volumes
-func (sp *StorageProvider) getMountDir() (string, error) {
-	sidecar, err := sp.getSidecar()
+func (sp *StorageProvider) getMountDir(ctx context.Context) (string, error) {
+	sidecar, err := sp.getSidecar(ctx)
 	if err != nil {
 		return "", err
 	}
 	return getMountDirFromContainer(sidecar), nil
 }
 
-func (sp *StorageProvider) getCidMountPath(cid string) (string, error) {
-	mountDir, err := sp.getMountDir()
+func (sp *StorageProvider) getCidMountPath(ctx context.Context, cid string) (string, error) {
+	mountDir, err := sp.getMountDir(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -378,8 +379,8 @@ func (sp *StorageProvider) getCidMountPath(cid string) (string, error) {
 	return fmt.Sprintf("%s/data/%s", mountDir, cid), nil
 }
 
-func (sp *StorageProvider) canSeeFuseMount(cid string) bool {
-	testMountPath, err := sp.getCidMountPath(cid)
+func (sp *StorageProvider) canSeeFuseMount(ctx context.Context, cid string) bool {
+	testMountPath, err := sp.getCidMountPath(ctx, cid)
 	if err != nil {
 		return false
 	}
@@ -390,17 +391,17 @@ func (sp *StorageProvider) canSeeFuseMount(cid string) bool {
 	return err == nil
 }
 
-func cleanupStorageDriver(storageHandler *StorageProvider) error {
+func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) error {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
-	c, err := docker.GetContainer(dockerClient, storageHandler.sidecarContainerName())
+	c, err := docker.GetContainer(ctx, dockerClient, storageHandler.sidecarContainerName())
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
 	if c != nil {
-		err = docker.RemoveContainer(dockerClient, c.ID)
+		err = docker.RemoveContainer(ctx, dockerClient, c.ID)
 		if err != nil {
 			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}

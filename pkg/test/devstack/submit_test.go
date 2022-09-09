@@ -1,11 +1,12 @@
 package devstack
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/executor"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,8 @@ func (suite *DevstackSubmitSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	err := system.InitConfigForTesting()
+	require.NoError(suite.T(), err)
 }
 
 func (suite *DevstackSubmitSuite) TearDownTest() {
@@ -40,28 +42,34 @@ func (suite *DevstackSubmitSuite) TearDownAllSuite() {
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
-	ctx, span := newSpan("TestEmptySpec")
-	defer span.End()
+	ctx := context.Background()
 
 	stack, cm := SetupTest(
+		ctx,
 		suite.T(),
+
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 	defer TeardownTest(stack, cm)
 
+	t := system.GetTracer()
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")
+	defer rootSpan.End()
+	cm.RegisterCallback(system.CleanupTraceProvider)
+
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	_, missingSpecError := apiClient.Submit(ctx, executor.JobSpec{}, executor.JobDeal{
+	_, missingSpecError := apiClient.Submit(ctx, model.JobSpec{}, model.JobDeal{
 		Concurrency: 1,
 	}, nil)
 
 	require.Error(suite.T(), missingSpecError)
 
-	_, missingDealError := apiClient.Submit(ctx, executor.JobSpec{
-		Engine: executor.EngineDocker,
-	}, executor.JobDeal{}, nil)
+	_, missingDealError := apiClient.Submit(ctx, model.JobSpec{
+		Engine: model.EngineDocker,
+	}, model.JobDeal{}, nil)
 	require.Error(suite.T(), missingDealError)
 }

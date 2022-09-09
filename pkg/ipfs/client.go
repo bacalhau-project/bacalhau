@@ -18,14 +18,13 @@ import (
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Client is a front-end for an ipfs node's API endpoints. You can create
 // Client instances manually by connecting to an ipfs node's API multiaddr,
 // or automatically from an active Node instance.
 type Client struct {
-	api  icore.CoreAPI
+	API  icore.CoreAPI
 	addr string
 }
 
@@ -44,7 +43,7 @@ func NewClient(apiAddr string) (*Client, error) {
 
 	log.Debug().Msgf("Created IPFS client for node API address: %s", apiAddr)
 	return &Client{
-		api:  api,
+		API:  api,
 		addr: apiAddr,
 	}, nil
 }
@@ -76,10 +75,7 @@ func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 
 // ID returns the node's ipfs ID.
 func (cl *Client) ID(ctx context.Context) (string, error) {
-	ctx, span := newSpan(ctx, "ID")
-	defer span.End()
-
-	key, err := cl.api.Key().Self(ctx)
+	key, err := cl.API.Key().Self(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -87,14 +83,14 @@ func (cl *Client) ID(ctx context.Context) (string, error) {
 	return key.ID().String(), nil
 }
 
-// APIAddress returns api address that was used to connect to the node.
+// APIAddress returns Api address that was used to connect to the node.
 func (cl *Client) APIAddress() string {
 	return cl.addr
 }
 
 // SwarmAddresses returns a list of swarm addresses the node has announced.
 func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
-	ctx, span := newSpan(ctx, "SwarmAddresses")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.SwarmAddresses")
 	defer span.End()
 
 	id, err := cl.ID(ctx)
@@ -102,7 +98,7 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("error fetching node's ipfs id: %w", err)
 	}
 
-	addrs, err := cl.api.Swarm().LocalAddrs(ctx)
+	addrs, err := cl.API.Swarm().LocalAddrs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching node's swarm addresses: %w", err)
 	}
@@ -117,7 +113,7 @@ func (cl *Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 
 // Get fetches a file or directory from the ipfs network.
 func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
-	ctx, span := newSpan(ctx, "Get")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Get")
 	defer span.End()
 
 	// Output path is required to not exist yet:
@@ -129,7 +125,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("output path '%s' already exists", outputPath)
 	}
 
-	node, err := cl.api.Unixfs().Get(ctx, icorepath.New(cid))
+	node, err := cl.API.Unixfs().Get(ctx, icorepath.New(cid))
 	if err != nil {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
@@ -151,7 +147,7 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 // Put uploads and pins a file or directory to the ipfs network. Timeouts and
 // cancellation should be handled by passing an appropriate context value.
 func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
-	ctx, span := newSpan(ctx, "Put")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.Put")
 	defer span.End()
 
 	st, err := os.Stat(inputPath)
@@ -169,7 +165,7 @@ func (cl *Client) Put(ctx context.Context, inputPath string) (string, error) {
 		icoreoptions.Unixfs.Pin(true),
 	}
 
-	ipfsPath, err := cl.api.Unixfs().Add(ctx, node, addOptions...)
+	ipfsPath, err := cl.API.Unixfs().Add(ctx, node, addOptions...)
 	if err != nil {
 		return "", fmt.Errorf("failed to add file '%s': %w", inputPath, err)
 	}
@@ -192,10 +188,10 @@ type StatResult struct {
 
 // Stat returns information about an IPLD CID on the ipfs network.
 func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
-	ctx, span := newSpan(ctx, "Stat")
+	ctx, span := system.GetTracer().Start(ctx, "kg/ipfs.Stat")
 	defer span.End()
 
-	node, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	node, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
@@ -211,10 +207,10 @@ func (cl *Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 }
 
 func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
-	ctx, span := newSpan(ctx, "GetCidSize")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetCidSize")
 	defer span.End()
 
-	stat, err := cl.api.Object().Stat(ctx, icorepath.New(cid))
+	stat, err := cl.API.Object().Stat(ctx, icorepath.New(cid))
 	if err != nil {
 		return 0, err
 	}
@@ -224,10 +220,10 @@ func (cl *Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
 
 // NodesWithCID returns the ipfs ids of nodes that have the given CID pinned.
 func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error) {
-	ctx, span := newSpan(ctx, "NodesWithCID")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.NodesWithCID")
 	defer span.End()
 
-	ch, err := cl.api.Dht().FindProviders(ctx, icorepath.New(cid))
+	ch, err := cl.API.Dht().FindProviders(ctx, icorepath.New(cid))
 	if err != nil {
 		return nil, fmt.Errorf("error finding providers of '%s': %w", cid, err)
 	}
@@ -242,7 +238,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 
 // HadCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
-	ctx, span := newSpan(ctx, "HasCID")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
 	defer span.End()
 
 	id, err := cl.ID(ctx)
@@ -265,15 +261,15 @@ func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 }
 
 func (cl *Client) GetTreeNode(ctx context.Context, cid string) (IPLDTreeNode, error) {
-	ctx, span := newSpan(ctx, "GetTreeNode")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.GetTreeNode")
 	defer span.End()
 
-	ipldNode, err := cl.api.ResolveNode(ctx, icorepath.New(cid))
+	ipldNode, err := cl.API.ResolveNode(ctx, icorepath.New(cid))
 	if err != nil {
 		return IPLDTreeNode{}, fmt.Errorf("failed to resolve node '%s': %w", cid, err)
 	}
 
-	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.api.Dag()), []string{})
+	return GetTreeNode(ctx, ipld.NewNavigableIPLDNode(ipldNode, cl.API.Dag()), []string{})
 }
 
 func getNodeType(node ipld.Node) (IPLDType, error) {
@@ -301,8 +297,4 @@ func getNodeType(node ipld.Node) (IPLDType, error) {
 	}
 
 	return nodeType, nil
-}
-
-func newSpan(ctx context.Context, api string) (context.Context, trace.Span) {
-	return system.Span(ctx, "ipfs/http", api)
 }

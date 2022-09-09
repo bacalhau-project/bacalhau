@@ -5,12 +5,14 @@ import (
 	"context"
 	crand "crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io"
 	"io/ioutil"
 	"math/big"
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"strings"
@@ -19,7 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/test/devstack"
+	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +49,7 @@ func (suite *DockerRunSuite) SetupSuite() {
 
 // Before each test
 func (suite *DockerRunSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
 
@@ -154,7 +156,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack.SetupTest(suite.T(), 1, 0, computenode.ComputeNodeConfig{})
+			devstack, cm := devstack_tests.SetupTest(ctx, suite.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -162,10 +164,10 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
 			require.NoError(suite.T(), err)
 
-			swarmAddresses, err := devstack.Nodes[0].IpfsNode.SwarmAddresses()
+			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(suite.T(), err)
-			ODR.DockerRunDownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			ODR.DockerRunDownloadFlags.OutputDir = dir
+			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
+			ODR.DownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(suite.T(), err)
@@ -717,6 +719,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+	ctx := context.Background()
 	const nodeCount = 1
 
 	videos := []string{
@@ -725,7 +728,8 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	stack, cm := devstack.SetupTest(
+	stack, cm := devstack_tests.SetupTest(
+		ctx,
 		suite.T(),
 		nodeCount,
 		0,
@@ -746,7 +750,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := stack.AddFileToNodes(nodeCount, dirPath)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
@@ -766,4 +770,49 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
 	require.NoError(suite.T(), submitErr)
+}
+
+type deterministicVerifierTestArgs struct {
+	nodeCount      int
+	badActors      int
+	confidence     int
+	expectedPassed int
+	expectedFailed int
+}
+
+func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
+	ctx := context.Background()
+
+	apiSubmitJob := func(
+		apiClient *publicapi.APIClient,
+		args devstack_tests.DeterministicVerifierTestArgs,
+	) (string, error) {
+
+		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
+		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+		ODR.Inputs = make([]string, 0)
+		ODR.InputVolumes = make([]string, 0)
+
+		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+			"docker", "run",
+			"--api-host", host,
+			"--api-port", port,
+			"-v", "123:/",
+			"--verifier", "deterministic",
+			"--concurrency", strconv.Itoa(args.NodeCount),
+			"--confidence", strconv.Itoa(args.Confidence),
+			"--sharding-glob-pattern", "/data/*.txt",
+			"--sharding-batch-size", "1",
+			"ubuntu", "echo", "hello",
+		)
+
+		if err != nil {
+			return "", err
+		}
+		jobId := strings.TrimSpace(out)
+		return jobId, nil
+	}
+
+	devstack_tests.RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 }

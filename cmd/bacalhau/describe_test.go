@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/google/uuid"
@@ -32,7 +32,7 @@ func (suite *DescribeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
-	system.InitConfigForTesting(suite.T())
+	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
 
@@ -49,9 +49,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 		numberOfRejectNodes int
 		jobState            string
 	}{
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
-		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
-		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: executor.JobEventResultsPublished.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 0, jobState: model.JobEventResultsPublished.String()}, // Run and accept
+		{numberOfAcceptNodes: 2, numberOfRejectNodes: 0, jobState: model.JobEventResultsPublished.String()}, // Run and accept
+		{numberOfAcceptNodes: 1, numberOfRejectNodes: 1, jobState: model.JobEventResultsPublished.String()}, // Run and accept
 	}
 
 	numOfJobsTests := []struct {
@@ -64,7 +64,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
 			func() {
-				var submittedJob executor.Job
+				var submittedJob model.Job
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
