@@ -14,7 +14,7 @@
 
 * [Website](https://www.bacalhau.org/)
 * [Documentation](https://docs.bacalhau.org/)
-* [Slack Channel (#bacalhau)](https://app.slack.com/client/TEHTVS1L6/C02RLM3JHUY)
+* [Slack Channel (#bacalhau)](https://filecoinproject.slack.com/archives/C02RLM3JHUY)
 * [Twitter](https://twitter.com/BacalhauProject)
  
 ## Latest Updates
