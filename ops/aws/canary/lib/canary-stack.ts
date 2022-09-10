@@ -53,6 +53,7 @@ export class CanaryStack extends cdk.Stack {
         });
 
         rule.addTarget(new targets.LambdaFunction(func, {
+            event: events.RuleTargetInput.fromObject({action: 'list'}),
             retryAttempts: 0,
             maxEventAge: cdk.Duration.minutes(1)
         }));
