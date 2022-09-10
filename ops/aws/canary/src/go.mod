@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/filecoin-project/bacalhau v0.2.3
-	github.com/rs/zerolog v1.26.1
 )
 
 // TODO: remove this before merging to main
@@ -252,6 +251,7 @@ require (
 	github.com/raulk/go-watchdog v1.2.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
+	github.com/rs/zerolog v1.26.1 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
