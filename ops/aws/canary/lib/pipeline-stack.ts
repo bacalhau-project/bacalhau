@@ -117,8 +117,8 @@ export class PipelineStack extends cdk.Stack {
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
                             actionName: 'Lambda_CFN_Deploy',
-                            templatePath: cdkBuildOutput.atPath('BacalhauCanary.template.json'),
-                            stackName: 'BacalhauCanary',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryLambda.template.json'),
+                            stackName: 'BacalhauCanaryLambda',
                             adminPermissions: true,
                             parameterOverrides: {
                                 ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),

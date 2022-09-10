@@ -12,12 +12,12 @@ export class LambdaStack extends cdk.Stack {
         super(scope, id, props)
         this.lambdaCode = lambda.Code.fromCfnParameters();
 
-        const dlq = new sqs.Queue(this, "LambdaDlq", {
+        const dlq = new sqs.Queue(this, "Dlq", {
             retentionPeriod: cdk.Duration.days(7),
             visibilityTimeout: cdk.Duration.minutes(5)
         });
 
-        const func = new lambda.Function(this, 'Lambda', {
+        const func = new lambda.Function(this, 'Function', {
             code: this.lambdaCode,
             handler: 'main',
             runtime: lambda.Runtime.GO_1_X,
@@ -26,12 +26,12 @@ export class LambdaStack extends cdk.Stack {
         });
 
         // deployment
-        const alias = new lambda.Alias(this, 'LambdaAlias', {
+        const alias = new lambda.Alias(this, 'Alias', {
             aliasName: 'Prod',
             version: func.currentVersion,
         });
 
-        new codedeploy.LambdaDeploymentGroup(this, 'LambdaAliasDeploymentGroup', {
+        new codedeploy.LambdaDeploymentGroup(this, 'AliasDeploymentGroup', {
             alias,
             deploymentConfig: codedeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
         });

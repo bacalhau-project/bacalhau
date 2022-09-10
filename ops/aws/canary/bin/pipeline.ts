@@ -7,9 +7,9 @@ const REPO_NAME = "https://github.com/filecoin-project/bacalhau"
 
 const app = new cdk.App();
 
-const lambdaStack = new LambdaStack(app, 'BacalhauLambda');
+const lambdaStack = new LambdaStack(app, 'BacalhauCanaryLambda');
 
-new PipelineStack(app, 'BacalhauCanary', {
+new PipelineStack(app, 'BacalhauCanaryPipeline', {
     lambdaCode: lambdaStack.lambdaCode,
     repositoryName: REPO_NAME,
 });
