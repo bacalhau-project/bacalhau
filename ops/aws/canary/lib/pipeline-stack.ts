@@ -65,8 +65,9 @@ export class PipelineStack extends cdk.Stack {
                     },
                 },
                 artifacts: {
+                    'base-directory': 'ops/aws/canary/lambda',
                     files: [
-                        'ops/aws/canary/lambda/main',
+                        'main',
                     ],
                 },
             }),
