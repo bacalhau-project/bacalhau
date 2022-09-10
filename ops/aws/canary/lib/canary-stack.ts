@@ -48,7 +48,7 @@ export class CanaryStack extends cdk.Stack {
 
         const rule = new events.Rule(this, 'LambdaRule', {
             ruleName: 'MyRule',
-            schedule: events.Schedule.rate(cdk.Duration.seconds(30)),
+            schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
             targets: [new targets.LambdaFunction(func)]
         });
 
