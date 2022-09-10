@@ -11,4 +11,4 @@ cdk.out
 !lib
 
 # Ignore built go binaries
-src/canary
+lambda/canary
