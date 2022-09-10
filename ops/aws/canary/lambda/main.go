@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
-func hello(event events.CloudWatchEvent) (string, error) {
+type Event struct {
+	Action string `json:"action"`
+}
+
+func hello(event Event) (string, error) {
 	fmt.Printf("Received event: %+v", event)
 
 	jobs, err := bacalhau.GetAPIClient().List(context.Background())
