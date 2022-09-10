@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
+func hello() (string, error) {
+	return "Hello λ!", nil
+}
+
 func main() {
-	fmt.Println("Hello, world!")
-	jobSelection := computenode.Anywhere
-	if jobSelection == computenode.Anywhere {
-		fmt.Println("Hello, from Anywhere!")
-	}
+	// Make the handler available for Remote Procedure Call by AWS Lambda
+	lambda.Start(hello)
 }

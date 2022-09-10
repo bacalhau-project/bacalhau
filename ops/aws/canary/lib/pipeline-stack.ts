@@ -2,9 +2,11 @@ import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
-import { Construct } from 'constructs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import {Construct} from 'constructs';
 
 export interface PipelineStackProps extends cdk.StackProps {
+    readonly lambdaCode: lambda.CfnParametersCode;
     readonly repositoryName: string;
 }
 
@@ -25,7 +27,7 @@ export class PipelineStack extends cdk.Stack {
                         commands: [
                             'cd ops/aws/canary',
                             'npm install',
-                            ]
+                        ]
                     },
                     build: {
                         commands: [
@@ -58,20 +60,20 @@ export class PipelineStack extends cdk.Stack {
                     build: {
                         commands: [
                             'cd ops/aws/canary/src',
-                            'go build',
-                            './canary'
+                            'go build -o main main.go',
+                            'zip main.zip main'
                         ],
                     },
                 },
                 artifacts: {
                     'base-directory': 'ops/aws/canary/src',
                     files: [
-                        'canary'
+                        'main.zip'
                     ],
                 },
             }),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
+                buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
             },
         });
 
@@ -108,6 +110,21 @@ export class PipelineStack extends cdk.Stack {
                             input: sourceOutput,
                             outputs: [lambdaBuildOutput],
                         })
+                    ],
+                },
+                {
+                    stageName: 'Deploy',
+                    actions: [
+                        new codepipeline_actions.CloudFormationCreateUpdateStackAction({
+                            actionName: 'Lambda_CFN_Deploy',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanary.template.json'),
+                            stackName: 'BacalhauCanary',
+                            adminPermissions: true,
+                            parameterOverrides: {
+                                ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
+                            },
+                            extraInputs: [lambdaBuildOutput],
+                        }),
                     ],
                 }
             ],

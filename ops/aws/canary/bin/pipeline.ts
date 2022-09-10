@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { PipelineStack } from '../lib/pipeline-stack';
-import { SecretsStack } from '../lib/secrets-stack';
+import { LambdaStack } from '../lib/lambda-stack';
 
 const REPO_NAME = "https://github.com/filecoin-project/bacalhau"
 
 const app = new cdk.App();
 
-const secretsStack = new SecretsStack(app, 'BacalhauSecrets');
+const lambdaStack = new LambdaStack(app, 'BacalhauLambda');
 
 new PipelineStack(app, 'BacalhauCanary', {
+    lambdaCode: lambdaStack.lambdaCode,
     repositoryName: REPO_NAME,
 });
 
