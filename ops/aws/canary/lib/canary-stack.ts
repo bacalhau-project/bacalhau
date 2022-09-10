@@ -46,11 +46,16 @@ export class CanaryStack extends cdk.Stack {
             deploymentConfig: codedeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
         });
 
-        new events.Rule(this, 'LambdaRule', {
+        const rule = new events.Rule(this, 'LambdaRule', {
             ruleName: 'MyRule',
             schedule: events.Schedule.rate(cdk.Duration.minutes(2)),
             targets: [new targets.LambdaFunction(func)]
         });
+
+        rule.addTarget(new targets.LambdaFunction(func, {
+            retryAttempts: 0,
+            maxEventAge: cdk.Duration.minutes(1)
+        }));
 
         return func;
     }
