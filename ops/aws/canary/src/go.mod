@@ -5,11 +5,11 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/filecoin-project/bacalhau v0.2.3
-	github.com/rs/zerolog v1.28.0
+	github.com/rs/zerolog v1.26.1
 )
 
 // TODO: remove this before merging to main
-replace github.com/filecoin-project/bacalhau => github.com/wdbaruni/bacalhau canary
+replace github.com/filecoin-project/bacalhau => github.com/wdbaruni/bacalhau v0.0.0-20220910061400-79a5d963a7f3
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
