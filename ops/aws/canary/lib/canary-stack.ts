@@ -26,7 +26,7 @@ export class CanaryStack extends cdk.Stack {
 
         const func = new lambda.Function(this, 'Lambda', {
             code: this.lambdaCode,
-            handler: 'handler',
+            handler: 'main',
             runtime: lambda.Runtime.GO_1_X,
             deadLetterQueue: dlq,
             timeout: cdk.Duration.minutes(5),
