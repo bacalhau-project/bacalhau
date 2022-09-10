@@ -21,12 +21,13 @@
 * [Bacalhau Overview at DeSci Berlin June 2022](https://www.youtube.com/watch?v=HA8ijt4dzAY)
 
 
-## New users: Getting Started: Hello World
+## Getting Started
 Please see the instructions here to get started running a hello example and then onboarding your workload to Bacalhau: [Getting Started with the Bacalhau Public Network](https://docs.bacalhau.org/getting-started/installation)
 
 
-## Bacalhau Developers: Running Bacalhau locally with devstack
-Developers can spin up bacalhau and run a local demo using the devstack command. Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
+## Developers: Running Bacalhau locally
+Developers can spin up bacalhau and run a local demo using the `devstack` command. 
+Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
 
 
 ## Notes for Contributors
