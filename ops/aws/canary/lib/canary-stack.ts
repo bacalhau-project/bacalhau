@@ -1,5 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as codedeploy from 'aws-cdk-lib/aws-codedeploy';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
@@ -44,6 +46,14 @@ export class CanaryStack extends cdk.Stack {
             deploymentConfig: codedeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
         });
 
+        new events.Rule(this, 'LambdaRule', {
+            ruleName: 'MyRule',
+            schedule: events.Schedule.rate(cdk.Duration.minutes(2)),
+            targets: [new targets.LambdaFunction(func)]
+        });
+
         return func;
     }
+
+
 }
