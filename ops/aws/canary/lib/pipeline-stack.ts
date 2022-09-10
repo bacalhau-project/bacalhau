@@ -59,13 +59,13 @@ export class PipelineStack extends cdk.Stack {
                     },
                     build: {
                         commands: [
-                            'cd ops/aws/canary/src',
+                            'cd ops/aws/canary/lambda',
                             'go build -ldflags="-s -w" -o handler main.go'
                         ],
                     },
                 },
                 artifacts: {
-                    'base-directory': 'ops/aws/canary/src',
+                    'base-directory': 'ops/aws/canary/lambda',
                     files: [
                         'handler',
                     ],
@@ -85,7 +85,7 @@ export class PipelineStack extends cdk.Stack {
                     stageName: 'Source',
                     actions: [
                         new codepipeline_actions.CodeStarConnectionsSourceAction({
-                            actionName: "CodeCommit",
+                            actionName: "Bacalhau_Commit",
                             output: sourceOutput,
                             owner: "wdbaruni",
                             repo: "bacalhau",
@@ -116,8 +116,8 @@ export class PipelineStack extends cdk.Stack {
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
                             actionName: 'Lambda_CFN_Deploy',
-                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryLambda.template.json'),
-                            stackName: 'BacalhauCanaryLambda',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanary.template.json'),
+                            stackName: 'BacalhauCanary',
                             adminPermissions: true,
                             parameterOverrides: {
                                 ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
