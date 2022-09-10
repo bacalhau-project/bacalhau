@@ -57,7 +57,7 @@ func shortID(outputWide bool, id string) string {
 	return id[:8]
 }
 
-func getAPIClient() *publicapi.APIClient {
+func GetAPIClient() *publicapi.APIClient {
 	return publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 }
 
@@ -258,7 +258,7 @@ func ExecuteJob(ctx context.Context,
 		apiURI := stack.Nodes[0].APIServer.GetURI()
 		apiClient = publicapi.NewAPIClient(apiURI)
 	} else {
-		apiClient = getAPIClient()
+		apiClient = GetAPIClient()
 	}
 
 	j, err := submitJob(ctx, apiClient, jobSpec, jobDeal)

@@ -126,7 +126,7 @@ var describeCmd = &cobra.Command{
 
 		inputJobID := cmdArgs[0]
 
-		j, ok, err := getAPIClient().Get(ctx, cmdArgs[0])
+		j, ok, err := GetAPIClient().Get(ctx, cmdArgs[0])
 
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
@@ -138,19 +138,19 @@ var describeCmd = &cobra.Command{
 			return nil
 		}
 
-		jobState, err := getAPIClient().GetJobState(ctx, j.ID)
+		jobState, err := GetAPIClient().GetJobState(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
 			return err
 		}
 
-		jobEvents, err := getAPIClient().GetEvents(ctx, j.ID)
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(ctx, j.ID)
+		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
