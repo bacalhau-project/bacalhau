@@ -29,14 +29,13 @@ export class PipelineStack extends cdk.Stack {
                     },
                     build: {
                         commands: [
-                            'ls',
                             'npm run build',
-                            'npm run cdk synth -- -o dist'
+                            'npm run cdk synth -- -o dist',
                         ],
                     },
                 },
                 artifacts: {
-                    'base-directory': 'dist',
+                    'base-directory': 'ops/aws/canary/dist',
                     files: [
                         '**/*'
                     ],
@@ -46,7 +45,38 @@ export class PipelineStack extends cdk.Stack {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
             },
         });
+
+        const lambdaBuild = new codebuild.PipelineProject(this, 'LambdaBuild', {
+            buildSpec: codebuild.BuildSpec.fromObject({
+                version: '0.2',
+                phases: {
+                    install: {
+                        'runtime-versions': {
+                            'golang': 1.18
+                        },
+                    },
+                    build: {
+                        commands: [
+                            'cd ops/aws/canary/src',
+                            'go build',
+                            './canary'
+                        ],
+                    },
+                },
+                artifacts: {
+                    'base-directory': 'ops/aws/canary/src',
+                    files: [
+                        'canary'
+                    ],
+                },
+            }),
+            environment: {
+                buildImage: codebuild.LinuxBuildImage.STANDARD_4_0,
+            },
+        });
+
         const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
+        const lambdaBuildOutput = new codepipeline.Artifact('LambdaBuildOutput');
 
         new codepipeline.Pipeline(this, 'Pipeline', {
             stages: [
@@ -71,6 +101,12 @@ export class PipelineStack extends cdk.Stack {
                             project: cdkBuild,
                             input: sourceOutput,
                             outputs: [cdkBuildOutput],
+                        }),
+                        new codepipeline_actions.CodeBuildAction({
+                            actionName: 'Lambda_Build',
+                            project: lambdaBuild,
+                            input: sourceOutput,
+                            outputs: [lambdaBuildOutput],
                         })
                     ],
                 }
