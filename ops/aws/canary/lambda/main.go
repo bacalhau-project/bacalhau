@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -11,13 +10,7 @@ import (
 )
 
 func hello(event events.CloudWatchEvent) (string, error) {
-	fmt.Printf("Received event: %v", event)
-
-	s, serdeErr := json.Marshal(event)
-	if serdeErr != nil {
-		return "", serdeErr
-	}
-	fmt.Printf("Event Jsong: %v", s)
+	fmt.Printf("Received event: %+v", event)
 
 	jobs, err := bacalhau.GetAPIClient().List(context.Background())
 	if err != nil {
