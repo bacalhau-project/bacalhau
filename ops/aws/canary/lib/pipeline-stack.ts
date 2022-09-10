@@ -74,7 +74,7 @@ export class PipelineStack extends cdk.Stack {
                 },
             }),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_6_0,
+                buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_4,
             },
         });
 

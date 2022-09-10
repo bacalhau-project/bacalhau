@@ -22,7 +22,10 @@ export class LambdaStack extends cdk.Stack {
             handler: 'handler',
             runtime: lambda.Runtime.GO_1_X,
             deadLetterQueue: dlq,
-            timeout: cdk.Duration.minutes(1)
+            timeout: cdk.Duration.minutes(1),
+            environment: {
+                'BACALHAU_DIR': '/tmp' // bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
+            }
         });
 
         // deployment
