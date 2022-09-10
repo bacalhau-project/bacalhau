@@ -59,7 +59,7 @@ export class CanaryStack extends cdk.Stack {
             deploymentConfig: codedeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
         });
 
-        // eventbridge rules
+        // EventBridge rules
         const rule = new events.Rule(this, actionTitle + 'EventRule', {
             schedule: events.Schedule.rate(rate),
             targets: [new targets.LambdaFunction(func)]
@@ -71,6 +71,7 @@ export class CanaryStack extends cdk.Stack {
             maxEventAge: cdk.Duration.minutes(1)
         }));
 
+        this.addDashboardWidgets(func);
         return func;
     }
 
