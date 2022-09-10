@@ -7,9 +7,6 @@ require (
 	github.com/filecoin-project/bacalhau v0.2.3
 )
 
-// TODO: remove this before merging to main
-replace github.com/filecoin-project/bacalhau => github.com/wdbaruni/bacalhau v0.0.0-20220910061400-79a5d963a7f3
-
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
