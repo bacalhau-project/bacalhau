@@ -19,7 +19,7 @@ export class LambdaStack extends cdk.Stack {
 
         const func = new lambda.Function(this, 'Function', {
             code: this.lambdaCode,
-            handler: 'main',
+            handler: 'handler',
             runtime: lambda.Runtime.GO_1_X,
             deadLetterQueue: dlq,
             timeout: cdk.Duration.minutes(1)

@@ -59,15 +59,17 @@ export class PipelineStack extends cdk.Stack {
                     },
                     build: {
                         commands: [
+                            'go build -gcflags "-N -l" -ldflags="-s -w" -o ops/aws/canary/src/bacalhau main.go',
                             'cd ops/aws/canary/src',
-                            'go build -o main main.go'
+                            'go build -ldflags="-s -w" -o handler main.go'
                         ],
                     },
                 },
                 artifacts: {
                     'base-directory': 'ops/aws/canary/src',
                     files: [
-                        'main'
+                        'handler',
+                        'bacalhau',
                     ],
                 },
             }),
