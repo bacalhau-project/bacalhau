@@ -6,6 +6,13 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
 
+export interface LambdaProps {
+    readonly action: string;
+    readonly timeoutMinutes: number;
+    readonly rateMinutes: number;
+    readonly memorySize: number;
+}
+
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
     private dashboard: cloudwatch.Dashboard
@@ -17,9 +24,9 @@ export class CanaryStack extends cdk.Stack {
 
         this.dashboard = this.createDashboard();
 
-        this.lambda("list", cdk.Duration.minutes(2));
-        this.lambda("submit", cdk.Duration.minutes(2));
-        this.lambda("submitAndGet", cdk.Duration.minutes(2));
+        this.lambda({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambda({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambda({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
     }
 
     createDashboard() {
@@ -37,13 +44,14 @@ export class CanaryStack extends cdk.Stack {
     }
 
     // Create a lambda function
-    lambda(action: string, rate: cdk.Duration) {
-        const actionTitle = action.charAt(0).toUpperCase() + action.slice(1)
+    lambda(props: LambdaProps) {
+        const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
             handler: 'main',
             runtime: lambda.Runtime.GO_1_X,
-            timeout: cdk.Duration.minutes(1),
+            timeout: cdk.Duration.minutes(props.timeoutMinutes),
+            memorySize: props.memorySize,
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': 'DEBUG',
@@ -63,11 +71,11 @@ export class CanaryStack extends cdk.Stack {
 
         // EventBridge rules
         const rule = new events.Rule(this, actionTitle + 'EventRule', {
-            schedule: events.Schedule.rate(rate),
+            schedule: events.Schedule.rate(cdk.Duration.minutes(props.rateMinutes)),
         });
 
         rule.addTarget(new targets.LambdaFunction(func, {
-            event: events.RuleTargetInput.fromObject({action: action}),
+            event: events.RuleTargetInput.fromObject({action: props.action}),
             retryAttempts: 0,
             maxEventAge: cdk.Duration.minutes(1),
         }));
