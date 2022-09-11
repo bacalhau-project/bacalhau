@@ -107,15 +107,15 @@ export class CanaryStack extends cdk.Stack {
             left: [func.metricThrottles()],
             width: 24
         }))
-
-        // Create Widget to show last 20 Log Entries
-        this.dashboard.addWidgets(new cloudwatch.LogQueryWidget({
-            logGroupNames: [func.logGroup.logGroupName],
-            queryLines:[
-                "fields @timestamp, @message",
-                "sort @timestamp desc",
-                "limit 20"],
-            width: 24,
-        }))
+        //
+        // // Create Widget to show last 20 Log Entries
+        // this.dashboard.addWidgets(new cloudwatch.LogQueryWidget({
+        //     logGroupNames: [func.logGroup.logGroupName],
+        //     queryLines:[
+        //         "fields @timestamp, @message",
+        //         "sort @timestamp desc",
+        //         "limit 20"],
+        //     width: 24,
+        // }))
     }
 }
