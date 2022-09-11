@@ -472,7 +472,7 @@ func (suite *DockerRunSuite) TestRun_GenericGenerateAndDryRun() {
 	}
 	for _, o := range tests {
 		var args []string
-		args = append(args, "docker", "run", "--output-jobspec")
+		args = append(args, "docker", "run", "--local", "--output-jobspec")
 		if o.flag == "--dry-run" {
 			args = append(args, "--dry-run")
 		}

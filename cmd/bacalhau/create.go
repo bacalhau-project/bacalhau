@@ -189,7 +189,7 @@ var templateCmd = &cobra.Command{
 	Example: createtemplateExample,
 	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
-		filename := "./testdata/job-test.yaml"
+		filename := "job-test.yaml"
 
 		fileContent, err := os.Open(filename)
 		if err != nil {
