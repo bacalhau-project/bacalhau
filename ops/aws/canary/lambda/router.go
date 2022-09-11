@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/scenarios"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 var client *publicapi.APIClient
@@ -17,6 +18,12 @@ var testcasesMap = map[string]Handler{
 }
 
 func init() {
+	// init system configs
+	err := system.InitConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	client = bacalhau.GetAPIClient()
 }
 
