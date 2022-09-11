@@ -62,7 +62,6 @@ export class CanaryStack extends cdk.Stack {
         // EventBridge rules
         const rule = new events.Rule(this, actionTitle + 'EventRule', {
             schedule: events.Schedule.rate(rate),
-            targets: [new targets.LambdaFunction(func)]
         });
 
         rule.addTarget(new targets.LambdaFunction(func, {
