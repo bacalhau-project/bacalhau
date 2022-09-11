@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -255,11 +254,12 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
-		err = job.VerifyJob(*jobSpec, *jobDeal)
+		err = jobutils.VerifyJob(*jobSpec, *jobDeal)
 		if err != nil {
 			return fmt.Errorf("error validating job: %s", err)
 		}
 		if ODR.OutputJobSpec {
+			//nolint
 			bytes, err := yaml.Marshal(jobSpec)
 			if err != nil {
 				log.Error().Msgf("Failure marshaling job spec '%s'", err)
