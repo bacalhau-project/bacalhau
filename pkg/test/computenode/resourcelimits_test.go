@@ -3,12 +3,13 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"math/rand"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -205,7 +206,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) error {
+		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) model.RunOutput {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -220,7 +221,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return nil
+			return model.RunOutput{}
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {

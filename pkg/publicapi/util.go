@@ -87,7 +87,7 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	s := NewServer(ctx, host, port, c, noopPublishers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 

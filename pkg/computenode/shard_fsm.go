@@ -358,12 +358,12 @@ func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	// we get a "proposal" from this method which is not the results
 	// but what the compute node verifier wants to pass to the requester
 	// node verifier
-	proposal, err := m.node.RunShard(ctx, m.Shard)
-	if err == nil {
+	proposal, runOutput := m.node.RunShard(ctx, m.Shard)
+	if runOutput.RunnerError == nil {
 		m.resultProposal = proposal
 		return publishingToVerifierState
 	} else {
-		m.errorMsg = err.Error()
+		m.errorMsg = runOutput.RunnerError.Error()
 		return errorState
 	}
 }

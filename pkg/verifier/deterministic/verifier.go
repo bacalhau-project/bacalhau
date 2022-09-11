@@ -2,14 +2,13 @@ package deterministic
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -55,18 +54,18 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	shard model.JobShard,
 	shardResultPath string,
 ) ([]byte, error) {
-	job, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
+	j, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		return nil, err
 	}
-	if len(job.RequesterPublicKey) == 0 {
-		return nil, errors.New("no RequesterPublicKey found in the job")
+	if len(j.RequesterPublicKey) == 0 {
+		return nil, fmt.Errorf("no RequesterPublicKey found in the job")
 	}
 	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
 	if err != nil {
 		return nil, err
 	}
-	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), job.RequesterPublicKey)
+	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), j.RequesterPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -199,8 +198,9 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := newSpan(ctx, "VerifyJob")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/deterministic.VerifyJob")
 	defer span.End()
+
 	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
 	if err != nil {
 		return nil, err
@@ -223,10 +223,6 @@ func (deterministicVerifier *DeterministicVerifier) VerifyJob(
 	}
 
 	return allResults, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "verifier/noop", apiName)
 }
 
 // Compile-time check that deterministicVerifier implements the correct interface:

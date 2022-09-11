@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type NoopVerifier struct {
@@ -68,8 +67,9 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 	ctx context.Context,
 	jobID string,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := newSpan(ctx, "VerifyJob")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyJob")
 	defer span.End()
+
 	results := []verifier.VerifierResult{}
 	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, jobID)
 	if err != nil {
@@ -87,10 +87,6 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 		})
 	}
 	return results, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "verifier/noop", apiName)
 }
 
 // Compile-time check that NoopVerifier implements the correct interface:
