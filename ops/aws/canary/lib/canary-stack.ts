@@ -35,6 +35,7 @@ export class CanaryStack extends cdk.Stack {
         });
         return dashboard
     }
+
     // Create a lambda function
     lambda(action: string, rate: cdk.Duration) {
         const actionTitle = action.charAt(0).toUpperCase() + action.slice(1)
@@ -78,28 +79,29 @@ export class CanaryStack extends cdk.Stack {
         // Create Title for Dashboard
         this.dashboard.addWidgets(new cloudwatch.TextWidget({
             markdown: '## ' + actionTitle,
-            height: 1,
-            width: 24
+            // height: 1,
+            // width: 24
         }))
+
 
         // Create CloudWatch Dashboard Widgets: Errors, Invocations, Duration, Throttles
-        this.dashboard.addWidgets(new cloudwatch.GraphWidget({
-            title: "Invocations",
-            left: [func.metricInvocations()],
-            right: [func.metricErrors()],
-            width: 8
-        }))
-
-        this.dashboard.addWidgets(new cloudwatch.GraphWidget({
-            title: "Duration",
-            left: [func.metricDuration()],
-            width: 8
-        }))
-
-        this.dashboard.addWidgets(new cloudwatch.GraphWidget({
-            title: "Throttles",
-            left: [func.metricThrottles()],
-            width: 8
-        }))
+        this.dashboard.addWidgets(
+            new cloudwatch.GraphWidget({
+                title: "Invocations",
+                left: [func.metricInvocations()],
+                right: [func.metricErrors()],
+                // width: 8
+            }),
+            new cloudwatch.GraphWidget({
+                title: "Duration",
+                left: [func.metricDuration()],
+                // width: 8
+            }),
+            new cloudwatch.GraphWidget({
+                title: "Throttles",
+                left: [func.metricThrottles()],
+                // width: 8
+            })
+        )
     }
 }
