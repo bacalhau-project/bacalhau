@@ -27,12 +27,6 @@ var (
 		# Describe a job with the a shortened ID
 		bacalhau describe 47805f5c
 
-		# Output Jobspec of an already executed job to stdout
-		bacalhau describe --spec 6e51df50
-
-		save the Jobspec of a job to a yaml file
-		bacalhau describe --spec 6e51df50 > job.yaml
-
 		# Describe a job and include all server and local events
 		bacalhau describe --include-events b6ad164a 
 `))
