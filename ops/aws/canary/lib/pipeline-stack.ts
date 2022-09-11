@@ -104,7 +104,7 @@ export class PipelineStack extends cdk.Stack {
                             outputs: [cdkBuildOutput],
                         }),
                         new codepipeline_actions.CodeBuildAction({
-                            actionName: 'Lambda_Build',
+                            actionName: 'Lambda_Code_Build',
                             project: lambdaBuild,
                             input: sourceOutput,
                             outputs: [lambdaBuildOutput],
@@ -115,7 +115,7 @@ export class PipelineStack extends cdk.Stack {
                     stageName: 'Deploy',
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'Lambda_CFN_Deploy',
+                            actionName: 'Canary_CFN_Deploy',
                             templatePath: cdkBuildOutput.atPath('BacalhauCanary.template.json'),
                             stackName: 'BacalhauCanary',
                             adminPermissions: true,
