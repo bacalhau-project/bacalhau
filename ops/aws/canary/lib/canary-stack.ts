@@ -27,6 +27,8 @@ export class CanaryStack extends cdk.Stack {
         this.lambda({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.lambda({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.lambda({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
+        this.lambda({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambda({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
     }
 
     createDashboard() {

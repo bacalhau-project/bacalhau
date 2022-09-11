@@ -13,9 +13,11 @@ import (
 var client *publicapi.APIClient
 
 var testcasesMap = map[string]Handler{
-	"list":         scenarios.List,
-	"submit":       scenarios.Submit,
-	"submitAndGet": scenarios.SubmitAndGet,
+	"list":                  scenarios.List,
+	"submit":                scenarios.Submit,
+	"submitAndGet":          scenarios.SubmitAndGet,
+	"submitAndDescribe":     scenarios.SubmitAnDescribe,
+	"submitWithConcurrency": scenarios.SubmitWithConcurrency,
 }
 
 func init() {
