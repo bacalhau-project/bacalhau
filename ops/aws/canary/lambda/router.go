@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/scenarios"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 var client *publicapi.APIClient
@@ -36,5 +37,6 @@ func route(ctx context.Context, event Event) error {
 	if err != nil {
 		return err
 	}
+	log.Info().Msgf("testcase %s passed", event.Action)
 	return nil
 }
