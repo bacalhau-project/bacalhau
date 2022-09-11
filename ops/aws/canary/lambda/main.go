@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	flag "github.com/spf13/pflag"
@@ -11,12 +10,6 @@ import (
 )
 
 func init() {
-	// init system configs
-	err := system.InitConfig()
-	if err != nil {
-		panic(err)
-	}
-
 	// override bacalhau logger to print better on cloudwatch logs by removing colors and timestamp
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{
 		Out:     os.Stderr,
