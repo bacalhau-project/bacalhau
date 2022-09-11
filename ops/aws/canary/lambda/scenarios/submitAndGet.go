@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
 )
@@ -14,6 +15,8 @@ func SubmitAndGet(ctx context.Context, client *publicapi.APIClient) error {
 	cm := system.NewCleanupManager()
 	jobSpec, jobDeal := getSampleDockerJob()
 	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)
+	log.Info().Msgf("submitted job: %s", submittedJob.ID)
+
 	err = waitUntilCompleted(ctx, client, submittedJob)
 	if err != nil {
 		return err
@@ -28,7 +31,12 @@ func SubmitAndGet(ctx context.Context, client *publicapi.APIClient) error {
 		return fmt.Errorf("no results found")
 	}
 
-	downloadSettings := getIPFSDownloadSettings()
+	downloadSettings, err := getIPFSDownloadSettings()
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(downloadSettings.OutputDir)
+
 	err = ipfs.DownloadJob(ctx, cm, submittedJob, results, *downloadSettings)
 	if err != nil {
 		return err
@@ -38,8 +46,9 @@ func SubmitAndGet(ctx context.Context, client *publicapi.APIClient) error {
 		return err
 	}
 
-	if string(body) != "hello" {
-		return fmt.Errorf("unexpected output: %s", body)
+	err = compareOutput(body, defaultEchoMessage)
+	if err != nil {
+		return err
 	}
 
 	return nil
