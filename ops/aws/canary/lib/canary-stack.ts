@@ -76,7 +76,7 @@ export class CanaryStack extends cdk.Stack {
     addDashboardWidgets(actionTitle: string, func: lambda.Function) {
         // Create Title for Dashboard
         this.dashboard.addWidgets(new cloudwatch.TextWidget({
-            markdown: `actionTitle`,
+            markdown: actionTitle,
             height: 1,
             width: 24
         }))
@@ -92,13 +92,13 @@ export class CanaryStack extends cdk.Stack {
         this.dashboard.addWidgets(new cloudwatch.GraphWidget({
             title: "Duration",
             left: [func.metricDuration()],
-            width: 24
+            width: 8
         }))
 
         this.dashboard.addWidgets(new cloudwatch.GraphWidget({
             title: "Throttles",
             left: [func.metricThrottles()],
-            width: 24
+            width: 8
         }))
     }
 }
