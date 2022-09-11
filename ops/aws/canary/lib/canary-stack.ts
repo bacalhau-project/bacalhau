@@ -69,14 +69,14 @@ export class CanaryStack extends cdk.Stack {
             maxEventAge: cdk.Duration.minutes(1),
         }));
 
-        this.addDashboardWidgets(func);
+        this.addDashboardWidgets(actionTitle, func);
         return func;
     }
 
-    addDashboardWidgets(func: lambda.Function) {
+    addDashboardWidgets(actionTitle: string, func: lambda.Function) {
         // Create Title for Dashboard
         this.dashboard.addWidgets(new cloudwatch.TextWidget({
-            markdown: `# Dashboard: ${func.functionName}`,
+            markdown: `actionTitle`,
             height: 1,
             width: 24
         }))
@@ -85,13 +85,8 @@ export class CanaryStack extends cdk.Stack {
         this.dashboard.addWidgets(new cloudwatch.GraphWidget({
             title: "Invocations",
             left: [func.metricInvocations()],
-            width: 24
-        }))
-
-        this.dashboard.addWidgets(new cloudwatch.GraphWidget({
-            title: "Errors",
-            left: [func.metricErrors()],
-            width: 24
+            right: [func.metricErrors()],
+            width: 8
         }))
 
         this.dashboard.addWidgets(new cloudwatch.GraphWidget({
