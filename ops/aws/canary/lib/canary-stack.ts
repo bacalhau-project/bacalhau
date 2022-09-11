@@ -3,10 +3,8 @@ import * as codedeploy from 'aws-cdk-lib/aws-codedeploy';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
-
 
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
@@ -68,7 +66,7 @@ export class CanaryStack extends cdk.Stack {
         rule.addTarget(new targets.LambdaFunction(func, {
             event: events.RuleTargetInput.fromObject({action: action}),
             retryAttempts: 0,
-            maxEventAge: cdk.Duration.minutes(1)
+            maxEventAge: cdk.Duration.minutes(1),
         }));
 
         this.addDashboardWidgets(func);
@@ -107,15 +105,5 @@ export class CanaryStack extends cdk.Stack {
             left: [func.metricThrottles()],
             width: 24
         }))
-        //
-        // // Create Widget to show last 20 Log Entries
-        // this.dashboard.addWidgets(new cloudwatch.LogQueryWidget({
-        //     logGroupNames: [func.logGroup.logGroupName],
-        //     queryLines:[
-        //         "fields @timestamp, @message",
-        //         "sort @timestamp desc",
-        //         "limit 20"],
-        //     width: 24,
-        // }))
     }
 }
