@@ -1,0 +1,60 @@
+# jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
+apiVersion: v1alpha1
+engine: 2
+# We are using the docker executor
+engine_name: docker
+verifier: 1
+verifier_name: noop
+publisher: 2
+publisher_name: estuary
+job_spec_docker:
+# docker image you want to use
+    image: ubuntu
+    entrypoint:
+# Command to run inside the container  
+    - /bin/bash
+    - -c
+    - echo "hello"
+    env: []
+    workdir: ""
+resources:
+    cpu: ""
+    memory: ""
+    disk: ""
+    gpu: ""
+# if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
+inputs: []
+# inputs:
+# If you consume data from a URL
+#     - engine: 2
+#       engine_name: ""
+#       name: ""
+#       cid: ""
+#       url: https://gist.github.com/js-ts/770930a9b98ce69d1a5116f693f027bf/raw/d4f7ba6fd788d99fb9dacb02fdf1fb2e7622f4e2/hello.txt
+#       path: /hello.txt
+#       metadata: {}
+# If you consume data from IPFS
+#     - engine: 1
+#       engine_name: ""
+#       name: ""
+#       cid: QmWATWQ7fVPP2EFGu71UkfnqhYXDYH566qy47CnJDgvs8u
+#       url: ""
+#       path: /hello.txt
+#       metadata: {}
+contexts: []
+outputs:
+    - engine: 1
+      engine_name: ""
+# default output volume is outputs      
+      name: outputs
+      cid: ""
+      url: ""
+      path: /outputs
+# Not required
+annotations: []
+# Not required
+sharding:
+    glob_pattern: ""
+    batch_size: 1
+    glob_pattern_base_path: /inputs
+donottrack: false

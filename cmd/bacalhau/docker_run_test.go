@@ -5,7 +5,6 @@ import (
 	"context"
 	crand "crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -14,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"strings"
 	"testing"
@@ -457,6 +458,28 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 			}()
 		}
+	}
+}
+
+func (suite *DockerRunSuite) TestRun_GenericGenerateAndDryRun() {
+	tests := []struct {
+		filename string
+		flag     string
+		command  []string
+	}{
+		{filename: "job-generate.yaml", flag: "--dry-run", command: []string{"ubuntu", "echo", "hello"}},
+		{filename: "job-generate.yaml", command: []string{"ubuntu", "echo", "hello"}},
+	}
+	for _, o := range tests {
+		var args []string
+		args = append(args, "docker", "run", "--output-jobspec")
+		if o.flag == "--dry-run" {
+			args = append(args, "--dry-run")
+		}
+		args = append(args, o.command...)
+		*ODR = *NewDockerRunOptions()
+		_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+		require.NoError(suite.T(), err, "Error generating jobspec")
 	}
 }
 

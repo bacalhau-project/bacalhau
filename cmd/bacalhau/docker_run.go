@@ -6,15 +6,16 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
@@ -64,6 +65,10 @@ type DockerRunOptions struct {
 	Entrypoint []string // Entrypoint to the docker image
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
+
+	OutputJobSpec bool // Print the jobspec to stdout
+
+	DryRun bool // Don't submit the jobspec
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
@@ -170,6 +175,15 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.SkipSyntaxChecking, "skip-syntax-checking", ODR.SkipSyntaxChecking,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.OutputJobSpec, "output-jobspec", ODR.OutputJobSpec,
+		`Output Jobspec to stdout`,
+	)
+
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.DryRun, "dry-run", ODR.DryRun,
+		`Output Jobspec to stdout`,
+	)
 
 	dockerRunCmd.PersistentFlags().StringVarP(
 		&ODR.WorkingDir, "workdir", "w", ODR.WorkingDir,
@@ -241,20 +255,46 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
-
-		err = ExecuteJob(ctx,
-			cm,
-			cmd,
-			jobSpec,
-			jobDeal,
-			ODR.RunTimeSettings,
-			ODR.DownloadFlags,
-		)
-
+		err = job.VerifyJob(*jobSpec, *jobDeal)
 		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			return fmt.Errorf("error validating job: %s", err)
 		}
+		if ODR.OutputJobSpec {
+			bytes, err := yaml.Marshal(jobSpec)
+			if err != nil {
+				log.Error().Msgf("Failure marshaling job spec '%s'", err)
+				return err
+			}
+			var jobspectmp *model.JobSpec
+			_ = yaml.Unmarshal(bytes, &jobspectmp)
 
+			jobspectmp.APIVersion = "v1alpha1"
+			jobspectmp.EngineName = "docker"
+			jobspectmp.VerifierName = "noop"
+			jobspectmp.PublisherName = "estuary"
+			jobspecnew, err := yaml.Marshal(jobspectmp)
+			if err != nil {
+				log.Error().Msgf("Failure marshaling job spec '%s'", err)
+				return err
+			}
+			cmd.Print(string(jobspecnew))
+		}
+		if !ODR.DryRun {
+
+			err = ExecuteJob(ctx,
+				cm,
+				cmd,
+				jobSpec,
+				jobDeal,
+				ODR.RunTimeSettings,
+				ODR.DownloadFlags,
+			)
+
+			if err != nil {
+				return fmt.Errorf("error executing job: %s", err)
+			}
+
+		}
 		return nil
 	},
 }

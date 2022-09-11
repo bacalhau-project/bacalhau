@@ -115,3 +115,14 @@ func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
 		}
 	}
 }
+
+func (suite *DockerRunSuite) TestApplyYAMLTemplate_GenericStdout() {
+
+	var args []string
+	args = append(args, "create", "template")
+
+	*ODR = *NewDockerRunOptions()
+	_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+	require.NoError(suite.T(), err, "Error Printing Template jobspec")
+
+}
