@@ -18,6 +18,8 @@ export class CanaryStack extends cdk.Stack {
         this.dashboard = this.createDashboard();
 
         this.lambda("list", cdk.Duration.minutes(1));
+        this.lambda("submit", cdk.Duration.minutes(1));
+        this.lambda("submitAndGet", cdk.Duration.minutes(1));
     }
 
     createDashboard() {

@@ -10,8 +10,11 @@ import (
 )
 
 var client *publicapi.APIClient
+
 var testcasesMap = map[string]Handler{
-	"list": scenarios.List,
+	"list":         scenarios.List,
+	"submit":       scenarios.Submit,
+	"submitAndGet": scenarios.SubmitAndGet,
 }
 
 func init() {
