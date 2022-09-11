@@ -244,6 +244,7 @@ func ExecuteJob(ctx context.Context,
 	jobDeal *model.JobDeal,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
+	outputJobSpec bool,
 ) error {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -266,7 +267,12 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	cmd.Printf("%s\n", j.ID)
+	if !outputJobSpec {
+		cmd.Printf("%s\n", j.ID)
+	}
+	s := fmt.Sprintf("jobID: %s\n", j.ID)
+	log.Info().Msg(s)
+
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
 		// We have a jobID now, add it to the context baggage
 		ctx = system.AddJobIDToBaggage(ctx, j.ID)

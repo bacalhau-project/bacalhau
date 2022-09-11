@@ -288,6 +288,7 @@ var dockerRunCmd = &cobra.Command{
 				jobDeal,
 				ODR.RunTimeSettings,
 				ODR.DownloadFlags,
+				ODR.OutputJobSpec,
 			)
 
 			if err != nil {
