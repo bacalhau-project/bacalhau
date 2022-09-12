@@ -7,6 +7,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import {Construct} from 'constructs';
 
 export interface LambdaProps {
@@ -28,7 +29,7 @@ export class CanaryStack extends cdk.Stack {
         this.dashboard = this.createDashboard();
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
-        this.lambdaAlarmHandlerFunc()
+        this.lambdaAlarmSlackHandlerFunc()
         this.lambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.lambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.lambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
@@ -54,7 +55,7 @@ export class CanaryStack extends cdk.Stack {
     }
 
     // Create a lambda function that triggers test scenarios
-    lambdaAlarmHandlerFunc() : lambda.Function {
+    lambdaAlarmSlackHandlerFunc() : lambda.Function {
         const func = new lambda.Function(this,  'AlarmHandlerFunction', {
             code: this.lambdaCode,
             handler: 'alarm_handler',
@@ -65,6 +66,17 @@ export class CanaryStack extends cdk.Stack {
             }
         });
         func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));
+
+        const secretProps = {
+            generateSecretString: {
+                secretStringTemplate: JSON.stringify({
+                    alarmOk: 'https://...',
+                    alarmTriggered: 'https://...',
+                }),
+            },
+        }
+        const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', secretProps);
+        slackSecretes.grantRead(func);
         return func;
     }
 
@@ -165,4 +177,5 @@ export class CanaryStack extends cdk.Stack {
 
         alarm.addAlarmAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
     }
+
 }
