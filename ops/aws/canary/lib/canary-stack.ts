@@ -5,6 +5,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
+import {IMetric} from "aws-cdk-lib/aws-cloudwatch/lib/metric-types";
 
 export interface LambdaProps {
     readonly action: string;
@@ -46,7 +47,7 @@ export class CanaryStack extends cdk.Stack {
     }
 
     // Create a lambda function
-    lambda(props: LambdaProps) {
+    lambda(props: LambdaProps) : lambda.Function {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
@@ -83,6 +84,7 @@ export class CanaryStack extends cdk.Stack {
         }));
 
         this.addDashboardWidgets(actionTitle, func);
+        this.createAlarm(actionTitle, func)
         return func;
     }
 
@@ -109,16 +111,33 @@ export class CanaryStack extends cdk.Stack {
             new cloudwatch.GraphWidget({
                 title: "Error count and success rate (%)",
                 left: [func.metricErrors()],
-                right: [new cloudwatch.MathExpression({
-                    expression: "100 - 100 * errors / MAX([errors, invocations])",
-                    label: "[avg: ${AVG}] Success rate",
-                    usingMetrics: {
-                        errors: func.metricErrors(),
-                        invocations: func.metricInvocations()
-                    }
-                })],
+                right: [this.getAvailabilityMetric(func)],
+                rightYAxis: {min: 0, max: 100},
                 width: 8
             })
         )
+    }
+
+    private getAvailabilityMetric(func: lambda.Function) : cloudwatch.MathExpression {
+        return new cloudwatch.MathExpression({
+            expression: "100 - 100 * errors / MAX([errors, invocations])",
+            label: "[avg: ${AVG}] Success rate",
+            usingMetrics: {
+                errors: func.metricErrors(),
+                invocations: func.metricInvocations()
+            }
+        })
+    }
+    private createAlarm(actionTitle: string, func: lambda.Function) {
+        const threshold = 95
+        const availabilityMetric = this.getAvailabilityMetric(func)
+        const alarm = availabilityMetric.createAlarm(this, actionTitle + "Alarm", {
+            alarmDescription: actionTitle + ' availability is below ' + threshold + '%',
+            threshold: threshold,
+            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            evaluationPeriods: 3,
+            datapointsToAlarm: 2,
+            treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+        });
     }
 }
