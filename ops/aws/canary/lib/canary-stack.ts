@@ -134,7 +134,7 @@ export class CanaryStack extends cdk.Stack {
         const alarm = availabilityMetric.createAlarm(this, actionTitle + "Alarm", {
             alarmDescription: actionTitle + ' availability is below ' + threshold + '%',
             threshold: threshold,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             evaluationPeriods: 3,
             datapointsToAlarm: 2,
             treatMissingData: cloudwatch.TreatMissingData.BREACHING,
