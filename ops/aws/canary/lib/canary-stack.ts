@@ -56,17 +56,6 @@ export class CanaryStack extends cdk.Stack {
 
     // Create a lambda function that triggers test scenarios
     lambdaAlarmSlackHandlerFunc() : lambda.Function {
-        const func = new lambda.Function(this,  'AlarmHandlerFunction', {
-            code: this.lambdaCode,
-            handler: 'alarm_handler',
-            runtime: lambda.Runtime.GO_1_X,
-            timeout: cdk.Duration.minutes(1),
-            environment: {
-                'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
-            }
-        });
-        func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));
-
         const secretProps = {
             generateSecretString: {
                 secretStringTemplate: JSON.stringify({
@@ -76,6 +65,18 @@ export class CanaryStack extends cdk.Stack {
             },
         }
         const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', secretProps);
+
+        const func = new lambda.Function(this,  'AlarmHandlerFunction', {
+            code: this.lambdaCode,
+            handler: 'alarm_handler',
+            runtime: lambda.Runtime.GO_1_X,
+            timeout: cdk.Duration.minutes(1),
+            environment: {
+                'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
+                'SLACK_WEBHOOKS_SECRET_ARN': slackSecretes.secretArn,
+            }
+        });
+        func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));
         slackSecretes.grantRead(func);
         return func;
     }
