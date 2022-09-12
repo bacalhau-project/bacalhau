@@ -1,7 +1,12 @@
 # Bacalhau Docs
 
-This repository contains the user documentation of the [Bacalhau project](https://github.com/filecoin-project/bacalhau).
+This repository contains the user documentation of the Bacalhau Project.
 These are accessible at https://docs.bacalhau.org/.
+
+* [Bacalhau Website](https://www.bacalhau.org/)
+* [Bacalhau Code Repository](https://github.com/filecoin-project/bacalhau)
+* [Twitter](https://twitter.com/BacalhauProject)
+* [YouTube Channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNCUn4vi0A)
 
 # Contribute
 
