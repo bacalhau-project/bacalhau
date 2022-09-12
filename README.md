@@ -1,43 +1,26 @@
-# Website
+# Bacalhau Docs
 
-This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
+This repository contains the user documentation of the [Bacalhau project](https://github.com/filecoin-project/bacalhau).
+These are accessible at https://docs.bacalhau.org/.
 
-### Installation
 
-```
-$ yarn
-```
+## Develop docs locally
 
-### Local Development
+### Prerequistes
 
-```
-$ yarn start
-```
+* Git ([Installation instructions](https://github.com/git-guides/install-git)), for version control.
+* Node.js and `npm` ([Installation instructions](https://treehouse.github.io/installation-guides/mac/node-mac.html)), to run the static site generator [Docusaurus](https://docusaurus.io/docs) used to build this website.
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-### Build
+### Install Node.js dependencies
 
 ```
-$ yarn build
+git clone https://github.com/bacalhau-project/docs.bacalhau.org.git
+cd docs.bacalhau.org/
+npm install
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
+### Render website
 
 ```
-$ USE_SSH=true yarn deploy
+npm run start
 ```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
-
-<!--- small comment for PR --->
