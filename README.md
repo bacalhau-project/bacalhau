@@ -24,3 +24,5 @@ npm install
 ```
 npm run start
 ```
+
+The rendered site will be accessible at http://localhost:3000/
