@@ -19,7 +19,6 @@ export interface LambdaProps {
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
     private readonly dashboard: cloudwatch.Dashboard
-    private readonly dashboardUrl: string
     private readonly snsAlarmTopic: sns.ITopic
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -74,7 +73,7 @@ export class CanaryStack extends cdk.Stack {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
-            handler: 'main',
+            handler: 'scenario_handler',
             runtime: lambda.Runtime.GO_1_X,
             timeout: cdk.Duration.minutes(props.timeoutMinutes),
             memorySize: props.memorySize,

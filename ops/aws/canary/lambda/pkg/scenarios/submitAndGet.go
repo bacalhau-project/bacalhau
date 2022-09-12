@@ -3,15 +3,19 @@ package scenarios
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
 )
 
-func SubmitAndGet(ctx context.Context, client *publicapi.APIClient) error {
+func SubmitAndGet(ctx context.Context) error {
+	// intentionally delay creation of the client so a new client is created for each
+	// scenario to mimic the behavior of bacalhau cli.
+	client := bacalhau.GetAPIClient()
+
 	cm := system.NewCleanupManager()
 	jobSpec, jobDeal := getSampleDockerJob()
 	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)

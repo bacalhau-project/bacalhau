@@ -1,16 +1,13 @@
-package main
+package router
 
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	"github.com/filecoin-project/bacalhau/ops/aws/canary/scenarios"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/models"
+	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/scenarios"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
-
-var client *publicapi.APIClient
 
 var testcasesMap = map[string]Handler{
 	"list":                  scenarios.List,
@@ -26,16 +23,14 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
-	client = bacalhau.GetAPIClient()
 }
 
-func route(ctx context.Context, event Event) error {
+func Route(ctx context.Context, event models.Event) error {
 	handler, ok := testcasesMap[event.Action]
 	if !ok {
 		return fmt.Errorf("no handler found for action: %s", event.Action)
 	}
-	err := handler(ctx, client)
+	err := handler(ctx)
 	if err != nil {
 		return err
 	}
