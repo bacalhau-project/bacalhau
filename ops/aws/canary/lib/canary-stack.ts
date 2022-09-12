@@ -99,17 +99,24 @@ export class CanaryStack extends cdk.Stack {
             new cloudwatch.GraphWidget({
                 title: "Invocations",
                 left: [func.metricInvocations()],
-                right: [func.metricErrors()],
                 width: 8
             }),
             new cloudwatch.GraphWidget({
                 title: "Duration",
-                left: [func.metricDuration()],
+                left: [func.metricDuration({label: "[avg: ${AVG}ms, max: ${MAX}ms] Duration"})],
                 width: 8
             }),
             new cloudwatch.GraphWidget({
-                title: "Throttles",
-                left: [func.metricThrottles()],
+                title: "Error count and success rate (%)",
+                left: [func.metricErrors()],
+                right: [new cloudwatch.MathExpression({
+                    expression: "100 - 100 * errors / MAX([errors, invocations])",
+                    label: "[avg: ${AVG}] Success rate",
+                    usingMetrics: {
+                        errors: func.metricErrors(),
+                        invocations: func.metricInvocations()
+                    }
+                })],
                 width: 8
             })
         )
