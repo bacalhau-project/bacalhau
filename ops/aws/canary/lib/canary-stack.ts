@@ -1,11 +1,13 @@
 import * as cdk from 'aws-cdk-lib';
 import * as codedeploy from 'aws-cdk-lib/aws-codedeploy';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as sns from 'aws-cdk-lib/aws-sns';
 import {Construct} from 'constructs';
-import {IMetric} from "aws-cdk-lib/aws-cloudwatch/lib/metric-types";
 
 export interface LambdaProps {
     readonly action: string;
@@ -16,20 +18,23 @@ export interface LambdaProps {
 
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
-    private dashboard: cloudwatch.Dashboard
-
+    private readonly dashboard: cloudwatch.Dashboard
+    private readonly dashboardUrl: string
+    private readonly snsAlarmTopic: sns.ITopic
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
         this.lambdaCode = lambda.Code.fromCfnParameters();
 
         this.dashboard = this.createDashboard();
+        this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
-        this.lambda({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambda({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambda({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
-        this.lambda({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambda({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambdaAlarmHandlerFunc()
+        this.lambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
+        this.lambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.lambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
     }
 
     createDashboard() {
@@ -37,17 +42,35 @@ export class CanaryStack extends cdk.Stack {
             dashboardName: 'CanaryDashboard',
         })
         // Generate Outputs
-        const cloudwatchDashboardURL = `https://${cdk.Aws.REGION}.console.aws.amazon.com/cloudwatch/home?region=${cdk.Aws.REGION}#dashboards:name=${dashboard.dashboardName}`
         new cdk.CfnOutput(this, 'DashboardOutput', {
-            value: cloudwatchDashboardURL,
+            value: this.getDashboardUrl(dashboard),
             description: 'URL of Sample CloudWatch Dashboard',
-            exportName: 'SampleCloudWatchDashboardURL'
+            exportName: 'DashboardURL'
         });
         return dashboard
     }
 
-    // Create a lambda function
-    lambda(props: LambdaProps) : lambda.Function {
+    getDashboardUrl(dashboard : cloudwatch.Dashboard) {
+        return `https://${cdk.Aws.REGION}.console.aws.amazon.com/cloudwatch/home?region=${cdk.Aws.REGION}#dashboards:name=${dashboard.dashboardName}`
+    }
+
+    // Create a lambda function that triggers test scenarios
+    lambdaAlarmHandlerFunc() : lambda.Function {
+        const func = new lambda.Function(this,  'AlarmHandlerFunction', {
+            code: this.lambdaCode,
+            handler: 'alarm_handler',
+            runtime: lambda.Runtime.GO_1_X,
+            timeout: cdk.Duration.minutes(1),
+            environment: {
+                'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
+            }
+        });
+        func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));
+        return func;
+    }
+
+    // Create a lambda function that triggers test scenarios
+    lambdaScenarioFunc(props: LambdaProps) : lambda.Function {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
@@ -128,6 +151,7 @@ export class CanaryStack extends cdk.Stack {
             }
         })
     }
+
     private createAlarm(actionTitle: string, func: lambda.Function) {
         const threshold = 95
         const availabilityMetric = this.getAvailabilityMetric(func)
@@ -139,5 +163,7 @@ export class CanaryStack extends cdk.Stack {
             datapointsToAlarm: 2,
             treatMissingData: cloudwatch.TreatMissingData.BREACHING,
         });
+
+        alarm.addAlarmAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
     }
 }

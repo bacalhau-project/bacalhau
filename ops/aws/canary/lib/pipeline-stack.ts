@@ -60,7 +60,8 @@ export class PipelineStack extends cdk.Stack {
                     build: {
                         commands: [
                             'cd ops/aws/canary/lambda',
-                            'go build -ldflags="-s -w" -o main .'
+                            'go build -ldflags="-s -w" -o main .',
+                            'go build -ldflags="-s -w" -o alarm_handler alarm_handler.go',
                         ],
                     },
                 },
@@ -68,6 +69,7 @@ export class PipelineStack extends cdk.Stack {
                     'base-directory': 'ops/aws/canary/lambda',
                     files: [
                         'main',
+                        'alarm_handler',
                     ],
                 },
             }),
