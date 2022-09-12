@@ -3,6 +3,11 @@
 This repository contains the user documentation of the [Bacalhau project](https://github.com/filecoin-project/bacalhau).
 These are accessible at https://docs.bacalhau.org/.
 
+# Contribute
+
+## Found inconsistencies in the docs?
+
+Please feel free to open an issue or submit a pull request to this repo, every contribution is more than welcome! :balloon:
 
 ## Develop docs locally
 
