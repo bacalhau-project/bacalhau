@@ -40,13 +40,13 @@ func mustGetWebhookSecret() slackWebhooksType {
 		panic(err)
 	}
 
-	slackWebhooks = slackWebhooksType{}
-	err = json.Unmarshal([]byte(*result.SecretString), &slackWebhooks)
+	newSlackWebhooks := slackWebhooksType{}
+	err = json.Unmarshal([]byte(*result.SecretString), &newSlackWebhooks)
 	if err != nil {
 		panic(err)
 	}
 
-	return slackWebhooks
+	return newSlackWebhooks
 }
 
 func init() {
