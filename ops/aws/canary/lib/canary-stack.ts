@@ -71,7 +71,7 @@ export class CanaryStack extends cdk.Stack {
             timeout: cdk.Duration.minutes(1),
             environment: {
                 'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
-                'SLACK_WEBHOOKS_SECRET_ARN': slackSecretes.secretArn,
+                'SLACK_WEBHOOK_SECRET_NAME': slackSecretes.secretName,
             }
         });
         func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));
