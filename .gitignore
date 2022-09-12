@@ -41,3 +41,4 @@ __pycache__
 stderr
 stdout
 unittests.xml
+output_dir

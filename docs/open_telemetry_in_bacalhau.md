@@ -50,3 +50,7 @@ https://github.com/honeycombio/example-greeting-service/tree/main/golang
 * A good rule of thumb is if you have something that is long enough to be a span, it should be a function.
 
 * After each boundary (e.g. a function calling another microservice (API call, HTTP call)), create a new RootSpan, and add the appropriate information to the attributes (e.g. JobID, NodeID) of the span with `system.AddJobIDFromBaggageToSpan(ctx, span)`
+
+Some good reading:
+ - https://github.com/honeycombio/honeycomb-opentelemetry-go
+ - https://github.com/honeycombio/example-greeting-service/blob/main/golang/year-service/main.go
