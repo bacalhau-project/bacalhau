@@ -22,26 +22,33 @@ Data volumes also work on output - `bacalhau docker run` also supports a `-o` ar
 ```bash
 bacalhau docker run \
   -v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
-  -o results:/output_images \
-  dpokidov/imagemagick \
-  -- magick mogrify -resize 100x100 -quality 100 -path /output_images '/input_images/*.jpg'
+  dpokidov/imagemagick:7.1.0-47-ubuntu \
+  -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
 
 ```bash
-bacalhau describe JOB_ID
+bacalhau describe JOB_ID | yq .Shards
 ```
 
 Replace `JOB_ID` with the first part of the job id from the last step.
 
 ```bash
-State:
-    QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
-        state: Complete
-        status: 'Got job result: QmPbxtMKtz5LyFGSvsExSX6FwDaPBo1Lpnsek3LBAjsTfk'
-        resultsid: QmPbxtMKtz5LyFGSvsExSX6FwDaPBo1Lpnsek3LBAjsTfk
-Start Time: 2022-07-21T11:27:39.404800912Z
+- ShardIndex: 0
+  Nodes:
+    - Node: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+      State: Cancelled
+      Status: ""
+      Verified: false
+      ResultID: ""
+    - Node: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+      State: Completed
+      Status: 'Got results proposal of length: 0'
+      Verified: true
+      ResultID: bafybeidtitnyfotvcxa2tu7zjbe6a5mi4q4nkveiu5bm3zeyrzvt4fs7na
 ```
-since the job state is complete, the job result can be downloaded using
+
+Since the job state is complete, the job result can be downloaded using
+
 ```bash
 bacalhau get JOB_ID
 ```
