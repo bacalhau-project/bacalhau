@@ -56,15 +56,13 @@ export class CanaryStack extends cdk.Stack {
 
     // Create a lambda function that triggers test scenarios
     lambdaAlarmSlackHandlerFunc() : lambda.Function {
-        const secretProps = {
-            generateSecretString: {
-                secretStringTemplate: JSON.stringify({
-                    alarmOk: 'https://...',
-                    alarmTriggered: 'https://...',
-                }),
+        const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', {
+            description: 'Slack webhook URLs',
+            secretObjectValue: {
+                alarmOk: cdk.SecretValue.unsafePlainText('https://...'),
+                alarmTriggered: cdk.SecretValue.unsafePlainText('https://...'),
             },
-        }
-        const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', secretProps);
+        });
 
         const func = new lambda.Function(this,  'AlarmHandlerFunction', {
             code: this.lambdaCode,
