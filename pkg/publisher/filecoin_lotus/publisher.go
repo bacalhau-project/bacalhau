@@ -53,7 +53,7 @@ func (lotusPublisher *FilecoinLotusPublisher) IsInstalled(ctx context.Context) (
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
 	defer span.End()
 
-	_, err := lotusPublisher.runLotusCommand(ctx, []string{"version"})
+	_, err := lotusPublisher.runLotusCommand(ctx, []string{"--version"})
 	if err != nil {
 		return false, err
 	}
@@ -75,11 +75,11 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 		shard,
 		shardResultPath,
 	)
-	tarFile, err := lotusPublisher.tarResultsDir(ctx, shardResultPath)
-	if err != nil {
-		return model.StorageSpec{}, err
-	}
-	contentCid, err := lotusPublisher.importData(ctx, tarFile)
+	// tarFile, err := lotusPublisher.tarResultsDir(ctx, shardResultPath)
+	// if err != nil {
+	// 	return model.StorageSpec{}, err
+	// }
+	contentCid, err := lotusPublisher.importData(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -150,6 +150,17 @@ func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, fi
 	return parts[len(parts)-1], nil
 }
 
+func (lotusPublisher *FilecoinLotusPublisher) listDeals(ctx context.Context) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/listDeals")
+	defer span.End()
+
+	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "list-deals", "-v"})
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(rawOutput), nil
+}
+
 func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, contentCid string) (string, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
 	defer span.End()
@@ -166,11 +177,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 	}
 	dealCid := ""
 	for _, line := range strings.Split(strings.TrimSpace(rawOutput), "\n") {
-		if !strings.Contains(line, lotusPublisher.Config.MinerAddress) {
-			continue
-		}
-		parts := strings.Split(strings.TrimSpace(line), " ")
-		dealCid = parts[len(parts)-1]
+		dealCid = line
 	}
 	if dealCid == "" {
 		return "", fmt.Errorf("no deal cid found in output")
@@ -180,7 +187,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 
 func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
+	_, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
 	defer span.End()
 
 	return system.RunCommandGetResults(lotusPublisher.Config.ExecutablePath, args)

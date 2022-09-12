@@ -23,11 +23,9 @@ var cm *system.CleanupManager
 
 const TestJobId = "job-123"
 const TestHostId = "host-123"
-const TestContentCid = "QmQEDtn7tSFxgquj5ZHdFVKimSb14w1bmnbGyRQ5ukQLcF"
-const TestDealCid = "bafyreict2zhkbwy2arri3jgthk2jyznck47umvpqis3hc5oclvskwpteau"
-const TestMinerAddress = "f01000"
-const TestStoragePrice = "5"
-const TestStorageDuration = "100"
+const TestMinerAddress = "t01000"
+const TestStoragePrice = "0.000000000246842652"
+const TestStorageDuration = "518577"
 
 type FilecoinPublisherSuite struct {
 	suite.Suite
@@ -59,11 +57,10 @@ func (suite *FilecoinPublisherSuite) SetupTest() {
 	)
 	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
 	require.NoError(suite.T(), setupErr)
-	os.Setenv("LOTUS_LOGFILE", fmt.Sprintf("%s/logs.txt", tempDir))
-	os.Setenv("LOTUS_TEST_CONTENT_CID", TestContentCid)
-	os.Setenv("LOTUS_TEST_DEAL_CID", TestDealCid)
+	os.Setenv("LOTUS_PATH", "/home/prash/.lotus-local-net")
+	os.Setenv("LOTUS_MINER_PATH", "/home/prash/.lotus-miner-local-net")
 	driver, setupErr = NewFilecoinLotusPublisher(cm, resolver, FilecoinLotusPublisherConfig{
-		ExecutablePath:  "../../../testdata/mocks/lotus.sh",
+		ExecutablePath:  "/home/prash/workspace/lotus-local-net/lotus",
 		MinerAddress:    TestMinerAddress,
 		StoragePrice:    TestStoragePrice,
 		StorageDuration: TestStorageDuration,
@@ -82,56 +79,36 @@ func (suite *FilecoinPublisherSuite) TestIsInstalled() {
 	installed, err := driver.IsInstalled(ctx)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), installed)
-	dat, err := os.ReadFile(fmt.Sprintf("%s/logs.txt", tempDir))
+}
+
+func (suite *FilecoinPublisherSuite) TestListDeals() {
+	deals, err := driver.listDeals(ctx)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), "command: version\n0.0.1\n", string(dat))
+	require.NotNil(suite.T(), deals)
 }
 
 func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	tmpDirPrefix := "bacalhau-filecoin-lotus-test"
 	resultsDir, err := ioutil.TempDir("", tmpDirPrefix)
 	require.NoError(suite.T(), err)
-	err = os.WriteFile(fmt.Sprintf("%s/file.txt", resultsDir), []byte("hello"), 0644)
+	payloadPath := fmt.Sprintf("%s/payload.txt", resultsDir)
+	err = ioutil.WriteFile(payloadPath, make([]byte, 1000), 0644)
 	require.NoError(suite.T(), err)
 	publishResult, err := driver.PublishShardResult(ctx, model.JobShard{
 		Job: model.Job{
 			ID: TestJobId,
 		},
-	}, TestHostId, resultsDir)
+	}, TestHostId, payloadPath)
 	require.NoError(suite.T(), err)
-
-	commandLogs, err := os.ReadFile(fmt.Sprintf("%s/logs.txt", tempDir))
-	require.NoError(suite.T(), err)
-
 	require.Equal(suite.T(), fmt.Sprintf("job-%s-shard-%d-host-%s", TestJobId, 0, TestHostId), publishResult.Name)
-	require.Equal(suite.T(), TestContentCid, publishResult.Cid)
 	require.Equal(suite.T(), model.StorageSourceFilecoin, publishResult.Engine)
 	require.NotNil(suite.T(), publishResult.Metadata)
 	require.Equal(suite.T(), 1, len(publishResult.Metadata))
 	dealCid, ok := publishResult.Metadata["deal_cid"]
 	require.True(suite.T(), ok)
-	require.Equal(suite.T(), TestDealCid, dealCid)
-
-	logLines := strings.Split(string(commandLogs), "\n")
-	firstLine := logLines[0]
-	logLines = logLines[1:]
-
-	require.True(suite.T(), strings.Contains(firstLine, "command: client import"))
-	require.True(suite.T(), strings.Contains(firstLine, tmpDirPrefix))
-
-	expectedLogs := fmt.Sprintf(`Import 3, Root %s
-command: client deal %s %s %s %s
-.. executing
-Deal (%s) CID: %s
-`,
-		TestContentCid,
-		TestContentCid,
-		TestMinerAddress,
-		TestStoragePrice,
-		TestStorageDuration,
-		TestMinerAddress,
-		TestDealCid,
-	)
-
-	require.Equal(suite.T(), expectedLogs, strings.Join(logLines, "\n"))
+	require.NotNil(suite.T(), dealCid)
+	
+	deals, err := driver.listDeals(ctx)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), strings.Contains(deals, dealCid))
 }
