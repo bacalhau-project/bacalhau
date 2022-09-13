@@ -6,8 +6,8 @@ After a discussion about this with Honeycomb - https://honeycombpollinators.slac
 
 In outline form:
 * Start a new trace for each significant process
-* Trace should span across CLI to Server and back
-* Trace should contain baggage about the trace (e.g. job id, user id, etc)
+  * Trace should span across CLI to Server and back
+  * Trace should contain baggage about the trace (e.g. job id, user id, etc)
 * New span for every short lived action (e.g. < 10 min)
 * New trace for jobs longer than 1 hour
 * Try very hard to break up traces into smaller pieces
