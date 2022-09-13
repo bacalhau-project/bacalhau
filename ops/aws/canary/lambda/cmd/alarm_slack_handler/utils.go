@@ -2,8 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
@@ -36,19 +34,4 @@ func mustGetWebhookSecret() slackWebhooksType {
 	}
 
 	return newSlackWebhooks
-}
-
-func createSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload) slackMessage {
-	dashboardUrl := os.Getenv("DASHBOARD_URL")
-	icon := ":fire:"
-	if event.NewStateValue == "OK" {
-		icon = ":white_check_mark:"
-	}
-
-	text := `@here %s *%s* is now *%s*: %s
-Check the [dashboard](%s) for more information.
-`
-	return slackMessage{
-		Text: fmt.Sprintf(text, icon, event.AlarmDescription, event.NewStateValue, event.NewStateReason, dashboardUrl),
-	}
 }
