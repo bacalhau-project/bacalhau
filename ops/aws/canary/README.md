@@ -1,3 +1,10 @@
+# Bacalhau Monitoring Canary
+This is a canary that continuously call several Bacalhau APIs and alarm whenever the correctness or availability of those APIs fall below a threshold.
+
+The canary is fully serverless using AWS Lambda. Infrastructure is defined using AWS CDK, and automatically deployed using AWS CodePipeline.
+
+
+
 # Welcome to your CDK TypeScript project
 
 This is a blank project for CDK development with TypeScript.

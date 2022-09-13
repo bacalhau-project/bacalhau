@@ -28,7 +28,9 @@ export class CanaryStack extends cdk.Stack {
 
         this.config = config;
         this.lambdaCode = lambda.Code.fromCfnParameters();
-        this.dashboard = new cloudwatch.Dashboard(this, "Dashboard");
+        this.dashboard = new cloudwatch.Dashboard(this, "Dashboard", {
+            dashboardName: "BacalhauCanary" + this.config.envTitle
+        });
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
         this.lambdaAlarmSlackHandlerFunc()
