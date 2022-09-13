@@ -29,6 +29,13 @@ export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau
+BINARY_NAME = bacalhau
+
+ifeq ($(GOOS),windows)
+BINARY_NAME := ${BINARY_NAME}.exe
+endif
+
+BINARY_PATH = bin/${GOOS}_${GOARCH}/${BINARY_NAME}
 
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
@@ -56,14 +63,14 @@ all: build
 
 # Run go fmt against code
 fmt:
-	@${GO} fmt ./cmd/... 
-	@${GO} fmt ./pkg/... 
+	@${GO} fmt ./cmd/...
+	@${GO} fmt ./pkg/...
 
 
 # Run go vet against code
 vet:
 	@${GO} vet ./cmd/...
-	@${GO} vet ./pkg/... 
+	@${GO} vet ./pkg/...
 
 
 ## Run all pre-commit hooks
@@ -82,14 +89,14 @@ build: build-bacalhau
 
 .PHONY: build-dev
 build-dev: build
-	sudo cp bin/linux_amd64/bacalhau /usr/local/bin
+	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o bin/${GOOS}_$(GOARCH)/bacalhau main.go
+	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
 
 ################################################################################
 # Target: build-docker-images
@@ -108,12 +115,12 @@ build-docker-images:
 # Target: build-bacalhau-tgz
 ################################################################################
 .PHONY: build-bacalhau-tgz
-build-bacalhau-tgz: 
+build-bacalhau-tgz:
 	@echo "CWD: $(shell pwd)"
 	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
 	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp bin/$(GOOS)_$(GOARCH)/bacalhau $(TMPARTIFACTDIR)/$(PACKAGE)/bacalhau
+	cp ${BINARY_PATH} $(TMPARTIFACTDIR)/$(PACKAGE)/${BINARY_NAME}
 	cd $(TMPRELEASEWORKINGDIR)
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
@@ -262,7 +269,7 @@ generate:
 
 .PHONY: security
 security:
-	gosec -exclude=G204,G304 -exclude-dir=test ./... 
+	gosec -exclude=G204,G304 -exclude-dir=test ./...
 	echo "[OK] Go security check was completed!"
 
 release: build-bacalhau
