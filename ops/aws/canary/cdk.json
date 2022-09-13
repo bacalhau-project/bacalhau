@@ -20,7 +20,7 @@
     "prod": {
       "account": "284305717835",
       "region": "eu-west-1",
-      "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=CanaryDashboard&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTo5MTg1YzRlNC1jNWMxLTQzZDgtOWUzOC0xMDcwMDE3YjFkYzMiLCJPIjoiYXJuOmF3czppYW06OjI4NDMwNTcxNzgzNTpyb2xlL3NlcnZpY2Utcm9sZS9DV0RCU2hhcmluZy1QdWJsaWNSZWFkT25seUFjY2Vzcy1EWjhST0U3NSIsIk0iOiJQdWJsaWMifQ==",
+      "dashboardPublicUrl": "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=",
       "bacalhauSourceConnection": {
         "owner": "wdbaruni",
         "repo": "bacalhau",
