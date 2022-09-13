@@ -33,16 +33,16 @@ export class CanaryStack extends cdk.Stack {
         });
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
-        this.lambdaAlarmSlackHandlerFunc()
-        this.lambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
-        this.lambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.lambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.createLambdaAlarmSlackHandlerFunc()
+        this.createLambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.createLambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.createLambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
+        this.createLambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.createLambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
     }
 
-    // Create a lambda function that triggers test scenarios
-    lambdaAlarmSlackHandlerFunc() : lambda.Function {
+    // Create a lambda function that handles alarms and sends a slack notification
+    private createLambdaAlarmSlackHandlerFunc() : lambda.Function {
         const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', {
             description: 'Slack webhook URLs',
             secretObjectValue: {
@@ -66,7 +66,7 @@ export class CanaryStack extends cdk.Stack {
     }
 
     // Create a lambda function that triggers test scenarios
-    lambdaScenarioFunc(props: LambdaProps) : lambda.Function {
+    private createLambdaScenarioFunc(props: LambdaProps) : lambda.Function {
         const actionTitle = props.action.charAt(0).toUpperCase() + props.action.slice(1)
         const func = new lambda.Function(this, actionTitle + 'Function', {
             code: this.lambdaCode,
@@ -96,7 +96,7 @@ export class CanaryStack extends cdk.Stack {
         return func;
     }
 
-    addDashboardWidgets(actionTitle: string, func: lambda.Function) {
+    private addDashboardWidgets(actionTitle: string, func: lambda.Function) {
         // Create Title for Dashboard
         this.dashboard.addWidgets(new cloudwatch.TextWidget({
             markdown: '## ' + actionTitle,
