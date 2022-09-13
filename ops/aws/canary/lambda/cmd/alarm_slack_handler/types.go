@@ -10,12 +10,12 @@ type slackSecretType struct {
 }
 
 type slackMessage struct {
-	Icon             string `json:"icon_emoji"`
-	AlarmDescription string `json:"alarmDescription"`
-	NewStateValue    string `json:"newStateValue"`
-	NewStateReason   string `json:"newStateReason"`
-	OldStateValue    string `json:"oldStateValue"`
-	DashboardUrl     string `json:"dashboardUrl"`
+	Icon             string `json:"Icon"`
+	AlarmDescription string `json:"AlarmDescription"`
+	NewStateValue    string `json:"NewStateValue"`
+	NewStateReason   string `json:"NewStateReason"`
+	OldStateValue    string `json:"OldStateValue"`
+	DashboardUrl     string `json:"DashboardUrl"`
 }
 
 func NewSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload, dashboardUrl string) slackMessage {

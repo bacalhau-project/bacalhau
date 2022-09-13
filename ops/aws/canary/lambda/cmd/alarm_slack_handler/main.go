@@ -38,9 +38,7 @@ func handle(event events.SNSEvent) error {
 			return err
 		}
 		if resp.StatusCode != 200 {
-			fmt.Printf("failed to send message: %s\n", string(marshalledMsg))
-			fmt.Printf("%+v\n", resp)
-			return fmt.Errorf("slack returned status code %d", resp.StatusCode)
+			return fmt.Errorf("failed to send message: %s, to slack due to %s\n", string(marshalledMsg), resp.Status)
 		}
 	}
 	return nil
