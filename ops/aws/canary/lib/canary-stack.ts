@@ -59,8 +59,7 @@ export class CanaryStack extends cdk.Stack {
         const slackSecretes = new secretsmanager.Secret(this, 'SlackWebhooksSecret', {
             description: 'Slack webhook URLs',
             secretObjectValue: {
-                alarmOk: cdk.SecretValue.unsafePlainText('https://...'),
-                alarmTriggered: cdk.SecretValue.unsafePlainText('https://...'),
+                webhookUrl: cdk.SecretValue.unsafePlainText('https://...'),
             },
         });
 
@@ -71,7 +70,7 @@ export class CanaryStack extends cdk.Stack {
             timeout: cdk.Duration.minutes(1),
             environment: {
                 'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
-                'SLACK_WEBHOOK_SECRET_NAME': slackSecretes.secretName,
+                'SLACK_SECRET_NAME': slackSecretes.secretName,
             }
         });
         func.addEventSource(new lambdaSources.SnsEventSource(this.snsAlarmTopic));

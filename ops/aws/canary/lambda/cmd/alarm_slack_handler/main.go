@@ -12,11 +12,11 @@ import (
 )
 
 // variable to store the slack webhooks to retrieve them once and reuse them across recent invocations
-var slackWebhooks slackWebhooksType
+var slackSecret slackSecretType
 
 func init() {
 	logger.SetupCWLogger()
-	slackWebhooks = mustGetWebhookSecret()
+	slackSecret = mustGetSlackSecret()
 }
 
 func handle(event events.SNSEvent) error {
@@ -33,7 +33,7 @@ func handle(event events.SNSEvent) error {
 			return err
 		}
 
-		resp, err := http.Post(slackWebhooks.AlarmOk, "application/json", bytes.NewBuffer(marshalledMsg))
+		resp, err := http.Post(slackSecret.WebhookUrl, "application/json", bytes.NewBuffer(marshalledMsg))
 		if err != nil {
 			return err
 		}
@@ -45,25 +45,5 @@ func handle(event events.SNSEvent) error {
 }
 
 func main() {
-	//cwAlarm := &events.CloudWatchAlarmSNSPayload{}
-	//cwAlarm.AlarmDescription = "List Availability"
-	//cwAlarm.NewStateValue = "OK"
-	//cwAlarm.NewStateReason = "Threshold Crossed: 1 datapoint (0.0) was not less than or equal to the threshold (0.0)."
-	//
-	//marshall, err := json.Marshal(cwAlarm)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//snsEvent := events.SNSEvent{
-	//	Records: []events.SNSEventRecord{
-	//		events.SNSEventRecord{
-	//			SNS: events.SNSEntity{
-	//				Message: string(marshall),
-	//			},
-	//		},
-	//	},
-	//}
-	//handle(snsEvent)
-
 	lambda.Start(handle)
 }

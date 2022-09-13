@@ -8,8 +8,8 @@ import (
 	"os"
 )
 
-func mustGetWebhookSecret() slackWebhooksType {
-	secretName := os.Getenv("SLACK_WEBHOOK_SECRET_NAME")
+func mustGetSlackSecret() slackSecretType {
+	secretName := os.Getenv("SLACK_SECRET_NAME")
 
 	//Create a Secrets Manager client
 	sess, err := session.NewSession()
@@ -27,7 +27,7 @@ func mustGetWebhookSecret() slackWebhooksType {
 		panic(err)
 	}
 
-	newSlackWebhooks := slackWebhooksType{}
+	newSlackWebhooks := slackSecretType{}
 	err = json.Unmarshal([]byte(*result.SecretString), &newSlackWebhooks)
 	if err != nil {
 		panic(err)
