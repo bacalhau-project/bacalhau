@@ -1,5 +1,4 @@
 import * as cdk from 'aws-cdk-lib';
-import * as codedeploy from 'aws-cdk-lib/aws-codedeploy';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as events from 'aws-cdk-lib/aws-events';
@@ -9,6 +8,7 @@ import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import {Construct} from 'constructs';
+import {BuildConfig} from "./build-config";
 
 export interface LambdaProps {
     readonly action: string;
@@ -19,14 +19,16 @@ export interface LambdaProps {
 
 export class CanaryStack extends cdk.Stack {
     public readonly lambdaCode: lambda.CfnParametersCode;
+    private readonly config: BuildConfig;
     private readonly dashboard: cloudwatch.Dashboard
     private readonly snsAlarmTopic: sns.ITopic
 
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-        super(scope, id, props)
-        this.lambdaCode = lambda.Code.fromCfnParameters();
+    constructor(app: cdk.App, id: string, props: cdk.StackProps, config: BuildConfig) {
+        super(app, id, props)
 
-        this.dashboard = this.createDashboard();
+        this.config = config;
+        this.lambdaCode = lambda.Code.fromCfnParameters();
+        this.dashboard = new cloudwatch.Dashboard(this, "Dashboard");
         this.snsAlarmTopic = new sns.Topic(this, 'AlarmTopic');
 
         this.lambdaAlarmSlackHandlerFunc()
@@ -35,23 +37,6 @@ export class CanaryStack extends cdk.Stack {
         this.lambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
         this.lambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.lambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-    }
-
-    createDashboard() {
-        const dashboard = new cloudwatch.Dashboard(this, "Dashboard", {
-            dashboardName: 'CanaryDashboard',
-        })
-        // Generate Outputs
-        new cdk.CfnOutput(this, 'DashboardOutput', {
-            value: this.getDashboardUrl(dashboard),
-            description: 'URL of Sample CloudWatch Dashboard',
-            exportName: 'DashboardURL'
-        });
-        return dashboard
-    }
-
-    getDashboardUrl(dashboard : cloudwatch.Dashboard) {
-        return `https://${cdk.Aws.REGION}.console.aws.amazon.com/cloudwatch/home?region=${cdk.Aws.REGION}#dashboards:name=${dashboard.dashboardName}`
     }
 
     // Create a lambda function that triggers test scenarios
@@ -69,7 +54,7 @@ export class CanaryStack extends cdk.Stack {
             runtime: lambda.Runtime.GO_1_X,
             timeout: cdk.Duration.minutes(1),
             environment: {
-                'DASHBOARD_URL': this.getDashboardUrl(this.dashboard),
+                'DASHBOARD_URL': this.config.dashboardPublicUrl,
                 'SLACK_SECRET_NAME': slackSecretes.secretName,
             }
         });
@@ -91,17 +76,6 @@ export class CanaryStack extends cdk.Stack {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': 'DEBUG',
             }
-        });
-
-        // deployment
-        const alias = new lambda.Alias(this, actionTitle + 'FunctionAlias', {
-            aliasName: 'Prod',
-            version: func.currentVersion,
-        });
-
-        new codedeploy.LambdaDeploymentGroup(this, actionTitle + 'FunctionAliasDeploymentGroup', {
-            alias,
-            deploymentConfig: codedeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
         });
 
         // EventBridge rules
@@ -165,7 +139,7 @@ export class CanaryStack extends cdk.Stack {
         const threshold = 95
         const availabilityMetric = this.getAvailabilityMetric(func)
         const alarm = availabilityMetric.createAlarm(this, actionTitle + "Alarm", {
-            alarmDescription: actionTitle + ' Availability',
+            alarmDescription: actionTitle + ' ' + this.config.envTitle + ' Availability',
             threshold: threshold,
             comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             evaluationPeriods: 3,

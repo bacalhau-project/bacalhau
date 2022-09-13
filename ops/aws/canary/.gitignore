@@ -9,6 +9,3 @@ cdk.out
 
 # Track lib/ that is ignore by root repo .gitignore
 !lib
-
-# Ignore built go binaries
-lambda/canary

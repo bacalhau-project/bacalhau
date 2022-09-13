@@ -4,16 +4,16 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
+import {BuildConfig, getConfig} from "./build-config";
 
 export interface PipelineStackProps extends cdk.StackProps {
     readonly lambdaCode: lambda.CfnParametersCode;
-    readonly repositoryName: string;
 }
 
 
 export class PipelineStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props: PipelineStackProps) {
-        super(scope, id, props)
+    constructor(app: cdk.App, id: string, props: PipelineStackProps, config: BuildConfig) {
+        super(app, id, props)
 
         // Source artifacts
         const sourceOutput = new codepipeline.Artifact("SourceOutput")
@@ -32,7 +32,7 @@ export class PipelineStack extends cdk.Stack {
                     build: {
                         commands: [
                             'npm run build',
-                            'npm run cdk synth -- -o dist',
+                            'npm run cdk synth -- -c config=prod -o dist',
                         ],
                     },
                 },
@@ -89,10 +89,10 @@ export class PipelineStack extends cdk.Stack {
                         new codepipeline_actions.CodeStarConnectionsSourceAction({
                             actionName: "Bacalhau_Commit",
                             output: sourceOutput,
-                            owner: "wdbaruni",
-                            repo: "bacalhau",
-                            branch: "canary",
-                            connectionArn: "arn:aws:codestar-connections:eu-west-1:284305717835:connection/6a4a94b6-0388-4b0b-acf7-d8feefedd5b6",
+                            owner: config.bacalhauSourceConnection.owner,
+                            repo: config.bacalhauSourceConnection.repo,
+                            branch: config.bacalhauSourceConnection.branch,
+                            connectionArn: config.bacalhauSourceConnection.connectionArn,
                         })
                     ],
                 },
@@ -114,12 +114,12 @@ export class PipelineStack extends cdk.Stack {
                     ],
                 },
                 {
-                    stageName: 'Deploy',
+                    stageName: 'DeployProd',
                     actions: [
                         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
-                            actionName: 'Canary_CFN_Deploy',
-                            templatePath: cdkBuildOutput.atPath('BacalhauCanary.template.json'),
-                            stackName: 'BacalhauCanary',
+                            actionName: 'Canary_Deploy_Prod',
+                            templatePath: cdkBuildOutput.atPath('BacalhauCanaryProd.template.json'),
+                            stackName: 'BacalhauCanaryProd',
                             adminPermissions: true,
                             parameterOverrides: {
                                 ...props.lambdaCode.assign(lambdaBuildOutput.s3Location),
