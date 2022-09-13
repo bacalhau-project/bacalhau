@@ -11,6 +11,7 @@ const canaryStack = new CanaryStack(app, 'BacalhauCanary' + config.envTitle, {
             account: config.account,
             region: config.region
         },
+        description: 'Bacalhau Canary Stack for ' + config.envTitle + ' environment'
     },
     config);
 
@@ -22,6 +23,7 @@ new PipelineStack(app, 'BacalhauCanaryPipeline', {
             region: prodConfig.region
         },
         lambdaCode: canaryStack.lambdaCode,
+        description: 'Bacalhau Canary Pipeline Stack to deploy changes to all canary stacks'
     },
     prodConfig);
 
