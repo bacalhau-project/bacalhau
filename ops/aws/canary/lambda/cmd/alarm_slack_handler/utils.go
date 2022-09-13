@@ -38,17 +38,17 @@ func mustGetWebhookSecret() slackWebhooksType {
 	return newSlackWebhooks
 }
 
-func createSlackMessageFromEvent(event events.CloudWatchAlarmSNSPayload) slackMessage {
+func createSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload) slackMessage {
 	dashboardUrl := os.Getenv("DASHBOARD_URL")
 	icon := ":fire:"
 	if event.NewStateValue == "OK" {
 		icon = ":white_check_mark:"
 	}
 
-	text := `%s *%s* is now *%s*: %s
+	text := `@here %s *%s* is now *%s*: %s
 Check the [dashboard](%s) for more information.
 `
 	return slackMessage{
-		Text: fmt.Sprintf(text, icon, event.AlarmName, event.NewStateValue, event.NewStateReason, dashboardUrl),
+		Text: fmt.Sprintf(text, icon, event.AlarmDescription, event.NewStateValue, event.NewStateReason, dashboardUrl),
 	}
 }

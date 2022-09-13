@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/logger"
+	"net/http"
 )
 
 // variable to store the slack webhooks to retrieve them once and reuse them across recent invocations
@@ -19,6 +22,29 @@ func handle(event events.SNSEvent) error {
 	fmt.Printf("Received event: %+v\n", event)
 	for _, record := range event.Records {
 		fmt.Printf("SNS record: %+v\n", record)
+		cwAlarm := &events.CloudWatchAlarmSNSPayload{}
+		err := json.Unmarshal([]byte(record.SNS.Message), cwAlarm)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("CW record: %+v\n", cwAlarm)
+
+		slackMessage := createSlackMessageFromEvent(cwAlarm)
+		fmt.Printf("slackMessage: %+v\n", slackMessage)
+
+		marshalledMsg, err := json.Marshal(slackMessage)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("marshalledMsg: %+v\n", marshalledMsg)
+
+		resp, err := http.Post(slackWebhooks.AlarmOk, "application/json", bytes.NewBuffer(marshalledMsg))
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("slack returned status code %d", resp.StatusCode)
+		}
 	}
 	return nil
 }
