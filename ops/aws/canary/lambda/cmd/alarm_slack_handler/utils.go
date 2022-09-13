@@ -2,17 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"os"
 )
-
-// Type to hold slack webhooks retrieved from secret manager
-type slackWebhooksType struct {
-	AlarmOk        string `json:"alarmOk"`
-	AlarmTriggered string `json:"alarmTriggered"`
-}
 
 func mustGetWebhookSecret() slackWebhooksType {
 	secretName := os.Getenv("SLACK_WEBHOOK_SECRET_NAME")
@@ -40,4 +36,16 @@ func mustGetWebhookSecret() slackWebhooksType {
 	}
 
 	return newSlackWebhooks
+}
+
+func createSlackMessageFromEvent(event events.CloudWatchAlarmSNSPayload) slackMessage {
+	icon := ":fire:"
+	if event.NewStateValue == "OK" {
+		icon = ":white_check_mark:"
+	}
+
+	text := `%s *%s* is now *%s*: %s`
+	return slackMessage{
+		Text: fmt.Sprintf(text, icon, event.AlarmName, event.NewStateValue, event.NewStateReason),
+	}
 }
