@@ -1,4 +1,6 @@
 ---
+sidebar_label: 'Image Processing'
+sidebar_position: 1
 jupyter:
   jupytext:
     notebook_metadata_filter: sidebar_label,sidebar_position
@@ -13,14 +15,6 @@ jupyter:
     name: python3
 ---
 
-<!-- #raw -->
----
-sidebar_label: 'Image Processing'
-sidebar_position: 1
----
-import ReactPlayer from 'react-player'
-<!-- #endraw -->
-
 <!-- #region -->
 # Image Processing
 
@@ -34,9 +28,6 @@ It is an example of a highly parellizable compute task where a resize function i
 For a live walk through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
 
 [![image](../../static/img/Bacalhau_Intro_Video.png)](https://www.youtube.com/watch?v=wkOh05J5qgA)
-
-<!-- Here is an example of running a job live on the Bacalhau network: [Youtube: Bacalhau Intro Video](https://www.youtube.com/watch?v=wkOh05J5qgA)
-<ReactPlayer playing controls url='https://www.youtube.com/watch?v=wkOh05J5qgA' playing='false'/> -->
 <!-- #endregion -->
 
 ## Prerequistes
