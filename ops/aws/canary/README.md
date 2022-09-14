@@ -5,6 +5,21 @@ The canary is serverless using AWS Lambda. Infrastructure is defined using AWS C
 
 The monitoring dashboard is publicly accessible at [link](https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=).
 
+## Canary Scenarios
+The canary is composed of several scenarios, each is executed periodically on its own lambda function. The scenarios are defined in the `lambda/pkg/scenarios` directory, and include:
+- `list`: Call Bacalhau's list API and verify the response.
+- `submit`: Submits a job to Bacalhau and verify it was successfully completed
+- `submitAndDescribe`: Submits a job to Bacalhau, waits for it to complete, and then calls the describe related APIs.
+- `submitAndGet`: Submits a job to Bacalhau, waits for it to complete, and then download the output and verify its correctness.
+- `submitWithConcurrency`: Submits a job to Bacalhau with a concurrency of 3, and waits for it to complete.
+
+### Local Testing
+You can run the scenarios locally before deploying to lambda by using the following command:
+```bash
+# Assuming you are in the ops/aws/canary directory
+go run ./lambda/cmd/scenario_local_runner --action list # or any other scenario
+```
+
 ## Infrastructure Stacks
 There are two types of stacks in this project:
 - Canary stack(s): one stack per environment (e.g. prod, dev), containing the Lambda function and the CloudWatch alarm.
