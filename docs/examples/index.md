@@ -15,7 +15,7 @@ jupyter:
     name: python3
 ---
 
-# Introduction
+# Examples
 
 Bacalhau comes pre-loaded with exciting examples to showcase its abilities and help get you started.
 
