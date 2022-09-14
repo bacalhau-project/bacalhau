@@ -24,7 +24,7 @@ For a live walk through of this demo please watch the first part of the video be
 
 ## Prerequistes
 
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../getting-started/installation).
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../getting-started/installation).
 
 ## Submit the workload
 
@@ -96,8 +96,8 @@ total 384
 
 ## Where to go next?
 
-* [How to run an existing workload on Bacalhau](../getting-started/workload-onboarding).
-* [Check out the Bacalhau CLI Reference page](../all-flags).
+* [How to run an existing workload on Bacalhau](../../../getting-started/workload-onboarding).
+* [Check out the Bacalhau CLI Reference page](../../../all-flags).
 ## Support
 
 Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) to seek help or in case of any issues.
