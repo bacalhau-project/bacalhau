@@ -1,43 +1,38 @@
-# Website
+# Bacalhau Docs
 
-This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.
+This repository contains the user documentation of the Bacalhau Project.
+These are accessible at https://docs.bacalhau.org/.
 
-### Installation
+* [Bacalhau Website](https://www.bacalhau.org/)
+* [Bacalhau Core Code Repository](https://github.com/filecoin-project/bacalhau)
+* [Twitter](https://twitter.com/BacalhauProject)
+* [YouTube Channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNCUn4vi0A)
 
-```
-$ yarn
-```
+# Contribute
 
-### Local Development
+## Found inconsistencies in the docs?
 
-```
-$ yarn start
-```
+Please feel free to open an issue or submit a pull request to this repo, every contribution is more than welcome! :balloon:
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## Develop docs locally
 
-### Build
+### Prerequistes
 
-```
-$ yarn build
-```
+* Git ([Installation instructions](https://github.com/git-guides/install-git)), for version control.
+* Node.js and `npm` ([Installation instructions](https://treehouse.github.io/installation-guides/mac/node-mac.html)), to run the static site generator [Docusaurus](https://docusaurus.io/docs) used to build this website.
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
+### Install Node.js dependencies
 
 ```
-$ USE_SSH=true yarn deploy
+git clone https://github.com/bacalhau-project/docs.bacalhau.org.git
+cd docs.bacalhau.org/
+npm install
 ```
 
-Not using SSH:
+### Render website
 
 ```
-$ GIT_USER=<Your GitHub username> yarn deploy
+npm run start
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
-
-<!--- small comment for PR --->
+The rendered site will be accessible at http://localhost:3000/
