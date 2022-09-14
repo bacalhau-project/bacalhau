@@ -14,12 +14,7 @@ jupyter:
     name: python3
 ---
 
-# Workload Onboarding
+# Data Engineering
 
-This directory contains examples relating to onboarding workloads to the cluster. The goal is to provide a range of simple examples that show you how to work with Bacalhau in a variety of programming languages.
-
-
-
-
-
-
+This directory contains examples relating to data engineering workloads.
+The goal is to provide a range of examples that show you how to work with Bacalhau in a variety of use cases.
