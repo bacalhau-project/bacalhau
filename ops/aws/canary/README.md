@@ -44,3 +44,14 @@ These are the resources that had to be created/updated manually outside of CDK:
 1. GitHub Connection
 2. CloudWatch public dashboard link
 3. Update secret manager with Slack webhook URL
+
+
+## Useful CDK commands
+Keep in mind that you might need to pass your AWS profile and the stack name in some of these commands:
+* `npm run build`   compile typescript to js
+* `npm run postinstall` deletes cdk golang templates that can result in breaking go commands due to invalid file naming pattern
+* `npm run watch`   watch for changes and compile
+* `npm run test`    perform the jest unit tests
+* `cdk deploy`      deploy this stack to your default AWS account/region
+* `cdk diff`        compare deployed stack with current state
+* `cdk synth`       emits the synthesized CloudFormation template

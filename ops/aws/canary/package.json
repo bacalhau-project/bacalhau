@@ -9,7 +9,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "postinstall": "rm -rf node_modules/aws-cdk/lib/init-templates/*app/go"
   },
   "devDependencies": {
     "@types/jest": "^27.5.2",
