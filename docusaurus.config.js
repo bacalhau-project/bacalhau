@@ -48,9 +48,9 @@ const config = {
             position: "left",
             label: "Documentation",
           },
-          { to: "/blog", label: "Blog", position: "left" },
+          // { to: "/blog", label: "Blog", position: "left" },
           {
-            href: "https://github.com/bacalhau-project/docs.bacalhau.org",
+            href: "https://github.com/filecoin-project/bacalhau",
             label: "GitHub",
             position: "right",
           },
@@ -92,13 +92,13 @@ const config = {
           {
             title: "More",
             items: [
-              {
-                label: "Blog",
-                to: "https://docs.bacalhau.org/blog",
-              },
+              // {
+              //   label: "Blog",
+              //   to: "https://docs.bacalhau.org/blog",
+              // },
               {
                 label: "GitHub",
-                href: "https://github.com/bacalhau-project/docs.bacalhau.org",
+                href: "https://github.com/filecoin-project/bacalhau",
               },
             ],
           },

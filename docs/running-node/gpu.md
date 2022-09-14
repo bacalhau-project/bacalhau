@@ -54,7 +54,7 @@ This was tested on a VM in GCP, in `europe-west1-b`, of type `n1-highmem-4`, wit
 
 ## GPU Node Configuration
 
-The following settings refer to the `bacalhau serve` command. To see all settings please refer to the [CLI documentation](../cli-flags/all-flags.md).
+The following settings refer to the `bacalhau serve` command. To see all settings please refer to the [CLI documentation](../all-flags.md).
 
 ### Adding Global GPU Limits
 
