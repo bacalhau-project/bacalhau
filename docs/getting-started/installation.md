@@ -4,7 +4,7 @@ sidebar_label: 'Installation' sidebar_position: 1
 
 # Getting Started with Bacalhau
 
-## Prerequiste: install Bacalhau client
+## Prerequisite: install Bacalhau client
 
 To install (or update) the Bacalhau CLI by running the following command in a terminal.
 
@@ -36,7 +36,7 @@ Now you are good to go!
 The easiest way to submit a job is using the `docker run` verb.
 Let us break down its syntax first: `bacalhau docker run [FLAGS] IMAGE[:TAG] [COMMAND]`; while it is designed to resemble Docker's run command you are probably familiar with, Bacalhau introduces a whole new set of [available flags (see CLI Reference)](../all-flags#docker-run) to support its computing model.
 
-The snipped below sumbits a job that runs an `echo` program within an [Ubutnu container](https://hub.docker.com/_/ubuntu).
+The snipped below sumbits a job that runs an `echo` program within an [Ubuntu container](https://hub.docker.com/_/ubuntu).
 When a job is sumbitted, Bacalhau prints out the related job id.
 
 ```zsh
@@ -45,13 +45,13 @@ When a job is sumbitted, Bacalhau prints out the related job id.
 ```
 
 The job id above is shown in its full form.
-For conveniency, we can use the its shortened version consisting of the first part, in this case is `3b39baee`.
+For convenience, we can use the its shortened version consisting of the first part, in this case is `3b39baee`.
 We will store that in an environment variable so that we can reuse it later on.
 
 The job has now been sumbitted to the public network who is going to process it as described in the [Job Lifecycle page](../about-bacalhau/architecture#job-lifecycle).
 To check the current job's state we can use the `list` verb below.
 A `Published/Completed` state indicates the job has completed successfully and the results are stored in the IPFS location under the `PUBLISHED` column.
-For a comprehnisve list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
+For a comprehensive list of flags you can pass to the list command check out [the related CLI Reference page](../all-flags#list).
 
 ```
 ❯ export JOB_ID=3b39baee # make sure to use the right job id from the docker run command
@@ -68,7 +68,7 @@ The job's outputs are now stored on IPFS, to download them locally we will use t
 We achieve that by running the commands in the snippet below.
 First, let us create and move into a directory that will store our job outputs.
 Second, use the `get` verb to download the job outputs into the current directory.
-_This command prints out a number of verbose logs, although these meant for Bacalhau developers you may want to ignore them (this will soon: [issue #614](https://github.com/filecoin-project/bacalhau/issues/614))._
+_This command prints out a number of verbose logs, although these meant for Bacalhau developers you may want to ignore them (this will soon go away: [issue #614](https://github.com/filecoin-project/bacalhau/issues/614))._
 
 ```
 ❯ mkdir -p /tmp/myfolder
@@ -108,6 +108,7 @@ Hooray, you have just sucessfully run a job on the Bacalhau network! :fish:
 * [How to run an existing workload on Bacalhau](../getting-started/workload-onboarding).
 * [Walk through a more data intensive demo](../examples/data-engineering/image-processing/).
 * [Check out the Bacalhau CLI Reference page](../all-flags).
+
 ## Support
 
 Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) to seek help or in case of any issues.
