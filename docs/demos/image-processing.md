@@ -15,7 +15,7 @@ This page is a demo of a data intensive image processing workload run on Bacalha
 It is an example of a highly parellizable compute task where a resize function is applied over a large number of files.
 For a live walk through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
 
-[![image](../../static/img/Bacalhau_Intro_Video.png)](https://www.youtube.com/watch?v=wkOh05J5qgA)
+[![image](/img/Bacalhau_Intro_Video.png)](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
 
 
