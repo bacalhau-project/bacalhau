@@ -41,7 +41,7 @@ Learn more about the project from our [Website](https://www.bacalhau.org/), [Twi
 ## Getting Started
 
 Please see the instructions here to get started running a hello example: [Getting Started with Bacalhau](https://docs.bacalhau.org/getting-started/installation).
-For a more data intensive demo, check out the [Image Processing tutorial](https://docs.bacalhau.org/demos/image-processing).
+For a more data intensive demo, check out the [Image Processing tutorial](https://docs.bacalhau.org/examples/data-engineering/image-processing/).
 
 ## Getting Help
 
