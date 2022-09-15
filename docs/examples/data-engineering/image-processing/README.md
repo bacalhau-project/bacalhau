@@ -95,7 +95,3 @@ ls -l /tmp/img-demo/volumes/outputs/
 ## Support
 
 Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) to seek help or in case of any issues.
-
-```python
-
-```
