@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/slack-go/slack"
 	"os"
 )
 
@@ -34,4 +36,29 @@ func mustGetSlackSecret() slackSecretType {
 	}
 
 	return newSlackWebhooks
+}
+
+func NewSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload, dashboardUrl string) slack.Msg {
+	color := "danger"
+	if event.NewStateValue == "OK" {
+		color = "good"
+	}
+	attachment := slack.Attachment{
+		Color: color,
+		Fields: []slack.AttachmentField{
+			{"Alarm Description", event.AlarmDescription, false},
+			{"New State Reason", event.NewStateReason, false},
+			{"Old State", event.OldStateValue, true},
+			{"New State", event.NewStateValue, true},
+		},
+		Actions: []slack.AttachmentAction{
+			{Name: "View Dashboard", Type: "button", Text: "View Dashboard", URL: dashboardUrl},
+		},
+		Ts: json.Number(event.StateChangeTime),
+	}
+
+	return slack.Msg{
+		Text:        "*Bacalhau Canary Notification*",
+		Attachments: []slack.Attachment{attachment},
+	}
 }
