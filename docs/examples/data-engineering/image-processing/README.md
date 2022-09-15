@@ -28,8 +28,6 @@ It is an example of a highly parellizable compute task where a resize function i
 For a live walk through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
 
 [![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
-
-<!-- [![image](./Bacalhau_Intro_Video.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA) -->
 <!-- #endregion -->
 
 ## Prerequistes
