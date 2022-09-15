@@ -3,7 +3,7 @@
 This repository contains the user documentation of the Bacalhau Project.
 These are accessible at https://docs.bacalhau.org/.
 
-All code examples live in a dedicated repository https://github.com/bacalhau-project/examples and they are automagically rendered into the [./docs/examples/](https://github.com/bacalhau-project/docs.bacalhau.org/tree/main/docs/examples) folder.
+All [code examples](https://docs.bacalhau.org/examples/) live in a dedicated repository https://github.com/bacalhau-project/examples and they are automagically rendered into the [./docs/examples/](https://github.com/bacalhau-project/docs.bacalhau.org/tree/main/docs/examples) folder by github actions.
 
 * [Bacalhau Website](https://www.bacalhau.org/)
 * [Bacalhau Core Code Repository](https://github.com/filecoin-project/bacalhau)
