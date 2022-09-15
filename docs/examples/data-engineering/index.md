@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Workload Onboarding"
+sidebar_label: "Data Engineering"
 jupyter:
   jupytext:
     notebook_metadata_filter: sidebar_label,sidebar_position
