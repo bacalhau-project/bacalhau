@@ -48,7 +48,7 @@ This is a convenient location to store the results of your job. See below for an
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
 
-    9536e23c-4a1e-4e73-a85a-3e81101f26d4
+    4d49f48a-0522-4016-aa0a-23168d1ca99a
 
 
 The job has been submitted and Bacalhau has printed out the related job id.
@@ -56,13 +56,13 @@ We store that in an environment variable so that we can reuse it later on.
 
 
 ```python
-%env JOB_ID=9536e23c
-!bacalhau list --id-filter=${JOB_ID}
+%env JOB_ID=4d49f48a
+!bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-    env: JOB_ID=9536e23c
-    [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 15:11:16 [0m[97;40m 9536e23c [0m[97;40m Docker dpokidov/imag... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeidtitnyf... [0m
+    env: JOB_ID=4d49f48a
+     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
+     11:33:22  4d49f48a  Docker dpokidov/imag...  Published            /ipfs/bafybeidtitnyf... 
 
 
 Since the job state is published/complete, the job result can be downloaded locally.
@@ -71,19 +71,14 @@ We achieve that in the next section.
 ## Get results
 
 First, let us create a new directory that will store our job outputs.
-Second, use the `get` verb to download the job outputs into the current directory.
-_This command prints out a number of verbose logs, although these meant for Bacalhau developers you may want to ignore them (this will soon: [issue #614](https://github.com/filecoin-project/bacalhau/issues/614))._
+Second, use the `get` verb to download the job outputs into the directory specified by the `--output-dir` argument.
+_Please ignore the `> /dev/null 2>&1` portion of the command, it is there only temporarily until we fix this [issue #614](https://github.com/filecoin-project/bacalhau/issues/614) and is meant to supress debug logs that are not useful for the user._
 
 
 ```python
 !mkdir -p /tmp/img-demo
-!bacalhau get ${JOB_ID} --output-dir /tmp/img-demo
+!bacalhau get ${JOB_ID} --output-dir /tmp/img-demo > /dev/null 2>&1
 ```
-
-    [90m17:15:26.617 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '9536e23c'...
-    [90m17:15:30.609 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m17:15:37.696 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/tmp/img-demo'
-
 
 Now, the docker run command above used the `outputs` volume as a results folder so when we download them they will be stored in a homonymous folder within `volumes/`.
 
@@ -93,15 +88,15 @@ ls -l /tmp/img-demo/volumes/outputs/
 ```
 
     total 384
-    -rw-r--r--  1 enricorotundo  staff  14536 Sep 14 17:15 cafires_vir_2021231_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  34594 Sep 14 17:15 greatsaltlake_oli_2017210_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  12928 Sep 14 17:15 greecefires_oli_2021222_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  16705 Sep 14 17:15 haitiearthquake_oli_20212_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  42427 Sep 14 17:15 iwojima_tmo_2021225_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  10419 Sep 14 17:15 lakemead_etm_2000220_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  13467 Sep 14 17:15 lapalma_oli_2021141_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  13687 Sep 14 17:15 spainfire_oli_2021227_lrg.jpg
-    -rw-r--r--  1 enricorotundo  staff  15476 Sep 14 17:15 sulphursprings_oli_2019254_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  14536 Sep 15 13:42 cafires_vir_2021231_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  34594 Sep 15 13:42 greatsaltlake_oli_2017210_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  12928 Sep 15 13:42 greecefires_oli_2021222_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  16705 Sep 15 13:42 haitiearthquake_oli_20212_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  42427 Sep 15 13:42 iwojima_tmo_2021225_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  10419 Sep 15 13:42 lakemead_etm_2000220_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  13467 Sep 15 13:42 lapalma_oli_2021141_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  13687 Sep 15 13:42 spainfire_oli_2021227_lrg.jpg
+    -rw-r--r--  1 enricorotundo  staff  15476 Sep 15 13:42 sulphursprings_oli_2019254_lrg.jpg
 
 
 ## Where to go next?
