@@ -1,20 +1,7 @@
 ---
 sidebar_label: "Examples"
 sidebar_position: 3
-jupyter:
-  jupytext:
-    notebook_metadata_filter: sidebar_label,sidebar_position
-    text_representation:
-      extension: .md
-      format_name: markdown
-      format_version: '1.3'
-      jupytext_version: 1.14.1
-  kernelspec:
-    display_name: Python 3.9.7 64-bit ('3.9.7')
-    language: python
-    name: python3
 ---
-
 # Examples
 
 Bacalhau comes pre-loaded with exciting examples to showcase its abilities and help get you started.
