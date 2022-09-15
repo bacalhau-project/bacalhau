@@ -29,6 +29,8 @@ For a live walk through of this demo please watch the first part of the video be
 
 [![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
+
+
 <!-- [![image](./Bacalhau_Intro_Video.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA) -->
 <!-- #endregion -->
 
