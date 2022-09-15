@@ -52,9 +52,6 @@ require (
 )
 
 require (
-	github.com/aws/aws-cdk-go/awscdk/v2 v2.41.0
-	github.com/aws/constructs-go/constructs/v10 v10.1.98
-	github.com/aws/jsii-runtime-go v1.67.0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipld/go-car/v2 v2.4.0
@@ -70,11 +67,8 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
-	github.com/yuin/goldmark v1.4.13 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
 
 require (
