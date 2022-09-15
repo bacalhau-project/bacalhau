@@ -34,7 +34,7 @@ For a live walk through of this demo please watch the first part of the video be
 
 ## Prerequistes
 
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../getting-started/installation).
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](getting-started/installation).
 
 ```python
 !bacalhau version
