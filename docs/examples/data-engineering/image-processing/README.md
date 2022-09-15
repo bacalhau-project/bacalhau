@@ -10,7 +10,7 @@ sidebar_position: 1
 Often, you will need to process a number of images across an entire data set hosted on IPFS. For example, the entire [Landsat data dataset is hosted on IPFS ](https://ipfs.io/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is many thousands of images, it would be very convenient to run a job against the data without having to download it!
 
 This page is a demo of a data intensive image processing workload run on Bacalhau that transforms very high resolution imagery into thumbnail-size pictures.
-It is an example of a highly parellizable compute task where a resize function is applied over a large number of files.
+It is an example of a highly parallelizable compute task where a resize function is applied over a large number of files.
 For a live walk through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
 
 [![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
