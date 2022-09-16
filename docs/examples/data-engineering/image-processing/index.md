@@ -5,7 +5,7 @@ sidebar_position: 1
 # Simple Image Processing
 
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb])
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 
 In this example we will show you how to use Bacalhau to process images on a Landsat dataset.
 
@@ -83,7 +83,7 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=4a6bbbc6-5556-424e-80bf-12521811fd91
+    env: JOB_ID=cc3abdc9-e885-4db8-99a1-e46ebdf158d0
 
 
 The job has been submitted and Bacalhau has printed out the related job id.
@@ -96,7 +96,7 @@ bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
      CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     14:18:02  4a6bbbc6  Docker dpokidov/imag...  Published            /ipfs/bafybeidtitnyf... 
+     14:44:31  cc3abdc9  Docker dpokidov/imag...  Published            /ipfs/bafybeidtitnyf... 
 
 
 Since the job state is published/complete, the job is ready to be downloaded.
@@ -113,7 +113,7 @@ _Please ignore the `> /dev/null 2>&1` portion of the command, it is there only t
 echo ${JOB_ID}
 ```
 
-    4a6bbbc6-5556-424e-80bf-12521811fd91
+    cc3abdc9-e885-4db8-99a1-e46ebdf158d0
 
 
 
@@ -123,9 +123,9 @@ mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
 
-    [90m15:18:24.334 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '4a6bbbc6-5556-424e-80bf-12521811fd91'...
-    [90m15:18:27.21 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m15:18:34.665 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/image-processing/results'
+    [90m15:44:54.153 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'cc3abdc9-e885-4db8-99a1-e46ebdf158d0'...
+    [90m15:44:56.767 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
+    [90m15:45:06.625 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/image-processing/results'
 
 
 The docker run command above used the `outputs` volume as a results folder so when we download them they will be stored in a  folder within `volumes/outputs`.
@@ -137,17 +137,107 @@ ls -lah results/volumes/outputs
 ```
 
     total 192K
-    drwxr-xr-x 11 phil staff 352 Sep 16 15:18 .
+    drwxr-xr-x 11 phil staff 352 Sep 16 15:45 .
     drwxr-xr-x  3 phil staff  96 Sep 16 15:09 ..
-    -rw-r--r--  1 phil staff 15K Sep 16 15:18 cafires_vir_2021231_lrg.jpg
-    -rw-r--r--  1 phil staff 34K Sep 16 15:18 greatsaltlake_oli_2017210_lrg.jpg
-    -rw-r--r--  1 phil staff 13K Sep 16 15:18 greecefires_oli_2021222_lrg.jpg
-    -rw-r--r--  1 phil staff 17K Sep 16 15:18 haitiearthquake_oli_20212_lrg.jpg
-    -rw-r--r--  1 phil staff 42K Sep 16 15:18 iwojima_tmo_2021225_lrg.jpg
-    -rw-r--r--  1 phil staff 11K Sep 16 15:18 lakemead_etm_2000220_lrg.jpg
-    -rw-r--r--  1 phil staff 14K Sep 16 15:18 lapalma_oli_2021141_lrg.jpg
-    -rw-r--r--  1 phil staff 14K Sep 16 15:18 spainfire_oli_2021227_lrg.jpg
-    -rw-r--r--  1 phil staff 16K Sep 16 15:18 sulphursprings_oli_2019254_lrg.jpg
+    -rw-r--r--  1 phil staff 15K Sep 16 15:45 cafires_vir_2021231_lrg.jpg
+    -rw-r--r--  1 phil staff 34K Sep 16 15:45 greatsaltlake_oli_2017210_lrg.jpg
+    -rw-r--r--  1 phil staff 13K Sep 16 15:45 greecefires_oli_2021222_lrg.jpg
+    -rw-r--r--  1 phil staff 17K Sep 16 15:45 haitiearthquake_oli_20212_lrg.jpg
+    -rw-r--r--  1 phil staff 42K Sep 16 15:45 iwojima_tmo_2021225_lrg.jpg
+    -rw-r--r--  1 phil staff 11K Sep 16 15:45 lakemead_etm_2000220_lrg.jpg
+    -rw-r--r--  1 phil staff 14K Sep 16 15:45 lapalma_oli_2021141_lrg.jpg
+    -rw-r--r--  1 phil staff 14K Sep 16 15:45 spainfire_oli_2021227_lrg.jpg
+    -rw-r--r--  1 phil staff 16K Sep 16 15:45 sulphursprings_oli_2019254_lrg.jpg
+
+
+
+```python
+import glob
+from IPython.display import Image, display
+for imageName in glob.glob('results/volumes/outputs/*.jpg'):
+    display(Image(filename=imageName))
+    print(imageName)
+```
+
+
+    
+![jpeg](index_files/index_16_0.jpg)
+    
+
+
+    results/volumes/outputs/spainfire_oli_2021227_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_2.jpg)
+    
+
+
+    results/volumes/outputs/iwojima_tmo_2021225_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_4.jpg)
+    
+
+
+    results/volumes/outputs/sulphursprings_oli_2019254_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_6.jpg)
+    
+
+
+    results/volumes/outputs/greecefires_oli_2021222_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_8.jpg)
+    
+
+
+    results/volumes/outputs/cafires_vir_2021231_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_10.jpg)
+    
+
+
+    results/volumes/outputs/lakemead_etm_2000220_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_12.jpg)
+    
+
+
+    results/volumes/outputs/haitiearthquake_oli_20212_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_14.jpg)
+    
+
+
+    results/volumes/outputs/lapalma_oli_2021141_lrg.jpg
+
+
+
+    
+![jpeg](index_files/index_16_16.jpg)
+    
+
+
+    results/volumes/outputs/greatsaltlake_oli_2017210_lrg.jpg
 
 
 ## Where to go next?

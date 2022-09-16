@@ -4,6 +4,11 @@ sidebar_position: 1
 ---
 # Title of Example
 
+> Change the links of this icons:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/templates/basic-template/index.ipynb)
+[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=templates/basic-template/index.ipynb)
+
 This notebook is a basic example of using notebooks to create examples. It demonstrates some of ipython's basic features to achieve common Bacalhau tasks. Other more advanced templates are available in the [templates](..) directory.
 
 ### Why a Notebook?
