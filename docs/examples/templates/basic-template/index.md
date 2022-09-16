@@ -4,7 +4,7 @@ sidebar_position: 1
 ---
 # Title of Example
 
-This notebook is a basic example of using notebooks to create examples. It demonstrates some of ipython's basic features to achieve common Bacalhau tasks. Other more advanced templates are available in the [templates](../templates) directory.
+This notebook is a basic example of using notebooks to create examples. It demonstrates some of ipython's basic features to achieve common Bacalhau tasks. Other more advanced templates are available in the [templates](..) directory.
 
 ### Why a Notebook?
 
@@ -58,13 +58,13 @@ ls -l
 ```
 
     This is one way of working with bash, which is good because it renders nicely in the documentation
-    total 73636
+    total 73640
     -rw-r--r-- 1 phil staff       47 Sep 16 10:16 Dockerfile
-    -rw-r--r-- 1 phil staff        0 Sep 16 09:38 README.md
-    -rwxr-xr-x 1 phil staff 75054546 Sep 16 11:10 bacalhau
-    -rw-r--r-- 1 phil staff   137052 Sep 16 09:42 example-image.jpg
-    -rw-r--r-- 1 phil staff   195183 Sep 16 11:10 index.ipynb
-    -rw-r--r-- 1 phil staff       94 Sep 16 11:10 myfile.py
+    -rw-r--r-- 1 phil staff       98 Sep 16 13:00 README.md
+    -rwxr-xr-x 1 phil staff 75054546 Sep 16 13:01 bacalhau
+    -rw-r--r-- 1 phil staff   137052 Sep 16 12:23 example-image.jpg
+    -rw-r--r-- 1 phil staff   195696 Sep 16 12:59 index.ipynb
+    -rw-r--r-- 1 phil staff       94 Sep 16 12:58 myfile.py
     -rw-r--r-- 1 phil staff       20 Sep 16 10:31 small-toy-dataset.csv
 
 
@@ -81,12 +81,13 @@ ls -l
 
 > Remember that the user's and CI context likely won't have Bacalhau installed, so you need to install it.
 
-Install Bacalhau with the following command:
+Install Bacalhau with the following command and then hack the kernels PATH to include the installed location. This means we can use the `bacalhau` command as if someone had installed in globally
 
 
-```bash
-%%bash
-(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+```python
+!(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
 ```
 
     Your system is darwin_arm64
@@ -105,23 +106,7 @@ Install Bacalhau with the following command:
     bacalhau installed into . successfully.
     Client Version: v0.2.3
     Server Version: v0.2.3
-
-
-
-```python
-path=!$PATH
-%env PATH=./:path
-```
-
-    env: PATH=./:$PATH
-
-
-
-```python
-!echo $PATH
-```
-
-    ./:$PATH
+    env: PATH=./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
 
 
 
@@ -130,7 +115,8 @@ path=!$PATH
 bacalhau version
 ```
 
-    Couldn't find program: 'bash'
+    Client Version: v0.2.3
+    Server Version: v0.2.3
 
 
 
@@ -141,7 +127,7 @@ echo $job_id
 echo "Note that bash is executed in a subprocess, so variables are only available within the same cell"
 ```
 
-    046c478d-d249-47dd-bb90-e804f34aa308
+    12935a4b-c6c2-4ed3-b7da-c3b2f14941ab
     Note that bash is executed in a subprocess, so variables are only available within the same cell
 
 
@@ -159,7 +145,7 @@ job_id = !bacalhau docker run --wait --wait-timeout-secs 100 ubuntu echo Hello W
 print("Which does work across cells", job_id[0])
 ```
 
-    Which does work across cells e5e41691-3a1b-4f0e-9a67-2584bf319bc4
+    Which does work across cells b4246da6-b721-4c13-b32e-838a850eebd3
 
 
 
@@ -168,7 +154,7 @@ print("Which does work across cells", job_id[0])
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 10:10:20 [0m[97;40m e5e41691 [0m[97;40m Docker ubuntu echo H... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeidu4zm6w... [0m
+    [97;40m 12:03:08 [0m[97;40m b4246da6 [0m[97;40m Docker ubuntu echo H... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeidu4zm6w... [0m
 
 
 ## Working With Images
@@ -189,7 +175,7 @@ display.Image("example-image.jpg")
 
 
     
-![jpeg](index_files/index_14_0.jpg)
+![jpeg](index_files/index_12_0.jpg)
     
 
 
