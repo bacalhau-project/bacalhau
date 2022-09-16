@@ -58,13 +58,13 @@ ls -l
 ```
 
     This is one way of working with bash, which is good because it renders nicely in the documentation
-    total 73456
+    total 73636
     -rw-r--r-- 1 phil staff       47 Sep 16 10:16 Dockerfile
     -rw-r--r-- 1 phil staff        0 Sep 16 09:38 README.md
-    -rwxr-xr-x 1 phil staff 75054546 Sep 16 11:09 bacalhau
+    -rwxr-xr-x 1 phil staff 75054546 Sep 16 11:10 bacalhau
     -rw-r--r-- 1 phil staff   137052 Sep 16 09:42 example-image.jpg
-    -rw-r--r-- 1 phil staff     8731 Sep 16 10:13 index.ipynb
-    -rw-r--r-- 1 phil staff       94 Sep 16 10:19 myfile.py
+    -rw-r--r-- 1 phil staff   195183 Sep 16 11:10 index.ipynb
+    -rw-r--r-- 1 phil staff       94 Sep 16 11:10 myfile.py
     -rw-r--r-- 1 phil staff       20 Sep 16 10:31 small-toy-dataset.csv
 
 
@@ -108,13 +108,29 @@ Install Bacalhau with the following command:
 
 
 
+```python
+path=!$PATH
+%env PATH=./:path
+```
+
+    env: PATH=./:$PATH
+
+
+
+```python
+!echo $PATH
+```
+
+    ./:$PATH
+
+
+
 ```bash
 %%bash
 bacalhau version
 ```
 
-    Client Version: v0.2.3
-    Server Version: v0.2.3
+    Couldn't find program: 'bash'
 
 
 
@@ -173,7 +189,7 @@ display.Image("example-image.jpg")
 
 
     
-![jpeg](rendered/templates/basic-template/index_files/rendered/templates/basic-template/index_12_0.jpg)
+![jpeg](rendered/templates/basic-template/index_files/rendered/templates/basic-template/index_14_0.jpg)
     
 
 
