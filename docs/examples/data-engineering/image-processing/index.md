@@ -4,6 +4,9 @@ sidebar_position: 1
 ---
 # Simple Image Processing
 
+[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb])
+
 In this example we will show you how to use Bacalhau to process images on a Landsat dataset.
 
 If you recall, Bacalhau has the unique capability of operating at massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
