@@ -101,9 +101,10 @@ func (sp *StorageProvider) CleanupStorage(
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 
-	return system.RunCommand("rm", []string{
+	r := system.UnsafeForUserCodeRunCommand("rm", []string{
 		"-rf", pathToCleanup,
 	})
+	return r.Error
 }
 
 // we don't "upload" anything to a URL

@@ -567,18 +567,18 @@ func (n *ComputeNode) BidOnJob(ctx context.Context, shard model.JobShard) error 
 run job
 this is a separate method to RunShard because then we can invoke tests on it directly
 */
-func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShard, resultFolder string) model.RunOutput {
+func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShard, resultFolder string) *model.RunExecutorResult {
 	// check that we have the executor to run this job
 	e, err := n.getExecutor(ctx, shard.Job.Spec.Engine)
 	if err != nil {
-		return model.RunOutput{RunnerError: err}
+		return &model.RunExecutorResult{RunnerError: err}
 	}
 	return e.RunShard(ctx, shard, resultFolder)
 }
 
-func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byte, model.RunOutput) {
+func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byte, *model.RunExecutorResult) {
 	shardProposal := []byte{}
-	runOutput := model.RunOutput{}
+	runOutput := &model.RunExecutorResult{}
 
 	verifier, err := n.getVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {

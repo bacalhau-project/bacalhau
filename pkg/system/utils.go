@@ -1,6 +1,7 @@
 package system
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -10,36 +11,24 @@ import (
 	"strings"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
+
+var MaxStdoutFileLengthInGB = 1
+var MaxStderrFileLengthInGB = 1
+var MaxStdoutReturnLengthInBytes = 2048
+var MaxStderrReturnLengthInBytes = 2048
+
+const BufferedWriterSize = 4096
 
 // TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
 
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
-
-func RunCommand(command string, args []string) error {
-	log.Trace().Msgf(`Command: %s %s`, command, args)
-	cmd := exec.Command(command, args...)
-	cmd.Stderr = Stderr
-	cmd.Stdout = Stdout
-	return cmd.Run()
-}
-
-// same as run command but also returns buffers for stdout and stdin
-func RunTeeCommand(command string, args []string) (stdoutBuf, stderrBuf *bytes.Buffer, err error) {
-	stdoutBuf = new(bytes.Buffer)
-	stderrBuf = new(bytes.Buffer)
-
-	log.Trace().Msgf("Command: %s %s", command, args)
-	cmd := exec.Command(command, args...)
-
-	cmd.Stdout = io.MultiWriter(Stdout, stdoutBuf)
-	cmd.Stderr = io.MultiWriter(Stderr, stderrBuf)
-	return stdoutBuf, stderrBuf, cmd.Run()
-}
 
 func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 	attempt := 0
@@ -59,14 +48,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 	}
 }
 
-func RunCommandGetResults(command string, args []string) (string, error) {
-	log.Trace().Msgf("Command: %s %s", command, args)
-	cmd := exec.Command(command, args...)
-	result, err := cmd.CombinedOutput()
-	return string(result), err
-}
-
-func RunCommandGetStdoutAndStderr(command string, args []string) (stdout, stderr string, err error) {
+func UnsafeForUserCodeRunCommand(command string, args []string) *model.RunCommandResult {
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 
@@ -75,16 +57,213 @@ func RunCommandGetStdoutAndStderr(command string, args []string) (stdout, stderr
 	cmd.Stdout = stdoutBuf
 	cmd.Stderr = stderrBuf
 
-	err = cmd.Run()
-	return stdoutBuf.String(), stderrBuf.String(), err
+	err := cmd.Run()
+	if err != nil {
+		return &model.RunCommandResult{Error: err}
+	}
+	result := model.NewRunCommandResult()
+	result.STDOUT = stdoutBuf.String()
+	result.STDERR = stderrBuf.String()
+	result.ExitCode = cmd.ProcessState.ExitCode()
+	return result
 }
 
-func RunCommandGetResultsEnv(command string, args, env []string) (string, error) {
+func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stderrFilename string) *model.RunCommandResult {
+	return runCommandResultsToDisk(command,
+		args,
+		stdoutFilename,
+		stderrFilename,
+		MaxStdoutFileLengthInGB,
+		MaxStderrFileLengthInGB,
+		MaxStdoutReturnLengthInBytes,
+		MaxStderrReturnLengthInBytes)
+}
+
+// Adding an internal only function to make it easier to test
+//nolint:funlen // Not sure how to make this shorter without obfuscating functionility
+func runCommandResultsToDisk(command string, args []string,
+	stdoutFilename string,
+	stderrFilename string,
+	maxStdoutFileLengthInGB int,
+	maxStderrFileLengthInGB int,
+	maxStdoutReturnLengthInBytes int,
+	maxStderrReturnLengthInBytes int) *model.RunCommandResult {
+	// create the return variables ahead of time so we can use them in the goroutine
+	r := model.NewRunCommandResult()
+
+	// Setting up variables and command
 	log.Trace().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
-	cmd.Env = env
-	result, err := cmd.CombinedOutput()
-	return string(result), err
+	stdoutPipe, _ := cmd.StdoutPipe()
+	stderrPipe, _ := cmd.StderrPipe()
+
+	// Creating output files, file writers, and scanners
+	stdoutScanner, stdoutFileWriter, stdoutFile, err := createScannerAndWriter(stdoutPipe, stdoutFilename)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error creating stdout file, writer and scanner: %s", stdoutFilename)
+		r.Error = err
+		return r
+	}
+
+	// Stack in reverse order (sync first, then close - but defers are done LIFO)
+	defer func() {
+		err = stdoutFile.Close()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error closing stdout file: %s", stdoutFilename)
+		}
+	}()
+
+	defer func() {
+		err = stdoutFile.Sync()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error syncing stdout file: %s", stdoutFilename)
+		}
+	}()
+
+	stderrScanner, stderrFileWriter, stderrFile, err := createScannerAndWriter(stderrPipe, stderrFilename)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error creating stderr file, writer and scanner: %s", stderrFilename)
+		r.Error = err
+		return r
+	}
+
+	// Stack in reverse order (sync first, then close - but defers are done LIFO)
+	defer func() {
+		err = stderrFile.Close()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error closing stderr file: %s", stderrFilename)
+		}
+	}()
+
+	defer func() {
+		err = stderrFile.Sync()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error syncing stderr file: %s", stderrFilename)
+		}
+	}()
+
+	// Go routines for non-blocking reading of stdout and stderr and writing to files
+	g := new(errgroup.Group)
+
+	// Read stdout in goroutine.
+	g.Go(func() error {
+		// TODO: #626 Do we care how exact we are to getting to "Max length"?
+		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
+		err = writeFromProcessToFileWithMax(stdoutScanner, stdoutFileWriter, maxStdoutFileLengthInGB)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error writing to stdout file: %s", stdoutFilename)
+			return err
+		}
+		return nil
+	})
+
+	// Read stderr in goroutine.
+	g.Go(func() error {
+		// TODO: #626 Do we care how exact we are to getting to "Max length"?
+		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
+		err = writeFromProcessToFileWithMax(stderrScanner, stderrFileWriter, maxStderrFileLengthInGB)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error writing to stderr file: %s", stderrFilename)
+			return err
+		}
+		return nil
+	})
+
+	// Wait the command in a goroutine.
+	g.Go(func() error {
+		return cmd.Wait()
+	})
+
+	// Starting the command
+	if r.Error = cmd.Start(); r.Error != nil {
+		log.Error().Err(r.Error).Msg("Error starting command")
+		return r
+	}
+
+	// Waiting until errorGroups groups are done
+	if r.Error = g.Wait(); r.Error != nil {
+		log.Error().Err(r.Error).Msg("Error during running of the command")
+	}
+
+	// Reading in stdout and stderr from files
+	r.STDOUT, r.Error = readProcessOutputFromFile(stdoutFile, maxStdoutReturnLengthInBytes)
+	if r.Error != nil {
+		log.Error().Err(r.Error).Msg("Error reading stdout from file")
+		return r
+	}
+
+	r.STDERR, r.Error = readProcessOutputFromFile(stderrFile, maxStderrReturnLengthInBytes)
+	if r.Error != nil {
+		log.Error().Err(r.Error).Msg("Error reading stderr from file")
+		return r
+	}
+
+	// Reporting if the output for command was truncated in the description
+	r.StdoutTruncated, r.Error = wasProcessOutputTruncated(stdoutFilename, maxStdoutReturnLengthInBytes)
+	if r.Error != nil {
+		log.Error().Err(r.Error).Msg("Error checking if stdout was truncated")
+		return r
+	}
+
+	r.ExitCode = cmd.ProcessState.ExitCode()
+	r.Error = nil
+
+	return r
+}
+
+func wasProcessOutputTruncated(stdoutFilename string, maxStdoutReturnLengthInBytes int) (bool, error) {
+	stdoutFileInfo, err := os.Stat(stdoutFilename)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error getting file info: %s", stdoutFilename)
+		return false, err
+	}
+	return stdoutFileInfo.Size() > int64(maxStdoutReturnLengthInBytes), nil
+}
+
+func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (string, error) {
+	fb := make([]byte, maxStdoutReturnLengthInBytes)
+	_, err := f.Read(fb)
+	if err != nil && err != io.EOF {
+		log.Error().Err(err).Msgf("Error reading file (though we wrote to it already - weird): %s", f.Name())
+		return "", err
+	}
+	return string(fb), nil
+}
+
+func writeFromProcessToFileWithMax(s *bufio.Scanner,
+	fw *bufio.Writer,
+	maxFileLengthInGB int) error {
+	currentWrittenLength := int64(0)
+
+	s.Split(bufio.ScanBytes)
+
+	for s.Scan() {
+		t := s.Bytes()
+		log.Trace().Msgf("Num of bytes read from process: %d", len(t))
+		nn, err := fw.Write(t)
+		currentWrittenLength += int64(nn)
+		if err != nil {
+			return err
+		}
+		fw.Flush()
+		if currentWrittenLength > int64(maxFileLengthInGB*int(datasize.GB)) {
+			log.Warn().Msgf("Process output file has exceeded the max length of %d GB, stopping...", maxFileLengthInGB)
+			fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%d GB). STOPPING.", maxFileLengthInGB)
+			break
+		}
+	}
+	return nil
+}
+
+func createScannerAndWriter(stdoutPipe io.ReadCloser, stdoutFilename string) (*bufio.Scanner, *bufio.Writer, *os.File, error) {
+	stdoutScanner := bufio.NewScanner(stdoutPipe)
+	stdoutFile, err := os.Create(stdoutFilename)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error creating stdout file: %s", stdoutFilename)
+		return nil, nil, nil, err
+	}
+	stdoutFileWriter := bufio.NewWriter(stdoutFile)
+	return stdoutScanner, stdoutFileWriter, stdoutFile, nil
 }
 
 // TODO: Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
@@ -104,11 +283,11 @@ func EnsureSystemDirectory(path string) (string, error) {
 
 	log.Trace().Msgf("Enforcing creation of results dir: %s", path)
 
-	err = RunCommand("mkdir", []string{
+	r := UnsafeForUserCodeRunCommand("mkdir", []string{
 		"-p",
 		path,
 	})
-	return path, err
+	return path, r.Error
 }
 
 func GetResultsDirectory(jobID, hostID string) string {
