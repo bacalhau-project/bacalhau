@@ -305,3 +305,20 @@ resource "google_compute_subnetwork" "bacalhau_subnetwork_manual" {
   network       = google_compute_network.bacalhau_network_manual[0].id
   count         = var.auto_subnets ? 0 : 1
 }
+
+
+# Bucket to store data for bacalhau-examples
+resource "google_storage_bucket" "examples_bucket" {
+  count                       = terraform.workspace == "production" ? 1 : 0
+  name                        = "bacalhau-examples"
+  storage_class               = "STANDARD"
+  location                    = "US"
+  uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket_iam_member" "public_view" {
+  count  = terraform.workspace == "production" ? 1 : 0
+  bucket = google_storage_bucket.examples_bucket[count.index].name
+  role   = "roles/storage.legacyObjectReader"
+  member = "allUsers"
+}
