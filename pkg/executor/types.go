@@ -27,5 +27,5 @@ type Executor interface {
 		ctx context.Context,
 		shard model.JobShard,
 		resultsDir string,
-	) model.RunOutput
+	) *model.RunExecutorResult
 }

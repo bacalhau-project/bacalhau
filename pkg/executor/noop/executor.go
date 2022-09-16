@@ -10,7 +10,7 @@ import (
 type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume model.StorageSpec) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume model.StorageSpec) (uint64, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) model.RunOutput
+type ExecutorHandlerJobHandler func(ctx context.Context, shard model.JobShard, resultsDir string) *model.RunExecutorResult
 
 type ExecutorConfigExternalHooks struct {
 	IsInstalled       ExecutorHandlerIsInstalled
@@ -73,13 +73,13 @@ func (e *Executor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
 	jobResultsDir string,
-) model.RunOutput {
+) *model.RunExecutorResult {
 	e.Jobs = append(e.Jobs, shard.Job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
 		return handler(ctx, shard, jobResultsDir)
 	}
-	return model.RunOutput{}
+	return &model.RunExecutorResult{}
 }
 
 // Compile-time check that Executor implements the Executor interface.

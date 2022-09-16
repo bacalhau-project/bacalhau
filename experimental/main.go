@@ -7,11 +7,12 @@ package main
 // 	return s
 // }
 import (
-	"context"
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
 
-	dockerclient "github.com/docker/docker/client"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -83,14 +84,47 @@ func main() {
 	// log.Info().Msg(fmt.Sprintf("I'm here: %s", "manks")
 	// fmt.Printf("I'm here: %s", foo)
 
-	c, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		log.Fatal().Msg("fooz")
-	}
+	// c, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	// if err != nil {
+	// 	log.Fatal().Msg("fooz")
+	// }
 
-	_, err = c.Info(context.Background())
+	// _, err = c.Info(context.Background())
 
-	if err != nil {
-		log.Fatal().Msg("fooz")
+	// if err != nil {
+	// 	log.Fatal().Msg("fooz")
+	// }
+
+	// Comma-separated list; last entry is empty.
+	inputs := []string{"1,2,3,4,", "1,2,3,4,\n5,6,7,8"}
+
+	for _, input := range inputs {
+		scanner := bufio.NewScanner(strings.NewReader(input))
+
+		// fixedSplit := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		// 	if atEOF {
+		// 		return len(data), data, nil
+		// 	}
+		// 	end := 4096
+		// 	if len(data) < end {
+		// 		end = len(data)
+		// 	}
+		// 	if end > 0 {
+		// 		return end + 1, data[0:end], nil
+		// 	}
+		// 	// There is one final token to be delivered, which may be the empty string.
+		// 	// Returning bufio.ErrFinalToken here tells Scan there are no more tokens after this
+		// 	// but does not trigger an error to be returned from Scan itself.
+		// 	return 0, data, bufio.ErrFinalToken
+		// }
+
+		scanner.Split(bufio.ScanBytes)
+
+		for scanner.Scan() {
+			fmt.Printf("%q ", scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "reading input:", err)
+		}
 	}
 }

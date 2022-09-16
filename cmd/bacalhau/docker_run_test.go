@@ -806,3 +806,55 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 
 	devstack_tests.RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
 }
+
+func (suite *DockerRunSuite) TestTruncateReturn() {
+	tests := map[string]struct {
+		inputLength    int
+		expectedLength int
+		truncated      bool
+	}{
+		"zero length": {inputLength: 0, truncated: false, expectedLength: 0},
+		"one length":  {inputLength: 1, truncated: false, expectedLength: 1},
+		"maxLength - 1": {inputLength: system.MaxStdoutReturnLengthInBytes - 1,
+			truncated:      false,
+			expectedLength: system.MaxStdoutReturnLengthInBytes - 1},
+		"maxLength": {inputLength: system.MaxStdoutReturnLengthInBytes,
+			truncated:      false,
+			expectedLength: system.MaxStdoutReturnLengthInBytes},
+		"maxLength + 1": {inputLength: system.MaxStdoutReturnLengthInBytes + 1,
+			truncated:      true,
+			expectedLength: system.MaxStdoutReturnLengthInBytes},
+		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10000,
+			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
+	}
+
+	for name, tc := range tests {
+		suite.T().Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			flagsArray := []string{"docker", "run",
+				"--api-host", host,
+				"--api-port", port}
+
+			flagsArray = append(flagsArray, fmt.Sprintf(`ubuntu perl -e "print \"=\" x %d"`, tc.inputLength))
+
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				flagsArray...,
+			)
+			require.NoError(suite.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
+
+			job, _, err := c.Get(ctx, strings.TrimSpace(out))
+			require.NoError(suite.T(), err)
+			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+
+			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
+
+		})
+	}
+}
