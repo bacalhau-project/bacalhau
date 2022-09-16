@@ -58,12 +58,14 @@ ls -l
 ```
 
     This is one way of working with bash, which is good because it renders nicely in the documentation
-    total 144
-    -rw-r--r-- 1 phil staff      0 Sep 16 09:38 Dockerfile
-    -rw-r--r-- 1 phil staff      0 Sep 16 09:38 README.md
-    -rw-r--r-- 1 phil staff 137052 Sep 16 09:42 example-image.jpg
-    -rw-r--r-- 1 phil staff   4192 Sep 16 09:52 index.ipynb
-    -rw-r--r-- 1 phil staff      0 Sep 16 09:38 small-toy-dataset.csv
+    total 73456
+    -rw-r--r-- 1 phil staff       47 Sep 16 10:16 Dockerfile
+    -rw-r--r-- 1 phil staff        0 Sep 16 09:38 README.md
+    -rwxr-xr-x 1 phil staff 75054546 Sep 16 11:09 bacalhau
+    -rw-r--r-- 1 phil staff   137052 Sep 16 09:42 example-image.jpg
+    -rw-r--r-- 1 phil staff     8731 Sep 16 10:13 index.ipynb
+    -rw-r--r-- 1 phil staff       94 Sep 16 10:19 myfile.py
+    -rw-r--r-- 1 phil staff       20 Sep 16 10:31 small-toy-dataset.csv
 
 
 
@@ -88,7 +90,11 @@ Install Bacalhau with the following command:
 ```
 
     Your system is darwin_arm64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
+    
+    BACALHAU CLI is detected:
+    Client Version: v0.2.3
+    Server Version: v0.2.3
+    Reinstalling BACALHAU CLI - ./bacalhau...
     Getting the latest BACALHAU CLI...
     Installing v0.2.3 BACALHAU CLI...
     Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_darwin_arm64.tar.gz ...
@@ -119,7 +125,7 @@ echo $job_id
 echo "Note that bash is executed in a subprocess, so variables are only available within the same cell"
 ```
 
-    d5464534-76f9-44a6-af23-8699a830ed72
+    046c478d-d249-47dd-bb90-e804f34aa308
     Note that bash is executed in a subprocess, so variables are only available within the same cell
 
 
@@ -127,7 +133,6 @@ echo "Note that bash is executed in a subprocess, so variables are only availabl
 ```python
 print("We can also do this with Python")
 job_id = !bacalhau docker run --wait --wait-timeout-secs 100 ubuntu echo Hello World
-
 ```
 
     We can also do this with Python
@@ -138,7 +143,7 @@ job_id = !bacalhau docker run --wait --wait-timeout-secs 100 ubuntu echo Hello W
 print("Which does work across cells", job_id[0])
 ```
 
-    Which does work across cells 1a6f8588-9eb6-40b6-a73c-7abd8da0f876
+    Which does work across cells e5e41691-3a1b-4f0e-9a67-2584bf319bc4
 
 
 
@@ -147,10 +152,80 @@ print("Which does work across cells", job_id[0])
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 09:11:05 [0m[97;40m 1a6f8588 [0m[97;40m Docker ubuntu echo H... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeidu4zm6w... [0m
+    [97;40m 10:10:20 [0m[97;40m e5e41691 [0m[97;40m Docker ubuntu echo H... [0m[97;40m Published [0m[97;40m          [0m[97;40m /ipfs/bafybeidu4zm6w... [0m
+
+
+## Working With Images
+
+You can either dump an image right in markdown like this:
+
+![](example-image.jpg)
+
+Or resultant images can be displayed in the notebook using the `Image` class from `IPython.display`. You can also use the `display` function to display other objects.
+
+
+```python
+import IPython.display as display
+display.Image("example-image.jpg")
+```
+
+
+
+
+    
+![jpeg](rendered/templates/basic-template/index_files/rendered/templates/basic-template/index_12_0.jpg)
+    
+
+
+
+## Working With Raw Text Files
+
+When working with raw text files like Dockerfiles, be sure to show these to the user.
+
+
+```python
+%cat Dockerfile
+```
+
+    FROM example-dockerfile
+    RUN echo "do something"
+
+You can even write files directly from your notebook for later use...
+
+
+```python
+%%writefile myfile.py
+
+print("This is code in a newly created python file. Use %%writefile -a to append to files.")
+```
+
+    Overwriting myfile.py
 
 
 
 ```python
+%run -i 'myfile.py'
+```
+
+    This is code in a newly created python file. Use %%writefile -a to append to files.
+
+
+## Working With Files
+
+If your file is small, fine, shove it in git. But if it's big, use the production GCS bucket for http-accessible public data or IPFS, whichever makes more sense.
+
+To access files in GCS, you can use the `gsutil` command line tool. You can also use the `gcsfs` library to access GCS from Python. You'll need to make sure you have the correct credentials to access the bucket. This can be done by executing `(cd ops/terraform; bash scripts/connect_workspace.sh production)` from the root of the Bacalhau repository.
+
+When uploading files, please use the same directory structure as this repository to keep things organised. For example, I uploaded a small-toy-dataset.csv using:
 
 ```
+gsutil cp templates/basic-template/small-toy-dataset.csv gs://bacalhau-examples/templates/basic-template/small-toy-example.csv
+```
+
+
+```bash
+%%bash
+curl -s https://storage.googleapis.com/bacalhau-examples/templates/basic-template/small-toy-example.csv
+```
+
+    a,very,small,dataset
