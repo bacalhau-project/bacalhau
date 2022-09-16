@@ -1,5 +1,6 @@
 ---
 sidebar_label: "Workload Onboarding"
+sidebar_position: 1
 ---
 # Workload Onboarding
 
