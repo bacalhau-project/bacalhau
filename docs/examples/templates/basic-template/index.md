@@ -189,7 +189,7 @@ display.Image("example-image.jpg")
 
 
     
-![jpeg](rendered/templates/basic-template/index_files/rendered/templates/basic-template/index_14_0.jpg)
+![jpeg](index_files/index_14_0.jpg)
     
 
 
