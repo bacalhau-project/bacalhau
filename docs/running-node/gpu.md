@@ -1,5 +1,6 @@
 ---
-sidebar_label: 'GPU Support' sidebar_position: 101
+sidebar_label: 'GPU Support'
+sidebar_position: 160
 description: How to enable GPU support on your Bacalhau node.
 ---
 
