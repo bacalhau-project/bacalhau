@@ -66,7 +66,7 @@ var getCmd = &cobra.Command{
 
 		log.Info().Msgf("Fetching results of job '%s'...", jobID)
 
-		j, ok, err := getAPIClient().Get(ctx, jobID)
+		j, ok, err := GetAPIClient().Get(ctx, jobID)
 
 		if !ok {
 			cmd.Printf("No job ID found matching ID: %s", jobID)
@@ -77,7 +77,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		results, err := getAPIClient().GetResults(ctx, j.ID)
+		results, err := GetAPIClient().GetResults(ctx, j.ID)
 		if err != nil {
 			return err
 		}

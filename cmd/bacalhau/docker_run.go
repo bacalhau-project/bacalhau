@@ -29,13 +29,12 @@ var (
 
 	//nolint:lll // Documentation
 	dockerRunExample = templates.Examples(i18n.T(`
-		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /output_images in the container.
+		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container.
 		# All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
-		-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
-		-o results:/output_images \
-		dpokidov/imagemagick \
-		-- magick mogrify -resize 100x100 -quality 100 -path /output_images /input_images/*.jpg`))
+			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
+			dpokidov/imagemagick:7.1.0-47-ubuntu \
+			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'`))
 
 	// Set Defaults (probably a better way to do this)
 	ODR = NewDockerRunOptions()
@@ -211,7 +210,7 @@ var dockerCmd = &cobra.Command{
 	Short: "Run a docker job on the network (see run subcommand)",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Check that the server version is compatible with the client version
-		serverVersion, _ := getAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
+		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
 			log.Err(err)
 			return err

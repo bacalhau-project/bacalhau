@@ -233,7 +233,7 @@ var runPythonCmd = &cobra.Command{
 
 		}
 
-		job, err := getAPIClient().Submit(ctx, spec, deal, &buf)
+		job, err := GetAPIClient().Submit(ctx, spec, deal, &buf)
 		if err != nil {
 			return err
 		}
