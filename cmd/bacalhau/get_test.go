@@ -1,17 +1,17 @@
 package bacalhau
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -59,21 +59,29 @@ func (suite *GetSuite) TestGetJob() {
 		{numOfJobs: 21}, // one more than the default list length
 	}
 
+	host := "localhost"
+	port, _ := freeport.GetFreePort()
+	submittedJobID := ""
+
 	outputDir, _ := os.MkdirTemp(os.TempDir(), "bacalhau-get-test-*")
 	defer os.RemoveAll(outputDir)
 	for _, n := range numOfJobsTests {
 		func() {
-			var submittedJob model.Job
-			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTestsWithPort(suite.T(), port)
 			defer cm.Cleanup()
 
 			for i := 0; i < NumberOfNodes; i++ {
 				for i := 0; i < n.numOfJobs; i++ {
-					spec, deal := publicapi.MakeGenericJob()
-					s, err := c.Submit(ctx, spec, deal, nil)
+					// Submit job and wait (so that we can download it later)
+					_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+						"--api-host", host,
+						"--api-port", fmt.Sprintf("%d", port),
+						"ubuntu", "echo Random -> $RANDOM",
+						"--wait",
+					)
+
 					require.NoError(suite.T(), err)
-					submittedJob = s // Default to the last job submitted, should be fine?
+					submittedJobID = strings.TrimSpace(out) // Default to the last job submitted, should be fine?
 				}
 			}
 
@@ -81,35 +89,43 @@ func (suite *GetSuite) TestGetJob() {
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
 			// No job id (should error)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
+			_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
 				"--api-host", host,
 				"--api-port", port,
 			)
 			require.Error(suite.T(), err, "Submitting a get request with no id should error.")
 
-			outputDirWithID := fmt.Sprintf("%s/%s", outputDir, submittedJob.ID)
+			outputDirWithID := fmt.Sprintf("%s/%s", outputDir, submittedJobID)
 			os.Mkdir(outputDirWithID, util.OS_ALL_RWX)
 
 			// Job Id at the end
-			_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
+			_, _, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
 				"--api-host", host,
 				"--api-port", port,
 				"--output-dir", outputDirWithID,
-				submittedJob.ID,
+				submittedJobID,
 			)
 			require.NoError(suite.T(), err, "Error in getting job: %+v", err)
 
 			// Short Job ID
-			_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
+			_, _, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
 				"--api-host", host,
 				"--api-port", port,
 				"--output-dir", outputDirWithID,
-				submittedJob.ID[0:6],
+				submittedJobID[0:6],
 			)
 			require.NoError(suite.T(), err, "Error in getting short job: %+v", err)
 
-			_ = out
+			// Get stdout from job
+			// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
+			// 	"--api-host", host,
+			// 	"--api-port", port,
+			// 	"--output-dir", outputDirWithID,
+			// 	out)
 
+			// require.NoError(suite.T(), err, "Error in getting files from job: %+v", err)
+			// // TODO: #637 Need to do a lot more testing here, we don't do any analysis of output files
+			// fmt.Println(out)
 		}()
 	}
 
