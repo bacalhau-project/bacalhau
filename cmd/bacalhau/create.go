@@ -97,39 +97,61 @@ var createCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
+		jobSpec := &model.JobSpec{}
+
+		if cmdArgs[0] == "-" {
+			var job jobDescription
+
+			byteResult, _ := io.ReadAll(os.Stdin)
+
+			err := yaml.Unmarshal(byteResult, &job)
+			if err != nil {
+				return fmt.Errorf("error reading from stdin : %s", err)
+			}
+			bytes, err := yaml.Marshal(job.Spec)
+			if err != nil {
+				log.Error().Msgf("Failure marshaling job description : %s", err)
+				return err
+			}
+			err = yaml.Unmarshal(bytes, &jobSpec)
+			if err != nil {
+				return fmt.Errorf("error reading josbpec from stdin : %s", err)
+			}
+
+		}
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
 			return fmt.Errorf("no filename specified")
 		}
-		OC.Filename = cmdArgs[0]
+		if cmdArgs[0] != "-" {
+			OC.Filename = cmdArgs[0]
 
-		fileextension := filepath.Ext(OC.Filename)
-		fileContent, err := os.Open(OC.Filename)
+			fileextension := filepath.Ext(OC.Filename)
+			fileContent, err := os.Open(OC.Filename)
 
-		if err != nil {
-			return fmt.Errorf("could not open file '%s': %s", OC.Filename, err)
-		}
-
-		byteResult, err := io.ReadAll(fileContent)
-
-		if err != nil {
-			return err
-		}
-
-		jobSpec := &model.JobSpec{}
-
-		if fileextension == ".json" {
-			err = json.Unmarshal(byteResult, &jobSpec)
 			if err != nil {
-				return fmt.Errorf("error reading json file '%s': %s", OC.Filename, err)
+				return fmt.Errorf("could not open file '%s': %s", OC.Filename, err)
 			}
-		} else if fileextension == ".yaml" || fileextension == ".yml" {
-			err = yaml.Unmarshal(byteResult, &jobSpec)
+
+			byteResult, err := io.ReadAll(fileContent)
+
 			if err != nil {
-				return fmt.Errorf("error reading yaml file '%s': %s", OC.Filename, err)
+				return err
 			}
-		} else {
-			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
+
+			if fileextension == ".json" {
+				err = json.Unmarshal(byteResult, &jobSpec)
+				if err != nil {
+					return fmt.Errorf("error reading json file '%s': %s", OC.Filename, err)
+				}
+			} else if fileextension == ".yaml" || fileextension == ".yml" {
+				err = yaml.Unmarshal(byteResult, &jobSpec)
+				if err != nil {
+					return fmt.Errorf("error reading yaml file '%s': %s", OC.Filename, err)
+				}
+			} else {
+				return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
+			}
 		}
 
 		// the spec might use string version or proper numeric versions

@@ -468,11 +468,10 @@ func (suite *DockerRunSuite) TestRun_GenericGenerateAndDryRun() {
 		command  []string
 	}{
 		{filename: "job-generate.yaml", flag: "--dry-run", command: []string{"ubuntu", "echo", "hello"}},
-		{filename: "job-generate.yaml", command: []string{"ubuntu", "echo", "hello"}},
 	}
 	for _, o := range tests {
 		var args []string
-		args = append(args, "docker", "run", "--local", "--output-jobspec")
+		args = append(args, "docker", "run", "--local")
 		if o.flag == "--dry-run" {
 			args = append(args, "--dry-run")
 		}

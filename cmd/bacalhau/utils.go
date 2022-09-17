@@ -267,12 +267,7 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	if !outputJobSpec {
-		cmd.Printf("%s\n", j.ID)
-	}
-	s := fmt.Sprintf("jobID: %s\n", j.ID)
-	log.Info().Msg(s)
-
+	cmd.Printf("%s\n", j.ID)
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
 		// We have a jobID now, add it to the context baggage
 		ctx = system.AddJobIDToBaggage(ctx, j.ID)

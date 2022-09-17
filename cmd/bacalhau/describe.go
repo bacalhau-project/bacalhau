@@ -36,12 +36,17 @@ var (
 
 type DescribeOptions struct {
 	Filename string // Filename for job (can be .json or .yaml)
+	Spec     bool
 }
 
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{}
 }
 func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+	describeCmd.PersistentFlags().BoolVar(
+		&ODR.OutputJobSpec, "spec", ODR.OutputJobSpec,
+		`Output Jobspec to stdout`,
+	)
 }
 
 type eventDescription struct {
@@ -76,7 +81,7 @@ type jobDescription struct {
 	ID              string                  `yaml:"Id"`
 	ClientID        string                  `yaml:"ClientID"`
 	RequesterNodeID string                  `yaml:"RequesterNodeId"`
-	Spec            jobSpecDescription      `yaml:"Spec"`
+	Spec            model.JobSpec           `yaml:"Spec"`
 	Deal            model.JobDeal           `yaml:"Deal"`
 	Shards          []shardStateDescription `yaml:"Shards"`
 	CreatedAt       time.Time               `yaml:"Start Time"`
@@ -178,7 +183,7 @@ var describeCmd = &cobra.Command{
 		jobDesc.ID = j.ID
 		jobDesc.ClientID = j.ClientID
 		jobDesc.RequesterNodeID = j.RequesterNodeID
-		jobDesc.Spec = jobSpecDesc
+		jobDesc.Spec = j.Spec
 		jobDesc.Deal = j.Deal
 		jobDesc.CreatedAt = j.CreatedAt
 		jobDesc.Events = []eventDescription{}
@@ -243,8 +248,17 @@ var describeCmd = &cobra.Command{
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
-
-		cmd.Print(string(bytes))
+		if !ODR.OutputJobSpec {
+			cmd.Print(string(bytes))
+		}
+		if ODR.OutputJobSpec {
+			bytes, err := yaml.Marshal(j.Spec)
+			if err != nil {
+				log.Error().Msgf("Failure marshaling jobspec: %s", err)
+				return err
+			}
+			cmd.Print(string(bytes))
+		}
 
 		return nil
 	},

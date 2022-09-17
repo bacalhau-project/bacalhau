@@ -174,10 +174,6 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.SkipSyntaxChecking, "skip-syntax-checking", ODR.SkipSyntaxChecking,
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.OutputJobSpec, "output-jobspec", ODR.OutputJobSpec,
-		`Output Jobspec to stdout`,
-	)
 
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.DryRun, "dry-run", ODR.DryRun,
@@ -258,7 +254,7 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("error validating job: %s", err)
 		}
-		if ODR.OutputJobSpec {
+		if ODR.DryRun {
 			//nolint
 			bytes, err := yaml.Marshal(jobSpec)
 			if err != nil {
