@@ -28,11 +28,11 @@ var (
 	`))
 	//nolint:lll // Documentation
 	createExample = templates.Examples(i18n.T(`
-		# Create a job using the data in job.json
-		bacalhau create ./job.json
+		# Create a job using the data in job.yaml
+		bacalhau create ./job.yaml
 
-		# Create a job based on the JSON passed into stdin
-		cat job.json | job create -`))
+		# Create a new job from an already executed job
+		bacalhau describe 6e51df50 | bacalhau create -`))
 	//nolint:lll // Documentation
 	createtemplateExample = templates.Examples(i18n.T(`
 	Print a sample ubuntu hello jobspec template to stdout

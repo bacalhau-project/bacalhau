@@ -34,7 +34,14 @@ var (
 		bacalhau docker run \
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
-			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'`))
+			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
+			
+		# Dry Run: Check the job specification before submitting it to the bacalhau network
+		bacalhau docker run --dry-run ubuntu echo hello
+
+		saving the job specification to a yaml file
+		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+		`))
 
 	// Set Defaults (probably a better way to do this)
 	ODR = NewDockerRunOptions()
