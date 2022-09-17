@@ -132,7 +132,7 @@ var listCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobs, err := getAPIClient().List(ctx)
+		jobs, err := GetAPIClient().List(ctx)
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func resolvingJobDetails(ctx context.Context,
 			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
 		}
 
-		resolver := getAPIClient().GetJobStateResolver()
+		resolver := GetAPIClient().GetJobStateResolver()
 
 		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
 		if err != nil {

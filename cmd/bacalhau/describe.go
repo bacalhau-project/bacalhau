@@ -36,16 +36,22 @@ var (
 
 type DescribeOptions struct {
 	Filename string // Filename for job (can be .json or .yaml)
-	Spec     bool
+	IncludeEvents bool   // Include events in the description
 }
 
 func NewDescribeOptions() *DescribeOptions {
-	return &DescribeOptions{}
+	return &DescribeOptions{
+		IncludeEvents: false,
+	}
 }
 func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 	describeCmd.PersistentFlags().BoolVar(
 		&ODR.OutputJobSpec, "spec", ODR.OutputJobSpec,
 		`Output Jobspec to stdout`,
+    	)
+	describeCmd.PersistentFlags().BoolVar(
+&OD.IncludeEvents, "include-events", OD.IncludeEvents,
+		`Include events in the description (could be noisy)`,
 	)
 }
 
@@ -85,8 +91,8 @@ type jobDescription struct {
 	Deal            model.JobDeal           `yaml:"Deal"`
 	Shards          []shardStateDescription `yaml:"Shards"`
 	CreatedAt       time.Time               `yaml:"Start Time"`
-	Events          []eventDescription      `yaml:"Events"`
-	LocalEvents     []localEventDescription `yaml:"LocalEvents"`
+	Events          []eventDescription      `yaml:"Events,omitempty"`
+	LocalEvents     []localEventDescription `yaml:"LocalEvents,omitempty"`
 }
 
 type jobSpecDescription struct {
@@ -131,7 +137,7 @@ var describeCmd = &cobra.Command{
 
 		inputJobID := cmdArgs[0]
 
-		j, ok, err := getAPIClient().Get(ctx, cmdArgs[0])
+		j, ok, err := GetAPIClient().Get(ctx, cmdArgs[0])
 
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
@@ -143,19 +149,19 @@ var describeCmd = &cobra.Command{
 			return nil
 		}
 
-		jobState, err := getAPIClient().GetJobState(ctx, j.ID)
+		jobState, err := GetAPIClient().GetJobState(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
 			return err
 		}
 
-		jobEvents, err := getAPIClient().GetEvents(ctx, j.ID)
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
 
-		localEvents, err := getAPIClient().GetLocalEvents(ctx, j.ID)
+		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
 		if err != nil {
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
@@ -223,24 +229,26 @@ var describeCmd = &cobra.Command{
 
 		jobDesc.Shards = finalDescriptions
 
-		for _, event := range jobEvents {
-			jobDesc.Events = append(jobDesc.Events, eventDescription{
-				Event:       event.EventName.String(),
-				Status:      event.Status,
-				Time:        event.EventTime.String(),
-				Concurrency: event.JobDeal.Concurrency,
-				Confidence:  event.JobDeal.Confidence,
-				SourceNode:  event.SourceNodeID,
-				TargetNode:  event.TargetNodeID,
-			})
-		}
+		if OD.IncludeEvents {
+			for _, event := range jobEvents {
+				jobDesc.Events = append(jobDesc.Events, eventDescription{
+					Event:       event.EventName.String(),
+					Status:      event.Status,
+					Time:        event.EventTime.String(),
+					Concurrency: event.JobDeal.Concurrency,
+					Confidence:  event.JobDeal.Confidence,
+					SourceNode:  event.SourceNodeID,
+					TargetNode:  event.TargetNodeID,
+				})
+			}
 
-		jobDesc.LocalEvents = []localEventDescription{}
-		for _, event := range localEvents {
-			jobDesc.LocalEvents = append(jobDesc.LocalEvents, localEventDescription{
-				Event:      event.EventName.String(),
-				TargetNode: event.TargetNodeID,
-			})
+			jobDesc.LocalEvents = []localEventDescription{}
+			for _, event := range localEvents {
+				jobDesc.LocalEvents = append(jobDesc.LocalEvents, localEventDescription{
+					Event:      event.EventName.String(),
+					TargetNode: event.TargetNodeID,
+				})
+			}
 		}
 
 		bytes, err := yaml.Marshal(jobDesc)
