@@ -21,6 +21,7 @@ var MaxStdoutFileLengthInGB = 1
 var MaxStderrFileLengthInGB = 1
 var MaxStdoutReturnLengthInBytes = 2048
 var MaxStderrReturnLengthInBytes = 2048
+var ReadChunkSizeInBytes = 4096
 
 const BufferedWriterSize = 4096
 
@@ -80,6 +81,7 @@ func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stde
 }
 
 // Adding an internal only function to make it easier to test
+//
 //nolint:funlen // Not sure how to make this shorter without obfuscating functionility
 func runCommandResultsToDisk(command string, args []string,
 	stdoutFilename string,
@@ -98,7 +100,7 @@ func runCommandResultsToDisk(command string, args []string,
 	stderrPipe, _ := cmd.StderrPipe()
 
 	// Creating output files, file writers, and scanners
-	stdoutScanner, stdoutFileWriter, stdoutFile, err := createScannerAndWriter(stdoutPipe, stdoutFilename)
+	stdoutFileScanner, stdoutFileWriter, stdoutFile, err := createReaderAndWriter(stdoutPipe, stdoutFilename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stdout file, writer and scanner: %s", stdoutFilename)
 		r.Error = err
@@ -120,7 +122,7 @@ func runCommandResultsToDisk(command string, args []string,
 		}
 	}()
 
-	stderrScanner, stderrFileWriter, stderrFile, err := createScannerAndWriter(stderrPipe, stderrFilename)
+	stderrFileReader, stderrFileWriter, stderrFile, err := createReaderAndWriter(stderrPipe, stderrFilename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stderr file, writer and scanner: %s", stderrFilename)
 		r.Error = err
@@ -149,7 +151,7 @@ func runCommandResultsToDisk(command string, args []string,
 	g.Go(func() error {
 		// TODO: #626 Do we care how exact we are to getting to "Max length"?
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		err = writeFromProcessToFileWithMax(stdoutScanner, stdoutFileWriter, maxStdoutFileLengthInGB)
+		err = writeFromProcessToFileWithMax(stdoutFileScanner, stdoutFileWriter, maxStdoutFileLengthInGB)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error writing to stdout file: %s", stdoutFilename)
 			return err
@@ -161,7 +163,7 @@ func runCommandResultsToDisk(command string, args []string,
 	g.Go(func() error {
 		// TODO: #626 Do we care how exact we are to getting to "Max length"?
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		err = writeFromProcessToFileWithMax(stderrScanner, stderrFileWriter, maxStderrFileLengthInGB)
+		err = writeFromProcessToFileWithMax(stderrFileReader, stderrFileWriter, maxStderrFileLengthInGB)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error writing to stderr file: %s", stderrFilename)
 			return err
@@ -169,16 +171,16 @@ func runCommandResultsToDisk(command string, args []string,
 		return nil
 	})
 
-	// Wait the command in a goroutine.
-	g.Go(func() error {
-		return cmd.Wait()
-	})
-
 	// Starting the command
 	if r.Error = cmd.Start(); r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error starting command")
 		return r
 	}
+
+	// Wait the command in a goroutine.
+	g.Go(func() error {
+		return cmd.Wait()
+	})
 
 	// Waiting until errorGroups groups are done
 	if r.Error = g.Wait(); r.Error != nil {
@@ -230,43 +232,62 @@ func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (st
 	return string(fb), nil
 }
 
-func writeFromProcessToFileWithMax(s *bufio.Scanner,
+func writeFromProcessToFileWithMax(r io.Reader,
 	fw *bufio.Writer,
 	maxFileLengthInGB int) error {
 	currentWrittenLength := int64(0)
 
-	s.Split(bufio.ScanBytes)
+	chunk := make([]byte, ReadChunkSizeInBytes) // Size is the chunk size.
 
-	for s.Scan() {
-		t := s.Bytes()
-		log.Trace().Msgf("Num of bytes read from process: %d", len(t))
-		nn, err := fw.Write(t)
-		currentWrittenLength += int64(nn)
-		if err != nil {
+	for {
+		n, err := io.ReadFull(r, chunk)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			log.Err(err).Msg("Error reading from process:")
 			return err
 		}
-		fw.Flush()
-		if currentWrittenLength > int64(maxFileLengthInGB*int(datasize.GB)) {
-			log.Warn().Msgf("Process output file has exceeded the max length of %d GB, stopping...", maxFileLengthInGB)
-			fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%d GB). STOPPING.", maxFileLengthInGB)
+
+		log.Trace().Msgf("Num of bytes read from process: %d", n)
+
+		if n > 0 {
+			nn, err := fw.Write(chunk[:n])
+			if err != nil {
+				log.Err(err).Msg("Error writing to output file:")
+				return err
+			}
+
+			currentWrittenLength += int64(nn)
+			if err != nil {
+				return err
+			}
+			fw.Flush()
+			if currentWrittenLength > int64(maxFileLengthInGB*int(datasize.GB)) {
+				log.Warn().Msgf("Process output file has exceeded the max length of %d GB, stopping...", maxFileLengthInGB)
+				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%d GB). STOPPING.", maxFileLengthInGB)
+				break
+			}
+		} else {
+			break // Num of Bytes is 0, so we are done.
+		}
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			log.Trace().Msg("Reached EOF process pipe")
 			break
 		}
 	}
 	return nil
 }
 
-func createScannerAndWriter(stdoutPipe io.ReadCloser, stdoutFilename string) (*bufio.Scanner, *bufio.Writer, *os.File, error) {
-	stdoutScanner := bufio.NewScanner(stdoutPipe)
-	stdoutFile, err := os.Create(stdoutFilename)
+func createReaderAndWriter(filePipe io.ReadCloser, filename string) (io.Reader, *bufio.Writer, *os.File, error) {
+	fileReader := bufio.NewReader(filePipe)
+	outputFile, err := os.Create(filename)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error creating stdout file: %s", stdoutFilename)
+		log.Error().Err(err).Msgf("Error creating file: %s", filename)
 		return nil, nil, nil, err
 	}
-	stdoutFileWriter := bufio.NewWriter(stdoutFile)
-	return stdoutScanner, stdoutFileWriter, stdoutFile, nil
+	stdoutFileWriter := bufio.NewWriter(outputFile)
+	return fileReader, stdoutFileWriter, outputFile, nil
 }
 
-// TODO: Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
+// TODO: #634 Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
 func GetSystemDirectory(path string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

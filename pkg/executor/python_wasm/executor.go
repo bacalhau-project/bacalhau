@@ -46,7 +46,8 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec)
 	return 0, nil
 }
 
-func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) *model.RunExecutorResult {
+func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) (
+	*model.RunExecutorResult, error) {
 	log.Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
 	shard.Job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
