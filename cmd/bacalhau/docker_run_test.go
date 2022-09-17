@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/google/uuid"
 
 	"strings"
 	"testing"
@@ -78,12 +79,13 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 
 			*ODR = *NewDockerRunOptions()
 
+			randomUUID := uuid.New()
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
-				"ubuntu echo 'hello world'",
+				fmt.Sprintf("ubuntu echo %s", randomUUID.String()),
 			)
 			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
@@ -787,13 +789,15 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 }
 
 func (suite *DockerRunSuite) TestTruncateReturn() {
+	system.MaxStderrReturnLengthInBytes = 10 // Make it artificially small for this run
+
 	tests := map[string]struct {
 		inputLength    int
 		expectedLength int
 		truncated      bool
 	}{
-		"zero length": {inputLength: 0, truncated: false, expectedLength: 0},
-		"one length":  {inputLength: 1, truncated: false, expectedLength: 1},
+		// "zero length": {inputLength: 0, truncated: false, expectedLength: 0},
+		// "one length":  {inputLength: 1, truncated: false, expectedLength: 1},
 		"maxLength - 1": {inputLength: system.MaxStdoutReturnLengthInBytes - 1,
 			truncated:      false,
 			expectedLength: system.MaxStdoutReturnLengthInBytes - 1},
@@ -803,14 +807,17 @@ func (suite *DockerRunSuite) TestTruncateReturn() {
 		"maxLength + 1": {inputLength: system.MaxStdoutReturnLengthInBytes + 1,
 			truncated:      true,
 			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10000,
+		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10,
 			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
 	}
+
+	outputDir, _ := os.MkdirTemp(os.TempDir(), "bacalhau-truncate-test-*")
+	defer os.RemoveAll(outputDir)
 
 	for name, tc := range tests {
 		suite.T().Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTestsWithPort(suite.T(), 20000)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
