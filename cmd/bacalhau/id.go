@@ -15,6 +15,10 @@ type IdInfo struct {
 	ID string `json:"ID"`
 }
 
+func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
+	setupLibp2pCLIFlags(idCmd)
+}
+
 var idCmd = &cobra.Command{
 	Use:   "id",
 	Short: "Show bacalhau node id info",
