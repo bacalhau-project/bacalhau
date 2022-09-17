@@ -105,8 +105,9 @@ func dockerExecutorStorageTest(
 		resultsDirectory, err := ioutil.TempDir("", "bacalhau-dockerExecutorStorageTest")
 		require.NoError(t, err)
 
-		runnerOutput := dockerExecutor.RunShard(ctx, shard, resultsDirectory)
+		runnerOutput, err := dockerExecutor.RunShard(ctx, shard, resultsDirectory)
 		require.NoError(t, runnerOutput.RunnerError)
+		require.Equal(t, runnerOutput.RunnerError, err)
 
 		err = testCase.ResultsChecker(resultsDirectory)
 		require.NoError(t, err)
