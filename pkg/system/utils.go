@@ -249,7 +249,8 @@ func writeFromProcessToFileWithMax(r io.Reader,
 		log.Trace().Msgf("Num of bytes read from process: %d", n)
 
 		if n > 0 {
-			nn, err := fw.Write(chunk[:n])
+			var nn int // number of written bytes
+			nn, err = fw.Write(chunk[:n])
 			if err != nil {
 				log.Err(err).Msg("Error writing to output file:")
 				return err
