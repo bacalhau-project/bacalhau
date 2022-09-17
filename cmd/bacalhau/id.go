@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type IdInfo struct {
+type IDInfo struct {
 	ID string `json:"ID"`
 }
 
@@ -34,7 +34,7 @@ var idCmd = &cobra.Command{
 			return err
 		}
 
-		info := IdInfo{
+		info := IDInfo{
 			ID: transport.HostID(),
 		}
 
