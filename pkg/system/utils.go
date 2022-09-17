@@ -9,19 +9,19 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 )
 
 var MaxStdoutFileLengthInGB = 1
 var MaxStderrFileLengthInGB = 1
 var MaxStdoutReturnLengthInBytes = 2048
 var MaxStderrReturnLengthInBytes = 2048
-var ReadChunkSizeInBytes = 4096
+var ReadChunkSizeInBytes = 1024
 
 const BufferedWriterSize = 4096
 
@@ -100,7 +100,7 @@ func runCommandResultsToDisk(command string, args []string,
 	stderrPipe, _ := cmd.StderrPipe()
 
 	// Creating output files, file writers, and scanners
-	stdoutFileScanner, stdoutFileWriter, stdoutFile, err := createReaderAndWriter(stdoutPipe, stdoutFilename)
+	stdoutFileReader, stdoutFileWriter, stdoutFile, err := createReaderAndWriter(stdoutPipe, stdoutFilename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stdout file, writer and scanner: %s", stdoutFilename)
 		r.Error = err
@@ -145,31 +145,31 @@ func runCommandResultsToDisk(command string, args []string,
 	}()
 
 	// Go routines for non-blocking reading of stdout and stderr and writing to files
-	g := new(errgroup.Group)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	// Read stdout in goroutine.
-	g.Go(func() error {
+	var stdoutErr error
+	go func() {
 		// TODO: #626 Do we care how exact we are to getting to "Max length"?
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		err = writeFromProcessToFileWithMax(stdoutFileScanner, stdoutFileWriter, maxStdoutFileLengthInGB)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error writing to stdout file: %s", stdoutFilename)
-			return err
+		stdoutErr = writeFromProcessToFileWithMax("stdout", stdoutFileReader, stdoutFileWriter, maxStdoutFileLengthInGB)
+		if stdoutErr != nil {
+			log.Error().Err(stdoutErr).Msgf("Error writing to stdout file: %s", stdoutFilename)
 		}
-		return nil
-	})
+		wg.Done()
+	}()
 
 	// Read stderr in goroutine.
-	g.Go(func() error {
-		// TODO: #626 Do we care how exact we are to getting to "Max length"?
+	var stderrErr error
+	go func() {
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		err = writeFromProcessToFileWithMax(stderrFileReader, stderrFileWriter, maxStderrFileLengthInGB)
-		if err != nil {
+		stderrErr = writeFromProcessToFileWithMax("stderr", stderrFileReader, stderrFileWriter, maxStderrFileLengthInGB)
+		if stderrErr != nil {
 			log.Error().Err(err).Msgf("Error writing to stderr file: %s", stderrFilename)
-			return err
 		}
-		return nil
-	})
+		wg.Done()
+	}()
 
 	// Starting the command
 	if r.Error = cmd.Start(); r.Error != nil {
@@ -178,12 +178,11 @@ func runCommandResultsToDisk(command string, args []string,
 	}
 
 	// Wait the command in a goroutine.
-	g.Go(func() error {
-		return cmd.Wait()
-	})
+	wg.Wait()
+	r.Error = cmd.Wait()
 
 	// Waiting until errorGroups groups are done
-	if r.Error = g.Wait(); r.Error != nil {
+	if r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error during running of the command")
 	}
 
@@ -232,60 +231,63 @@ func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (st
 	return string(fb), nil
 }
 
-func writeFromProcessToFileWithMax(r io.Reader,
+func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 	fw *bufio.Writer,
 	maxFileLengthInGB int) error {
 	currentWrittenLength := int64(0)
-
-	chunk := make([]byte, ReadChunkSizeInBytes) // Size is the chunk size.
+	buf := make([]byte, ReadChunkSizeInBytes)
 
 	for {
-		n, err := io.ReadFull(r, chunk)
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-			log.Err(err).Msg("Error reading from process:")
-			return err
+		n, err := r.Read(buf)
+		if err != nil && err != io.EOF {
+			log.Err(err).Msgf("%s: Error reading from %s pipe", name, err)
 		}
 
-		log.Trace().Msgf("Num of bytes read from process: %d", n)
+		log.Debug().Msgf("DEBUG %s: Read %d bytes from process", name, n)
+		log.Debug().Msgf("DEBUG %s: Error from reading from process: %v", name, err)
 
 		if n > 0 {
-			var nn int // number of written bytes
-			nn, err = fw.Write(chunk[:n])
-			if err != nil {
-				log.Err(err).Msg("Error writing to output file:")
-				return err
-			}
-
-			currentWrittenLength += int64(nn)
+			var nn int // written bytes
+			nn, err = fw.Write(buf[:n])
 			if err != nil {
 				return err
 			}
 			fw.Flush()
+
+			currentWrittenLength += int64(nn)
+
 			if currentWrittenLength > int64(maxFileLengthInGB*int(datasize.GB)) {
 				log.Warn().Msgf("Process output file has exceeded the max length of %d GB, stopping...", maxFileLengthInGB)
 				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%d GB). STOPPING.", maxFileLengthInGB)
 				break
 			}
-		} else {
-			break // Num of Bytes is 0, so we are done.
 		}
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			log.Trace().Msg("Reached EOF process pipe")
-			break
+
+		if err != nil {
+			// Read returns io.EOF at the end of file, which is not an error for us
+			if err == io.EOF {
+				log.Debug().Msgf("%s: EOF detected", name)
+				err = nil
+			} else {
+				log.Err(err).Msgf("%s: Error reading file, non-EOF", name)
+			}
+
+			return err
 		}
 	}
+
 	return nil
 }
 
-func createReaderAndWriter(filePipe io.ReadCloser, filename string) (io.Reader, *bufio.Writer, *os.File, error) {
+func createReaderAndWriter(filePipe io.ReadCloser, filename string) (*bufio.Reader, *bufio.Writer, *os.File, error) {
 	fileReader := bufio.NewReader(filePipe)
 	outputFile, err := os.Create(filename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating file: %s", filename)
 		return nil, nil, nil, err
 	}
-	stdoutFileWriter := bufio.NewWriter(outputFile)
-	return fileReader, stdoutFileWriter, outputFile, nil
+	fileWriter := bufio.NewWriter(outputFile)
+	return fileReader, fileWriter, outputFile, nil
 }
 
 // TODO: #634 Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
