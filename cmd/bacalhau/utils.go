@@ -244,7 +244,6 @@ func ExecuteJob(ctx context.Context,
 	jobDeal *model.JobDeal,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
-	outputJobSpec bool,
 ) error {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")

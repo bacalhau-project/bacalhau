@@ -35,22 +35,24 @@ var (
 )
 
 type DescribeOptions struct {
-	Filename string // Filename for job (can be .json or .yaml)
+	Filename      string // Filename for job (can be .json or .yaml)
 	IncludeEvents bool   // Include events in the description
+	OutputSpec    bool   // Print Just the jobspec to stdout
 }
 
 func NewDescribeOptions() *DescribeOptions {
 	return &DescribeOptions{
 		IncludeEvents: false,
+		OutputSpec:    false,
 	}
 }
 func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
 	describeCmd.PersistentFlags().BoolVar(
-		&ODR.OutputJobSpec, "spec", ODR.OutputJobSpec,
+		&OD.OutputSpec, "spec", OD.OutputSpec,
 		`Output Jobspec to stdout`,
-    	)
+	)
 	describeCmd.PersistentFlags().BoolVar(
-&OD.IncludeEvents, "include-events", OD.IncludeEvents,
+		&OD.IncludeEvents, "include-events", OD.IncludeEvents,
 		`Include events in the description (could be noisy)`,
 	)
 }
@@ -256,10 +258,10 @@ var describeCmd = &cobra.Command{
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
-		if !ODR.OutputJobSpec {
+		if !OD.OutputSpec {
 			cmd.Print(string(bytes))
 		}
-		if ODR.OutputJobSpec {
+		if OD.OutputSpec {
 			bytes, err := yaml.Marshal(j.Spec)
 			if err != nil {
 				log.Error().Msgf("Failure marshaling jobspec: %s", err)

@@ -193,7 +193,6 @@ var createCmd = &cobra.Command{
 			jobDeal,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
-			false,
 		)
 
 		if err != nil {

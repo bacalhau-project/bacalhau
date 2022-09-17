@@ -64,8 +64,6 @@ type DockerRunOptions struct {
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
 
-	OutputJobSpec bool // Print the jobspec to stdout
-
 	DryRun bool // Don't submit the jobspec
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
@@ -283,7 +281,6 @@ var dockerRunCmd = &cobra.Command{
 				jobDeal,
 				ODR.RunTimeSettings,
 				ODR.DownloadFlags,
-				ODR.OutputJobSpec,
 			)
 
 			if err != nil {
