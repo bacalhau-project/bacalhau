@@ -32,6 +32,9 @@ var (
 
 		save the Jobspec of a job to a yaml file
 		bacalhau describe --spec 6e51df50 > job.yaml
+
+		# Describe a job and include all server and local events
+		bacalhau describe --include-events b6ad164a 
 `))
 
 	// Set Defaults (probably a better way to do this)
@@ -138,8 +141,7 @@ var describeCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/describe")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
