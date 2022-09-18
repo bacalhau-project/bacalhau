@@ -162,16 +162,16 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
 			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
-				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunExecutorResult, error) {
-					runOutput := &model.RunExecutorResult{}
+				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+					runOutput := &model.RunCommandResult{}
 					runOutput.STDOUT = fmt.Sprintf("hello world %d", shard.Index)
 					if nodeConfig.IsBadActor {
 						runOutput.STDOUT = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
 					}
-					runOutput.RunnerError = os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd
+					runOutput.Error = os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd
 
 					// Adding explicit error for consistency in function signatures
-					return runOutput, runOutput.RunnerError
+					return runOutput, runOutput.Error
 				},
 			},
 		})

@@ -206,7 +206,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunExecutorResult, error) {
+		jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
@@ -221,7 +221,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			currentJobCount--
 			seenJob.End = time.Now().Unix() - epochSeconds
 			addSeenJob(seenJob)
-			return &model.RunExecutorResult{}, nil
+			return &model.RunCommandResult{}, nil
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
