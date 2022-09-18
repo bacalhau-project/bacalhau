@@ -49,10 +49,10 @@ func (e *Executor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
 	jobResultsDir string,
-) (*model.RunExecutorResult, error) {
+) (*model.RunCommandResult, error) {
 	if shard.Job.Spec.Language.Language != "python" && shard.Job.Spec.Language.LanguageVersion != "3.10" {
 		err := fmt.Errorf("only python 3.10 is supported")
-		return &model.RunExecutorResult{RunnerError: err}, err
+		return &model.RunCommandResult{Error: err}, err
 	}
 
 	if shard.Job.Spec.Language.Deterministic {
@@ -64,7 +64,7 @@ func (e *Executor) RunShard(
 		log.Debug().Msgf("running arbitrary python 3.10")
 		err := fmt.Errorf("arbitrary python not supported yet")
 		// TODO: Instantiate a docker with python:3.10 image
-		return &model.RunExecutorResult{RunnerError: err}, err
+		return &model.RunCommandResult{Error: err}, err
 	}
 }
 
