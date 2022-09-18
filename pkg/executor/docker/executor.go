@@ -332,7 +332,7 @@ func (e *Executor) RunShard(
 	log.Debug().Msgf("Capturing stdout to %s", stdoutFilename)
 	log.Debug().Msgf("Capturing stderr to %s", stderrFilename)
 
-	resultForLogs := system.RunCommandResultsToDisk(
+	resultForLogs, err := system.RunCommandResultsToDisk(
 		"docker",
 		[]string{
 			"logs",
@@ -342,8 +342,8 @@ func (e *Executor) RunShard(
 		stdoutFilename,
 		stderrFilename,
 	)
-	if resultForLogs.Error != nil {
-		err = fmt.Errorf("failed to get logs: %w", resultForLogs.Error)
+	if err != nil {
+		err = fmt.Errorf("failed to get logs: %w", err)
 		return &model.RunCommandResult{Error: err}, err
 	}
 

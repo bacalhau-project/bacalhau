@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -17,8 +18,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var MaxStdoutFileLengthInGB = 1
-var MaxStderrFileLengthInGB = 1
+var MaxStdoutFileLengthInGB = float32(1)
+var MaxStderrFileLengthInGB = float32(1)
 var MaxStdoutReturnLengthInBytes = 2048
 var MaxStderrReturnLengthInBytes = 2048
 var ReadChunkSizeInBytes = 1024
@@ -69,7 +70,8 @@ func UnsafeForUserCodeRunCommand(command string, args []string) *model.RunComman
 	return result
 }
 
-func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stderrFilename string) *model.RunCommandResult {
+func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stderrFilename string) (
+	*model.RunCommandResult, error) {
 	return runCommandResultsToDisk(command,
 		args,
 		stdoutFilename,
@@ -86,15 +88,15 @@ func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stde
 func runCommandResultsToDisk(command string, args []string,
 	stdoutFilename string,
 	stderrFilename string,
-	maxStdoutFileLengthInGB int,
-	maxStderrFileLengthInGB int,
+	maxStdoutFileLengthInGB float32,
+	maxStderrFileLengthInGB float32,
 	maxStdoutReturnLengthInBytes int,
-	maxStderrReturnLengthInBytes int) *model.RunCommandResult {
+	maxStderrReturnLengthInBytes int) (*model.RunCommandResult, error) {
 	// create the return variables ahead of time so we can use them in the goroutine
 	r := model.NewRunCommandResult()
 
 	// Setting up variables and command
-	log.Trace().Msgf("Command: %s %s", command, args)
+	log.Debug().Msgf("Command: %s %s", command, args)
 	cmd := exec.Command(command, args...)
 	stdoutPipe, _ := cmd.StdoutPipe()
 	stderrPipe, _ := cmd.StderrPipe()
@@ -104,7 +106,7 @@ func runCommandResultsToDisk(command string, args []string,
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stdout file, writer and scanner: %s", stdoutFilename)
 		r.Error = err
-		return r
+		return r, err
 	}
 
 	// Stack in reverse order (sync first, then close - but defers are done LIFO)
@@ -126,7 +128,7 @@ func runCommandResultsToDisk(command string, args []string,
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stderr file, writer and scanner: %s", stderrFilename)
 		r.Error = err
-		return r
+		return r, err
 	}
 
 	// Stack in reverse order (sync first, then close - but defers are done LIFO)
@@ -174,7 +176,7 @@ func runCommandResultsToDisk(command string, args []string,
 	// Starting the command
 	if r.Error = cmd.Start(); r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error starting command")
-		return r
+		return r, err
 	}
 
 	// Wait the command in a goroutine.
@@ -190,26 +192,26 @@ func runCommandResultsToDisk(command string, args []string,
 	r.STDOUT, r.Error = readProcessOutputFromFile(stdoutFile, maxStdoutReturnLengthInBytes)
 	if r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error reading stdout from file")
-		return r
+		return r, err
 	}
 
 	r.STDERR, r.Error = readProcessOutputFromFile(stderrFile, maxStderrReturnLengthInBytes)
 	if r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error reading stderr from file")
-		return r
+		return r, err
 	}
 
 	// Reporting if the output for command was truncated in the description
 	r.StdoutTruncated, r.Error = wasProcessOutputTruncated(stdoutFilename, maxStdoutReturnLengthInBytes)
 	if r.Error != nil {
 		log.Error().Err(r.Error).Msg("Error checking if stdout was truncated")
-		return r
+		return r, err
 	}
 
 	r.ExitCode = cmd.ProcessState.ExitCode()
 	r.Error = nil
 
-	return r
+	return r, err
 }
 
 func wasProcessOutputTruncated(stdoutFilename string, maxStdoutReturnLengthInBytes int) (bool, error) {
@@ -222,8 +224,28 @@ func wasProcessOutputTruncated(stdoutFilename string, maxStdoutReturnLengthInByt
 }
 
 func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (string, error) {
-	fb := make([]byte, maxStdoutReturnLengthInBytes)
-	_, err := f.Read(fb)
+	log.Debug().Msgf("Reading from file: %s", f.Name())
+
+	fileStat, err := f.Stat()
+	if err != nil {
+		log.Error().Err(err).Msgf("Error getting file info: %s", f.Name())
+		return "", err
+	}
+	fileSize := fileStat.Size()
+	amountToRead := int(math.Min(float64(maxStdoutReturnLengthInBytes), float64(fileSize)))
+
+	fb := make([]byte, amountToRead)
+
+	// If the file is larger than the max, we only read the last max bytes
+	if fileSize > int64(maxStdoutReturnLengthInBytes) {
+		_, err = f.Seek(fileSize-int64(maxStdoutReturnLengthInBytes), 0)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error seeking to end of file: %s", f.Name())
+			return "", err
+		}
+	}
+
+	_, err = f.Read(fb)
 	if err != nil && err != io.EOF {
 		log.Error().Err(err).Msgf("Error reading file (though we wrote to it already - weird): %s", f.Name())
 		return "", err
@@ -233,8 +255,8 @@ func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (st
 
 func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 	fw *bufio.Writer,
-	maxFileLengthInGB int) error {
-	currentWrittenLength := int64(0)
+	maxFileLengthInGB float32) error {
+	currentWrittenLength := float32(0)
 	buf := make([]byte, ReadChunkSizeInBytes)
 
 	for {
@@ -254,11 +276,11 @@ func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 			}
 			fw.Flush()
 
-			currentWrittenLength += int64(nn)
+			currentWrittenLength += float32(nn)
 
-			if currentWrittenLength > int64(maxFileLengthInGB*int(datasize.GB)) {
-				log.Warn().Msgf("Process output file has exceeded the max length of %d GB, stopping...", maxFileLengthInGB)
-				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%d GB). STOPPING.", maxFileLengthInGB)
+			if currentWrittenLength > maxFileLengthInGB*float32(datasize.GB) {
+				log.Warn().Msgf("Process output file has exceeded the max length of %f GB, stopping...", maxFileLengthInGB)
+				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%f GB). STOPPING.", maxFileLengthInGB)
 				break
 			}
 		}
@@ -383,4 +405,23 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func RepeatedCharactersBashCommandToStdout(num int) string {
+	return repeatedCharactersBashCommand(num, false)
+}
+
+func RepeatedCharactersBashCommandToStderr(num int) string {
+	return repeatedCharactersBashCommand(num, true)
+}
+
+// Repeats '=' num times. toStderr true == stderr, false == stdout
+func repeatedCharactersBashCommand(num int, toStderr bool) string {
+	toStderrString := ""
+
+	// If going to stderr, we need to use the special bash command to write to stderr
+	if toStderr {
+		toStderrString = "| cat 1>&2"
+	}
+	return fmt.Sprintf(`for i in $(seq 1 %d) ; do echo -n "="; done %s`, num, toStderrString)
 }
