@@ -55,7 +55,7 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	return model.StorageSpec{
 		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
 		Engine: model.StorageSourceIPFS,
-		Cid:    cid,
+		CID:    cid,
 	}, nil
 }
 

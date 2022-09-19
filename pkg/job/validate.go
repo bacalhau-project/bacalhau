@@ -32,7 +32,7 @@ func VerifyJob(spec model.JobSpec, deal model.JobDeal) error {
 		return fmt.Errorf("the deal confidence cannot be higher than the concurrency")
 	}
 
-	for _, inputVolume := range spec.Inputs {
+	for _, inputVolume := range spec.InputVolumes {
 		if !model.IsValidStorageSourceType(inputVolume.Engine) {
 			return fmt.Errorf("invalid input volume type: %s", inputVolume.Engine.String())
 		}

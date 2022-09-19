@@ -29,7 +29,7 @@ func (suite *FilecoinUnsealedSuite) prepareCid(cid string) model.StorageSpec {
 	require.NoError(suite.T(), err)
 	return model.StorageSpec{
 		Engine: model.StorageSourceFilecoinUnsealed,
-		Cid:    cid,
+		CID:    cid,
 		Path:   folderPath,
 	}
 }
@@ -75,7 +75,7 @@ func (suite *FilecoinUnsealedSuite) TestHasStorageLocally() {
 	hasStorageTrue, err := driver.HasStorageLocally(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), hasStorageTrue, "file that exists should return true for HasStorageLocally")
-	spec.Cid = "apples"
+	spec.CID = "apples"
 	hasStorageFalse, err := driver.HasStorageLocally(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.False(suite.T(), hasStorageFalse, "file that does not exist should return false for HasStorageLocally")
@@ -107,5 +107,5 @@ func (suite *FilecoinUnsealedSuite) TestExplode() {
 	exploded, err := driver.Explode(ctx, spec)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), len(exploded), 1, "the exploded list should be 1 item long")
-	require.Equal(suite.T(), exploded[0].Cid, cid, "the cid is correct")
+	require.Equal(suite.T(), exploded[0].CID, cid, "the cid is correct")
 }

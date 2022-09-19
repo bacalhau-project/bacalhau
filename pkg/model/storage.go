@@ -70,24 +70,24 @@ func IsValidStorageSourceType(sourceType StorageSourceType) bool {
 // will mount data in different ways.
 type StorageSpec struct {
 	// Engine is the execution engine that can mount the spec's data.
-	Engine     StorageSourceType `json:"engine,omitempty" yaml:"engine,omitempty"`
-	EngineName string            `json:"engine_name" yaml:"engine_name"`
+	Engine     StorageSourceType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+	EngineName string            `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
 
 	// Name of the spec's data, for reference.
-	Name string `json:"name" yaml:"name"`
+	Name string `json:"Name,omitempty" yaml:"Name,omitempty"`
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
-	Cid string `json:"cid" yaml:"cid"`
+	CID string `json:"CID,omitempty" yaml:"CID,omitempty"`
 
 	// Source URL of the data
-	URL string `json:"url" yaml:"url"`
+	URL string `json:"URL,omitempty" yaml:"URL,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
-	Path string `json:"path" yaml:"path"`
+	Path string `json:"Path,omitempty" yaml:"Path,omitempty"`
 
 	// Additional properties specific to each driver
-	Metadata map[string]string `json:"metadata" yaml:"metadata"`
+	Metadata map[string]string `json:"Metadata,omitempty" yaml:"Metadata,omitempty"`
 }

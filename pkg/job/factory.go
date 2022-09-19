@@ -112,23 +112,23 @@ func ConstructDockerJob( //nolint:funlen
 		Verifier:  v,
 		Publisher: p,
 		Docker: model.JobSpecDocker{
-			Image:      image,
-			Entrypoint: entrypoint,
-			Env:        env,
+			Image:                image,
+			Entrypoint:           entrypoint,
+			EnvironmentVariables: env,
 		},
 
-		Resources:   jobResources,
-		Inputs:      jobInputs,
-		Contexts:    jobContexts,
-		Outputs:     jobOutputs,
-		Annotations: jobAnnotations,
-		Sharding:    jobShardingConfig,
-		DoNotTrack:  doNotTrack,
+		Resources:     jobResources,
+		InputVolumes:  jobInputs,
+		Contexts:      jobContexts,
+		OutputVolumes: jobOutputs,
+		Annotations:   jobAnnotations,
+		Sharding:      jobShardingConfig,
+		DoNotTrack:    doNotTrack,
 	}
 
 	// override working dir if provided
 	if len(workingDir) > 0 {
-		spec.Docker.WorkingDir = workingDir
+		spec.Docker.WorkingDirectory = workingDir
 	}
 
 	deal := model.JobDeal{
@@ -206,11 +206,11 @@ func ConstructLanguageJob(
 			ProgramPath:      programPath,
 			RequirementsPath: requirementsPath,
 		},
-		Inputs:      jobInputs,
-		Contexts:    jobContexts,
-		Outputs:     jobOutputs,
-		Annotations: jobAnnotations,
-		DoNotTrack:  doNotTrack,
+		InputVolumes:  jobInputs,
+		Contexts:      jobContexts,
+		OutputVolumes: jobOutputs,
+		Annotations:   jobAnnotations,
+		DoNotTrack:    doNotTrack,
 	}
 
 	deal := model.JobDeal{

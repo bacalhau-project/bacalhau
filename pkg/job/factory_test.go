@@ -104,10 +104,10 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					require.Contains(suite.T(), err.Error(), tcids.err, "Error does not contain expected - %+v - %+v", tcids, err)
 				} else {
 					require.NoError(suite.T(), err, "Error in creating spec - %+v", tcids)
-					require.Equal(suite.T(), len(jobSpec.Outputs),
+					require.Equal(suite.T(), len(jobSpec.OutputVolumes),
 						tcids.correctLength,
 						"Length of deal outputs (%d) not the same as expected (%d). %+v",
-						len(jobSpec.Outputs),
+						len(jobSpec.OutputVolumes),
 						tcids.correctLength,
 						tcids.outputVolumes,
 					)

@@ -86,10 +86,10 @@ func dockerExecutorStorageTest(
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",
 			Spec: model.JobSpec{
-				Engine:  model.EngineDocker,
-				Docker:  testCase.GetJobSpec(),
-				Inputs:  inputStorageList,
-				Outputs: testCase.Outputs,
+				Engine:        model.EngineDocker,
+				Docker:        testCase.GetJobSpec(),
+				InputVolumes:  inputStorageList,
+				OutputVolumes: testCase.Outputs,
 			},
 			Deal: model.JobDeal{
 				Concurrency: TEST_NODE_COUNT,

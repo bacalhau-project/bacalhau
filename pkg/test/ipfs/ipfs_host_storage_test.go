@@ -100,7 +100,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	// the storage spec for the cid we added
 	storage := model.StorageSpec{
 		Engine: engine,
-		Cid:    fileCid,
+		CID:    fileCid,
 		Path:   "/data/file.txt",
 	}
 
@@ -160,7 +160,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// the storage spec for the cid we added
 	storage := model.StorageSpec{
 		Engine: engine,
-		Cid:    folderCid,
+		CID:    folderCid,
 		Path:   "/data/folder",
 	}
 

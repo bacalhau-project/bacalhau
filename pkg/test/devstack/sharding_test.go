@@ -130,7 +130,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
 		Path:   "/input",
 		Engine: model.StorageSourceIPFS,
-		Cid:    directoryCid,
+		CID:    directoryCid,
 	})
 	require.NoError(suite.T(), err)
 
@@ -220,14 +220,14 @@ func (suite *ShardingSuite) TestEndToEnd() {
 				`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//'); echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
 			},
 		},
-		Inputs: []model.StorageSpec{
+		InputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
+				CID:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []model.StorageSpec{
+		OutputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 				Name:   "results",
@@ -365,14 +365,14 @@ func (suite *ShardingSuite) TestNoShards() {
 				`echo "where did all the files go?"`,
 			},
 		},
-		Inputs: []model.StorageSpec{
+		InputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
+				CID:    directoryCid,
 				Path:   "/input",
 			},
 		},
-		Outputs: []model.StorageSpec{},
+		OutputVolumes: []model.StorageSpec{},
 		Sharding: model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   1,
@@ -439,14 +439,14 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 				`ls -la /inputs`,
 			},
 		},
-		Inputs: []model.StorageSpec{
+		InputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
+				CID:    directoryCid,
 				Path:   "/inputs",
 			},
 		},
-		Outputs: []model.StorageSpec{},
+		OutputVolumes: []model.StorageSpec{},
 		Sharding: model.JobShardingConfig{
 			BasePath:    "/inputs",
 			GlobPattern: "*.mp4",

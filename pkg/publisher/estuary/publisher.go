@@ -77,7 +77,7 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 	return model.StorageSpec{
 		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
 		Engine: model.StorageSourceEstuary,
-		Cid:    cid,
+		CID:    cid,
 	}, nil
 }
 

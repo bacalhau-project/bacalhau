@@ -1,38 +1,38 @@
 {
-    "apiVersion": "v1alpha1",
-    "engine_name": "docker",
-    "verifier_name": "noop",
-    "publisher_name": "ipfs",
-    "job_spec_docker": {
-        "image": "gromacs/gromacs",
-        "entrypoint": [
+    "APIVersion": "v1alpha1",
+    "EngineName": "docker",
+    "VerifierName": "noop",
+    "PublisherName": "ipfs",
+    "JobSpecDocker": {
+        "Image": "gromacs/gromacs",
+        "Entrypoint": [
             "/bin/bash",
             "-c",
             "echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc"
         ],
-        "env": []
+        "EnvironmentVariables": []
     },
-    "resources": {
-        "cpu": "",
-        "gpu": "",
-        "memory": "",
-        "disk": ""
+    "Resources": {
+        "CPU": "",
+        "GPU": "",
+        "Memory": "",
+        "Disk": ""
     },
-    "inputs": [
+    "InputVolumes": [
         {
-            "engine_name": "ipfs",
-            "name": "",
-            "cid": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
-            "path": "/input"
+            "EngineName": "ipfs",
+            "Name": "",
+            "CID": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
+            "Path": "/input"
         }
     ],
-    "outputs": [
+    "OutputVolumes": [
         {
-            "engine_name": "ipfs",
-            "name": "output_custom",
-            "cid": "",
-            "path": "/output_custom"
+            "EngineName": "ipfs",
+            "Name": "output_custom",
+            "CID": "",
+            "Path": "/output_custom"
         }
     ],
-    "annotations": null
+    "Annotations": []
 }

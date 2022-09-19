@@ -31,12 +31,12 @@ func RunDockerTest(
 	}
 
 	jobSpec := model.JobSpec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker:    testCase.GetJobSpec(),
-		Inputs:    inputStorageList,
-		Outputs:   testCase.Outputs,
+		Engine:        model.EngineDocker,
+		Verifier:      model.VerifierNoop,
+		Publisher:     model.PublisherIpfs,
+		Docker:        testCase.GetJobSpec(),
+		InputVolumes:  inputStorageList,
+		OutputVolumes: testCase.Outputs,
 	}
 
 	jobDeal := model.JobDeal{
@@ -76,14 +76,14 @@ func RunDockerTest(
 	}
 
 	// now we check the actual results produced by the ipfs verifier
-	for _, shard := range shards {
+	for i := range shards {
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-testground")
 		if err != nil {
 			return err
 		}
 
-		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.CID)
+		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.CID, outputPath)
 		if err != nil {
 			return err
 		}

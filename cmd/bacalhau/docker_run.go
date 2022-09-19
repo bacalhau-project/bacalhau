@@ -48,22 +48,22 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine        string   // Executor - executor.Executor
-	Verifier      string   // Verifier - verifier.Verifier
-	Publisher     string   // Publisher - publisher.Publisher
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	Confidence    int      // Minimum number of nodes that must agree on a verification result
-	MinBids       int      // Minimum number of bids before they will be accepted (at random)
-	CPU           string
-	Memory        string
-	GPU           string
-	WorkingDir    string   // Working directory for docker
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+	Engine           string   // Executor - executor.Executor
+	Verifier         string   // Verifier - verifier.Verifier
+	Publisher        string   // Publisher - publisher.Publisher
+	Inputs           []string // Array of input CIDs
+	InputUrls        []string // Array of input URLs (will be copied to IPFS)
+	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
+	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
+	Env              []string // Array of environment variables
+	Concurrency      int      // Number of concurrent jobs to run
+	Confidence       int      // Minimum number of nodes that must agree on a verification result
+	MinBids          int      // Minimum number of bids before they will be accepted (at random)
+	CPU              string
+	Memory           string
+	GPU              string
+	WorkingDirectory string   // Working directory for docker
+	Labels           []string // Labels for the job on the Bacalhau network (for searching)
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
@@ -98,7 +98,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Memory:             "",
 		GPU:                "",
 		SkipSyntaxChecking: false,
-		WorkingDir:         "",
+		WorkingDirectory:   "",
 		Labels:             []string{},
 		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
@@ -184,7 +184,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	)
 
 	dockerRunCmd.PersistentFlags().StringVarP(
-		&ODR.WorkingDir, "workdir", "w", ODR.WorkingDir,
+		&ODR.WorkingDirectory, "workdir", "w", ODR.WorkingDirectory,
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
 	)
 
@@ -317,8 +317,8 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 	}
 
-	if len(odr.WorkingDir) > 0 {
-		err = system.ValidateWorkingDir(odr.WorkingDir)
+	if len(odr.WorkingDirectory) > 0 {
+		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
 		if err != nil {
 			return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
@@ -342,7 +342,7 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		odr.Confidence,
 		odr.MinBids,
 		odr.Labels,
-		odr.WorkingDir,
+		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,
 		odr.ShardingBatchSize,

@@ -89,9 +89,9 @@ type shardStateDescription struct {
 }
 
 type jobDescription struct {
-	ID              string                  `yaml:"Id"`
-	ClientID        string                  `yaml:"ClientID"`
-	RequesterNodeID string                  `yaml:"RequesterNodeId"`
+	ID              string                  `yaml:"ID,omitempty"`
+	ClientID        string                  `yaml:"ClientID,omitempty"`
+	RequesterNodeID string                  `yaml:"RequesterNodeId,omitempty"`
 	Spec            model.JobSpec           `yaml:"Spec"`
 	Deal            model.JobDeal           `yaml:"Deal"`
 	Shards          []shardStateDescription `yaml:"Shards"`
@@ -171,7 +171,7 @@ var describeCmd = &cobra.Command{
 				State:    shard.State.String(),
 				Status:   shard.Status,
 				Verified: shard.VerificationResult.Result,
-				ResultID: shard.PublishedResult.Cid,
+				ResultID: shard.PublishedResult.CID,
 			})
 			shardDescriptions[shard.ShardIndex] = shardDescription
 		}
@@ -218,17 +218,7 @@ var describeCmd = &cobra.Command{
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
-		if !OD.OutputSpec {
-			cmd.Print(string(bytes))
-		}
-		if OD.OutputSpec {
-			bytes, err := yaml.Marshal(j.Spec)
-			if err != nil {
-				log.Error().Msgf("Failure marshaling jobspec: %s", err)
-				return err
-			}
-			cmd.Print(string(bytes))
-		}
+		cmd.Print(string(bytes))
 
 		return nil
 	},

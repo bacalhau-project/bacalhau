@@ -3,13 +3,14 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -136,10 +137,10 @@ open("%s/test.txt", "w").write(open("%s").read())
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
+	require.NotEmpty(suite.T(), shard.PublishedResult.CID)
 
-	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+	outputPath = filepath.Join(outputDir, shard.PublishedResult.CID)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
 	require.NoError(suite.T(), err)
 
 	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)

@@ -106,14 +106,14 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 					`cat /inputs/file.txt`,
 				},
 			},
-			Inputs: []model.StorageSpec{
+			InputVolumes: []model.StorageSpec{
 				{
 					Engine: model.StorageSourceIPFS,
-					Cid:    cid,
+					CID:    cid,
 					Path:   "/inputs",
 				},
 			},
-			Outputs: []model.StorageSpec{},
+			OutputVolumes: []model.StorageSpec{},
 		}
 
 		jobDeal := model.JobDeal{
@@ -152,10 +152,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(suite.T(), err)
-		require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
+		require.NotEmpty(suite.T(), shard.PublishedResult.CID)
 
-		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
 		require.NoError(suite.T(), err)
 
 		dat, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))

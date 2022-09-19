@@ -19,7 +19,7 @@ func GetJobSpec(cid string) model.JobSpec {
 		inputs = []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
-				Cid:    cid,
+				CID:    cid,
 				Path:   "/test_file.txt",
 			},
 		}
@@ -34,7 +34,7 @@ func GetJobSpec(cid string) model.JobSpec {
 				"/test_file.txt",
 			},
 		},
-		Inputs: inputs,
+		InputVolumes: inputs,
 	}
 }
 

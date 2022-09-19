@@ -2,8 +2,9 @@ package devstack
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -59,13 +60,13 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 					`echo hello`,
 				},
 			},
-			Inputs: []model.StorageSpec{
+			InputVolumes: []model.StorageSpec{
 				{
 					Engine: model.StorageSourceIPFS,
-					Cid:    "123",
+					CID:    "123",
 				},
 			},
-			Outputs: []model.StorageSpec{},
+			OutputVolumes: []model.StorageSpec{},
 			Sharding: model.JobShardingConfig{
 				GlobPattern: "/data/*.txt",
 				BatchSize:   1,

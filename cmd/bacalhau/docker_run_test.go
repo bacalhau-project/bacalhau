@@ -257,13 +257,13 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.Inputs), "Number of job inputs != # of test inputs .")
+				require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.InputVolumes), "Number of job inputs != # of test inputs .")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
-						if tcidIV.cid == jobInput.Cid {
+					for _, jobInput := range job.Spec.InputVolumes {
+						if tcidIV.cid == jobInput.CID {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
 							if tcidIV.path != "" {
@@ -337,12 +337,12 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.InputVolumes), "Number of job urls != # of test urls.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, turlIU := range turls.inputURLs {
 					testURLinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
+					for _, jobInput := range job.Spec.InputVolumes {
 						if turlIU.url == jobInput.URL {
 							testURLinJobInputs = true
 							testPath := "/app2"
@@ -428,13 +428,13 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), tcids.correctLength, len(job.Spec.Outputs), "Number of job outputs != correct number.")
+				require.Equal(suite.T(), tcids.correctLength, len(job.Spec.OutputVolumes), "Number of job outputs != correct number.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidOV := range tcids.outputVolumes {
 					testNameinJobOutputs := false
 					testPathinJobOutputs := false
-					for _, jobOutput := range job.Spec.Outputs {
+					for _, jobOutput := range job.Spec.OutputVolumes {
 						if tcidOV.name == "" {
 							if jobOutput.Name == "outputs" {
 								testNameinJobOutputs = true
@@ -703,7 +703,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 				require.NoError(suite.T(), err, "Error submitting job.")
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-				require.Equal(suite.T(), tc.workdir, job.Spec.Docker.WorkingDir, "Job workdir != test workdir.")
+				require.Equal(suite.T(), tc.workdir, job.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
 				require.NoError(suite.T(), err, "Error in running command.")
 			}
 		}()

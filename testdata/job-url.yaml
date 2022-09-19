@@ -1,27 +1,36 @@
-apiVersion: v1alpha1
-engine_name: docker
-verifier_name: noop
-publisher_name: ipfs
-job_spec_docker:
-  image: ubuntu
-  entrypoint:
+# jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
+APIVersion: v1alpha1
+Engine: 2
+# We are using the docker executor
+EngineName: docker
+Verifier: 1
+VerifierName: noop
+Publisher: 1
+PublisherName: IPFS
+JobSpecDocker:
+  # docker image you want to use
+  Image: ubuntu
+  Entrypoint:
+    # Command to run inside the container
     - /bin/bash
     - -c
     - cat /app/foo_data_1.txt
-  env: []
-resources:
-  cpu: ''
-  gpu: ''
-  memory: ''
-  disk: ''
-inputs:
-  - engine_name: URLDownload
-    name: ''
-    url: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
-    path: /app/foo_data_1.txt
-outputs:
-  - engine_name: ipfs
-    name: output
-    cid: ''
-    path: /output
-annotations: null
+  EnvironmentVariables: []
+  WorkingDirectory: ""
+Resources:
+  CPU: ""
+  Memory: ""
+  Disk: ""
+  GPU: ""
+# if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
+InputVolumes:
+  - EngineName: URLDownload
+    Name: ""
+    URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
+    Path: /app/foo_data_1.txt
+OutputVolumes:
+  - EngineName: ipfs
+    Name: output
+    CID: ""
+    Path: /output
+Annotations: []

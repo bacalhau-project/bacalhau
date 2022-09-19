@@ -158,13 +158,13 @@ func fetchResult(ctx context.Context,
 	defer span.End()
 
 	err := func() error {
-		log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
+		log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.CID, shardDownloadDir)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
 			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
 		defer cancel()
 
-		return cl.Get(innerCtx, result.Cid, shardDownloadDir)
+		return cl.Get(innerCtx, result.CID, shardDownloadDir)
 	}()
 
 	if err != nil {
@@ -185,7 +185,7 @@ func moveResults(ctx context.Context,
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
-	for _, outputVolume := range job.Spec.Outputs {
+	for _, outputVolume := range job.Spec.OutputVolumes {
 		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)

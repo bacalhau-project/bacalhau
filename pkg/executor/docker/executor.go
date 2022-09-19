@@ -175,7 +175,7 @@ func (e *Executor) RunShard(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range shard.Job.Spec.Outputs {
+	for _, output := range shard.Job.Spec.OutputVolumes {
 		if output.Name == "" {
 			err = fmt.Errorf("output volume has no name: %+v", output)
 			return &model.RunCommandResult{Error: err}, err
@@ -240,7 +240,7 @@ func (e *Executor) RunShard(
 		return &model.RunCommandResult{Error: err}, err
 	}
 
-	useEnv := append(shard.Job.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
+	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 
 	containerConfig := &container.Config{
 		Image:           shard.Job.Spec.Docker.Image,
@@ -249,7 +249,7 @@ func (e *Executor) RunShard(
 		Entrypoint:      shard.Job.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(shard.Job),
 		NetworkDisabled: true,
-		WorkingDir:      shard.Job.Spec.Docker.WorkingDir,
+		WorkingDir:      shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

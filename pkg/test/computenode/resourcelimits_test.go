@@ -225,7 +225,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-			return capacitymanager.ConvertMemoryString(volume.Cid), nil
+			return capacitymanager.ConvertMemoryString(volume.CID), nil
 		}
 
 		stack := testutils.NewNoopStack(
@@ -503,10 +503,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 					// we simulate having calculated the disk size here
 					Disk: "6b",
 				},
-				Inputs: []model.StorageSpec{
+				InputVolumes: []model.StorageSpec{
 					{
 						Engine: model.StorageSourceIPFS,
-						Cid:    cid,
+						CID:    cid,
 						Path:   "/data/file.txt",
 					},
 				},
@@ -547,7 +547,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
-			Cid:    cid,
+			CID:    cid,
 			Path:   "/",
 		})
 

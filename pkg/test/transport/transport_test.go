@@ -175,11 +175,11 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
 		Docker: model.JobSpecDocker{
-			Image:      "image",
-			Entrypoint: []string{"entrypoint"},
-			Env:        []string{"env"},
+			Image:                "image",
+			Entrypoint:           []string{"entrypoint"},
+			EnvironmentVariables: []string{"env"},
 		},
-		Inputs: []model.StorageSpec{
+		InputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 			},
@@ -214,11 +214,11 @@ func (suite *TransportSuite) TestTransportEvents() {
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
 		Docker: model.JobSpecDocker{
-			Image:      "image",
-			Entrypoint: []string{"entrypoint"},
-			Env:        []string{"env"},
+			Image:                "image",
+			Entrypoint:           []string{"entrypoint"},
+			EnvironmentVariables: []string{"env"},
 		},
-		Inputs: []model.StorageSpec{
+		InputVolumes: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 			},

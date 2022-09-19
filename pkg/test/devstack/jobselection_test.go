@@ -84,12 +84,12 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		require.NoError(suite.T(), err)
 
 		jobSpec := model.JobSpec{
-			Engine:    model.EngineDocker,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
-			Docker:    scenario.GetJobSpec(),
-			Inputs:    inputStorageList,
-			Outputs:   scenario.Outputs,
+			Engine:        model.EngineDocker,
+			Verifier:      model.VerifierNoop,
+			Publisher:     model.PublisherNoop,
+			Docker:        scenario.GetJobSpec(),
+			InputVolumes:  inputStorageList,
+			OutputVolumes: scenario.Outputs,
 		}
 
 		jobDeal := model.JobDeal{

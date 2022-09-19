@@ -73,12 +73,12 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	jobSpec := model.JobSpec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker:    testCase.GetJobSpec(),
-		Inputs:    inputStorageList,
-		Outputs:   testCase.Outputs,
+		Engine:        model.EngineDocker,
+		Verifier:      model.VerifierNoop,
+		Publisher:     model.PublisherIpfs,
+		Docker:        testCase.GetJobSpec(),
+		InputVolumes:  inputStorageList,
+		OutputVolumes: testCase.Outputs,
 	}
 
 	jobDeal := model.JobDeal{
@@ -116,10 +116,10 @@ func devStackDockerStorageTest(
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(t, err)
-		require.NotEmpty(t, shard.PublishedResult.Cid)
+		require.NotEmpty(t, shard.PublishedResult.CID)
 
-		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
 		require.NoError(t, err)
 
 		err = testCase.ResultsChecker(outputPath)

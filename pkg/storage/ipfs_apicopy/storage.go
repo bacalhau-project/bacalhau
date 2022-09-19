@@ -58,7 +58,7 @@ func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error
 func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
-	return dockerIPFS.IPFSClient.HasCID(ctx, volume.Cid)
+	return dockerIPFS.IPFSClient.HasCID(ctx, volume.CID)
 }
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
@@ -66,7 +66,7 @@ func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume mod
 	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
-		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.Cid)
+		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.CID)
 	})
 	if err != nil {
 		if errors.Is(err, system.ErrorTimeout) {
@@ -86,13 +86,13 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	ctx, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
-	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.Cid)
+	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.CID)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.Cid, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to stat %s: %w", storageSpec.CID, err)
 	}
 
 	if stat.Type != ipfs.IPLDFile && stat.Type != ipfs.IPLDDirectory {
-		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.Cid, stat.Type)
+		return storage.StorageVolume{}, fmt.Errorf("unknown ipld file type for %s: %v", storageSpec.CID, stat.Type)
 	}
 
 	var volume storage.StorageVolume
@@ -107,7 +107,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 //nolint:lll // Exception to the long rule
 func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
 	r := system.UnsafeForUserCodeRunCommand("rm", []string{
-		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
+		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.CID),
 	})
 	return r.Error
 }
@@ -119,12 +119,12 @@ func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string)
 	}
 	return model.StorageSpec{
 		Engine: model.StorageSourceIPFS,
-		Cid:    cid,
+		CID:    cid,
 	}, nil
 }
 
 func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
-	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.Cid)
+	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.CID)
 	if err != nil {
 		return []model.StorageSpec{}, err
 	}
@@ -149,7 +149,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 		seenPaths[usePath] = true
 		specs = append(specs, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
-			Cid:    node.Cid.String(),
+			CID:    node.Cid.String(),
 			Path:   usePath,
 		})
 	}
@@ -157,7 +157,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 }
 
 func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid)
+	outputPath := fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.CID)
 
 	// If the output path already exists, we already have the data, as
 	// ipfsClient.Get(...) renames the result path atomically after it has
@@ -168,7 +168,7 @@ func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec mod
 	}
 	if !ok {
 		_, err := system.Timeout(config.GetDownloadCidRequestTimeout(), func() (interface{}, error) {
-			innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.Cid, outputPath)
+			innerErr := dockerIPFS.IPFSClient.Get(ctx, storageSpec.CID, outputPath)
 			return storage.StorageVolume{}, innerErr
 		})
 		if err != nil {

@@ -110,7 +110,7 @@ func applyJobSelectionPolicySettings(
 ) (bool, error) {
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job
-	if len(job.Inputs) == 0 {
+	if len(job.InputVolumes) == 0 {
 		if policy.RejectStatelessJobs {
 			log.Trace().Msgf("Found policy of RejectStatelessJobs - rejecting job")
 			return false, nil
@@ -129,7 +129,7 @@ func applyJobSelectionPolicySettings(
 	// are local to us
 	foundInputs := 0
 
-	for _, input := range job.Inputs {
+	for _, input := range job.InputVolumes {
 		// see if the storage engine reports that we have the resource locally
 		hasStorage, err := e.HasStorageLocally(ctx, input)
 		if err != nil {
@@ -141,11 +141,11 @@ func applyJobSelectionPolicySettings(
 		}
 	}
 
-	if foundInputs >= len(job.Inputs) {
-		log.Trace().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
+	if foundInputs >= len(job.InputVolumes) {
+		log.Trace().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.InputVolumes))
 		return true, nil
 	} else {
-		log.Trace().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
+		log.Trace().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.InputVolumes))
 		return false, nil
 	}
 }

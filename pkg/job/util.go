@@ -72,7 +72,7 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			Engine: model.StorageSourceIPFS,
-			Cid:    slices[0],
+			CID:    slices[0],
 			Path:   slices[1],
 		})
 	}
