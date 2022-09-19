@@ -138,11 +138,19 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test ./... -v -p 1
+	go test ./... -v -p 4
+
+.PHONY: grc-test
+grc-test:
+	grc go test ./... -v -p 4
 
 .PHONY: test-debug
 test-debug: 
-	LOG_LEVEL=debug go test ./... -v -p 1
+	LOG_LEVEL=debug go test ./... -v -p 4
+
+.PHONY: grc-test-debug
+grc-test-debug:
+	LOG_LEVEL=debug grc go test ./... -v -p 4
 
 .PHONY: test-one
 test-one:
