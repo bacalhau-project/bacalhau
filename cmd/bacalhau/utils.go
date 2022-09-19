@@ -62,7 +62,7 @@ func GetAPIClient() *publicapi.APIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.VersionInfo) error {
+func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
 	if clientVersion == nil {
 		log.Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil

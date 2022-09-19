@@ -34,8 +34,8 @@ var oV = &VersionOptions{}
 
 // Versions is a struct for version information
 type Versions struct {
-	ClientVersion *model.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion *model.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
+	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic

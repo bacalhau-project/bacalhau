@@ -22,9 +22,6 @@ var (
 		Create a job from a file or from stdin.
 
 		JSON and YAML formats are accepted.
-`))
-	createtemplateLong = templates.LongDesc(i18n.T(`
-	Print a sample ubuntu hello jobspec template to stdout
 	`))
 	//nolint:lll // Documentation
 	createExample = templates.Examples(i18n.T(`
@@ -33,14 +30,6 @@ var (
 
 		# Create a new job from an already executed job
 		bacalhau describe 6e51df50 | bacalhau create -`))
-	//nolint:lll // Documentation
-	createtemplateExample = templates.Examples(i18n.T(`
-	Print a sample ubuntu hello jobspec template to stdout
-	bacalhau create template
-
-	Create a sample hello world job template file
-	bacalhau create template > job.yaml
-	`))
 
 	// Set Defaults (probably a better way to do this)
 	OC = NewCreateOptions()
@@ -75,7 +64,6 @@ func init() { //nolint:gochecknoinits
 		&OC.Confidence, "confidence", OC.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
-	createCmd.AddCommand(templateCmd)
 
 	setupDownloadFlags(createCmd, &OC.DownloadFlags)
 	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
@@ -199,42 +187,6 @@ var createCmd = &cobra.Command{
 			return fmt.Errorf("error executing job: %s", err)
 		}
 
-		return nil
-
-	},
-}
-
-var templateCmd = &cobra.Command{
-	Use:     "template",
-	Short:   "Print a hello world template to stdout",
-	Long:    createtemplateLong,
-	Example: createtemplateExample,
-	Args:    cobra.MinimumNArgs(0),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
-		filename := "job-test.yaml"
-
-		fileContent, err := os.Open(filename)
-		if err != nil {
-			return fmt.Errorf("could not open file '%s': %s", filename, err)
-		}
-
-		byteResult, err := io.ReadAll(fileContent)
-		if err != nil {
-			return fmt.Errorf("error reading yaml file '%s': %s", filename, err)
-		}
-		var jobspectmp *model.JobSpec
-		_ = yaml.Unmarshal(byteResult, &jobspectmp)
-
-		jobspectmp.APIVersion = "v1alpha1"
-		jobspectmp.EngineName = "docker"
-		jobspectmp.VerifierName = "noop"
-		jobspectmp.PublisherName = "estuary"
-		jobspecnew, err := yaml.Marshal(jobspectmp)
-		if err != nil {
-			log.Error().Msgf("Failure marshaling job spec '%s'", err)
-			return err
-		}
-		cmd.Print(string(jobspecnew))
 		return nil
 
 	},

@@ -252,7 +252,7 @@ func (apiClient *APIClient) Submit(
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, error) {
+func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
 	defer span.End()
 

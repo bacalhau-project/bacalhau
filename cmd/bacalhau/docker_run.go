@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
@@ -71,7 +70,7 @@ type DockerRunOptions struct {
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
 
-	DryRun bool // Don't submit the jobspec
+	DryRun bool // Don't submit the jobspec, print it to STDOUT
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
@@ -181,7 +180,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 
 	dockerRunCmd.PersistentFlags().BoolVar(
 		&ODR.DryRun, "dry-run", ODR.DryRun,
-		`Output Jobspec to stdout`,
+		`Do not submit the job, but instead print out what will be submitted`,
 	)
 
 	dockerRunCmd.PersistentFlags().StringVarP(
@@ -245,8 +244,7 @@ var dockerRunCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/dockerRun")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -259,42 +257,23 @@ var dockerRunCmd = &cobra.Command{
 			return fmt.Errorf("error validating job: %s", err)
 		}
 		if ODR.DryRun {
-			//nolint
-			bytes, err := yaml.Marshal(jobSpec)
-			if err != nil {
-				log.Error().Msgf("Failure marshaling job spec '%s'", err)
-				return err
-			}
-			var jobspectmp *model.JobSpec
-			_ = yaml.Unmarshal(bytes, &jobspectmp)
-
-			jobspectmp.APIVersion = "v1alpha1"
-			jobspectmp.EngineName = "docker"
-			jobspectmp.VerifierName = "noop"
-			jobspectmp.PublisherName = "estuary"
-			jobspecnew, err := yaml.Marshal(jobspectmp)
-			if err != nil {
-				log.Error().Msgf("Failure marshaling job spec '%s'", err)
-				return err
-			}
-			cmd.Print(string(jobspecnew))
+			cmd.Print(jobSpec)
+			return nil
 		}
-		if !ODR.DryRun {
 
-			err = ExecuteJob(ctx,
-				cm,
-				cmd,
-				jobSpec,
-				jobDeal,
-				ODR.RunTimeSettings,
-				ODR.DownloadFlags,
-			)
+		err = ExecuteJob(ctx,
+			cm,
+			cmd,
+			jobSpec,
+			jobDeal,
+			ODR.RunTimeSettings,
+			ODR.DownloadFlags,
+		)
 
-			if err != nil {
-				return fmt.Errorf("error executing job: %s", err)
-			}
-
+		if err != nil {
+			return fmt.Errorf("error executing job: %s", err)
 		}
+
 		return nil
 	},
 }

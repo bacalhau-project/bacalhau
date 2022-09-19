@@ -66,8 +66,8 @@ func (suite *VersionSuite) Test_Version() {
 }
 
 type ThisVersions struct {
-	ClientVersion model.VersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion model.VersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion model.BuildVersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
+	ServerVersion model.BuildVersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
