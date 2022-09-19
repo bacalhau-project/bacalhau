@@ -128,22 +128,6 @@ func ExecuteTestCobraCommand(_ *testing.T, root *cobra.Command, args ...string) 
 	return c, buf.String(), err
 }
 
-// TODO: #233 Replace when we move to go1.18
-// https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
-func Min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func ReverseList(s []string) []string {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
 // this function captures the output of all functions running in it between capture() and done()
 // example:
 // 	done := capture()

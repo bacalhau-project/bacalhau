@@ -67,14 +67,46 @@ func (s *SystemUtilsSuite) TestInternalCommandExecution() {
 	stdoutFile := tmpDir + "/stdout"
 	stderrFile := tmpDir + "/stderr"
 	runCommandResultsToDisk(cmd, args, stdoutFile, stderrFile,
-		MaxStdoutFileLengthInGB,
-		MaxStderrFileLengthInGB,
+		MaxStdoutFileLengthInBytes,
+		MaxStderrFileLengthInBytes,
 		MaxStdoutReturnLengthInBytes,
 		MaxStderrReturnLengthInBytes)
 }
 
-func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBig() {
-	MaxStdoutReturnLengthInBytes = 10 // Make it artificially small for this run
+func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
+	GenericMaxLengthInBytes := 10 // Make it artificially small for this run
+
+	maxSizeCases := map[string]struct {
+		maxStdoutFileSize   int
+		maxStderrFileSize   int
+		maxStdoutReturnSize int
+		maxStderrReturnSize int
+	}{
+		"MaxStdoutFileSize": {
+			maxStdoutFileSize:   GenericMaxLengthInBytes,
+			maxStderrFileSize:   int(MaxStderrFileLengthInBytes),
+			maxStdoutReturnSize: int(MaxStdoutReturnLengthInBytes),
+			maxStderrReturnSize: int(MaxStderrReturnLengthInBytes),
+		},
+		"MaxStderrFileSize": {
+			maxStdoutFileSize:   int(MaxStdoutFileLengthInBytes),
+			maxStderrFileSize:   GenericMaxLengthInBytes,
+			maxStdoutReturnSize: int(MaxStdoutReturnLengthInBytes),
+			maxStderrReturnSize: int(MaxStderrReturnLengthInBytes),
+		},
+		"MaxStdoutReturnSize": {
+			maxStdoutFileSize:   int(MaxStdoutFileLengthInBytes),
+			maxStderrFileSize:   int(MaxStderrFileLengthInBytes),
+			maxStdoutReturnSize: GenericMaxLengthInBytes,
+			maxStderrReturnSize: int(MaxStderrReturnLengthInBytes),
+		},
+		"MaxStderrReturnSize": {
+			maxStdoutFileSize:   int(MaxStdoutFileLengthInBytes),
+			maxStderrFileSize:   int(MaxStderrFileLengthInBytes),
+			maxStdoutReturnSize: int(MaxStdoutReturnLengthInBytes),
+			maxStderrReturnSize: GenericMaxLengthInBytes,
+		},
+	}
 
 	stdOutstdErrCases := map[string]struct {
 		toStderr bool
@@ -84,35 +116,19 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBig() {
 	}
 
 	testCases := map[string]struct {
-		inputLength                      int
-		outputFileExpectedLength         int
-		outputPipeVariableExpectedLength int
-		truncated                        bool
+		inputLength    int
+		expectedLength int
 	}{
-		"zeroLength": {inputLength: 0,
-			truncated:                        false,
-			outputFileExpectedLength:         0,
-			outputPipeVariableExpectedLength: 0},
-		"oneLength": {inputLength: 1,
-			truncated:                        false,
-			outputFileExpectedLength:         1,
-			outputPipeVariableExpectedLength: 1},
-		"maxLengthMinus1": {inputLength: MaxStdoutReturnLengthInBytes - 1,
-			truncated:                        false,
-			outputFileExpectedLength:         MaxStdoutReturnLengthInBytes - 1,
-			outputPipeVariableExpectedLength: MaxStdoutReturnLengthInBytes - 1},
-		"maxLength": {inputLength: MaxStdoutReturnLengthInBytes,
-			truncated:                        false,
-			outputFileExpectedLength:         MaxStdoutReturnLengthInBytes,
-			outputPipeVariableExpectedLength: MaxStdoutReturnLengthInBytes},
-		"maxLengthPlus1": {inputLength: MaxStdoutReturnLengthInBytes + 1,
-			truncated:                        false,
-			outputFileExpectedLength:         MaxStdoutReturnLengthInBytes + 1,
-			outputPipeVariableExpectedLength: MaxStdoutReturnLengthInBytes + 1},
-		"maxLengthTimes10": {inputLength: MaxStdoutReturnLengthInBytes * 10,
-			truncated:                        true,
-			outputFileExpectedLength:         MaxStdoutReturnLengthInBytes * 10,
-			outputPipeVariableExpectedLength: MaxStdoutReturnLengthInBytes},
+		"zeroLength": {inputLength: 0, expectedLength: 0},
+		"oneLength":  {inputLength: 1, expectedLength: 1},
+		"maxLengthMinus1": {inputLength: GenericMaxLengthInBytes - 1,
+			expectedLength: GenericMaxLengthInBytes - 1},
+		"maxLength": {inputLength: GenericMaxLengthInBytes,
+			expectedLength: GenericMaxLengthInBytes},
+		"maxLengthPlus1": {inputLength: GenericMaxLengthInBytes + 1,
+			expectedLength: GenericMaxLengthInBytes},
+		"maxLengthTimes10": {inputLength: GenericMaxLengthInBytes * 10,
+			expectedLength: GenericMaxLengthInBytes},
 	}
 	cmd := "docker"
 	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
@@ -121,71 +137,90 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBig() {
 		require.Fail(s.T(), "Could not create temp dir", err)
 	}
 
-	for outputPipeTestName, stdOutstdErrCase := range stdOutstdErrCases {
-		for sizeTestName, tc := range testCases {
-			s.T().Run(sizeTestName, func(t *testing.T) {
-				args := []string{"run"} // Reset args
+	for maxSizeCaseName, maxSizeCase := range maxSizeCases {
+		for outputPipeTestName, stdOutstdErrCase := range stdOutstdErrCases {
+			for sizeTestName, tc := range testCases {
+				s.T().Run(sizeTestName, func(t *testing.T) {
+					args := []string{"run"} // Reset args
 
-				tmpDirForTC := tmpDir + "/" + sizeTestName
-				err := os.Mkdir(tmpDirForTC, 0755)
-				if err != nil {
-					require.Fail(s.T(), "Could not create temp dir", err)
-				}
-				defer os.RemoveAll(tmpDirForTC)
+					tmpDirForTC := tmpDir + "/" + sizeTestName
+					err := os.Mkdir(tmpDirForTC, 0755)
+					if err != nil {
+						require.Fail(s.T(), "Could not create temp dir", err)
+					}
+					defer os.RemoveAll(tmpDirForTC)
 
-				args = append(args, "--name", sizeTestName+uuid.NewString(), "--rm")
-				args = append(args, "ubuntu")
-				args = append(args, "bash", "-c")
+					args = append(args, "--name", sizeTestName+uuid.NewString(), "--rm")
+					args = append(args, "ubuntu")
+					args = append(args, "bash", "-c")
 
-				if stdOutstdErrCase.toStderr {
-					args = append(args, RepeatedCharactersBashCommandToStderr(tc.inputLength))
-				} else {
-					args = append(args, RepeatedCharactersBashCommandToStdout(tc.inputLength))
-				}
+					stdOutFileExpectedLength := Min(maxSizeCase.maxStdoutFileSize, tc.expectedLength)
+					stdErrFileExpectedLength := Min(maxSizeCase.maxStderrFileSize, tc.expectedLength)
+					stdOutReturnExpectedLength := Min(maxSizeCase.maxStdoutReturnSize, tc.expectedLength)
+					stdErrReturnExpectedLength := Min(maxSizeCase.maxStderrReturnSize, tc.expectedLength)
 
-				log.Debug().Msgf("Running command: %s %s", cmd, strings.Join(args, " "))
+					if stdOutstdErrCase.toStderr {
+						args = append(args, RepeatedCharactersBashCommandToStderr(tc.inputLength))
+						stdOutFileExpectedLength = 0
+						stdOutReturnExpectedLength = 0
+					} else {
+						args = append(args, RepeatedCharactersBashCommandToStdout(tc.inputLength))
+						stdErrFileExpectedLength = 0
+						stdErrReturnExpectedLength = 0
+					}
 
-				stdoutFile := tmpDirForTC + "/stdout"
-				stderrFile := tmpDirForTC + "/stderr"
-				runResult, err := runCommandResultsToDisk(cmd, args, stdoutFile, stderrFile,
-					MaxStdoutFileLengthInGB,
-					MaxStderrFileLengthInGB,
-					tc.outputPipeVariableExpectedLength,
-					tc.outputPipeVariableExpectedLength)
-				require.NoError(t, err) // This is the error from the command execution
-				require.NotNil(t, runResult)
+					log.Debug().Msgf("Running command: %s %s", cmd, strings.Join(args, " "))
 
-				var outputPipeBytes []byte
-				if stdOutstdErrCase.toStderr {
-					outputPipeBytes, err = os.ReadFile(stderrFile)
-				} else {
-					outputPipeBytes, err = os.ReadFile(stdoutFile)
-				}
-				outputPipeContents := string(outputPipeBytes)
+					stdoutFile := tmpDirForTC + "/stdout"
+					stderrFile := tmpDirForTC + "/stderr"
+					runResult, err := runCommandResultsToDisk(cmd,
+						args,
+						stdoutFile,
+						stderrFile,
+						stdOutFileExpectedLength,
+						stdErrFileExpectedLength,
+						stdOutReturnExpectedLength,
+						stdErrReturnExpectedLength)
+					require.NoError(t, err) // This is the error from the command execution
+					require.NotNil(t, runResult)
 
-				require.NoError(s.T(), err)
+					stdoutFileBytes, err := ioutil.ReadFile(stdoutFile)
+					require.NoError(s.T(), err)
+					stdoutFileContents := string(stdoutFileBytes)
 
-				require.Equal(s.T(), tc.outputFileExpectedLength,
-					len(outputPipeContents),
-					"%s file: %s Not Expected Length",
-					outputPipeTestName,
-					sizeTestName)
+					stderrFileBytes, err := ioutil.ReadFile(stderrFile)
+					require.NoError(s.T(), err)
+					stderrFileContents := string(stderrFileBytes)
 
-				var outputPipeVariable string
-				if stdOutstdErrCase.toStderr {
-					outputPipeVariable = runResult.STDERR
-				} else {
-					outputPipeVariable = runResult.STDOUT
-				}
+					fileStruct := map[string]struct {
+						contents       string
+						expectedLength int
+					}{
+						"stdoutFile": {contents: stdoutFileContents,
+							expectedLength: stdOutFileExpectedLength},
+						"stderrFile": {contents: stderrFileContents,
+							expectedLength: stdErrFileExpectedLength},
+						"stdoutReturn": {contents: runResult.STDOUT,
+							expectedLength: stdOutReturnExpectedLength},
+						"stderrReturn": {contents: runResult.STDERR,
+							expectedLength: stdErrReturnExpectedLength},
+					}
+					for fileStructName, fileStructCase := range fileStruct {
+						if fileStructCase.expectedLength != len(fileStructCase.contents) {
+							fmt.Printf("failed test case: %s %s %s %s", maxSizeCaseName, outputPipeTestName, sizeTestName, fileStructName)
+						}
 
-				require.Equal(s.T(), tc.outputPipeVariableExpectedLength,
-					len(outputPipeVariable),
-					"%s file: %s Not Expected Length",
-					outputPipeTestName,
-					sizeTestName)
-
-			})
+						require.Equal(s.T(), fileStructCase.expectedLength,
+							len(fileStructCase.contents),
+							"%s-%s-%s %s contents Not Expected Length",
+							maxSizeCaseName,
+							outputPipeTestName,
+							sizeTestName,
+							fileStructName,
+						)
+					}
+				})
+			}
 		}
 	}
-
 }

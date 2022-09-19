@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -220,7 +221,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 						}
 
 						if sortFlags.reverseFlag {
-							jobIDs = ReverseList(jobIDs)
+							jobIDs = system.ReverseList(jobIDs)
 						}
 
 						compareIds := jobIDs[0:tc.numberOfJobsOutput]

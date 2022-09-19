@@ -3,6 +3,7 @@ package system
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -18,8 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var MaxStdoutFileLengthInGB = float32(1)
-var MaxStderrFileLengthInGB = float32(1)
+var MaxStdoutFileLengthInBytes = int(1 * datasize.GB)
+var MaxStderrFileLengthInBytes = int(1 * datasize.GB)
 var MaxStdoutReturnLengthInBytes = 2048
 var MaxStderrReturnLengthInBytes = 2048
 var ReadChunkSizeInBytes = 1024
@@ -76,8 +77,8 @@ func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stde
 		args,
 		stdoutFilename,
 		stderrFilename,
-		MaxStdoutFileLengthInGB,
-		MaxStderrFileLengthInGB,
+		MaxStdoutFileLengthInBytes,
+		MaxStderrFileLengthInBytes,
 		MaxStdoutReturnLengthInBytes,
 		MaxStderrReturnLengthInBytes)
 }
@@ -88,8 +89,8 @@ func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stde
 func runCommandResultsToDisk(command string, args []string,
 	stdoutFilename string,
 	stderrFilename string,
-	maxStdoutFileLengthInGB float32,
-	maxStderrFileLengthInGB float32,
+	maxStdoutFileLengthInBytes int,
+	maxStderrFileLengthInBytes int,
 	maxStdoutReturnLengthInBytes int,
 	maxStderrReturnLengthInBytes int) (*model.RunCommandResult, error) {
 	// create the return variables ahead of time so we can use them in the goroutine
@@ -155,7 +156,10 @@ func runCommandResultsToDisk(command string, args []string,
 	go func() {
 		// TODO: #626 Do we care how exact we are to getting to "Max length"?
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		stdoutErr = writeFromProcessToFileWithMax("stdout", stdoutFileReader, stdoutFileWriter, maxStdoutFileLengthInGB)
+		stdoutErr = writeFromProcessToFileWithMax("stdout",
+			stdoutFileReader,
+			stdoutFileWriter,
+			maxStdoutFileLengthInBytes)
 		if stdoutErr != nil {
 			log.Error().Err(stdoutErr).Msgf("Error writing to stdout file: %s", stdoutFilename)
 		}
@@ -166,7 +170,10 @@ func runCommandResultsToDisk(command string, args []string,
 	var stderrErr error
 	go func() {
 		// E.g. if the token pushes us to MaxLength+1 byte, are we ok? Not sure based on how scanning works
-		stderrErr = writeFromProcessToFileWithMax("stderr", stderrFileReader, stderrFileWriter, maxStderrFileLengthInGB)
+		stderrErr = writeFromProcessToFileWithMax("stderr",
+			stderrFileReader,
+			stderrFileWriter,
+			maxStderrFileLengthInBytes)
 		if stderrErr != nil {
 			log.Error().Err(err).Msgf("Error writing to stderr file: %s", stderrFilename)
 		}
@@ -214,16 +221,16 @@ func runCommandResultsToDisk(command string, args []string,
 	return r, err
 }
 
-func wasProcessOutputTruncated(stdoutFilename string, maxStdoutReturnLengthInBytes int) (bool, error) {
-	stdoutFileInfo, err := os.Stat(stdoutFilename)
+func wasProcessOutputTruncated(filename string, maxVariableReturnLengthInBytes int) (bool, error) {
+	stdoutFileInfo, err := os.Stat(filename)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error getting file info: %s", stdoutFilename)
+		log.Error().Err(err).Msgf("Error getting file info: %s", filename)
 		return false, err
 	}
-	return stdoutFileInfo.Size() > int64(maxStdoutReturnLengthInBytes), nil
+	return stdoutFileInfo.Size() > int64(maxVariableReturnLengthInBytes), nil
 }
 
-func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (string, error) {
+func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (string, error) {
 	log.Debug().Msgf("Reading from file: %s", f.Name())
 
 	fileStat, err := f.Stat()
@@ -232,13 +239,13 @@ func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (st
 		return "", err
 	}
 	fileSize := fileStat.Size()
-	amountToRead := int(math.Min(float64(maxStdoutReturnLengthInBytes), float64(fileSize)))
+	amountToRead := int(math.Min(float64(maxVariableReturnLengthInBytes), float64(fileSize)))
 
 	fb := make([]byte, amountToRead)
 
 	// If the file is larger than the max, we only read the last max bytes
-	if fileSize > int64(maxStdoutReturnLengthInBytes) {
-		_, err = f.Seek(fileSize-int64(maxStdoutReturnLengthInBytes), 0)
+	if fileSize > int64(maxVariableReturnLengthInBytes) {
+		_, err = f.Seek(fileSize-int64(maxVariableReturnLengthInBytes), 0)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error seeking to end of file: %s", f.Name())
 			return "", err
@@ -255,7 +262,7 @@ func readProcessOutputFromFile(f *os.File, maxStdoutReturnLengthInBytes int) (st
 
 func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 	fw *bufio.Writer,
-	maxFileLengthInGB float32) error {
+	maxFileLengthInBytes int) error {
 	currentWrittenLength := float32(0)
 	buf := make([]byte, ReadChunkSizeInBytes)
 
@@ -270,7 +277,14 @@ func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 
 		if n > 0 {
 			var nn int // written bytes
-			nn, err = fw.Write(buf[:n])
+			var bufSizeToWrite int
+
+			if currentWrittenLength+float32(n) > float32(maxFileLengthInBytes) {
+				bufSizeToWrite = maxFileLengthInBytes - int(currentWrittenLength)
+			} else {
+				bufSizeToWrite = n
+			}
+			nn, err = fw.Write(buf[:bufSizeToWrite])
 			if err != nil {
 				return err
 			}
@@ -278,9 +292,10 @@ func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 
 			currentWrittenLength += float32(nn)
 
-			if currentWrittenLength > maxFileLengthInGB*float32(datasize.GB) {
-				log.Warn().Msgf("Process output file has exceeded the max length of %f GB, stopping...", maxFileLengthInGB)
-				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%f GB). STOPPING.", maxFileLengthInGB)
+			if int(currentWrittenLength) > maxFileLengthInBytes {
+				maxSizeInGB := float32(maxFileLengthInBytes) / float32(datasize.GB)
+				log.Warn().Msgf("Process output file has exceeded the max length of %f GB, stopping...", maxSizeInGB)
+				fmt.Fprintf(fw, "FILE EXCEEDED MAXIMUM SIZE (%f GB). STOPPING.", maxSizeInGB)
 				break
 			}
 		}
@@ -424,4 +439,34 @@ func repeatedCharactersBashCommand(num int, toStderr bool) string {
 		toStderrString = "| cat 1>&2"
 	}
 	return fmt.Sprintf(`for i in $(seq 1 %d) ; do echo -n "="; done %s`, num, toStderrString)
+}
+
+// TODO: #233 Replace when we move to go1.18
+// https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
+func Min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func MinFromArray(intArray []int) (int, error) {
+	if len(intArray) == 0 {
+		return 0, errors.New("cannot get min from empty array")
+	}
+
+	m := math.MaxInt
+	for i, e := range intArray {
+		if i == 0 || e < m {
+			m = e
+		}
+	}
+	return m, nil
+}
+
+func ReverseList(s []string) []string {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
 }
