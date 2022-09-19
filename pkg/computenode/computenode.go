@@ -593,7 +593,6 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 
 	runOutput, err = n.RunShardExecution(ctx, shard, resultFolder)
 	if err != nil {
-		// TODO: #597 Should we write stdout & stderr to prometheus?
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     n.ID,
 			"shard_index": strconv.Itoa(shard.Index),

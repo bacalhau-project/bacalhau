@@ -100,30 +100,6 @@ type jobDescription struct {
 	LocalEvents     []localEventDescription `yaml:"LocalEvents,omitempty"`
 }
 
-type jobSpecDescription struct {
-	Engine     string                   `yaml:"Engine"`
-	Verifier   string                   `yaml:"Verifier"`
-	Docker     jobSpecDockerDescription `yaml:"Docker"`
-	Deployment jobDealDescription       `yaml:"Deployment"`
-}
-
-type jobSpecDockerDescription struct {
-	Image       string   `yaml:"Image"`
-	Entrypoint  []string `yaml:"Entrypoint Command"`
-	Env         []string `yaml:"Submitted Env Variables"`
-	CPU         string   `yaml:"CPU Allocated"`
-	Memory      string   `yaml:"Memory Allocated"`
-	Inputs      []string `yaml:"Inputs"`
-	Outputs     []string `yaml:"Outputs"`
-	Annotations []string `yaml:"Annotations"`
-}
-
-type jobDealDescription struct {
-	Concurrency   int      `yaml:"Concurrency"`
-	Confidence    int      `yaml:"Confidence"`
-	AssignedNodes []string `yaml:"Assigned Nodes"`
-}
-
 var describeCmd = &cobra.Command{
 	Use:     "describe [id]",
 	Short:   "Describe a job on the network",
@@ -170,24 +146,6 @@ var describeCmd = &cobra.Command{
 			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
 			return err
 		}
-
-		jobDockerDesc := jobSpecDockerDescription{}
-		jobDockerDesc.Image = j.Spec.Docker.Image
-		jobDockerDesc.Entrypoint = j.Spec.Docker.Entrypoint
-		jobDockerDesc.Env = j.Spec.Docker.Env
-
-		jobDockerDesc.CPU = j.Spec.Resources.CPU
-		jobDockerDesc.Memory = j.Spec.Resources.Memory
-
-		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = j.Spec.Engine.String()
-
-		jobDealDesc := jobDealDescription{}
-		jobDealDesc.Concurrency = j.Deal.Concurrency
-		jobDealDesc.Confidence = j.Deal.Confidence
-
-		jobSpecDesc.Verifier = j.Spec.Verifier.String()
-		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
 		jobDesc.ID = j.ID
