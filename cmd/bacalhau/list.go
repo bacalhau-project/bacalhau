@@ -178,14 +178,14 @@ var listCmd = &cobra.Command{
 			for _, j := range jobArray {
 				jobIDs = append(jobIDs, j.ID)
 			}
-			jobIDs = ReverseList(jobIDs)
+			jobIDs = system.ReverseList(jobIDs)
 			jobArray = []model.Job{}
 			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}
 		}
 
-		numberInTable := Min(OL.MaxJobs, len(jobArray))
+		numberInTable := system.Min(OL.MaxJobs, len(jobArray))
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 

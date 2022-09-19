@@ -1,6 +1,7 @@
 package publicapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -20,23 +21,18 @@ type listResponse struct {
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/list")
 	defer span.End()
-	t := system.GetTracer()
 
-	_, unMarshallSpan := t.Start(ctx, "unmarshallinglistrequest")
 	var listReq listRequest
 	if err := json.NewDecoder(req.Body).Decode(&listReq); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	unMarshallSpan.End()
 
-	getJobsCtx, getJobsSpan := t.Start(ctx, "gettingjobs")
-	list, err := apiServer.Controller.GetJobs(getJobsCtx, localdb.JobQuery{})
+	list, err := apiServer.getJobs(ctx, res)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	getJobsSpan.End()
 
 	rawJobs := map[string]model.Job{}
 
@@ -44,7 +40,6 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		rawJobs[listJob.ID] = listJob
 	}
 
-	_, marshallSpan := t.Start(ctx, "marshallingresponse")
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: rawJobs,
@@ -53,5 +48,16 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	marshallSpan.End()
+}
+
+func (apiServer *APIServer) getJobs(ctx context.Context, res http.ResponseWriter) ([]model.Job, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
+	defer span.End()
+
+	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{})
+	if err != nil {
+		// Handle error in the calling function, as this function only does one thing.
+		return nil, nil
+	}
+	return list, err
 }
