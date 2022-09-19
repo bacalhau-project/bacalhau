@@ -74,16 +74,18 @@ type JobShardingConfig struct {
 // generally be in different states on different nodes - one node may be
 // ignoring a job as its bid was rejected, while another node may be
 // submitting results for the job to the requester node.
+// 
 // Each node will produce an array of JobShardState one for each shard
 // (jobs without a sharding config will still have sharded job
 // states - just with a shard count of 1). Any code that is determining
-// the current "state" of a job must look at both
-// the ShardCount of the JobExecutionPlan and the
-// collection of JobShardState to determine the current state.
-
-// JobState itself is not mutable - the JobExecutionPlan and
+// the current "state" of a job must look at both:
+// 
+// 		* the ShardCount of the JobExecutionPlan
+//		* the collection of JobShardState to determine the current state
+// 
+// Note: JobState itself is not mutable - the JobExecutionPlan and
 // JobShardState are updatable and the JobState is queried by the rest
-// of the system
+// of the system.
 type JobState struct {
 	Nodes map[string]JobNodeState `json:"nodes"`
 }
