@@ -31,6 +31,13 @@ const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	return SetupTestsWithPort(t, port)
+}
+
+func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+	// Setup the system
 	err := system.InitConfigForTesting()
 	require.NoError(t, err)
 
@@ -81,13 +88,11 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	require.NoError(t, err)
 
 	host := "0.0.0.0"
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
 
 	s := NewServer(ctx, host, port, c, noopPublishers)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 
@@ -158,15 +163,15 @@ func MakeEchoJob() (model.JobSpec, model.JobDeal) {
 
 func MakeGenericJob() (model.JobSpec, model.JobDeal) {
 	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
-		"cat",
-		"/data/file.txt",
+		"echo",
+		"$(date +%s)",
 	})
 }
 
 func MakeNoopJob() (model.JobSpec, model.JobDeal) {
 	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
-		"cat",
-		"/data/file.txt",
+		"echo",
+		"$(date +%s)",
 	})
 }
 

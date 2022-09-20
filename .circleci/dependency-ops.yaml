@@ -1,0 +1,57 @@
+title: Ops Bacalhau Dependency
+scms:
+  default:
+    kind: "github"
+    spec:
+      user: "bot"
+      email: "bot@bacalhau.org"
+      owner: "filecoin-project"
+      repository: "bacalhau"
+      token: "{{ requiredEnv `BACALHAU_RELEASE_TOKEN` }}"
+      branch: "main"
+sources:
+  default:
+    kind: githubrelease
+    spec:
+      owner: "filecoin-project"
+      repository: "bacalhau"
+      token: "{{ requiredEnv `BACALHAU_RELEASE_TOKEN` }}"
+      username: "bot"
+      versionFilter:
+        kind: latest
+pullrequests:
+  default:
+    kind: "github"
+    scmid: "default"
+    spec:
+      automerge: true
+      description: 'Bump ops clusters to "{{ source `default` }}". This is an automated PR.'
+      draft: false
+      labels:
+        - "dependencies"
+      title: 'chore(ops): update Bacalhau clusters to "{{ source `default` }}"'
+targets:
+  development:
+    name: Bump Dev
+    kind: file
+    scmid: default
+    spec:
+      file: ops/terraform/development.tfvars
+      line: 1
+      content: bacalhau_version       = "{{ source `default` }}"
+  staging:
+    name: Bump Dev
+    kind: file
+    scmid: default
+    spec:
+      file: ops/terraform/staging.tfvars
+      line: 1
+      content: bacalhau_version       = "{{ source `default` }}"
+  production:
+    name: Bump Dev
+    kind: file
+    scmid: default
+    spec:
+      file: ops/terraform/production.tfvars
+      line: 1
+      content: bacalhau_version       = "{{ source `default` }}"

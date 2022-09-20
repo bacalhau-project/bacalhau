@@ -106,7 +106,7 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 	servingChannel := make(chan string, 100)
 	go writeToServeChannel(servingChannel, suite.T(), suite.rootCmd, port, &wg)
 
-	timeoutInMilliseconds := 3 * 1000
+	timeoutInMilliseconds := 20 * 1000
 	currentTime := 0
 	for {
 		time.Sleep(100 * time.Millisecond)

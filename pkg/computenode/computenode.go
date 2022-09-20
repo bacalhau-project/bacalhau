@@ -567,29 +567,33 @@ func (n *ComputeNode) BidOnJob(ctx context.Context, shard model.JobShard) error 
 run job
 this is a separate method to RunShard because then we can invoke tests on it directly
 */
-func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShard, resultFolder string) error {
+func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShard, resultFolder string) (*model.RunCommandResult, error) {
 	// check that we have the executor to run this job
 	e, err := n.getExecutor(ctx, shard.Job.Spec.Engine)
 	if err != nil {
-		return err
+		return &model.RunCommandResult{Error: err}, err
 	}
 	return e.RunShard(ctx, shard, resultFolder)
 }
 
-func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byte, error) {
+func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byte, *model.RunCommandResult, error) {
 	shardProposal := []byte{}
+	runOutput := &model.RunCommandResult{}
 
 	verifier, err := n.getVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
-		return shardProposal, err
+		runOutput.Error = err
+		return shardProposal, runOutput, err
 	}
 	resultFolder, err := verifier.GetShardResultPath(ctx, shard)
 	if err != nil {
-		return shardProposal, err
+		runOutput.Error = err
+		return shardProposal, runOutput, err
 	}
 
-	containerRunError := n.RunShardExecution(ctx, shard, resultFolder)
-	if containerRunError != nil {
+	runOutput, err = n.RunShardExecution(ctx, shard, resultFolder)
+	if err != nil {
+		// TODO: #597 Should we write stdout & stderr to prometheus?
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     n.ID,
 			"shard_index": strconv.Itoa(shard.Index),
@@ -605,11 +609,12 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 
 	// if there was an error running the job
 	// we don't pass the results off to the verifier
-	if containerRunError == nil {
-		shardProposal, containerRunError = verifier.GetShardProposal(ctx, shard, resultFolder)
+	if err == nil {
+		shardProposal, err = verifier.GetShardProposal(ctx, shard, resultFolder)
+		runOutput.Error = err
 	}
 
-	return shardProposal, containerRunError
+	return shardProposal, runOutput, err
 }
 
 func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) error {

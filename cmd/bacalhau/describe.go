@@ -26,6 +26,9 @@ var (
 
 		# Describe a job with the a shortened ID
 		bacalhau describe 47805f5c
+
+		# Describe a job and include all server and local events
+		bacalhau describe --include-events b6ad164a 
 `))
 
 	// Set Defaults (probably a better way to do this)
@@ -126,8 +129,7 @@ var describeCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/describe")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/describe")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 

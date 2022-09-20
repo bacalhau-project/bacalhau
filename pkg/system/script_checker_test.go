@@ -65,7 +65,7 @@ func (suite *SystemScriptCheckerSuite) TestSubmitSyntaxErrors() {
 	}
 }
 
-func TestValidateWorkingDir(t *testing.T) {
+func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {
 	tests := map[string]struct {
 		path       string
 		error_code int
@@ -77,7 +77,7 @@ func TestValidateWorkingDir(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
+		suite.T().Run(name, func(t *testing.T) {
 			// t.Parallel()
 
 			err := ValidateWorkingDir(tc.path)
