@@ -29,8 +29,6 @@ In this example, you will create 72px wide video thumbnails for all the videos i
 
 Note that [Bacalhau overwrites the default entrypoint](https://github.com/filecoin-project/bacalhau/blob/v0.2.3/cmd/bacalhau/docker_run.go#L64) so we must run the full command after the `--` argument. In this line you will list all of the mp4 files in the `/inputs` directory and execute `ffmpeg` against each instance.
 
-```bash
-
 
 ```bash
 %%bash --out job_id
@@ -43,16 +41,8 @@ bacalhau docker run \
   -v Qmd9CBYpdgCLuCKRtKRRggu24H72ZUrGax5A9EYvrbC72j:/inputs \
   linuxserver/ffmpeg -- \
   bash -c 'find /inputs -iname "*.mp4" -printf "%f\n" | xargs -I{} ffmpeg -y -i /inputs/{} -vf "scale=-1:72,setsar=1:1" /outputs/scaled_{}'
-  
+
 ```
-
-
-```python
-%env JOB_ID={job_id}
-```
-
-    env: JOB_ID=0513e110-0311-4847-81eb-68ad0ac4a360
-
 
 ## Get Results
 
