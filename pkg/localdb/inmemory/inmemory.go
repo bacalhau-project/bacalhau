@@ -249,6 +249,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.Status = update.Status
 	}
 
+	if update.RunOutput != nil {
+		shardSate.RunOutput = update.RunOutput
+	}
+
 	if len(update.VerificationProposal) != 0 {
 		shardSate.VerificationProposal = update.VerificationProposal
 	}

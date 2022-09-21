@@ -140,6 +140,7 @@ func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 			job.ID,
 			jobEvent.ShardIndex,
 			err.Error(),
+			nil,
 		)
 		if err != nil {
 			log.Debug().Msgf("ErrorShard failed: %s", err.Error())

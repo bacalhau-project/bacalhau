@@ -571,7 +571,7 @@ func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShar
 	// check that we have the executor to run this job
 	e, err := n.getExecutor(ctx, shard.Job.Spec.Engine)
 	if err != nil {
-		return &model.RunCommandResult{Error: err}, err
+		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
 	return e.RunShard(ctx, shard, resultFolder)
 }
@@ -582,12 +582,12 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 
 	verifier, err := n.getVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
-		runOutput.Error = err
+		runOutput.ErrorMsg = err.Error()
 		return shardProposal, runOutput, err
 	}
 	resultFolder, err := verifier.GetShardResultPath(ctx, shard)
 	if err != nil {
-		runOutput.Error = err
+		runOutput.ErrorMsg = err.Error()
 		return shardProposal, runOutput, err
 	}
 
@@ -610,7 +610,9 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 	// we don't pass the results off to the verifier
 	if err == nil {
 		shardProposal, err = verifier.GetShardProposal(ctx, shard, resultFolder)
-		runOutput.Error = err
+		if err != nil {
+			runOutput.ErrorMsg = err.Error()
+		}
 	}
 
 	return shardProposal, runOutput, err

@@ -120,7 +120,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	// 	"cat",
 	// 	volume.Source,
 	// })
-	r := system.UnsafeForUserCodeRunCommand("cat", []string{
+	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
 		volume.Source,
 	})
 	require.NoError(t, err)
@@ -181,7 +181,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// 	"cat",
 	// 	fmt.Sprintf("%s/file.txt", volume.Source),
 	// })
-	r := system.UnsafeForUserCodeRunCommand("cat", []string{
+	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
 		fmt.Sprintf("%s/file.txt", volume.Source),
 	})
 	require.NoError(t, err)

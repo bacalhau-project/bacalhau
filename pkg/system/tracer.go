@@ -303,7 +303,7 @@ func AddAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, nam
 	if m.Value() != "" {
 		span.SetAttributes(attribute.String(name, m.Value()))
 	} else {
-		log.Debug().Msgf("no value found for baggage key %s", name)
+		log.Trace().Msgf("no value found for baggage key %s", name)
 		if log.Trace().Enabled() {
 			debug.PrintStack()
 		}

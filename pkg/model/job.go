@@ -106,6 +106,7 @@ type JobShardState struct {
 	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
 	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
 	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
+	RunOutput            *RunCommandResult  `json:"RunOutput,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -235,11 +236,26 @@ type JobEvent struct {
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan"`
 	// this is only defined in "update_deal" events
+<<<<<<< HEAD
 	JobDeal              JobDeal            `json:"JobDeal"`
 	Status               string             `json:"Status"`
 	VerificationProposal []byte             `json:"VerificationProposal"`
 	VerificationResult   VerificationResult `json:"VerificationResult"`
 	PublishedResult      StorageSpec        `json:"PublishedResults"`
+||||||| e301d952
+	JobDeal              JobDeal            `json:"job_deal"`
+	Status               string             `json:"status"`
+	VerificationProposal []byte             `json:"verification_proposal"`
+	VerificationResult   VerificationResult `json:"verification_result"`
+	PublishedResult      StorageSpec        `json:"published_results"`
+=======
+	JobDeal              JobDeal            `json:"job_deal"`
+	Status               string             `json:"status"`
+	RunOutput            *RunCommandResult  `json:"run_output"`
+	VerificationProposal []byte             `json:"verification_proposal"`
+	VerificationResult   VerificationResult `json:"verification_result"`
+	PublishedResult      StorageSpec        `json:"published_results"`
+>>>>>>> main
 
 	EventTime       time.Time `json:"EventTime"`
 	SenderPublicKey []byte    `json:"PublicKey"`
