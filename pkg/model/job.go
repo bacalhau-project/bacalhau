@@ -151,7 +151,7 @@ type JobSpec struct {
 	Language JobSpecLanguage `json:"Language,omitempty" yaml:"Language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
-	Resources ResourceUsageConfig `json:"Resources,,omitempty" yaml:"Resources,omitempty"`
+	Resources ResourceUsageConfig `json:"Resources,omitempty" yaml:"Resources,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"

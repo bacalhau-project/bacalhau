@@ -489,7 +489,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		cid, _ := devstack.AddTextToNodes(ctx, []byte(text), ipfsStack.IPFSClients[0])
+		cid, _ := devstack.AddTextToNodesForTests(ctx, []byte(text), ipfsStack.IPFSClients[0])
 
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -540,7 +540,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
-		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
+		cid, err := devstack.AddTextToNodesForTests(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
 		require.NoError(suite.T(), err)
 
 		executor := stack.Node.Executors[model.EngineDocker]

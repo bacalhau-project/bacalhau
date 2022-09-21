@@ -67,7 +67,7 @@ func (suite *CreateSuite) TestCreateJSON_GenericSubmit() {
 				"--api-port", port,
 				"../../testdata/job.json",
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
@@ -106,7 +106,7 @@ func (suite *CreateSuite) TestCreateYAML_GenericSubmit() {
 					testFile,
 				)
 
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)

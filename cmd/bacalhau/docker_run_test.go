@@ -251,7 +251,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
@@ -331,7 +331,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
@@ -742,7 +742,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := devstack.AddFileToNodesForTests(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())

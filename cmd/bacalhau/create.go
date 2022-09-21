@@ -111,9 +111,7 @@ var createCmd = &cobra.Command{
 			_ = cmd.Usage()
 			return fmt.Errorf("no filename specified")
 		}
-		if cmdArgs[0] != "-" {
-			OC.Filename = cmdArgs[0]
-
+		if OC.Filename != "-" {
 			fileextension := filepath.Ext(OC.Filename)
 			fileContent, err := os.Open(OC.Filename)
 

@@ -90,7 +90,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		require.NoError(suite.T(), err)
 
 		if !unsealedMode {
-			directoryCid, err := devstack.AddFileToNodes(ctx, basePath, stack.Nodes[0].IPFSClient)
+			directoryCid, err := devstack.AddFileToNodesForTests(ctx, basePath, stack.Nodes[0].IPFSClient)
 			require.NoError(suite.T(), err)
 			cid = directoryCid
 		}

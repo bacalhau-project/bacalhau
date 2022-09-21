@@ -30,7 +30,7 @@ func ParseStorageSourceType(str string) (StorageSourceType, error) {
 	}
 
 	return storageSourceUnknown, fmt.Errorf(
-		"executor: unknown engine type '%s'", str)
+		"executor: unknown source type '%s'", str)
 }
 
 func EnsureStorageSourceType(typ StorageSourceType, str string) (StorageSourceType, error) {
@@ -69,6 +69,7 @@ func IsValidStorageSourceType(sourceType StorageSourceType) bool {
 // specific to particular execution engines, as different execution engines
 // will mount data in different ways.
 type StorageSpec struct {
+	// TODO: #645 Is this engine name the same as the Job EngineName?
 	// Engine is the execution engine that can mount the spec's data.
 	Engine     StorageSourceType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
 	EngineName string            `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`

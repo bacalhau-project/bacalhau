@@ -76,7 +76,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		dirPath, err := prepareFolderWithFiles(testCase.shards)
 		require.NoError(suite.T(), err)
 
-		directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
+		directoryCid, err := devstack.AddFileToNodesForTests(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
 		require.NoError(suite.T(), err)
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()

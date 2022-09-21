@@ -30,37 +30,41 @@ func TestComputeNodeRunJobSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *ComputeNodeRunJobSuite) SetupAllSuite() {
+func (s *ComputeNodeRunJobSuite) SetupAllSuite() {
 
 }
 
 // Before each test
-func (suite *ComputeNodeRunJobSuite) SetupTest() {
+func (s *ComputeNodeRunJobSuite) SetupTest() {
 	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 }
 
-func (suite *ComputeNodeRunJobSuite) TearDownTest() {
+func (s *ComputeNodeRunJobSuite) TearDownTest() {
 
 }
 
-func (suite *ComputeNodeRunJobSuite) TearDownAllSuite() {
+func (s *ComputeNodeRunJobSuite) TearDownAllSuite() {
 
 }
 
 // a simple sanity test of the RunJob with docker executor
-func (suite *ComputeNodeRunJobSuite) TestRunJob() {
+func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	ctx := context.Background()
+
+	tmpOutputDir, err := ioutil.TempDir("", "bacalhau-test-run-job")
+	if err != nil {
+		s.T().Fatal(err)
+	}
+	defer os.RemoveAll(tmpOutputDir)
+
 	EXAMPLE_TEXT := "hello"
-	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
-	cid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
-	require.NoError(suite.T(), err)
-
-	result, err := ioutil.TempDir("", "bacalhau-TestRunJob")
-	require.NoError(suite.T(), err)
+	cid, err := devstack.AddTextToNodesForTests(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
+	require.NoError(s.T(), err)
 
 	job := model.Job{
 		ID:   "test",
@@ -70,22 +74,22 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 		Job:   job,
 		Index: 0,
 	}
-	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, result)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), runnerOutput.Error, err)
+	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, tmpOutputDir)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), runnerOutput.Error, err)
 
-	stdoutPath := fmt.Sprintf("%s/stdout", result)
-	require.FileExists(suite.T(), stdoutPath, "The stdout file exists")
+	stdoutPath := fmt.Sprintf("%s/stdout", tmpOutputDir)
+	require.FileExists(s.T(), stdoutPath, "The stdout file exists")
 
 	dat, err := os.ReadFile(stdoutPath)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), EXAMPLE_TEXT, string(dat), "The stdout file contained the correct result from the job")
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), EXAMPLE_TEXT, string(dat), "The stdout file contained the correct result from the job")
 
 }
 
-func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
+func (s *ComputeNodeRunJobSuite) TestEmptySpec() {
 	ctx := context.Background()
-	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDockerIpfsStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
@@ -102,6 +106,6 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 		Index: 0,
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, "")
-	require.Error(suite.T(), err)
-	require.Equal(suite.T(), runnerOutput.Error, err)
+	require.Error(s.T(), err)
+	require.Equal(s.T(), runnerOutput.Error, err)
 }
