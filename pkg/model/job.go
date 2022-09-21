@@ -148,7 +148,7 @@ type JobSpec struct {
 	PublisherName string        `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty" yaml:"Dcker,omitempty"`
+	Docker   JobSpecDocker   `json:"Docker,omitempty" yaml:"Docker,omitempty"`
 	Language JobSpecLanguage `json:"Language,omitempty" yaml:"Language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires

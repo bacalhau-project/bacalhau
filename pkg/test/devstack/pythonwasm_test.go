@@ -111,7 +111,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		"--api-host=localhost",
 		"run",
 		"-i", fmt.Sprintf("%s", fileCid),
-		"-o", fmt.Sprintf("%s:%s", "/output", outputPath),
+		"-o", fmt.Sprintf("%s:%s", "output", outputPath),
 		"python",
 		"--deterministic",
 		"main.py",
