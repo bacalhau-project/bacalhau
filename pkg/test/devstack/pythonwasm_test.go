@@ -62,7 +62,7 @@ func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
 func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	nodeCount := 1
 	inputPath := "/input"
-	outputPath := "/output"
+	outputPath := "/outputs"
 	fileContents := "pineapples"
 
 	ctx := context.Background()
@@ -96,12 +96,15 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
 import os
-print("LIST /")
-print(os.listdir("/"))
-print("LIST /output")
-print(os.listdir("/output"))
-open("%s/test.txt", "w").write(open("%s").read())
-`, outputPath, inputPath))
+print("LIST / - %s")
+`, outputPath))
+
+	// import os
+	// print("LIST /")
+	// print(os.listdir("/"))
+	// print("LIST %s")
+	// print(os.listdir("%s"))
+	// open("%s/test.txt", "w").write(open("%s").read())
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
 	require.NoError(suite.T(), err)
@@ -111,7 +114,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 		"--api-host=localhost",
 		"run",
 		"-v", fmt.Sprintf("%s:%s", fileCid, inputPath),
-		"-o", fmt.Sprintf("%s:%s", "output", outputPath),
+		"-o", fmt.Sprintf("%s:%s", "/outputs", outputPath),
 		"python",
 		"--deterministic",
 		"main.py",
@@ -139,11 +142,11 @@ open("%s/test.txt", "w").write(open("%s").read())
 	require.NoError(suite.T(), err)
 	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
-	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, finalOutputPath)
 	require.NoError(suite.T(), err)
 
-	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
+	filePath := fmt.Sprintf("%s/outputs/test.txt", finalOutputPath)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(suite.T(), err)
 
