@@ -95,16 +95,13 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
-import os
-print("LIST / - %s")
-`, outputPath))
-
-	// import os
-	// print("LIST /")
-	// print(os.listdir("/"))
-	// print("LIST %s")
-	// print(os.listdir("%s"))
-	// open("%s/test.txt", "w").write(open("%s").read())
+	import os
+	print("LIST /")
+	print(os.listdir("/"))
+	print("LIST %s")
+	print(os.listdir("%s"))
+	open("%s/test.txt", "w").write(open("%s").read())
+`, outputPath, outputPath, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
 	require.NoError(suite.T(), err)
@@ -113,7 +110,7 @@ print("LIST / - %s")
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
-		"-v", fmt.Sprintf("%s:%s", fileCid, inputPath),
+		"-i", fmt.Sprintf("%s", fileCid),
 		"-o", fmt.Sprintf("%s:%s", "/outputs", outputPath),
 		"python",
 		"--deterministic",
