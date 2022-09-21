@@ -25,7 +25,6 @@ Bacalhau also mounts a data volume to store output data. By default `bacalhau do
 
 
 ```bash
-%%bash --out job_id
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
@@ -39,7 +38,6 @@ We store that in an environment variable so that we can reuse it later on.
 
 
 ```bash
-%%bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
@@ -57,7 +55,6 @@ _Please ignore the `> /dev/null 2>&1` portion of the command, it is there only t
 
 
 ```bash
-%%bash
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
@@ -71,7 +68,6 @@ The docker run command above used the `outputs` volume as a results folder so wh
 
 
 ```bash
-%%bash
 ls -lah results/volumes/outputs
 ```
 

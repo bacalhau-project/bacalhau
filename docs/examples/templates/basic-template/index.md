@@ -57,7 +57,6 @@ The following demonstrates how to work with bash commands in a notebook. Note th
 
 
 ```bash
-%%bash
 echo "This is one way of working with bash, which is good because it renders nicely in the documentation"
 ls -l
 ```
@@ -116,7 +115,6 @@ path=!echo $PATH
 
 
 ```bash
-%%bash
 bacalhau version
 ```
 
@@ -126,7 +124,6 @@ bacalhau version
 
 
 ```bash
-%%bash
 job_id=$(bacalhau docker run ubuntu echo Hello World)
 echo $job_id
 echo "Note that bash is executed in a subprocess, so variables are only available within the same cell"
@@ -231,7 +228,6 @@ gsutil cp templates/basic-template/small-toy-dataset.csv gs://bacalhau-examples/
 
 
 ```bash
-%%bash
 curl -s https://storage.googleapis.com/bacalhau-examples/templates/basic-template/small-toy-example.csv
 ```
 

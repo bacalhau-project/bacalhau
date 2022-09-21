@@ -19,7 +19,6 @@ This example runs a container.
 
 
 ```bash
-%%bash
 docker run --rm hello-world
 ```
 
@@ -63,7 +62,6 @@ RUN echo "built"
 
 
 ```bash
-%%bash
 docker build -t myimage .
 docker run --rm myimage echo "works!"
 ```
