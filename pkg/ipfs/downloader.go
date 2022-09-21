@@ -194,12 +194,12 @@ func moveResults(ctx context.Context,
 		}
 		log.Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
 
-		r := system.UnsafeForUserCodeRunCommand("bash", []string{
+		_, err = system.UnsafeForUserCodeRunCommand("bash", []string{
 			"-c",
 			fmt.Sprintf("find %s -name '*' -type f -exec mv -f {} %s \\;", volumeSourceDir, volumeOutputDir),
 		})
-		if r.Error != nil {
-			return r.Error
+		if err != nil {
+			return err
 		}
 	}
 
@@ -224,7 +224,7 @@ func catStdFiles(ctx context.Context,
 		"stdout",
 		"stderr",
 	} {
-		r := system.UnsafeForUserCodeRunCommand("bash", []string{
+		_, err := system.UnsafeForUserCodeRunCommand("bash", []string{
 			"-c",
 			fmt.Sprintf(
 				"cat %s >> %s",
@@ -232,8 +232,8 @@ func catStdFiles(ctx context.Context,
 				filepath.Join(finalOutputDirAbs, filename),
 			),
 		})
-		if r.Error != nil {
-			return r.Error
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -251,12 +251,12 @@ func moveStdFiles(ctx context.Context,
 		"stderr",
 		"exitCode",
 	} {
-		r := system.UnsafeForUserCodeRunCommand("mv", []string{
+		_, err = system.UnsafeForUserCodeRunCommand("mv", []string{
 			filepath.Join(shardDownloadDir, filename),
 			shardOutputDir,
 		})
-		if r.Error != nil {
-			return r.Error
+		if err != nil {
+			return err
 		}
 	}
 	return nil

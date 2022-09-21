@@ -32,14 +32,14 @@ func WaitForFileSudo(path string, maxAttempts int, delay time.Duration) error {
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
 		Handler: func() (bool, error) {
-			r := UnsafeForUserCodeRunCommand("sudo", []string{
+			r, err := UnsafeForUserCodeRunCommand("sudo", []string{
 				"ls", "-la",
 				path,
 			})
 
-			fmt.Printf("AFTER CHECK: %s %+v\n", r.STDOUT, r.Error)
-			if r.Error != nil {
-				return false, r.Error
+			fmt.Printf("AFTER CHECK: %s %+v\n", r.STDOUT, err)
+			if err != nil {
+				return false, err
 			}
 			return true, nil
 		},

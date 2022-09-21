@@ -298,12 +298,12 @@ func AddNodeIDFromBaggageToSpan(ctx context.Context, span oteltrace.Span) {
 
 func AddAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, name string) {
 	b := baggage.FromContext(ctx)
-	log.Debug().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
+	log.Trace().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
 	m := b.Member(name)
 	if m.Value() != "" {
 		span.SetAttributes(attribute.String(name, m.Value()))
 	} else {
-		log.Debug().Msgf("no value found for baggage key %s", name)
+		log.Trace().Msgf("no value found for baggage key %s", name)
 		if log.Trace().Enabled() {
 			debug.PrintStack()
 		}
