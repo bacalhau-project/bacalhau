@@ -224,12 +224,6 @@ func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (
 		return "", isTruncated, err
 	}
 
-	_, err = f.Seek(0, 0) // reset to zero
-	if err != nil {
-		log.Error().Err(err).Msgf("Error seeking to beginning of file: %s", f.Name())
-		return "", isTruncated, err
-	}
-
 	fileStat, err := f.Stat()
 	if err != nil {
 		log.Error().Err(err).Msgf("Error getting file info: %s", f.Name())
