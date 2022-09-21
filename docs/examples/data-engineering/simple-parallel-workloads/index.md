@@ -62,20 +62,13 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
     [90m09:34:43.477 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
 
 
-
-<video src="scaled_Bird_flying_over_the_lake.mp4" controls  >
-      Your browser does not support the <code>video</code> element.
-    </video>
-
-
-
-<video src="scaled_Calm_waves_on_a_rocky_sea_gulf.mp4" controls  >
-      Your browser does not support the <code>video</code> element.
-    </video>
-
-
-
-<video src="scaled_Prominent_Late_Gothic_styled_architecture.mp4" controls  >
-      Your browser does not support the <code>video</code> element.
-    </video>
-
+<!-- This is for the benefit of the documentation -->
+<video src={require('./scaled_Bird_flying_over_the_lake.mp4').default} controls  >
+Your browser does not support the <code>video</code> element.
+</video>
+<video src={require('./scaled_Calm_waves_on_a_rocky_sea_gulf.mp4').default} controls  >
+Your browser does not support the <code>video</code> element.
+</video>
+<video src={require('./scaled_Prominent_Late_Gothic_styled_architecture.mp4').default} controls  >
+Your browser does not support the <code>video</code> element.
+</video>
