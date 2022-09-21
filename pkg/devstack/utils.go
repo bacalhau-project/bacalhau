@@ -14,8 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const TmpFileName = "tempfile.txt"
-
 func ToIPFSClients(nodes []*node.Node) []*ipfs.Client {
 	res := []*ipfs.Client{}
 	for _, n := range nodes {
@@ -25,7 +23,7 @@ func ToIPFSClients(nodes []*node.Node) []*ipfs.Client {
 	return res
 }
 
-func AddFileToNodesForTests(ctx context.Context, filePath string, clients ...*ipfs.Client) (string, error) {
+func AddFileToNodes(ctx context.Context, filePath string, clients ...*ipfs.Client) (string, error) {
 	var res string
 	for i, client := range clients {
 		cid, err := client.Put(ctx, filePath)
@@ -40,18 +38,17 @@ func AddFileToNodesForTests(ctx context.Context, filePath string, clients ...*ip
 	return res, nil
 }
 
-func AddTextToNodesForTests(ctx context.Context, fileContent []byte, clients ...*ipfs.Client) (string, error) {
-	tmpDir, err := ioutil.TempDir("", "bacalhau-add-text-to-nodes")
-	if err != nil {
-		return "", err
-	}
-	defer os.RemoveAll(tmpDir)
-	tmpFile := tmpDir + "/" + TmpFileName
-
-	err = os.WriteFile(tmpFile, fileContent, util.OS_USER_RW|util.OS_ALL_R)
+func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*ipfs.Client) (string, error) {
+	testDir, err := ioutil.TempDir("", "bacalhau-test")
 	if err != nil {
 		return "", err
 	}
 
-	return AddFileToNodesForTests(ctx, tmpFile, clients...)
+	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
+	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW|util.OS_ALL_R)
+	if err != nil {
+		return "", err
+	}
+
+	return AddFileToNodes(ctx, testFilePath, clients...)
 }

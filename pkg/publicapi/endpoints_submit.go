@@ -93,7 +93,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		//               --cid ipfs:abc --cid filecoin:efg
 		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
-			CID:    cid,
+			Cid:    cid,
 			Path:   "/job",
 		})
 	}

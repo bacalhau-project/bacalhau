@@ -2,11 +2,10 @@ package computenode
 
 import (
 	"context"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
@@ -82,7 +81,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 		ipfsStack, cm := stack.IpfsStack, stack.Node.CleanupManager
 
 		defer cm.Cleanup()
-		return devstack.AddTextToNodesForTests(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
+		return devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 	}()
 	require.NoError(suite.T(), err)
 
@@ -97,7 +96,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 		defer cm.Cleanup()
 
 		if shouldAddData {
-			_, err := devstack.AddTextToNodesForTests(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
+			_, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 			require.NoError(suite.T(), err)
 		}
 

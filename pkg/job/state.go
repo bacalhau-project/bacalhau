@@ -121,7 +121,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if len(completedShards) == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID), nil
+	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.Cid), nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -259,7 +259,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 
 		// again this should never happen but just in case
 		// a shard result with an empty CID has made it through somehow
-		if shardResult.PublishedResult.CID == "" {
+		if shardResult.PublishedResult.Cid == "" {
 			return results, fmt.Errorf(
 				"job (%s) has a missing results id at shard index %d",
 				jobID,

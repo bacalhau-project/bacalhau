@@ -61,8 +61,8 @@ func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
 
 func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	nodeCount := 1
-	inputPath := "/inputs"
-	inWASMOutputPath := "/outputs"
+	inputPath := "/input"
+	outputPath := "/output"
 	fileContents := "pineapples"
 
 	ctx := context.Background()
@@ -74,23 +74,23 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	tmpOutputDir, err := ioutil.TempDir("", "bacalhau-test-python-wasm-volumes")
+	tmpDir, err := ioutil.TempDir("", "devstack_test")
 	require.NoError(suite.T(), err)
 	defer func() {
-		err := os.RemoveAll(tmpOutputDir)
+		err := os.RemoveAll(tmpDir)
 		require.NoError(suite.T(), err)
 	}()
 
 	oldDir, err := os.Getwd()
 	require.NoError(suite.T(), err)
-	err = os.Chdir(tmpOutputDir)
+	err = os.Chdir(tmpDir)
 	require.NoError(suite.T(), err)
 	defer func() {
 		err := os.Chdir(oldDir)
 		require.NoError(suite.T(), err)
 	}()
 
-	fileCid, err := devstack.AddTextToNodesForTests(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	// write bytes to main.py
@@ -98,10 +98,10 @@ func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 import os
 print("LIST /")
 print(os.listdir("/"))
-print("LIST %s")
-print(os.listdir("%s"))
-open("%s/%s", "w").write(open("%s").read())
-`, inWASMOutputPath, inWASMOutputPath, inWASMOutputPath, devstack.TmpFileName, inputPath))
+print("LIST /output")
+print(os.listdir("/output"))
+open("%s/test.txt", "w").write(open("%s").read())
+`, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
 	require.NoError(suite.T(), err)
@@ -111,13 +111,14 @@ open("%s/%s", "w").write(open("%s").read())
 		"--api-host=localhost",
 		"run",
 		"-v", fmt.Sprintf("%s:%s", fileCid, inputPath),
+		"-o", fmt.Sprintf("%s:%s", "output", outputPath),
 		"python",
 		"--deterministic",
 		"main.py",
 	)
 	require.NoError(suite.T(), err)
-	jobID := strings.TrimSpace(out)
-	log.Debug().Msgf("jobId=%s", jobID)
+	jobId := strings.TrimSpace(out)
+	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
 
 	node := stack.Nodes[0]
@@ -125,30 +126,24 @@ open("%s/%s", "w").write(open("%s").read())
 	apiClient := publicapi.NewAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(suite.T(), err)
-	err = resolver.WaitUntilComplete(ctx, jobID)
+	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(suite.T(), err)
 
-	shards, err := resolver.GetShards(ctx, jobID)
+	shards, err := resolver.GetShards(ctx, jobId)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), len(shards) > 0)
 
 	shard := shards[0]
 
+	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.CID)
+	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
 
-	outputPath := filepath.Join(tmpOutputDir, shard.PublishedResult.CID)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
+	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
 	require.NoError(suite.T(), err)
 
-	filePath := fmt.Sprintf("%s/outputs/%s", outputPath, devstack.TmpFileName)
-	stdoutContents, _ := ioutil.ReadFile(outputPath + "/outputs/stdout")
-	require.NotEmpty(suite.T(), stdoutContents)
-	stderrContents, _ := ioutil.ReadFile(filePath + "/outputs/stderr")
-	require.NotEmpty(suite.T(), stderrContents)
-	exitCodeContents, _ := ioutil.ReadFile(filePath + "/outputs/exitCode")
-	require.Equal(suite.T(), exitCodeContents, "0")
-
+	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(suite.T(), err)
 

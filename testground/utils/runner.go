@@ -82,8 +82,8 @@ func RunDockerTest(
 			return err
 		}
 
-		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.CID)
-		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.CID, outputPath)
+		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.Cid)
+		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.Cid, outputPath)
 		if err != nil {
 			return err
 		}

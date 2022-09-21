@@ -93,14 +93,14 @@ func singleFileSetupStorageWithData(
 ) ISetupStorage {
 	//nolint:lll
 	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := devstack.AddTextToNodesForTests(ctx, []byte(fileContents), clients...)
+		fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), clients...)
 		if err != nil {
 			return nil, err
 		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
 				Engine: driverName,
-				CID:    fileCid,
+				Cid:    fileCid,
 				Path:   mountPath,
 			},
 		}
@@ -116,14 +116,14 @@ func singleFileSetupStorageWithFile(
 ) ISetupStorage {
 	//nolint:lll
 	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := devstack.AddFileToNodesForTests(ctx, filePath, clients...)
+		fileCid, err := devstack.AddFileToNodes(ctx, filePath, clients...)
 		if err != nil {
 			return nil, err
 		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
 				Engine: driverName,
-				CID:    fileCid,
+				Cid:    fileCid,
 				Path:   mountPath,
 			},
 		}

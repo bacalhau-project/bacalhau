@@ -426,7 +426,7 @@ func (ctrl *Controller) PinContext(ctx context.Context, buildContext string) (st
 	if err != nil {
 		return "", err
 	}
-	return result.CID, nil
+	return result.Cid, nil
 }
 
 func (ctrl *Controller) GetStateResolver() *jobutils.StateResolver {

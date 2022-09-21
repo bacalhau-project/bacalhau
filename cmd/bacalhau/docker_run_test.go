@@ -251,7 +251,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
@@ -263,7 +263,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
 					for _, jobInput := range job.Spec.InputVolumes {
-						if tcidIV.cid == jobInput.CID {
+						if tcidIV.cid == jobInput.Cid {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
 							if tcidIV.path != "" {
@@ -331,7 +331,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
@@ -460,27 +460,6 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 			}()
 		}
-	}
-}
-
-func (suite *DockerRunSuite) TestRun_GenericGenerateAndDryRun() {
-	tests := []struct {
-		filename string
-		flag     string
-		command  []string
-	}{
-		{filename: "job-generate.yaml", flag: "--dry-run", command: []string{"ubuntu", "echo", "hello"}},
-	}
-	for _, o := range tests {
-		var args []string
-		args = append(args, "docker", "run", "--local")
-		if o.flag == "--dry-run" {
-			args = append(args, "--dry-run")
-		}
-		args = append(args, o.command...)
-		*ODR = *NewDockerRunOptions()
-		_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-		require.NoError(suite.T(), err, "Error generating jobspec")
 	}
 }
 
@@ -742,7 +721,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := devstack.AddFileToNodesForTests(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())

@@ -63,7 +63,7 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
-	cid, err := devstack.AddTextToNodesForTests(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
+	cid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 	require.NoError(s.T(), err)
 
 	job := model.Job{

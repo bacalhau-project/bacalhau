@@ -158,13 +158,13 @@ func fetchResult(ctx context.Context,
 	defer span.End()
 
 	err := func() error {
-		log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.CID, shardDownloadDir)
+		log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.Cid, shardDownloadDir)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
 			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
 		defer cancel()
 
-		return cl.Get(innerCtx, result.CID, shardDownloadDir)
+		return cl.Get(innerCtx, result.Cid, shardDownloadDir)
 	}()
 
 	if err != nil {

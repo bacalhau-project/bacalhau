@@ -78,8 +78,9 @@ type StorageSpec struct {
 	Name string `json:"Name,omitempty" yaml:"Name,omitempty"`
 
 	// The unique ID of the data, where it makes sense (for example, in an
-	// IPFS storage spec this will be the data's CID).
-	CID string `json:"CID,omitempty" yaml:"CID,omitempty"`
+	// IPFS storage spec this will be the data's Cid).
+	// NOTE: The below is capitalized to match IPFS & IPLD (even thoough it's out of golang fmt)
+	Cid string `json:"Cid,omitempty" yaml:"Cid,omitempty"`
 
 	// Source URL of the data
 	URL string `json:"URL,omitempty" yaml:"URL,omitempty"`

@@ -90,7 +90,7 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 	return model.StorageSpec{
 		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
 		Engine: model.StorageSourceFilecoin,
-		CID:    contentCid,
+		Cid:    contentCid,
 		Metadata: map[string]string{
 			"deal_cid": dealCid,
 		},

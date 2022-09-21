@@ -63,7 +63,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			InputVolumes: []model.StorageSpec{
 				{
 					Engine: model.StorageSourceIPFS,
-					CID:    "123",
+					Cid:    "123",
 				},
 			},
 			OutputVolumes: []model.StorageSpec{},

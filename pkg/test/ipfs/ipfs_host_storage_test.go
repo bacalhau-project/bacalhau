@@ -89,7 +89,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// add this file to the server
 	EXAMPLE_TEXT := `hello world`
-	fileCid, err := devstack.AddTextToNodesForTests(ctx, []byte(EXAMPLE_TEXT), stack.IPFSClients[0])
+	fileCid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
@@ -100,8 +100,8 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	// the storage spec for the cid we added
 	storage := model.StorageSpec{
 		Engine: engine,
-		CID:    fileCid,
-		Path:   "/" + devstack.TmpFileName,
+		Cid:    fileCid,
+		Path:   "/data/file.txt",
 	}
 
 	// does the storage client think we have the cid locally?
@@ -149,7 +149,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	require.NoError(t, err)
 
 	// add this file to the server
-	folderCid, err := devstack.AddFileToNodesForTests(ctx, dir, stack.IPFSClients[0])
+	folderCid, err := devstack.AddFileToNodes(ctx, dir, stack.IPFSClients[0])
 	require.NoError(t, err)
 
 	// construct an ipfs docker storage client
@@ -160,7 +160,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// the storage spec for the cid we added
 	storage := model.StorageSpec{
 		Engine: engine,
-		CID:    folderCid,
+		Cid:    folderCid,
 		Path:   "/data/folder",
 	}
 

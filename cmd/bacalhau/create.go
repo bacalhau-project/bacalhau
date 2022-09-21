@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -87,12 +88,22 @@ var createCmd = &cobra.Command{
 
 		jobSpec := &model.JobSpec{}
 
-		if cmdArgs[0] == "-" {
+		if len(cmdArgs) == 0 {
+			_ = cmd.Usage()
+			return fmt.Errorf("no filename specified")
+		}
+
+		OC.Filename = cmdArgs[0]
+
+		if OC.Filename == "-" {
 			var job jobDescription
 
-			byteResult, _ := io.ReadAll(os.Stdin)
+			byteResult, err := io.ReadAll(cmd.InOrStdin())
+			if err != nil {
+				return errors.Wrap(err, "failed to read from stdin")
+			}
 
-			err := yaml.Unmarshal(byteResult, &job)
+			err = yaml.Unmarshal(byteResult, &job)
 			if err != nil {
 				return fmt.Errorf("error reading from stdin : %s", err)
 			}
@@ -106,12 +117,7 @@ var createCmd = &cobra.Command{
 				return fmt.Errorf("error reading josbpec from stdin : %s", err)
 			}
 
-		}
-		if len(cmdArgs) == 0 {
-			_ = cmd.Usage()
-			return fmt.Errorf("no filename specified")
-		}
-		if OC.Filename != "-" {
+		} else {
 			fileextension := filepath.Ext(OC.Filename)
 			fileContent, err := os.Open(OC.Filename)
 

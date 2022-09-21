@@ -97,7 +97,7 @@ func (s *StorageProvider) Upload(ctx context.Context, localPath string) (model.S
 	}
 	return model.StorageSpec{
 		Engine: model.StorageSourceIPFS,
-		CID:    "test",
+		Cid:    "test",
 		Path:   "/",
 	}, nil
 }

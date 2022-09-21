@@ -107,7 +107,7 @@ func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.S
 	ctx, span := newSpan(ctx, "HasStorageLocally")
 	defer span.End()
 
-	return sp.IPFSClient.HasCID(ctx, volume.CID)
+	return sp.IPFSClient.HasCID(ctx, volume.Cid)
 }
 
 func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
@@ -126,12 +126,12 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 	_, span := newSpan(ctx, "PrepareStorage")
 	defer span.End()
 
-	err := sp.ensureSidecar(ctx, storageSpec.CID)
+	err := sp.ensureSidecar(ctx, storageSpec.Cid)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
 
-	cidMountPath, err := sp.getCidMountPath(ctx, storageSpec.CID)
+	cidMountPath, err := sp.getCidMountPath(ctx, storageSpec.Cid)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}

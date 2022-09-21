@@ -225,7 +225,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		}
 
 		getVolumeSizeHandler := func(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-			return capacitymanager.ConvertMemoryString(volume.CID), nil
+			return capacitymanager.ConvertMemoryString(volume.Cid), nil
 		}
 
 		stack := testutils.NewNoopStack(
@@ -489,7 +489,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		cid, _ := devstack.AddTextToNodesForTests(ctx, []byte(text), ipfsStack.IPFSClients[0])
+		cid, _ := devstack.AddTextToNodes(ctx, []byte(text), ipfsStack.IPFSClients[0])
 
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
@@ -506,7 +506,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 				InputVolumes: []model.StorageSpec{
 					{
 						Engine: model.StorageSourceIPFS,
-						CID:    cid,
+						Cid:    cid,
 						Path:   "/data/file.txt",
 					},
 				},
@@ -540,14 +540,14 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
-		cid, err := devstack.AddTextToNodesForTests(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
+		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
 		require.NoError(suite.T(), err)
 
 		executor := stack.Node.Executors[model.EngineDocker]
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
-			CID:    cid,
+			Cid:    cid,
 			Path:   "/",
 		})
 

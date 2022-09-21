@@ -104,7 +104,7 @@ func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	require.NoError(suite.T(), err)
 
 	require.Equal(suite.T(), fmt.Sprintf("job-%s-shard-%d-host-%s", TestJobId, 0, TestHostId), publishResult.Name)
-	require.Equal(suite.T(), TestContentCid, publishResult.CID)
+	require.Equal(suite.T(), TestContentCid, publishResult.Cid)
 	require.Equal(suite.T(), model.StorageSourceFilecoin, publishResult.Engine)
 	require.NotNil(suite.T(), publishResult.Metadata)
 	require.Equal(suite.T(), 1, len(publishResult.Metadata))

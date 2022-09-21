@@ -115,7 +115,7 @@ func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec mod
 		return nil, err
 	}
 	if provider == nil {
-		return nil, fmt.Errorf("no storage provider found for %s", storageSpec.CID)
+		return nil, fmt.Errorf("no storage provider found for %s", storageSpec.Cid)
 	}
 	return provider.Explode(ctx, storageSpec)
 }
