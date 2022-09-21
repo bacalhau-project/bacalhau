@@ -214,21 +214,20 @@ func runCommandResultsToDisk(command string, args []string,
 	return r, err
 }
 
-func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (string, bool, error) {
+func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (output string, isTruncated bool, err error) {
 	log.Trace().Msgf("Reading from file: %s", f.Name())
-	isTruncated := false
 
 	// start by resetting the file seek position
-	_, err := f.Seek(0, io.SeekStart)
+	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error seeking to beginning of file: %s", f.Name())
 		return "", isTruncated, err
 	}
 
-	_, err := f.Seek(0, 0) // reset to zero
+	_, err = f.Seek(0, 0) // reset to zero
 	if err != nil {
 		log.Error().Err(err).Msgf("Error seeking to beginning of file: %s", f.Name())
-		return "", err
+		return "", isTruncated, err
 	}
 
 	fileStat, err := f.Stat()
