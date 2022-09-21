@@ -106,10 +106,10 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 
 //nolint:lll // Exception to the long rule
 func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
-	r := system.UnsafeForUserCodeRunCommand("rm", []string{
+	_, err := system.UnsafeForUserCodeRunCommand("rm", []string{
 		"-rf", fmt.Sprintf("%s/%s", dockerIPFS.LocalDir, storageSpec.Cid),
 	})
-	return r.Error
+	return err
 }
 
 func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {

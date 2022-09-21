@@ -106,6 +106,7 @@ type JobShardState struct {
 	VerificationProposal []byte             `json:"verification_proposal"`
 	VerificationResult   VerificationResult `json:"verification_result"`
 	PublishedResult      StorageSpec        `json:"published_results"`
+	RunOutput            *RunCommandResult  `json:"run_output"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -235,6 +236,7 @@ type JobEvent struct {
 	// this is only defined in "update_deal" events
 	JobDeal              JobDeal            `json:"job_deal"`
 	Status               string             `json:"status"`
+	RunOutput            *RunCommandResult  `json:"run_output"`
 	VerificationProposal []byte             `json:"verification_proposal"`
 	VerificationResult   VerificationResult `json:"verification_result"`
 	PublishedResult      StorageSpec        `json:"published_results"`

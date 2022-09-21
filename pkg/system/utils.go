@@ -51,7 +51,7 @@ func TryUntilSucceedsN(f func() error, desc string, retries int) error {
 	}
 }
 
-func UnsafeForUserCodeRunCommand(command string, args []string) *model.RunCommandResult {
+func UnsafeForUserCodeRunCommand(command string, args []string) (*model.RunCommandResult, error) {
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
 
@@ -62,13 +62,13 @@ func UnsafeForUserCodeRunCommand(command string, args []string) *model.RunComman
 
 	err := cmd.Run()
 	if err != nil {
-		return &model.RunCommandResult{Error: err}
+		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
 	result := model.NewRunCommandResult()
 	result.STDOUT = stdoutBuf.String()
 	result.STDERR = stderrBuf.String()
 	result.ExitCode = cmd.ProcessState.ExitCode()
-	return result
+	return result, nil
 }
 
 func RunCommandResultsToDisk(command string, args []string, stdoutFilename, stderrFilename string) (
@@ -106,7 +106,7 @@ func runCommandResultsToDisk(command string, args []string,
 	stdoutFileReader, stdoutFileWriter, stdoutFile, err := createReaderAndWriter(stdoutPipe, stdoutFilename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stdout file, writer and scanner: %s", stdoutFilename)
-		r.Error = err
+		r.ErrorMsg = err.Error()
 		return r, err
 	}
 
@@ -128,7 +128,7 @@ func runCommandResultsToDisk(command string, args []string,
 	stderrFileReader, stderrFileWriter, stderrFile, err := createReaderAndWriter(stderrPipe, stderrFilename)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error creating stderr file, writer and scanner: %s", stderrFilename)
-		r.Error = err
+		r.ErrorMsg = err.Error()
 		return r, err
 	}
 
@@ -181,57 +181,49 @@ func runCommandResultsToDisk(command string, args []string,
 	}()
 
 	// Starting the command
-	if r.Error = cmd.Start(); r.Error != nil {
-		log.Error().Err(r.Error).Msg("Error starting command")
+	if err = cmd.Start(); err != nil {
+		log.Error().Err(err).Msg("Error starting command")
+		r.ErrorMsg = err.Error()
 		return r, err
 	}
 
 	// Wait the command in a goroutine.
 	wg.Wait()
-	r.Error = cmd.Wait()
-
-	// Waiting until errorGroups groups are done
-	if r.Error != nil {
-		log.Error().Err(r.Error).Msg("Error during running of the command")
+	if err = cmd.Wait(); err != nil {
+		log.Error().Err(err).Msg("Error during running of the command")
+		r.ErrorMsg = err.Error()
+		return r, err
 	}
 
 	// Reading in stdout and stderr from files
-	r.STDOUT, r.Error = readProcessOutputFromFile(stdoutFile, maxStdoutReturnLengthInBytes)
-	if r.Error != nil {
-		log.Error().Err(r.Error).Msg("Error reading stdout from file")
+	r.STDOUT, r.StdoutTruncated, err = readProcessOutputFromFile(stdoutFile, maxStdoutReturnLengthInBytes)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading stdout from file")
+		r.ErrorMsg = err.Error()
 		return r, err
 	}
 
-	r.STDERR, r.Error = readProcessOutputFromFile(stderrFile, maxStderrReturnLengthInBytes)
-	if r.Error != nil {
-		log.Error().Err(r.Error).Msg("Error reading stderr from file")
-		return r, err
-	}
-
-	// Reporting if the output for command was truncated in the description
-	r.StdoutTruncated, r.Error = wasProcessOutputTruncated(stdoutFilename, maxStdoutReturnLengthInBytes)
-	if r.Error != nil {
-		log.Error().Err(r.Error).Msg("Error checking if stdout was truncated")
+	r.STDERR, r.StderrTruncated, err = readProcessOutputFromFile(stderrFile, maxStderrReturnLengthInBytes)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading stderr from file")
+		r.ErrorMsg = err.Error()
 		return r, err
 	}
 
 	r.ExitCode = cmd.ProcessState.ExitCode()
-	r.Error = nil
-
 	return r, err
 }
 
-func wasProcessOutputTruncated(filename string, maxVariableReturnLengthInBytes int) (bool, error) {
-	stdoutFileInfo, err := os.Stat(filename)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error getting file info: %s", filename)
-		return false, err
-	}
-	return stdoutFileInfo.Size() > int64(maxVariableReturnLengthInBytes), nil
-}
+func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (string, bool, error) {
+	log.Trace().Msgf("Reading from file: %s", f.Name())
+	isTruncated := false
 
-func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (string, error) {
-	log.Debug().Msgf("Reading from file: %s", f.Name())
+	// start by resetting the file seek position
+	_, err := f.Seek(0, io.SeekStart)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error seeking to beginning of file: %s", f.Name())
+		return "", isTruncated, err
+	}
 
 	_, err := f.Seek(0, 0) // reset to zero
 	if err != nil {
@@ -242,28 +234,29 @@ func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (
 	fileStat, err := f.Stat()
 	if err != nil {
 		log.Error().Err(err).Msgf("Error getting file info: %s", f.Name())
-		return "", err
+		return "", isTruncated, err
 	}
 	fileSize := fileStat.Size()
-	amountToRead := int(math.Min(float64(maxVariableReturnLengthInBytes), float64(fileSize)))
+	amountToRead := int64(math.Min(float64(maxVariableReturnLengthInBytes), float64(fileSize)))
 
 	fb := make([]byte, amountToRead)
 
 	// If the file is larger than the max, we only read the last max bytes
-	if fileSize > int64(maxVariableReturnLengthInBytes) {
-		_, err = f.Seek(fileSize-int64(maxVariableReturnLengthInBytes), 0)
+	if fileSize > amountToRead {
+		isTruncated = true
+		_, err = f.Seek(fileSize-amountToRead, 0)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error seeking to end of file: %s", f.Name())
-			return "", err
+			return "", isTruncated, err
 		}
 	}
 
 	_, err = f.Read(fb)
 	if err != nil && err != io.EOF {
 		log.Error().Err(err).Msgf("Error reading file (though we wrote to it already - weird): %s", f.Name())
-		return "", err
+		return "", isTruncated, err
 	}
-	return string(fb), nil
+	return strings.TrimSpace(string(fb)), isTruncated, nil
 }
 
 func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
@@ -277,9 +270,6 @@ func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 		if err != nil && err != io.EOF {
 			log.Err(err).Msgf("%s: Error reading from %s pipe", name, err)
 		}
-
-		log.Debug().Msgf("DEBUG %s: Read %d bytes from process", name, n)
-		log.Debug().Msgf("DEBUG %s: Error from reading from process: %v", name, err)
 
 		if n > 0 {
 			var nn int // written bytes
@@ -309,7 +299,6 @@ func writeFromProcessToFileWithMax(name string, r *bufio.Reader,
 		if err != nil {
 			// Read returns io.EOF at the end of file, which is not an error for us
 			if err == io.EOF {
-				log.Debug().Msgf("%s: EOF detected", name)
 				err = nil
 			} else {
 				log.Err(err).Msgf("%s: Error reading file, non-EOF", name)
@@ -350,11 +339,11 @@ func EnsureSystemDirectory(path string) (string, error) {
 
 	log.Trace().Msgf("Enforcing creation of results dir: %s", path)
 
-	r := UnsafeForUserCodeRunCommand("mkdir", []string{
+	_, err = UnsafeForUserCodeRunCommand("mkdir", []string{
 		"-p",
 		path,
 	})
-	return path, r.Error
+	return path, err
 }
 
 func GetResultsDirectory(jobID, hostID string) string {
