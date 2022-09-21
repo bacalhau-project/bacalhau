@@ -74,9 +74,9 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 		Job:   job,
 		Index: 0,
 	}
-	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, result)
-	require.NoError(suite.T(), err)
-	require.Empty(suite.T(), runnerOutput.ErrorMsg)
+	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, tmpOutputDir)
+	require.NoError(s.T(), err)
+	require.Empty(s.T(), runnerOutput.ErrorMsg)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", tmpOutputDir)
 	require.FileExists(s.T(), stdoutPath, "The stdout file exists")
@@ -106,6 +106,6 @@ func (s *ComputeNodeRunJobSuite) TestEmptySpec() {
 		Index: 0,
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, "")
-	require.Error(suite.T(), err)
-	require.Equal(suite.T(), runnerOutput.ErrorMsg, err.Error())
+	require.Error(s.T(), err)
+	require.Equal(s.T(), runnerOutput.ErrorMsg, err.Error())
 }
