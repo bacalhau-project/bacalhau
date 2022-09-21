@@ -62,7 +62,7 @@ func (s *DevstackPythonWASMSuite) TearDownAllSuite() {
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	nodeCount := 1
 	inputPath := "/input"
-	outputPath := "/outputs"
+	outputPath := "/output"
 	fileContents := "pineapples"
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/pythonwasmvolumes")
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -111,7 +111,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		"--api-host=localhost",
 		"run",
 		"-i", fmt.Sprintf("%s", fileCid),
-		"-o", fmt.Sprintf("%s:%s", "/outputs", outputPath),
+		"-o", fmt.Sprintf("%s:%s", "/output", outputPath),
 		"python",
 		"--deterministic",
 		"main.py",
@@ -135,7 +135,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	shard := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
+	outputDir, err := ioutil.TempDir("", "bacalhau-devstack-python-wasm-test")
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), shard.PublishedResult.Cid)
 
