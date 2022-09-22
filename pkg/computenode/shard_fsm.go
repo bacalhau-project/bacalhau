@@ -205,11 +205,14 @@ type shardStateMachine struct {
 	mu      sync.Mutex
 	req     chan shardStateRequest
 
-	currentState   shardStateType
-	previousState  shardStateType
+	currentState  shardStateType
+	previousState shardStateType
+
+	runOutput      *model.RunCommandResult
 	resultProposal []byte
-	bidSent        bool
 	errorMsg       string
+
+	bidSent bool
 }
 
 func (m *shardStateMachineManager) newStateMachine(
@@ -358,7 +361,8 @@ func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	// we get a "proposal" from this method which is not the results
 	// but what the compute node verifier wants to pass to the requester
 	// node verifier
-	proposal, err := m.node.RunShard(ctx, m.Shard)
+	proposal, runOutput, err := m.node.RunShard(ctx, m.Shard)
+	m.runOutput = runOutput
 	if err == nil {
 		m.resultProposal = proposal
 		return publishingToVerifierState
@@ -383,6 +387,7 @@ func publishingToVerifierState(ctx context.Context, m *shardStateMachine) StateF
 		m.Shard.Index,
 		fmt.Sprintf("Got results proposal of length: %d", len(m.resultProposal)),
 		m.resultProposal,
+		m.runOutput,
 	)
 
 	if err != nil {
@@ -451,6 +456,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.Shard.Job.ID,
 			m.Shard.Index,
 			errMessage,
+			m.runOutput,
 		)
 		if err != nil {
 			log.Error().Msgf("%s failed to report error of job due to %s",

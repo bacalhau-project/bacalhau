@@ -106,6 +106,7 @@ type JobShardState struct {
 	VerificationProposal []byte             `json:"verification_proposal"`
 	VerificationResult   VerificationResult `json:"verification_result"`
 	PublishedResult      StorageSpec        `json:"published_results"`
+	RunOutput            *RunCommandResult  `json:"run_output"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -235,6 +236,7 @@ type JobEvent struct {
 	// this is only defined in "update_deal" events
 	JobDeal              JobDeal            `json:"job_deal"`
 	Status               string             `json:"status"`
+	RunOutput            *RunCommandResult  `json:"run_output"`
 	VerificationProposal []byte             `json:"verification_proposal"`
 	VerificationResult   VerificationResult `json:"verification_result"`
 	PublishedResult      StorageSpec        `json:"published_results"`
@@ -301,7 +303,7 @@ const (
 	JobStateVerifying
 
 	// our results have been processed and published
-	JobStatePublished
+	JobStateCompleted
 
 	jobStateDone // must be last
 )
@@ -310,7 +312,7 @@ const (
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
 func (state JobStateType) IsTerminal() bool {
-	return state == JobStatePublished || state == JobStateError || state == JobStateCancelled
+	return state == JobStateCompleted || state == JobStateError || state == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -319,7 +321,7 @@ func (state JobStateType) IsTerminal() bool {
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
 func (state JobStateType) IsComplete() bool {
-	return state == JobStatePublished || state == JobStateError
+	return state == JobStateCompleted || state == JobStateError
 }
 
 func (state JobStateType) IsError() bool {
@@ -390,7 +392,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateVerifying
 
 	case JobEventResultsPublished:
-		return JobStatePublished
+		return JobStateCompleted
 
 	default:
 		return jobStateUnknown

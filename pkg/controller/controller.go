@@ -163,6 +163,11 @@ func (ctrl *Controller) SubmitJob(
 	// nodes will hear about the job via events on the transport.
 	jobCtx, _ := ctrl.newRootSpanForJob(ctx, jobID)
 
+	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
+	// Specifically tracking them all in ctrl.jobContexts
+	// ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/controller.SubmitJob")
+	// defer span.End()
+
 	ev := ctrl.constructEvent(jobID, model.JobEventCreated)
 
 	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Spec, ctrl.storageProviders)
@@ -175,7 +180,7 @@ func (ctrl *Controller) SubmitJob(
 	ev.JobDeal = data.Deal
 	ev.JobExecutionPlan = executionPlan
 
-	job := jobutils.ConstructJobFromEvent(ev)
+	j := jobutils.ConstructJobFromEvent(ev)
 
 	if err != nil {
 		return model.Job{}, fmt.Errorf("error processing job sharding: %s", err)
@@ -183,13 +188,13 @@ func (ctrl *Controller) SubmitJob(
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
-	err = ctrl.localdb.AddJob(ctx, job)
+	err = ctrl.localdb.AddJob(ctx, j)
 	if err != nil {
 		return model.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
 
 	err = ctrl.writeEvent(jobCtx, ev)
-	return job, err
+	return j, err
 }
 
 // can only be done by the requestor node that is responsible for the job
@@ -368,6 +373,7 @@ func (ctrl *Controller) ShardExecutionFinished(
 	shardIndex int,
 	status string,
 	proposal []byte,
+	runOutput *model.RunCommandResult,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardExecutionFinished")
@@ -375,6 +381,7 @@ func (ctrl *Controller) ShardExecutionFinished(
 	ev.Status = status
 	ev.VerificationProposal = proposal
 	ev.ShardIndex = shardIndex
+	ev.RunOutput = runOutput
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -397,12 +404,14 @@ func (ctrl *Controller) ShardError(
 	jobID string,
 	shardIndex int,
 	status string,
+	runOutput *model.RunCommandResult,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardError")
 	ev := ctrl.constructEvent(jobID, model.JobEventError)
 	ev.Status = status
 	ev.ShardIndex = shardIndex
+	ev.RunOutput = runOutput
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -543,6 +552,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev model.JobEvent) 
 				VerificationProposal: ev.VerificationProposal,
 				VerificationResult:   ev.VerificationResult,
 				PublishedResult:      ev.PublishedResult,
+				RunOutput:            ev.RunOutput,
 			},
 		)
 		if err != nil {

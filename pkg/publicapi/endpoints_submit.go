@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,6 +36,9 @@ type submitResponse struct {
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
+	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
+	defer span.End()
+
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
 		log.Debug().Msgf("====> Decode submitReq error: %s", err)
@@ -78,7 +82,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.Controller.PinContext(req.Context(), filepath.Join(tmpDir, "context"))
+		cid, err := apiServer.Controller.PinContext(ctx, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -95,7 +99,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 
 	j, err := apiServer.Controller.SubmitJob(
-		req.Context(),
+		ctx,
 		submitReq.Data,
 	)
 

@@ -2,8 +2,9 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -121,7 +122,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		concurrency: 1,
 		minBids:     0,
 		expectedResult: map[model.JobStateType]int{
-			model.JobStatePublished: 1,
+			model.JobStateCompleted: 1,
 		},
 		errorStates: []model.JobStateType{
 			model.JobStateError,
@@ -135,7 +136,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		concurrency: 3,
 		minBids:     3,
 		expectedResult: map[model.JobStateType]int{
-			model.JobStatePublished: 3,
+			model.JobStateCompleted: 3,
 		},
 		errorStates: []model.JobStateType{
 			model.JobStateError,
@@ -157,7 +158,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			model.JobStateWaiting,
 			model.JobStateRunning,
 			model.JobStateVerifying,
-			model.JobStatePublished,
+			model.JobStateCompleted,
 		},
 	})
 

@@ -132,7 +132,7 @@ var listCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobs, err := getAPIClient().List(ctx)
+		jobs, err := GetAPIClient().List(ctx)
 		if err != nil {
 			return err
 		}
@@ -178,14 +178,14 @@ var listCmd = &cobra.Command{
 			for _, j := range jobArray {
 				jobIDs = append(jobIDs, j.ID)
 			}
-			jobIDs = ReverseList(jobIDs)
+			jobIDs = system.ReverseList(jobIDs)
 			jobArray = []model.Job{}
 			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}
 		}
 
-		numberInTable := Min(OL.MaxJobs, len(jobArray))
+		numberInTable := system.Min(OL.MaxJobs, len(jobArray))
 
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
@@ -249,7 +249,7 @@ func resolvingJobDetails(ctx context.Context,
 			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
 		}
 
-		resolver := getAPIClient().GetJobStateResolver()
+		resolver := GetAPIClient().GetJobStateResolver()
 
 		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
 		if err != nil {

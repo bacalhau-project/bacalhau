@@ -127,7 +127,7 @@ func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context,
 		return "", err
 	}
 	tempFile := fmt.Sprintf("%s/results.tar", tempDir)
-	_, err = system.RunCommandGetResults("tar", []string{
+	_, err = system.UnsafeForUserCodeRunCommand("tar", []string{
 		"-cvf",
 		tempFile,
 		resultsDir,
@@ -142,11 +142,11 @@ func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, fi
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
 	defer span.End()
 
-	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "import", filePath})
+	r, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "import", filePath})
 	if err != nil {
 		return "", err
 	}
-	parts := strings.Split(strings.TrimSpace(rawOutput), " ")
+	parts := strings.Split(strings.TrimSpace(r.STDOUT), " ")
 	return parts[len(parts)-1], nil
 }
 
@@ -165,7 +165,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
 	defer span.End()
 
-	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{
+	r, err := lotusPublisher.runLotusCommand(ctx, []string{
 		"exec", "lotus", "lotus", "client", "deal",
 		contentCid,
 		lotusPublisher.Config.MinerAddress,
@@ -176,7 +176,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 		return "", err
 	}
 	dealCid := ""
-	for _, line := range strings.Split(strings.TrimSpace(rawOutput), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(r.STDOUT), "\n") {
 		dealCid = line
 	}
 	if dealCid == "" {
@@ -185,21 +185,21 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 	return dealCid, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (string, error) {
+func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (*model.RunCommandResult, error) {
 	//nolint:ineffassign,staticcheck
 	_, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
 	defer span.End()
 
-	return system.RunCommandGetResults(lotusPublisher.Config.ExecutablePath, args)
+	return system.UnsafeForUserCodeRunCommand(lotusPublisher.Config.ExecutablePath, args)
 }
 
 func processConfig(config FilecoinLotusPublisherConfig) (FilecoinLotusPublisherConfig, error) {
 	if config.ExecutablePath == "" {
-		result, err := system.RunCommandGetResults("which", []string{"lotus"})
+		r, err := system.UnsafeForUserCodeRunCommand("which", []string{"lotus"})
 		if err != nil {
 			return config, err
 		}
-		config.ExecutablePath = result
+		config.ExecutablePath = r.STDOUT
 	}
 	return config, nil
 }

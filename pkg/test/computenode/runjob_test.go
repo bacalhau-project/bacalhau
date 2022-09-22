@@ -3,11 +3,12 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -69,8 +70,9 @@ func (suite *ComputeNodeRunJobSuite) TestRunJob() {
 		Job:   job,
 		Index: 0,
 	}
-	err = computeNode.RunShardExecution(ctx, shard, result)
+	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(suite.T(), err)
+	require.Empty(suite.T(), runnerOutput.ErrorMsg)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
 	require.FileExists(suite.T(), stdoutPath, "The stdout file exists")
@@ -99,6 +101,7 @@ func (suite *ComputeNodeRunJobSuite) TestEmptySpec() {
 		Job:   job,
 		Index: 0,
 	}
-	err := computeNode.RunShardExecution(ctx, shard, "")
+	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, "")
 	require.Error(suite.T(), err)
+	require.Equal(suite.T(), runnerOutput.ErrorMsg, err.Error())
 }

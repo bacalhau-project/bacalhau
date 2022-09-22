@@ -18,7 +18,7 @@ type resultsResponse struct {
 }
 
 func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/publicapi/results")
+	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.results")
 	defer span.End()
 
 	var stateReq stateRequest

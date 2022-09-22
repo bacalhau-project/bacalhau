@@ -144,6 +144,56 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 }
 
+func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
+	tests := []struct {
+		includeEvents bool
+	}{
+		{includeEvents: false},
+		{includeEvents: true},
+	}
+
+	for _, tc := range tests {
+		func() {
+			var submittedJob model.Job
+			ctx := context.Background()
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			spec, deal := publicapi.MakeNoopJob()
+			s, err := c.Submit(ctx, spec, deal, nil)
+			require.NoError(suite.T(), err)
+			submittedJob = s // Default to the last job submitted, should be fine?
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			var returnedJobDescription = &jobDescription{}
+
+			var args []string
+
+			args = append(args, "describe", "--api-host", host, "--api-port", port, submittedJob.ID)
+			if tc.includeEvents {
+				args = append(args, "--include-events")
+			}
+
+			// Job Id at the end
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
+			require.NoError(suite.T(), err, "Error in describing job: %+v", err)
+
+			err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+			require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
+
+			// TODO: #600 When we figure out how to add events to a noop job, uncomment the below
+			// require.True(suite.T(), eventsWereIncluded == tc.includeEvents,
+			// 	fmt.Sprintf("Events include: %v\nExpected: %v", eventsWereIncluded, tc.includeEvents))
+
+			// require.True(suite.T(), localEventsWereIncluded == tc.includeEvents,
+			// 	fmt.Sprintf("Events included: %v\nExpected: %v", localEventsWereIncluded, tc.includeEvents))
+
+		}()
+	}
+
+}
+
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDescribeSuite(t *testing.T) {

@@ -3,10 +3,11 @@ package ipfs
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -119,11 +120,11 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	// 	"cat",
 	// 	volume.Source,
 	// })
-	result, err := system.RunCommandGetResults("cat", []string{
+	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
 		volume.Source,
 	})
 	require.NoError(t, err)
-	require.Equal(t, result, EXAMPLE_TEXT)
+	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)
@@ -180,13 +181,13 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// 	"cat",
 	// 	fmt.Sprintf("%s/file.txt", volume.Source),
 	// })
-	result, err := system.RunCommandGetResults("cat", []string{
+	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
 		fmt.Sprintf("%s/file.txt", volume.Source),
 	})
 	require.NoError(t, err)
-	require.Equal(t, result, EXAMPLE_TEXT)
+	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
 
-	fmt.Printf("HERE IS RESULTS: %s\n", result)
+	fmt.Printf("HERE IS RESULTS: %s\n", r.STDOUT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)

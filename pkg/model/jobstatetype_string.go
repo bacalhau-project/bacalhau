@@ -15,11 +15,11 @@ func _() {
 	_ = x[JobStateRunning-4]
 	_ = x[JobStateError-5]
 	_ = x[JobStateVerifying-6]
-	_ = x[JobStatePublished-7]
+	_ = x[JobStateCompleted-7]
 	_ = x[jobStateDone-8]
 }
 
-const _JobStateType_name = "jobStateUnknownBiddingCancelledWaitingRunningErrorVerifyingPublishedjobStateDone"
+const _JobStateType_name = "jobStateUnknownBiddingCancelledWaitingRunningErrorVerifyingCompletedjobStateDone"
 
 var _JobStateType_index = [...]uint8{0, 15, 22, 31, 38, 45, 50, 59, 68, 80}
 

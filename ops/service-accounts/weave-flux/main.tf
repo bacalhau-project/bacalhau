@@ -15,7 +15,7 @@ terraform {
 
 resource "google_service_account" "sa" {
   account_id   = var.service_account_name
-  display_name = "Service Account For Weave Flux"
+  display_name = "Service Account For Weave Flux - ${terraform.workspace}"
 }
 
 resource "google_service_account_key" "sak" {
@@ -31,13 +31,10 @@ resource "google_project_iam_binding" "compute_role" {
   ]
 }
 
-resource "google_project_iam_binding" "terraform_state_role" {
+resource "google_project_iam_member" "terraform_state_role" {
   project = "bacalhau-cicd"
   role    = "roles/storage.admin"
-
-  members = [
-    "serviceAccount:${google_service_account.sa.email}",
-  ]
+  member  = "serviceAccount:${google_service_account.sa.email}"
 }
 
 resource "local_file" "key_file" {

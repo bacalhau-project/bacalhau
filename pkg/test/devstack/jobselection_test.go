@@ -2,8 +2,9 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -112,7 +113,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 				model.JobStateError,
 			}),
 			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStatePublished: testCase.expectedAccepts,
+				model.JobStateCompleted: testCase.expectedAccepts,
 			}),
 		)
 		require.NoError(suite.T(), err)

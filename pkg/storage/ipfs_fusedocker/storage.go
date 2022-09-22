@@ -384,7 +384,7 @@ func (sp *StorageProvider) canSeeFuseMount(ctx context.Context, cid string) bool
 	if err != nil {
 		return false
 	}
-	_, err = system.RunCommandGetResults("sudo", []string{
+	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
 		"timeout", "1s", "ls", "-la",
 		testMountPath,
 	})
@@ -435,14 +435,14 @@ func createMountDir() (string, error) {
 }
 
 func cleanupMountDir(mountDir string) error {
-	err := system.RunCommand("sudo", []string{
+	_, err := system.UnsafeForUserCodeRunCommand("sudo", []string{
 		"umount",
 		fmt.Sprintf("%s/data", mountDir),
 	})
 	if err != nil {
 		return err
 	}
-	err = system.RunCommand("sudo", []string{
+	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
 		"umount",
 		fmt.Sprintf("%s/ipns", mountDir),
 	})

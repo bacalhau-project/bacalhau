@@ -25,11 +25,9 @@ Two major things that need releasing: the CLI and the production Bacalhau networ
 There are three environments: development, staging and production. For more information see the [ops documentation](../ops/README.md).
 
 1. Do your infrastructure development (if any) in the development environment.
-1. When ready, commit changes to Git for both the [development](../ops/terraform/development.tfvars) and [staging](../ops/terraform/staging.tfvars) `tfvars` files. For example, alter the `bacalhau_version` variable in the `development.tfvars` and `staging.tfvars` file.
-1. Wait for the CI scripts to release the new infrastructure.
-1. Once you are happy staging is working as intended, make changes to the [production](../ops/terraform/production.tfvars) `tfvars` file but DO NOT COMMIT yet.
+1. When ready, create a Bacalhau release. Once the release has been built, CI will open a new PR to update the terraform files. Test this change in development manually if you wish. Once you are happy, merge the PR.
+1. Wait for the CI scripts to release the new infrastructure to development and staging.
 1. [Manually apply the changes to the production environment.](../ops/README.md#deploying-bacalhau-mainnet) Please note that it takes a couple of minutes for the init scripts to install and start the Bacalhau servers. You can see what the server is doing with `gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -f`.
-1. Once the infrastructure is deployed, commit the changes to Git.
 
 ## Hints, Tips and Troubleshooting
 

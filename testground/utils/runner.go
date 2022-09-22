@@ -63,7 +63,7 @@ func RunDockerTest(
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: concurrency,
+			model.JobStateCompleted: concurrency,
 		}),
 	)
 	if err != nil {

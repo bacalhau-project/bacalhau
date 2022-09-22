@@ -6,8 +6,8 @@ After a discussion about this with Honeycomb - https://honeycombpollinators.slac
 
 In outline form:
 * Start a new trace for each significant process
-* Trace should span across CLI to Server and back
-* Trace should contain baggage about the trace (e.g. job id, user id, etc)
+  * Trace should span across CLI to Server and back
+  * Trace should contain baggage about the trace (e.g. job id, user id, etc)
 * New span for every short lived action (e.g. < 10 min)
 * New trace for jobs longer than 1 hour
 * Try very hard to break up traces into smaller pieces
@@ -43,10 +43,68 @@ Some more docs - https://www.honeycomb.io/blog/ask-miss-o11y-opentelemetry-bagga
 https://github.com/honeycombio/example-greeting-service/tree/main/golang
 
 
-* Rule: According to the golang docs, context (ctx) should be the first parameter for any function that uses it.
-* Generally, add context where possible. However, for things that do not require a context, you can skip using it for cleanliness. For example, if you have a function which provisions a struct, or does other things that we do not expect to be traced, you can skip adding context to it.
-  * Realize, of course, that this may come back to bite you if you want to add tracing to that function later.
-  * However, if you trace the entire function, and this is a sub function, you will get a trace for the entire function, which may be enough to isolate the problem tracing is designed to provide.
-* A good rule of thumb is if you have something that is long enough to be a span, it should be a function.
+## Tracing in Bacalhau
 
-* After each boundary (e.g. a function calling another microservice (API call, HTTP call)), create a new RootSpan, and add the appropriate information to the attributes (e.g. JobID, NodeID) of the span with `system.AddJobIDFromBaggageToSpan(ctx, span)`
+### Starting a new command
+For any top level function (e.g. that could be executed by the CLI), include the following code:
+
+```golang
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), NAME_OF_FUNCTION)
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+```
+
+where `NAME_OF_FUNCTION` is of the form `folder/file/command` -> `cmd/bacalhau/describe`.
+
+This initiates the cleanup manager, pulls in the cmd Context (which is created in `root.go`).
+
+Then it creates a root span, which is a function that automatically adds helpful things like the environment something is running in, and can be extended in the future.
+
+We then assign the defer to end the span, and register the cleanup manager for shutting down the trace provider.
+
+### Starting a new function
+When you start a new function, simply add:
+```golang
+	ctx, span := system.GetTracer().Start(ctx, NAME_OF_SPAN)
+	defer span.End()
+```
+Here, `NAME_OF_SPAN` should be of the form `toplevelfolder/packagename.functionname` E.g `pkg/computenode.subscriptionEventBidRejected`
+
+The `ctx` variable should come from the function declaration, and if it does not have it, we should see if it makes sense to thread it through from the original call. Reminder, `ctx` should be the first parameter for all functions that require it, according to the Go docs. Please avoid using `context.Background` or otherwise creating a new context. This will mess up tying spans together.
+
+If you do feel the need to create a new one, use the anchor tag (in comments) `ANCHOR`, so that we can search for it.
+
+Additionally, if you would like to add baggage to the span, which must be done for each span created, you can pull it from the context (if it exists). You can do so with the following commands:
+```golang
+	system.AddNodeIDFromBaggageToSpan(ctx, span)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+```
+
+We do check to make sure the baggage already exists and if it doesn't we do not add it. If you attempt to add a baggage that does not exist, we print out the stack trace (but only in debug mode).
+
+You MUST manually add the baggage to the span in the function where you create the new span you create. Attributes do NOT carry through from parent to children spans (though, interestingly, baggage DOES carry through).
+
+If you are adding baggage TO a span, because you're creating a node ID or job ID for example, you can use the following:
+
+```golang
+	ctx = system.AddNodeIDToBaggage(ctx, n.ID)
+```
+
+This context now carries the baggage forward to any function that references it.
+
+### Philosophy of Logging
+Generally, add context and tracing where possible. However, for things that are short and do not perform significant compute, I/O, networking, etc, you can skip context and tracing for cleanliness. For example, if you have a function which provisions a struct, or does other things that we do not expect to be traced, you can skip adding context or tracing to it.
+
+If you trace an entire function, and the thing you are debating to add a trace to is a sub function, you may not need to create a subspan. Generally, if you can imagine any situation in which you would debug a problem in a function, you probably want to add a trace.
+
+Further, you may want to create spans inside functions to trace particular blocks of code. This is not recommended, because it makes using `defer` a challenge, and `defer` gives you a number of nice clean up features that you will want for tracing. A good rule of thumb is if you have something that is long enough to be a span, it should be a function.
+
+
+Some good reading:
+ - https://github.com/honeycombio/honeycomb-opentelemetry-go
+ - https://github.com/honeycombio/example-greeting-service/blob/main/golang/year-service/main.go
+
