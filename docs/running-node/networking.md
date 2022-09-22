@@ -7,6 +7,24 @@ sidebar_position: 120
 
 Bacalhau uses [libp2p](https://libp2p.io/) under the hood to communicate with other nodes on the network.
 
+## Peer identity
+
+Because bacalhau is built using libp2p - the concept of [peer identity](https://docs.libp2p.io/concepts/peer-id/) is used to identify nodes on the network.
+
+When you start a bacalhau node using `bacalhau serve` - it will look for a RSA private key in the `~/.bacalhau` directory. If it doesn't find one, it will generate a new one and save it there.
+
+You can override the directory where the private key is stored using the `BACALHAU_PATH` environment variable.
+
+Private keys are named after the port used for the libp2p connection which defaults to `1235` - so, by default, when first starting a node, the private key will be stored in `~/.bacalhau/private_key.1235`.
+
+The peer identity is derived from the private key and is used to identify the node on the network.
+
+You can get the peer identity of a node by running `bacalhau id`:
+
+```bash
+bacalhau id
+```
+
 ## Configure peers
 
 By default - running `bacalhau serve` will connect to the following nodes (which are thge default bootstrap nodes run by Protocol labs):
@@ -16,6 +34,8 @@ By default - running `bacalhau serve` will connect to the following nodes (which
 /ip4/35.245.61.251/tcp/1235/p2p/QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
 /ip4/35.245.251.239/tcp/1235/p2p/QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
 ```
+
+Bacalhau uses libp2p [multiaddresses](https://docs.libp2p.io/concepts/addressing/) to identify nodes on the network.
 
 If you want to connect to other nodes - you can use the `--peer` flag to specify additional peers to connect to (comma separated list).
 
