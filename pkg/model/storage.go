@@ -81,7 +81,7 @@ type StorageSpec struct {
 	Cid string `json:"cid" yaml:"cid"`
 
 	// Source URL of the data
-	URL string `json:"url" yaml:"url"`
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
@@ -89,5 +89,5 @@ type StorageSpec struct {
 	Path string `json:"path" yaml:"path"`
 
 	// Additional properties specific to each driver
-	Metadata map[string]string `json:"metadata" yaml:"metadata"`
+	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
