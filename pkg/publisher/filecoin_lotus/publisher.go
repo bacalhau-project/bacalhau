@@ -154,11 +154,11 @@ func (lotusPublisher *FilecoinLotusPublisher) listDeals(ctx context.Context) (st
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/listDeals")
 	defer span.End()
 
-	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "list-deals", "-v"})
+	r, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "list-deals", "-v"})
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(rawOutput), nil
+	return strings.TrimSpace(r.STDOUT), nil
 }
 
 func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, contentCid string) (string, error) {
