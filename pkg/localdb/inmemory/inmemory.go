@@ -3,9 +3,11 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -94,14 +96,59 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	result := []model.Job{}
 
 	if query.ID != "" {
+		log.Debug().Msgf("querying for single job %s", query.ID)
 		job, err := d.GetJob(ctx, query.ID)
 		if err != nil {
+			log.Error().Msgf("error getting single job %s: %s", query.ID, err)
 			return result, err
 		}
 		result = append(result, job)
 	} else {
-		for _, job := range d.jobs {
-			result = append(result, *job)
+		if query.ReturnAll {
+			log.Debug().Msgf("querying for all jobs, limit %d", query.Limit)
+			for _, job := range d.jobs {
+				result = append(result, *job)
+				// early stop
+				if len(result) >= query.Limit {
+					break
+				}
+			}
+		} else {
+			if query.ClientID != "" {
+				log.Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
+				for _, job := range d.jobs {
+					if job.ClientID == query.ClientID {
+						result = append(result, *job)
+						// early stop
+						if len(result) >= query.Limit {
+							break
+						}
+					}
+				}
+			}
+		}
+
+		// TODO @enricorotundo add span 
+
+		// sort results
+		log.Debug().Msgf("sorting by %s", query.SortBy)
+		sort.Slice(result, func(i, j int) bool {
+			switch query.SortBy {
+			case "id":
+				// are IDs lexically sortable?
+				return result[i].ID < result[j].ID
+			case "created_at":
+				return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+			default:
+				return false
+			}
+		})
+		if query.SortReverse {
+			reverseResult := []model.Job{}
+			for i := len(result) - 1; i >= 0; i-- {
+				reverseResult = append(reverseResult, result[i])
+			}
+			result = reverseResult
 		}
 	}
 	return result, nil
@@ -114,6 +161,7 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+	// log.Debug().Msgf("jobs in datastore: %v", d.jobs)
 	existingJob, ok := d.jobs[job.ID]
 	if ok {
 		if len(job.RequesterPublicKey) > 0 {

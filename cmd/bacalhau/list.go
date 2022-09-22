@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sort"
+	"fmt"
 	"strings"
-	"time"
 
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -45,6 +45,7 @@ type ListOptions struct {
 	SortReverse  bool       // Reverse order of table - for time sorting, this will be newest first.
 	SortBy       ColumnEnum // Sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].
 	OutputWide   bool       // Print full values in the table results
+	ReturnAll    bool       // Return all jobs, not just those that belong to the user
 }
 
 func NewListOptions() *ListOptions {
@@ -57,6 +58,7 @@ func NewListOptions() *ListOptions {
 		SortReverse:  true,
 		SortBy:       ColumnCreatedAt,
 		OutputWide:   false,
+		ReturnAll:    false,
 	}
 }
 
@@ -74,7 +76,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The output format for the list of jobs (json or text)`,
 	)
 	listCmd.PersistentFlags().BoolVar(&OL.SortReverse, "reverse", OL.SortReverse,
-		`reverse order of table - for time sorting, this will be newest first.`)
+		`reverse order of table - for time sorting, this will be newest first. Use '--reverse=false' to sort oldest first.`)
 
 	listCmd.PersistentFlags().Var(&OL.SortBy, "sort-by",
 		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
@@ -86,6 +88,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	listCmd.PersistentFlags().BoolVar(
 		&OL.OutputWide, "wide", OL.OutputWide,
 		`Print full values in the table results`,
+	)
+	listCmd.PersistentFlags().BoolVar(
+		&OL.ReturnAll, "all", OL.ReturnAll,
+		`Fetch all jobs from the network (default is filter those that belong to the user). This may take a long time, please use with caution.`,
 	)
 }
 
@@ -132,148 +138,185 @@ var listCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobs, err := GetAPIClient().List(ctx)
-		if err != nil {
-			return err
-		}
-
-		tw := table.NewWriter()
-		tw.SetOutputMirror(cmd.OutOrStderr())
-		if !OL.HideHeader {
-			tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
-		}
-
-		columnConfig := []table.ColumnConfig{}
-
-		tw.SetColumnConfigs(columnConfig)
-
-		jobArray := []model.Job{}
-		for _, j := range jobs {
-			if OL.IDFilter != "" {
-				if j.ID == OL.IDFilter || shortID(false, j.ID) == OL.IDFilter {
-					jobArray = append(jobArray, j)
-				}
-			} else {
-				jobArray = append(jobArray, j)
-			}
-		}
-
-		log.Debug().Msgf("Found table sort flag: %s", OL.SortBy)
 		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
+		log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
+		log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
+		log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
 		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 
-		sort.Slice(jobArray, func(i, j int) bool {
-			switch OL.SortBy {
-			case ColumnID:
-				return shortID(OL.OutputWide, jobArray[i].ID) < shortID(OL.OutputWide, jobArray[j].ID)
-			case ColumnCreatedAt:
-				return jobArray[i].CreatedAt.Format(time.RFC3339) < jobArray[j].CreatedAt.Format(time.RFC3339)
-			default:
-				return false
-			}
-		})
-
-		if OL.SortReverse {
-			jobIDs := []string{}
-			for _, j := range jobArray {
-				jobIDs = append(jobIDs, j.ID)
-			}
-			jobIDs = ReverseList(jobIDs)
-			jobArray = []model.Job{}
-			for _, id := range jobIDs {
-				jobArray = append(jobArray, jobs[id])
-			}
-		}
-
-		numberInTable := Min(OL.MaxJobs, len(jobArray))
-
-		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
-
-		rows, err := resolvingJobDetails(ctx, jobArray, numberInTable)
+		jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
 		if err != nil {
 			return err
 		}
-		tw.AppendRows(rows)
 
-		if OL.NoStyle {
-			tw.SetStyle(table.Style{
-				Name:   "StyleDefault",
-				Box:    table.StyleBoxDefault,
-				Color:  table.ColorOptionsDefault,
-				Format: table.FormatOptionsDefault,
-				HTML:   table.DefaultHTMLOptions,
-				Options: table.Options{
-					DrawBorder:      false,
-					SeparateColumns: false,
-					SeparateFooter:  false,
-					SeparateHeader:  false,
-					SeparateRows:    false,
-				},
-				Title: table.TitleOptionsDefault,
-			})
-		} else {
-			tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
-		}
-
-		if OL.OutputFormat == JSONFormat {
+		if OL.OutputFormat == "json" {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
 			}
-
 			cmd.Printf("%s\n", msgBytes)
-			return nil
 		} else {
+			numberInTable := Min(OL.MaxJobs, len(jobs))
+			log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
+
+			tw := table.NewWriter()
+			tw.SetOutputMirror(cmd.OutOrStderr())
+			if !OL.HideHeader {
+				tw.AppendHeader(table.Row{"created", "id", "job", "state", "verified", "published"})
+			}
+			columnConfig := []table.ColumnConfig{}
+			tw.SetColumnConfigs(columnConfig)
+
+			// for _, j := range jobs {
+			// 	fmt.Printf("%v\n", j.JobState)
+			// }
+
+			rows := []table.Row{}
+			// rows, err := resolvingJobDetails(ctx, jobArray, numberInTable)
+			for _, job := range jobs {
+				// fmt.Printf("%v\n", j.JobState)
+				summaryRow, err := summarizeJob(ctx, job)
+				if err != nil {
+					log.Error().Msgf("Error summarizing job: %s", err)
+				}
+				rows = append(rows, summaryRow)
+			}
+			if err != nil {
+				return err
+			}
+			tw.AppendRows(rows)
+
+			if OL.NoStyle {
+				tw.SetStyle(table.Style{
+					Name:   "StyleDefault",
+					Box:    table.StyleBoxDefault,
+					Color:  table.ColorOptionsDefault,
+					Format: table.FormatOptionsDefault,
+					HTML:   table.DefaultHTMLOptions,
+					Options: table.Options{
+						DrawBorder:      false,
+						SeparateColumns: false,
+						SeparateFooter:  false,
+						SeparateHeader:  false,
+						SeparateRows:    false,
+					},
+					Title: table.TitleOptionsDefault,
+				})
+			} else {
+				tw.SetStyle(table.StyleColoredGreenWhiteOnBlack)
+			}
+
 			tw.Render()
 		}
+
+		// if OL.OutputFormat == JSONFormat {
+		// 	msgBytes, err := json.MarshalIndent(jobs, "", "    ")
+		// 	if err != nil {
+		// 		return err
+		// 	}
+
+		// 	cmd.Printf("%s\n", msgBytes)
+		// 	return nil
+		// } else {
+		// 	tw.Render()
+		// }
 
 		return nil
 	},
 }
 
-func resolvingJobDetails(ctx context.Context,
-	jobArray []model.Job,
-	lengthOfTable int) ([]table.Row, error) {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
-	defer span.End()
-
-	rows := []table.Row{}
-
-	// using indexing to avoid copying bytes
-	for i := range jobArray[0:lengthOfTable] {
-		jobDesc := []string{
-			jobArray[i].Spec.Engine.String(),
-		}
-
-		if jobArray[i].Spec.Engine == model.EngineDocker {
-			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
-		}
-
-		resolver := GetAPIClient().GetJobStateResolver()
-
-		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
-		if err != nil {
-			return nil, err
-		}
-
-		resultSummary, err := resolver.ResultSummary(ctx, jobArray[i].ID)
-		if err != nil {
-			return nil, err
-		}
-
-		verifiedSummary, err := resolver.VerifiedSummary(ctx, jobArray[i].ID)
-		if err != nil {
-			return nil, err
-		}
-
-		rows = append(rows, table.Row{
-			shortenTime(OL.OutputWide, jobArray[i].CreatedAt),
-			shortID(OL.OutputWide, jobArray[i].ID),
-			shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
-			shortenString(OL.OutputWide, stateSummary),
-			shortenString(OL.OutputWide, verifiedSummary),
-			shortenString(OL.OutputWide, resultSummary),
-		})
+func summarizeJob(ctx context.Context, job model.JobWithInfo) (table.Row, error) {
+	jobDesc := []string{
+		job.Job.Spec.Engine.String(),
 	}
-	return rows, nil
+
+	// compute state summary
+	var currentJobState model.JobStateType
+	for _, shardState := range jobutils.FlattenShardStates(job.JobState) { //nolint:gocritic
+		if shardState.State > currentJobState {
+			currentJobState = shardState.State
+		}
+	}
+	stateSummary := currentJobState.String()
+
+	// compute verifiedSummary
+	var verifiedSummary string
+	if job.Job.Spec.Verifier == model.VerifierNoop {
+		verifiedSummary = ""
+	} else {
+		totalShards := jobutils.GetJobTotalExecutionCount(job.Job)
+		verifiedShardCount := jobutils.GetVerifiedShardStates(job.JobState)
+		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
+	}
+
+	// compute resultSummary
+	var resultSummary string
+	if jobutils.GetJobTotalShards(job.Job) > 1 {
+		resultSummary = ""
+	} else {
+		completedShards := jobutils.GetCompletedShardStates(job.JobState)
+		if len(completedShards) == 0 {
+			resultSummary = ""
+		} else {
+			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.Cid)
+		}
+	}
+
+	row := table.Row{
+		shortenTime(OL.OutputWide, job.Job.CreatedAt),
+		shortID(OL.OutputWide, job.Job.ID),
+		shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
+		shortenString(OL.OutputWide, stateSummary),
+		shortenString(OL.OutputWide, verifiedSummary),
+		shortenString(OL.OutputWide, resultSummary),
+	}
+
+	return row, nil
 }
+
+// func resolvingJobDetails(ctx context.Context,
+// 	jobArray []model.Job,
+// 	lengthOfTable int) ([]table.Row, error) {
+// 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
+// 	defer span.End()
+
+// 	rows := []table.Row{}
+
+// 	// using indexing to avoid copying bytes
+// 	for i := range jobArray[0:lengthOfTable] {
+// 		jobDesc := []string{
+// 			jobArray[i].Spec.Engine.String(),
+// 		}
+
+// 		if jobArray[i].Spec.Engine == model.EngineDocker {
+// 			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
+// 		}
+
+// 		resolver := GetAPIClient().GetJobStateResolver()
+
+// 		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		resultSummary, err := resolver.ResultSummary(ctx, jobArray[i].ID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		verifiedSummary, err := resolver.VerifiedSummary(ctx, jobArray[i].ID)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		rows = append(rows, table.Row{
+// 			shortenTime(OL.OutputWide, jobArray[i].CreatedAt),
+// 			shortID(OL.OutputWide, jobArray[i].ID),
+// 			shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
+// 			shortenString(OL.OutputWide, stateSummary),
+// 			shortenString(OL.OutputWide, verifiedSummary),
+// 			shortenString(OL.OutputWide, resultSummary),
+// 		})
+// 	}
+// 	return rows, nil
+// }

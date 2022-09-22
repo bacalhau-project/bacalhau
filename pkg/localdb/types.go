@@ -7,7 +7,12 @@ import (
 )
 
 type JobQuery struct {
-	ID string `json:"id"`
+	ID        string `json:"id"`
+	ClientID  string `json:"clientID"`
+	Limit     int    `json:"limit"`
+	ReturnAll bool   `json:"return_all"`
+	SortBy      string `json:"sort_by"`
+	SortReverse bool   `json:"sort_reverse"`
 }
 
 // A LocalDB will persist jobs and their state to the underlying storage.

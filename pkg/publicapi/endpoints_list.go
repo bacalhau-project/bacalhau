@@ -7,14 +7,20 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 type listRequest struct {
-	ClientID string `json:"client_id"`
+	JobID       string `json:"id"`
+	ClientID    string `json:"client_id"`
+	MaxJobs     int    `json:"max_jobs"`
+	ReturnAll   bool   `json:"return_all"`
+	SortBy      string `json:"sort_by"`
+	SortReverse bool   `json:"sort_reverse"`
 }
 
 type listResponse struct {
-	Jobs map[string]model.Job `json:"jobs"`
+	JobsWithInfo []model.JobWithInfo `json:"jobs"`
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
@@ -31,23 +37,38 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	unMarshallSpan.End()
 
 	getJobsCtx, getJobsSpan := t.Start(ctx, "gettingjobs")
-	list, err := apiServer.Controller.GetJobs(getJobsCtx, localdb.JobQuery{})
+	list, err := apiServer.Controller.GetJobs(getJobsCtx, localdb.JobQuery{
+		ClientID:    listReq.ClientID,
+		ID:          listReq.JobID,
+		Limit:       listReq.MaxJobs,
+		ReturnAll:   listReq.ReturnAll,
+		SortBy:      listReq.SortBy,
+		SortReverse: listReq.SortReverse,
+	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	getJobsSpan.End()
 
-	rawJobs := map[string]model.Job{}
-
-	for _, listJob := range list { //nolint:gocritic
-		rawJobs[listJob.ID] = listJob
+	// TODO @enricorotundo: add job state info here
+	// TODO @enricorotundo: create ctx and span for this block
+	jobsWithInfo := []model.JobWithInfo{}
+	for i := range list {
+		jobState, err := apiServer.Controller.GetJobState(ctx, list[i].ID)
+		if err != nil {
+			log.Error().Msgf("error getting job state: %s", err)
+		}
+		jobsWithInfo = append(jobsWithInfo, model.JobWithInfo{
+			Job:      list[i],
+			JobState: jobState,
+		})
 	}
 
 	_, marshallSpan := t.Start(ctx, "marshallingresponse")
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
-		Jobs: rawJobs,
+		JobsWithInfo: jobsWithInfo,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
