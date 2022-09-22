@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#set -o nounset \
+#    -o errexit
+set -e
+
+function show_env {
+    env | sort | grep INFRA
+}
+
+function check_lotus_home_dir() {
+  if [[ -z "$INFRA_LOTUS_HOME" ]]; then
+    echo "INFRA_LOTUS_HOME not defined. Please setting up ..."
+    exit 1
+  fi
+
+}
+
+function prepare_config {
+  if [ -f "$INFRA_LOTUS_HOME/config.toml" ]; then
+      if [ ! -d "$INFRA_LOTUS_HOME/.lotus" ]; then
+        mkdir "$INFRA_LOTUS_HOME/.lotus" && \
+        cp "$INFRA_LOTUS_HOME/config.toml" "$INFRA_LOTUS_HOME/.lotus/config.toml"
+      else
+        cp "$INFRA_LOTUS_HOME/config.toml" "$INFRA_LOTUS_HOME/.lotus/config.toml"
+      fi
+  fi
+}
+
+repeat() { while :; sleep 3; do $@ && return; done }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -26,6 +25,7 @@ const TestHostId = "host-123"
 const TestMinerAddress = "t01000"
 const TestStoragePrice = "0.000000000246842652"
 const TestStorageDuration = "518577"
+const TestPayloadPath = "/home/lotus_user/testdata"
 
 type FilecoinPublisherSuite struct {
 	suite.Suite
@@ -57,10 +57,8 @@ func (suite *FilecoinPublisherSuite) SetupTest() {
 	)
 	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
 	require.NoError(suite.T(), setupErr)
-	os.Setenv("LOTUS_PATH", "/home/prash/.lotus-local-net")
-	os.Setenv("LOTUS_MINER_PATH", "/home/prash/.lotus-miner-local-net")
 	driver, setupErr = NewFilecoinLotusPublisher(cm, resolver, FilecoinLotusPublisherConfig{
-		ExecutablePath:  "/home/prash/workspace/lotus-local-net/lotus",
+		ExecutablePath:  "docker",
 		MinerAddress:    TestMinerAddress,
 		StoragePrice:    TestStoragePrice,
 		StorageDuration: TestStorageDuration,
@@ -88,12 +86,7 @@ func (suite *FilecoinPublisherSuite) TestListDeals() {
 }
 
 func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
-	tmpDirPrefix := "bacalhau-filecoin-lotus-test"
-	resultsDir, err := ioutil.TempDir("", tmpDirPrefix)
-	require.NoError(suite.T(), err)
-	payloadPath := fmt.Sprintf("%s/payload.txt", resultsDir)
-	err = ioutil.WriteFile(payloadPath, make([]byte, 1000), 0644)
-	require.NoError(suite.T(), err)
+	payloadPath := fmt.Sprintf("%s/lotus-payload.txt", TestPayloadPath)
 	publishResult, err := driver.PublishShardResult(ctx, model.JobShard{
 		Job: model.Job{
 			ID: TestJobId,
@@ -107,7 +100,7 @@ func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	dealCid, ok := publishResult.Metadata["deal_cid"]
 	require.True(suite.T(), ok)
 	require.NotNil(suite.T(), dealCid)
-	
+
 	deals, err := driver.listDeals(ctx)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), strings.Contains(deals, dealCid))

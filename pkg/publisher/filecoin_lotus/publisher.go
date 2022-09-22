@@ -53,7 +53,7 @@ func (lotusPublisher *FilecoinLotusPublisher) IsInstalled(ctx context.Context) (
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
 	defer span.End()
 
-	_, err := lotusPublisher.runLotusCommand(ctx, []string{"--version"})
+	_, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "--version"})
 	if err != nil {
 		return false, err
 	}
@@ -142,7 +142,7 @@ func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, fi
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
 	defer span.End()
 
-	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "import", filePath})
+	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "import", filePath})
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +154,7 @@ func (lotusPublisher *FilecoinLotusPublisher) listDeals(ctx context.Context) (st
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/listDeals")
 	defer span.End()
 
-	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "list-deals", "-v"})
+	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "list-deals", "-v"})
 	if err != nil {
 		return "", err
 	}
@@ -166,7 +166,7 @@ func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, co
 	defer span.End()
 
 	rawOutput, err := lotusPublisher.runLotusCommand(ctx, []string{
-		"client", "deal",
+		"exec", "lotus", "lotus", "client", "deal",
 		contentCid,
 		lotusPublisher.Config.MinerAddress,
 		lotusPublisher.Config.StoragePrice,

@@ -1,0 +1,33 @@
+#!/bin/bash -e
+
+. /etc/lotus/docker/bash-config
+
+if [[ -z "$INFRA_SYNC" ]]
+then
+  echo "INFRA_SYNC not defined."
+elif [ "$INFRA_SYNC" = true ]; then
+    echo "Starting sync wait"
+    ( repeat lotus sync wait && touch "$INFRA_LOTUS_HOME/.lotus/sync-complete" &)
+elif [ "$INFRA_SYNC" = false ]; then
+  echo "SYNC disabled."
+fi
+
+if [ ! -f "$INFRA_LOTUS_HOME/.lotus/sync-complete" ]; then
+    exit 1
+fi
+
+ALLOWED_DELAY=${ALLOWED_DELAY:=10}
+#BLOCK_TIME=$(cat /networks/${NETWORK}.json | jq .NetworkParameters.EpochDurationSeconds -r)
+BLOCK_TIME=30
+GENESIS_TIMESTAMP=$(timeout -k3 3 lotus chain getblock $(timeout -k3 3 lotus chain list --count 1 --height 0 --format="<tipset>") | jq .Timestamp -r)
+CURRENT_TIMESTAMP=$(date +"%s")
+DIFFERENCE_IN_TIME=$(( $CURRENT_TIMESTAMP - $GENESIS_TIMESTAMP ))
+MIN_ALLOWED_BLOCK=$(( $DIFFERENCE_IN_TIME / $BLOCK_TIME - $ALLOWED_DELAY ))
+OUR_BLOCK=$(curl -s --max-time 3 localhost:1234/debug/metrics | grep ^lotus_chain_node_worker_height | awk '{print $2}')
+
+# If local block is lower than minimum allowed block or we can't get block data - the health is bad
+if [[ "$OUR_BLOCK" -ge "$MIN_ALLOWED_BLOCK" && ! -z "$OUR_BLOCK" && ! -z "$MIN_ALLOWED_BLOCK" ]]; then
+  echo "lotus is healthy"; exit 0
+else 
+  exit 1
+fi

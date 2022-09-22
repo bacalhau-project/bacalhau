@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#set -x
+. /etc/lotus/docker/bash-config
+
+check_lotus_home_dir
+# Delete all data every pod restart
+if [[ -z "$INFRA_CLEAR_RESTART" ]]
+then
+  echo "INFRA_CLEAR_RESTART not defined"
+elif [ "$INFRA_CLEAR_RESTART" = true ]; then
+  echo "I'll remove ALL LOTUS DATA from $INFRA_LOTUS_HOME/.lotus/"
+  echo " -------> Removing ... <---------"
+  repeat rm -rf "$INFRA_LOTUS_HOME/.lotus/*"
+elif [ "$INFRA_CLEAR_RESTART" = false ]; then
+  echo "INFRA_CLEAR_RESTART disabled."
+fi
+
+
+prepare_config

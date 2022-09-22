@@ -2,6 +2,9 @@ RUSTFLAGS="-C target-feature=+crt-static"
 
 IPFS_FUSE_IMAGE ?= "binocarlos/bacalhau-ipfs-sidecar-image"
 IPFS_FUSE_TAG ?= "v1"
+LOTUS_IMAGE ?= "prashant2402/bacalhau-lotus-image"
+LOTUS_TAG ?= "v1"
+LOTUS_BRANCH ?= "releases"
 
 ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
@@ -103,6 +106,50 @@ build-ipfs-sidecar-image:
 build-docker-images:
 	@echo docker images built
 
+################################################################################
+# Target: lotus-docker-images
+################################################################################
+.PHONY: lotus-image-build
+lotus-image-build:
+	docker image build --build-arg BRANCH=$(LOTUS_BRANCH) -t $(LOTUS_IMAGE):$(LOTUS_TAG) docker/lotus-image
+
+.PHONY: lotus-image-rebuild
+lotus-image-rebuild:
+	docker image build --no-cache --build-arg BRANCH=$(LOTUS_BRANCH) -t $(LOTUS_IMAGE):$(LOTUS_TAG) docker/lotus-image
+
+.PHONY: lotus-run
+lotus-run:
+	docker container run -t -d -p 1235:1235 -p 1234:1234 -v ${PWD}/testdata:/home/lotus_user/testdata -e INFRA_LOTUS_HOME="/home/lotus_user" -e INFRA_SYNC=true --name lotus $(LOTUS_IMAGE):$(LOTUS_TAG)
+
+COUNT=1
+lotus-health:
+	c=$(COUNT)
+	until [ "$$c" -ge 30 ] ; do \
+	  docker exec -it lotus /etc/lotus/docker/healthcheck && break ; \
+	  c=$$(( $${c:-$(COUNT)}+1 )); \
+	  echo "retry $$c out of 30 ..." ; \
+	  sleep 10 ; \
+	done
+
+lotus-bash:
+	docker exec -it lotus /bin/bash
+
+lotus-sync-status:
+	docker exec -it lotus lotus sync status
+
+lotus-token:
+	docker exec -it lotus bash -c "cat ~/.lotus-local-net/token"
+
+lotus-miner-token:
+	docker exec -it lotus bash -c "cat ~/.lotus-miner-local-net/token"
+
+lotus-log:
+	docker logs lotus -f
+
+lotus-clean:
+	docker stop lotus
+	docker rm lotus
+
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
 # Target: build-bacalhau-tgz
@@ -172,6 +219,11 @@ test-commands:
 .PHONY: devstack
 devstack:
 	go run . devstack
+
+.PHONY: devstack-lotus
+devstack-lotus: lotus-run lotus-health
+	$(eval LOTUS_TOKEN=$(shell sh -c "docker exec -it lotus bash -c 'cat ~/.lotus-local-net/token'"))
+	LOTUS_TOKEN=$(LOTUS_TOKEN) go run . devstack
 
 .PHONY: devstack-100
 devstack-100:

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+. /etc/lotus/docker/bash-config
+
+# Set environment values if they exist as arguments
+if [ $# -ne 0 ]; then
+  echo "===> Overriding env params with args ..."
+  for var in "$@"
+  do
+    export "$var"
+  done
+fi
+
+echo "===> ENV Variables ..."
+show_env
+
+echo "===> Configuring ..."
+/etc/lotus/docker/configure
+
+echo "===> Launching ... "
+declare DUMMY=$(nohup lotus daemon --lotus-make-genesis=$INFRA_LOTUS_HOME/devgen.car --genesis-template=~/localnet.json --bootstrap=false </dev/null &>/dev/null &)
+sleep 30
+lotus wallet import --as-default ~/.genesis-sectors/pre-seal-t01000.key
+lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
+lotus-miner run --nosync
