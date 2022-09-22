@@ -70,11 +70,12 @@ type localEventDescription struct {
 }
 
 type shardNodeStateDescription struct {
-	Node     string `yaml:"Node"`
-	State    string `yaml:"State"`
-	Status   string `yaml:"Status"`
-	Verified bool   `yaml:"Verified"`
-	ResultID string `yaml:"ResultID"`
+	Node      string                  `yaml:"Node"`
+	State     string                  `yaml:"State"`
+	Status    string                  `yaml:"Status"`
+	Verified  bool                    `yaml:"Verified"`
+	ResultID  string                  `yaml:"ResultID"`
+	RunOutput *model.RunCommandResult `yaml:"RunOutput"`
 }
 
 type shardStateDescription struct {
@@ -203,11 +204,12 @@ var describeCmd = &cobra.Command{
 				}
 			}
 			shardDescription.Nodes = append(shardDescription.Nodes, shardNodeStateDescription{
-				Node:     shard.NodeID,
-				State:    shard.State.String(),
-				Status:   shard.Status,
-				Verified: shard.VerificationResult.Result,
-				ResultID: shard.PublishedResult.Cid,
+				Node:      shard.NodeID,
+				State:     shard.State.String(),
+				Status:    shard.Status,
+				Verified:  shard.VerificationResult.Result,
+				ResultID:  shard.PublishedResult.Cid,
+				RunOutput: shard.RunOutput,
 			})
 			shardDescriptions[shard.ShardIndex] = shardDescription
 		}

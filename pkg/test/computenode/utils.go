@@ -83,7 +83,7 @@ func RunJobGetStdout(
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, result)
 	require.NoError(t, err)
-	require.Equal(t, runnerOutput.Error, err)
+	require.Empty(t, runnerOutput.ErrorMsg)
 
 	stdoutPath := fmt.Sprintf("%s/stdout", result)
 	require.DirExists(t, result, "The job result folder exists")

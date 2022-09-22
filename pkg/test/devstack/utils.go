@@ -168,10 +168,13 @@ func RunDeterministicVerifierTest( //nolint:funlen
 					if nodeConfig.IsBadActor {
 						runOutput.STDOUT = fmt.Sprintf("i am bad and deserve to fail %d", shard.Index)
 					}
-					runOutput.Error = os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd
+					err := os.WriteFile(fmt.Sprintf("%s/stdout", resultsDir), []byte(runOutput.STDOUT), 0600) //nolint:gomnd
+					if err != nil {
+						runOutput.ErrorMsg = err.Error()
+					}
 
 					// Adding explicit error for consistency in function signatures
-					return runOutput, runOutput.Error
+					return runOutput, err
 				},
 			},
 		})

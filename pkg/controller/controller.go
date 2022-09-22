@@ -373,6 +373,7 @@ func (ctrl *Controller) ShardExecutionFinished(
 	shardIndex int,
 	status string,
 	proposal []byte,
+	runOutput *model.RunCommandResult,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardExecutionFinished")
@@ -380,6 +381,7 @@ func (ctrl *Controller) ShardExecutionFinished(
 	ev.Status = status
 	ev.VerificationProposal = proposal
 	ev.ShardIndex = shardIndex
+	ev.RunOutput = runOutput
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -402,12 +404,14 @@ func (ctrl *Controller) ShardError(
 	jobID string,
 	shardIndex int,
 	status string,
+	runOutput *model.RunCommandResult,
 ) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_ShardError")
 	ev := ctrl.constructEvent(jobID, model.JobEventError)
 	ev.Status = status
 	ev.ShardIndex = shardIndex
+	ev.RunOutput = runOutput
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -548,6 +552,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev model.JobEvent) 
 				VerificationProposal: ev.VerificationProposal,
 				VerificationResult:   ev.VerificationResult,
 				PublishedResult:      ev.PublishedResult,
+				RunOutput:            ev.RunOutput,
 			},
 		)
 		if err != nil {
