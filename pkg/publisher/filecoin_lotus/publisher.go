@@ -75,10 +75,6 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 		shard,
 		shardResultPath,
 	)
-	// tarFile, err := lotusPublisher.tarResultsDir(ctx, shardResultPath)
-	// if err != nil {
-	// 	return model.StorageSpec{}, err
-	// }
 	contentCid, err := lotusPublisher.importData(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
@@ -117,6 +113,7 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 	return results, nil
 }
 
+//nolint:all
 func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/tarResultsDir")
@@ -150,8 +147,8 @@ func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, fi
 	return parts[len(parts)-1], nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) listDeals(ctx context.Context) (string, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/listDeals")
+func (lotusPublisher *FilecoinLotusPublisher) ListDeals(ctx context.Context) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/ListDeals")
 	defer span.End()
 
 	r, err := lotusPublisher.runLotusCommand(ctx, []string{"exec", "lotus", "lotus", "client", "list-deals", "-v"})

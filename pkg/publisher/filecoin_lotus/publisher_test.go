@@ -80,7 +80,7 @@ func (suite *FilecoinPublisherSuite) TestIsInstalled() {
 }
 
 func (suite *FilecoinPublisherSuite) TestListDeals() {
-	deals, err := driver.listDeals(ctx)
+	deals, err := driver.ListDeals(ctx)
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), deals)
 }
@@ -101,7 +101,7 @@ func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	require.True(suite.T(), ok)
 	require.NotNil(suite.T(), dealCid)
 
-	deals, err := driver.listDeals(ctx)
+	deals, err := driver.ListDeals(ctx)
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), strings.Contains(deals, dealCid))
 }
