@@ -128,6 +128,21 @@ func setupCapacityManagerCLIFlags(cmd *cobra.Command) {
 	)
 }
 
+func setupLibp2pCLIFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVar(
+		&OS.PeerConnect, "peer", OS.PeerConnect,
+		`The libp2p multiaddress to connect to.`,
+	)
+	cmd.PersistentFlags().StringVar(
+		&OS.HostAddress, "host", OS.HostAddress,
+		`The host to listen on (for both api and swarm connections).`,
+	)
+	cmd.PersistentFlags().IntVar(
+		&OS.SwarmPort, "swarm-port", OS.SwarmPort,
+		`The port to listen on for swarm connections.`,
+	)
+}
+
 func getPeers() []multiaddr.Multiaddr {
 	var peersStrings []string
 	if OS.PeerConnect == "none" {
@@ -186,10 +201,6 @@ func getCapacityManagerConfig() capacitymanager.Config {
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	serveCmd.PersistentFlags().StringVar(
-		&OS.PeerConnect, "peer", OS.PeerConnect,
-		`The libp2p multiaddress to connect to.`,
-	)
-	serveCmd.PersistentFlags().StringVar(
 		&OS.IPFSConnect, "ipfs-connect", OS.IPFSConnect,
 		`The ipfs host multiaddress to connect to.`,
 	)
@@ -201,19 +212,12 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		&OS.EstuaryAPIKey, "estuary-api-key", OS.EstuaryAPIKey,
 		`The API key used when using the estuary API.`,
 	)
-	serveCmd.PersistentFlags().StringVar(
-		&OS.HostAddress, "host", OS.HostAddress,
-		`The host to listen on (for both api and swarm connections).`,
-	)
-	serveCmd.PersistentFlags().IntVar(
-		&OS.SwarmPort, "swarm-port", OS.SwarmPort,
-		`The port to listen on for swarm connections.`,
-	)
 	serveCmd.PersistentFlags().IntVar(
 		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
 		`The port to serve prometheus metrics on.`,
 	)
 
+	setupLibp2pCLIFlags(serveCmd)
 	setupJobSelectionCLIFlags(serveCmd)
 	setupCapacityManagerCLIFlags(serveCmd)
 }
