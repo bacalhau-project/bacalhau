@@ -71,12 +71,12 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	require.NoError(suite.T(), err)
 
 	jobSpec := model.JobSpec{
-		Engine:        model.EngineDocker,
-		Verifier:      model.VerifierNoop,
-		Publisher:     model.PublisherNoop,
-		Docker:        testCase.GetJobSpec(),
-		InputVolumes:  inputStorageList,
-		OutputVolumes: testCase.Outputs,
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherNoop,
+		Docker:    testCase.GetJobSpec(),
+		Inputs:    inputStorageList,
+		Outputs:   testCase.Outputs,
 	}
 
 	jobDeal := model.JobDeal{

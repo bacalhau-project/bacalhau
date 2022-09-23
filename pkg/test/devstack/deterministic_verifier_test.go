@@ -60,13 +60,13 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 					`echo hello`,
 				},
 			},
-			InputVolumes: []model.StorageSpec{
+			Inputs: []model.StorageSpec{
 				{
 					Engine: model.StorageSourceIPFS,
 					Cid:    "123",
 				},
 			},
-			OutputVolumes: []model.StorageSpec{},
+			Outputs: []model.StorageSpec{},
 			Sharding: model.JobShardingConfig{
 				GlobPattern: "/data/*.txt",
 				BatchSize:   1,

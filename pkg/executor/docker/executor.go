@@ -175,7 +175,7 @@ func (e *Executor) RunShard(
 	// data from the job and keeping it locally
 	// the engine property of the output storage spec is how we will "publish" the output volume
 	// if and when the deal is settled
-	for _, output := range shard.Job.Spec.OutputVolumes {
+	for _, output := range shard.Job.Spec.Outputs {
 		if output.Name == "" {
 			err = fmt.Errorf("output volume has no name: %+v", output)
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err

@@ -106,14 +106,14 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 					`cat /inputs/file.txt`,
 				},
 			},
-			InputVolumes: []model.StorageSpec{
+			Inputs: []model.StorageSpec{
 				{
 					Engine: model.StorageSourceIPFS,
 					Cid:    cid,
 					Path:   "/inputs",
 				},
 			},
-			OutputVolumes: []model.StorageSpec{},
+			Outputs: []model.StorageSpec{},
 		}
 
 		jobDeal := model.JobDeal{

@@ -185,7 +185,7 @@ func moveResults(ctx context.Context,
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
-	for _, outputVolume := range job.Spec.OutputVolumes {
+	for _, outputVolume := range job.Spec.Outputs {
 		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)

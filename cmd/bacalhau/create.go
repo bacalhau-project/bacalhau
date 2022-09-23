@@ -163,7 +163,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(jobSpec.InputVolumes)
+		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ var createCmd = &cobra.Command{
 		jobSpec.Engine = engineType
 		jobSpec.Verifier = verifierType
 		jobSpec.Publisher = publisherType
-		jobSpec.InputVolumes = parsedInputs
+		jobSpec.Inputs = parsedInputs
 
 		jobDeal := &model.JobDeal{
 			Concurrency: OC.Concurrency,

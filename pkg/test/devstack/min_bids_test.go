@@ -83,7 +83,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 		apiClient := publicapi.NewAPIClient(apiUri)
 
 		spec := testutils.DockerRunJob()
-		spec.InputVolumes = []model.StorageSpec{
+		spec.Inputs = []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,

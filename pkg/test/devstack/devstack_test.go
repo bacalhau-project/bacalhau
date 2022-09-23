@@ -73,12 +73,12 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	jobSpec := model.JobSpec{
-		Engine:        model.EngineDocker,
-		Verifier:      model.VerifierNoop,
-		Publisher:     model.PublisherIpfs,
-		Docker:        testCase.GetJobSpec(),
-		InputVolumes:  inputStorageList,
-		OutputVolumes: testCase.Outputs,
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherIpfs,
+		Docker:    testCase.GetJobSpec(),
+		Inputs:    inputStorageList,
+		Outputs:   testCase.Outputs,
 	}
 
 	jobDeal := model.JobDeal{

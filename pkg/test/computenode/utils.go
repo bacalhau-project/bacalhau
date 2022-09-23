@@ -34,7 +34,7 @@ func GetJobSpec(cid string) model.JobSpec {
 				"/test_file.txt",
 			},
 		},
-		InputVolumes: inputs,
+		Inputs: inputs,
 	}
 }
 

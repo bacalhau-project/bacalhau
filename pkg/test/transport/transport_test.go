@@ -179,7 +179,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 			Entrypoint:           []string{"entrypoint"},
 			EnvironmentVariables: []string{"env"},
 		},
-		InputVolumes: []model.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 			},
@@ -218,7 +218,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 			Entrypoint:           []string{"entrypoint"},
 			EnvironmentVariables: []string{"env"},
 		},
-		InputVolumes: []model.StorageSpec{
+		Inputs: []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 			},

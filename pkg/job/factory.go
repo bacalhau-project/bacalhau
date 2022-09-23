@@ -117,13 +117,13 @@ func ConstructDockerJob( //nolint:funlen
 			EnvironmentVariables: env,
 		},
 
-		Resources:     jobResources,
-		InputVolumes:  jobInputs,
-		Contexts:      jobContexts,
-		OutputVolumes: jobOutputs,
-		Annotations:   jobAnnotations,
-		Sharding:      jobShardingConfig,
-		DoNotTrack:    doNotTrack,
+		Resources:   jobResources,
+		Inputs:      jobInputs,
+		Contexts:    jobContexts,
+		Outputs:     jobOutputs,
+		Annotations: jobAnnotations,
+		Sharding:    jobShardingConfig,
+		DoNotTrack:  doNotTrack,
 	}
 
 	// override working dir if provided
@@ -206,11 +206,11 @@ func ConstructLanguageJob(
 			ProgramPath:      programPath,
 			RequirementsPath: requirementsPath,
 		},
-		InputVolumes:  jobInputs,
-		Contexts:      jobContexts,
-		OutputVolumes: jobOutputs,
-		Annotations:   jobAnnotations,
-		DoNotTrack:    doNotTrack,
+		Inputs:      jobInputs,
+		Contexts:    jobContexts,
+		Outputs:     jobOutputs,
+		Annotations: jobAnnotations,
+		DoNotTrack:  doNotTrack,
 	}
 
 	deal := model.JobDeal{

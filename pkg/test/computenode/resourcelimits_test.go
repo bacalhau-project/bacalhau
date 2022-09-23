@@ -503,7 +503,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 					// we simulate having calculated the disk size here
 					Disk: "6b",
 				},
-				InputVolumes: []model.StorageSpec{
+				Inputs: []model.StorageSpec{
 					{
 						Engine: model.StorageSourceIPFS,
 						Cid:    cid,

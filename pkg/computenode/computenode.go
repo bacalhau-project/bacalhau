@@ -758,7 +758,7 @@ func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec mode
 
 	var total uint64 = 0
 
-	for _, input := range spec.InputVolumes {
+	for _, input := range spec.Inputs {
 		volumeSize, err := e.GetVolumeSize(ctx, input)
 		if err != nil {
 			return 0, err

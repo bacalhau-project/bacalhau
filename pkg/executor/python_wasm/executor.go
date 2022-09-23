@@ -62,16 +62,16 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 
 	// prepend a path on each of the user supplied volumes to prevent an accidental
 	// collision with the internal pyodide filesystem
-	for idx, v := range shard.Job.Spec.InputVolumes {
-		shard.Job.Spec.InputVolumes[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
+	for idx, v := range shard.Job.Spec.Inputs {
+		shard.Job.Spec.Inputs[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
 	for idx, v := range shard.Job.Spec.Contexts {
 		shard.Job.Spec.Contexts[idx].Path = fmt.Sprintf("/pyodide_inputs%s", v.Path)
 	}
 
-	for idx, v := range shard.Job.Spec.OutputVolumes {
-		shard.Job.Spec.OutputVolumes[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
+	for idx, v := range shard.Job.Spec.Outputs {
+		shard.Job.Spec.Outputs[idx].Path = fmt.Sprintf("/pyodide_outputs%s", v.Path)
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
