@@ -52,6 +52,7 @@ require (
 )
 
 require (
+	github.com/invopop/jsonschema v0.6.0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipld/go-car/v2 v2.4.0
@@ -69,7 +70,6 @@ require (
 
 require (
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
-	github.com/invopop/jsonschema v0.6.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect

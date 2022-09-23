@@ -21,7 +21,7 @@ import (
 
 var (
 	validateLong = templates.LongDesc(i18n.T(`
-		validate a job from a file or from stdin.
+		validate a job from a file
 
 		JSON and YAML formats are accepted.
 `))
