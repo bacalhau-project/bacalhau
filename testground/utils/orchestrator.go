@@ -67,7 +67,8 @@ func bootstrap(ctx context.Context, runenv *runtime.RunEnv, initCtx *run.InitCon
 			return nil, err
 		}
 
-		nodeInfo, err := GetNodeInfo(ctx, newNode)
+		var nodeInfo *NodeInfo
+		nodeInfo, err = GetNodeInfo(ctx, newNode)
 		if err != nil {
 			return nil, err
 		}

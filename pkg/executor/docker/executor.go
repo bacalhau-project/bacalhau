@@ -235,10 +235,12 @@ func (e *Executor) RunShard(
 	// json the job spec and pass it into all containers
 	// TODO: check if this will overwrite a user supplied version of this value
 	// (which is what we actually want to happen)
+	log.Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
 	jsonJobSpec, err := json.Marshal(shard.Job.Spec)
 	if err != nil {
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
+	log.Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
 	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 

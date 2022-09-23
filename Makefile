@@ -181,6 +181,10 @@ test-commands:
 devstack:
 	go run . devstack
 
+.PHONY: devstack-one
+devstack-one:
+	IGNORE_PORT_FILES=true PREDICTABLE_API_PORT=1 go run . devstack --nodes 1
+
 .PHONY: devstack-100
 devstack-100:
 	go run . devstack --nodes 100

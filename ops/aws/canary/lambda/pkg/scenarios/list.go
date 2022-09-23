@@ -3,6 +3,7 @@ package scenarios
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 )
 
@@ -17,10 +18,10 @@ func List(ctx context.Context) error {
 	}
 
 	count := 0
-	for _, j := range jobs {
-		fmt.Printf("Job: %s\n", j.ID)
+	for i := range jobs {
+		fmt.Printf("Job: %s\n", jobs[i].ID)
 		count++
-		if count > 10 {
+		if count > 10 { //nolint:gomnd
 			break
 		}
 	}

@@ -156,7 +156,8 @@ type JobSpec struct {
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
-	Inputs []StorageSpec `json:"Inputs,omitempty" yaml:"Inputs,omitempty"`
+	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
+	Inputs []StorageSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 
 	// Input volumes that will not be sharded
 	// for example to upload code into a base image
@@ -165,7 +166,7 @@ type JobSpec struct {
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"Outputs,omitempty" yaml:"Outputs,omitempty"`
+	Outputs []StorageSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
 	Annotations []string `json:"Annotations,omitempty" yaml:"Annotations,omitempty"`
