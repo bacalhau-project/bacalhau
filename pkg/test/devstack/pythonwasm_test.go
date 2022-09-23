@@ -161,7 +161,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	// require.NoError(s.T(), err)
 	// require.Empty(s.T(), stderrContents, "stderr should be empty: %s", stderrContents)
 
-	filePath := fmt.Sprintf("%s/outputs/test.txt", finalOutputPath)
+	filePath := fmt.Sprintf("%s/output/test.txt", finalOutputPath)
 	outputData, err := os.ReadFile(filePath)
 	require.NoError(s.T(), err)
 
