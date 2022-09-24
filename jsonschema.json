@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/filecoin-project/bacalhau/pkg/model/job-spec",
+  "$ref": "#/$defs/JobSpec",
+  "$defs": {
+    "JobShardingConfig": {
+      "properties": {
+        "glob_pattern": {
+          "type": "string"
+        },
+        "batch_size": {
+          "type": "integer"
+        },
+        "glob_pattern_base_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "glob_pattern",
+        "batch_size",
+        "glob_pattern_base_path"
+      ]
+    },
+    "JobSpec": {
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "integer"
+        },
+        "engine_name": {
+          "type": "string",
+          "enum": [
+            "noop",
+            "docker",
+            "wasm",
+            "language",
+            "pythonwasm"
+          ]
+        },
+        "verifier": {
+          "type": "integer"
+        },
+        "verifier_name": {
+          "type": "string"
+        },
+        "publisher": {
+          "type": "integer"
+        },
+        "publisher_name": {
+          "type": "string"
+        },
+        "job_spec_docker": {
+          "$ref": "#/$defs/JobSpecDocker"
+        },
+        "job_spec_language": {
+          "$ref": "#/$defs/JobSpecLanguage"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceUsageConfig"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/StorageSpec"
+          },
+          "type": "array"
+        },
+        "contexts": {
+          "items": {
+            "$ref": "#/$defs/StorageSpec"
+          },
+          "type": "array"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/StorageSpec"
+          },
+          "type": "array"
+        },
+        "annotations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sharding": {
+          "$ref": "#/$defs/JobShardingConfig"
+        },
+        "donottrack": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "engine_name",
+        "verifier_name",
+        "publisher_name",
+        "resources",
+        "inputs",
+        "outputs",
+        "annotations"
+      ]
+    },
+    "JobSpecDocker": {
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "entrypoint": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "env": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workdir": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "image",
+        "entrypoint",
+        "env"
+      ]
+    },
+    "JobSpecLanguage": {
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "language_version": {
+          "type": "string"
+        },
+        "deterministic": {
+          "type": "boolean"
+        },
+        "context": {
+          "$ref": "#/$defs/StorageSpec"
+        },
+        "command": {
+          "type": "string"
+        },
+        "program_path": {
+          "type": "string"
+        },
+        "requirements_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "language",
+        "language_version",
+        "deterministic",
+        "context",
+        "command",
+        "program_path",
+        "requirements_path"
+      ]
+    },
+    "ResourceUsageConfig": {
+      "properties": {
+        "cpu": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        },
+        "disk": {
+          "type": "string"
+        },
+        "gpu": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "cpu",
+        "memory",
+        "disk",
+        "gpu"
+      ]
+    },
+    "StorageSpec": {
+      "properties": {
+        "engine": {
+          "type": "integer"
+        },
+        "engine_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "cid": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "metadata": {
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "engine_name",
+        "name",
+        "cid",
+        "path"
+      ]
+    }
+  }
+}

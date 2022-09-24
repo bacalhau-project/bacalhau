@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -93,15 +94,20 @@ var validateCmd = &cobra.Command{
 
 		y2j, err := convert.YAMLToJSON(byteResult)
 		if err != nil {
-			panic(err.Error())
+			return fmt.Errorf("error converting from YAML to JSON %s", err)
 		}
 		str := string(y2j)
 		s := jsonschema.Reflect(&model.JobSpec{})
 		data, err := json.MarshalIndent(s, "", "  ")
 		if err != nil {
-			panic(err.Error())
+			return fmt.Errorf("error indenting %s", err)
 		}
 		schema := string(data)
+		err = ioutil.WriteFile("jsonschema.json", data, 0644)
+
+		if err != nil {
+			return fmt.Errorf("error writting the jsonschema %s", err)
+		}
 		// fmt.Println(schema)
 		if err != nil {
 			return err
