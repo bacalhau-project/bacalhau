@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -103,10 +102,10 @@ var validateCmd = &cobra.Command{
 			return fmt.Errorf("error indenting %s", err)
 		}
 		schema := string(data)
-		err = ioutil.WriteFile("jsonschema.json", data, 0644)
+		err = os.WriteFile("jsonschema.json", data, 2)
 
 		if err != nil {
-			return fmt.Errorf("error writting the jsonschema %s", err)
+			return fmt.Errorf("error writing the jsonschema %s", err)
 		}
 		// fmt.Println(schema)
 		if err != nil {
