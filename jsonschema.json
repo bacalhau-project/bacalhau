@@ -45,13 +45,23 @@
           "type": "integer"
         },
         "verifier_name": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "noop",
+            "deterministic"
+          ]
         },
         "publisher": {
           "type": "integer"
         },
         "publisher_name": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "noop",
+            "ipfs",
+            "filecoin",
+            "estuary"
+          ]
         },
         "job_spec_docker": {
           "$ref": "#/$defs/JobSpecDocker"

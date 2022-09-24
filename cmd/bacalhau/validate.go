@@ -103,7 +103,7 @@ var validateCmd = &cobra.Command{
 		}
 		schema := string(data)
 		//nolint
-		err = os.WriteFile("jsonschema.json", data, 0644)
+		err = os.WriteFile("../../jsonschema.json", data, 0644)
 
 		if err != nil {
 			return fmt.Errorf("error writing the jsonschema %s", err)
