@@ -104,9 +104,14 @@ var validateCmd = &cobra.Command{
 		schema := string(data)
 		//nolint
 		err = os.WriteFile("../../jsonschema.json", data, 0644)
+		if err != nil {
+			return fmt.Errorf("error writing the jsonschema JSON %s", err)
+		}
+		yaml, _ := convert.JSONToYAML(data)
+		err = os.WriteFile("../../jsonschema.yaml", yaml, 0644)
 
 		if err != nil {
-			return fmt.Errorf("error writing the jsonschema %s", err)
+			return fmt.Errorf("error writing the jsonschema YAML %s", err)
 		}
 		// fmt.Println(schema)
 		if err != nil {
