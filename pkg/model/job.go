@@ -139,12 +139,12 @@ type JobSpec struct {
 
 	Verifier VerifierType `json:"verifier,omitempty" yaml:"verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
-	VerifierName string `json:"verifier_name" yaml:"verifier_name" jsonschema_extras:"enum=Noop,enum=Deterministicverifier"`
+	VerifierName string `json:"verifier_name" yaml:"verifier_name" jsonschema_extras:"enum=noop,enum=deterministic"`
 
 	// there can be multiple publishers for the job
 	Publisher PublisherType `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 	//nolint:gochecknoinits
-	PublisherName string `json:"publisher_name" yaml:"publisher_name" jsonschema_extras:"enum=Noop,enum=ipfs,enum=filecoin,enum=estuary"`
+	PublisherName string `json:"publisher_name" yaml:"publisher_name" jsonschema_extras:"enum=noop,enum=ipfs,enum=filecoin,enum=estuary"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
