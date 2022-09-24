@@ -102,7 +102,8 @@ var validateCmd = &cobra.Command{
 			return fmt.Errorf("error indenting %s", err)
 		}
 		schema := string(data)
-		err = os.WriteFile("jsonschema.json", data, 2)
+		//nolint
+		err = os.WriteFile("jsonschema.json", data, 0644)
 
 		if err != nil {
 			return fmt.Errorf("error writing the jsonschema %s", err)
