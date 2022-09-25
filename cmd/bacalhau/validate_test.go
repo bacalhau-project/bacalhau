@@ -44,14 +44,14 @@ func (suite *ValidateSuite) TearDownAllSuite() {
 
 func (suite *ValidateSuite) TestValidate() {
 
-	tests := []struct {
+	tests := map[string]struct {
 		testFile string
 		valid    bool
 	}{
-		{testFile: "../../testdata/job.yaml", valid: true},
-		{testFile: "../../testdata/job-invalid.yml", valid: false},
+		"validJobFile":   {testFile: "../../testdata/job.yaml", valid: true},
+		"InvalidJobFile": {testFile: "../../testdata/job-invalid.yml", valid: false},
 	}
-	for _, test := range tests {
+	for name, test := range tests {
 		func() {
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
@@ -62,24 +62,21 @@ func (suite *ValidateSuite) TestValidate() {
 			require.NoError(suite.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			done := capture()
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "validate",
 				"--api-host", host,
 				"--api-port", port,
 				test.testFile,
 			)
-			s, _ := done()
 
 			require.NoError(suite.T(), err)
 
-			str := strings.TrimSpace(out)
+			trimmedString := strings.TrimSpace(out)
 			// fmt.Print(s)
 			if test.valid {
-				require.Equal(suite.T(), "The JobSpec is valid", strings.TrimSpace(s), "Jobspec Invalid")
-				fmt.Print(str)
-
+				require.Equal(suite.T(), "The Job is valid", trimmedString, fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
-				require.Equal(suite.T(), s[0:25], "The JobSpec is not valid.", "Jobspec Invalid returning valid")
+				require.Equal(suite.T(), trimmedString[0:21], "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(suite.T(), trimmedString, "JobAPIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
 

@@ -21,7 +21,7 @@ import (
 
 var (
 	validateLong = templates.LongDesc(i18n.T(`
-		validate a job from a file
+		Validate a job from a file
 
 		JSON and YAML formats are accepted.
 `))
@@ -39,13 +39,26 @@ var (
 )
 
 type ValidateOptions struct {
-	Filename string // Filename for job (can be .json or .yaml)
+	Filename        string // Filename for job (can be .json or .yaml)
+	OutputFormat    string // Output format (json or yaml)
+	OutputSchema    bool   // Output the schema to stdout
+	OutputDirectory string // Output directory for the job
 }
 
 func NewValidateOptions() *ValidateOptions {
 	return &ValidateOptions{
-		Filename: "",
+		Filename:        "",
+		OutputFormat:    "yaml",
+		OutputSchema:    false,
+		OutputDirectory: ".",
 	}
+}
+
+func init() { //nolint:gochecknoinits // Using init with Cobra Command is ideomatic
+	validateCmd.PersistentFlags().BoolVar(
+		&OV.OutputSchema, "output-schema", OV.OutputSchema,
+		`Output the JSON schema for a Job to stdout then exit`,
+	)
 }
 
 var validateCmd = &cobra.Command{
@@ -55,6 +68,18 @@ var validateCmd = &cobra.Command{
 	Example: validateExample,
 	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
+		j := &model.Job{}
+		s := jsonschema.Reflect(&model.Job{})
+		jsonSchemaData, err := json.MarshalIndent(s, "", "  ")
+		if err != nil {
+			return fmt.Errorf("error indenting %s", err)
+		}
+
+		if OV.OutputSchema {
+			//nolint
+			cmd.Printf("%s", jsonSchemaData)
+			return nil
+		}
 
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
@@ -75,15 +100,13 @@ var validateCmd = &cobra.Command{
 			return err
 		}
 
-		jobSpec := &model.JobSpec{}
-
 		if fileextension == ".json" {
-			err = json.Unmarshal(byteResult, &jobSpec)
+			err = json.Unmarshal(byteResult, &j)
 			if err != nil {
 				return fmt.Errorf("error reading json file '%s': %s", OV.Filename, err)
 			}
 		} else if fileextension == ".yaml" || fileextension == ".yml" {
-			err = yaml.Unmarshal(byteResult, &jobSpec)
+			err = yaml.Unmarshal(byteResult, &j)
 			if err != nil {
 				return fmt.Errorf("error reading yaml file '%s': %s", OV.Filename, err)
 			}
@@ -91,37 +114,16 @@ var validateCmd = &cobra.Command{
 			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OV.Filename)
 		}
 
-		y2j, err := convert.YAMLToJSON(byteResult)
+		// Convert the schema to JSON - this is required for the gojsonschema library
+		// Noop if you pass JSON through
+		fileContentsAsJSONBytes, err := convert.YAMLToJSON(byteResult)
 		if err != nil {
 			return fmt.Errorf("error converting from YAML to JSON %s", err)
 		}
-		str := string(y2j)
-		s := jsonschema.Reflect(&model.JobSpec{})
-		data, err := json.MarshalIndent(s, "", "  ")
-		if err != nil {
-			return fmt.Errorf("error indenting %s", err)
-		}
-		schema := string(data)
-		//nolint
-		err = os.WriteFile("../../jsonschema.json", data, 0644)
-		if err != nil {
-			return fmt.Errorf("error writing the jsonschema JSON %s", err)
-		}
-		yaml, _ := convert.JSONToYAML(data)
-		//nolint
-		err = os.WriteFile("../../jsonschema.yaml", yaml, 0644)
-
-		if err != nil {
-			return fmt.Errorf("error writing the jsonschema YAML %s", err)
-		}
-		// fmt.Println(schema)
-		if err != nil {
-			return err
-		}
 
 		// println(str)
-		schemaLoader := gojsonschema.NewStringLoader(schema)
-		documentLoader := gojsonschema.NewStringLoader(str)
+		schemaLoader := gojsonschema.NewStringLoader(string(jsonSchemaData))
+		documentLoader := gojsonschema.NewStringLoader(string(fileContentsAsJSONBytes))
 
 		result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 		if err != nil {
@@ -129,11 +131,11 @@ var validateCmd = &cobra.Command{
 		}
 
 		if result.Valid() {
-			fmt.Printf("The JobSpec is valid\n")
+			cmd.Println("The Job is valid")
 		} else {
-			fmt.Printf("The JobSpec is not valid. see errors :\n")
+			cmd.Println("The Job is not valid. See errors:")
 			for _, desc := range result.Errors() {
-				fmt.Printf("- %s\n", desc)
+				cmd.Printf("- %s\n", desc)
 			}
 		}
 		return err

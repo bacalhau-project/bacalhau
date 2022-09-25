@@ -1,21 +1,23 @@
-APIVersion: v1alpha1
-EngineName: docker
-VerifierName: noop
-PublisherName: ipfs
-JobSpecDocker:
-  Image: gromacs/gromacs
-  Entrypoint:
-    - /bin/bash
-    - -c
-    - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
-  EnvironmentVariables: []
-InputVolumes:
-  - EngineName: ipfs
-    Name: ""
-    CID: QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9
-    Path: /input
-OutputVolumes:
-  - EngineName: ipfs
-    Name: output_custom
-    Path: /output_custom
-Annotations: []
+JobAPIVersion: v1alpha1
+Spec:
+  Engine: 2
+  Verifier: 1
+  Publisher: 4
+  Docker:
+    Image: gromacs/gromacs
+    Entrypoint:
+      - /bin/bash
+      - -c
+      - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
+  outputs:
+    - Engine: 1
+      Name: output_custom
+      path: /output_custom
+  Sharding:
+    BatchSize: 1
+    GlobPatternBasePath: /inputs
+Deal:
+  Concurrency: 1
+  Confidence: 0
+  MinBids: 0
+CreatedAt: 2022-09-23T15:38:03.625814-07:00

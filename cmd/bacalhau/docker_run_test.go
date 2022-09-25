@@ -817,7 +817,7 @@ func (suite *DockerRunSuite) TestTruncateReturn() {
 	for name, tc := range tests {
 		suite.T().Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTestsWithPort(suite.T(), 20000)
+			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()

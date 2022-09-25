@@ -7,6 +7,8 @@ import (
 
 // Job contains data about a job in the bacalhau network.
 type Job struct {
+	JobAPIVersion string `json:"JobAPIVersion" yaml:"JobAPIVersion"`
+
 	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"ID,omitempty" yaml:"ID,omitempty"`
 
@@ -147,9 +149,9 @@ type JobSpec struct {
 
 	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
-	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
+	Engine EngineType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"engine_name" yaml:"engine_name" jsonschema_extras:"enum=noop,enum=docker,enum=wasm,enum=language,enum=pythonwasm"`
+	EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
 
 	Verifier VerifierType `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
