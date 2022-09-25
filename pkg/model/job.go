@@ -149,7 +149,7 @@ type JobSpec struct {
 	// e.g. docker or language
 	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"engine_name" yaml:"engine_name"`
+	EngineName string `json:"engine_name" yaml:"engine_name" jsonschema_extras:"enum=noop,enum=docker,enum=wasm,enum=language,enum=pythonwasm"`
 
 	Verifier VerifierType `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
