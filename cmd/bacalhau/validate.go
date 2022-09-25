@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -102,23 +103,26 @@ var validateCmd = &cobra.Command{
 			return fmt.Errorf("error indenting %s", err)
 		}
 		schema := string(data)
-		//nolint
-		err = os.WriteFile("../../jsonschema.json", data, 0644)
-		if err != nil {
-			return fmt.Errorf("error writing the jsonschema JSON %s", err)
-		}
-		yaml, _ := convert.JSONToYAML(data)
-		//nolint
-		err = os.WriteFile("../../jsonschema.yaml", yaml, 0644)
+		arg := os.Args[0]
 
-		if err != nil {
-			return fmt.Errorf("error writing the jsonschema YAML %s", err)
-		}
-		// fmt.Println(schema)
-		if err != nil {
-			return err
-		}
+		if strings.Contains(arg, "/tmp") || strings.Contains(arg, "/__debug_bin") {
+			//nolint
+			err = os.WriteFile("../../jsonschema.json", data, 0644)
+			if err != nil {
+				return fmt.Errorf("error writing the jsonschema JSON %s", err)
+			}
+			yaml, _ := convert.JSONToYAML(data)
+			//nolint
+			err = os.WriteFile("../../jsonschema.yaml", yaml, 0644)
 
+			if err != nil {
+				return fmt.Errorf("error writing the jsonschema YAML %s", err)
+			}
+			// fmt.Println(schema)
+			if err != nil {
+				return err
+			}
+		}
 		// println(str)
 		schemaLoader := gojsonschema.NewStringLoader(schema)
 		documentLoader := gojsonschema.NewStringLoader(str)
