@@ -135,15 +135,16 @@ type JobSpec struct {
 	// e.g. docker or language
 	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"engine_name" yaml:"engine_name"`
+	EngineName string `json:"engine_name" yaml:"engine_name" jsonschema_extras:"enum=noop,enum=docker,enum=wasm,enum=language,enum=pythonwasm"`
 
-	Verifier VerifierType `json:"verifier" yaml:"verifier"`
+	Verifier VerifierType `json:"verifier,omitempty" yaml:"verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
-	VerifierName string `json:"verifier_name" yaml:"verifier_name"`
+	VerifierName string `json:"verifier_name" yaml:"verifier_name" jsonschema_extras:"enum=noop,enum=deterministic"`
 
 	// there can be multiple publishers for the job
-	Publisher     PublisherType `json:"publisher" yaml:"publisher"`
-	PublisherName string        `json:"publisher_name" yaml:"publisher_name"`
+	Publisher PublisherType `json:"publisher,omitempty" yaml:"publisher,omitempty"`
+	//nolint:gochecknoinits
+	PublisherName string `json:"publisher_name" yaml:"publisher_name" jsonschema_extras:"enum=noop,enum=ipfs,enum=filecoin,enum=estuary"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"job_spec_docker,omitempty" yaml:"job_spec_docker,omitempty"`
@@ -159,7 +160,7 @@ type JobSpec struct {
 	// Input volumes that will not be sharded
 	// for example to upload code into a base image
 	// every shard will get the full range of context volumes
-	Contexts []StorageSpec `json:"contexts" yaml:"contexts"`
+	Contexts []StorageSpec `json:"contexts,omitempty" yaml:"contexts,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
@@ -170,10 +171,10 @@ type JobSpec struct {
 
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
-	Sharding JobShardingConfig `json:"sharding" yaml:"sharding"`
+	Sharding JobShardingConfig `json:"sharding,omitempty" yaml:"sharding,omitempty"`
 
 	// Do not track specified by the client
-	DoNotTrack bool `json:"donottrack" yaml:"donottrack"`
+	DoNotTrack bool `json:"donottrack,omitempty" yaml:"donottrack,omitempty"`
 }
 
 // for VM style executors
@@ -185,7 +186,7 @@ type JobSpecDocker struct {
 	// a map of env to run the container with
 	Env []string `json:"env" yaml:"env"`
 	// working directory inside the container
-	WorkingDir string `json:"workdir" yaml:"workdir"`
+	WorkingDir string `json:"workdir,omitempty" yaml:"workdir,omitempty"`
 }
 
 // for language style executors (can target docker or wasm)

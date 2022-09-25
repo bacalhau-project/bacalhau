@@ -1,4 +1,3 @@
-apiVersion: v1alpha1
 engine_name: docker
 verifier_name: noop
 publisher_name: ipfs
