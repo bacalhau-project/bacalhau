@@ -147,9 +147,9 @@ type JobSpec struct {
 
 	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
-	Engine EngineType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+	Engine EngineType `json:"engine,omitempty" yaml:"engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
+	EngineName string `json:"engine_name" yaml:"engine_name"`
 
 	Verifier VerifierType `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs

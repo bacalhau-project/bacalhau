@@ -96,6 +96,7 @@ jobs:
             - run:
                 name: Upload results
                 command: |
+                  export DEBIAN_FRONTEND=noninteractive
                   sudo apt install python3.10 -y
                   python3 -m pip install --upgrade pip
                   pip3 install gsutil
