@@ -81,7 +81,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				var returnedJobDescription = &jobDescription{}
+				var returnedJob = &model.Job{}
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
@@ -98,12 +98,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -114,12 +114,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
@@ -130,12 +130,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -166,7 +166,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			var returnedJobDescription = &jobDescription{}
+			var returnedJob = &model.Job{}
 
 			var args []string
 
@@ -179,7 +179,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 			require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-			err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+			err = yaml.Unmarshal([]byte(out), returnedJob)
 			require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
 
 			// TODO: #600 When we figure out how to add events to a noop job, uncomment the below

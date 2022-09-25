@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -96,27 +95,18 @@ var createCmd = &cobra.Command{
 		OC.Filename = cmdArgs[0]
 
 		if OC.Filename == "-" {
-			var job jobDescription
+			var j model.JobWithInfo
 
 			byteResult, err := io.ReadAll(cmd.InOrStdin())
 			if err != nil {
 				return errors.Wrap(err, "failed to read from stdin")
 			}
 
-			err = yaml.Unmarshal(byteResult, &job)
+			err = yaml.Unmarshal(byteResult, &j)
 			if err != nil {
 				return fmt.Errorf("error reading from stdin : %s", err)
 			}
-			bytes, err := yaml.Marshal(job.Spec)
-			if err != nil {
-				log.Error().Msgf("Failure marshaling job description : %s", err)
-				return err
-			}
-			err = yaml.Unmarshal(bytes, &jobSpec)
-			if err != nil {
-				return fmt.Errorf("error reading josbpec from stdin : %s", err)
-			}
-
+			jobSpec = &j.Job.Spec
 		} else {
 			fileextension := filepath.Ext(OC.Filename)
 			fileContent, err := os.Open(OC.Filename)

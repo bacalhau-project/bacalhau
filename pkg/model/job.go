@@ -8,36 +8,44 @@ import (
 // Job contains data about a job in the bacalhau network.
 type Job struct {
 	// The unique global ID of this job in the bacalhau network.
-	ID string `json:"ID,omitempty"`
+	ID string `json:"ID,omitempty" yaml:"ID,omitempty"`
 
 	// The ID of the requester node that owns this job.
-	RequesterNodeID string `json:"RequesterNodeID,omitempty"`
+	RequesterNodeID string `json:"RequesterNodeID,omitempty" yaml:"RequesterNodeID,omitempty"`
 
 	// The public key of the requestor node that created this job
 	// This can be used to encrypt messages back to the creator
-	RequesterPublicKey []byte `json:"RequesterPublicKey,omitempty"`
+	RequesterPublicKey []byte `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
 
 	// The ID of the client that created this job.
-	ClientID string `json:"ClientID,omitempty"`
+	ClientID string `json:"ClientID,omitempty" yaml:"ClientID,omitempty"`
 
 	// The specification of this job.
-	Spec JobSpec `json:"Spec,omitempty"`
+	Spec JobSpec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal JobDeal `json:"Deal,omitempty"`
+	Deal JobDeal `json:"Deal,omitempty" yaml:"Deal,omitempty"`
 
 	// how will this job be executed by nodes on the network
-	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
+	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty" yaml:"ExecutionPlan,omitempty"`
 
 	// Time the job was submitted to the bacalhau network.
-	CreatedAt time.Time `json:"CreatedAt,omitempty"`
+	CreatedAt time.Time `json:"CreatedAt,omitempty" yaml:"CreatedAt,omitempty"`
+}
+
+// JobWithInfo is the job request + the result of attempting to run it on the network
+type JobWithInfo struct {
+	Job            Job             `json:"Job,omitempty" yaml:"Job,omitempty"`
+	JobState       JobState        `json:"JobState,omitempty" yaml:"JobState,omitempty"`
+	JobEvents      []JobEvent      `json:"JobEvents,omitempty" yaml:"JobEvents,omitempty"`
+	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty" yaml:"JobLocalEvents,omitempty"`
 }
 
 // JobShard contains data about a job shard in the bacalhau network.
 type JobShard struct {
-	Job Job `json:"Job,omitempty"`
+	Job Job `json:"Job,omitempty" yaml:"Job,omitempty"`
 
-	Index int `json:"Index,omitempty"`
+	Index int `json:"Index,omitempty" yaml:"Index,omitempty"`
 }
 
 func (shard JobShard) ID() string {
@@ -52,7 +60,7 @@ type JobExecutionPlan struct {
 	// how many shards are there in total for this job
 	// we are expecting this number x concurrency total
 	// JobShardState objects for this job
-	TotalShards int `json:"ShardsTotal,omitempty"`
+	TotalShards int `json:"ShardsTotal,omitempty" yaml:"ShardsTotal,omitempty"`
 }
 
 // describe how we chunk a job up into shards
@@ -74,39 +82,43 @@ type JobShardingConfig struct {
 // generally be in different states on different nodes - one node may be
 // ignoring a job as its bid was rejected, while another node may be
 // submitting results for the job to the requester node.
+//
 // Each node will produce an array of JobShardState one for each shard
 // (jobs without a sharding config will still have sharded job
 // states - just with a shard count of 1). Any code that is determining
-// the current "state" of a job must look at both
-// the ShardCount of the JobExecutionPlan and the
-// collection of JobShardState to determine the current state.
-
-// JobState itself is not mutable - the JobExecutionPlan and
+// the current "state" of a job must look at both:
+//
+// 		* the ShardCount of the JobExecutionPlan
+//		* the collection of JobShardState to determine the current state
+//
+// Note: JobState itself is not mutable - the JobExecutionPlan and
 // JobShardState are updatable and the JobState is queried by the rest
-// of the system
+// of the system.
 type JobState struct {
-	Nodes map[string]JobNodeState `json:"Nodes"`
+	Nodes map[string]JobNodeState `json:"Nodes" yaml:"Nodes"`
 }
 
 type JobNodeState struct {
-	Shards map[int]JobShardState `json:"Shards"`
+	Shards map[int]JobShardState `json:"Shards" yaml:"Shards"`
 }
 
 type JobShardState struct {
 	// which node is running this shard
-	NodeID string `json:"NodeID,omitempty"`
+	NodeID string `json:"NodeId" yaml:"NodeId"`
 	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex,omitempty"`
+	ShardIndex int `json:"ShardIndex" yaml:"ShardIndex"`
 	// what is the state of the shard on this node
-	State JobStateType `json:"State,omitempty"`
+	State JobStateType `json:"State" yaml:"State"`
 	// an arbitrary status message
-	Status string `json:"Status,omitempty"`
+	Status string `json:"Status" yaml:"Status"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
-	RunOutput            *RunCommandResult  `json:"RunOutput,omitempty"`
+	VerificationProposal []byte             `json:"VerificationProposal" yaml:"VerificationProposal"`
+	VerificationResult   VerificationResult `json:"VerificationResult" yaml:"VerificationResult"`
+	PublishedResult      StorageSpec        `json:"PublishedResults" yaml:"PublishedResults"`
+
+	// RunOutput of the job
+	RunOutput *RunCommandResult `json:"RunOutput" yaml:"RunOutput"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -114,18 +126,18 @@ type JobShardState struct {
 type JobDeal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
-	Concurrency int `json:"Concurrency,omitempty"`
+	Concurrency int `json:"Concurrency,omitempty" yaml:"Concurrency,omitempty"`
 	// The number of nodes that must agree on a verification result
 	// this is used by the different verifiers - for example the
 	// deterministic verifier requires the winning group size
 	// to be at least this size
-	Confidence int `json:"Confidence,omitempty"`
+	Confidence int `json:"Confidence,omitempty" yaml:"Confidence,omitempty"`
 	// The minimum number of bids that must be received before the requestor
 	// node will randomly accept concurrency-many of them. This allows the
 	// requestor node to get some level of guarantee that the execution of the
 	// jobs will be spread evenly across the network (assuming that this value
 	// is some large proportion of the size of the network).
-	MinBids int `json:"MinBids,omitempty"`
+	MinBids int `json:"MinBids,omitempty" yaml:"MinBids,omitempty"`
 }
 
 // JobSpec is a complete specification of a job that can be run on some
@@ -212,40 +224,42 @@ type JobSpecLanguage struct {
 // can keep state against a job without broadcasting it
 // to the rest of the network
 type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName"`
-	JobID        string            `json:"JobID"`
-	ShardIndex   int               `json:"ShardIndex"`
-	TargetNodeID string            `json:"TargetNodeID"`
+	EventName    JobLocalEventType `json:"EventName" yaml:"EventName"`
+	JobID        string            `json:"JobID" yaml:"JobID"`
+	ShardIndex   int               `json:"ShardIndex" yaml:"ShardIndex"`
+	TargetNodeID string            `json:"TargetNodeID" yaml:"TargetNodeID"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobID string `json:"JobID"`
+	JobID string `json:"JobID" yaml:"JobID"`
 	// what shard is this event for
-	ShardIndex int `json:"ShardIndex"`
+	ShardIndex int `json:"ShardIndex" yaml:"ShardIndex"`
 	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID"`
+	ClientID string `json:"ClientID" yaml:"ClientID"`
 	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID"`
+	SourceNodeID string `json:"SourceNodeID" yaml:"SourceNodeID"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID"`
-	EventName    JobEventType `json:"EventName"`
+	TargetNodeID string       `json:"TargetNodeID" yaml:"TargetNodeID"`
+	EventName    JobEventType `json:"EventName" yaml:"EventName"`
 	// this is only defined in "create" events
-	JobSpec JobSpec `json:"JobSpec"`
+	JobSpec JobSpec `json:"JobSpec" yaml:"JobSpec"`
 	// this is only defined in "create" events
-	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan"`
+	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan" yaml:"JobExecutionPlan"`
 	// this is only defined in "update_deal" events
-	JobDeal              JobDeal            `json:"JobDeal"`
-	Status               string             `json:"Status"`
-	RunOutput            *RunCommandResult  `json:"RunOutput"`
-	VerificationProposal []byte             `json:"VerificationProposal"`
-	VerificationResult   VerificationResult `json:"VerificationResult"`
-	PublishedResult      StorageSpec        `json:"PublishedResults"`
+	JobDeal              JobDeal            `json:"JobDeal" yaml:"JobDeal"`
+	Status               string             `json:"Status" yaml:"Status"`
+	VerificationProposal []byte             `json:"VerificationProposal" yaml:"VerificationProposal"`
+	VerificationResult   VerificationResult `json:"VerificationResult" yaml:"VerificationResult"`
+	PublishedResult      StorageSpec        `json:"PublishedResult" yaml:"PublishedResult"`
 
-	EventTime       time.Time `json:"EventTime"`
-	SenderPublicKey []byte    `json:"PublicKey"`
+	EventTime       time.Time `json:"EventTime" yaml:"EventTime"`
+	SenderPublicKey []byte    `json:"SenderPublicKey" yaml:"SenderPublicKey"`
+
+	// RunOutput of the job
+	RunOutput *RunCommandResult `json:"RunOutput" yaml:"RunOutput"`
 }
 
 // we need to use a struct for the result because:
@@ -253,25 +267,25 @@ type JobEvent struct {
 // means "I've not verified yet" or "verification failed"
 // b) we might want to add further fields to the result later
 type VerificationResult struct {
-	Complete bool `json:"Complete"`
-	Result   bool `json:"Result"`
+	Complete bool `json:"Complete" yaml:"Complete"`
+	Result   bool `json:"Result" yaml:"Result"`
 }
 
 type JobCreatePayload struct {
 	// the id of the client that is submitting the job
-	ClientID string `json:"ClientID"`
+	ClientID string `json:"ClientID" yaml:"ClientID"`
 
 	// The job specification:
-	Spec JobSpec `json:"Spec"`
+	Spec JobSpec `json:"Spec" yaml:"Spec"`
 
 	// The deal the client has made with the network, at minimum this should
 	// contain the client's ID for verifying the message authenticity:
-	Deal JobDeal `json:"Deal"`
+	Deal JobDeal `json:"Deal" yaml:"Deal"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't
 	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty"`
+	Context string `json:"Context,omitempty" yaml:"Context,omitempty"`
 }
 
 // JobStateType is the state of a job on a particular node. Note that the job
