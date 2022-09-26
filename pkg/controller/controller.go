@@ -131,7 +131,7 @@ func (ctrl *Controller) GetJobState(ctx context.Context, id string) (model.JobSt
 	return ctrl.localdb.GetJobState(ctx, id)
 }
 
-func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {	
+func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
 	return ctrl.localdb.GetJobs(ctx, query)
 }
 

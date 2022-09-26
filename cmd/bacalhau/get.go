@@ -77,7 +77,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		results, err := GetAPIClient().GetResults(ctx, j.ID)
+		results, err := GetAPIClient().GetResults(ctx, j.Job.ID)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ var getCmd = &cobra.Command{
 		err = ipfs.DownloadJob(
 			ctx,
 			cm,
-			j,
+			j.Job,
 			results,
 			OG.IPFSDownloadSettings,
 		)

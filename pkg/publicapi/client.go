@@ -64,8 +64,6 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-// TODO: #454 implement pagination
-// TODO: @enricorotundo add sort flag
 // func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (map[string]model.Job, error) {
 func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) ([]model.JobWithInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
@@ -89,31 +87,20 @@ func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs i
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): #452 implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.JobWithInfo, foundJob bool, err error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
 	defer span.End()
 
 	if jobID == "" {
-		return model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return model.JobWithInfo{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	// TODO: @enricorotundo fix this as well
-	// jobs, err := apiClient.List(ctx)
-	// if err != nil {
-	// 	return model.Job{}, false, err
-	// }
+	jobsWithInfo, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
+	if err != nil {
+		return model.JobWithInfo{}, false, err
+	}
 
-	// // TODO: #453 make this deterministic, return the first match alphabetically
-	// for _, job = range jobs { //nolint:gocritic
-	// 	strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(job.ID), "-", "")
-	// 	strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
-	// 	if strings.HasPrefix(strippedAndLoweredJobID, strippedAndLoweredSearchID) {
-	// 		return job, true, nil
-	// 	}
-	// }
-
-	return model.Job{}, false, nil
+	return jobsWithInfo[0], true, nil
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
@@ -143,7 +130,7 @@ func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 		if !ok {
 			return model.Job{}, fmt.Errorf("no job found with id %s", jobID)
 		}
-		return job, err
+		return job.Job, err
 	}
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)

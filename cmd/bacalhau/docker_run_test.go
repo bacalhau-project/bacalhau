@@ -5,7 +5,6 @@ import (
 	"context"
 	crand "crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -14,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"strings"
 	"testing"
@@ -141,7 +142,7 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 				o := logBuf.String()
 				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
-			require.Equal(suite.T(), tc.numGPUs, job.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, job.Spec.Resources.GPU)
+			require.Equal(suite.T(), tc.numGPUs, job.Job.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, job.Job.Spec.Resources.GPU)
 		}()
 	}
 }
@@ -254,12 +255,12 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.Inputs), "Number of job inputs != # of test inputs .")
+				require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Job.Spec.Inputs), "Number of job inputs != # of test inputs .")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
+					for _, jobInput := range job.Job.Spec.Inputs {
 						if tcidIV.cid == jobInput.Cid {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
@@ -334,12 +335,12 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(suite.T(), len(turls.inputURLs), len(job.Job.Spec.Inputs), "Number of job urls != # of test urls.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, turlIU := range turls.inputURLs {
 					testURLinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
+					for _, jobInput := range job.Job.Spec.Inputs {
 						if turlIU.url == jobInput.URL {
 							testURLinJobInputs = true
 							testPath := "/app2"
@@ -425,13 +426,13 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				require.NoError(suite.T(), err)
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), tcids.correctLength, len(job.Spec.Outputs), "Number of job outputs != correct number.")
+				require.Equal(suite.T(), tcids.correctLength, len(job.Job.Spec.Outputs), "Number of job outputs != correct number.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidOV := range tcids.outputVolumes {
 					testNameinJobOutputs := false
 					testPathinJobOutputs := false
-					for _, jobOutput := range job.Spec.Outputs {
+					for _, jobOutput := range job.Job.Spec.Outputs {
 						if tcidOV.name == "" {
 							if jobOutput.Name == "outputs" {
 								testNameinJobOutputs = true
@@ -488,10 +489,10 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			j, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
 			require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
-			require.LessOrEqual(suite.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			require.LessOrEqual(suite.T(), j.Job.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			require.GreaterOrEqual(suite.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(suite.T(), j.Job.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
@@ -578,8 +579,8 @@ Actual length: %d
 
 Expected Annotations: %+v
 Actual Annotations: %+v
-`, labelTest.Name, len(labelTest.Annotations), len(testJob.Spec.Annotations), labelTest.Annotations, testJob.Spec.Annotations)
-					require.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
+`, labelTest.Name, len(labelTest.Annotations), len(testJob.Job.Spec.Annotations), labelTest.Annotations, testJob.Job.Spec.Annotations)
+					require.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Job.Spec.Annotations), msg)
 				}
 			}
 		}()
@@ -679,7 +680,7 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 				require.NoError(suite.T(), err, "Error submitting job.")
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-				require.Equal(suite.T(), tc.workdir, job.Spec.Docker.WorkingDir, "Job workdir != test workdir.")
+				require.Equal(suite.T(), tc.workdir, job.Job.Spec.Docker.WorkingDir, "Job workdir != test workdir.")
 				require.NoError(suite.T(), err, "Error in running command.")
 			}
 		}()

@@ -156,7 +156,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	response := listResponse{}
 	err = json.Unmarshal([]byte(out), &response.Jobs)
 	require.NoError(suite.T(), err)
-	
+
 	require.Contains(suite.T(), response.Jobs, jobLongIds[0], "The filtered job id was not found in the response")
 	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
 }

@@ -147,49 +147,49 @@ var describeCmd = &cobra.Command{
 			return nil
 		}
 
-		jobState, err := GetAPIClient().GetJobState(ctx, j.ID)
+		jobState, err := GetAPIClient().GetJobState(ctx, j.Job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
+			log.Error().Msgf("Failure retrieving job states '%s': %s", j.Job.ID, err)
 			return err
 		}
 
-		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+		jobEvents, err := GetAPIClient().GetEvents(ctx, j.Job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", j.Job.ID, err)
 			return err
 		}
 
-		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
+		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.Job.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
+			log.Error().Msgf("Failure retrieving job events '%s': %s", j.Job.ID, err)
 			return err
 		}
 
 		jobDockerDesc := jobSpecDockerDescription{}
-		jobDockerDesc.Image = j.Spec.Docker.Image
-		jobDockerDesc.Entrypoint = j.Spec.Docker.Entrypoint
-		jobDockerDesc.Env = j.Spec.Docker.Env
+		jobDockerDesc.Image = j.Job.Spec.Docker.Image
+		jobDockerDesc.Entrypoint = j.Job.Spec.Docker.Entrypoint
+		jobDockerDesc.Env = j.Job.Spec.Docker.Env
 
-		jobDockerDesc.CPU = j.Spec.Resources.CPU
-		jobDockerDesc.Memory = j.Spec.Resources.Memory
+		jobDockerDesc.CPU = j.Job.Spec.Resources.CPU
+		jobDockerDesc.Memory = j.Job.Spec.Resources.Memory
 
 		jobSpecDesc := jobSpecDescription{}
-		jobSpecDesc.Engine = j.Spec.Engine.String()
+		jobSpecDesc.Engine = j.Job.Spec.Engine.String()
 
 		jobDealDesc := jobDealDescription{}
-		jobDealDesc.Concurrency = j.Deal.Concurrency
-		jobDealDesc.Confidence = j.Deal.Confidence
+		jobDealDesc.Concurrency = j.Job.Deal.Concurrency
+		jobDealDesc.Confidence = j.Job.Deal.Confidence
 
-		jobSpecDesc.Verifier = j.Spec.Verifier.String()
+		jobSpecDesc.Verifier = j.Job.Spec.Verifier.String()
 		jobSpecDesc.Docker = jobDockerDesc
 
 		jobDesc := jobDescription{}
-		jobDesc.ID = j.ID
-		jobDesc.ClientID = j.ClientID
-		jobDesc.RequesterNodeID = j.RequesterNodeID
+		jobDesc.ID = j.Job.ID
+		jobDesc.ClientID = j.Job.ClientID
+		jobDesc.RequesterNodeID = j.Job.RequesterNodeID
 		jobDesc.Spec = jobSpecDesc
-		jobDesc.Deal = j.Deal
-		jobDesc.CreatedAt = j.CreatedAt
+		jobDesc.Deal = j.Job.Deal
+		jobDesc.CreatedAt = j.Job.CreatedAt
 		jobDesc.Events = []eventDescription{}
 
 		shardDescriptions := map[int]shardStateDescription{}
@@ -251,7 +251,7 @@ var describeCmd = &cobra.Command{
 
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
+			log.Error().Msgf("Failure marshaling job description '%s': %s", j.Job.ID, err)
 			return err
 		}
 
