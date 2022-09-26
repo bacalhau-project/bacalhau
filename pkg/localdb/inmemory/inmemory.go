@@ -171,7 +171,6 @@ func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	// log.Debug().Msgf("jobs in datastore: %v", d.jobs)
 	existingJob, ok := d.jobs[job.ID]
 	if ok {
 		if len(job.RequesterPublicKey) > 0 {
