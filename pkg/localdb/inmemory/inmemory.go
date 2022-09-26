@@ -47,10 +47,10 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, e
 	defer d.mtx.RUnlock()
 
 	// support for short job IDs
-	if jobutils.ShortID(false, id) == id {
+	if jobutils.ShortID(id) == id {
 		// passed in a short id, need to resolve the long id first
 		for k := range d.jobs {
-			if jobutils.ShortID(false, k) == id {
+			if jobutils.ShortID(k) == id {
 				id = k
 				break
 			}
