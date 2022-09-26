@@ -140,7 +140,7 @@ var listCmd = &cobra.Command{
 
 		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
 		log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
-		log.Debug().Msgf("Table output format flag set to: %d", OL.OutputFormat)
+		log.Debug().Msgf("Table output format flag set to: %s", OL.OutputFormat)
 		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 		log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
 		log.Debug().Msgf("Found sort flag: %s", OL.SortBy)

@@ -11,7 +11,7 @@ import (
 
 func TestInMemoryDataStore(t *testing.T) {
 
-	jobId := "123"
+	jobId := "12345678" // short ID is 8 chars long
 	nodeId := "456"
 	shardIndex := 1
 

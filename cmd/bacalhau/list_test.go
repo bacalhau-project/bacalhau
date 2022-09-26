@@ -51,7 +51,7 @@ func (suite *ListSuite) TearDownAllSuite() {
 }
 
 type listResponse struct {
-	Jobs map[string]model.Job `json:"jobs"`
+	JobsWithInfo []model.JobWithInfo `json:"jobs"`
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
@@ -154,11 +154,11 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	// parse response
 	response := listResponse{}
-	err = json.Unmarshal([]byte(out), &response.Jobs)
+	err = json.Unmarshal([]byte(out), &response.JobsWithInfo)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), response.Jobs, jobLongIds[0], "The filtered job id was not found in the response")
-	require.Equal(suite.T(), 1, len(response.Jobs), "The list of jobs is not strictly filtered to the requested job id")
+	require.Contains(suite.T(), response.JobsWithInfo, jobLongIds[0], "The filtered job id was not found in the response")
+	require.Equal(suite.T(), 1, len(response.JobsWithInfo), "The list of jobs is not strictly filtered to the requested job id")
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
