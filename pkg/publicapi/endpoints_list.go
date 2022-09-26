@@ -36,6 +36,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 	unMarshallSpan.End()
 
+	// get Jobs
 	getJobsCtx, getJobsSpan := t.Start(ctx, "gettingjobs")
 	list, err := apiServer.Controller.GetJobs(getJobsCtx, localdb.JobQuery{
 		ClientID:    listReq.ClientID,
@@ -51,11 +52,11 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 	getJobsSpan.End()
 
-	// TODO @enricorotundo: add job state info here
-	// TODO @enricorotundo: create ctx and span for this block
+	// get JobStates
+	getJobStateCtx, getJobStateSpan := t.Start(ctx, "gettingjobstates")
 	jobsWithInfo := []model.JobWithInfo{}
 	for i := range list {
-		jobState, err := apiServer.Controller.GetJobState(ctx, list[i].ID)
+		jobState, err := apiServer.Controller.GetJobState(getJobStateCtx, list[i].ID)
 		if err != nil {
 			log.Error().Msgf("error getting job state: %s", err)
 		}
@@ -64,6 +65,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 			JobState: jobState,
 		})
 	}
+	getJobStateSpan.End()
 
 	_, marshallSpan := t.Start(ctx, "marshallingresponse")
 	res.WriteHeader(http.StatusOK)

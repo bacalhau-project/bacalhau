@@ -140,14 +140,21 @@ var listCmd = &cobra.Command{
 
 		log.Debug().Msgf("Table filter flag set to: %s", OL.IDFilter)
 		log.Debug().Msgf("Table limit flag set to: %d", OL.MaxJobs)
+		log.Debug().Msgf("Table output format flag set to: %d", OL.OutputFormat)
+		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
 		log.Debug().Msgf("Found return all flag: %t", OL.ReturnAll)
 		log.Debug().Msgf("Found sort flag: %s", OL.SortBy)
-		log.Debug().Msgf("Table reverse flag set to: %t", OL.SortReverse)
+		log.Debug().Msgf("Found hide header flag set to: %t", OL.HideHeader)
+		log.Debug().Msgf("Found no-style header flag set to: %t", OL.NoStyle)
+		log.Debug().Msgf("Found output wide flag set to: %t", OL.OutputWide)
 
 		jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
 		if err != nil {
 			return err
 		}
+
+		numberInTable := Min(OL.MaxJobs, len(jobs))
+		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 		if OL.OutputFormat == JSONFormat {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
@@ -156,9 +163,6 @@ var listCmd = &cobra.Command{
 			}
 			cmd.Printf("%s\n", msgBytes)
 		} else {
-			numberInTable := Min(OL.MaxJobs, len(jobs))
-			log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
-
 			tw := table.NewWriter()
 			tw.SetOutputMirror(cmd.OutOrStderr())
 			if !OL.HideHeader {
@@ -167,14 +171,8 @@ var listCmd = &cobra.Command{
 			columnConfig := []table.ColumnConfig{}
 			tw.SetColumnConfigs(columnConfig)
 
-			// for _, j := range jobs {
-			// 	fmt.Printf("%v\n", j.JobState)
-			// }
-
 			rows := []table.Row{}
-			// rows, err := resolvingJobDetails(ctx, jobArray, numberInTable)
 			for _, job := range jobs {
-				// fmt.Printf("%v\n", j.JobState)
 				summaryRow, err := summarizeJob(ctx, job)
 				if err != nil {
 					log.Error().Msgf("Error summarizing job: %s", err)
@@ -213,6 +211,7 @@ var listCmd = &cobra.Command{
 	},
 }
 
+// Renders job details into a table row
 func summarizeJob(ctx context.Context, job model.JobWithInfo) (table.Row, error) {
 	jobDesc := []string{
 		job.Job.Spec.Engine.String(),
@@ -261,50 +260,3 @@ func summarizeJob(ctx context.Context, job model.JobWithInfo) (table.Row, error)
 
 	return row, nil
 }
-
-// func resolvingJobDetails(ctx context.Context,
-// 	jobArray []model.Job,
-// 	lengthOfTable int) ([]table.Row, error) {
-// 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
-// 	defer span.End()
-
-// 	rows := []table.Row{}
-
-// 	// using indexing to avoid copying bytes
-// 	for i := range jobArray[0:lengthOfTable] {
-// 		jobDesc := []string{
-// 			jobArray[i].Spec.Engine.String(),
-// 		}
-
-// 		if jobArray[i].Spec.Engine == model.EngineDocker {
-// 			jobDesc = append(jobDesc, jobArray[i].Spec.Docker.Image, strings.Join(jobArray[i].Spec.Docker.Entrypoint, " "))
-// 		}
-
-// 		resolver := GetAPIClient().GetJobStateResolver()
-
-// 		stateSummary, err := resolver.StateSummary(ctx, jobArray[i].ID)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		resultSummary, err := resolver.ResultSummary(ctx, jobArray[i].ID)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		verifiedSummary, err := resolver.VerifiedSummary(ctx, jobArray[i].ID)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		rows = append(rows, table.Row{
-// 			shortenTime(OL.OutputWide, jobArray[i].CreatedAt),
-// 			shortID(OL.OutputWide, jobArray[i].ID),
-// 			shortenString(OL.OutputWide, strings.Join(jobDesc, " ")),
-// 			shortenString(OL.OutputWide, stateSummary),
-// 			shortenString(OL.OutputWide, verifiedSummary),
-// 			shortenString(OL.OutputWide, resultSummary),
-// 		})
-// 	}
-// 	return rows, nil
-// }

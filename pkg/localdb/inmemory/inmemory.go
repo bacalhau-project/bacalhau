@@ -46,7 +46,7 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, e
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 
-	// support short job IDs
+	// support for short job IDs
 	if jobutils.ShortID(false, id) == id {
 		// passed in a short id, need to resolve the long id first
 		for k := range d.jobs {
@@ -134,14 +134,12 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			}
 		}
 
-		// TODO @enricorotundo add span
-
 		// sort results
 		log.Debug().Msgf("sorting by %s", query.SortBy)
 		sort.Slice(result, func(i, j int) bool {
 			switch query.SortBy {
 			case "id":
-				// are IDs lexically sortable?
+				// what does it mean to sort by ID?
 				return result[i].ID < result[j].ID
 			case "created_at":
 				return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
