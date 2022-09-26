@@ -76,7 +76,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The output format for the list of jobs (json or text)`,
 	)
 	listCmd.PersistentFlags().BoolVar(&OL.SortReverse, "reverse", OL.SortReverse,
-		`reverse order of table - for time sorting, this will be newest first. Use '--reverse=false' to sort oldest first.`)
+		`reverse order of table - for time sorting, this will be newest first. Use '--reverse=false' to sort oldest first (single quotes are required).`)
 
 	listCmd.PersistentFlags().Var(&OL.SortBy, "sort-by",
 		`sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"].`)
@@ -91,7 +91,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 	listCmd.PersistentFlags().BoolVar(
 		&OL.ReturnAll, "all", OL.ReturnAll,
-		`Fetch all jobs from the network (default is filter those that belong to the user). This may take a long time, please use with caution.`,
+		`Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.`,
 	)
 }
 
