@@ -12,14 +12,12 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
-
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
