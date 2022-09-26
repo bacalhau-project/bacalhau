@@ -9,6 +9,7 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -44,10 +45,23 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, e
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
+
+	// support short job IDs
+	if jobutils.ShortID(false, id) == id {
+		// passed in a short id, need to resolve the long id first
+		for k := range d.jobs {
+			if jobutils.ShortID(false, k) == id {
+				id = k
+				break
+			}
+		}
+	}
+
 	job, ok := d.jobs[id]
 	if !ok {
 		return model.Job{}, fmt.Errorf("no job found: %s", id)
 	}
+
 	return *job, nil
 }
 
@@ -108,10 +122,6 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			log.Debug().Msgf("querying for all jobs, limit %d", query.Limit)
 			for _, job := range d.jobs {
 				result = append(result, *job)
-				// early stop
-				if len(result) >= query.Limit {
-					break
-				}
 			}
 		} else {
 			if query.ClientID != "" {
@@ -119,16 +129,12 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 				for _, job := range d.jobs {
 					if job.ClientID == query.ClientID {
 						result = append(result, *job)
-						// early stop
-						if len(result) >= query.Limit {
-							break
-						}
 					}
 				}
 			}
 		}
 
-		// TODO @enricorotundo add span 
+		// TODO @enricorotundo add span
 
 		// sort results
 		log.Debug().Msgf("sorting by %s", query.SortBy)
@@ -144,12 +150,18 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			}
 		})
 		if query.SortReverse {
+			log.Debug().Msgf("reversing list results")
 			reverseResult := []model.Job{}
 			for i := len(result) - 1; i >= 0; i-- {
 				reverseResult = append(reverseResult, result[i])
 			}
 			result = reverseResult
 		}
+
+	}
+	// apply limit
+	if len(result) >= query.Limit {
+		result = result[:query.Limit]
 	}
 	return result, nil
 }

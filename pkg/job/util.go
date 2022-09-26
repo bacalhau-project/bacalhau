@@ -116,3 +116,10 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 
 	return returnOutputVolumes, nil
 }
+
+func ShortID(outputWide bool, id string) string {
+	if outputWide {
+		return id
+	}
+	return id[:8]
+}
