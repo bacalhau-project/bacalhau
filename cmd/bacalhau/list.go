@@ -147,7 +147,7 @@ var listCmd = &cobra.Command{
 
 		tw.SetColumnConfigs(columnConfig)
 
-		jobArray := []model.Job{}
+		jobArray := []*model.Job{}
 		for _, j := range jobs {
 			if OL.IDFilter != "" {
 				if j.ID == OL.IDFilter || shortID(false, j.ID) == OL.IDFilter {
@@ -179,7 +179,7 @@ var listCmd = &cobra.Command{
 				jobIDs = append(jobIDs, j.ID)
 			}
 			jobIDs = system.ReverseList(jobIDs)
-			jobArray = []model.Job{}
+			jobArray = []*model.Job{}
 			for _, id := range jobIDs {
 				jobArray = append(jobArray, jobs[id])
 			}
@@ -232,7 +232,7 @@ var listCmd = &cobra.Command{
 }
 
 func resolvingJobDetails(ctx context.Context,
-	jobArray []model.Job,
+	jobArray []*model.Job,
 	lengthOfTable int) ([]table.Row, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.resolvingJobDetails")
 	defer span.End()

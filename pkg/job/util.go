@@ -30,8 +30,8 @@ func SafeAnnotationRegex() *regexp.Regexp {
 }
 
 func NewNoopJobLoader() JobLoader {
-	jobLoader := func(ctx context.Context, id string) (model.Job, error) {
-		return model.Job{}, nil
+	jobLoader := func(ctx context.Context, id string) (*model.Job, error) {
+		return &model.Job{}, nil
 	}
 	return jobLoader
 }

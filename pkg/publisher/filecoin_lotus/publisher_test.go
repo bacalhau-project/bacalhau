@@ -50,8 +50,8 @@ func (suite *FilecoinPublisherSuite) SetupTest() {
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
 	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (model.Job, error) {
-			return model.Job{}, nil
+		func(ctx context.Context, id string) (*model.Job, error) {
+			return &model.Job{}, nil
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
 			return model.JobState{}, nil
@@ -94,7 +94,7 @@ func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
 	err = os.WriteFile(fmt.Sprintf("%s/file.txt", resultsDir), []byte("hello"), 0644)
 	require.NoError(suite.T(), err)
 	publishResult, err := driver.PublishShardResult(ctx, model.JobShard{
-		Job: model.Job{
+		Job: &model.Job{
 			ID: TestJobId,
 		},
 	}, TestHostId, resultsDir)

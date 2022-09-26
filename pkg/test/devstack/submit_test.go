@@ -62,14 +62,14 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	_, missingSpecError := apiClient.Submit(ctx, model.JobSpec{}, model.JobDeal{
-		Concurrency: 1,
-	}, nil)
+	j := &model.Job{}
+	j.Deal = model.JobDeal{Concurrency: 1}
+	_, missingSpecError := apiClient.Submit(ctx, j, nil)
 
 	require.Error(suite.T(), missingSpecError)
 
-	_, missingDealError := apiClient.Submit(ctx, model.JobSpec{
-		Engine: model.EngineDocker,
-	}, model.JobDeal{}, nil)
+	j = &model.Job{}
+	j.Spec = model.JobSpec{Engine: model.EngineDocker}
+	_, missingDealError := apiClient.Submit(ctx, j, nil)
 	require.Error(suite.T(), missingDealError)
 }

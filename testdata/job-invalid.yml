@@ -1,9 +1,9 @@
 # Missing API Version
 # JobAPIVersion: v1alpha1
 Spec:
-  Engine: 2
-  Verifier: 1
-  Publisher: 4
+  EngineName: docker
+  VerifierName: noop
+  PublisherName: IPFS
   Docker:
     Image: gromacs/gromacs
     Entrypoint:

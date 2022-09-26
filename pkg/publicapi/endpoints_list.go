@@ -15,7 +15,7 @@ type listRequest struct {
 }
 
 type listResponse struct {
-	Jobs map[string]model.Job `json:"jobs"`
+	Jobs map[string]*model.Job `json:"jobs"`
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
@@ -34,7 +34,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rawJobs := map[string]model.Job{}
+	rawJobs := map[string]*model.Job{}
 
 	for _, listJob := range list { //nolint:gocritic
 		rawJobs[listJob.ID] = listJob
@@ -50,7 +50,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getJobs(ctx context.Context, res http.ResponseWriter) ([]model.Job, error) {
+func (apiServer *APIServer) getJobs(ctx context.Context, res http.ResponseWriter) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 

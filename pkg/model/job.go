@@ -3,6 +3,9 @@ package model
 import (
 	"fmt"
 	"time"
+
+	"github.com/imdario/mergo"
+	"github.com/rs/zerolog/log"
 )
 
 // Job contains data about a job in the bacalhau network.
@@ -33,6 +36,44 @@ type Job struct {
 
 	// Time the job was submitted to the bacalhau network.
 	CreatedAt time.Time `json:"CreatedAt,omitempty" yaml:"CreatedAt,omitempty"`
+
+	// The current state of the job
+	State JobState `json:"JobState,omitempty" yaml:"JobState,omitempty"`
+
+	// All events associated with the job
+	Events []JobEvent `json:"JobEvents,omitempty" yaml:"JobEvents,omitempty"`
+
+	// All local events associated with the job
+	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty" yaml:"LocalJobEvents,omitempty"`
+}
+
+// TODO: There's probably a better way we want to globally version APIs
+func NewJob() *Job {
+	return &Job{
+		JobAPIVersion: string(V1alpha1),
+	}
+}
+
+func NewJobWithSaneProductionDefaults() (*Job, error) {
+	j := NewJob()
+	err := mergo.Merge(j, &Job{
+		JobAPIVersion: string(V1alpha1),
+		Spec: JobSpec{
+			Engine:    EngineDocker,
+			Verifier:  VerifierNoop,
+			Publisher: PublisherEstuary,
+		},
+		Deal: JobDeal{
+			Concurrency: 1,
+			Confidence:  0,
+			MinBids:     0, // 0 means no minimum before bidding
+		},
+	})
+	if err != nil {
+		log.Err(err).Msg("failed to merge sane defaults into job")
+		return nil, err
+	}
+	return j, nil
 }
 
 // JobWithInfo is the job request + the result of attempting to run it on the network
@@ -45,7 +86,7 @@ type JobWithInfo struct {
 
 // JobShard contains data about a job shard in the bacalhau network.
 type JobShard struct {
-	Job Job `json:"Job,omitempty" yaml:"Job,omitempty"`
+	Job *Job `json:"Job,omitempty" yaml:"Job,omitempty"`
 
 	Index int `json:"Index,omitempty" yaml:"Index,omitempty"`
 }
@@ -145,8 +186,6 @@ type JobDeal struct {
 // JobSpec is a complete specification of a job that can be run on some
 // execution provider.
 type JobSpec struct {
-	JobAPIVersion JobAPIVersion `json:"JobAPIVersion,omitempty" yaml:"JobAPIVersion,omitempty"`
-
 	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
 	Engine EngineType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
@@ -278,11 +317,7 @@ type JobCreatePayload struct {
 	ClientID string `json:"ClientID" yaml:"ClientID"`
 
 	// The job specification:
-	Spec JobSpec `json:"Spec" yaml:"Spec"`
-
-	// The deal the client has made with the network, at minimum this should
-	// contain the client's ID for verifying the message authenticity:
-	Deal JobDeal `json:"Deal" yaml:"Deal"`
+	Job *Job `json:"Job" yaml:"Job"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't

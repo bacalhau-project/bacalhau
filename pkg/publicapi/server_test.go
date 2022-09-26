@@ -53,9 +53,9 @@ func (suite *ServerSuite) TestList() {
 	require.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
-	spec, deal := MakeGenericJob()
+	j := MakeGenericJob()
 
-	_, err = c.Submit(ctx, spec, deal, nil)
+	_, err = c.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 
 	// Should now have one job:

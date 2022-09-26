@@ -12,8 +12,8 @@ func Submit(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := bacalhau.GetAPIClient()
 
-	jobSpec, jobDeal := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)
+	j := getSampleDockerJob()
+	submittedJob, err := client.Submit(ctx, j, nil)
 	if err != nil {
 		return err
 	}

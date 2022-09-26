@@ -14,6 +14,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -224,8 +225,7 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
-	jobSpec *model.JobSpec,
-	jobDeal *model.JobDeal,
+	j *model.Job,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
 ) error {
@@ -234,7 +234,7 @@ func ExecuteJob(ctx context.Context,
 	defer span.End()
 
 	if runtimeSettings.IsLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, jobSpec.Resources.GPU)
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, j.Spec.Resources.GPU)
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}
@@ -245,7 +245,13 @@ func ExecuteJob(ctx context.Context,
 		apiClient = GetAPIClient()
 	}
 
-	j, err := submitJob(ctx, apiClient, jobSpec, jobDeal)
+	err := job.VerifyJob(j)
+	if err != nil {
+		log.Err(err).Msg("Job failed to validate.")
+		return err
+	}
+
+	j, err = submitJob(ctx, apiClient, j)
 	if err != nil {
 		return err
 	}
@@ -288,7 +294,7 @@ func ExecuteJob(ctx context.Context,
 
 func waitForJobToFinish(ctx context.Context,
 	apiClient *publicapi.APIClient,
-	j model.Job,
+	j *model.Job,
 	runtimeSettings RunTimeSettings) error {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
 	defer span.End()
@@ -305,19 +311,18 @@ func waitForJobToFinish(ctx context.Context,
 
 func submitJob(ctx context.Context,
 	apiClient *publicapi.APIClient,
-	jobSpec *model.JobSpec,
-	jobDeal *model.JobDeal) (model.Job, error) {
+	j *model.Job) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
 	defer span.End()
 
-	j, err := apiClient.Submit(ctx, *jobSpec, *jobDeal, nil)
+	j, err := apiClient.Submit(ctx, j, nil)
 	if err != nil {
-		return model.Job{}, errors.Wrap(err, "failed to submit job")
+		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}
 	return j, err
 }
 
-func getResults(ctx context.Context, apiClient *publicapi.APIClient, j model.Job) ([]model.StorageSpec, error) {
+func getResults(ctx context.Context, apiClient *publicapi.APIClient, j *model.Job) ([]model.StorageSpec, error) {
 	ctx, span := system.GetTracer().Start(ctx, "getresults")
 	defer span.End()
 
@@ -334,7 +339,7 @@ func getResults(ctx context.Context, apiClient *publicapi.APIClient, j model.Job
 func downloadResults(ctx context.Context,
 	cmd *cobra.Command,
 	cm *system.CleanupManager,
-	j model.Job,
+	j *model.Job,
 	results []model.StorageSpec,
 	downloadSettings ipfs.IPFSDownloadSettings) error {
 	ctx, span := system.GetTracer().Start(ctx, "downloadresults")

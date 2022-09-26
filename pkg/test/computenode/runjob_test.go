@@ -66,12 +66,12 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	cid, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
 	require.NoError(s.T(), err)
 
-	job := model.Job{
+	j := &model.Job{
 		ID:   "test",
 		Spec: GetJobSpec(cid),
 	}
 	shard := model.JobShard{
-		Job:   job,
+		Job:   j,
 		Index: 0,
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, tmpOutputDir)
@@ -97,12 +97,12 @@ func (s *ComputeNodeRunJobSuite) TestEmptySpec() {
 	// otherwise we don't cleanup
 	// TODO: work out why
 	time.Sleep(time.Millisecond * 10)
-	job := model.Job{
+	j := &model.Job{
 		ID:   "test",
 		Spec: model.JobSpec{},
 	}
 	shard := model.JobShard{
-		Job:   job,
+		Job:   j,
 		Index: 0,
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, "")

@@ -251,7 +251,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		for _, jobResources := range testCase.jobs {
 
 			// what the job is doesn't matter - it will only end up
-			jobSpec, jobDeal, err := job.ConstructDockerJob(
+			j, err := job.ConstructDockerJob(
 				model.EngineNoop,
 				model.VerifierNoop,
 				model.PublisherNoop,
@@ -282,8 +282,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			require.NoError(suite.T(), err)
 			_, err = ctrl.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID: "123",
-				Spec:     *jobSpec,
-				Deal:     *jobDeal,
+				Job:      j,
 			})
 			require.NoError(suite.T(), err)
 

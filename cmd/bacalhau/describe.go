@@ -103,18 +103,18 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		jobDesc := model.JobWithInfo{}
-		jobDesc.Job.ID = j.ID
-		jobDesc.Job.ClientID = j.ClientID
-		jobDesc.Job.RequesterNodeID = j.RequesterNodeID
-		jobDesc.Job.Spec = j.Spec
-		jobDesc.Job.Deal = j.Deal
-		jobDesc.Job.CreatedAt = j.CreatedAt
-		jobDesc.JobState = shardStates
+		jobDesc := &model.Job{}
+		jobDesc.ID = j.ID
+		jobDesc.ClientID = j.ClientID
+		jobDesc.RequesterNodeID = j.RequesterNodeID
+		jobDesc.Spec = j.Spec
+		jobDesc.Deal = j.Deal
+		jobDesc.CreatedAt = j.CreatedAt
+		jobDesc.State = shardStates
 
 		if OD.IncludeEvents {
-			jobDesc.JobEvents = jobEvents
-			jobDesc.JobLocalEvents = localEvents
+			jobDesc.Events = jobEvents
+			jobDesc.LocalEvents = localEvents
 		}
 
 		bytes, err := yaml.Marshal(jobDesc)

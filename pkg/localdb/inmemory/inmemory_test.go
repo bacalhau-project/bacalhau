@@ -18,7 +18,7 @@ func TestInMemoryDataStore(t *testing.T) {
 	store, err := NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	err = store.AddJob(context.Background(), model.Job{
+	err = store.AddJob(context.Background(), &model.Job{
 		ID: jobId,
 	})
 	require.NoError(t, err)

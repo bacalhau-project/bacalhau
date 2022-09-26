@@ -1,17 +1,16 @@
 package bacalhau
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -56,15 +55,6 @@ func NewCreateOptions() *CreateOptions {
 }
 
 func init() { //nolint:gochecknoinits
-	createCmd.PersistentFlags().IntVarP(
-		&OC.Concurrency, "concurrency", "c", OC.Concurrency,
-		`How many nodes should run the job`,
-	)
-	createCmd.PersistentFlags().IntVar(
-		&OC.Confidence, "confidence", OC.Confidence,
-		`The minimum number of nodes that must agree on a verification result`,
-	)
-
 	setupDownloadFlags(createCmd, &OC.DownloadFlags)
 	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
 }
@@ -85,7 +75,15 @@ var createCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobSpec := &model.JobSpec{}
+		// Custom unmarshaller
+		// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1
+		var jwi model.JobWithInfo
+		j, err := model.NewJobWithSaneProductionDefaults()
+		if err != nil {
+			return err
+		}
+		var byteResult []byte
+		var rawMap map[string]interface{}
 
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
@@ -95,84 +93,80 @@ var createCmd = &cobra.Command{
 		OC.Filename = cmdArgs[0]
 
 		if OC.Filename == "-" {
-			var j model.JobWithInfo
-
-			byteResult, err := io.ReadAll(cmd.InOrStdin())
+			byteResult, err = io.ReadAll(cmd.InOrStdin())
 			if err != nil {
 				return errors.Wrap(err, "failed to read from stdin")
 			}
-
-			err = yaml.Unmarshal(byteResult, &j)
-			if err != nil {
-				return fmt.Errorf("error reading from stdin : %s", err)
-			}
-			jobSpec = &j.Job.Spec
 		} else {
-			fileextension := filepath.Ext(OC.Filename)
-			fileContent, err := os.Open(OC.Filename)
+			var fileContent *os.File
+			fileContent, err = os.Open(OC.Filename)
 
 			if err != nil {
 				return fmt.Errorf("could not open file '%s': %s", OC.Filename, err)
 			}
 
-			byteResult, err := io.ReadAll(fileContent)
-
+			byteResult, err = io.ReadAll(fileContent)
 			if err != nil {
+				return errors.Wrap(err, "failed to read from file")
+			}
+		}
+
+		// Do a first pass for parsing to see if it's a Job or JobWithInfo
+		err = yaml.Unmarshal(byteResult, &rawMap)
+		if err != nil {
+			return errors.Wrap(err, "failed to read the file initial pass")
+		}
+
+		// If it's a JobWithInfo, we need to convert it to a Job
+		if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
+			err = yaml.Unmarshal(byteResult, &jwi)
+			if err != nil {
+				log.Error().Err(err).Msg("Error creating a job from yaml. Error:")
 				return err
 			}
-
-			if fileextension == ".json" {
-				err = json.Unmarshal(byteResult, &jobSpec)
-				if err != nil {
-					return fmt.Errorf("error reading json file '%s': %s", OC.Filename, err)
-				}
-			} else if fileextension == ".yaml" || fileextension == ".yml" {
-				err = yaml.Unmarshal(byteResult, &jobSpec)
-				if err != nil {
-					return fmt.Errorf("error reading yaml file '%s': %s", OC.Filename, err)
-				}
-			} else {
-				return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OC.Filename)
+			byteResult, err = yaml.Marshal(jwi.Job)
+			if err != nil {
+				return errors.Wrap(err, "Error getting job out of input")
 			}
+		}
+
+		err = yaml.Unmarshal(byteResult, &j)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating a job from input. Error:")
+			return err
 		}
 
 		// the spec might use string version or proper numeric versions
 		// let's convert them to the numeric version
-		engineType, err := model.EnsureEngineType(jobSpec.Engine, jobSpec.EngineName)
+		engineType, err := model.EnsureEngineType(j.Spec.Engine, j.Spec.EngineName)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := model.EnsureVerifierType(jobSpec.Verifier, jobSpec.VerifierName)
+		verifierType, err := model.EnsureVerifierType(j.Spec.Verifier, j.Spec.VerifierName)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := model.EnsurePublisherType(jobSpec.Publisher, jobSpec.PublisherName)
+		publisherType, err := model.EnsurePublisherType(j.Spec.Publisher, j.Spec.PublisherName)
 		if err != nil {
 			return err
 		}
 
-		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(jobSpec.Inputs)
+		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(j.Spec.Inputs)
 		if err != nil {
 			return err
 		}
 
-		jobSpec.Engine = engineType
-		jobSpec.Verifier = verifierType
-		jobSpec.Publisher = publisherType
-		jobSpec.Inputs = parsedInputs
-
-		jobDeal := &model.JobDeal{
-			Concurrency: OC.Concurrency,
-			Confidence:  OC.Confidence,
-		}
+		j.Spec.Engine = engineType
+		j.Spec.Verifier = verifierType
+		j.Spec.Publisher = publisherType
+		j.Spec.Inputs = parsedInputs
 
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
-			jobSpec,
-			jobDeal,
+			j,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
 		)

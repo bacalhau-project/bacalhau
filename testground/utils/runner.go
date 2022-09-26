@@ -30,7 +30,8 @@ func RunDockerTest(
 		return err
 	}
 
-	jobSpec := model.JobSpec{
+	var j = &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -39,13 +40,13 @@ func RunDockerTest(
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: concurrency,
 	}
 
 	apiURI := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiURI)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	runenv.RecordMessage("Submitted %v", testCase.Name)
 
 	if err != nil {

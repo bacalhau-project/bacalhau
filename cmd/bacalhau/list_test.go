@@ -72,8 +72,8 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 			OL.SortReverse = false
 
 			for i := 0; i < tc.numberOfJobs; i++ {
-				spec, deal := publicapi.MakeNoopJob()
-				_, err := c.Submit(ctx, spec, deal, nil)
+				j := publicapi.MakeNoopJob()
+				_, err := c.Submit(ctx, j, nil)
 				require.NoError(suite.T(), err)
 			}
 
@@ -101,8 +101,9 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	jobIds := []string{}
 	for i := 0; i < 10; i++ {
-		spec, deal := publicapi.MakeNoopJob()
-		j, err := c.Submit(ctx, spec, deal, nil)
+		var err error
+		j := publicapi.MakeNoopJob()
+		j, err = c.Submit(ctx, j, nil)
 		jobIds = append(jobIds, shortID(OL.OutputWide, j.ID))
 		require.NoError(suite.T(), err)
 	}
@@ -171,8 +172,9 @@ func (suite *ListSuite) TestList_SortFlags() {
 
 				jobIDs := []string{}
 				for i := 0; i < tc.numberOfJobs; i++ {
-					spec, deal := publicapi.MakeNoopJob()
-					j, err := c.Submit(ctx, spec, deal, nil)
+					var err error
+					j := publicapi.MakeNoopJob()
+					j, err = c.Submit(ctx, j, nil)
 					require.NoError(suite.T(), err)
 					jobIDs = append(jobIDs, shortID(OL.OutputWide, j.ID))
 

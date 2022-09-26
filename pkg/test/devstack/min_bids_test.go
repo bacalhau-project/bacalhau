@@ -82,25 +82,26 @@ func (suite *MinBidsSuite) TestMinBids() {
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
 
-		spec := testutils.DockerRunJob()
-		spec.Inputs = []model.StorageSpec{
+		j := &model.Job{}
+		j.Spec = testutils.DockerRunJob()
+		j.Spec.Inputs = []model.StorageSpec{
 			{
 				Engine: model.StorageSourceIPFS,
 				Cid:    directoryCid,
 				Path:   "/input",
 			},
 		}
-		spec.Sharding = model.JobShardingConfig{
+		j.Spec.Sharding = model.JobShardingConfig{
 			GlobPattern: "/input/*",
 			BatchSize:   1,
 		}
 
-		deal := model.JobDeal{
+		j.Deal = model.JobDeal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,
 		}
 
-		createdJob, err := apiClient.Submit(ctx, spec, deal, nil)
+		createdJob, err := apiClient.Submit(ctx, j, nil)
 		require.NoError(suite.T(), err)
 		resolver := apiClient.GetJobStateResolver()
 

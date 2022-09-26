@@ -78,8 +78,8 @@ func (suite *GetSuite) TestGetJob() {
 						for i := 0; i < NumberOfNodes; i++ {
 							for i := 0; i < n.numOfJobs; i++ {
 								ctx := context.Background()
-								spec, deal := publicapi.MakeGenericJob()
-								s, err := c.Submit(ctx, spec, deal, nil)
+								j := publicapi.MakeGenericJob()
+								s, err := c.Submit(ctx, j, nil)
 								require.NoError(suite.T(), err)
 								submittedJobID = s.ID // Default to the last job submitted, should be fine?
 							}

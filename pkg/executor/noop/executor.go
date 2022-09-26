@@ -74,7 +74,7 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
-	e.Jobs = append(e.Jobs, shard.Job)
+	e.Jobs = append(e.Jobs, *shard.Job)
 	if e.Config.ExternalHooks.JobHandler != nil {
 		handler := e.Config.ExternalHooks.JobHandler
 		return handler(ctx, shard, jobResultsDir)

@@ -32,7 +32,7 @@ type submitRequest struct {
 }
 
 type submitResponse struct {
-	Job model.Job `json:"job"`
+	Job *model.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
@@ -51,7 +51,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Data.Spec, submitReq.Data.Deal); err != nil {
+	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
 		log.Debug().Msgf("====> VerifyJob error: %s", err)
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -91,7 +91,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, model.StorageSpec{
+		submitReq.Data.Job.Spec.Contexts = append(submitReq.Data.Job.Spec.Contexts, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
 			Cid:    cid,
 			Path:   "/job",

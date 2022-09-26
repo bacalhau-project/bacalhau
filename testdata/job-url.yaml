@@ -1,36 +1,27 @@
-# jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
-APIVersion: v1alpha1
-Engine: 2
-# We are using the docker executor
-EngineName: docker
-Verifier: 1
-VerifierName: noop
-Publisher: 1
-PublisherName: IPFS
-JobSpecDocker:
-  # docker image you want to use
-  Image: ubuntu
-  Entrypoint:
-    # Command to run inside the container
-    - /bin/bash
-    - -c
-    - cat /app/foo_data_1.txt
-  EnvironmentVariables: []
-  WorkingDirectory: ""
-Resources:
-  CPU: ""
-  Memory: ""
-  Disk: ""
-  GPU: ""
-# if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
-InputVolumes:
-  - EngineName: URLDownload
-    Name: ""
-    URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
-    Path: /app/foo_data_1.txt
-OutputVolumes:
-  - EngineName: ipfs
-    Name: output
-    CID: ""
-    Path: /output
-Annotations: []
+JobAPIVersion: v1alpha1
+Spec:
+  EngineName: docker
+  VerifierName: noop
+  PublisherName: IPFS
+  Docker:
+    Image: gromacs/gromacs
+    Entrypoint:
+      - /bin/bash
+      - -c
+      - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
+  inputs:
+    - EngineName: URLDownload
+      URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
+      path: /app/foo_data_1.txt
+  outputs:
+    - Engine: 1
+      Name: output_custom
+      path: /output_custom
+  Sharding:
+    BatchSize: 1
+    GlobPatternBasePath: /inputs
+Deal:
+  Concurrency: 1
+  Confidence: 0
+  MinBids: 0
+CreatedAt: 2022-09-23T15:38:03.625814-07:00

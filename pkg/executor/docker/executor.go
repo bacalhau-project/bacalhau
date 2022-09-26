@@ -406,7 +406,7 @@ func (e *Executor) jobContainerName(shard model.JobShard) string {
 	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, shard.Job.ID, shard.Index)
 }
 
-func (e *Executor) jobContainerLabels(job model.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job *model.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
 		"bacalhau-jobID":    job.ID,

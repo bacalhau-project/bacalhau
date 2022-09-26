@@ -248,24 +248,23 @@ var dockerRunCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobSpec, jobDeal, err := CreateJobSpecAndDeal(ctx, cmdArgs, ODR)
+		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
 			return errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
-		err = jobutils.VerifyJob(*jobSpec, *jobDeal)
+		err = jobutils.VerifyJob(j)
 		if err != nil {
 			return fmt.Errorf("error validating job: %s", err)
 		}
 		if ODR.DryRun {
-			cmd.Print(jobSpec)
+			cmd.Print(fmt.Sprintf("%+v", j))
 			return nil
 		}
 
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
-			jobSpec,
-			jobDeal,
+			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
 		)
@@ -278,9 +277,9 @@ var dockerRunCmd = &cobra.Command{
 	},
 }
 
-func CreateJobSpecAndDeal(ctx context.Context,
+func CreateJob(ctx context.Context,
 	cmdArgs []string,
-	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
+	odr *DockerRunOptions) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
 	defer span.End()
@@ -300,17 +299,17 @@ func CreateJobSpecAndDeal(ctx context.Context,
 
 	engineType, err := model.ParseEngineType(odr.Engine)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	verifierType, err := model.ParseVerifierType(odr.Verifier)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	publisherType, err := model.ParsePublisherType(odr.Publisher)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	for _, i := range odr.Inputs {
@@ -321,11 +320,11 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
 		if err != nil {
-			return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+			return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
 	}
 
-	jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
+	j, err := jobutils.ConstructDockerJob(
 		engineType,
 		verifierType,
 		publisherType,
@@ -349,8 +348,8 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		doNotTrack,
 	)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 	}
 
-	return jobSpec, jobDeal, nil
+	return j, nil
 }

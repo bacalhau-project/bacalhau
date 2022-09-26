@@ -218,13 +218,13 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 		shardState.Fail(ctx, "error getting job state from controller")
 		return
 	}
-	job, err := n.controller.GetJob(ctx, shard.Job.ID)
+	j, err := n.controller.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		shardState.Fail(ctx, "error getting job instance from controller")
 		return
 	}
 
-	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, job, jobState, shard.Index)
+	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, j, jobState, shard.Index)
 	if hasShardReachedCapacity {
 		log.Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", n.ID, shard)
 		shardState.Fail(ctx, "shard has reached capacity")
@@ -288,7 +288,7 @@ func (n *ComputeNode) subscriptionSetup(ctx context.Context) {
 /*
 subscriptions -> created
 */
-func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j model.Job) {
+func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j *model.Job) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/compute/ComputeNode.subscriptionEventCreated")
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)

@@ -35,18 +35,18 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	return res, nil
 }
 
-func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJob")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	job, ok := d.jobs[id]
+	j, ok := d.jobs[id]
 	if !ok {
-		return model.Job{}, fmt.Errorf("no job found: %s", id)
+		return &model.Job{}, fmt.Errorf("no job found: %s", id)
 	}
-	return *job, nil
+	return j, nil
 }
 
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
@@ -85,43 +85,43 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobs")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	result := []model.Job{}
+	result := []*model.Job{}
 
 	if query.ID != "" {
-		job, err := d.GetJob(ctx, query.ID)
+		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
 			return result, err
 		}
-		result = append(result, job)
+		result = append(result, j)
 	} else {
-		for _, job := range d.jobs {
-			result = append(result, *job)
+		for _, j := range d.jobs {
+			result = append(result, j)
 		}
 	}
 	return result, nil
 }
 
-func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
+func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddJob")
 	defer span.End()
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	existingJob, ok := d.jobs[job.ID]
+	existingJob, ok := d.jobs[j.ID]
 	if ok {
-		if len(job.RequesterPublicKey) > 0 {
-			existingJob.RequesterPublicKey = job.RequesterPublicKey
+		if len(j.RequesterPublicKey) > 0 {
+			existingJob.RequesterPublicKey = j.RequesterPublicKey
 		}
 		return nil
 	}
-	d.jobs[job.ID] = &job
+	d.jobs[j.ID] = j
 	return nil
 }
 
