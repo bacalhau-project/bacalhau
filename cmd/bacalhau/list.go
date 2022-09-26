@@ -149,7 +149,7 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		if OL.OutputFormat == "json" {
+		if OL.OutputFormat == JSONFormat {
 			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
@@ -208,18 +208,6 @@ var listCmd = &cobra.Command{
 
 			tw.Render()
 		}
-
-		// if OL.OutputFormat == JSONFormat {
-		// 	msgBytes, err := json.MarshalIndent(jobs, "", "    ")
-		// 	if err != nil {
-		// 		return err
-		// 	}
-
-		// 	cmd.Printf("%s\n", msgBytes)
-		// 	return nil
-		// } else {
-		// 	tw.Render()
-		// }
 
 		return nil
 	},
