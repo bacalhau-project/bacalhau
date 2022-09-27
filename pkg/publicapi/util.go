@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
@@ -22,6 +21,7 @@ import (
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
+	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -123,14 +123,13 @@ func waitForHealthy(ctx context.Context, c *APIClient) error {
 
 // Function to get disk usage of path/disk
 func MountUsage(path string) (disk types.MountStatus) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
-	if err != nil {
+	usage := du.NewDiskUsage(path)
+	if usage == nil {
 		return
 	}
-	disk.All = fs.Blocks * uint64(fs.Bsize)
-	disk.Free = fs.Bfree * uint64(fs.Bsize)
-	disk.Used = disk.All - disk.Free
+	disk.All = usage.Size()
+	disk.Free = usage.Free()
+	disk.Used = usage.Used()
 	return
 }
 

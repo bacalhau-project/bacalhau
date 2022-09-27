@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package bacalhau
 
 import (
@@ -11,6 +13,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -755,7 +758,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 	require.NoError(suite.T(), err)
 	for _, video := range videos {
 		err = os.WriteFile(
-			fmt.Sprintf("%s/%s", dirPath, video),
+			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)

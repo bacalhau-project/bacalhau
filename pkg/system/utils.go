@@ -410,25 +410,6 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func RepeatedCharactersBashCommandToStdout(num int) string {
-	return repeatedCharactersBashCommand(num, false)
-}
-
-func RepeatedCharactersBashCommandToStderr(num int) string {
-	return repeatedCharactersBashCommand(num, true)
-}
-
-// Repeats '=' num times. toStderr true == stderr, false == stdout
-func repeatedCharactersBashCommand(num int, toStderr bool) string {
-	toStderrString := ""
-
-	// If going to stderr, we need to use the special bash command to write to stderr
-	if toStderr {
-		toStderrString = "| cat 1>&2"
-	}
-	return fmt.Sprintf(`for i in $(seq 1 %d) ; do echo -n "="; done %s`, num, toStderrString)
-}
-
 // TODO: #233 Replace when we move to go1.18
 // https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
 func Min(a, b int) int {
