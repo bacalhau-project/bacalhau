@@ -6,6 +6,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 )
 
 // Job contains data about a job request in the bacalhau network.
@@ -231,6 +232,44 @@ type JobSpec struct {
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty" yaml:"DoNotTrack,omitempty"`
 }
+
+// Implements the Unmarshaler interface of the yaml pkg.
+func (j Job) MarshalYAML() error {
+	type alias Job
+	node := yaml.Node{}
+	err := node.Encode(alias(j))
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal job spec")
+		return err
+	}
+
+	j.Spec.Engine, err = EnsureEngineType(j.Spec.Engine, j.Spec.EngineName)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to fix engine type")
+		return err
+	}
+
+	return nil
+}
+
+// func (s *JobSpec) MarshalYAML() ([]byte, error) {
+// 	type Alias JobSpec
+
+// 	engineName, err := EnsureEngineType(s.Engine, s.EngineName)
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("failed to marshal engine name")
+// 		return nil, err
+// 	}
+// 	_ = engineName
+// 	return json.Marshal(&struct {
+// 		Engine     string `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+// 		EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
+// 		*Alias
+// 	}{
+// 		Engine:     "foo",
+// 		EngineName: "",
+// 	})
+// }
 
 // for VM style executors
 type JobSpecDocker struct {

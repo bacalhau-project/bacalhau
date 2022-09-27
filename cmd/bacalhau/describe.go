@@ -117,6 +117,10 @@ var describeCmd = &cobra.Command{
 			jobDesc.LocalEvents = localEvents
 		}
 
+const (
+	ColumnID        ColumnEnum = "id"
+	ColumnCreatedAt ColumnEnum = "created_at"
+)
 		bytes, err := yaml.Marshal(jobDesc)
 		if err != nil {
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
