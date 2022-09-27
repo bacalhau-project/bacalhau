@@ -131,8 +131,8 @@ type JobShardingConfig struct {
 // states - just with a shard count of 1). Any code that is determining
 // the current "state" of a job must look at both:
 //
-// 		* the ShardCount of the JobExecutionPlan
-//		* the collection of JobShardState to determine the current state
+//   - the ShardCount of the JobExecutionPlan
+//   - the collection of JobShardState to determine the current state
 //
 // Note: JobState itself is not mutable - the JobExecutionPlan and
 // JobShardState are updatable and the JobState is queried by the rest
