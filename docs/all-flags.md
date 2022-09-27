@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'CLI Reference'
-sidebar_position: 9
+sidebar_position: 80
 ---
 
 # CLI Commands
