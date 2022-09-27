@@ -3,10 +3,13 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -42,10 +45,23 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, 
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
+
+	// support for short job IDs
+	if jobutils.ShortID(id) == id {
+		// passed in a short id, need to resolve the long id first
+		for k := range d.jobs {
+			if jobutils.ShortID(k) == id {
+				id = k
+				break
+			}
+		}
+	}
+
 	j, ok := d.jobs[id]
 	if !ok {
 		return &model.Job{}, fmt.Errorf("no job found: %s", id)
 	}
+
 	return j, nil
 }
 
@@ -85,26 +101,72 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) (map[string]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobs")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	result := []*model.Job{}
+	returnResult := map[string]*model.Job{}
 
 	if query.ID != "" {
+		log.Debug().Msgf("querying for single job %s", query.ID)
 		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
-			return result, err
+			log.Error().Msgf("error getting single job %s: %s", query.ID, err)
+			return returnResult, err
 		}
 		result = append(result, j)
 	} else {
-		for _, j := range d.jobs {
-			result = append(result, j)
+		if query.ReturnAll {
+			log.Debug().Msgf("querying for all jobs, limit %d", query.Limit)
+			for _, j := range d.jobs {
+				result = append(result, j)
+			}
+		} else {
+			if query.ClientID != "" {
+				log.Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
+				for _, j := range d.jobs {
+					if j.ClientID == query.ClientID {
+						result = append(result, j)
+					}
+				}
+			}
 		}
+
+		// sort results
+		log.Debug().Msgf("sorting by %s", query.SortBy)
+		sort.Slice(result, func(i, j int) bool {
+			switch query.SortBy {
+			case "id":
+				// what does it mean to sort by ID?
+				return result[i].ID < result[j].ID
+			case "created_at":
+				return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+			default:
+				return false
+			}
+		})
+		if query.SortReverse {
+			log.Debug().Msgf("reversing list results")
+			reverseResult := []*model.Job{}
+			for i := len(result) - 1; i >= 0; i-- {
+				reverseResult = append(reverseResult, result[i])
+			}
+			result = reverseResult
+		}
+
 	}
-	return result, nil
+	// apply limit
+	if len(result) >= query.Limit {
+		result = result[:query.Limit]
+	}
+
+	for _, j := range result {
+		returnResult[j.ID] = j
+	}
+	return returnResult, nil
 }
 
 func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {

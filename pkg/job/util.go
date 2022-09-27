@@ -116,3 +116,8 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 
 	return returnOutputVolumes, nil
 }
+
+// Shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
+func ShortID(id string) string {
+	return id[:8]
+}

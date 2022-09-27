@@ -8,10 +8,16 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 )
 
 type listRequest struct {
-	ClientID string `json:"client_id"`
+	JobID       string `json:"id"`
+	ClientID    string `json:"client_id"`
+	MaxJobs     int    `json:"max_jobs"`
+	ReturnAll   bool   `json:"return_all"`
+	SortBy      string `json:"sort_by"`
+	SortReverse bool   `json:"sort_reverse"`
 }
 
 type listResponse struct {
@@ -28,21 +34,24 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	list, err := apiServer.getJobs(ctx, res)
+	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
+		log.Error().Err(err).Msg("error getting job list")
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	rawJobs := map[string]*model.Job{}
-
-	for _, listJob := range list { //nolint:gocritic
-		rawJobs[listJob.ID] = listJob
+	// get JobStates
+	err = apiServer.getJobStates(ctx, jobList)
+	if err != nil {
+		log.Error().Err(err).Msgf("error getting job states")
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
-		Jobs: rawJobs,
+		Jobs: jobList,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -50,14 +59,35 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getJobs(ctx context.Context, res http.ResponseWriter) ([]*model.Job, error) {
+func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest) (map[string]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 
-	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{})
+	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{
+		ClientID:    listReq.ClientID,
+		ID:          listReq.JobID,
+		Limit:       listReq.MaxJobs,
+		ReturnAll:   listReq.ReturnAll,
+		SortBy:      listReq.SortBy,
+		SortReverse: listReq.SortReverse,
+	})
 	if err != nil {
-		// Handle error in the calling function, as this function only does one thing.
-		return nil, nil
+		return nil, err
 	}
-	return list, err
+	return list, nil
+}
+
+func (apiServer *APIServer) getJobStates(ctx context.Context, jobList map[string]*model.Job) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.getJobStates")
+	defer span.End()
+
+	var err error
+	for k := range jobList {
+		jobList[k].State, err = apiServer.Controller.GetJobState(ctx, jobList[k].ID)
+		if err != nil {
+			log.Error().Msgf("error getting job state: %s", err)
+			return err
+		}
+	}
+	return nil
 }

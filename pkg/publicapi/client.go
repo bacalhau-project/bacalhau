@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -65,13 +64,18 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-// TODO: #454 implement pagination
-func (apiClient *APIClient) List(ctx context.Context) (map[string]*model.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
+	map[string]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
 	req := listRequest{
-		ClientID: system.GetClientID(),
+		ClientID:    system.GetClientID(),
+		MaxJobs:     maxJobs,
+		JobID:       idFilter,
+		ReturnAll:   returnAll,
+		SortBy:      sortBy,
+		SortReverse: sortReverse,
 	}
 
 	var res listResponse
@@ -83,8 +87,7 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]*model.Job, er
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): #452 implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (j *model.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
 	defer span.End()
 
@@ -92,21 +95,16 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (j *model.Job
 		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	jobs, err := apiClient.List(ctx)
+	jobsWithInfo, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
 	if err != nil {
 		return &model.Job{}, false, err
 	}
 
-	// TODO: #453 make this deterministic, return the first match alphabetically
-	for _, thisJob := range jobs { //nolint:gocritic
-		strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(thisJob.ID), "-", "")
-		strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
-		if strings.HasPrefix(strippedAndLoweredJobID, strippedAndLoweredSearchID) {
-			return thisJob, true, nil
-		}
+	j, ok := jobsWithInfo[jobID]
+	if !ok {
+		return &model.Job{}, false, nil
 	}
-
-	return &model.Job{}, false, nil
+	return j, true, nil
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {

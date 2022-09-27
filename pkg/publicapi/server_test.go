@@ -48,7 +48,7 @@ func (suite *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx)
+	jobs, err := c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), jobs)
 
@@ -59,7 +59,7 @@ func (suite *ServerSuite) TestList() {
 	require.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx)
+	jobs, err = c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), jobs, 1)
 }

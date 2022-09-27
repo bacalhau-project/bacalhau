@@ -12,13 +12,13 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/google/uuid"
 
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -137,14 +137,14 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 
 			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
 
-			job, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
+			j, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
 			require.True(suite.T(), foundJob, "error getting job")
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
+			require.NotNil(suite.T(), j, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
 			if tc.errString != "" {
 				o := logBuf.String()
 				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
-			require.Equal(suite.T(), tc.numGPUs, job.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, job.Spec.Resources.GPU)
+			require.Equal(suite.T(), tc.numGPUs, j.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, j.Spec.Resources.GPU)
 		}()
 	}
 }
@@ -253,16 +253,16 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				)
 				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				j, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(tcids.inputVolumes), len(job.Spec.Inputs), "Number of job inputs != # of test inputs .")
+				require.Equal(suite.T(), len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
+					for _, jobInput := range j.Spec.Inputs {
 						if tcidIV.cid == jobInput.Cid {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
@@ -333,16 +333,16 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				)
 				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				j, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(suite.T(), len(turls.inputURLs), len(j.Spec.Inputs), "Number of job urls != # of test urls.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, turlIU := range turls.inputURLs {
 					testURLinJobInputs := false
-					for _, jobInput := range job.Spec.Inputs {
+					for _, jobInput := range j.Spec.Inputs {
 						if turlIU.url == jobInput.URL {
 							testURLinJobInputs = true
 							testPath := "/app2"
@@ -424,17 +424,17 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				j, _, err := c.Get(ctx, strings.TrimSpace(out))
 				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
 
-				require.Equal(suite.T(), tcids.correctLength, len(job.Spec.Outputs), "Number of job outputs != correct number.")
+				require.Equal(suite.T(), tcids.correctLength, len(j.Spec.Outputs), "Number of job outputs != correct number.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidOV := range tcids.outputVolumes {
 					testNameinJobOutputs := false
 					testPathinJobOutputs := false
-					for _, jobOutput := range job.Spec.Outputs {
+					for _, jobOutput := range j.Spec.Outputs {
 						if tcidOV.name == "" {
 							if jobOutput.Name == "outputs" {
 								testNameinJobOutputs = true

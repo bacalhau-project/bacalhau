@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Job contains data about a job in the bacalhau network.
+// Job contains data about a job request in the bacalhau network.
 type Job struct {
 	JobAPIVersion string `json:"JobAPIVersion" yaml:"JobAPIVersion"`
 

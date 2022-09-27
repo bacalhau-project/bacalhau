@@ -52,6 +52,7 @@ require (
 )
 
 require (
+	github.com/imdario/mergo v0.3.5
 	github.com/invopop/jsonschema v0.6.0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-unixfsnode v1.4.0

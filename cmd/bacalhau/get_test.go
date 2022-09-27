@@ -126,7 +126,7 @@ func (suite *GetSuite) TestGetJob() {
 				"--api-host", host,
 				"--api-port", port,
 				"--output-dir", outputDirWithID,
-				submittedJobID[0:6],
+				submittedJobID[0:8],
 			)
 			require.NoError(suite.T(), err, "Error in getting short job: %+v", err)
 

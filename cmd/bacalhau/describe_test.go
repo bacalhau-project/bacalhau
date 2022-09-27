@@ -125,7 +125,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				// Short job id
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
 					"--api-host", host,
-					submittedJob.ID[0:6],
+					submittedJob.ID[0:8],
 					"--api-port", port,
 				)
 

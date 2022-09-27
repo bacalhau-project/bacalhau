@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
@@ -47,6 +49,10 @@ func (suite *ListSuite) TearDownTest() {
 
 func (suite *ListSuite) TearDownAllSuite() {
 
+}
+
+type listResponse struct {
+	JobsWithInfo []model.JobWithInfo `json:"jobs"`
 }
 
 func (suite *ListSuite) TestList_NumberOfJobs() {
@@ -99,15 +105,21 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	*OL = *NewListOptions()
 
+	// submit 10 jobs
 	jobIds := []string{}
+	jobLongIds := []string{}
 	for i := 0; i < 10; i++ {
 		var err error
 		j := publicapi.MakeNoopJob()
 		j, err = c.Submit(ctx, j, nil)
 		jobIds = append(jobIds, shortID(OL.OutputWide, j.ID))
+		jobLongIds = append(jobIds, j.ID)
 		require.NoError(suite.T(), err)
 	}
 
+	//// Test --output text (implicit) first
+
+	// // list jobs with id filter
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 	_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
@@ -118,6 +130,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 	)
 	require.NoError(suite.T(), err)
 
+	// parse list output
 	seenIds := []string{}
 	for _, line := range strings.Split(out, "\n") {
 		parts := strings.Split(line, " ")
@@ -128,6 +141,26 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	require.Equal(suite.T(), 1, len(seenIds), "We didn't get only one result")
 	require.Equal(suite.T(), seenIds[0], jobIds[0], "The returned job id was not what we asked for")
+
+	//// Test --output json
+
+	// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+	_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "list",
+		"--hide-header",
+		"--api-host", host,
+		"--api-port", port,
+		"--id-filter", jobLongIds[0],
+		"--output", "json",
+	)
+	require.NoError(suite.T(), err)
+
+	// parse response
+	response := listResponse{}
+	err = json.Unmarshal([]byte(out), &response.JobsWithInfo)
+	require.NoError(suite.T(), err)
+
+	require.Contains(suite.T(), response.JobsWithInfo, jobLongIds[0], "The filtered job id was not found in the response")
+	require.Equal(suite.T(), 1, len(response.JobsWithInfo), "The list of jobs is not strictly filtered to the requested job id")
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
