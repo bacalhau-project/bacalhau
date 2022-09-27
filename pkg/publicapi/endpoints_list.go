@@ -21,11 +21,11 @@ type listRequest struct {
 }
 
 type listResponse struct {
-	Jobs map[string]*model.Job `json:"jobs"`
+	Jobs []*model.Job `json:"jobs"`
 }
 
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "apiServer/list")
+	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()
 
 	var listReq listRequest
@@ -59,7 +59,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest) (map[string]*model.Job, error) {
+func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 
@@ -77,7 +77,7 @@ func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest
 	return list, nil
 }
 
-func (apiServer *APIServer) getJobStates(ctx context.Context, jobList map[string]*model.Job) error {
+func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.Job) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.getJobStates")
 	defer span.End()
 

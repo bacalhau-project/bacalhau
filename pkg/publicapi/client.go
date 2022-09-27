@@ -65,7 +65,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 
 // List returns the list of jobs in the node's transport.
 func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
-	map[string]*model.Job, error) {
+	[]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
@@ -95,16 +95,16 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	jobsWithInfo, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
+	jobsList, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
 	if err != nil {
 		return &model.Job{}, false, err
 	}
 
-	j, ok := jobsWithInfo[jobID]
-	if !ok {
+	if len(jobsList) > 0 {
+		return jobsList[0], true, nil
+	} else {
 		return &model.Job{}, false, nil
 	}
-	return j, true, nil
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {

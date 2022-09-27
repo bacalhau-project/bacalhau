@@ -101,21 +101,20 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) (map[string]*model.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobs")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
 	result := []*model.Job{}
-	returnResult := map[string]*model.Job{}
 
 	if query.ID != "" {
 		log.Debug().Msgf("querying for single job %s", query.ID)
 		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
 			log.Error().Msgf("error getting single job %s: %s", query.ID, err)
-			return returnResult, err
+			return result, err
 		}
 		result = append(result, j)
 	} else {
@@ -124,49 +123,46 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			for _, j := range d.jobs {
 				result = append(result, j)
 			}
-		} else {
-			if query.ClientID != "" {
-				log.Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
-				for _, j := range d.jobs {
-					if j.ClientID == query.ClientID {
-						result = append(result, j)
-					}
+		} else if query.ClientID != "" {
+			log.Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
+			for _, j := range d.jobs {
+				if j.ClientID == query.ClientID {
+					result = append(result, j)
 				}
 			}
 		}
 
-		// sort results
-		log.Debug().Msgf("sorting by %s", query.SortBy)
-		sort.Slice(result, func(i, j int) bool {
+		listSorter := func(i, j int) bool {
 			switch query.SortBy {
 			case "id":
-				// what does it mean to sort by ID?
-				return result[i].ID < result[j].ID
+				if query.SortReverse {
+					// what does it mean to sort by ID?
+					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
+					return result[i].ID > result[j].ID
+				} else {
+					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
+					return result[i].ID < result[j].ID
+				}
 			case "created_at":
-				return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+				if query.SortReverse {
+					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
+					return result[i].CreatedAt.UTC().Unix() > result[j].CreatedAt.UTC().Unix()
+				} else {
+					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
+					return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+				}
 			default:
 				return false
 			}
-		})
-		if query.SortReverse {
-			log.Debug().Msgf("reversing list results")
-			reverseResult := []*model.Job{}
-			for i := len(result) - 1; i >= 0; i-- {
-				reverseResult = append(reverseResult, result[i])
-			}
-			result = reverseResult
 		}
-
+		sort.Slice(result, listSorter)
 	}
 	// apply limit
 	if len(result) >= query.Limit {
 		result = result[:query.Limit]
 	}
 
-	for _, j := range result {
-		returnResult[j.ID] = j
-	}
-	return returnResult, nil
+	return result, nil
 }
 
 func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {

@@ -18,7 +18,7 @@ import (
 )
 
 type Executor struct {
-	Jobs []*model.Job
+	Jobs map[string]*model.Job
 
 	executors map[model.EngineType]executor.Executor
 }

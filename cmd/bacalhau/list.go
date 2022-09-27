@@ -76,6 +76,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		`The output format for the list of jobs (json or text)`,
 	)
 	listCmd.PersistentFlags().BoolVar(&OL.SortReverse, "reverse", OL.SortReverse,
+		//nolint:lll // Documentation
 		`reverse order of table - for time sorting, this will be newest first. Use '--reverse=false' to sort oldest first (single quotes are required).`)
 
 	listCmd.PersistentFlags().Var(&OL.SortBy, "sort-by",
@@ -91,6 +92,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	)
 	listCmd.PersistentFlags().BoolVar(
 		&OL.ReturnAll, "all", OL.ReturnAll,
+		//nolint:lll // Documentation
 		`Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.`,
 	)
 }
@@ -157,7 +159,8 @@ var listCmd = &cobra.Command{
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
 		if OL.OutputFormat == JSONFormat {
-			msgBytes, err := json.MarshalIndent(jobs, "", "    ")
+			var msgBytes []byte
+			msgBytes, err = json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
 				return err
 			}
@@ -173,7 +176,8 @@ var listCmd = &cobra.Command{
 
 			rows := []table.Row{}
 			for _, j := range jobs {
-				summaryRow, err := summarizeJob(ctx, j)
+				var summaryRow table.Row
+				summaryRow, err = summarizeJob(ctx, j)
 				if err != nil {
 					log.Error().Msgf("Error summarizing job: %s", err)
 				}
@@ -213,6 +217,7 @@ var listCmd = &cobra.Command{
 
 // Renders job details into a table row
 func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
+	//nolint:ineffassign,staticcheck // For tracing
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/list.summarizeJob")
 	defer span.End()
 

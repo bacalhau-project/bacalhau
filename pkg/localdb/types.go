@@ -27,7 +27,7 @@ type LocalDB interface {
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
 	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
-	GetJobs(ctx context.Context, query JobQuery) (map[string]*model.Job, error)
+	GetJobs(ctx context.Context, query JobQuery) ([]*model.Job, error)
 	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
 	AddLocalEvent(ctx context.Context, jobID string, event model.JobLocalEvent) error
