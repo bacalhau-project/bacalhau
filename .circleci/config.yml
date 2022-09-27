@@ -104,8 +104,8 @@ jobs:
           condition:
             and:
               - or:
-                - equal: ["linux", << parameters.target_os >>]
-                - equal: ["windows", << parameters.target_os >>]
+                  - equal: ["linux", << parameters.target_os >>]
+                  - equal: ["windows", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
@@ -287,8 +287,8 @@ jobs:
       - run:
           name: Install updatecli
           command: |
-            curl -sL -o/var/cache/apt/archives/updatecli_amd64.deb https://github.com/updatecli/updatecli/releases/download/v0.33.3/updatecli_amd64.deb
-            sudo dpkg -i /var/cache/apt/archives/updatecli_amd64.deb
+            wget https://github.com/updatecli/updatecli/releases/download/v0.33.3/updatecli_amd64.deb
+            sudo dpkg -i updatecli_amd64.deb
       - run:
           name: Run
           command: |
@@ -390,7 +390,7 @@ workflows:
       - update_ops:
           name: update-terraform-files
           filters:
-            <<: *filters_main_only # this is calling the previously set yaml anchor
+            <<: *filters_main_only
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - release:
@@ -402,6 +402,12 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - update_ops:
+          name: update-terraform-files
+          requires:
+            - release-all-binaries
+          filters:
+            <<: *filters_tags_only
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
