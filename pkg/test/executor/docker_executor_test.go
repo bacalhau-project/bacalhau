@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package docker
 
 import (
