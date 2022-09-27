@@ -224,7 +224,11 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	jobDesc := []string{
 		j.Spec.Engine.String(),
 	}
-
+	// Add more details to the job description (e.g. Docker ubuntu echo Hello World)
+	if j.Spec.Engine == model.EngineDocker {
+		jobDesc = append(jobDesc, j.Spec.Docker.Image, strings.Join(j.Spec.Docker.Entrypoint, " "))
+	}
+	
 	// compute state summary
 	var currentJobState model.JobStateType
 	for _, shardState := range jobutils.FlattenShardStates(j.State) { //nolint:gocritic
