@@ -17,3 +17,4 @@ auto_subnets               = true
 ingress_cidrs              = ["0.0.0.0/0"]
 ssh_access_cidrs           = ["0.0.0.0/0"]
 num_gpu_machines           = 1
+= 1
