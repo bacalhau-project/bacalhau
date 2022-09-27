@@ -289,13 +289,14 @@ Usage:
   bacalhau list [flags]
 
 Flags:
+      --all                Fetch all jobs from the network (default is to filter those belonging to the user). This option may take a long time to return, please use with caution.
   -h, --help               help for list
       --hide-header        do not print the column headers.
       --id-filter string   filter by Job List to IDs matching substring.
       --no-style           remove all styling from table output.
   -n, --number int         print the first NUM jobs instead of the first 10. (default 10)
       --output string      The output format for the list of jobs (json or text) (default "text")
-      --reverse            reverse order of table - for time sorting, this will be newest first. (default true)
+      --reverse            reverse order of table - for time sorting, this will be newest first. Use '--reverse=false' to sort oldest first (single quotes are required). (default true)
       --sort-by Column     sort by field, defaults to creation time, with newest first [Allowed "id", "created_at"]. (default created_at)
       --wide               Print full values in the table results
 ```
