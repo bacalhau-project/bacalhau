@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
@@ -257,7 +258,13 @@ var dockerRunCmd = &cobra.Command{
 			return fmt.Errorf("error validating job: %s", err)
 		}
 		if ODR.DryRun {
-			cmd.Print(fmt.Sprintf("%+v", j))
+			// Converting job to yaml
+			var yamlBytes []byte
+			yamlBytes, err = yaml.Marshal(j)
+			if err != nil {
+				return fmt.Errorf("error converting job to yaml: %s", err)
+			}
+			cmd.Print(string(yamlBytes))
 			return nil
 		}
 

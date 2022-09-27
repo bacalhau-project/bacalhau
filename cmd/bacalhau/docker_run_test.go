@@ -14,7 +14,9 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
 
 	"strings"
 	"testing"
@@ -92,6 +94,45 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
 			require.NoError(suite.T(), err)
 			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+		}()
+	}
+}
+
+func (suite *DockerRunSuite) TestRun_DryRun() {
+	tests := []struct {
+		numberOfJobs int
+	}{
+		{numberOfJobs: 1}, // Test for one
+	}
+
+	for i, tc := range tests {
+		func() {
+			c, cm := publicapi.SetupTests(suite.T())
+			defer cm.Cleanup()
+
+			*ODR = *NewDockerRunOptions()
+
+			randomUUID := uuid.New()
+			entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
+
+			parsedBasedURI, _ := url.Parse(c.BaseURI)
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+				"--api-host", host,
+				"--api-port", port,
+				"ubuntu",
+				entrypointCommand,
+				"--dry-run",
+			)
+			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+
+			require.NoError(suite.T(), err)
+			require.Contains(suite.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
+
+			var j *model.Job
+			yaml.Unmarshal([]byte(out), &j)
+			require.NotNil(suite.T(), j, "Failed to unmarshal job from dry run output")
+			require.Equal(suite.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }
