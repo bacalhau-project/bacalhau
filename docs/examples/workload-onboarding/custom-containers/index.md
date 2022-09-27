@@ -2,7 +2,7 @@
 sidebar_label: "Custom Containers"
 sidebar_position: 1
 ---
-# Working With Custom Containers
+# How To Work With Custom Containers in Bacalhau
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/custom-containers/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/custom-containers/index.ipynb)
