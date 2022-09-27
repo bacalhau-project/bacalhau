@@ -53,6 +53,11 @@ For usage questions or issues reach out the Bacalhau team either in the [Slack c
 
 Developers can spin up bacalhau and run a local demo using the `devstack` command. 
 Please see [docs/running_locally.md](docs/running_locally.md) for instructions.
+Also, see [docs/debugging_locally.md](docs/debugging_locally.md) for some useful tricks for debugging.
+
+### Release a new version
+
+To ship a new version of the CLI & Bacalhau network please follow the instuctions at [docs/create_release.md](docs/create_release.md).
 
 ### Notes for Contributors
 
