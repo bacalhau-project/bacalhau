@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/pkg/errors"
@@ -186,7 +187,7 @@ func (e *Executor) RunShard(
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 		}
 
-		srcd := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
+		srcd := filepath.Join(jobResultsDir, output.Name)
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err

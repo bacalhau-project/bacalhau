@@ -24,6 +24,7 @@ temperature_sensor_data.csv
 temperature_sensor_data.csv.bz2
 .ipynb_checkpoints
 __debug_bin
+__debug_bin.exe
 .terraform/*
 ops/terraform/*.out
 ops/terraform/.terraform.lock.hcl

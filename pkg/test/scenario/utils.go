@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -141,7 +142,7 @@ func singleFileGetData(
 	resultsDir string,
 	filePath string,
 ) ([]byte, error) {
-	outputFile := fmt.Sprintf("%s/%s", resultsDir, filePath)
+	outputFile := filepath.Join(resultsDir, filePath)
 	return os.ReadFile(outputFile)
 }
 

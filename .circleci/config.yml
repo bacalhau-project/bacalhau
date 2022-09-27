@@ -3,10 +3,16 @@
 version: 2.1
 
 executors:
-  linux:
+  linux: &linux
     machine:
       image: ubuntu-2204:2022.07.1
-    resource_class: xlarge
+      resource_class: xlarge
+  darwin: *linux
+  windows:
+    machine:
+      image: windows-server-2022-gui:current
+      resource_class: windows.xlarge
+      shell: bash.exe
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -23,7 +29,7 @@ jobs:
       CGO: 0
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
-    executor: linux
+    executor: << parameters.target_os >>
     parameters:
       target_arch:
         type: string
@@ -34,14 +40,31 @@ jobs:
     steps:
       - checkout
 
+      - when:
+          condition:
+            equal: ["windows", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install GNU Make
+                command: |
+                  choco install -y make
+                shell: powershell.exe
+            - run:
+                name: Downgrade Golang
+                command: |
+                  choco install golang -y --allow-downgrade --version $Env:GOVER
+                shell: powershell.exe
+
       - run:
           name: Install IPFS
           command: |
             echo "Installing IPFS_VERSION: $IPFS_VERSION"
             export IPFS_BUILD="$GOOS-$GOARCH"
-            curl -s -L -O "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
-            tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.tar.gz"
-            sudo bash ./go-ipfs/install.sh
+            if [ "${GOOS}" = "windows" ]; then export IPFS_EXT=zip; fi
+            if [ "${GOOS}" = "windows" ]; then export EXEC=bash; fi
+            curl -s -L -O "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.${IPFS_EXT:-tar.gz}"
+            tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.${IPFS_EXT:-tar.gz}"
+            ${EXEC:-sudo bash} ./go-ipfs/install.sh
 
       - when:
           condition:
@@ -80,7 +103,9 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ["linux", << parameters.target_os >>]
+              - or:
+                - equal: ["linux", << parameters.target_os >>]
+                - equal: ["windows", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
@@ -90,9 +115,19 @@ jobs:
                   echo "---------------------------------------"
                   docker version
                   echo "---------------------------------------"
+                  export GOBIN=${HOME}/bin
+                  export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
                   make test-and-report
                 no_output_timeout: 20m
+
+      - when:
+          condition:
+            and:
+              - equal: ["linux", << parameters.target_os >>]
+              - equal: ["amd64", << parameters.target_arch >>]
+              - equal: [true, << parameters.run_tests >>]
+          steps:
             - run:
                 name: Upload results
                 command: |
@@ -205,6 +240,7 @@ jobs:
             GOOS=linux GOARCH=arm64 make build
             GOOS=darwin GOARCH=amd64 make build
             GOOS=darwin GOARCH=arm64 make build
+            GOOS=windows GOARCH=amd64 make build
             echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
             echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
@@ -222,6 +258,10 @@ jobs:
             cp $ARTIFACT_DIR/*.tar.gz dist/
             cp $ARTIFACT_DIR/*.sha256 dist/
             GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
+            source /tmp/packagevars
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
             source /tmp/packagevars
             cp $ARTIFACT_DIR/*.tar.gz dist/
             cp $ARTIFACT_DIR/*.sha256 dist/
@@ -284,12 +324,13 @@ workflows:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
-              target_os: ["linux", "darwin"]
+              target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
             exclude:
-              - target_os: "linux"
+              - target_os: "windows"
                 target_arch: "arm64"
+                run_tests: true
           filters:
             &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
@@ -319,9 +360,13 @@ workflows:
           name: build-<< matrix.target_os >>-<< matrix.target_arch >>
           matrix:
             parameters:
-              target_os: ["linux", "darwin"]
+              target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:

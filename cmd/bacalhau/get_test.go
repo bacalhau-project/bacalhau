@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -109,7 +110,7 @@ func (suite *GetSuite) TestGetJob() {
 			)
 			require.Error(suite.T(), err, "Submitting a get request with no id should error.")
 
-			outputDirWithID := fmt.Sprintf("%s/%s", outputDir, submittedJobID)
+			outputDirWithID := filepath.Join(outputDir, submittedJobID)
 			os.Mkdir(outputDirWithID, util.OS_ALL_RWX)
 
 			// Job Id at the end
