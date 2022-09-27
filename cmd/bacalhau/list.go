@@ -228,7 +228,7 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	if j.Spec.Engine == model.EngineDocker {
 		jobDesc = append(jobDesc, j.Spec.Docker.Image, strings.Join(j.Spec.Docker.Entrypoint, " "))
 	}
-	
+
 	// compute state summary
 	var currentJobState model.JobStateType
 	for _, shardState := range jobutils.FlattenShardStates(j.State) { //nolint:gocritic
