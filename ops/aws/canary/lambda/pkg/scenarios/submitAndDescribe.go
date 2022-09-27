@@ -3,6 +3,7 @@ package scenarios
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/rs/zerolog/log"
 )
@@ -15,8 +16,12 @@ func SubmitAnDescribe(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := bacalhau.GetAPIClient()
 
-	jobSpec, jobDeal := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)
+	j := getSampleDockerJob()
+	submittedJob, err := client.Submit(ctx, j, nil)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Msgf("submitted job: %s", submittedJob.ID)
 
 	_, ok, err := client.Get(ctx, submittedJob.ID)

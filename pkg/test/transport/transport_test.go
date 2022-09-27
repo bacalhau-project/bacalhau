@@ -171,13 +171,14 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	_, noopExecutor, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
 		Docker: model.JobSpecDocker{
-			Image:      "image",
-			Entrypoint: []string{"entrypoint"},
-			Env:        []string{"env"},
+			Image:                "image",
+			Entrypoint:           []string{"entrypoint"},
+			EnvironmentVariables: []string{"env"},
 		},
 		Inputs: []model.StorageSpec{
 			{
@@ -186,14 +187,13 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 	}
 
-	deal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
 
 	payload := model.JobCreatePayload{
 		ClientID: "123",
-		Spec:     spec,
-		Deal:     deal,
+		Job:      j,
 	}
 
 	jobSelected, err := ctrl.SubmitJob(ctx, payload)
@@ -209,14 +209,16 @@ func (suite *TransportSuite) TestTransportEvents() {
 	transport, _, _, ctrl, cm := setupTest(suite.T())
 	defer cm.Cleanup()
 
-	spec := model.JobSpec{
+	// Create a new job
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
 		Docker: model.JobSpecDocker{
-			Image:      "image",
-			Entrypoint: []string{"entrypoint"},
-			Env:        []string{"env"},
+			Image:                "image",
+			Entrypoint:           []string{"entrypoint"},
+			EnvironmentVariables: []string{"env"},
 		},
 		Inputs: []model.StorageSpec{
 			{
@@ -225,14 +227,13 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	deal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
 
 	payload := model.JobCreatePayload{
 		ClientID: "123",
-		Spec:     spec,
-		Deal:     deal,
+		Job:      j,
 	}
 
 	_, err := ctrl.SubmitJob(ctx, payload)

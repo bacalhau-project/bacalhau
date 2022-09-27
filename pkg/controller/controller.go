@@ -114,7 +114,7 @@ func (ctrl *Controller) Subscribe(fn transport.SubscribeFn) {
 /*
 READ API
 */
-func (ctrl *Controller) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (ctrl *Controller) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	return ctrl.localdb.GetJob(ctx, id)
 }
 
@@ -131,7 +131,7 @@ func (ctrl *Controller) GetJobState(ctx context.Context, id string) (model.JobSt
 	return ctrl.localdb.GetJobState(ctx, id)
 }
 
-func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
+func (ctrl *Controller) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
 	return ctrl.localdb.GetJobs(ctx, query)
 }
 
@@ -151,10 +151,10 @@ func (ctrl *Controller) VerifyJob(ctx context.Context, jobID string) error {
 func (ctrl *Controller) SubmitJob(
 	ctx context.Context,
 	data model.JobCreatePayload,
-) (model.Job, error) {
+) (*model.Job, error) {
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error creating job id: %w", err)
+		return &model.Job{}, fmt.Errorf("error creating job id: %w", err)
 	}
 	jobID := jobUUID.String()
 
@@ -170,27 +170,27 @@ func (ctrl *Controller) SubmitJob(
 
 	ev := ctrl.constructEvent(jobID, model.JobEventCreated)
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Spec, ctrl.storageProviders)
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Job.Spec, ctrl.storageProviders)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
+		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
 	ev.ClientID = data.ClientID
-	ev.JobSpec = data.Spec
-	ev.JobDeal = data.Deal
+	ev.JobSpec = data.Job.Spec
+	ev.JobDeal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	j := jobutils.ConstructJobFromEvent(ev)
 
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error processing job sharding: %s", err)
+		return &model.Job{}, fmt.Errorf("error processing job sharding: %s", err)
 	}
 
 	// first write the job to our local data store
 	// so clients have consistency when they ask for the job by id
 	err = ctrl.localdb.AddJob(ctx, j)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error saving job id: %w", err)
+		return &model.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
 
 	err = ctrl.writeEvent(jobCtx, ev)

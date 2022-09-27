@@ -42,7 +42,7 @@ func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
 	cm *system.CleanupManager,
-	job model.Job,
+	j *model.Job,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
 ) error {
@@ -73,7 +73,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	err = loopOverResults(ctx, n, results, settings, job)
+	err = loopOverResults(ctx, n, results, settings, j)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func loopOverResults(ctx context.Context,
 	n *Node,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
-	job model.Job) error {
+	j *model.Job) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.loopingOverResults")
 	defer span.End()
 
@@ -127,7 +127,7 @@ func loopOverResults(ctx context.Context,
 			return err
 		}
 
-		err = moveResults(ctx, job, shardDownloadDir, finalOutputDirAbs, result)
+		err = moveResults(ctx, j, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
@@ -178,14 +178,14 @@ func fetchResult(ctx context.Context,
 }
 
 func moveResults(ctx context.Context,
-	job model.Job,
+	j *model.Job,
 	shardDownloadDir string,
 	finalOutputDirAbs string,
 	result model.StorageSpec) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
-	for _, outputVolume := range job.Spec.Outputs {
+	for _, outputVolume := range j.Spec.Outputs {
 		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)

@@ -63,29 +63,29 @@ subscriptions
 */
 func (node *RequesterNode) subscriptionSetup() {
 	node.controller.Subscribe(func(ctx context.Context, jobEvent model.JobEvent) {
-		job, err := node.controller.GetJob(ctx, jobEvent.JobID)
+		j, err := node.controller.GetJob(ctx, jobEvent.JobID)
 		if err != nil {
 			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
 			return
 		}
 		// we only care about jobs that we own
-		if job.RequesterNodeID != node.id {
+		if j.RequesterNodeID != node.id {
 			return
 		}
 		switch jobEvent.EventName {
 		case model.JobEventBid:
-			node.subscriptionEventBid(ctx, job, jobEvent)
+			node.subscriptionEventBid(ctx, j, jobEvent)
 		case model.JobEventResultsProposed:
-			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
+			node.subscriptionEventShardExecutionComplete(ctx, j, jobEvent)
 		case model.JobEventError:
-			node.subscriptionEventShardExecutionComplete(ctx, job, jobEvent)
+			node.subscriptionEventShardExecutionComplete(ctx, j, jobEvent)
 		}
 	})
 }
 
 func (node *RequesterNode) subscriptionEventBid(
 	ctx context.Context,
-	job model.Job,
+	j *model.Job,
 	jobEvent model.JobEvent,
 ) {
 	node.bidMutex.Lock()
@@ -93,27 +93,27 @@ func (node *RequesterNode) subscriptionEventBid(
 
 	// Need to declare span separately to prevent shadowing
 	var span trace.Span
-	ctx, span = node.newSpanForJob(ctx, job.ID, "JobEventBid")
+	ctx, span = node.newSpanForJob(ctx, j.ID, "JobEventBid")
 	defer span.End()
 
-	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
-	bidQueueResults, err := processIncomingBid(ctx, node.controller, job, jobEvent)
+	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, j.ID)
+	bidQueueResults, err := processIncomingBid(ctx, node.controller, j, jobEvent)
 
 	if err != nil {
-		threadLogger.Warn().Msgf("There was an error calling processIncomingBid %s: %s", job.ID, err)
+		threadLogger.Warn().Msgf("There was an error calling processIncomingBid %s: %s", j.ID, err)
 		return
 	}
 
 	for _, bidQueueResult := range bidQueueResults {
 		if bidQueueResult.accepted {
-			log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
-			err := node.controller.AcceptJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			log.Debug().Msgf("Requester node %s accepting bid: %s %d", node.id, j.ID, jobEvent.ShardIndex)
+			err := node.controller.AcceptJobBid(ctx, j.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
 			if err != nil {
 				threadLogger.Error().Err(err)
 			}
 		} else {
-			log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, job.ID, jobEvent.ShardIndex)
-			err := node.controller.RejectJobBid(ctx, job.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
+			log.Debug().Msgf("Requester node %s rejecting bid: %s %d", node.id, j.ID, jobEvent.ShardIndex)
+			err := node.controller.RejectJobBid(ctx, j.ID, bidQueueResult.nodeID, jobEvent.ShardIndex)
 			if err != nil {
 				threadLogger.Error().Err(err)
 			}
@@ -128,16 +128,16 @@ func (node *RequesterNode) subscriptionEventBid(
 // we mark the job as "verifying" to prevent duplicate verification
 func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 	ctx context.Context,
-	job model.Job,
+	j *model.Job,
 	jobEvent model.JobEvent,
 ) {
 	node.verifyMutex.Lock()
 	defer node.verifyMutex.Unlock()
-	err := node.attemptVerification(ctx, job)
+	err := node.attemptVerification(ctx, j)
 	if err != nil {
 		err = node.controller.ShardError(
 			ctx,
-			job.ID,
+			j.ID,
 			jobEvent.ShardIndex,
 			err.Error(),
 			nil,
@@ -150,15 +150,15 @@ func (node *RequesterNode) subscriptionEventShardExecutionComplete(
 
 func (node *RequesterNode) attemptVerification(
 	ctx context.Context,
-	job model.Job,
+	j *model.Job,
 ) error {
-	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, job.ID)
-	verifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	threadLogger := logger.LoggerWithNodeAndJobInfo(node.id, j.ID)
+	verifier, err := node.getVerifier(ctx, j.Spec.Verifier)
 	if err != nil {
 		return err
 	}
 	// ask the verifier if we have enough to start the verification yet
-	isExecutionComplete, err := verifier.IsExecutionComplete(ctx, job.ID)
+	isExecutionComplete, err := verifier.IsExecutionComplete(ctx, j.ID)
 	if err != nil {
 		return err
 	}
@@ -166,14 +166,14 @@ func (node *RequesterNode) attemptVerification(
 		return nil
 	}
 	// check that we have not already verified this job
-	hasVerified, err := node.controller.HasLocalEvent(ctx, job.ID, controller.EventFilterByType(model.JobLocalEventVerified))
+	hasVerified, err := node.controller.HasLocalEvent(ctx, j.ID, controller.EventFilterByType(model.JobLocalEventVerified))
 	if err != nil {
 		return err
 	}
 	if hasVerified {
 		return nil
 	}
-	verificationResults, err := verifier.VerifyJob(ctx, job.ID)
+	verificationResults, err := verifier.VerifyJob(ctx, j.ID)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (node *RequesterNode) attemptVerification(
 			}
 		}
 	}
-	return node.controller.CompleteVerification(ctx, job.ID)
+	return node.controller.CompleteVerification(ctx, j.ID)
 }
 
 //nolint:dupl // methods are not duplicates

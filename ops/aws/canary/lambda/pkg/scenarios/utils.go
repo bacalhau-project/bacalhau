@@ -3,19 +3,21 @@ package scenarios
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"strings"
+
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"io/ioutil"
-	"strings"
 )
 
 const defaultEchoMessage = "hello λ!"
 
-func getSampleDockerJob() (model.JobSpec, model.JobDeal) {
-	jobSpec := model.JobSpec{
+func getSampleDockerJob() *model.Job {
+	var j = &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -28,10 +30,10 @@ func getSampleDockerJob() (model.JobSpec, model.JobDeal) {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
-	return jobSpec, jobDeal
+	return j
 }
 
 func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
@@ -46,7 +48,7 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(

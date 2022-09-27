@@ -8,13 +8,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
 
@@ -34,7 +34,14 @@ var (
 		bacalhau docker run \
 			-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images \
 			dpokidov/imagemagick:7.1.0-47-ubuntu \
-			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'`))
+			-- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
+			
+		# Dry Run: Check the job specification before submitting it to the bacalhau network
+		bacalhau docker run --dry-run ubuntu echo hello
+
+		saving the job specification to a yaml file
+		bacalhau docker run --dry-run ubuntu echo hello > job.yaml
+		`))
 
 	// Set Defaults (probably a better way to do this)
 	ODR = NewDockerRunOptions()
@@ -42,27 +49,29 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Engine        string   // Executor - executor.Executor
-	Verifier      string   // Verifier - verifier.Verifier
-	Publisher     string   // Publisher - publisher.Publisher
-	Inputs        []string // Array of input CIDs
-	InputUrls     []string // Array of input URLs (will be copied to IPFS)
-	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
-	OutputVolumes []string // Array of output volumes in 'name:mount point' form
-	Env           []string // Array of environment variables
-	Concurrency   int      // Number of concurrent jobs to run
-	Confidence    int      // Minimum number of nodes that must agree on a verification result
-	MinBids       int      // Minimum number of bids before they will be accepted (at random)
-	CPU           string
-	Memory        string
-	GPU           string
-	WorkingDir    string   // Working directory for docker
-	Labels        []string // Labels for the job on the Bacalhau network (for searching)
+	Engine           string   // Executor - executor.Executor
+	Verifier         string   // Verifier - verifier.Verifier
+	Publisher        string   // Publisher - publisher.Publisher
+	Inputs           []string // Array of input CIDs
+	InputUrls        []string // Array of input URLs (will be copied to IPFS)
+	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
+	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
+	Env              []string // Array of environment variables
+	Concurrency      int      // Number of concurrent jobs to run
+	Confidence       int      // Minimum number of nodes that must agree on a verification result
+	MinBids          int      // Minimum number of bids before they will be accepted (at random)
+	CPU              string
+	Memory           string
+	GPU              string
+	WorkingDirectory string   // Working directory for docker
+	Labels           []string // Labels for the job on the Bacalhau network (for searching)
 
 	Image      string   // Image to execute
 	Entrypoint []string // Entrypoint to the docker image
 
 	SkipSyntaxChecking bool // Verify the syntax using shellcheck
+
+	DryRun bool // Don't submit the jobspec, print it to STDOUT
 
 	RunTimeSettings RunTimeSettings // Settings for running the job
 
@@ -90,7 +99,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Memory:             "",
 		GPU:                "",
 		SkipSyntaxChecking: false,
-		WorkingDir:         "",
+		WorkingDirectory:   "",
 		Labels:             []string{},
 		DownloadFlags:      *ipfs.NewIPFSDownloadSettings(),
 		RunTimeSettings:    *NewRunTimeSettings(),
@@ -170,8 +179,13 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`Skip having 'shellchecker' verify syntax of the command`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.DryRun, "dry-run", ODR.DryRun,
+		`Do not submit the job, but instead print out what will be submitted`,
+	)
+
 	dockerRunCmd.PersistentFlags().StringVarP(
-		&ODR.WorkingDir, "workdir", "w", ODR.WorkingDir,
+		&ODR.WorkingDirectory, "workdir", "w", ODR.WorkingDirectory,
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`,
 	)
 
@@ -231,21 +245,33 @@ var dockerRunCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/dockerRun")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/dockerRun")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobSpec, jobDeal, err := CreateJobSpecAndDeal(ctx, cmdArgs, ODR)
+		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
 			return errors.Wrap(err, "CreateJobSpecAndDeal:")
+		}
+		err = jobutils.VerifyJob(j)
+		if err != nil {
+			return fmt.Errorf("error validating job: %s", err)
+		}
+		if ODR.DryRun {
+			// Converting job to yaml
+			var yamlBytes []byte
+			yamlBytes, err = yaml.Marshal(j)
+			if err != nil {
+				return fmt.Errorf("error converting job to yaml: %s", err)
+			}
+			cmd.Print(string(yamlBytes))
+			return nil
 		}
 
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
-			jobSpec,
-			jobDeal,
+			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
 		)
@@ -258,9 +284,9 @@ var dockerRunCmd = &cobra.Command{
 	},
 }
 
-func CreateJobSpecAndDeal(ctx context.Context,
+func CreateJob(ctx context.Context,
 	cmdArgs []string,
-	odr *DockerRunOptions) (*model.JobSpec, *model.JobDeal, error) {
+	odr *DockerRunOptions) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	_, span := system.GetTracer().Start(ctx, "cmd/bacalhau/dockerRun.ProcessAndExecuteJob")
 	defer span.End()
@@ -280,32 +306,32 @@ func CreateJobSpecAndDeal(ctx context.Context,
 
 	engineType, err := model.ParseEngineType(odr.Engine)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	verifierType, err := model.ParseVerifierType(odr.Verifier)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	publisherType, err := model.ParsePublisherType(odr.Publisher)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	for _, i := range odr.Inputs {
 		odr.InputVolumes = append(odr.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 	}
 
-	if len(odr.WorkingDir) > 0 {
-		err = system.ValidateWorkingDir(odr.WorkingDir)
+	if len(odr.WorkingDirectory) > 0 {
+		err = system.ValidateWorkingDir(odr.WorkingDirectory)
 
 		if err != nil {
-			return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+			return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 		}
 	}
 
-	jobSpec, jobDeal, err := jobutils.ConstructDockerJob(
+	j, err := jobutils.ConstructDockerJob(
 		engineType,
 		verifierType,
 		publisherType,
@@ -322,15 +348,15 @@ func CreateJobSpecAndDeal(ctx context.Context,
 		odr.Confidence,
 		odr.MinBids,
 		odr.Labels,
-		odr.WorkingDir,
+		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,
 		odr.ShardingBasePath,
 		odr.ShardingBatchSize,
 		doNotTrack,
 	)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
 	}
 
-	return jobSpec, jobDeal, nil
+	return j, nil
 }

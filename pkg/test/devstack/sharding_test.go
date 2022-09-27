@@ -207,7 +207,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -240,13 +241,13 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), batchCount, submittedJob.ExecutionPlan.TotalShards)
 
@@ -354,7 +355,8 @@ func (suite *ShardingSuite) TestNoShards() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -379,13 +381,13 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	_, err = apiClient.Submit(ctx, j, nil)
 	require.Error(suite.T(), err)
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
 }
@@ -428,7 +430,8 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -454,12 +457,12 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	_, err = apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 }

@@ -88,7 +88,7 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 
 func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	ctx context.Context,
-	jobData model.Job,
+	jobData *model.Job,
 	shardStates []model.JobShardState,
 ) map[string][]*verifier.VerifierResult {
 	// group the verifier results by their reported hash
@@ -137,7 +137,7 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 
 func (deterministicVerifier *DeterministicVerifier) verifyShard(
 	ctx context.Context,
-	jobData model.Job,
+	jobData *model.Job,
 	shardStates []model.JobShardState,
 ) ([]verifier.VerifierResult, error) {
 	confidence := jobData.Deal.Confidence

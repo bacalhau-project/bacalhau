@@ -3,12 +3,13 @@ package scenarios
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"os"
-	"path/filepath"
 )
 
 func SubmitAndGet(ctx context.Context) error {
@@ -17,8 +18,12 @@ func SubmitAndGet(ctx context.Context) error {
 	client := bacalhau.GetAPIClient()
 
 	cm := system.NewCleanupManager()
-	jobSpec, jobDeal := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)
+	j := getSampleDockerJob()
+	submittedJob, err := client.Submit(ctx, j, nil)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Msgf("submitted job: %s", submittedJob.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)

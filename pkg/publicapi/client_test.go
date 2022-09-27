@@ -19,16 +19,16 @@ func TestGet(t *testing.T) {
 
 	// Submit a few random jobs to the node:
 	var err error
-	var job model.Job
+	var j *model.Job
 	for i := 0; i < 5; i++ {
-		spec, deal := MakeGenericJob()
-		job, err = c.Submit(ctx, spec, deal, nil)
+		genericJob := MakeGenericJob()
+		j, err = c.Submit(ctx, genericJob, nil)
 		require.NoError(t, err)
 	}
 
 	// Should be able to look up one of them:
-	job2, ok, err := c.Get(ctx, job.ID)
+	job2, ok, err := c.Get(ctx, j.ID)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, job2.ID, job.ID)
+	require.Equal(t, job2.ID, j.ID)
 }

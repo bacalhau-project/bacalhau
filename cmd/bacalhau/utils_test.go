@@ -61,63 +61,63 @@ func (suite *UtilsSuite) TestVersionCheck() {
 	require.NoError(suite.T(), system.InitConfigForTesting())
 
 	// OK: Normal operation
-	err := ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err := ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: invalid semver
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "not-a-sem-ver",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: nil semver
-	err = ensureValidVersion(context.TODO(), nil, &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), nil, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: development version
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v0.0.0-xxxxxxx",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
 	})
 	require.NoError(suite.T(), err)
 
 	// OK: development version
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v1.2.0",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v0.0.0-xxxxxxx",
 	})
 	require.NoError(suite.T(), err)
 
 	// NOT OK: server is newer
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.4",
 	})
 	require.Error(suite.T(), err)
 
 	// NOT OK: client is newer
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v1.2.4",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v1.2.3",
 	})
 	require.Error(suite.T(), err)
 
 	// https://github.com/filecoin-project/bacalhau/issues/495
-	err = ensureValidVersion(context.TODO(), &model.VersionInfo{
+	err = ensureValidVersion(context.TODO(), &model.BuildVersionInfo{
 		GitVersion: "v0.1.37",
-	}, &model.VersionInfo{
+	}, &model.BuildVersionInfo{
 		GitVersion: "v0.1.36",
 	})
 	require.Error(suite.T(), err)

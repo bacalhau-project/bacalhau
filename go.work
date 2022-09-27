@@ -1,7 +1,0 @@
-go 1.18
-
-use (
-	.
-	./testground
-	./ops/aws/canary/lambda
-)

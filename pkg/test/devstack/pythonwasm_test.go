@@ -3,13 +3,14 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -33,20 +34,20 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackPythonWASMSuite) SetupAllSuite() {
+func (s *DevstackPythonWASMSuite) SetupAllSuite() {
 
 }
 
 // Before each test
-func (suite *DevstackPythonWASMSuite) SetupTest() {
+func (s *DevstackPythonWASMSuite) SetupTest() {
 	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 }
 
-func (suite *DevstackPythonWASMSuite) TearDownTest() {
+func (s *DevstackPythonWASMSuite) TearDownTest() {
 }
 
-func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
+func (s *DevstackPythonWASMSuite) TearDownAllSuite() {
 
 }
 
@@ -58,54 +59,54 @@ func (suite *DevstackPythonWASMSuite) TearDownAllSuite() {
 // * docker executor downloads context and starts wasm container image with the
 //   context mounted in
 
-func (suite *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	nodeCount := 1
 	inputPath := "/input"
 	outputPath := "/output"
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, suite.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/pythonwasmvolumes")
+	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	defer func() {
 		err := os.RemoveAll(tmpDir)
-		require.NoError(suite.T(), err)
+		require.NoError(s.T(), err)
 	}()
 
 	oldDir, err := os.Getwd()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	err = os.Chdir(tmpDir)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	defer func() {
 		err := os.Chdir(oldDir)
-		require.NoError(suite.T(), err)
+		require.NoError(s.T(), err)
 	}()
 
 	fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	// write bytes to main.py
 	mainPy := []byte(fmt.Sprintf(`
-import os
-print("LIST /")
-print(os.listdir("/"))
-print("LIST /output")
-print(os.listdir("/output"))
-open("%s/test.txt", "w").write(open("%s").read())
-`, outputPath, inputPath))
+	import os
+	print("LIST /")
+	print(os.listdir("/"))
+	print("LIST %s")
+	print(os.listdir("%s"))
+	open("%s/test.txt", "w").write(open("%s").read())
+`, outputPath, outputPath, outputPath, inputPath))
 
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(suite.T(), cmd.RootCmd,
+	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -115,7 +116,7 @@ open("%s/test.txt", "w").write(open("%s").read())
 		"--deterministic",
 		"main.py",
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
@@ -124,35 +125,53 @@ open("%s/test.txt", "w").write(open("%s").read())
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	shards, err := resolver.GetShards(ctx, jobId)
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), len(shards) > 0)
+	require.NoError(s.T(), err)
+	require.True(s.T(), len(shards) > 0)
 
 	shard := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
+	outputDir, err := ioutil.TempDir("", "bacalhau-devstack-python-wasm-test")
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), shard.PublishedResult.Cid)
 
-	outputPath = filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
-	require.NoError(suite.T(), err)
+	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, finalOutputPath)
+	require.NoError(s.T(), err)
 
-	filePath := fmt.Sprintf("%s/output/test.txt", outputPath)
+	err = filepath.Walk(finalOutputPath,
+		func(path string, info os.FileInfo, err error) error {
+			require.NoError(s.T(), err)
+			log.Debug().Msgf("%s - %d", path, info.Size())
+			return err
+		})
+	require.NoError(s.T(), err)
+
+	stdoutContents, err := ioutil.ReadFile(filepath.Join(finalOutputPath, "stdout"))
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), stdoutContents)
+
+	log.Debug().Msgf("stdoutContents=> %s", stdoutContents)
+
+	// stderrContents, err := ioutil.ReadFile(filepath.Join(finalOutputPath, "stderr"))
+	// require.NoError(s.T(), err)
+	// require.Empty(s.T(), stderrContents, "stderr should be empty: %s", stderrContents)
+
+	filePath := fmt.Sprintf("%s/output/test.txt", finalOutputPath)
 	outputData, err := os.ReadFile(filePath)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
-	require.Equal(suite.T(), fileContents, strings.TrimSpace(string(outputData)))
+	require.Equal(s.T(), fileContents, strings.TrimSpace(string(outputData)))
 }
-func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
-	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
+func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
+	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
@@ -162,7 +181,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	// TODO: see also list_test.go, maybe factor out a common way to do this cli
 	// setup
-	_, out, err := cmd.ExecuteTestCobraCommand(suite.T(), cmd.RootCmd,
+	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -171,7 +190,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 		"-c",
 		"print(1+1)",
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
@@ -180,19 +199,19 @@ func (suite *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	apiUri := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 }
 
 // TODO: test that > 10MB context is rejected
 
-func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
-	suite.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
+func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
+	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, suite.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
+	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
 	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
@@ -201,27 +220,27 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	defer func() {
 		err := os.RemoveAll(tmpDir)
-		require.NoError(suite.T(), err)
+		require.NoError(s.T(), err)
 	}()
 
 	oldDir, err := os.Getwd()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	err = os.Chdir(tmpDir)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	defer func() {
 		err := os.Chdir(oldDir)
-		require.NoError(suite.T(), err)
+		require.NoError(s.T(), err)
 	}()
 
 	// write bytes to main.py
 	mainPy := []byte("print(1+1)")
 	err = ioutil.WriteFile("main.py", mainPy, 0644)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
-	_, out, err := cmd.ExecuteTestCobraCommand(suite.T(), cmd.RootCmd,
+	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
 		fmt.Sprintf("--api-port=%d", stack.Nodes[0].APIServer.Port),
 		"--api-host=localhost",
 		"run",
@@ -229,7 +248,7 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 		"--deterministic",
 		"main.py",
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	jobId := strings.TrimSpace(out)
 	log.Debug().Msgf("jobId=%s", jobId)
 	time.Sleep(time.Second * 5)
@@ -237,9 +256,9 @@ func (suite *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 }
 
 // func TestPythonWasmWithRequirements(t *testing.T) {

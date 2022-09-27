@@ -73,12 +73,12 @@ func RunJobGetStdout(
 	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
 	require.NoError(t, err)
 
-	job := model.Job{
+	j := &model.Job{
 		ID:   "test",
 		Spec: spec,
 	}
 	shard := model.JobShard{
-		Job:   job,
+		Job:   j,
 		Index: 0,
 	}
 	runnerOutput, err := computeNode.RunShardExecution(ctx, shard, result)

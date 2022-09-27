@@ -30,7 +30,8 @@ func RunDockerTest(
 		return err
 	}
 
-	jobSpec := model.JobSpec{
+	var j = &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -39,13 +40,13 @@ func RunDockerTest(
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: concurrency,
 	}
 
 	apiURI := node.APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiURI)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	runenv.RecordMessage("Submitted %v", testCase.Name)
 
 	if err != nil {
@@ -76,14 +77,14 @@ func RunDockerTest(
 	}
 
 	// now we check the actual results produced by the ipfs verifier
-	for _, shard := range shards {
+	for i := range shards {
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-testground")
 		if err != nil {
 			return err
 		}
 
-		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shards[i].PublishedResult.Cid)
+		err = node.IPFSClient.Get(ctx, shards[i].PublishedResult.Cid, outputPath)
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,34 @@
+# jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
+JobAPIVersion: v1alpha1
+Engine: 2
+# We are using the docker executor
+EngineName: docker
+Verifier: 1
+VerifierName: noop
+Publisher: 2
+PublisherName: estuary
+JobSpecDocker:
+  # docker image you want to use
+  Image: ubuntu
+  Entrypoint:
+    # Command to run inside the container
+    - /bin/bash
+    - -c
+    - echo "hello"
+  EnvironmentVariables: []
+# if your job consumes data from ipfs or from a url since in this job we don't consume any data it's left empty
+inputs: []
+Contexts: []
+outputs:
+  - Engine: 1
+    EngineName: ""
+    # default output volume is outputs
+    Name: outputs
+    CID: ""
+    URL: ""
+    path: /outputs
+# Not required
+Sharding:
+  GlobPattern: ""
+  BatchSize: 1
+  GlobPatternBasePath: /inputs

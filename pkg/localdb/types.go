@@ -7,7 +7,12 @@ import (
 )
 
 type JobQuery struct {
-	ID string `json:"id"`
+	ID          string `json:"id"`
+	ClientID    string `json:"clientID"`
+	Limit       int    `json:"limit"`
+	ReturnAll   bool   `json:"return_all"`
+	SortBy      string `json:"sort_by"`
+	SortReverse bool   `json:"sort_reverse"`
 }
 
 // A LocalDB will persist jobs and their state to the underlying storage.
@@ -18,12 +23,12 @@ type JobQuery struct {
 // The LocalDB and Transport interfaces could be swapped out for some kind
 // of smart contract implementation (e.g. FVM)
 type LocalDB interface {
-	GetJob(ctx context.Context, id string) (model.Job, error)
+	GetJob(ctx context.Context, id string) (*model.Job, error)
 	GetJobState(ctx context.Context, jobID string) (model.JobState, error)
 	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
-	GetJobs(ctx context.Context, query JobQuery) ([]model.Job, error)
-	AddJob(ctx context.Context, job model.Job) error
+	GetJobs(ctx context.Context, query JobQuery) ([]*model.Job, error)
+	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
 	AddLocalEvent(ctx context.Context, jobID string, event model.JobLocalEvent) error
 	UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error

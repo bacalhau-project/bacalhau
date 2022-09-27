@@ -2,6 +2,7 @@ package scenarios
 
 import (
 	"context"
+
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/rs/zerolog/log"
 )
@@ -11,9 +12,13 @@ func SubmitWithConcurrency(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := bacalhau.GetAPIClient()
 
-	jobSpec, jobDeal := getSampleDockerJob()
-	jobDeal.Concurrency = 3
-	submittedJob, err := client.Submit(ctx, jobSpec, jobDeal, nil)
+	j := getSampleDockerJob()
+	j.Deal.Concurrency = 3
+	submittedJob, err := client.Submit(ctx, j, nil)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Msgf("submitted job: %s", submittedJob.ID)
 
 	err = waitUntilCompleted(ctx, client, submittedJob)

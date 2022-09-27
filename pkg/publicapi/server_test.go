@@ -48,18 +48,18 @@ func (suite *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx)
+	jobs, err := c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
-	spec, deal := MakeGenericJob()
+	j := MakeGenericJob()
 
-	_, err = c.Submit(ctx, spec, deal, nil)
+	_, err = c.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx)
+	jobs, err = c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), jobs, 1)
 }

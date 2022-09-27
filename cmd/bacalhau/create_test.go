@@ -23,26 +23,26 @@ func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
 }
 
-//before all the suite
-func (suite *CreateSuite) SetupSuite() {
+//before all the s
+func (s *CreateSuite) Setups() {
 
 }
 
 //before each test
-func (suite *CreateSuite) SetupTest() {
-	require.NoError(suite.T(), system.InitConfigForTesting())
-	suite.rootCmd = RootCmd
+func (s *CreateSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
+	s.rootCmd = RootCmd
 }
 
-func (suite *CreateSuite) TearDownTest() {
-
-}
-
-func (suite *CreateSuite) TearDownAllSuite() {
+func (s *CreateSuite) TearDownTest() {
 
 }
 
-func (suite *CreateSuite) TestApplyJSON_GenericSubmit() {
+func (s *CreateSuite) TearDownAlls() {
+
+}
+
+func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -53,30 +53,30 @@ func (suite *CreateSuite) TestApplyJSON_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*OC = *NewCreateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
 				"--api-host", host,
 				"--api-port", port,
 				"../../testdata/job.json",
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			require.NoError(s.T(), err)
+			require.NotNil(s.T(), job, "Failed to get job with ID: %s", out)
 		}()
 	}
 }
 
-func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
+func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -91,27 +91,64 @@ func (suite *CreateSuite) TestApplyYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
+				c, cm := publicapi.SetupTests(s.T())
 				defer cm.Cleanup()
 
 				*OC = *NewCreateOptions()
 
 				parsedBasedURI, err := url.Parse(c.BaseURI)
-				require.NoError(suite.T(), err)
+				require.NoError(s.T(), err)
 
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "create",
+				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
 					"--api-host", host,
 					"--api-port", port,
 					testFile,
 				)
 
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
 				job, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+				require.NoError(s.T(), err)
+				require.NotNil(s.T(), job, "Failed to get job with ID: %s", out)
 			}()
 		}
 	}
+}
+
+func (s *CreateSuite) TestCreateFromStdin() {
+	testFile := "../../testdata/job-url.yaml"
+
+	c, cm := publicapi.SetupTests(s.T())
+	defer cm.Cleanup()
+
+	*OC = *NewCreateOptions()
+
+	parsedBasedURI, err := url.Parse(c.BaseURI)
+	require.NoError(s.T(), err)
+
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+		"--api-host", host,
+		"--api-port", port,
+		testFile,
+	)
+
+	require.NoError(s.T(), err, "Error submitting job.")
+
+	// Now run describe on the ID we got back
+	_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+		"--api-host", host,
+		"--api-port", port,
+		strings.TrimSpace(out),
+	)
+
+	require.NoError(s.T(), err, "Error describing job.")
+
+	// Cat the file and pipe it to stdin
+	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
+		"echo", []string{out,
+			"|", "../../bin/bacalhau create -"},
+	)
+	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -65,13 +64,18 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-// TODO: #454 implement pagination
-func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
+	[]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
 	req := listRequest{
-		ClientID: system.GetClientID(),
+		ClientID:    system.GetClientID(),
+		MaxJobs:     maxJobs,
+		JobID:       idFilter,
+		ReturnAll:   returnAll,
+		SortBy:      sortBy,
+		SortReverse: sortReverse,
 	}
 
 	var res listResponse
@@ -83,30 +87,24 @@ func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, err
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): #452 implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
 	defer span.End()
 
 	if jobID == "" {
-		return model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	jobs, err := apiClient.List(ctx)
+	jobsList, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
 	if err != nil {
-		return model.Job{}, false, err
+		return &model.Job{}, false, err
 	}
 
-	// TODO: #453 make this deterministic, return the first match alphabetically
-	for _, job = range jobs { //nolint:gocritic
-		strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(job.ID), "-", "")
-		strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
-		if strings.HasPrefix(strippedAndLoweredJobID, strippedAndLoweredSearchID) {
-			return job, true, nil
-		}
+	if len(jobsList) > 0 {
+		return jobsList[0], true, nil
+	} else {
+		return &model.Job{}, false, nil
 	}
-
-	return model.Job{}, false, nil
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
@@ -131,12 +129,12 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (stat
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
-	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
-		job, ok, err := apiClient.Get(ctx, jobID)
+	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
+		j, ok, err := apiClient.Get(ctx, jobID)
 		if !ok {
-			return model.Job{}, fmt.Errorf("no job found with id %s", jobID)
+			return &model.Job{}, fmt.Errorf("no job found with id %s", jobID)
 		}
-		return job, err
+		return j, err
 	}
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
@@ -210,17 +208,15 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Submit(
 	ctx context.Context,
-	spec model.JobSpec,
-	deal model.JobDeal,
+	j *model.Job,
 	buildContext *bytes.Buffer,
-) (model.Job, error) {
+) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
 	defer span.End()
 
 	data := model.JobCreatePayload{
 		ClientID: system.GetClientID(),
-		Spec:     spec,
-		Deal:     deal,
+		Job:      j,
 	}
 
 	if buildContext != nil {
@@ -229,12 +225,12 @@ func (apiClient *APIClient) Submit(
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return model.Job{}, err
+		return &model.Job{}, err
 	}
 
 	signature, err := system.SignForClient(jsonData)
 	if err != nil {
-		return model.Job{}, err
+		return &model.Job{}, err
 	}
 
 	var res submitResponse
@@ -245,14 +241,14 @@ func (apiClient *APIClient) Submit(
 	}
 
 	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
-		return model.Job{}, err
+		return &model.Job{}, err
 	}
 
 	return res.Job, nil
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, error) {
+func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
 	defer span.End()
 
