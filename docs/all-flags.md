@@ -28,9 +28,11 @@ Available Commands:
   docker      Run a docker job on the network (see run subcommand)
   get         Get the results of a job
   help        Help about any command
+  id          Show bacalhau node id info
   list        List jobs on the network
   run         Run a job on the network (see subcommands for supported flavors)
   serve       Start the bacalhau compute node
+  validate    validate a job using a json or yaml file.
   version     Get the client and server version.
 
 Flags:
@@ -57,8 +59,6 @@ Usage:
   bacalhau create [flags]
 
 Flags:
-  -c, --concurrency int             How many nodes should run the job (default 1)
-      --confidence int              The minimum number of nodes that must agree on a verification result
       --download                    Download the results and print stdout once the job has completed (implies --wait).
       --download-timeout-secs int   Timeout duration for IPFS downloads. (default 10)
   -g, --gettimeout int              Timeout for getting the results of a job in --wait (default 10)
@@ -73,116 +73,67 @@ Flags:
 #### Examples
 
 ```
-# Create a job using the data in job.json
-bacalhau create ./job.json
+Examples:
+  # Create a job using the data in job.yaml
+  bacalhau create ./job.yaml
 
-# Create a job based on the JSON passed into stdin
-cat job.json | job create -
+  # Create a new job from an already executed job
+  bacalhau describe 6e51df50 | bacalhau create -
 ```
 
-An example jobspec in YAML format:
+An example job in YAML format:
 
 ```yaml
-apiVersion: v1alpha1
-engine: Docker
-verifier: Ipfs
-job_spec_docker:
-  image: gromacs/gromacs
-  entrypoint:
-    - /bin/bash
-    - -c
-    - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
-  env: []
-job_spec_language:
-  language: ''
-  language_version: ''
-  deterministic: false
-  context:
-    engine: ''
-    name: ''
-    cid: ''
-    path: ''
-  command: ''
-  program_path: ''
-  requirements_path: ''
-resources:
-  cpu: ''
-  gpu: ''
-  memory: ''
-  disk: ''
-inputs:
-  - engine: ipfs
-    name: ''
-    cid: QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9
-    path: /input
-  - engine_name: urldownload
-    name: ''
-    url: https://foo.bar.io/foo_data.txt
-    path: /app/foo_data_1.txt
-outputs:
-  - engine: ipfs
-    name: output
-    cid: ''
-    path: /output
-annotations: null
+JobAPIVersion: ""
+ID: 67a9dbdb-ba3d-40e1-b7db-3a2fc517f9f0
+RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+ClientID: dc13188e96c97a9c2e7cf8e86c7613155a73435036f30da1ecefc2ce79f9ea54
+Spec:
+    Engine: 2
+    Verifier: 1
+    Publisher: 4
+    Docker:
+        Image: ubuntu
+        Entrypoint:
+            - echo
+            - Hello
+            - W0rLd
+    outputs:
+        - Engine: 1
+          Name: outputs
+          path: /outputs
+    Sharding:
+        BatchSize: 1
+        GlobPatternBasePath: /inputs
+Deal:
+    Concurrency: 1
+CreatedAt: 2022-09-27T09:49:04.678710544Z
+JobState:
+    Nodes:
+        QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL:
+            Shards:
+                0:
+                    NodeId: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                    ShardIndex: 0
+                    State: 7
+                    Status: 'Got results proposal of length: 0'
+                    VerificationProposal: []
+                    VerificationResult:
+                        Complete: true
+                        Result: true
+                    PublishedResults:
+                        Engine: 5
+                        Name: job-67a9dbdb-ba3d-40e1-b7db-3a2fc517f9f0-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                        Cid: bafybeiadkpq2illntnnh2f3dgju4clafjiy4rilq6h4j4mpqgbqpo72psa
+                    RunOutput:
+                        Stdout: Hello W0rLd
+                        StdoutTruncated: false
+                        Stderr: ""
+                        StderrTruncated: false
+                        ExitCode: 0
+                        RunnerError: ""
 ```
 
-An example jobspoec in JSON format:
-
-```json
-{
-  "apiVersion": "v1alpha1",
-  "engine": "Docker",
-  "verifier": "Ipfs",
-  "job_spec_docker": {
-      "image": "gromacs/gromacs",
-      "entrypoint": [
-          "/bin/bash",
-          "-c",
-          "echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc"
-      ],
-      "env": []
-  },
-  "job_spec_language": {
-      "language": "",
-      "language_version": "",
-      "deterministic": false,
-      "context": {
-          "engine": "",
-          "name": "",
-          "cid": "",
-          "path": ""
-      },
-      "command": "",
-      "program_path": "",
-      "requirements_path": ""
-  },
-  "resources": {
-      "cpu": "",
-      "gpu":"",
-      "memory": "",
-      "disk": ""
-  },
-  "inputs": [
-      {
-          "engine": "ipfs",
-          "name": "",
-          "cid": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
-          "path": "/input"
-      }
-  ],
-  "outputs": [
-      {
-          "engine": "ipfs",
-          "name": "output",
-          "cid": "",
-          "path": "/output"
-      }
-  ],
-  
-  "annotations": null
-}
-```
 
 ## Describe
 
@@ -191,17 +142,27 @@ Full description of a job, in yaml format. Use 'bacalhau list' to get a list of 
 
 Usage:
   bacalhau describe [id] [flags]
+  
+Flags:
+  -h, --help             help for describe
+      --include-events   Include events in the description (could be noisy)
+      --spec             Output Jobspec to stdout
 ```
 
 #### Example
 
 ```
-# Describe a job with the full ID
-bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
+Examples:
+  # Describe a job with the full ID
+  bacalhau describe e3f8c209-d683-4a41-b840-f09b88d087b9
 
-# Describe a job with the a shortened ID
-bacalhau describe 47805f5c
+  # Describe a job with the a shortened ID
+  bacalhau describe 47805f5c
+
+  # Describe a job and include all server and local events
+  bacalhau describe --include-events b6ad164a
 ```
+
 ## Docker run
 
 ```
@@ -216,14 +177,15 @@ Flags:
       --cpu string                     Job CPU cores (e.g. 500m, 2, 8).
       --download                       Download the results and print stdout once the job has completed (implies --wait).
       --download-timeout-secs int      Timeout duration for IPFS downloads. (default 10)
+      --dry-run                        Do not submit the job, but instead print out what will be submitted
       --engine string                  What executor engine to use to run the job (default "docker")
   -e, --env strings                    The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)
   -g, --gettimeout int                 Timeout for getting the results of a job in --wait (default 10)
       --gpu string                     Job GPU requirement (e.g. 1, 2, 8).
   -h, --help                           help for run
   -u, --input-urls strings             URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz'
-                                                mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz')
-                                                and supports HTTP and HTTPS.
+                                       		mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz')
+                                       		and supports HTTP and HTTPS.
   -v, --input-volumes strings          CID:path of the input data volumes, if you need to set the path of the mounted data.
   -i, --inputs strings                 CIDs to use on the job. Mounts them at '/inputs' in the execution.
       --ipfs-swarm-addrs string        Comma-separated list of IPFS nodes to connect to.
