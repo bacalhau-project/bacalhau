@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func GetJobSpec(cid string) model.JobSpec {
+func GetJobSpec(cid string) model.Spec {
 	inputs := []model.StorageSpec{}
 	if cid != "" {
 		inputs = []model.StorageSpec{
@@ -24,7 +24,7 @@ func GetJobSpec(cid string) model.JobSpec {
 			},
 		}
 	}
-	return model.JobSpec{
+	return model.Spec{
 		Engine:   model.EngineDocker,
 		Verifier: model.VerifierNoop,
 		Docker: model.JobSpecDocker{
@@ -68,7 +68,7 @@ func RunJobGetStdout(
 	ctx context.Context,
 	t *testing.T,
 	computeNode *computenode.ComputeNode,
-	spec model.JobSpec,
+	spec model.Spec,
 ) string {
 	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
 	require.NoError(t, err)

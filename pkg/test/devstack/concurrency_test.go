@@ -74,7 +74,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	// create a job
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -83,7 +83,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		Outputs:   testCase.Outputs,
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 2,
 	}
 

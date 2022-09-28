@@ -75,7 +75,7 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -84,7 +84,7 @@ func devStackDockerStorageTest(
 		Outputs:   testCase.Outputs,
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 

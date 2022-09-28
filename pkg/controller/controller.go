@@ -176,8 +176,8 @@ func (ctrl *Controller) SubmitJob(
 	}
 
 	ev.ClientID = data.ClientID
-	ev.JobSpec = data.Job.Spec
-	ev.JobDeal = data.Job.Deal
+	ev.Spec = data.Job.Spec
+	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	j := jobutils.ConstructJobFromEvent(ev)
@@ -198,11 +198,11 @@ func (ctrl *Controller) SubmitJob(
 }
 
 // can only be done by the requestor node that is responsible for the job
-func (ctrl *Controller) UpdateDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
+func (ctrl *Controller) UpdateDeal(ctx context.Context, jobID string, deal model.Deal) error {
 	jobCtx := ctrl.getJobNodeContext(ctx, jobID)
 	ctrl.addJobLifecycleEvent(jobCtx, jobID, "write_UpdateDeal")
 	ev := ctrl.constructEvent(jobID, model.JobEventDealUpdated)
-	ev.JobDeal = deal
+	ev.Deal = deal
 	return ctrl.writeEvent(jobCtx, ev)
 }
 
@@ -513,7 +513,7 @@ func (ctrl *Controller) mutateDatastore(ctx context.Context, ev model.JobEvent) 
 		err = ctrl.localdb.AddJob(ctx, jobutils.ConstructJobFromEvent(ev))
 
 	case model.JobEventDealUpdated:
-		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.JobDeal)
+		err = ctrl.localdb.UpdateJobDeal(ctx, ev.JobID, ev.Deal)
 	}
 
 	if err != nil {

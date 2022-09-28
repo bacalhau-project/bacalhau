@@ -90,7 +90,7 @@ func setupTest(t *testing.T) (
 	noopPublisher, err := publisher_noop.NewNoopPublisher(ctx, cm, ctrl.GetStateResolver())
 	require.NoError(t, err)
 
-	executors := map[model.EngineType]executor.Executor{
+	executors := map[model.Engine]executor.Executor{
 		model.EngineNoop: noopExecutor,
 	}
 
@@ -137,7 +137,7 @@ func (suite *TransportSuite) TestTransportSanity() {
 	ctx := context.Background()
 
 	storageProviders := map[model.StorageSourceType]storage.StorageProvider{}
-	executors := map[model.EngineType]executor.Executor{}
+	executors := map[model.Engine]executor.Executor{}
 	verifiers := map[model.VerifierType]verifier.Verifier{}
 	publishers := map[model.PublisherType]publisher.Publisher{}
 	datastore, err := inmemory.NewInMemoryDatastore()
@@ -172,7 +172,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 	defer cm.Cleanup()
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
 		Docker: model.JobSpecDocker{
@@ -187,7 +187,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
@@ -211,7 +211,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 
 	// Create a new job
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -227,7 +227,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

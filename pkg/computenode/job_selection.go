@@ -39,7 +39,7 @@ type JobSelectionPolicy struct {
 type JobSelectionPolicyProbeData struct {
 	NodeID        string                 `json:"node_id"`
 	JobID         string                 `json:"job_id"`
-	Spec          model.JobSpec          `json:"spec"`
+	Spec          model.Spec             `json:"spec"`
 	ExecutionPlan model.JobExecutionPlan `json:"execution_plan"`
 }
 
@@ -106,7 +106,7 @@ func applyJobSelectionPolicySettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
 	e executor.Executor,
-	job model.JobSpec,
+	job model.Spec,
 ) (bool, error) {
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job

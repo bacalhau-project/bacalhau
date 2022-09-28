@@ -98,7 +98,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			BatchSize:   1,
 		}
 
-		j.Deal = model.JobDeal{
+		j.Deal = model.Deal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,
 		}

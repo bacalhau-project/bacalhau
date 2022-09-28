@@ -51,7 +51,7 @@ type NoopExecutorsFactory struct {
 
 func (f *NoopExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.EngineType]executor.Executor, error) {
+	nodeConfig node.NodeConfig) (map[model.Engine]executor.Executor, error) {
 	return executor_util.NewNoopExecutors(ctx, nodeConfig.CleanupManager, f.config)
 }
 

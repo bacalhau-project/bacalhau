@@ -158,7 +158,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	})
 
 	executorsFactory := node.ExecutorsFactoryFunc(func(
-		ctx context.Context, nodeConfig node.NodeConfig) (map[model.EngineType]executor.Executor, error) {
+		ctx context.Context, nodeConfig node.NodeConfig) (map[model.Engine]executor.Executor, error) {
 		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
 			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{

@@ -11,14 +11,14 @@ import (
 func NewDockerExecutors(
 	cm *system.CleanupManager,
 	config noop_executor.ExecutorConfig,
-) (map[model.EngineType]executor.Executor, error) {
+) (map[model.Engine]executor.Executor, error) {
 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return map[model.EngineType]executor.Executor{
+	return map[model.Engine]executor.Executor{
 		model.EngineDocker: noopExecutor,
 		model.EngineNoop:   noopExecutor,
 	}, nil

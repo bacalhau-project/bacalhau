@@ -21,7 +21,7 @@ type StorageProvidersFactory interface {
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (map[model.EngineType]executor.Executor, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error)
 }
 
 type VerifiersFactory interface {
@@ -45,9 +45,9 @@ func (f StorageProvidersFactoryFunc) Get(
 	return f(ctx, nodeConfig)
 }
 
-type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (map[model.EngineType]executor.Executor, error)
+type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error)
 
-func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (map[model.EngineType]executor.Executor, error) {
+func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error) {
 	return f(ctx, nodeConfig)
 }
 
@@ -99,7 +99,7 @@ type StandardExecutorsFactory struct{}
 
 func (f *StandardExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.EngineType]executor.Executor, error) {
+	nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error) {
 	return executor_util.NewStandardExecutors(
 		ctx,
 		nodeConfig.CleanupManager,

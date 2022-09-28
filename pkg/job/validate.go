@@ -8,11 +8,11 @@ import (
 )
 
 func VerifyJob(j *model.Job) error {
-	if reflect.DeepEqual(model.JobSpec{}, j.Spec) {
+	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")
 	}
 
-	if reflect.DeepEqual(model.JobDeal{}, j.Deal) {
+	if reflect.DeepEqual(model.Deal{}, j.Deal) {
 		return fmt.Errorf("job deal is empty")
 	}
 

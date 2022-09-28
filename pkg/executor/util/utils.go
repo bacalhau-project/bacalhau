@@ -112,7 +112,7 @@ func NewStandardExecutors(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
-) (map[model.EngineType]executor.Executor, error) {
+) (map[model.Engine]executor.Executor, error) {
 	storageProviders, err := NewStandardStorageProviders(ctx, cm, executorOptions.Storage)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func NewStandardExecutors(
 		return nil, err
 	}
 
-	executors := map[model.EngineType]executor.Executor{
+	executors := map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
 	}
 
@@ -148,14 +148,14 @@ func NewNoopExecutors(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	config noop_executor.ExecutorConfig,
-) (map[model.EngineType]executor.Executor, error) {
+) (map[model.Engine]executor.Executor, error) {
 	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return map[model.EngineType]executor.Executor{
+	return map[model.Engine]executor.Executor{
 		model.EngineDocker: noopExecutor,
 		model.EngineNoop:   noopExecutor,
 	}, nil

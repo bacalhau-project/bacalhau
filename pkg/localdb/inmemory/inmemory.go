@@ -223,7 +223,7 @@ func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev 
 	return nil
 }
 
-func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
+func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, deal model.Deal) error {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.UpdateJobDeal")
 	defer span.End()

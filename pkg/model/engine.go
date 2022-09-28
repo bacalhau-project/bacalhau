@@ -4,11 +4,11 @@ import (
 	"fmt"
 )
 
-//go:generate stringer -type=EngineType --trimprefix=Engine
-type EngineType int
+//go:generate stringer -type=Engine --trimprefix=Engine
+type Engine int
 
 const (
-	engineUnknown EngineType = iota // must be first
+	engineUnknown Engine = iota // must be first
 	EngineNoop
 	EngineDocker
 	EngineWasm       // raw wasm executor not implemented yet
@@ -17,11 +17,11 @@ const (
 	engineDone       // must be last
 )
 
-func IsValidEngineType(engineType EngineType) bool {
-	return engineType > engineUnknown && engineType < engineDone
+func IsValidEngineType(e Engine) bool {
+	return e > engineUnknown && e < engineDone
 }
 
-func ParseEngineType(str string) (EngineType, error) {
+func ParseEngineType(str string) (Engine, error) {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil
@@ -32,15 +32,15 @@ func ParseEngineType(str string) (EngineType, error) {
 		"executor: unknown engine type '%s'", str)
 }
 
-func EnsureEngineType(typ EngineType, str string) (EngineType, error) {
+func EnsureEngineType(typ Engine, str string) (Engine, error) {
 	if IsValidEngineType(typ) {
 		return typ, nil
 	}
 	return ParseEngineType(str)
 }
 
-func EngineTypes() []EngineType {
-	var res []EngineType
+func EngineTypes() []Engine {
+	var res []Engine
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		res = append(res, typ)
 	}

@@ -69,7 +69,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -83,7 +83,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

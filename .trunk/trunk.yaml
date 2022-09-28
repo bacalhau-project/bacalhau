@@ -1,11 +1,20 @@
 version: 0.1
+runtimes:
+  enabled:
+    - go@1.18.3
+    - node@16.14.2
+    - python@3.10.3
+actions:
+  enabled:
+    - trunk-cache-prune
+    - trunk-upgrade-available
 plugins:
   sources:
     - id: trunk
       ref: v0.0.3
       uri: https://github.com/trunk-io/plugins
 cli:
-  version: 0.17.0-beta
+  version: 0.18.0-beta
 lint:
   enabled:
     - actionlint@1.6.15
@@ -21,3 +30,8 @@ lint:
     - shfmt@3.5.0
     - taplo@release-taplo-cli-0.6.8
     - tflint@0.35.0
+  ignore:
+    - linters: [ALL]
+      paths:
+        - */vendor/*
+        - experimental/*

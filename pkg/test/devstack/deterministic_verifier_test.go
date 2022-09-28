@@ -51,7 +51,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		args DeterministicVerifierTestArgs,
 	) (string, error) {
 		j := &model.Job{}
-		j.Spec = model.JobSpec{
+		j.Spec = model.Spec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierDeterministic,
 			Publisher: model.PublisherNoop,
@@ -74,7 +74,7 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			},
 		}
 
-		j.Deal = model.JobDeal{
+		j.Deal = model.Deal{
 			Concurrency: args.NodeCount,
 			Confidence:  args.Confidence,
 		}

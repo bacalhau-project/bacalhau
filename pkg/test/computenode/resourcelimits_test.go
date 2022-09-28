@@ -412,7 +412,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	// this will give us a numerator and denominator that should end up at the
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
-	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.JobSpec{
+	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.Spec{
 		Engine:   model.EngineDocker,
 		Verifier: model.VerifierNoop,
 		Resources: model.ResourceUsageConfig{
@@ -454,7 +454,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
-	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.JobSpec{
+	result := RunJobGetStdout(ctx, suite.T(), computeNode, model.Spec{
 		Engine:   model.EngineDocker,
 		Verifier: model.VerifierNoop,
 		Resources: model.ResourceUsageConfig{
@@ -496,7 +496,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
 			NodeID: "test",
 			JobID:  "test",
-			Spec: model.JobSpec{
+			Spec: model.Spec{
 				Engine:   model.EngineDocker,
 				Verifier: model.VerifierNoop,
 				Resources: model.ResourceUsageConfig{

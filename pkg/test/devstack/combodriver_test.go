@@ -98,7 +98,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		}
 
 		j := &model.Job{}
-		j.Spec = model.JobSpec{
+		j.Spec = model.Spec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
@@ -119,7 +119,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			Outputs: []model.StorageSpec{},
 		}
 
-		j.Deal = model.JobDeal{
+		j.Deal = model.Deal{
 			Concurrency: 1,
 		}
 

@@ -58,7 +58,7 @@ type Node struct {
 	Controller     *controller.Controller
 	Transport      transport.Transport
 	CleanupManager *system.CleanupManager
-	Executors      map[model.EngineType]executor.Executor
+	Executors      map[model.Engine]executor.Executor
 	IPFSClient     *ipfs.Client
 
 	HostID      string

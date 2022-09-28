@@ -101,7 +101,7 @@ func (s *ComputeNodeRunJobSuite) TestEmptySpec() {
 	time.Sleep(time.Millisecond * 10)
 	j := &model.Job{
 		ID:   "test",
-		Spec: model.JobSpec{},
+		Spec: model.Spec{},
 	}
 	shard := model.JobShard{
 		Job:   j,

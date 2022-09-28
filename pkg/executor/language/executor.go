@@ -19,13 +19,13 @@ import (
 type Executor struct {
 	Jobs map[string]*model.Job
 
-	executors map[model.EngineType]executor.Executor
+	executors map[model.Engine]executor.Executor
 }
 
 func NewExecutor(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[model.EngineType]executor.Executor,
+	executors map[model.Engine]executor.Executor,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,

@@ -46,8 +46,8 @@ type ComputeNode struct {
 
 	controller               *controller.Controller
 	shardStateManager        *shardStateMachineManager
-	executors                map[model.EngineType]executor.Executor
-	executorsInstalledCache  map[model.EngineType]bool
+	executors                map[model.Engine]executor.Executor
+	executorsInstalledCache  map[model.Engine]bool
 	verifiers                map[model.VerifierType]verifier.Verifier
 	verifiersInstalledCache  map[model.VerifierType]bool
 	publishers               map[model.PublisherType]publisher.Publisher
@@ -67,7 +67,7 @@ func NewComputeNode(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	c *controller.Controller,
-	executors map[model.EngineType]executor.Executor,
+	executors map[model.Engine]executor.Executor,
 	verifiers map[model.VerifierType]verifier.Verifier,
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig, //nolint:gocritic
@@ -91,7 +91,7 @@ func NewComputeNode(
 func constructComputeNode(
 	ctx context.Context,
 	c *controller.Controller,
-	executors map[model.EngineType]executor.Executor,
+	executors map[model.Engine]executor.Executor,
 	verifiers map[model.VerifierType]verifier.Verifier,
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
@@ -117,7 +117,7 @@ func constructComputeNode(
 		controller:               c,
 		shardStateManager:        shardStateManager,
 		executors:                executors,
-		executorsInstalledCache:  map[model.EngineType]bool{},
+		executorsInstalledCache:  map[model.Engine]bool{},
 		verifiers:                verifiers,
 		verifiersInstalledCache:  map[model.VerifierType]bool{},
 		publishers:               publishers,
@@ -316,7 +316,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
 		// if the user isn't going to bid unless there are minBids many bids,
 		// we'd better make sure there are minBids many bids!
-		1, n.ID, jobEvent.JobID, Max(jobEvent.JobDeal.Concurrency, jobEvent.JobDeal.MinBids),
+		1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.
@@ -334,7 +334,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	selected, processedRequirements, err := n.SelectJob(ctx, JobSelectionPolicyProbeData{
 		NodeID:        n.ID,
 		JobID:         jobEvent.JobID,
-		Spec:          jobEvent.JobSpec,
+		Spec:          jobEvent.Spec,
 		ExecutionPlan: jobEvent.JobExecutionPlan,
 	})
 	if err != nil {
@@ -643,7 +643,7 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getExecutor(ctx context.Context, typ model.EngineType) (executor.Executor, error) {
+func (n *ComputeNode) getExecutor(ctx context.Context, typ model.Engine) (executor.Executor, error) {
 	e := func() *executor.Executor {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()
@@ -750,7 +750,7 @@ func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType)
 	return publisher, nil
 }
 
-func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.JobSpec) (uint64, error) {
+func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {
 	e, err := n.getExecutor(ctx, spec.Engine)
 	if err != nil {
 		return 0, err
