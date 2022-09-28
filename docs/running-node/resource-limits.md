@@ -19,3 +19,5 @@ These are the flags that control the capacity of the bacalhau node and the limit
 The `--limit-total-*` flags control the total system resources you want to give to the network.  If left blank - the system will attempt to detect these values automatically.
 
 The `--limit-job-*` flags control the maximum amount of resources a single job can consume for it to be selected for execution.
+
+Resource limits are not supported for nodes running on Windows, and will be silently ignored.

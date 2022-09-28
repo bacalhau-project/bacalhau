@@ -6,11 +6,13 @@ sidebar_label: 'Installation' sidebar_position: 1
 
 ## Prerequisite: install Bacalhau client
 
-To install (or update) the Bacalhau CLI by running the following command in a terminal.
+Install (or update) the Bacalhau CLI by running the following command in a terminal.
 
 ```
 curl -sL https://get.bacalhau.org/install.sh | bash
-``` 
+```
+
+Windows users can download the [latest release tarball from Github](https://github.com/filecoin-project/bacalhau/releases) and extract `bacalhau.exe` to anywhere that is on the PATH.
 
 Please make sure the Bacalhau client & server versions are aligned.
 
@@ -28,8 +30,6 @@ This way you can just launch your jobs from your laptop without worrying about m
 In this guide we provide all commands needed to get you started, but for a complete overview of the `bacalhau` command you can take a look at the [CLI Reference](../all-flags) page.
 
 Now you are good to go!
-
-
 
 ## Submit a "Hello World" job
 

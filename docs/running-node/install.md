@@ -17,3 +17,8 @@ You can configure the connection to Docker with the following environment variab
  * `DOCKER_API_VERSION` to set the version of the API to reach, leave empty for latest.
  * `DOCKER_CERT_PATH` to load the TLS certificates from.
  * `DOCKER_TLS_VERIFY` to enable or disable TLS verification, off by default.
+
+### Windows support
+Running a Windows-based node is not officially supported but does mostly work – your mileage may vary. In particuar, some features (such as [resource limits](./resource-limits)) are not present.
+
+Bacalhau currently assumes that all containers are Linux-based. Users of the Docker executor will need to manually ensure their Docker engine is running and [configured appropriately](https://docs.docker.com/desktop/install/windows-install/) to support Linux containers, e.g. using the WSL-based backend.
