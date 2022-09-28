@@ -180,7 +180,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		})
 	})
 
-	injector := node.NewStandardNodeDepdencyInjector()
+	injector := node.NewStandardNodeDependencyInjector()
 	injector.ExecutorsFactory = executorsFactory
 	injector.StorageProvidersFactory = storageProvidersFactory
 

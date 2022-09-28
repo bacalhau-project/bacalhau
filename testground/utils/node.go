@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -83,15 +84,27 @@ func CreateNode(ctx context.Context,
 		return nil, err
 	}
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	if err != nil {
+		return nil, err
+	}
+
 	nodeConfig := node.NodeConfig{
 		IPFSClient:          ipfsClient,
 		CleanupManager:      cm,
+		LocalDB:             datastore,
 		Transport:           transport,
 		HostAddress:         "0.0.0.0",
 		APIPort:             apiPort,
 		MetricsPort:         metricsPort,
 		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
 		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+	}
+
+	// Start transport layer
+	err = transport.Start(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return node.NewStandardNode(ctx, nodeConfig)

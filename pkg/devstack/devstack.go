@@ -6,8 +6,10 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -71,7 +73,7 @@ func NewStandardDevStack(
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDepdencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
@@ -80,7 +82,7 @@ func NewNoopDevStack(
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDepdencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -181,6 +183,15 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
+		// in-memory datastore
+		//////////////////////////////////////
+		var datastore localdb.LocalDB
+		datastore, err = inmemory.NewInMemoryDatastore()
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
 		// Create and Run Node
 		//////////////////////////////////////
 		isBadActor := (options.NumberOfBadActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadActors)
@@ -188,11 +199,12 @@ func NewDevStack(
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
+			LocalDB:              datastore,
 			Transport:            transport,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               strconv.Itoa(i),
+			HostID:               transport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeNodeConfig:    computeNodeConfig,
@@ -202,6 +214,12 @@ func NewDevStack(
 
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig, injector)
+		if err != nil {
+			return nil, err
+		}
+
+		// Start transport layer
+		err = transport.Start(ctx)
 		if err != nil {
 			return nil, err
 		}

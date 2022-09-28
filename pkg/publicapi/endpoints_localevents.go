@@ -24,7 +24,7 @@ func (apiServer *APIServer) localEvents(res http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	events, err := apiServer.Controller.GetJobLocalEvents(req.Context(), eventsReq.JobID)
+	events, err := apiServer.localdb.GetJobLocalEvents(req.Context(), eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

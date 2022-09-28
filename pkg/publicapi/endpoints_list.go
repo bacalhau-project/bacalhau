@@ -54,7 +54,7 @@ func (apiServer *APIServer) getJobs(ctx context.Context, res http.ResponseWriter
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 
-	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{})
+	list, err := apiServer.localdb.GetJobs(ctx, localdb.JobQuery{})
 	if err != nil {
 		// Handle error in the calling function, as this function only does one thing.
 		return nil, nil

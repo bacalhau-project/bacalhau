@@ -328,7 +328,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 		req := <-m.req
 		switch req.action {
 		case actionBid:
-			err := m.node.BidOnJob(ctx, m.Shard)
+			err := m.node.notifyBidJob(ctx, m.Shard)
 			if err != nil {
 				m.errorMsg = err.Error()
 				return errorState
@@ -381,10 +381,9 @@ func publishingToVerifierState(ctx context.Context, m *shardStateMachine) StateF
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	err := m.node.controller.ShardExecutionFinished(
+	err := m.node.notifyShardExecutionFinished(
 		ctx,
-		m.Shard.Job.ID,
-		m.Shard.Index,
+		m.Shard,
 		fmt.Sprintf("Got results proposal of length: %d", len(m.resultProposal)),
 		m.resultProposal,
 		m.runOutput,
@@ -451,10 +450,9 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 
 	if m.bidSent {
 		// we sent a bid, so we need to publish our failure to the network
-		err := m.node.controller.ShardError(
+		err := m.node.notifyShardError(
 			ctx,
-			m.Shard.Job.ID,
-			m.Shard.Index,
+			m.Shard,
 			errMessage,
 			m.runOutput,
 		)

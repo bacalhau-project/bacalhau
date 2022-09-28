@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -267,10 +269,16 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
+		datastore, err := inmemory.NewInMemoryDatastore()
+		if err != nil {
+			return err
+		}
+
 		// Create node config from cmd arguments
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfs,
 			CleanupManager:       cm,
+			LocalDB:              datastore,
 			Transport:            transport,
 			FilecoinUnsealedPath: OS.FilecoinUnsealedPath,
 			EstuaryAPIKey:        OS.EstuaryAPIKey,
@@ -286,6 +294,12 @@ var serveCmd = &cobra.Command{
 
 		// Create node
 		node, err := node.NewStandardNode(ctx, nodeConfig)
+		if err != nil {
+			return err
+		}
+
+		// Start transport layer
+		err = transport.Start(ctx)
 		if err != nil {
 			return err
 		}

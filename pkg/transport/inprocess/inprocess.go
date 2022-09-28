@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -78,7 +80,13 @@ func (t *InProcessTransport) Publish(ctx context.Context, ev model.JobEvent) err
 	defer t.mutex.Unlock()
 	t.seenEvents = append(t.seenEvents, ev)
 	for _, fn := range t.subscribeFunctions {
-		go fn(ctx, ev)
+		fnToCall := fn
+		go func() {
+			err := fnToCall(ctx, ev)
+			if err != nil {
+				log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
+			}
+		}()
 	}
 	return nil
 }

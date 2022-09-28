@@ -4,7 +4,8 @@ import (
 	"context"
 	"math/rand"
 
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
@@ -33,11 +34,11 @@ func filterLocalEvents(
 // end up accepting many more bids than our concurrency
 func getLocalShardEvents(
 	ctx context.Context,
-	controller *controller.Controller,
+	localDB localdb.LocalDB,
 	jobID string,
 	shardIndex int,
 ) ([]model.JobLocalEvent, error) {
-	localEvents, err := controller.GetJobLocalEvents(ctx, jobID)
+	localEvents, err := localDB.GetJobLocalEvents(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +54,11 @@ func getLocalShardEvents(
 // these are the bids we have heard about
 func getGlobalShardBidEvents(
 	ctx context.Context,
-	controller *controller.Controller,
+	localDB localdb.LocalDB,
 	jobID string,
 	shardIndex int,
 ) ([]model.JobEvent, error) {
-	globalEvents, err := controller.GetJobEvents(ctx, jobID)
+	globalEvents, err := localDB.GetJobEvents(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -113,18 +114,18 @@ func getCandidateBids(
 // both lists can be empty in the case that we've not heard enough bids yet
 func processIncomingBid(
 	ctx context.Context,
-	controller *controller.Controller,
+	localDB localdb.LocalDB,
 	job model.Job,
 	jobEvent model.JobEvent,
 ) ([]bidQueueResult, error) {
 	// global bid events we've heard for this shard
-	bidsHeard, err := getGlobalShardBidEvents(ctx, controller, job.ID, jobEvent.ShardIndex)
+	bidsHeard, err := getGlobalShardBidEvents(ctx, localDB, job.ID, jobEvent.ShardIndex)
 	if err != nil {
 		return nil, err
 	}
 
 	// all local events for this shard
-	localEvents, err := getLocalShardEvents(ctx, controller, job.ID, jobEvent.ShardIndex)
+	localEvents, err := getLocalShardEvents(ctx, localDB, job.ID, jobEvent.ShardIndex)
 	if err != nil {
 		return nil, err
 	}

@@ -7,11 +7,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"go.opentelemetry.io/otel/trace"
+
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"go.opentelemetry.io/otel/baggage"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -44,7 +47,10 @@ type ComputeNode struct {
 	// The configuration used to create this compute node.
 	config ComputeNodeConfig
 
-	controller               *controller.Controller
+	localEventConsumer eventhandler.LocalEventHandler
+	jobEventPublisher  eventhandler.JobEventHandler
+
+	localDB                  localdb.LocalDB
 	shardStateManager        *shardStateMachineManager
 	executors                map[model.EngineType]executor.Executor
 	executorsInstalledCache  map[model.EngineType]bool
@@ -66,7 +72,10 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 func NewComputeNode(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	c *controller.Controller,
+	nodeID string,
+	localDB localdb.LocalDB,
+	localEventConsumer eventhandler.LocalEventHandler,
+	jobEventPublisher eventhandler.JobEventHandler,
 	executors map[model.EngineType]executor.Executor,
 	verifiers map[model.VerifierType]verifier.Verifier,
 	publishers map[model.PublisherType]publisher.Publisher,
@@ -76,12 +85,12 @@ func NewComputeNode(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.NewComputeNode")
 	defer span.End()
 
-	computeNode, err := constructComputeNode(ctx, c, executors, verifiers, publishers, config)
+	computeNode, err := constructComputeNode(
+		ctx, nodeID, localDB, localEventConsumer, jobEventPublisher, executors, verifiers, publishers, config)
 	if err != nil {
 		return nil, err
 	}
 
-	computeNode.subscriptionSetup(ctx)
 	go computeNode.controlLoopSetup(ctx, cm)
 
 	return computeNode, nil
@@ -90,17 +99,15 @@ func NewComputeNode(
 // process the arguments and return a valid compoute node
 func constructComputeNode(
 	ctx context.Context,
-	c *controller.Controller,
+	nodeID string,
+	localDB localdb.LocalDB,
+	localEventHandler eventhandler.LocalEventHandler,
+	jobEventHandler eventhandler.JobEventHandler,
 	executors map[model.EngineType]executor.Executor,
 	verifiers map[model.VerifierType]verifier.Verifier,
 	publishers map[model.PublisherType]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
-	_, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
-	defer span.End()
-
-	nodeID := c.HostID()
-
 	shardStateManager, err := NewShardComputeStateMachineManager()
 	if err != nil {
 		return nil, err
@@ -114,7 +121,9 @@ func constructComputeNode(
 	computeNode := &ComputeNode{
 		ID:                       nodeID,
 		config:                   config,
-		controller:               c,
+		localDB:                  localDB,
+		localEventConsumer:       localEventHandler,
+		jobEventPublisher:        jobEventHandler,
 		shardStateManager:        shardStateManager,
 		executors:                executors,
 		executorsInstalledCache:  map[model.EngineType]bool{},
@@ -190,15 +199,10 @@ func (n *ComputeNode) controlLoopBidOnJobs(ctx context.Context) {
 }
 
 func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *ComputeNode) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.processBidJob")
+	ctx, span := n.newRootSpanForJob(ctx, bidShards[i].Job.ID, "processBidJob")
 	defer span.End()
 
 	shard := bidShards[i]
-
-	ctx = system.AddNodeIDToBaggage(ctx, n.ID)
-	ctx = system.AddJobIDToBaggage(ctx, shard.Job.ID)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
 
 	log.Debug().Msgf("Processing BidShard - ctx => %+v", ctx)
 	log.Debug().Msgf("Processing BidShard - baggage => %+v", baggage.FromContext(ctx))
@@ -213,12 +217,12 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 		return
 	}
 
-	jobState, err := n.controller.GetJobState(ctx, shard.Job.ID)
+	jobState, err := n.localDB.GetJobState(ctx, shard.Job.ID)
 	if err != nil {
 		shardState.Fail(ctx, "error getting job state from controller")
 		return
 	}
-	job, err := n.controller.GetJob(ctx, shard.Job.ID)
+	job, err := n.localDB.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		shardState.Fail(ctx, "error getting job instance from controller")
 		return
@@ -235,64 +239,45 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 }
 
 /*
-subscriptions
+JobEventHandler impl.
 */
-func (n *ComputeNode) subscriptionSetup(ctx context.Context) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.subscriptionsetup")
+func (n *ComputeNode) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+	ctx, span := n.newSpan(ctx, "HandleJobEvent")
 	defer span.End()
 
-	n.controller.Subscribe(func(ctx context.Context, jobEvent model.JobEvent) {
-		ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/computenode.jobEventSubscription")
-		defer span.End()
+	job, err := n.localDB.GetJob(ctx, event.JobID)
+	if err != nil {
+		log.Error().Msgf("could not get job: %s - %s", event.JobID, err.Error())
+		return nil
+	}
 
-		j, err := n.controller.GetJob(ctx, jobEvent.JobID)
-		if err != nil {
-			log.Error().Msgf("could not get job: %s - %s", jobEvent.JobID, err.Error())
-			return
+	if event.EventName == model.JobEventCreated {
+		log.Debug().Msgf("[%s] job created: %s", n.ID, job.ID)
+		return n.subscriptionEventCreated(ctx, event, job)
+	} else {
+		// we only care if the event is related to us
+		if event.TargetNodeID != n.ID {
+			return nil
 		}
-
-		ctx = system.AddNodeIDToBaggage(ctx, n.ID)
-		ctx = system.AddJobIDToBaggage(ctx, jobEvent.JobID)
-		system.AddJobIDFromBaggageToSpan(ctx, span)
-		system.AddNodeIDFromBaggageToSpan(ctx, span)
-
-		if jobEvent.EventName == model.JobEventCreated {
-			log.Debug().Msgf("[%s] job created: %s", n.ID, j.ID)
-			n.subscriptionEventCreated(ctx, jobEvent, j)
-		} else {
-			// we only care if the event is related to us
-			if jobEvent.TargetNodeID != n.ID {
-				return
-			}
-			shard := model.JobShard{
-				Job:   j,
-				Index: jobEvent.ShardIndex,
-			}
-			switch jobEvent.EventName {
-			// we have been given the goahead to run the job
-			case model.JobEventBidAccepted:
-				n.subscriptionEventBidAccepted(ctx, jobEvent, shard)
-			// our bid has not been accepted - let's remove this job from our current queue
-			case model.JobEventBidRejected:
-				n.subscriptionEventBidRejected(ctx, jobEvent, shard)
-			case model.JobEventResultsAccepted:
-				n.subscriptionEventResultsAccepted(ctx, jobEvent, shard)
-			case model.JobEventResultsRejected:
-				n.subscriptionEventResultsRejected(ctx, jobEvent, shard)
-			}
+		shard := model.JobShard{
+			Job:   job,
+			Index: event.ShardIndex,
 		}
-	})
+		switch event.EventName {
+		case model.JobEventBidAccepted, model.JobEventBidRejected, model.JobEventResultsAccepted, model.JobEventResultsRejected:
+			return n.triggerStateTransition(ctx, event, shard)
+		}
+	}
+
+	return nil
 }
 
 /*
 subscriptions -> created
 */
-func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j model.Job) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/compute/ComputeNode.subscriptionEventCreated")
+func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j model.Job) error {
+	ctx, span := n.newSpan(ctx, "subscriptionEventCreated")
 	defer span.End()
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
 
 	// Increment the number of jobs seen by this compute node:
 	jobsReceived.With(prometheus.Labels{
@@ -322,7 +307,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	// if delay is too high, just exit immediately.
 	if jobNodeDistanceDelayMs > 1000 { //nolint:gomnd
 		// drop the job on the floor, :-O
-		return
+		return nil
 	}
 	if jobNodeDistanceDelayMs > 0 {
 		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
@@ -338,15 +323,13 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 		ExecutionPlan: jobEvent.JobExecutionPlan,
 	})
 	if err != nil {
-		log.Error().Msgf("Error checking job policy: %v", err)
-		return
+		return fmt.Errorf("error checking job policy: %w", err)
 	}
 
 	if selected {
-		err = n.controller.SelectJob(ctx, jobEvent.JobID)
+		err = n.notifyJobSelected(ctx, jobEvent.JobID)
 		if err != nil {
-			log.Error().Msgf("Error selecting job on host %s: %v", n.ID, err)
-			return
+			return fmt.Errorf("error notifying selecting job: %w", err)
 		}
 
 		// now explode the job into shards and add each shard to the backlog
@@ -358,10 +341,11 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 			n.shardStateManager.StartShardStateIfNecessery(shard, n, processedRequirements)
 		}
 		if err != nil {
-			log.Error().Msgf("Error adding job to backlog on host %s: %v", n.ID, err)
-			return
+			return fmt.Errorf("error adding job to backlog: %w", err)
 		}
 	}
+
+	return nil
 }
 
 func hash(s string) int {
@@ -410,73 +394,34 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	return delay
 }
 
-/*
-subscriptions -> bid accepted
-*/
-func (n *ComputeNode) subscriptionEventBidAccepted(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/subscribe.subscriptionEventBidAccepted")
+func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
+	ctx, span := n.newSpan(ctx, event.EventName.String())
 	defer span.End()
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	// Increment the number of jobs accepted by this compute node:
-	jobsAccepted.With(prometheus.Labels{
-		"node_id":     n.ID,
-		"shard_index": strconv.Itoa(jobEvent.ShardIndex),
-		"client_id":   shard.Job.ClientID,
-	}).Inc()
 
 	if shardState, ok := n.shardStateManager.Get(shard.ID()); ok {
-		shardState.Execute(ctx)
+		switch event.EventName {
+		case model.JobEventBidAccepted:
+			// Increment the number of jobs accepted by this compute node:
+			jobsAccepted.With(prometheus.Labels{
+				"node_id":     n.ID,
+				"shard_index": strconv.Itoa(event.ShardIndex),
+				"client_id":   shard.Job.ClientID,
+			}).Inc()
+
+			shardState.Execute(ctx)
+		case model.JobEventBidRejected:
+			shardState.BidRejected(ctx)
+		case model.JobEventResultsAccepted:
+			shardState.Publish(ctx)
+		case model.JobEventResultsRejected:
+			// TODO: we are still publishing the results even when they are rejected. Shouldn't we fail instead?
+			// shardState.Fail(ctx, fmt.Sprintf("results rejected: %s", event.Status))
+			shardState.Publish(ctx)
+		}
 	} else {
-		log.Error().Msgf("Received bid accepted for unknown shard %s", shard)
+		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
 	}
-}
-
-/*
-subscriptions -> bid rejected
-*/
-func (n *ComputeNode) subscriptionEventBidRejected(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/subscribe.subscriptionEventBidRejected")
-	defer span.End()
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	if shardState, ok := n.shardStateManager.Get(shard.ID()); ok {
-		shardState.BidRejected(ctx)
-	} else {
-		log.Debug().Msgf("Received bid rejected for unknown shard %s", shard)
-	}
-}
-
-func (n *ComputeNode) subscriptionEventResultsAccepted(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/subscribe.subscriptionEventBidRejected")
-	defer span.End()
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	if shardState, ok := n.shardStateManager.Get(shard.ID()); ok {
-		shardState.Publish(ctx)
-	} else {
-		log.Debug().Msgf("Received results accepted for unknown shard %s", shard)
-	}
-}
-
-func (n *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobEvent model.JobEvent, shard model.JobShard) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/subscribe.subscriptionEventBidRejected")
-	defer span.End()
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	if shardState, ok := n.shardStateManager.Get(shard.ID()); ok {
-		shardState.Publish(ctx)
-	} else {
-		log.Debug().Msgf("Received results rejected for unknown shard %s", shard)
-	}
+	return nil
 }
 
 /*
@@ -487,10 +432,8 @@ func (n *ComputeNode) subscriptionEventResultsRejected(ctx context.Context, jobE
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
 func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, model.ResourceUsageData, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/computeNode.SelectJob")
+	ctx, span := n.newSpan(ctx, "SelectJob")
 	defer span.End()
-	system.AddNodeIDFromBaggageToSpan(ctx, span)
-	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	requirements := model.ResourceUsageData{}
 
@@ -554,13 +497,6 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	}
 
 	return true, processedRequirements, nil
-}
-
-// by bidding on a job - we are moving it from "backlog" to "active"
-// in the capacity manager
-func (n *ComputeNode) BidOnJob(ctx context.Context, shard model.JobShard) error {
-	log.Debug().Msgf("Compute node %s bidding on: %s", n.ID, shard)
-	return n.controller.BidJob(ctx, shard)
 }
 
 /*
@@ -636,7 +572,7 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 	if err != nil {
 		return err
 	}
-	err = n.controller.ShardResultsPublished(ctx, shard, publishedResult)
+	err = n.notifyShardResultsPublished(ctx, shard, publishedResult)
 	if err != nil {
 		return err
 	}
@@ -768,4 +704,99 @@ func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec mode
 	}
 
 	return total, nil
+}
+
+func (n *ComputeNode) notifyJobSelected(ctx context.Context, jobID string) error {
+	return n.localEventConsumer.HandleLocalEvent(ctx, model.JobLocalEvent{
+		EventName: model.JobLocalEventSelected,
+		JobID:     jobID,
+	})
+}
+
+func (n *ComputeNode) notifyBidJob(ctx context.Context, shard model.JobShard) error {
+	err := n.localEventConsumer.HandleLocalEvent(ctx, model.JobLocalEvent{
+		EventName:  model.JobLocalEventBid,
+		JobID:      shard.Job.ID,
+		ShardIndex: shard.Index,
+	})
+	if err != nil {
+		return err
+	}
+	ev := n.constructEvent(shard, model.JobEventBid)
+	ev.ShardIndex = shard.Index
+	return n.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+// TODO: this method is not used yet
+//
+//nolint:unused
+func (n *ComputeNode) notifyCancelJobBid(ctx context.Context, shard model.JobShard) error {
+	ev := n.constructEvent(shard, model.JobEventBidCancelled)
+	return n.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (n *ComputeNode) notifyShardExecutionFinished(
+	ctx context.Context,
+	shard model.JobShard,
+	status string,
+	proposal []byte,
+	runOutput *model.RunCommandResult,
+) error {
+	ev := n.constructEvent(shard, model.JobEventResultsProposed)
+	ev.Status = status
+	ev.VerificationProposal = proposal
+	ev.ShardIndex = shard.Index
+	ev.RunOutput = runOutput
+	return n.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (n *ComputeNode) notifyShardResultsPublished(
+	ctx context.Context,
+	shard model.JobShard,
+	publishedResults model.StorageSpec,
+) error {
+	ev := n.constructEvent(shard, model.JobEventResultsPublished)
+	ev.ShardIndex = shard.Index
+	ev.PublishedResult = publishedResults
+	return n.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (n *ComputeNode) notifyShardError(
+	ctx context.Context,
+	shard model.JobShard,
+	status string,
+	runOutput *model.RunCommandResult,
+) error {
+	ev := n.constructEvent(shard, model.JobEventError)
+	ev.Status = status
+	ev.ShardIndex = shard.Index
+	ev.RunOutput = runOutput
+	return n.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (n *ComputeNode) constructEvent(shard model.JobShard, eventName model.JobEventType) model.JobEvent {
+	return model.JobEvent{
+		SourceNodeID: n.ID,
+		JobID:        shard.Job.ID,
+		EventName:    eventName,
+		EventTime:    time.Now(),
+	}
+}
+
+func (n *ComputeNode) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	// no need to set nodeID and jobID attributes, as they should already be set by the
+	// chained event handler context provider
+	return system.Span(ctx, "pkg/computenode", name,
+		trace.WithSpanKind(trace.SpanKindInternal),
+	)
+}
+
+func (n *ComputeNode) newRootSpanForJob(ctx context.Context, jobID, name string) (context.Context, trace.Span) {
+	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), name)
+	ctx = system.AddNodeIDToBaggage(ctx, n.ID)
+	ctx = system.AddJobIDToBaggage(ctx, jobID)
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+	system.AddNodeIDFromBaggageToSpan(ctx, span)
+
+	return ctx, span
 }

@@ -107,6 +107,21 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	return result, nil
 }
 
+func (d *InMemoryDatastore) HasLocalEvent(ctx context.Context, jobID string, eventFilter localdb.LocalEventFilter) (bool, error) {
+	jobLocalEvents, err := d.GetJobLocalEvents(ctx, jobID)
+	if err != nil {
+		return false, err
+	}
+	hasEvent := false
+	for _, localEvent := range jobLocalEvents {
+		if eventFilter(localEvent) {
+			hasEvent = true
+			break
+		}
+	}
+	return hasEvent, nil
+}
+
 func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddJob")
