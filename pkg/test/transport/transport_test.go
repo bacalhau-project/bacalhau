@@ -81,14 +81,16 @@ func (suite *TransportSuite) TestTransportEvents() {
 	node := setupTest(suite.T())
 	defer node.CleanupManager.Cleanup()
 
-	spec := model.JobSpec{
+	// Create a new job
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
 		Docker: model.JobSpecDocker{
-			Image:      "image",
-			Entrypoint: []string{"entrypoint"},
-			Env:        []string{"env"},
+			Image:                "image",
+			Entrypoint:           []string{"entrypoint"},
+			EnvironmentVariables: []string{"env"},
 		},
 		Inputs: []model.StorageSpec{
 			{
@@ -97,14 +99,13 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 	}
 
-	deal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
 
 	payload := model.JobCreatePayload{
 		ClientID: "123",
-		Spec:     spec,
-		Deal:     deal,
+		Job:      j,
 	}
 
 	_, err := node.RequestorNode.SubmitJob(ctx, payload)

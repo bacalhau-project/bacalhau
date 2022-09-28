@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -78,8 +79,8 @@ func (suite *GetSuite) TestGetJob() {
 						for i := 0; i < NumberOfNodes; i++ {
 							for i := 0; i < n.numOfJobs; i++ {
 								ctx := context.Background()
-								spec, deal := publicapi.MakeGenericJob()
-								s, err := c.Submit(ctx, spec, deal, nil)
+								j := publicapi.MakeGenericJob()
+								s, err := c.Submit(ctx, j, nil)
 								require.NoError(suite.T(), err)
 								submittedJobID = s.ID // Default to the last job submitted, should be fine?
 							}
@@ -109,7 +110,7 @@ func (suite *GetSuite) TestGetJob() {
 			)
 			require.Error(suite.T(), err, "Submitting a get request with no id should error.")
 
-			outputDirWithID := fmt.Sprintf("%s/%s", outputDir, submittedJobID)
+			outputDirWithID := filepath.Join(outputDir, submittedJobID)
 			os.Mkdir(outputDirWithID, util.OS_ALL_RWX)
 
 			// Job Id at the end
@@ -126,7 +127,7 @@ func (suite *GetSuite) TestGetJob() {
 				"--api-host", host,
 				"--api-port", port,
 				"--output-dir", outputDirWithID,
-				submittedJobID[0:6],
+				submittedJobID[0:8],
 			)
 			require.NoError(suite.T(), err, "Error in getting short job: %+v", err)
 

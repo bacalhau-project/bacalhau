@@ -75,7 +75,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					outputVolumes = append(outputVolumes, strings.Join([]string{tcidOV.name, tcidOV.path}, ":"))
 				}
 
-				jobSpec, _, err := ConstructDockerJob( //nolint:funlen
+				j, err := ConstructDockerJob( //nolint:funlen
 					model.EngineNoop,
 					model.VerifierNoop,
 					model.PublisherNoop,
@@ -104,10 +104,10 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 					require.Contains(suite.T(), err.Error(), tcids.err, "Error does not contain expected - %+v - %+v", tcids, err)
 				} else {
 					require.NoError(suite.T(), err, "Error in creating spec - %+v", tcids)
-					require.Equal(suite.T(), len(jobSpec.Outputs),
+					require.Equal(suite.T(), len(j.Spec.Outputs),
 						tcids.correctLength,
 						"Length of deal outputs (%d) not the same as expected (%d). %+v",
-						len(jobSpec.Outputs),
+						len(j.Spec.Outputs),
 						tcids.correctLength,
 						tcids.outputVolumes,
 					)

@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -92,8 +93,8 @@ var devstackCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
-		portFileName := "/tmp/bacalhau-devstack.port"
-		pidFileName := "/tmp/bacalhau-devstack.pid"
+		portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
+		pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
 
 		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
 			_, err := os.Stat(portFileName)

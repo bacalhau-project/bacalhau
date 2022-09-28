@@ -26,6 +26,8 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	// Create job from file
 	RootCmd.AddCommand(createCmd)
 
+	RootCmd.AddCommand(validateCmd)
+
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
 	// TODO: RootCmd.AddCommand(wasmCmd)

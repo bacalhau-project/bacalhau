@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -48,18 +47,18 @@ func (suite *ServerSuite) TestList() {
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
-	jobs, err := c.List(ctx)
+	jobs, err := c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Empty(suite.T(), jobs)
 
 	// Submit a random job to the node:
-	spec, deal := MakeGenericJob()
+	j := MakeNoopJob()
 
-	_, err = c.Submit(ctx, spec, deal, nil)
+	_, err = c.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 
 	// Should now have one job:
-	jobs, err = c.List(ctx)
+	jobs, err = c.List(ctx, "", 10, true, "created_at", true)
 	require.NoError(suite.T(), err)
 	require.Len(suite.T(), jobs, 1)
 }
@@ -98,26 +97,6 @@ func (suite *ServerSuite) TestVarz() {
 	err := json.Unmarshal(rawVarZBody, &varZ)
 	require.NoError(suite.T(), err, "Error unmarshalling /varz data.")
 
-}
-
-func makeJob() (*model.JobSpec, *model.JobDeal) {
-	jobSpec := model.JobSpec{
-		Engine:   model.EngineDocker,
-		Verifier: model.VerifierNoop,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"cat",
-				"/data/file.txt",
-			},
-		},
-	}
-
-	jobDeal := model.JobDeal{
-		Concurrency: 1,
-	}
-
-	return &jobSpec, &jobDeal
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {

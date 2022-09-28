@@ -224,12 +224,6 @@ func readProcessOutputFromFile(f *os.File, maxVariableReturnLengthInBytes int) (
 		return "", isTruncated, err
 	}
 
-	_, err = f.Seek(0, 0) // reset to zero
-	if err != nil {
-		log.Error().Err(err).Msgf("Error seeking to beginning of file: %s", f.Name())
-		return "", isTruncated, err
-	}
-
 	fileStat, err := f.Stat()
 	if err != nil {
 		log.Error().Err(err).Msgf("Error getting file info: %s", f.Name())
@@ -414,25 +408,6 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-func RepeatedCharactersBashCommandToStdout(num int) string {
-	return repeatedCharactersBashCommand(num, false)
-}
-
-func RepeatedCharactersBashCommandToStderr(num int) string {
-	return repeatedCharactersBashCommand(num, true)
-}
-
-// Repeats '=' num times. toStderr true == stderr, false == stdout
-func repeatedCharactersBashCommand(num int, toStderr bool) string {
-	toStderrString := ""
-
-	// If going to stderr, we need to use the special bash command to write to stderr
-	if toStderr {
-		toStderrString = "| cat 1>&2"
-	}
-	return fmt.Sprintf(`for i in $(seq 1 %d) ; do echo -n "="; done %s`, num, toStderrString)
 }
 
 // TODO: #233 Replace when we move to go1.18

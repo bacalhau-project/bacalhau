@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -239,7 +240,7 @@ func NewDevStack(
 
 	log.Trace().Msg("============= STARTING PROFILING ============")
 	// devstack always records a cpu profile, it will be generally useful.
-	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
+	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
 	f, err := os.Create(cpuprofile)
 	if err != nil {
 		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic

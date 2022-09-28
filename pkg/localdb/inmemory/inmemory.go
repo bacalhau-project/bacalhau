@@ -3,10 +3,13 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"github.com/rs/zerolog/log"
 
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -35,18 +38,31 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	return res, nil
 }
 
-func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJob")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	job, ok := d.jobs[id]
-	if !ok {
-		return model.Job{}, fmt.Errorf("no job found: %s", id)
+
+	// support for short job IDs
+	if jobutils.ShortID(id) == id {
+		// passed in a short id, need to resolve the long id first
+		for k := range d.jobs {
+			if jobutils.ShortID(k) == id {
+				id = k
+				break
+			}
+		}
 	}
-	return *job, nil
+
+	j, ok := d.jobs[id]
+	if !ok {
+		return &model.Job{}, fmt.Errorf("no job found: %s", id)
+	}
+
+	return j, nil
 }
 
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
@@ -85,25 +101,67 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	return result, nil
 }
 
-func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]model.Job, error) {
+func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery) ([]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobs")
 	defer span.End()
 
 	d.mtx.RLock()
 	defer d.mtx.RUnlock()
-	result := []model.Job{}
+	result := []*model.Job{}
 
 	if query.ID != "" {
-		job, err := d.GetJob(ctx, query.ID)
+		log.Debug().Msgf("querying for single job %s", query.ID)
+		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
+			log.Error().Msgf("error getting single job %s: %s", query.ID, err)
 			return result, err
 		}
-		result = append(result, job)
+		result = append(result, j)
 	} else {
-		for _, job := range d.jobs {
-			result = append(result, *job)
+		if query.ReturnAll {
+			log.Debug().Msgf("querying for all jobs, limit %d", query.Limit)
+			for _, j := range d.jobs {
+				result = append(result, j)
+			}
+		} else if query.ClientID != "" {
+			log.Debug().Msgf("querying for jobs with filter ClientID %s", query.ClientID)
+			for _, j := range d.jobs {
+				if j.ClientID == query.ClientID {
+					result = append(result, j)
+				}
+			}
 		}
+
+		listSorter := func(i, j int) bool {
+			switch query.SortBy {
+			case "id":
+				if query.SortReverse {
+					// what does it mean to sort by ID?
+					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
+					return result[i].ID > result[j].ID
+				} else {
+					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
+					return result[i].ID < result[j].ID
+				}
+			case "created_at":
+				if query.SortReverse {
+					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
+					return result[i].CreatedAt.UTC().Unix() > result[j].CreatedAt.UTC().Unix()
+				} else {
+					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
+					return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
+				}
+			default:
+				return false
+			}
+		}
+		sort.Slice(result, listSorter)
 	}
+	// apply limit
+	if len(result) >= query.Limit {
+		result = result[:query.Limit]
+	}
+
 	return result, nil
 }
 
@@ -122,21 +180,21 @@ func (d *InMemoryDatastore) HasLocalEvent(ctx context.Context, jobID string, eve
 	return hasEvent, nil
 }
 
-func (d *InMemoryDatastore) AddJob(ctx context.Context, job model.Job) error {
+func (d *InMemoryDatastore) AddJob(ctx context.Context, j *model.Job) error {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.AddJob")
 	defer span.End()
 
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	existingJob, ok := d.jobs[job.ID]
+	existingJob, ok := d.jobs[j.ID]
 	if ok {
-		if len(job.RequesterPublicKey) > 0 {
-			existingJob.RequesterPublicKey = job.RequesterPublicKey
+		if len(j.RequesterPublicKey) > 0 {
+			existingJob.RequesterPublicKey = j.RequesterPublicKey
 		}
 		return nil
 	}
-	d.jobs[job.ID] = &job
+	d.jobs[j.ID] = j
 	return nil
 }
 

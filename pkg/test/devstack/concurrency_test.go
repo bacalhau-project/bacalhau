@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package devstack
 
 import (
@@ -70,7 +72,9 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	// create a job
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -79,14 +83,14 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 2,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	createdJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	createdJob, err := apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()

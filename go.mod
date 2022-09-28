@@ -52,6 +52,8 @@ require (
 )
 
 require (
+	github.com/imdario/mergo v0.3.5
+	github.com/invopop/jsonschema v0.6.0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipld/go-car/v2 v2.4.0
@@ -62,12 +64,16 @@ require (
 	github.com/multiformats/go-multicodec v0.5.0
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 )
 
 require (
+	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opencensus.io v0.23.0 // indirect
 )
 
@@ -272,6 +278,7 @@ require (
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.2.0 // indirect
+	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -333,5 +340,5 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	sigs.k8s.io/yaml v1.2.0
 )

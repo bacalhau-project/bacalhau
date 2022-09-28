@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package devstack
 
 import (
@@ -62,10 +64,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		cid := "apples"
 		basePath, err := os.MkdirTemp("", "combo-driver-test")
 		require.NoError(suite.T(), err)
-		filePath := fmt.Sprintf("%s/file.txt", basePath)
+		filePath := filepath.Join(basePath, "file.txt")
 		if unsealedMode {
-			os.MkdirAll(fmt.Sprintf("%s/%s", basePath, cid), os.ModePerm)
-			filePath = fmt.Sprintf("%s/%s/file.txt", basePath, cid)
+			os.MkdirAll(filepath.Join(basePath, cid), os.ModePerm)
+			filePath = filepath.Join(basePath, cid, "file.txt")
 		}
 		err = os.WriteFile(
 			filePath,
@@ -95,7 +97,8 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			cid = directoryCid
 		}
 
-		jobSpec := model.JobSpec{
+		j := &model.Job{}
+		j.Spec = model.JobSpec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
@@ -116,13 +119,13 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			Outputs: []model.StorageSpec{},
 		}
 
-		jobDeal := model.JobDeal{
+		j.Deal = model.JobDeal{
 			Concurrency: 1,
 		}
 
 		apiUri := stack.Nodes[0].APIServer.GetURI()
 		apiClient := publicapi.NewAPIClient(apiUri)
-		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+		submittedJob, err := apiClient.Submit(ctx, j, nil)
 		require.NoError(suite.T(), err)
 
 		resolver := apiClient.GetJobStateResolver()

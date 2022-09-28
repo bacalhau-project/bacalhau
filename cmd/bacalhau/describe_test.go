@@ -64,16 +64,16 @@ func (suite *DescribeSuite) TestDescribeJob() {
 	for _, tc := range tests {
 		for _, n := range numOfJobsTests {
 			func() {
-				var submittedJob model.Job
+				var submittedJob *model.Job
 				ctx := context.Background()
 				c, cm := publicapi.SetupTests(suite.T())
 				defer cm.Cleanup()
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
 					for i := 0; i < n.numOfJobs; i++ {
-						spec, deal := publicapi.MakeNoopJob()
-						spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
-						s, err := c.Submit(ctx, spec, deal, nil)
+						j := publicapi.MakeNoopJob()
+						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+						s, err := c.Submit(ctx, j, nil)
 						require.NoError(suite.T(), err)
 						submittedJob = s // Default to the last job submitted, should be fine?
 					}
@@ -81,7 +81,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				var returnedJobDescription = &jobDescription{}
+				var returnedJob = model.NewJob()
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
@@ -98,12 +98,12 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), &returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Job Id in the middle
@@ -114,28 +114,28 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 				// Short job id
 				_, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
 					"--api-host", host,
-					submittedJob.ID[0:6],
+					submittedJob.ID[0:8],
 					"--api-port", port,
 				)
 
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
-				err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+				err = yaml.Unmarshal([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
-				require.Equal(suite.T(), submittedJob.ID, returnedJobDescription.ID, "IDs do not match.")
+				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
 					submittedJob.Spec.Docker.Entrypoint[0],
-					returnedJobDescription.Spec.Docker.Entrypoint[0],
+					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
 
 			}()
@@ -154,19 +154,19 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 	for _, tc := range tests {
 		func() {
-			var submittedJob model.Job
+			var submittedJob *model.Job
 			ctx := context.Background()
 			c, cm := publicapi.SetupTests(suite.T())
 			defer cm.Cleanup()
 
-			spec, deal := publicapi.MakeNoopJob()
-			s, err := c.Submit(ctx, spec, deal, nil)
+			j := publicapi.MakeNoopJob()
+			s, err := c.Submit(ctx, j, nil)
 			require.NoError(suite.T(), err)
 			submittedJob = s // Default to the last job submitted, should be fine?
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			var returnedJobDescription = &jobDescription{}
+			var returnedJob = &model.Job{}
 
 			var args []string
 
@@ -179,7 +179,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
 			require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-			err = yaml.Unmarshal([]byte(out), returnedJobDescription)
+			err = yaml.Unmarshal([]byte(out), &returnedJob)
 			require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
 
 			// TODO: #600 When we figure out how to add events to a noop job, uncomment the below

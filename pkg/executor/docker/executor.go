@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/pkg/errors"
@@ -186,7 +187,7 @@ func (e *Executor) RunShard(
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 		}
 
-		srcd := fmt.Sprintf("%s/%s", jobResultsDir, output.Name)
+		srcd := filepath.Join(jobResultsDir, output.Name)
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
@@ -235,12 +236,14 @@ func (e *Executor) RunShard(
 	// json the job spec and pass it into all containers
 	// TODO: check if this will overwrite a user supplied version of this value
 	// (which is what we actually want to happen)
+	log.Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
 	jsonJobSpec, err := json.Marshal(shard.Job.Spec)
 	if err != nil {
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
+	log.Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
-	useEnv := append(shard.Job.Spec.Docker.Env, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
+	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 
 	containerConfig := &container.Config{
 		Image:           shard.Job.Spec.Docker.Image,
@@ -249,7 +252,7 @@ func (e *Executor) RunShard(
 		Entrypoint:      shard.Job.Spec.Docker.Entrypoint,
 		Labels:          e.jobContainerLabels(shard.Job),
 		NetworkDisabled: true,
-		WorkingDir:      shard.Job.Spec.Docker.WorkingDir,
+		WorkingDir:      shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
 	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
@@ -404,7 +407,7 @@ func (e *Executor) jobContainerName(shard model.JobShard) string {
 	return fmt.Sprintf("bacalhau-%s-%s-%d", e.ID, shard.Job.ID, shard.Index)
 }
 
-func (e *Executor) jobContainerLabels(job model.Job) map[string]string {
+func (e *Executor) jobContainerLabels(job *model.Job) map[string]string {
 	return map[string]string{
 		"bacalhau-executor": e.ID,
 		"bacalhau-jobID":    job.ID,

@@ -50,7 +50,8 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 		apiClient *publicapi.APIClient,
 		args DeterministicVerifierTestArgs,
 	) (string, error) {
-		jobSpec := model.JobSpec{
+		j := &model.Job{}
+		j.Spec = model.JobSpec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierDeterministic,
 			Publisher: model.PublisherNoop,
@@ -73,12 +74,12 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 			},
 		}
 
-		jobDeal := model.JobDeal{
+		j.Deal = model.JobDeal{
 			Concurrency: args.NodeCount,
 			Confidence:  args.Confidence,
 		}
 
-		submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+		submittedJob, err := apiClient.Submit(ctx, j, nil)
 		if err != nil {
 			return "", err
 		}

@@ -115,17 +115,17 @@ func getCandidateBids(
 func processIncomingBid(
 	ctx context.Context,
 	localDB localdb.LocalDB,
-	job model.Job,
+	j *model.Job,
 	jobEvent model.JobEvent,
 ) ([]bidQueueResult, error) {
 	// global bid events we've heard for this shard
-	bidsHeard, err := getGlobalShardBidEvents(ctx, localDB, job.ID, jobEvent.ShardIndex)
+	bidsHeard, err := getGlobalShardBidEvents(ctx, localDB, j.ID, jobEvent.ShardIndex)
 	if err != nil {
 		return nil, err
 	}
 
 	// all local events for this shard
-	localEvents, err := getLocalShardEvents(ctx, localDB, job.ID, jobEvent.ShardIndex)
+	localEvents, err := getLocalShardEvents(ctx, localDB, j.ID, jobEvent.ShardIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func processIncomingBid(
 	candidateBids := getCandidateBids(ctx, bidsHeard, bidsAccepted, bidsRejected)
 
 	results := []bidQueueResult{}
-	minBids := job.Deal.MinBids
-	concurrency := job.Deal.Concurrency
+	minBids := j.Deal.MinBids
+	concurrency := j.Deal.Concurrency
 
 	// main control switch
 	if len(bidsHeard) < minBids {

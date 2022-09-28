@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -42,8 +43,8 @@ func (s *SystemUtilsSuite) TearDownAllSuite() {
 }
 
 func (s *SystemUtilsSuite) TestBasicCommandExecution() {
-	cmd := "docker"
-	args := []string{"run", "ubuntu", "echo", fmt.Sprintf("%s", uuid.New())}
+	cmd := "bash"
+	args := []string{"-c", "echo", fmt.Sprintf("%s", uuid.New())}
 	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -56,8 +57,8 @@ func (s *SystemUtilsSuite) TestBasicCommandExecution() {
 }
 
 func (s *SystemUtilsSuite) TestInternalCommandExecution() {
-	cmd := "docker"
-	args := []string{"run", "ubuntu", "echo", fmt.Sprintf("%s", uuid.New())}
+	cmd := "bash"
+	args := []string{"-c", "echo", fmt.Sprintf("%s", uuid.New())}
 	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -71,6 +72,21 @@ func (s *SystemUtilsSuite) TestInternalCommandExecution() {
 		MaxStderrFileLengthInBytes,
 		MaxStdoutReturnLengthInBytes,
 		MaxStderrReturnLengthInBytes)
+}
+
+// Repeats '=' num times. toStderr true == stderr, false == stdout
+func repeatedCharactersBashCommand(num int, toStderr bool) string {
+	// If going to stderr, we need to use the special bash command to write to stderr
+	toStderrString := ""
+	if toStderr {
+		toStderrString = "| cat 1>&2"
+	}
+
+	return fmt.Sprintf(
+		`echo -n %s %s`,
+		strings.Repeat("=", num),
+		toStderrString,
+	)
 }
 
 func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
@@ -130,29 +146,24 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 		"maxLengthTimes10": {inputLength: GenericMaxLengthInBytes * 10,
 			expectedLength: GenericMaxLengthInBytes},
 	}
-	cmd := "docker"
+	cmd := "bash"
 	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
 	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		require.Fail(s.T(), "Could not create temp dir", err)
-	}
+	require.NoError(s.T(), err, "Could not create temp dir")
 
 	for maxSizeCaseName, maxSizeCase := range maxSizeCases {
 		for outputPipeTestName, stdOutstdErrCase := range stdOutstdErrCases {
 			for sizeTestName, tc := range testCases {
 				s.T().Run(sizeTestName, func(t *testing.T) {
-					args := []string{"run"} // Reset args
-
-					tmpDirForTC := tmpDir + "/" + sizeTestName
-					err := os.Mkdir(tmpDirForTC, 0755)
-					if err != nil {
-						require.Fail(s.T(), "Could not create temp dir", err)
+					args := []string{
+						"-c",
+						repeatedCharactersBashCommand(tc.inputLength, stdOutstdErrCase.toStderr),
 					}
-					defer os.RemoveAll(tmpDirForTC)
 
-					args = append(args, "--name", sizeTestName+uuid.NewString(), "--rm")
-					args = append(args, "ubuntu")
-					args = append(args, "bash", "-c")
+					tmpDirForTC := filepath.Join(tmpDir, sizeTestName)
+					err := os.Mkdir(tmpDirForTC, 0755)
+					require.NoError(s.T(), err, "Could not create temp dir")
+					defer os.RemoveAll(tmpDirForTC)
 
 					stdOutFileExpectedLength := Min(maxSizeCase.maxStdoutFileSize, tc.expectedLength)
 					stdErrFileExpectedLength := Min(maxSizeCase.maxStderrFileSize, tc.expectedLength)
@@ -160,19 +171,17 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 					stdErrReturnExpectedLength := Min(maxSizeCase.maxStderrReturnSize, tc.expectedLength)
 
 					if stdOutstdErrCase.toStderr {
-						args = append(args, RepeatedCharactersBashCommandToStderr(tc.inputLength))
 						stdOutFileExpectedLength = 0
 						stdOutReturnExpectedLength = 0
 					} else {
-						args = append(args, RepeatedCharactersBashCommandToStdout(tc.inputLength))
 						stdErrFileExpectedLength = 0
 						stdErrReturnExpectedLength = 0
 					}
 
 					log.Debug().Msgf("Running command: %s %s", cmd, strings.Join(args, " "))
 
-					stdoutFile := tmpDirForTC + "/stdout"
-					stderrFile := tmpDirForTC + "/stderr"
+					stdoutFile := filepath.Join(tmpDirForTC, "stdout")
+					stderrFile := filepath.Join(tmpDirForTC, "stderr")
 					runResult, err := runCommandResultsToDisk(cmd,
 						args,
 						stdoutFile,

@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package docker
 
 import (
@@ -81,7 +83,7 @@ func dockerExecutorStorageTest(
 			require.True(t, hasStorage)
 		}
 
-		job := model.Job{
+		job := &model.Job{
 			ID:              "test-job",
 			RequesterNodeID: "test-owner",
 			ClientID:        "test-client",

@@ -266,14 +266,14 @@ func cleanupForTP(tp *sdktrace.TracerProvider) cleanupTraceProviderFn {
 // ----------------------------------------
 
 func AddNodeIDToBaggage(ctx context.Context, nodeID string) context.Context {
-	return AddFieldToBaggage(ctx, model.TracerAttributeNameNodeID, nodeID)
+	return addFieldToBaggage(ctx, model.TracerAttributeNameNodeID, nodeID)
 }
 
 func AddJobIDToBaggage(ctx context.Context, jobID string) context.Context {
-	return AddFieldToBaggage(ctx, model.TracerAttributeNameJobID, jobID)
+	return addFieldToBaggage(ctx, model.TracerAttributeNameJobID, jobID)
 }
 
-func AddFieldToBaggage(ctx context.Context, key, value string) context.Context {
+func addFieldToBaggage(ctx context.Context, key, value string) context.Context {
 	b := baggage.FromContext(ctx)
 	m, err := baggage.NewMember(key, value)
 	if err != nil {

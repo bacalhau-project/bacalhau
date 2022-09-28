@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
+	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -148,14 +148,13 @@ func waitForHealthy(ctx context.Context, c *APIClient) error {
 
 // Function to get disk usage of path/disk
 func MountUsage(path string) (disk types.MountStatus) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
-	if err != nil {
+	usage := du.NewDiskUsage(path)
+	if usage == nil {
 		return
 	}
-	disk.All = fs.Blocks * uint64(fs.Bsize)
-	disk.Free = fs.Bfree * uint64(fs.Bsize)
-	disk.Used = disk.All - disk.Free
+	disk.All = usage.Size()
+	disk.Free = usage.Free()
+	disk.Used = usage.Used()
 	return
 }
 
@@ -178,7 +177,7 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeEchoJob() (model.JobSpec, model.JobDeal) {
+func MakeEchoJob() *model.Job {
 	randomSuffix, _ := uuid.NewUUID()
 	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
 		"echo",
@@ -186,14 +185,14 @@ func MakeEchoJob() (model.JobSpec, model.JobDeal) {
 	})
 }
 
-func MakeGenericJob() (model.JobSpec, model.JobDeal) {
+func MakeGenericJob() *model.Job {
 	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
 		"echo",
 		"$(date +%s)",
 	})
 }
 
-func MakeNoopJob() (model.JobSpec, model.JobDeal) {
+func MakeNoopJob() *model.Job {
 	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
 		"echo",
 		"$(date +%s)",
@@ -204,8 +203,10 @@ func MakeJob(
 	engineType model.EngineType,
 	verifierType model.VerifierType,
 	publisherType model.PublisherType,
-	entrypointArray []string) (model.JobSpec, model.JobDeal) {
-	jobSpec := model.JobSpec{
+	entrypointArray []string) *model.Job {
+	j := &model.Job{}
+
+	j.Spec = model.JobSpec{
 		Engine:    engineType,
 		Verifier:  verifierType,
 		Publisher: publisherType,
@@ -217,9 +218,9 @@ func MakeJob(
 		// Outputs: testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
 
-	return jobSpec, jobDeal
+	return j
 }

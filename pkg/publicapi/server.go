@@ -92,6 +92,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		)
 	}
 
+	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server
 	sm := http.NewServeMux()
 	sm.Handle("/list", throttle(instrument("list", apiServer.list)))
 	sm.Handle("/states", throttle(instrument("states", apiServer.states)))

@@ -402,7 +402,7 @@ func TestGetNextItems(t *testing.T) {
 				counterMap[idString] = 0
 				iterationMap[idString] = job.iterations
 				shard := model.JobShard{
-					Job:   model.Job{ID: idString},
+					Job:   &model.Job{ID: idString},
 					Index: 0,
 				}
 				capacityTracker.addToBacklog(CapacityManagerItem{
@@ -590,7 +590,7 @@ func TestGetFreeSpace(t *testing.T) {
 	}
 	capacityTracker.addToActive(CapacityManagerItem{
 		Shard: model.JobShard{
-			Job:   model.Job{ID: "test"},
+			Job:   &model.Job{ID: "test"},
 			Index: 0,
 		},
 		Requirements: model.ResourceUsageData{

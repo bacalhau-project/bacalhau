@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type JobLoader func(ctx context.Context, id string) (model.Job, error)
+type JobLoader func(ctx context.Context, id string) (*model.Job, error)
 type StateLoader func(ctx context.Context, id string) (model.JobState, error)
 
 // a function that is given a map of nodeid -> job states
@@ -36,7 +36,7 @@ func NewStateResolver(
 	}
 }
 
-func (resolver *StateResolver) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (resolver *StateResolver) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	return resolver.jobLoader(ctx, id)
 }
 
@@ -82,12 +82,12 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	job, err := resolver.jobLoader(ctx, jobID)
+	j, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
 
-	if job.Spec.Verifier == model.VerifierNoop {
+	if j.Spec.Verifier == model.VerifierNoop {
 		return "", nil
 	}
 
@@ -95,7 +95,7 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 	if err != nil {
 		return "", err
 	}
-	totalShards := GetJobTotalExecutionCount(job)
+	totalShards := GetJobTotalExecutionCount(j)
 	verifiedShardCount := GetVerifiedShardStates(jobState)
 
 	return fmt.Sprintf("%d/%d", verifiedShardCount, totalShards), nil
@@ -353,7 +353,7 @@ func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
 	return GetFilteredShardStates(jobState, model.JobStateCompleted)
 }
 
-func HasShardReachedCapacity(ctx context.Context, j model.Job, jobState model.JobState, shardIndex int) bool {
+func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.JobState, shardIndex int) bool {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.HasShardReachedCapacity")
 	defer span.End()
 

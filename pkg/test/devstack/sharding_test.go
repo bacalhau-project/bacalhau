@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package devstack
 
 import (
@@ -5,12 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -157,25 +156,10 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
-	ulimitValue := 0
+	shouldRun, err := shouldRunShardingTest()
+	require.NoError(suite.T(), err)
 
-	if _, err := exec.LookPath("ulimit"); err == nil {
-		// Test to see how many files can be open on this system...
-		cmd := exec.Command("ulimit", "-n")
-		out, err := cmd.Output()
-		require.NoError(suite.T(), err)
-
-		ulimitValue, err = strconv.Atoi(strings.TrimSpace(string(out)))
-		require.NoError(suite.T(), err)
-	} else {
-		var rLimit syscall.Rlimit
-		err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
-		require.NoError(suite.T(), err)
-		ulimitValue, err = strconv.Atoi(fmt.Sprint(rLimit.Cur))
-		require.NoError(suite.T(), err)
-	}
-
-	if ulimitValue <= 512 {
+	if !shouldRun {
 		suite.T().Skip("Skipping sharding end to end test because the ulimit value is too low.")
 	}
 
@@ -207,7 +191,8 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -240,13 +225,13 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 	require.Equal(suite.T(), batchCount, submittedJob.ExecutionPlan.TotalShards)
 
@@ -354,7 +339,8 @@ func (suite *ShardingSuite) TestNoShards() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -379,13 +365,13 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	_, err = apiClient.Submit(ctx, j, nil)
 	require.Error(suite.T(), err)
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
 }
@@ -418,7 +404,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	require.NoError(suite.T(), err)
 	for _, video := range videos {
 		err = os.WriteFile(
-			fmt.Sprintf("%s/%s", dirPath, video),
+			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)
@@ -428,7 +414,8 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -454,12 +441,12 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	_, err = apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 }

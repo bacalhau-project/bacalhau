@@ -222,13 +222,13 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 		shardState.Fail(ctx, "error getting job state from controller")
 		return
 	}
-	job, err := n.localDB.GetJob(ctx, shard.Job.ID)
+	j, err := n.localDB.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		shardState.Fail(ctx, "error getting job instance from controller")
 		return
 	}
 
-	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, job, jobState, shard.Index)
+	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, j, jobState, shard.Index)
 	if hasShardReachedCapacity {
 		log.Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", n.ID, shard)
 		shardState.Fail(ctx, "shard has reached capacity")
@@ -275,7 +275,7 @@ func (n *ComputeNode) HandleJobEvent(ctx context.Context, event model.JobEvent) 
 /*
 subscriptions -> created
 */
-func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j model.Job) error {
+func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent model.JobEvent, j *model.Job) error {
 	ctx, span := n.newSpan(ctx, "subscriptionEventCreated")
 	defer span.End()
 
@@ -529,7 +529,6 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 
 	runOutput, err = n.RunShardExecution(ctx, shard, resultFolder)
 	if err != nil {
-		// TODO: #597 Should we write stdout & stderr to prometheus?
 		jobsFailed.With(prometheus.Labels{
 			"node_id":     n.ID,
 			"shard_index": strconv.Itoa(shard.Index),

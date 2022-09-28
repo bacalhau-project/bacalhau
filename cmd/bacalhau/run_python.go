@@ -187,7 +187,7 @@ var runPythonCmd = &cobra.Command{
 
 		//nolint:lll // it's ok to be long
 		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
-		spec, deal, err := job.ConstructLanguageJob(
+		j, err := job.ConstructLanguageJob(
 			OLR.InputVolumes,
 			OLR.InputUrls,
 			OLR.OutputVolumes,
@@ -233,15 +233,15 @@ var runPythonCmd = &cobra.Command{
 
 		}
 
-		job, err := GetAPIClient().Submit(ctx, spec, deal, &buf)
+		log.Debug().Msgf(
+			"submitting job %+v", j)
+
+		returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
 		if err != nil {
 			return err
 		}
 
-		log.Debug().Msgf(
-			"submitting job with spec %+v", spec)
-
-		cmd.Printf("%s\n", job.ID)
+		cmd.Printf("%s\n", returnedJob.ID)
 		return nil
 	},
 }

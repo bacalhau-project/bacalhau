@@ -69,31 +69,31 @@ func NewRequesterNode(
 }
 
 func (node *RequesterNode) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
-	job, err := node.localDB.GetJob(ctx, event.JobID)
+	j, err := node.localDB.GetJob(ctx, event.JobID)
 	if err != nil {
 		return fmt.Errorf("could not get job: %s - %v", event.JobID, err)
 	}
 
 	// we only care about jobs that we own
-	if job.RequesterNodeID != node.ID {
+	if j.RequesterNodeID != node.ID {
 		return nil
 	}
 
 	switch event.EventName {
 	case model.JobEventBid:
-		return node.handleEventBid(ctx, job, event)
+		return node.handleEventBid(ctx, j, event)
 	case model.JobEventResultsProposed:
-		return node.handleEventShardExecutionComplete(ctx, job, event)
+		return node.handleEventShardExecutionComplete(ctx, j, event)
 	case model.JobEventError:
-		return node.handleEventShardExecutionComplete(ctx, job, event)
+		return node.handleEventShardExecutionComplete(ctx, j, event)
 	}
 	return nil
 }
 
-func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePayload) (model.Job, error) {
+func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePayload) (*model.Job, error) {
 	jobUUID, err := uuid.NewRandom()
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error creating job id: %w", err)
+		return &model.Job{}, fmt.Errorf("error creating job id: %w", err)
 	}
 	jobID := jobUUID.String()
 
@@ -109,25 +109,25 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 
 	ev := node.constructJobEvent(jobID, model.JobEventCreated)
 
-	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Spec, node.storageProviders)
+	executionPlan, err := jobutils.GenerateExecutionPlan(ctx, data.Job.Spec, node.storageProviders)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
+		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
 	ev.ClientID = data.ClientID
-	ev.JobSpec = data.Spec
-	ev.JobDeal = data.Deal
+	ev.JobSpec = data.Job.Spec
+	ev.JobDeal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	job := jobutils.ConstructJobFromEvent(ev)
 	err = node.localDB.AddJob(ctx, job)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error saving job id: %w", err)
+		return &model.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
 
 	err = node.jobEventPublisher.HandleJobEvent(jobCtx, ev)
 	if err != nil {
-		return model.Job{}, fmt.Errorf("error handling new job event: %s", err)
+		return &model.Job{}, fmt.Errorf("error handling new job event: %s", err)
 	}
 
 	return job, nil
@@ -139,7 +139,7 @@ func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal mo
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
-func (node *RequesterNode) handleEventBid(ctx context.Context, job model.Job, event model.JobEvent) error {
+func (node *RequesterNode) handleEventBid(ctx context.Context, j *model.Job, event model.JobEvent) error {
 	node.bidMutex.Lock()
 	defer node.bidMutex.Unlock()
 
@@ -148,7 +148,7 @@ func (node *RequesterNode) handleEventBid(ctx context.Context, job model.Job, ev
 	ctx, span = node.newSpan(ctx, "JobEventBid")
 	defer span.End()
 
-	bidQueueResults, err := processIncomingBid(ctx, node.localDB, job, event)
+	bidQueueResults, err := processIncomingBid(ctx, node.localDB, j, event)
 
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (node *RequesterNode) handleEventBid(ctx context.Context, job model.Job, ev
 	// we don't fail on first error from the bid queue to avoid a poison pill blocking any progress
 	var firstError error
 	for _, bidQueueResult := range bidQueueResults {
-		err := node.notifyBidDecision(ctx, job.ID, event.ShardIndex, bidQueueResult)
+		err := node.notifyBidDecision(ctx, j.ID, event.ShardIndex, bidQueueResult)
 		if err != nil && firstError == nil {
 			firstError = err
 		}
@@ -173,14 +173,14 @@ func (node *RequesterNode) handleEventBid(ctx context.Context, job model.Job, ev
 // we mark the job as "verifying" to prevent duplicate verification
 func (node *RequesterNode) handleEventShardExecutionComplete(
 	ctx context.Context,
-	job model.Job,
+	j *model.Job,
 	jobEvent model.JobEvent,
 ) error {
 	node.verifyMutex.Lock()
 	defer node.verifyMutex.Unlock()
-	err := node.attemptVerification(ctx, job)
+	err := node.attemptVerification(ctx, j)
 	if err != nil {
-		ev := node.constructJobEvent(job.ID, model.JobEventError)
+		ev := node.constructJobEvent(j.ID, model.JobEventError)
 		ev.Status = err.Error()
 		ev.ShardIndex = jobEvent.ShardIndex
 
@@ -194,14 +194,14 @@ func (node *RequesterNode) handleEventShardExecutionComplete(
 
 func (node *RequesterNode) attemptVerification(
 	ctx context.Context,
-	job model.Job,
+	j *model.Job,
 ) error {
-	jobVerifier, err := node.getVerifier(ctx, job.Spec.Verifier)
+	jobVerifier, err := node.getVerifier(ctx, j.Spec.Verifier)
 	if err != nil {
 		return err
 	}
 	// ask the verifier if we have enough to start the verification yet
-	isExecutionComplete, err := jobVerifier.IsExecutionComplete(ctx, job.ID)
+	isExecutionComplete, err := jobVerifier.IsExecutionComplete(ctx, j.ID)
 	if err != nil {
 		return err
 	}
@@ -209,14 +209,14 @@ func (node *RequesterNode) attemptVerification(
 		return nil
 	}
 	// check that we have not already verified this job
-	hasVerified, err := node.localDB.HasLocalEvent(ctx, job.ID, localdb.EventFilterByType(model.JobLocalEventVerified))
+	hasVerified, err := node.localDB.HasLocalEvent(ctx, j.ID, localdb.EventFilterByType(model.JobLocalEventVerified))
 	if err != nil {
 		return err
 	}
 	if hasVerified {
 		return nil
 	}
-	verificationResults, err := jobVerifier.VerifyJob(ctx, job.ID)
+	verificationResults, err := jobVerifier.VerifyJob(ctx, j.ID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (node *RequesterNode) attemptVerification(
 	if firstError != nil {
 		return firstError
 	}
-	return node.notifyVerificationComplete(ctx, job.ID)
+	return node.notifyVerificationComplete(ctx, j.ID)
 }
 
 //nolint:dupl // methods are not duplicates

@@ -68,7 +68,8 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -82,13 +83,13 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		},
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: 1,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	require.NoError(suite.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()

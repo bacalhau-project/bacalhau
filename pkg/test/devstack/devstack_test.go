@@ -1,3 +1,5 @@
+//go:build !(windows && unit)
+
 package devstack
 
 import (
@@ -72,7 +74,8 @@ func devStackDockerStorageTest(
 	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(t, err)
 
-	jobSpec := model.JobSpec{
+	j := &model.Job{}
+	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -81,13 +84,13 @@ func devStackDockerStorageTest(
 		Outputs:   testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.JobDeal{
 		Concurrency: nodeCount,
 	}
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, jobSpec, jobDeal, nil)
+	submittedJob, err := apiClient.Submit(ctx, j, nil)
 	require.NoError(t, err)
 
 	resolver := apiClient.GetJobStateResolver()

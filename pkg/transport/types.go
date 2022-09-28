@@ -59,5 +59,5 @@ type ListResponse struct {
 
 // data structure for a Version response
 type VersionResponse struct {
-	VersionInfo model.VersionInfo
+	VersionInfo model.BuildVersionInfo
 }

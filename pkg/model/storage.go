@@ -30,7 +30,7 @@ func ParseStorageSourceType(str string) (StorageSourceType, error) {
 	}
 
 	return storageSourceUnknown, fmt.Errorf(
-		"executor: unknown engine type '%s'", str)
+		"executor: unknown source type '%s'", str)
 }
 
 func EnsureStorageSourceType(typ StorageSourceType, str string) (StorageSourceType, error) {
@@ -69,25 +69,28 @@ func IsValidStorageSourceType(sourceType StorageSourceType) bool {
 // specific to particular execution engines, as different execution engines
 // will mount data in different ways.
 type StorageSpec struct {
+	// TODO: #645 Is this engine name the same as the Job EngineName?
 	// Engine is the execution engine that can mount the spec's data.
-	Engine     StorageSourceType `json:"engine,omitempty" yaml:"engine,omitempty"`
-	EngineName string            `json:"engine_name" yaml:"engine_name"`
+	Engine     StorageSourceType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+	EngineName string            `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
 
 	// Name of the spec's data, for reference.
-	Name string `json:"name" yaml:"name"`
+	Name string `json:"Name,omitempty" yaml:"Name,omitempty"`
 
 	// The unique ID of the data, where it makes sense (for example, in an
-	// IPFS storage spec this will be the data's CID).
-	Cid string `json:"cid" yaml:"cid"`
+	// IPFS storage spec this will be the data's Cid).
+	// NOTE: The below is capitalized to match IPFS & IPLD (even thoough it's out of golang fmt)
+	Cid string `json:"Cid,omitempty" yaml:"Cid,omitempty"`
 
 	// Source URL of the data
-	URL string `json:"url" yaml:"url"`
+	URL string `json:"URL,omitempty" yaml:"URL,omitempty"`
 
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
-	Path string `json:"path" yaml:"path"`
+	// TODO: #668 Replace with "Path" (note the caps) for yaml/json when we update the n.js file
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`
 
 	// Additional properties specific to each driver
-	Metadata map[string]string `json:"metadata" yaml:"metadata"`
+	Metadata map[string]string `json:"Metadata,omitempty" yaml:"Metadata,omitempty"`
 }

@@ -3,7 +3,7 @@ package ipfs
 import (
 	"context"
 	"errors"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -42,7 +42,7 @@ func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
 	cm *system.CleanupManager,
-	job model.Job,
+	j *model.Job,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
 ) error {
@@ -73,7 +73,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	err = loopOverResults(ctx, n, results, settings, job)
+	err = loopOverResults(ctx, n, results, settings, j)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func loopOverResults(ctx context.Context,
 	n *Node,
 	results []model.StorageSpec,
 	settings IPFSDownloadSettings,
-	job model.Job) error {
+	j *model.Job) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.loopingOverResults")
 	defer span.End()
 
@@ -127,7 +127,7 @@ func loopOverResults(ctx context.Context,
 			return err
 		}
 
-		err = moveResults(ctx, job, shardDownloadDir, finalOutputDirAbs, result)
+		err = moveResults(ctx, j, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
@@ -178,14 +178,14 @@ func fetchResult(ctx context.Context,
 }
 
 func moveResults(ctx context.Context,
-	job model.Job,
+	j *model.Job,
 	shardDownloadDir string,
 	finalOutputDirAbs string,
 	result model.StorageSpec) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
-	for _, outputVolume := range job.Spec.Outputs {
+	for _, outputVolume := range j.Spec.Outputs {
 		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)
@@ -194,10 +194,28 @@ func moveResults(ctx context.Context,
 		}
 		log.Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
 
-		_, err = system.UnsafeForUserCodeRunCommand("bash", []string{
-			"-c",
-			fmt.Sprintf("find %s -name '*' -type f -exec mv -f {} %s \\;", volumeSourceDir, volumeOutputDir),
-		})
+		moveFunc := func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				// If there is an error reading a path, we should continue with the rest
+				log.Error().Err(err).Msgf("Error with path %s", path)
+				return nil
+			}
+
+			if d.IsDir() {
+				return nil
+			}
+
+			basePath, err := filepath.Rel(volumeSourceDir, path)
+			if err != nil {
+				return err
+			}
+
+			newPath := filepath.Join(volumeOutputDir, basePath)
+			log.Debug().Msgf("Move '%s' to '%s'", path, newPath)
+			return os.Rename(path, newPath)
+		}
+
+		err = filepath.WalkDir(volumeSourceDir, moveFunc)
 		if err != nil {
 			return err
 		}
@@ -218,20 +236,37 @@ func moveResults(ctx context.Context,
 	return nil
 }
 
+func appendFile(sourcePath, sinkPath string) error {
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	sink, err := os.OpenFile(sinkPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer sink.Close()
+
+	_, err = io.Copy(sink, source)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func catStdFiles(ctx context.Context,
 	shardDownloadDir, finalOutputDirAbs string) error {
 	for _, filename := range []string{
 		"stdout",
 		"stderr",
 	} {
-		_, err := system.UnsafeForUserCodeRunCommand("bash", []string{
-			"-c",
-			fmt.Sprintf(
-				"cat %s >> %s",
-				filepath.Join(shardDownloadDir, filename),
-				filepath.Join(finalOutputDirAbs, filename),
-			),
-		})
+		err := appendFile(
+			filepath.Join(shardDownloadDir, filename),
+			filepath.Join(finalOutputDirAbs, filename),
+		)
 		if err != nil {
 			return err
 		}
@@ -251,10 +286,10 @@ func moveStdFiles(ctx context.Context,
 		"stderr",
 		"exitCode",
 	} {
-		_, err = system.UnsafeForUserCodeRunCommand("mv", []string{
+		err = os.Rename(
 			filepath.Join(shardDownloadDir, filename),
-			shardOutputDir,
-		})
+			filepath.Join(shardOutputDir, filename),
+		)
 		if err != nil {
 			return err
 		}
