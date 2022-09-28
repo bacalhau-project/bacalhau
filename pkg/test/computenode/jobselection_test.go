@@ -2,10 +2,11 @@ package computenode
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"

@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -46,18 +48,22 @@ func NewDockerIpfsStackMultiNode(
 	ipfsStack, err := devstack.NewDevStackIPFS(ctx, cm, nodes)
 	require.NoError(t, err)
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
 		IPFSClient:          ipfsStack.IPFSClients[0],
 		CleanupManager:      cm,
+		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computeNodeConfig,
 		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
 	}
 
-	injector := node.NewStandardNodeDepdencyInjector()
+	injector := node.NewStandardNodeDependencyInjector()
 	injector.VerifiersFactory = devstack.NewNoopVerifiersFactory()
 
 	node, err := node.NewNode(ctx, nodeConfig, injector)
@@ -100,23 +106,27 @@ func NewNoopStack(
 ) *TestStack {
 	cm := system.NewCleanupManager()
 
+	datastore, err := inmemory.NewInMemoryDatastore()
+	require.NoError(t, err)
+
 	transport, err := inprocess.NewInprocessTransport()
 	require.NoError(t, err)
 
 	nodeConfig := node.NodeConfig{
 		CleanupManager:      cm,
+		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computeNodeconfig,
 		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
 	}
 
-	injector := devstack.NewNoopNodeDepdencyInjector()
+	injector := devstack.NewNoopNodeDependencyInjector()
 	injector.ExecutorsFactory = devstack.NewNoopExecutorsFactoryWithConfig(noopExecutorConfig)
 
 	node, err := node.NewNode(ctx, nodeConfig, injector)
 	require.NoError(t, err)
 
-	err = node.StartControllerOnly(ctx)
+	err = transport.Start(ctx)
 	require.NoError(t, err)
 
 	return &TestStack{

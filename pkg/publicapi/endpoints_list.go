@@ -63,7 +63,7 @@ func (apiServer *APIServer) getJobsList(ctx context.Context, listReq listRequest
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.list")
 	defer span.End()
 
-	list, err := apiServer.Controller.GetJobs(ctx, localdb.JobQuery{
+	list, err := apiServer.localdb.GetJobs(ctx, localdb.JobQuery{
 		ClientID:    listReq.ClientID,
 		ID:          listReq.JobID,
 		Limit:       listReq.MaxJobs,
@@ -83,7 +83,7 @@ func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.J
 
 	var err error
 	for k := range jobList {
-		jobList[k].State, err = apiServer.Controller.GetJobState(ctx, jobList[k].ID)
+		jobList[k].State, err = apiServer.localdb.GetJobState(ctx, jobList[k].ID)
 		if err != nil {
 			log.Error().Msgf("error getting job state: %s", err)
 			return err

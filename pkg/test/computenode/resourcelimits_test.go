@@ -248,7 +248,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				},
 			},
 		)
-		ctrl, cm := stack.Node.Controller, stack.Node.CleanupManager
+		cm := stack.Node.CleanupManager
 		defer cm.Cleanup()
 
 		for _, jobResources := range testCase.jobs {
@@ -283,7 +283,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			)
 
 			require.NoError(suite.T(), err)
-			_, err = ctrl.SubmitJob(ctx, model.JobCreatePayload{
+			_, err = stack.Node.RequestorNode.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID: "123",
 				Job:      j,
 			})

@@ -15,6 +15,8 @@ type JobQuery struct {
 	SortReverse bool   `json:"sort_reverse"`
 }
 
+type LocalEventFilter func(ev model.JobLocalEvent) bool
+
 // A LocalDB will persist jobs and their state to the underlying storage.
 // It also gives an efficiernt way to retrieve jobs using queries.
 // The LocalDB is the local view of the world and the transport
@@ -28,6 +30,7 @@ type LocalDB interface {
 	GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error)
 	GetJobLocalEvents(ctx context.Context, id string) ([]model.JobLocalEvent, error)
 	GetJobs(ctx context.Context, query JobQuery) ([]*model.Job, error)
+	HasLocalEvent(ctx context.Context, jobID string, eventFilter LocalEventFilter) (bool, error)
 	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
 	AddLocalEvent(ctx context.Context, jobID string, event model.JobLocalEvent) error

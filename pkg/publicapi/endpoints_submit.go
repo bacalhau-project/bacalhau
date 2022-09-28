@@ -82,7 +82,11 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		cid, err := apiServer.Controller.PinContext(ctx, filepath.Join(tmpDir, "context"))
+		// write the "context" for a job to storage
+		// this is used to upload code files
+		// we presently just fix on ipfs to do this
+		ipfsStorage := apiServer.StorageProviders[model.StorageSourceIPFS]
+		result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -93,12 +97,12 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		//               --cid ipfs:abc --cid filecoin:efg
 		submitReq.Data.Job.Spec.Contexts = append(submitReq.Data.Job.Spec.Contexts, model.StorageSpec{
 			Engine: model.StorageSourceIPFS,
-			Cid:    cid,
+			Cid:    result.Cid,
 			Path:   "/job",
 		})
 	}
 
-	j, err := apiServer.Controller.SubmitJob(
+	j, err := apiServer.Requester.SubmitJob(
 		ctx,
 		submitReq.Data,
 	)

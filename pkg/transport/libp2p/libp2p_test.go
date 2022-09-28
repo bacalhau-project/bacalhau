@@ -63,7 +63,7 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 	requesterNodeID := requesterNodeTransport.HostID()
 	require.NoError(suite.T(), err)
 
-	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
+	computeNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) error {
 		if ev.EventName == model.JobEventBidAccepted {
 			encryptedData, err := computeNodeTransport.Encrypt(ctx, []byte(TestData), ev.SenderPublicKey)
 			require.NoError(suite.T(), err)
@@ -75,16 +75,18 @@ func (suite *Libp2pTransportSuite) TestEncryption() {
 			})
 			require.NoError(suite.T(), err)
 		}
+		return nil
 	})
 	err = computeNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
 
-	requesterNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
+	requesterNodeTransport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) error {
 		if ev.EventName == model.JobEventResultsProposed {
 			decryptedData, err := requesterNodeTransport.Decrypt(ctx, ev.VerificationProposal)
 			require.NoError(suite.T(), err)
 			require.Equal(suite.T(), TestData, string(decryptedData), "the decrypted data should be the same as the original data")
 		}
+		return nil
 	})
 	err = requesterNodeTransport.Start(ctx)
 	require.NoError(suite.T(), err)
