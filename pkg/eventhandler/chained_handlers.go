@@ -2,6 +2,7 @@ package eventhandler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -25,6 +26,10 @@ func (r *ChainedLocalEventHandler) AddHandlers(handlers ...LocalEventHandler) {
 }
 
 func (r *ChainedLocalEventHandler) HandleLocalEvent(ctx context.Context, event model.JobLocalEvent) error {
+	if r.eventHandlers == nil {
+		return fmt.Errorf("no event handlers registered")
+	}
+
 	jobCtx := r.contextProvider.GetContext(ctx, event.JobID)
 
 	// All handlers are called, unless one of them returns an error.
@@ -51,6 +56,10 @@ func (r *ChainedJobEventHandler) AddHandlers(handlers ...JobEventHandler) {
 }
 
 func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+	if r.eventHandlers == nil {
+		return fmt.Errorf("no event handlers registered")
+	}
+
 	jobCtx := r.contextProvider.GetContext(ctx, event.JobID)
 
 	// All handlers are called, unless one of them returns an error.
