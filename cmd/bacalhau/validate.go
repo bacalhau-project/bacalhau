@@ -32,12 +32,13 @@ var (
 	validateExample = templates.Examples(i18n.T(`
 		# validate a job using the data in job.yaml
 		bacalhau validate ./job.yaml
+
+		# output the jsonschema for a bacalhau job
+		bacalhau validate --output-schema
 `))
 
 	// Set Defaults (probably a better way to do this)
 	OV = NewValidateOptions()
-
-	// For the -f flag
 )
 
 type ValidateOptions struct {

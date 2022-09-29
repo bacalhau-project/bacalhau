@@ -2,22 +2,22 @@ package model
 
 type RunCommandResult struct {
 	// stdout of the run. Yaml provided for `describe` output
-	STDOUT string `json:"stdout" yaml:"Stdout"`
+	STDOUT string `json:"stdout"`
 
 	// bool describing if stdout was truncated
-	StdoutTruncated bool `json:"stdouttruncated" yaml:"StdoutTruncated"`
+	StdoutTruncated bool `json:"stdouttruncated"`
 
 	// stderr of the run.
-	STDERR string `json:"stderr" yaml:"Stderr"`
+	STDERR string `json:"stderr"`
 
 	// bool describing if stderr was truncated
-	StderrTruncated bool `json:"stderrtruncated" yaml:"StderrTruncated"`
+	StderrTruncated bool `json:"stderrtruncated"`
 
 	// exit code of the run.
-	ExitCode int `json:"exitCode" yaml:"ExitCode"`
+	ExitCode int `json:"exitCode"`
 
 	// Runner error
-	ErrorMsg string `json:"runnerError" yaml:"RunnerError"`
+	ErrorMsg string `json:"runnerError"`
 }
 
 func NewRunCommandResult() *RunCommandResult {

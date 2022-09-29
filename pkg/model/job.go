@@ -10,41 +10,41 @@ import (
 
 // Job contains data about a job request in the bacalhau network.
 type Job struct {
-	APIVersion string `json:"APIVersion" yaml:"APIVersion"`
+	APIVersion string `json:"APIVersion"`
 
 	// The unique global ID of this job in the bacalhau network.
-	ID string `json:"ID,omitempty" yaml:"ID,omitempty"`
+	ID string `json:"ID,omitempty"`
 
 	// The ID of the requester node that owns this job.
-	RequesterNodeID string `json:"RequesterNodeID,omitempty" yaml:"RequesterNodeID,omitempty"`
+	RequesterNodeID string `json:"RequesterNodeID,omitempty"`
 
 	// The public key of the requestor node that created this job
 	// This can be used to encrypt messages back to the creator
-	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
+	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
 
 	// The ID of the client that created this job.
-	ClientID string `json:"ClientID,omitempty" yaml:"ClientID,omitempty"`
+	ClientID string `json:"ClientID,omitempty"`
 
 	// The specification of this job.
-	Spec Spec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
+	Spec Spec `json:"Spec,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal Deal `json:"Deal,omitempty" yaml:"Deal,omitempty"`
+	Deal Deal `json:"Deal,omitempty"`
 
 	// how will this job be executed by nodes on the network
-	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty" yaml:"ExecutionPlan,omitempty"`
+	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
 
 	// Time the job was submitted to the bacalhau network.
-	CreatedAt time.Time `json:"CreatedAt,omitempty" yaml:"CreatedAt,omitempty"`
+	CreatedAt time.Time `json:"CreatedAt,omitempty"`
 
 	// The current state of the job
-	State JobState `json:"JobState,omitempty" yaml:"JobState,omitempty"`
+	State JobState `json:"JobState,omitempty"`
 
 	// All events associated with the job
-	Events []JobEvent `json:"JobEvents,omitempty" yaml:"JobEvents,omitempty"`
+	Events []JobEvent `json:"JobEvents,omitempty"`
 
 	// All local events associated with the job
-	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty" yaml:"LocalJobEvents,omitempty"`
+	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty"`
 }
 
 // TODO: There's probably a better way we want to globally version APIs
@@ -78,17 +78,17 @@ func NewJobWithSaneProductionDefaults() (*Job, error) {
 
 // JobWithInfo is the job request + the result of attempting to run it on the network
 type JobWithInfo struct {
-	Job            Job             `json:"Job,omitempty" yaml:"Job,omitempty"`
-	JobState       JobState        `json:"JobState,omitempty" yaml:"JobState,omitempty"`
-	JobEvents      []JobEvent      `json:"JobEvents,omitempty" yaml:"JobEvents,omitempty"`
-	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty" yaml:"JobLocalEvents,omitempty"`
+	Job            Job             `json:"Job,omitempty"`
+	JobState       JobState        `json:"JobState,omitempty"`
+	JobEvents      []JobEvent      `json:"JobEvents,omitempty"`
+	JobLocalEvents []JobLocalEvent `json:"JobLocalEvents,omitempty"`
 }
 
 // JobShard contains data about a job shard in the bacalhau network.
 type JobShard struct {
-	Job *Job `json:"Job,omitempty" yaml:"Job,omitempty"`
+	Job *Job `json:"Job,omitempty"`
 
-	Index int `json:"Index,omitempty" yaml:"Index,omitempty"`
+	Index int `json:"Index,omitempty"`
 }
 
 func (shard JobShard) ID() string {
@@ -103,7 +103,7 @@ type JobExecutionPlan struct {
 	// how many shards are there in total for this job
 	// we are expecting this number x concurrency total
 	// JobShardState objects for this job
-	TotalShards int `json:"ShardsTotal,omitempty" yaml:"ShardsTotal,omitempty"`
+	TotalShards int `json:"ShardsTotal,omitempty"`
 }
 
 // describe how we chunk a job up into shards
@@ -111,14 +111,14 @@ type JobShardingConfig struct {
 	// divide the inputs up into the smallest possible unit
 	// for example /* would mean "all top level files or folders"
 	// this being an empty string means "no sharding"
-	GlobPattern string `json:"GlobPattern,omitempty" yaml:"GlobPattern,omitempty"`
+	GlobPattern string `json:"GlobPattern,omitempty"`
 	// how many "items" are to be processed in each shard
 	// we first apply the glob pattern which will result in a flat list of items
 	// this number decides how to group that flat list into actual shards run by compute nodes
-	BatchSize int `json:"BatchSize,omitempty" yaml:"BatchSize,omitempty"`
+	BatchSize int `json:"BatchSize,omitempty"`
 	// when using multiple input volumes
 	// what path do we treat as the common mount path to apply the glob pattern to
-	BasePath string `json:"GlobPatternBasePath,omitempty" yaml:"GlobPatternBasePath,omitempty"`
+	BasePath string `json:"GlobPatternBasePath,omitempty"`
 }
 
 // The state of a job across the whole network
@@ -138,30 +138,30 @@ type JobShardingConfig struct {
 // JobShardState are updatable and the JobState is queried by the rest
 // of the system.
 type JobState struct {
-	Nodes map[string]JobNodeState `json:"Nodes" yaml:"Nodes"`
+	Nodes map[string]JobNodeState `json:"Nodes"`
 }
 
 type JobNodeState struct {
-	Shards map[int]JobShardState `json:"Shards" yaml:"Shards"`
+	Shards map[int]JobShardState `json:"Shards"`
 }
 
 type JobShardState struct {
 	// which node is running this shard
-	NodeID string `json:"NodeId" yaml:"NodeId"`
+	NodeID string `json:"NodeId"`
 	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex" yaml:"ShardIndex"`
+	ShardIndex int `json:"ShardIndex"`
 	// what is the state of the shard on this node
-	State JobStateType `json:"State" yaml:"State"`
+	State JobStateType `json:"State"`
 	// an arbitrary status message
-	Status string `json:"Status,omitempty" yaml:"Status,omitempty"`
+	Status string `json:"Status,omitempty"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty" yaml:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty" yaml:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty" yaml:"PublishedResults,omitempty"`
+	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
+	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
+	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty"`
 
 	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty" yaml:"RunOutput,omitempty"`
+	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
@@ -169,18 +169,18 @@ type JobShardState struct {
 type Deal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
-	Concurrency int `json:"Concurrency,omitempty" yaml:"Concurrency,omitempty"`
+	Concurrency int `json:"Concurrency,omitempty"`
 	// The number of nodes that must agree on a verification result
 	// this is used by the different verifiers - for example the
 	// deterministic verifier requires the winning group size
 	// to be at least this size
-	Confidence int `json:"Confidence,omitempty" yaml:"Confidence,omitempty"`
+	Confidence int `json:"Confidence,omitempty"`
 	// The minimum number of bids that must be received before the requestor
 	// node will randomly accept concurrency-many of them. This allows the
 	// requestor node to get some level of guarantee that the execution of the
 	// jobs will be spread evenly across the network (assuming that this value
 	// is some large proportion of the size of the network).
-	MinBids int `json:"MinBids,omitempty" yaml:"MinBids,omitempty"`
+	MinBids int `json:"MinBids,omitempty"`
 }
 
 // Spec is a complete specification of a job that can be run on some
@@ -188,95 +188,76 @@ type Deal struct {
 type Spec struct {
 	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
-	Engine Engine `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+	Engine Engine `json:"Engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
-	EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
+	EngineName string `json:"EngineName,omitempty"`
 
-	Verifier Verifier `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
+	Verifier Verifier `json:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
-	VerifierName string `json:"VerifierName,omitempty" yaml:"VerifierName,omitempty"`
+	VerifierName string `json:"VerifierName,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher     Publisher `json:"Publisher,omitempty" yaml:"Publisher,omitempty"`
-	PublisherName string    `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
+	Publisher     Publisher `json:"Publisher,omitempty"`
+	PublisherName string    `json:"PublisherName,omitempty"`
 
 	// executor specific data
-	Docker   JobSpecDocker   `json:"Docker,omitempty" yaml:"Docker,omitempty"`
-	Language JobSpecLanguage `json:"Language,omitempty" yaml:"Language,omitempty"`
+	Docker   JobSpecDocker   `json:"Docker,omitempty"`
+	Language JobSpecLanguage `json:"Language,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
-	Resources ResourceUsageConfig `json:"Resources,omitempty" yaml:"Resources,omitempty"`
+	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
-	Inputs []StorageSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs []StorageSpec `json:"inputs,omitempty"`
 
 	// Input volumes that will not be sharded
 	// for example to upload code into a base image
 	// every shard will get the full range of context volumes
-	Contexts []StorageSpec `json:"Contexts,omitempty" yaml:"Contexts,omitempty"`
+	Contexts []StorageSpec `json:"Contexts,omitempty"`
 
 	// the data volumes we will write in the job
 	// for example "write the results to ipfs"
-	Outputs []StorageSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs []StorageSpec `json:"outputs,omitempty"`
 
 	// Annotations on the job - could be user or machine assigned
-	Annotations []string `json:"Annotations,omitempty" yaml:"Annotations,omitempty"`
+	Annotations []string `json:"Annotations,omitempty"`
 
 	// the sharding config for this job
 	// describes how the job might be split up into parallel shards
-	Sharding JobShardingConfig `json:"Sharding,omitempty" yaml:"Sharding,omitempty"`
+	Sharding JobShardingConfig `json:"Sharding,omitempty"`
 
 	// Do not track specified by the client
-	DoNotTrack bool `json:"DoNotTrack,omitempty" yaml:"DoNotTrack,omitempty"`
+	DoNotTrack bool `json:"DoNotTrack,omitempty"`
 }
-
-// func (s *JobSpec) MarshalYAML() ([]byte, error) {
-// 	type Alias JobSpec
-
-// 	engineName, err := EnsureEngineType(s.Engine, s.EngineName)
-// 	if err != nil {
-// 		log.Error().Err(err).Msg("failed to marshal engine name")
-// 		return nil, err
-// 	}
-// 	_ = engineName
-// 	return json.Marshal(&struct {
-// 		Engine     string `json:"Engine,omitempty" yaml:"Engine,omitempty"`
-// 		EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
-// 		*Alias
-// 	}{
-// 		Engine:     "foo",
-// 		EngineName: "",
-// 	})
-// }
 
 // for VM style executors
 type JobSpecDocker struct {
 	// this should be pullable by docker
-	Image string `json:"Image,omitempty" yaml:"Image,omitempty"`
+	Image string `json:"Image,omitempty"`
 	// optionally override the default entrypoint
-	Entrypoint []string `json:"Entrypoint,omitempty" yaml:"Entrypoint,omitempty"`
+	Entrypoint []string `json:"Entrypoint,omitempty"`
 	// a map of env to run the container with
-	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty" yaml:"EnvironmentVariables,omitempty"`
+	EnvironmentVariables []string `json:"EnvironmentVariables,omitempty"`
 	// working directory inside the container
-	WorkingDirectory string `json:"WorkingDirectory,omitempty" yaml:"WorkingDirectory,omitempty"`
+	WorkingDirectory string `json:"WorkingDirectory,omitempty"`
 }
 
 // for language style executors (can target docker or wasm)
 type JobSpecLanguage struct {
-	Language        string `json:"Language,omitempty" yaml:"Language,omitempty"`               // e.g. python
-	LanguageVersion string `json:"LanguageVersion,omitempty" yaml:"LanguageVersion,omitempty"` // e.g. 3.8
+	Language        string `json:"Language,omitempty"`        // e.g. python
+	LanguageVersion string `json:"LanguageVersion,omitempty"` // e.g. 3.8
 	// must this job be run in a deterministic context?
-	Deterministic bool `json:"DeterministicExecution,omitempty" yaml:"DeterministicExecution,omitempty"`
+	Deterministic bool `json:"DeterministicExecution,omitempty"`
 	// context is a tar file stored in ipfs, containing e.g. source code and requirements
-	Context StorageSpec `json:"JobContext,omitempty" yaml:"JobContext,omitempty"`
+	Context StorageSpec `json:"JobContext,omitempty"`
 	// optional program specified on commandline, like python -c "print(1+1)"
-	Command string `json:"Command,omitempty" yaml:"Command,omitempty"`
+	Command string `json:"Command,omitempty"`
 	// optional program path relative to the context dir. one of Command or ProgramPath must be specified
-	ProgramPath string `json:"ProgramPath,omitempty" yaml:"ProgramPath,omitempty"`
+	ProgramPath string `json:"ProgramPath,omitempty"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
-	RequirementsPath string `json:"RequirementsPath,omitempty" yaml:"RequirementsPath,omitempty"`
+	RequirementsPath string `json:"RequirementsPath,omitempty"`
 }
 
 // gives us a way to keep local data against a job
@@ -284,42 +265,42 @@ type JobSpecLanguage struct {
 // can keep state against a job without broadcasting it
 // to the rest of the network
 type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName" yaml:"EventName"`
-	JobID        string            `json:"JobID" yaml:"JobID"`
-	ShardIndex   int               `json:"ShardIndex" yaml:"ShardIndex"`
-	TargetNodeID string            `json:"TargetNodeID,omitempty" yaml:"TargetNodeID,omitempty"`
+	EventName    JobLocalEventType `json:"EventName"`
+	JobID        string            `json:"JobID"`
+	ShardIndex   int               `json:"ShardIndex"`
+	TargetNodeID string            `json:"TargetNodeID,omitempty"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobID string `json:"JobID" yaml:"JobID"`
+	JobID string `json:"JobID"`
 	// what shard is this event for
-	ShardIndex int `json:"ShardIndex" yaml:"ShardIndex"`
+	ShardIndex int `json:"ShardIndex"`
 	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID" yaml:"ClientID"`
+	ClientID string `json:"ClientID"`
 	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID" yaml:"SourceNodeID"`
+	SourceNodeID string `json:"SourceNodeID"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID,omitempty" yaml:"TargetNodeID,omitempty"`
-	EventName    JobEventType `json:"EventName" yaml:"EventName"`
+	TargetNodeID string       `json:"TargetNodeID,omitempty"`
+	EventName    JobEventType `json:"EventName"`
 	// this is only defined in "create" events
-	Spec Spec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
+	Spec Spec `json:"Spec,omitempty"`
 	// this is only defined in "create" events
-	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan" yaml:"JobExecutionPlan"`
+	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan"`
 	// this is only defined in "update_deal" events
-	Deal                 Deal               `json:"Deal,omitempty" yaml:"Deal,omitempty"`
-	Status               string             `json:"Status,omitempty" yaml:"Status,omitempty"`
-	VerificationProposal []byte             `json:"VerificationProposal,omitempty" yaml:"VerificationProposal,omitempty"`
-	VerificationResult   VerificationResult `json:"VerificationResult,omitempty" yaml:"VerificationResult,omitempty"`
-	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty" yaml:"PublishedResult,omitempty"`
+	Deal                 Deal               `json:"Deal,omitempty"`
+	Status               string             `json:"Status,omitempty"`
+	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
+	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
+	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
 
-	EventTime       time.Time `json:"EventTime" yaml:"EventTime"`
-	SenderPublicKey PublicKey `json:"SenderPublicKey" yaml:"SenderPublicKey"`
+	EventTime       time.Time `json:"EventTime"`
+	SenderPublicKey PublicKey `json:"SenderPublicKey"`
 
 	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput,omitempty" yaml:"RunOutput,omitempty"`
+	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
 }
 
 // we need to use a struct for the result because:
@@ -327,21 +308,21 @@ type JobEvent struct {
 // means "I've not verified yet" or "verification failed"
 // b) we might want to add further fields to the result later
 type VerificationResult struct {
-	Complete bool `json:"Complete" yaml:"Complete"`
-	Result   bool `json:"Result" yaml:"Result"`
+	Complete bool `json:"Complete"`
+	Result   bool `json:"Result"`
 }
 
 type JobCreatePayload struct {
 	// the id of the client that is submitting the job
-	ClientID string `json:"ClientID" yaml:"ClientID"`
+	ClientID string `json:"ClientID"`
 
 	// The job specification:
-	Job *Job `json:"Job" yaml:"Job"`
+	Job *Job `json:"Job"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't
 	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty" yaml:"Context,omitempty"`
+	Context string `json:"Context,omitempty"`
 }
 
 // JobStateType is the state of a job on a particular node. Note that the job
