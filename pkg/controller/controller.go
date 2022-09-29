@@ -77,11 +77,12 @@ func (ctrl *Controller) GetLocalDB() localdb.LocalDB {
 }
 
 func (ctrl *Controller) Start(ctx context.Context) error {
-	ctrl.transport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) {
+	ctrl.transport.Subscribe(ctx, func(ctx context.Context, ev model.JobEvent) error {
 		err := ctrl.handleEvent(ctx, ev)
 		if err != nil {
 			log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
 		}
+		return err
 	})
 
 	ctrl.cleanupManager.RegisterCallback(func() error {
@@ -577,7 +578,7 @@ func (ctrl *Controller) callLocalSubscribers(ctx context.Context, ev model.JobEv
 			wg.Add(1)
 			go func(f transport.SubscribeFn) {
 				defer wg.Done()
-				f(ctx, ev)
+				_ = f(ctx, ev)
 			}(fn)
 		}
 	}()

@@ -27,28 +27,14 @@ import (
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-<<<<<<< HEAD
-	Controller  *controller.Controller
-	Publishers  map[model.Publisher]publisher.Publisher
-	Host        string
-	Port        int
-	componentMu sync.Mutex
-||||||| 5d1cca3e
-	Controller  *controller.Controller
-	Publishers  map[model.PublisherType]publisher.Publisher
-	Host        string
-	Port        int
-	componentMu sync.Mutex
-=======
 	localdb          localdb.LocalDB
 	transport        transport.Transport
 	Requester        *requesternode.RequesterNode
-	Publishers       map[model.PublisherType]publisher.Publisher
+	Publishers       map[model.Publisher]publisher.Publisher
 	StorageProviders map[model.StorageSourceType]storage.StorageProvider
 	Host             string
 	Port             int
 	componentMu      sync.Mutex
->>>>>>> main
 }
 
 func init() { //nolint:gochecknoinits
@@ -66,19 +52,11 @@ func NewServer(
 	ctx context.Context,
 	host string,
 	port int,
-<<<<<<< HEAD
-	c *controller.Controller,
-	publishers map[model.Publisher]publisher.Publisher,
-||||||| 5d1cca3e
-	c *controller.Controller,
-	publishers map[model.PublisherType]publisher.Publisher,
-=======
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
-	publishers map[model.PublisherType]publisher.Publisher,
+	publishers map[model.Publisher]publisher.Publisher,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
->>>>>>> main
 ) *APIServer {
 	a := &APIServer{
 		localdb:          localdb,

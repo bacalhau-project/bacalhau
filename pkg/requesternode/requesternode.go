@@ -24,54 +24,26 @@ import (
 type RequesterNodeConfig struct{}
 
 type RequesterNode struct {
-<<<<<<< HEAD
-	id             string
-	config         RequesterNodeConfig //nolint:gocritic
-	controller     *controller.Controller
-	verifiers      map[model.Verifier]verifier.Verifier
-	componentMutex sync.Mutex
-	bidMutex       sync.Mutex
-	verifyMutex    sync.Mutex
-||||||| 5d1cca3e
-	id             string
-	config         RequesterNodeConfig //nolint:gocritic
-	controller     *controller.Controller
-	verifiers      map[model.VerifierType]verifier.Verifier
-	componentMutex sync.Mutex
-	bidMutex       sync.Mutex
-	verifyMutex    sync.Mutex
-=======
 	ID                 string
 	localDB            localdb.LocalDB
 	localEventConsumer eventhandler.LocalEventHandler
 	jobEventPublisher  eventhandler.JobEventHandler
-	verifiers          map[model.VerifierType]verifier.Verifier
+	verifiers          map[model.Verifier]verifier.Verifier
 	storageProviders   map[model.StorageSourceType]storage.StorageProvider
 	config             RequesterNodeConfig //nolint:gocritic
 	componentMutex     sync.Mutex
 	bidMutex           sync.Mutex
 	verifyMutex        sync.Mutex
->>>>>>> main
 }
 
 func NewRequesterNode(
 	ctx context.Context,
-<<<<<<< HEAD
-	cm *system.CleanupManager,
-	c *controller.Controller,
-	verifiers map[model.Verifier]verifier.Verifier,
-||||||| 5d1cca3e
-	cm *system.CleanupManager,
-	c *controller.Controller,
-	verifiers map[model.VerifierType]verifier.Verifier,
-=======
 	nodeID string,
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	verifiers map[model.VerifierType]verifier.Verifier,
+	verifiers map[model.Verifier]verifier.Verifier,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
->>>>>>> main
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
@@ -143,8 +115,8 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	}
 
 	ev.ClientID = data.ClientID
-	ev.JobSpec = data.Job.Spec
-	ev.JobDeal = data.Job.Deal
+	ev.Spec = data.Job.Spec
+	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	job := jobutils.ConstructJobFromEvent(ev)
@@ -161,9 +133,9 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	return job, nil
 }
 
-func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
+func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal model.Deal) error {
 	ev := node.constructJobEvent(jobID, model.JobEventDealUpdated)
-	ev.JobDeal = deal
+	ev.Deal = deal
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 

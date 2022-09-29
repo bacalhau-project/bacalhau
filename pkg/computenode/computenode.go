@@ -76,9 +76,9 @@ func NewComputeNode(
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	executors map[model.EngineType]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	executors map[model.Engine]executor.Executor,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
 	//nolint:ineffassign,staticcheck
@@ -103,9 +103,9 @@ func constructComputeNode(
 	localDB localdb.LocalDB,
 	localEventHandler eventhandler.LocalEventHandler,
 	jobEventHandler eventhandler.JobEventHandler,
-	executors map[model.EngineType]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	executors map[model.Engine]executor.Executor,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	shardStateManager, err := NewShardComputeStateMachineManager()
