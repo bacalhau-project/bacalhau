@@ -149,9 +149,9 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 ## Where to go next?
 
-* [Take a look at other exmaples](..)
-* [How to run an existing workload on Bacalhau](../../../getting-started/workload-onboarding).
-* [Check out the Bacalhau CLI Reference page](../../../all-flags).
+* [Take a look at other exmaples](../../index.md)
+* [How to run an existing workload on Bacalhau](../../../getting-started/workload-onboarding.md)
+* [Check out the Bacalhau CLI Reference page](../../../all-flags.md)
 
 ## Support
 
