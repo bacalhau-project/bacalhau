@@ -23,12 +23,12 @@ func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
 }
 
-//before all the s
+// before all the s
 func (s *CreateSuite) Setups() {
 
 }
 
-//before each test
+// before each test
 func (s *CreateSuite) SetupTest() {
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd

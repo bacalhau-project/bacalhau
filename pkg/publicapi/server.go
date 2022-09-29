@@ -8,13 +8,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
+
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
-	"github.com/filecoin-project/bacalhau/pkg/controller"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -23,11 +27,28 @@ import (
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
+<<<<<<< HEAD
 	Controller  *controller.Controller
 	Publishers  map[model.Publisher]publisher.Publisher
 	Host        string
 	Port        int
 	componentMu sync.Mutex
+||||||| 5d1cca3e
+	Controller  *controller.Controller
+	Publishers  map[model.PublisherType]publisher.Publisher
+	Host        string
+	Port        int
+	componentMu sync.Mutex
+=======
+	localdb          localdb.LocalDB
+	transport        transport.Transport
+	Requester        *requesternode.RequesterNode
+	Publishers       map[model.PublisherType]publisher.Publisher
+	StorageProviders map[model.StorageSourceType]storage.StorageProvider
+	Host             string
+	Port             int
+	componentMu      sync.Mutex
+>>>>>>> main
 }
 
 func init() { //nolint:gochecknoinits
@@ -45,14 +66,28 @@ func NewServer(
 	ctx context.Context,
 	host string,
 	port int,
+<<<<<<< HEAD
 	c *controller.Controller,
 	publishers map[model.Publisher]publisher.Publisher,
+||||||| 5d1cca3e
+	c *controller.Controller,
+	publishers map[model.PublisherType]publisher.Publisher,
+=======
+	localdb localdb.LocalDB,
+	transport transport.Transport,
+	requester *requesternode.RequesterNode,
+	publishers map[model.PublisherType]publisher.Publisher,
+	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+>>>>>>> main
 ) *APIServer {
 	a := &APIServer{
-		Controller: c,
-		Publishers: publishers,
-		Host:       host,
-		Port:       port,
+		localdb:          localdb,
+		transport:        transport,
+		Requester:        requester,
+		Publishers:       publishers,
+		StorageProviders: storageProviders,
+		Host:             host,
+		Port:             port,
 	}
 	a.componentMu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -68,7 +103,7 @@ func (apiServer *APIServer) GetURI() string {
 
 // ListenAndServe listens for and serves HTTP requests against the API server.
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
-	hostID := apiServer.Controller.HostID()
+	hostID := apiServer.Requester.ID
 
 	throttle := func(h http.Handler) http.Handler {
 		return tollbooth.LimitHandler(

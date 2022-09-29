@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -36,6 +38,8 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	return SetupTestsWithPort(t, port)
 }
 
+// TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
+// and only keep simple unit tests here.
 func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting()
@@ -55,41 +59,62 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 	noopStorageProviders, err := util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
-	c, err := controller.NewController(
-		ctx,
-		cm,
-		inmemoryDatastore,
-		inprocessTransport,
-		noopStorageProviders,
-	)
-	require.NoError(t, err)
-
 	noopPublishers, err := publisher_utils.NewNoopPublishers(
 		ctx,
 		cm,
-		c.GetStateResolver(),
+		localdb.GetStateResolver(inmemoryDatastore),
 	)
 	require.NoError(t, err)
 
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
 		ctx,
 		cm,
-		c.GetStateResolver(),
+		localdb.GetStateResolver(inmemoryDatastore),
 	)
 	require.NoError(t, err)
 
-	_, err = requesternode.NewRequesterNode(
+	// prepare event handlers
+	tracerContextProvider := system.NewTracerContextProvider(inprocessTransport.HostID())
+	noopContextProvider := system.NewNoopContextProvider()
+	cm.RegisterCallback(tracerContextProvider.Shutdown)
+
+	localEventConsumer := eventhandler.NewChainedLocalEventHandler(noopContextProvider)
+	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+	jobEventPublisher := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+
+	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
-		cm,
-		c,
+		inprocessTransport.HostID(),
+		inmemoryDatastore,
+		localEventConsumer,
+		jobEventPublisher,
 		noopVerifiers,
+		noopStorageProviders,
 		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
+	localDBEventHandler := localdb.NewLocalDBEventHandler(inmemoryDatastore)
+
+	// order of event handlers is important as triggering some handlers should depend on the state of others.
+	jobEventConsumer.AddHandlers(
+		tracerContextProvider,
+		localDBEventHandler,
+		requesterNode,
+	)
+
+	jobEventPublisher.AddHandlers(
+		eventhandler.JobEventHandlerFunc(inprocessTransport.Publish),
+	)
+
+	localEventConsumer.AddHandlers(
+		localDBEventHandler,
+	)
+
 	host := "0.0.0.0"
 
-	s := NewServer(ctx, host, port, c, noopPublishers)
+	s := NewServer(ctx, host, port, inmemoryDatastore, inprocessTransport,
+		requesterNode, noopPublishers, noopStorageProviders)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(ctx, cm))

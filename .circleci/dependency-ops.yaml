@@ -3,11 +3,10 @@ scms:
   default:
     kind: "github"
     spec:
-      user: "bot"
-      email: "bot@bacalhau.org"
       owner: "filecoin-project"
       repository: "bacalhau"
-      token: "{{ requiredEnv `BACALHAU_RELEASE_TOKEN` }}"
+      username: philwinder
+      token: "{{ requiredEnv `UPDATECLI_GHP` }}"
       branch: "main"
 sources:
   default:
@@ -15,8 +14,8 @@ sources:
     spec:
       owner: "filecoin-project"
       repository: "bacalhau"
-      token: "{{ requiredEnv `BACALHAU_RELEASE_TOKEN` }}"
-      username: "bot"
+      username: philwinder
+      token: "{{ requiredEnv `UPDATECLI_GHP` }}"
       versionFilter:
         kind: latest
 pullrequests:
@@ -24,7 +23,6 @@ pullrequests:
     kind: "github"
     scmid: "default"
     spec:
-      automerge: true
       description: 'Bump ops clusters to "{{ source `default` }}". This is an automated PR.'
       draft: false
       labels:
@@ -54,4 +52,4 @@ targets:
     spec:
       file: ops/terraform/production.tfvars
       line: 1
-      content: bacalhau_version       = "{{ source `default` }}"
+      content: bacalhau_version           = "{{ source `default` }}"

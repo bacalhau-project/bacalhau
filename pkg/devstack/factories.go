@@ -3,7 +3,8 @@ package devstack
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
@@ -18,13 +19,19 @@ import (
 )
 
 // Noop implementations of node factories used to mock certain components, which is useful for testing.
-func NewNoopNodeDepdencyInjector() node.NodeDependencyInjector {
+func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 	return node.NodeDependencyInjector{
 		StorageProvidersFactory: NewNoopStorageProvidersFactory(),
 		ExecutorsFactory:        NewNoopExecutorsFactory(),
 		VerifiersFactory:        NewNoopVerifiersFactory(),
 		PublishersFactory:       NewNoopPublishersFactory(),
 	}
+}
+
+func NewNoopNode(
+	ctx context.Context,
+	config node.NodeConfig) (*node.Node, error) {
+	return node.NewNode(ctx, config, NewNoopNodeDependencyInjector())
 }
 
 type NoopStorageProvidersFactory struct {
@@ -67,9 +74,18 @@ type NoopVerifiersFactory struct{}
 
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
+<<<<<<< HEAD
 	nodeConfig node.NodeConfig,
 	controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error) {
 	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+||||||| 5d1cca3e
+	nodeConfig node.NodeConfig,
+	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error) {
+	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+=======
+	nodeConfig node.NodeConfig) (map[model.VerifierType]verifier.Verifier, error) {
+	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
+>>>>>>> main
 }
 
 func NewNoopVerifiersFactory() *NoopVerifiersFactory {
@@ -80,9 +96,18 @@ type NoopPublishersFactory struct{}
 
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
+<<<<<<< HEAD
 	nodeConfig node.NodeConfig,
 	controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error) {
 	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+||||||| 5d1cca3e
+	nodeConfig node.NodeConfig,
+	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
+	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+=======
+	nodeConfig node.NodeConfig) (map[model.PublisherType]publisher.Publisher, error) {
+	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
+>>>>>>> main
 }
 
 func NewNoopPublishersFactory() *NoopPublishersFactory {

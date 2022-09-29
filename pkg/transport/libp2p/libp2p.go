@@ -379,7 +379,10 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 			wg.Add(1)
 			go func(f transport.SubscribeFn) {
 				defer wg.Done()
-				f(jobCtx, ev)
+				err := f(jobCtx, ev)
+				if err != nil {
+					log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
+				}
 			}(fn)
 		}
 	}()
