@@ -127,9 +127,9 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
-		Path:   "/input",
-		Engine: model.StorageSourceIPFS,
-		Cid:    directoryCid,
+		Path:          "/input",
+		StorageSource: model.StorageSourceIPFS,
+		CID:           directoryCid,
 	})
 	require.NoError(suite.T(), err)
 
@@ -207,16 +207,16 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/input",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Name:   "results",
-				Path:   "/output",
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "results",
+				Path:          "/output",
 			},
 		},
 		Sharding: model.JobShardingConfig{
@@ -353,9 +353,9 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/input",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{},
@@ -428,9 +428,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/inputs",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/inputs",
 			},
 		},
 		Outputs: []model.StorageSpec{},

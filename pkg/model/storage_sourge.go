@@ -41,11 +41,11 @@ func EnsureStorageSourceType(typ StorageSourceType, str string) (StorageSourceTy
 }
 
 func EnsureStorageSpecSourceType(spec StorageSpec) (StorageSpec, error) {
-	engine, err := EnsureStorageSourceType(spec.Engine, spec.EngineName)
+	engine, err := EnsureStorageSourceType(spec.StorageSource, spec.StorageSourceName)
 	if err != nil {
 		return spec, err
 	}
-	spec.Engine = engine
+	spec.StorageSource = engine
 	return spec, nil
 }
 
@@ -65,32 +65,28 @@ func IsValidStorageSourceType(sourceType StorageSourceType) bool {
 	return sourceType > storageSourceUnknown && sourceType < storageSourceDone
 }
 
-// StorageSpec represents some data on a storage engine. Storage engines are
-// specific to particular execution engines, as different execution engines
-// will mount data in different ways.
-type StorageSpec struct {
-	// TODO: #645 Is this engine name the same as the Job EngineName?
-	// Engine is the execution engine that can mount the spec's data.
-	Engine     StorageSourceType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
-	EngineName string            `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
+func StorageSourceTypes() []StorageSourceType {
+	var res []StorageSourceType
+	for typ := storageSourceUnknown + 1; typ < storageSourceDone; typ++ {
+		res = append(res, typ)
+	}
 
-	// Name of the spec's data, for reference.
-	Name string `json:"Name,omitempty" yaml:"Name,omitempty"`
+	return res
+}
 
-	// The unique ID of the data, where it makes sense (for example, in an
-	// IPFS storage spec this will be the data's Cid).
-	// NOTE: The below is capitalized to match IPFS & IPLD (even thoough it's out of golang fmt)
-	Cid string `json:"Cid,omitempty" yaml:"Cid,omitempty"`
+func StorageSourceNames() []string {
+	var names []string
+	for _, typ := range StorageSourceTypes() {
+		names = append(names, typ.String())
+	}
+	return names
+}
+func (ss StorageSourceType) MarshalText() ([]byte, error) {
+	return []byte(ss.String()), nil
+}
 
-	// Source URL of the data
-	URL string `json:"URL,omitempty" yaml:"URL,omitempty"`
-
-	// The path that the spec's data should be mounted on, where it makes
-	// sense (for example, in a Docker storage spec this will be a filesystem
-	// path).
-	// TODO: #668 Replace with "Path" (note the caps) for yaml/json when we update the n.js file
-	Path string `json:"path,omitempty" yaml:"path,omitempty"`
-
-	// Additional properties specific to each driver
-	Metadata map[string]string `json:"Metadata,omitempty" yaml:"Metadata,omitempty"`
+func (ss *StorageSourceType) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*ss, err = ParseStorageSourceType(name)
+	return
 }

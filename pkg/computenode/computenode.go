@@ -48,10 +48,10 @@ type ComputeNode struct {
 	shardStateManager        *shardStateMachineManager
 	executors                map[model.Engine]executor.Executor
 	executorsInstalledCache  map[model.Engine]bool
-	verifiers                map[model.VerifierType]verifier.Verifier
-	verifiersInstalledCache  map[model.VerifierType]bool
-	publishers               map[model.PublisherType]publisher.Publisher
-	publishersInstalledCache map[model.PublisherType]bool
+	verifiers                map[model.Verifier]verifier.Verifier
+	verifiersInstalledCache  map[model.Verifier]bool
+	publishers               map[model.Publisher]publisher.Publisher
+	publishersInstalledCache map[model.Publisher]bool
 	capacityManager          *capacitymanager.CapacityManager
 	componentMu              sync.Mutex
 	bidMu                    sync.Mutex
@@ -68,8 +68,8 @@ func NewComputeNode(
 	cm *system.CleanupManager,
 	c *controller.Controller,
 	executors map[model.Engine]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
 	//nolint:ineffassign,staticcheck
@@ -92,8 +92,8 @@ func constructComputeNode(
 	ctx context.Context,
 	c *controller.Controller,
 	executors map[model.Engine]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/computenode.constructComputeNode")
@@ -119,9 +119,9 @@ func constructComputeNode(
 		executors:                executors,
 		executorsInstalledCache:  map[model.Engine]bool{},
 		verifiers:                verifiers,
-		verifiersInstalledCache:  map[model.VerifierType]bool{},
+		verifiersInstalledCache:  map[model.Verifier]bool{},
 		publishers:               publishers,
-		publishersInstalledCache: map[model.PublisherType]bool{},
+		publishersInstalledCache: map[model.Publisher]bool{},
 		capacityManager:          capacityManager,
 	}
 
@@ -679,7 +679,7 @@ func (n *ComputeNode) getExecutor(ctx context.Context, typ model.Engine) (execut
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getVerifier(ctx context.Context, typ model.VerifierType) (verifier.Verifier, error) {
+func (n *ComputeNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
 	v := func() *verifier.Verifier {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()
@@ -715,7 +715,7 @@ func (n *ComputeNode) getVerifier(ctx context.Context, typ model.VerifierType) (
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
+func (n *ComputeNode) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
 	p := func() *publisher.Publisher {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()

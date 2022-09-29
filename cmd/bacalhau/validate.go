@@ -9,14 +9,16 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
 	convert "sigs.k8s.io/yaml"
 
-	"github.com/invopop/jsonschema"
 	"github.com/xeipuuv/gojsonschema"
+
+	"github.com/tidwall/sjson"
 )
 
 var (
@@ -69,10 +71,9 @@ var validateCmd = &cobra.Command{
 	Args:    cobra.MinimumNArgs(0),
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		j := &model.Job{}
-		s := jsonschema.Reflect(&model.Job{})
-		jsonSchemaData, err := json.MarshalIndent(s, "", "  ")
+		jsonSchemaData, err := GenerateJobJSONSchema()
 		if err != nil {
-			return fmt.Errorf("error indenting %s", err)
+			return err
 		}
 
 		if OV.OutputSchema {
@@ -140,4 +141,45 @@ var validateCmd = &cobra.Command{
 		}
 		return err
 	},
+}
+
+func GenerateJobJSONSchema() ([]byte, error) {
+	s := jsonschema.Reflect(&model.Job{})
+	// Find key in a json document in Golang
+	// https://stackoverflow.com/questions/52953282/how-to-find-a-key-in-a-json-document
+
+	jsonSchemaData, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("error indenting %s", err)
+	}
+
+	// JSON String
+	jsonString := string(jsonSchemaData)
+
+	enumTypes := []struct {
+		Name  string
+		Path  string
+		Enums []string
+	}{
+		{Name: "Engine",
+			Path:  "$defs.Spec.properties.Engine",
+			Enums: model.EngineNames()},
+		{Name: "Verifier",
+			Path:  "$defs.Spec.properties.Verifier",
+			Enums: model.VerifierNames()},
+		{Name: "Publisher",
+			Path:  "$defs.Spec.properties.Publisher",
+			Enums: model.PublisherNames()},
+		{Name: "StorageSource",
+			Path:  "$defs.StorageSpec.properties.StorageSource",
+			Enums: model.StorageSourceNames()},
+	}
+	for _, enumType := range enumTypes {
+		// Use sjson to find the enum type path in the JSON
+		jsonString, _ = sjson.Set(jsonString, enumType.Path+".type", "string")
+
+		jsonString, _ = sjson.Set(jsonString, enumType.Path+".enum", enumType.Enums)
+	}
+
+	return []byte(jsonString), nil
 }

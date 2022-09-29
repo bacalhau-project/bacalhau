@@ -94,11 +94,11 @@ func setupTest(t *testing.T) (
 		model.EngineNoop: noopExecutor,
 	}
 
-	verifiers := map[model.VerifierType]verifier.Verifier{
+	verifiers := map[model.Verifier]verifier.Verifier{
 		model.VerifierNoop: noopVerifier,
 	}
 
-	publishers := map[model.PublisherType]publisher.Publisher{
+	publishers := map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop: noopPublisher,
 	}
 
@@ -138,8 +138,8 @@ func (suite *TransportSuite) TestTransportSanity() {
 
 	storageProviders := map[model.StorageSourceType]storage.StorageProvider{}
 	executors := map[model.Engine]executor.Executor{}
-	verifiers := map[model.VerifierType]verifier.Verifier{}
-	publishers := map[model.PublisherType]publisher.Publisher{}
+	verifiers := map[model.Verifier]verifier.Verifier{}
+	publishers := map[model.Publisher]publisher.Publisher{}
 	datastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(suite.T(), err)
 	transport, err := inprocess.NewInprocessTransport()
@@ -182,7 +182,7 @@ func (suite *TransportSuite) TestSchedulerSubmitJob() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
+				StorageSource: model.StorageSourceIPFS,
 			},
 		},
 	}
@@ -222,7 +222,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
+				StorageSource: model.StorageSourceIPFS,
 			},
 		},
 	}

@@ -147,9 +147,9 @@ func RunDeterministicVerifierTest( //nolint:funlen
 				results := []model.StorageSpec{}
 				for i := 0; i < args.ShardCount; i++ {
 					results = append(results, model.StorageSpec{
-						Engine: model.StorageSourceIPFS,
-						Cid:    fmt.Sprintf("123%d", i),
-						Path:   fmt.Sprintf("/data/file%d.txt", i),
+						StorageSource: model.StorageSourceIPFS,
+						CID:           fmt.Sprintf("123%d", i),
+						Path:          fmt.Sprintf("/data/file%d.txt", i),
 					})
 				}
 				return results, nil

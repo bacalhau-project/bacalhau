@@ -23,7 +23,7 @@ type RequesterNode struct {
 	id             string
 	config         RequesterNodeConfig //nolint:gocritic
 	controller     *controller.Controller
-	verifiers      map[model.VerifierType]verifier.Verifier
+	verifiers      map[model.Verifier]verifier.Verifier
 	componentMutex sync.Mutex
 	bidMutex       sync.Mutex
 	verifyMutex    sync.Mutex
@@ -33,7 +33,7 @@ func NewRequesterNode(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	c *controller.Controller,
-	verifiers map[model.VerifierType]verifier.Verifier,
+	verifiers map[model.Verifier]verifier.Verifier,
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
@@ -209,7 +209,7 @@ func (node *RequesterNode) attemptVerification(
 }
 
 //nolint:dupl // methods are not duplicates
-func (node *RequesterNode) getVerifier(ctx context.Context, typ model.VerifierType) (verifier.Verifier, error) {
+func (node *RequesterNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
 	node.componentMutex.Lock()
 	defer node.componentMutex.Unlock()
 

@@ -19,8 +19,8 @@ func getProbeDataWithVolume() JobSelectionPolicyProbeData {
 		Spec: model.Spec{
 			Inputs: []model.StorageSpec{
 				{
-					Engine: model.StorageSourceIPFS,
-					Cid:    "volume-id",
+					StorageSource: model.StorageSourceIPFS,
+					CID:           "volume-id",
 				},
 			},
 		},

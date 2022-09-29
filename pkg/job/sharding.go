@@ -112,9 +112,9 @@ func ExplodeShardedVolumes(
 
 	// loop over each input volume and explode it using the storage driver
 	for _, volume := range spec.Inputs {
-		storageProvider, ok := storageProviders[volume.Engine]
+		storageProvider, ok := storageProviders[volume.StorageSource]
 		if !ok {
-			return allVolumes, fmt.Errorf("storage provider not found for engine %s", volume.Engine)
+			return allVolumes, fmt.Errorf("storage provider not found for engine %s", volume.StorageSource)
 		}
 		explodedVolumes, err := storageProvider.Explode(ctx, volume)
 		if !ok {

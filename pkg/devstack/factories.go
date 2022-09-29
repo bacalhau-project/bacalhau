@@ -68,7 +68,7 @@ type NoopVerifiersFactory struct{}
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
-	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error) {
+	controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error) {
 	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
 }
 
@@ -81,7 +81,7 @@ type NoopPublishersFactory struct{}
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
-	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
+	controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error) {
 	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
 }
 

@@ -257,7 +257,7 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 		if len(completedShards) == 0 {
 			resultSummary = ""
 		} else {
-			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.Cid)
+			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
 		}
 	}
 

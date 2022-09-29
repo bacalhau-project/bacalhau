@@ -176,8 +176,8 @@ func MakeNoopJob() *model.Job {
 
 func MakeJob(
 	engineType model.Engine,
-	verifierType model.VerifierType,
-	publisherType model.PublisherType,
+	verifierType model.Verifier,
+	publisherType model.Publisher,
 	entrypointArray []string) *model.Job {
 	j := &model.Job{}
 

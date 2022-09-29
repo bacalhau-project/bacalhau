@@ -36,8 +36,8 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
 	e model.Engine,
-	v model.VerifierType,
-	p model.PublisherType,
+	v model.Verifier,
+	p model.Publisher,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,

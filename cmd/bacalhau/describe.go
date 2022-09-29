@@ -1,7 +1,8 @@
 package bacalhau
 
 import (
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"bytes"
+
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
@@ -103,13 +104,7 @@ var describeCmd = &cobra.Command{
 			return err
 		}
 
-		jobDesc := &model.Job{}
-		jobDesc.ID = j.ID
-		jobDesc.ClientID = j.ClientID
-		jobDesc.RequesterNodeID = j.RequesterNodeID
-		jobDesc.Spec = j.Spec
-		jobDesc.Deal = j.Deal
-		jobDesc.CreatedAt = j.CreatedAt
+		jobDesc := j
 		jobDesc.State = shardStates
 
 		if OD.IncludeEvents {
@@ -121,13 +116,15 @@ var describeCmd = &cobra.Command{
 			ColumnID        ColumnEnum = "id"
 			ColumnCreatedAt ColumnEnum = "created_at"
 		)
-		bytes, err := yaml.Marshal(jobDesc)
+		var b bytes.Buffer
+		yamlEncoder := yaml.NewEncoder(&b)
+		yamlEncoder.SetIndent(2) // this is what you're looking for
+		err = yamlEncoder.Encode(&jobDesc)
 		if err != nil {
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
-		stringDesc := string(bytes)
-		cmd.Print(stringDesc)
+		cmd.Print(b.String())
 
 		return nil
 	},

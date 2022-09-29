@@ -43,8 +43,8 @@ func explodeStringArray(arr []string) []model.StorageSpec {
 	results := []model.StorageSpec{}
 	for _, str := range arr {
 		results = append(results, model.StorageSpec{
-			Engine: model.StorageSourceIPFS,
-			Path:   str,
+			StorageSource: model.StorageSourceIPFS,
+			Path:          str,
 		})
 	}
 	return results

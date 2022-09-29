@@ -319,7 +319,7 @@ func (d *InMemoryDatastore) UpdateShardState(
 		shardSate.VerificationResult = update.VerificationResult
 	}
 
-	if model.IsValidStorageSourceType(update.PublishedResult.Engine) {
+	if model.IsValidStorageSourceType(update.PublishedResult.StorageSource) {
 		shardSate.PublishedResult = update.PublishedResult
 	}
 

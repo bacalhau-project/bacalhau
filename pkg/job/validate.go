@@ -16,15 +16,15 @@ func VerifyJob(j *model.Job) error {
 		return fmt.Errorf("job deal is empty")
 	}
 
-	if !model.IsValidEngineType(j.Spec.Engine) {
+	if !model.IsValidEngine(j.Spec.Engine) {
 		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String())
 	}
 
-	if !model.IsValidVerifierType(j.Spec.Verifier) {
+	if !model.IsValidVerifier(j.Spec.Verifier) {
 		return fmt.Errorf("invalid verifier type: %s", j.Spec.Verifier.String())
 	}
 
-	if !model.IsValidPublisherType(j.Spec.Publisher) {
+	if !model.IsValidPublisher(j.Spec.Publisher) {
 		return fmt.Errorf("invalid publisher type: %s", j.Spec.Publisher.String())
 	}
 
@@ -33,8 +33,8 @@ func VerifyJob(j *model.Job) error {
 	}
 
 	for _, inputVolume := range j.Spec.Inputs {
-		if !model.IsValidStorageSourceType(inputVolume.Engine) {
-			return fmt.Errorf("invalid input volume type: %s", inputVolume.Engine.String())
+		if !model.IsValidStorageSourceType(inputVolume.StorageSource) {
+			return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
 		}
 	}
 

@@ -89,32 +89,12 @@ func JobEventTypes() []JobEventType {
 	return res
 }
 
-//go:generate stringer -type=JobLocalEventType --trimprefix=JobLocalEvent
-type JobLocalEventType int
+func (je JobEventType) MarshalText() ([]byte, error) {
+	return []byte(je.String()), nil
+}
 
-const (
-	jobLocalEventUnknown JobLocalEventType = iota // must be first
-
-	// compute node
-	// this means "we have selected this job"
-	// used to avoid calling external selection hooks
-	// where capacity manager says we can't quite run
-	// the job yet but we will want to bid when there
-	// is space
-	JobLocalEventSelected
-	// compute node
-	// this means "we have bid" on a job where "we"
-	// is the compute node
-	JobLocalEventBid
-	// requester node
-	// used to avoid race conditions with the requester
-	// node knowing which bids it's already responded to
-	JobLocalEventBidAccepted
-	JobLocalEventBidRejected
-
-	// requester node
-	// flag a job as having already had it's verification done
-	JobLocalEventVerified
-
-	jobLocalEventDone // must be last
-)
+func (je *JobEventType) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*je, err = ParseJobEventType(name)
+	return
+}

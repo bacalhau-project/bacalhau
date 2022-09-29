@@ -21,7 +21,7 @@ type Job struct {
 
 	// The public key of the requestor node that created this job
 	// This can be used to encrypt messages back to the creator
-	RequesterPublicKey []byte `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
+	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
 
 	// The ID of the client that created this job.
 	ClientID string `json:"ClientID,omitempty" yaml:"ClientID,omitempty"`
@@ -193,13 +193,13 @@ type Spec struct {
 	// allow the engine to be provided as a string for yaml and JSON job specs
 	EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
 
-	Verifier VerifierType `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
+	Verifier Verifier `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
 	VerifierName string `json:"VerifierName,omitempty" yaml:"VerifierName,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher     PublisherType `json:"Publisher,omitempty" yaml:"Publisher,omitempty"`
-	PublisherName string        `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
+	Publisher     Publisher `json:"Publisher,omitempty" yaml:"Publisher,omitempty"`
+	PublisherName string    `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty" yaml:"Docker,omitempty"`
@@ -238,7 +238,7 @@ func (j Job) MarshalYAML() (interface{}, error) {
 	type alias Job
 
 	var err error
-	j.Spec.Engine, err = EnsureEngineType(j.Spec.Engine, j.Spec.EngineName)
+	j.Spec.Engine, err = EnsureEngine(j.Spec.Engine, j.Spec.EngineName)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to fix engine type")
 		return Job{}, err
@@ -340,7 +340,7 @@ type JobEvent struct {
 	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty" yaml:"PublishedResult,omitempty"`
 
 	EventTime       time.Time `json:"EventTime" yaml:"EventTime"`
-	SenderPublicKey []byte    `json:"SenderPublicKey" yaml:"SenderPublicKey"`
+	SenderPublicKey PublicKey `json:"SenderPublicKey" yaml:"SenderPublicKey"`
 
 	// RunOutput of the job
 	RunOutput *RunCommandResult `json:"RunOutput,omitempty" yaml:"RunOutput,omitempty"`

@@ -1,12 +1,8 @@
 # jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
-JobAPIVersion: v1alpha1
-Engine: 2
-# We are using the docker executor
-EngineName: docker
-Verifier: 1
-VerifierName: noop
-Publisher: 2
-PublisherName: estuary
+APIVersion: v1alpha1
+Engine: Docker
+Verifier: Noop
+Publisher: Estuary
 JobSpecDocker:
   # docker image you want to use
   Image: ubuntu
@@ -20,8 +16,7 @@ JobSpecDocker:
 inputs: []
 Contexts: []
 outputs:
-  - Engine: 1
-    EngineName: ""
+  - StorageEngine: IPFS
     # default output volume is outputs
     Name: outputs
     CID: ""

@@ -27,13 +27,13 @@ type ExecutorsFactory interface {
 type VerifiersFactory interface {
 	Get(ctx context.Context,
 		nodeConfig NodeConfig,
-		controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error)
+		controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error)
 }
 
 type PublishersFactory interface {
 	Get(ctx context.Context,
 		nodeConfig NodeConfig,
-		controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error)
+		controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error)
 }
 
 // Functions that implement the factories for easier creation of new implementations
@@ -54,24 +54,24 @@ func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (m
 type VerifiersFactoryFunc func(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error)
+	controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error)
 
 func (f VerifiersFactoryFunc) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error) {
+	controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error) {
 	return f(ctx, nodeConfig, controller)
 }
 
 type PublishersFactoryFunc func(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error)
+	controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error)
 
 func (f PublishersFactoryFunc) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
+	controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error) {
 	return f(ctx, nodeConfig, controller)
 }
 
@@ -123,7 +123,7 @@ type StandardVerifiersFactory struct{}
 func (f *StandardVerifiersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error) {
+	controller *controller.Controller) (map[model.Verifier]verifier.Verifier, error) {
 	return verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
@@ -142,7 +142,7 @@ type StandardPublishersFactory struct{}
 func (f *StandardPublishersFactory) Get(
 	ctx context.Context,
 	nodeConfig NodeConfig,
-	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
+	controller *controller.Controller) (map[model.Publisher]publisher.Publisher, error) {
 	return publisher_util.NewIPFSPublishers(
 		ctx,
 		nodeConfig.CleanupManager,

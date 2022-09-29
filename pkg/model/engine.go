@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 )
 
 //go:generate stringer -type=Engine --trimprefix=Engine
@@ -17,13 +18,13 @@ const (
 	engineDone       // must be last
 )
 
-func IsValidEngineType(e Engine) bool {
+func IsValidEngine(e Engine) bool {
 	return e > engineUnknown && e < engineDone
 }
 
-func ParseEngineType(str string) (Engine, error) {
+func ParseEngine(str string) (Engine, error) {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
-		if equal(typ.String(), str) {
+		if strings.EqualFold(typ.String(), str) {
 			return typ, nil
 		}
 	}
@@ -32,11 +33,11 @@ func ParseEngineType(str string) (Engine, error) {
 		"executor: unknown engine type '%s'", str)
 }
 
-func EnsureEngineType(typ Engine, str string) (Engine, error) {
-	if IsValidEngineType(typ) {
+func EnsureEngine(typ Engine, str string) (Engine, error) {
+	if IsValidEngine(typ) {
 		return typ, nil
 	}
-	return ParseEngineType(str)
+	return ParseEngine(str)
 }
 
 func EngineTypes() []Engine {
@@ -46,4 +47,22 @@ func EngineTypes() []Engine {
 	}
 
 	return res
+}
+
+func EngineNames() []string {
+	var names []string
+	for _, typ := range EngineTypes() {
+		names = append(names, typ.String())
+	}
+	return names
+}
+
+func (e Engine) MarshalText() ([]byte, error) {
+	return []byte(e.String()), nil
+}
+
+func (e *Engine) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*e, err = ParseEngine(name)
+	return
 }

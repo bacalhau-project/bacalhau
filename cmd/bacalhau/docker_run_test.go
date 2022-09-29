@@ -307,7 +307,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				for _, tcidIV := range tcids.inputVolumes {
 					testCIDinJobInputs := false
 					for _, jobInput := range j.Spec.Inputs {
-						if tcidIV.cid == jobInput.Cid {
+						if tcidIV.cid == jobInput.CID {
 							testCIDinJobInputs = true
 							testPath := "/inputs"
 							if tcidIV.path != "" {

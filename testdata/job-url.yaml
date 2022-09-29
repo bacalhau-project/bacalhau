@@ -1,8 +1,8 @@
-JobAPIVersion: v1alpha1
+APIVersion: v1alpha1
 Spec:
-  EngineName: docker
-  VerifierName: noop
-  PublisherName: IPFS
+  Engine: Docker
+  Verifier: Noop
+  Publisher: Estuary
   Docker:
     Image: gromacs/gromacs
     Entrypoint:
@@ -10,11 +10,11 @@ Spec:
       - -c
       - echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o output/1AKI_processed.gro -water spc
   inputs:
-    - EngineName: URLDownload
+    - StorageSource: URLDownload
       URL: https://gist.githubusercontent.com/enricorotundo/990f0ad01a50d08dfb580e4ad404870e/raw/aa6934257351a0da93f1e740c72f27128590cebc/foo_data.txt
       path: /app/foo_data_1.txt
   outputs:
-    - Engine: 1
+    - StorageSource: IPFS
       Name: output_custom
       path: /output_custom
   Sharding:

@@ -24,7 +24,7 @@ import (
 // APIServer configures a node's public REST API.
 type APIServer struct {
 	Controller  *controller.Controller
-	Publishers  map[model.PublisherType]publisher.Publisher
+	Publishers  map[model.Publisher]publisher.Publisher
 	Host        string
 	Port        int
 	componentMu sync.Mutex
@@ -46,7 +46,7 @@ func NewServer(
 	host string,
 	port int,
 	c *controller.Controller,
-	publishers map[model.PublisherType]publisher.Publisher,
+	publishers map[model.Publisher]publisher.Publisher,
 ) *APIServer {
 	a := &APIServer{
 		Controller: c,
@@ -121,7 +121,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	return err
 }
 
-func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
+func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getPublisher")
 	defer span.End()
 
