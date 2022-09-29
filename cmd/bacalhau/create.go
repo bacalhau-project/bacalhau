@@ -130,38 +130,13 @@ var createCmd = &cobra.Command{
 			}
 		}
 
+		// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
+		// so we can just use that
 		err = yaml.Unmarshal(byteResult, &j)
 		if err != nil {
 			log.Error().Err(err).Msg("Error creating a job from input. Error:")
 			return err
 		}
-
-		// the spec might use string version or proper numeric versions
-		// let's convert them to the numeric version
-		engineType, err := model.EnsureEngine(j.Spec.Engine, j.Spec.EngineName)
-		if err != nil {
-			return err
-		}
-
-		verifierType, err := model.EnsureVerifier(j.Spec.Verifier, j.Spec.VerifierName)
-		if err != nil {
-			return err
-		}
-
-		publisherType, err := model.EnsurePublisher(j.Spec.Publisher, j.Spec.PublisherName)
-		if err != nil {
-			return err
-		}
-
-		parsedInputs, err := model.EnsureStorageSpecsSourceTypes(j.Spec.Inputs)
-		if err != nil {
-			return err
-		}
-
-		j.Spec.Engine = engineType
-		j.Spec.Verifier = verifierType
-		j.Spec.Publisher = publisherType
-		j.Spec.Inputs = parsedInputs
 
 		err = ExecuteJob(ctx,
 			cm,
