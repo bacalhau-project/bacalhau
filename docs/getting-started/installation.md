@@ -105,9 +105,9 @@ Hooray, you have just sucessfully run a job on the Bacalhau network! :fish:
 
 ## Where to go next?
 
-* [How to run an existing workload on Bacalhau](../getting-started/workload-onboarding).
-* [Walk through a more data intensive demo](../examples/data-engineering/image-processing/).
-* [Check out the Bacalhau CLI Reference page](../all-flags).
+* [How to run an existing workload on Bacalhau](../getting-started/workload-onboarding.md)
+* [Walk through a more data intensive demo](../examples/data-engineering/image-processing/index.md)
+* [Check out the Bacalhau CLI Reference page](../all-flags.md)
 
 ## Support
 
