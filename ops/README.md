@@ -214,3 +214,13 @@ There is a script to help do that:
 ```bash
 bash scripts/upload_cid.sh production ~/path/to/local/content
 ```
+
+# Troubleshoot production
+
+You need to ssh into the hosts in the [bacalhau-production](https://console.cloud.google.com/welcome?project=bacalhau-production) project.
+
+Inspect the logs with:
+
+```
+journalctl -u bacalhau-daemon -f
+```
