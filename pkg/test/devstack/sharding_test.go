@@ -127,9 +127,9 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
-		Path:   "/input",
-		Engine: model.StorageSourceIPFS,
-		Cid:    directoryCid,
+		Path:          "/input",
+		StorageSource: model.StorageSourceIPFS,
+		CID:           directoryCid,
 	})
 	require.NoError(suite.T(), err)
 
@@ -192,7 +192,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -207,16 +207,16 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/input",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Name:   "results",
-				Path:   "/output",
+				StorageSource: model.StorageSourceIPFS,
+				Name:          "results",
+				Path:          "/output",
 			},
 		},
 		Sharding: model.JobShardingConfig{
@@ -225,7 +225,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 
@@ -340,7 +340,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -353,9 +353,9 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/input",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{},
@@ -365,7 +365,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 
@@ -415,7 +415,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -428,9 +428,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/inputs",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/inputs",
 			},
 		},
 		Outputs: []model.StorageSpec{},
@@ -441,7 +441,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
 

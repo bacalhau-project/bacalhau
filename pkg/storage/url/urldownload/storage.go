@@ -121,10 +121,10 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.
 func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{
 		{
-			Name:   spec.Name,
-			Engine: model.StorageSourceURLDownload,
-			Path:   spec.Path,
-			URL:    spec.URL,
+			Name:          spec.Name,
+			StorageSource: model.StorageSourceURLDownload,
+			Path:          spec.Path,
+			URL:           spec.URL,
 		},
 	}, nil
 }

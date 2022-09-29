@@ -1,9 +1,9 @@
 {
     "APIVersion": "v1alpha1",
     "Spec": {
-        "EngineName": "docker",
-        "VerifierName": "noop",
-        "PublisherName": "ipfs",
+        "Engine": "docker",
+        "Verifier": "noop",
+        "Publisher": "ipfs",
         "JobSpecDocker": {
             "Image": "gromacs/gromacs",
             "Entrypoint": [
@@ -21,7 +21,7 @@
         },
         "Inputs": [
             {
-                "EngineName": "ipfs",
+                "StorageSource": "ipfs",
                 "Name": "",
                 "CID": "QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9",
                 "Path": "/input"
@@ -29,7 +29,7 @@
         ],
         "Outputs": [
             {
-                "EngineName": "ipfs",
+                "StorageSource": "ipfs",
                 "Name": "output_custom",
                 "CID": "",
                 "Path": "/output_custom"

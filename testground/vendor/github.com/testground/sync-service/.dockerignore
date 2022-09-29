@@ -1,0 +1,14 @@
+**/.dockerignore
+**/.DS_Store
+**/.git/
+**/.gitattributes
+**/.gitignore
+**/.gitkeep
+**/.gitmodules
+**/Dockerfile
+.circleci
+**/*.md
+Makefile
+LICENSE-*
+.env.*
+**/*.toml

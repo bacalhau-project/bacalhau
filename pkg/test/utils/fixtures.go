@@ -9,8 +9,8 @@ import (
 
 // this can be extended with params but it's intent is to be a
 // "give me any old docker run spec now" function
-func DockerRunJob() model.JobSpec {
-	return model.JobSpec{
+func DockerRunJob() model.Spec {
+	return model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,

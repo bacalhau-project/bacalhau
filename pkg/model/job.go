@@ -6,12 +6,11 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v3"
 )
 
 // Job contains data about a job request in the bacalhau network.
 type Job struct {
-	JobAPIVersion string `json:"JobAPIVersion" yaml:"JobAPIVersion"`
+	APIVersion string `json:"APIVersion" yaml:"APIVersion"`
 
 	// The unique global ID of this job in the bacalhau network.
 	ID string `json:"ID,omitempty" yaml:"ID,omitempty"`
@@ -21,16 +20,16 @@ type Job struct {
 
 	// The public key of the requestor node that created this job
 	// This can be used to encrypt messages back to the creator
-	RequesterPublicKey []byte `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
+	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty" yaml:"RequesterPublicKey,omitempty"`
 
 	// The ID of the client that created this job.
 	ClientID string `json:"ClientID,omitempty" yaml:"ClientID,omitempty"`
 
 	// The specification of this job.
-	Spec JobSpec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
+	Spec Spec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
 
 	// The deal the client has made, such as which job bids they have accepted.
-	Deal JobDeal `json:"Deal,omitempty" yaml:"Deal,omitempty"`
+	Deal Deal `json:"Deal,omitempty" yaml:"Deal,omitempty"`
 
 	// how will this job be executed by nodes on the network
 	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty" yaml:"ExecutionPlan,omitempty"`
@@ -51,20 +50,20 @@ type Job struct {
 // TODO: There's probably a better way we want to globally version APIs
 func NewJob() *Job {
 	return &Job{
-		JobAPIVersion: string(V1alpha1),
+		APIVersion: V1alpha1.String(),
 	}
 }
 
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
 	err := mergo.Merge(j, &Job{
-		JobAPIVersion: string(V1alpha1),
-		Spec: JobSpec{
+		APIVersion: V1alpha1.String(),
+		Spec: Spec{
 			Engine:    EngineDocker,
 			Verifier:  VerifierNoop,
 			Publisher: PublisherEstuary,
 		},
-		Deal: JobDeal{
+		Deal: Deal{
 			Concurrency: 1,
 			Confidence:  0,
 			MinBids:     0, // 0 means no minimum before bidding
@@ -154,20 +153,20 @@ type JobShardState struct {
 	// what is the state of the shard on this node
 	State JobStateType `json:"State" yaml:"State"`
 	// an arbitrary status message
-	Status string `json:"Status" yaml:"Status"`
+	Status string `json:"Status,omitempty" yaml:"Status,omitempty"`
 	// the proposed results for this shard
 	// this will be resolved by the verifier somehow
-	VerificationProposal []byte             `json:"VerificationProposal" yaml:"VerificationProposal"`
-	VerificationResult   VerificationResult `json:"VerificationResult" yaml:"VerificationResult"`
-	PublishedResult      StorageSpec        `json:"PublishedResults" yaml:"PublishedResults"`
+	VerificationProposal []byte             `json:"VerificationProposal,omitempty" yaml:"VerificationProposal,omitempty"`
+	VerificationResult   VerificationResult `json:"VerificationResult,omitempty" yaml:"VerificationResult,omitempty"`
+	PublishedResult      StorageSpec        `json:"PublishedResults,omitempty" yaml:"PublishedResults,omitempty"`
 
 	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput" yaml:"RunOutput"`
+	RunOutput *RunCommandResult `json:"RunOutput,omitempty" yaml:"RunOutput,omitempty"`
 }
 
 // The deal the client has made with the bacalhau network.
 // This is updateable by the client who submitted the job
-type JobDeal struct {
+type Deal struct {
 	// The maximum number of concurrent compute node bids that will be
 	// accepted by the requester node on behalf of the client.
 	Concurrency int `json:"Concurrency,omitempty" yaml:"Concurrency,omitempty"`
@@ -184,22 +183,22 @@ type JobDeal struct {
 	MinBids int `json:"MinBids,omitempty" yaml:"MinBids,omitempty"`
 }
 
-// JobSpec is a complete specification of a job that can be run on some
+// Spec is a complete specification of a job that can be run on some
 // execution provider.
-type JobSpec struct {
+type Spec struct {
 	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
-	Engine EngineType `json:"Engine,omitempty" yaml:"Engine,omitempty"`
+	Engine Engine `json:"Engine,omitempty" yaml:"Engine,omitempty"`
 	// allow the engine to be provided as a string for yaml and JSON job specs
 	EngineName string `json:"EngineName,omitempty" yaml:"EngineName,omitempty"`
 
-	Verifier VerifierType `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
+	Verifier Verifier `json:"Verifier,omitempty" yaml:"Verifier,omitempty"`
 	// allow the verifier to be provided as a string for yaml and JSON job specs
 	VerifierName string `json:"VerifierName,omitempty" yaml:"VerifierName,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher     PublisherType `json:"Publisher,omitempty" yaml:"Publisher,omitempty"`
-	PublisherName string        `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
+	Publisher     Publisher `json:"Publisher,omitempty" yaml:"Publisher,omitempty"`
+	PublisherName string    `json:"PublisherName,omitempty" yaml:"PublisherName,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty" yaml:"Docker,omitempty"`
@@ -231,25 +230,6 @@ type JobSpec struct {
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty" yaml:"DoNotTrack,omitempty"`
-}
-
-// Implements the Unmarshaler interface of the yaml pkg.
-func (j Job) MarshalYAML() error {
-	type alias Job
-	node := yaml.Node{}
-	err := node.Encode(alias(j))
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal job spec")
-		return err
-	}
-
-	j.Spec.Engine, err = EnsureEngineType(j.Spec.Engine, j.Spec.EngineName)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to fix engine type")
-		return err
-	}
-
-	return nil
 }
 
 // func (s *JobSpec) MarshalYAML() ([]byte, error) {
@@ -307,7 +287,7 @@ type JobLocalEvent struct {
 	EventName    JobLocalEventType `json:"EventName" yaml:"EventName"`
 	JobID        string            `json:"JobID" yaml:"JobID"`
 	ShardIndex   int               `json:"ShardIndex" yaml:"ShardIndex"`
-	TargetNodeID string            `json:"TargetNodeID" yaml:"TargetNodeID"`
+	TargetNodeID string            `json:"TargetNodeID,omitempty" yaml:"TargetNodeID,omitempty"`
 }
 
 // we emit these to other nodes so they update their
@@ -322,24 +302,24 @@ type JobEvent struct {
 	SourceNodeID string `json:"SourceNodeID" yaml:"SourceNodeID"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID" yaml:"TargetNodeID"`
+	TargetNodeID string       `json:"TargetNodeID,omitempty" yaml:"TargetNodeID,omitempty"`
 	EventName    JobEventType `json:"EventName" yaml:"EventName"`
 	// this is only defined in "create" events
-	JobSpec JobSpec `json:"JobSpec" yaml:"JobSpec"`
+	Spec Spec `json:"Spec,omitempty" yaml:"Spec,omitempty"`
 	// this is only defined in "create" events
 	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan" yaml:"JobExecutionPlan"`
 	// this is only defined in "update_deal" events
-	JobDeal              JobDeal            `json:"JobDeal" yaml:"JobDeal"`
-	Status               string             `json:"Status" yaml:"Status"`
-	VerificationProposal []byte             `json:"VerificationProposal" yaml:"VerificationProposal"`
-	VerificationResult   VerificationResult `json:"VerificationResult" yaml:"VerificationResult"`
-	PublishedResult      StorageSpec        `json:"PublishedResult" yaml:"PublishedResult"`
+	Deal                 Deal               `json:"Deal,omitempty" yaml:"Deal,omitempty"`
+	Status               string             `json:"Status,omitempty" yaml:"Status,omitempty"`
+	VerificationProposal []byte             `json:"VerificationProposal,omitempty" yaml:"VerificationProposal,omitempty"`
+	VerificationResult   VerificationResult `json:"VerificationResult,omitempty" yaml:"VerificationResult,omitempty"`
+	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty" yaml:"PublishedResult,omitempty"`
 
 	EventTime       time.Time `json:"EventTime" yaml:"EventTime"`
-	SenderPublicKey []byte    `json:"SenderPublicKey" yaml:"SenderPublicKey"`
+	SenderPublicKey PublicKey `json:"SenderPublicKey" yaml:"SenderPublicKey"`
 
 	// RunOutput of the job
-	RunOutput *RunCommandResult `json:"RunOutput" yaml:"RunOutput"`
+	RunOutput *RunCommandResult `json:"RunOutput,omitempty" yaml:"RunOutput,omitempty"`
 }
 
 // we need to use a struct for the result because:

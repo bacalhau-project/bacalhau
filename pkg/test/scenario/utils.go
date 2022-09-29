@@ -100,9 +100,9 @@ func singleFileSetupStorageWithData(
 		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
-				Engine: driverName,
-				Cid:    fileCid,
-				Path:   mountPath,
+				StorageSource: driverName,
+				CID:           fileCid,
+				Path:          mountPath,
 			},
 		}
 		log.Debug().Msgf("Added file with cid %s", fileCid)
@@ -123,9 +123,9 @@ func singleFileSetupStorageWithFile(
 		}
 		inputStorageSpecs := []model.StorageSpec{
 			{
-				Engine: driverName,
-				Cid:    fileCid,
-				Path:   mountPath,
+				StorageSource: driverName,
+				CID:           fileCid,
+				Path:          mountPath,
 			},
 		}
 		return inputStorageSpecs, nil

@@ -58,7 +58,7 @@ type NoopExecutorsFactory struct {
 
 func (f *NoopExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.EngineType]executor.Executor, error) {
+	nodeConfig node.NodeConfig) (map[model.Engine]executor.Executor, error) {
 	return executor_util.NewNoopExecutors(ctx, nodeConfig.CleanupManager, f.config)
 }
 
@@ -74,7 +74,7 @@ type NoopVerifiersFactory struct{}
 
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.VerifierType]verifier.Verifier, error) {
+	nodeConfig node.NodeConfig) (map[model.Verifier]verifier.Verifier, error) {
 	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 
@@ -86,7 +86,7 @@ type NoopPublishersFactory struct{}
 
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.PublisherType]publisher.Publisher, error) {
+	nodeConfig node.NodeConfig) (map[model.Publisher]publisher.Publisher, error) {
 	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 

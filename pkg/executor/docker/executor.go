@@ -88,7 +88,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/docker/Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.getStorageProvider(ctx, volume.Engine)
+	s, err := e.getStorageProvider(ctx, volume.StorageSource)
 	if err != nil {
 		return false, err
 	}
@@ -97,7 +97,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	storageProvider, err := e.getStorageProvider(ctx, volume.Engine)
+	storageProvider, err := e.getStorageProvider(ctx, volume.StorageSource)
 	if err != nil {
 		return 0, err
 	}
@@ -131,7 +131,7 @@ func (e *Executor) RunShard(
 	addInputStorageHandler := func(spec model.StorageSpec) error {
 		var storageProvider storage.StorageProvider
 		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorageProvider(ctx, spec.Engine)
+		storageProvider, err = e.getStorageProvider(ctx, spec.StorageSource)
 		if err != nil {
 			return err
 		}

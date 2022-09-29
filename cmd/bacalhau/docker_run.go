@@ -251,7 +251,7 @@ var dockerRunCmd = &cobra.Command{
 
 		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
-			return errors.Wrap(err, "CreateJobSpecAndDeal:")
+			return errors.Wrap(err, "CreateJob")
 		}
 		err = jobutils.VerifyJob(j)
 		if err != nil {
@@ -304,17 +304,17 @@ func CreateJob(ctx context.Context,
 		odr.RunTimeSettings.WaitForJobToFinish = true
 	}
 
-	engineType, err := model.ParseEngineType(odr.Engine)
+	engineType, err := model.ParseEngine(odr.Engine)
 	if err != nil {
 		return &model.Job{}, err
 	}
 
-	verifierType, err := model.ParseVerifierType(odr.Verifier)
+	verifierType, err := model.ParseVerifier(odr.Verifier)
 	if err != nil {
 		return &model.Job{}, err
 	}
 
-	publisherType, err := model.ParsePublisherType(odr.Publisher)
+	publisherType, err := model.ParsePublisher(odr.Publisher)
 	if err != nil {
 		return &model.Job{}, err
 	}

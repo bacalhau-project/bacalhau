@@ -7,8 +7,8 @@ require (
 	github.com/aws/aws-sdk-go v1.44.96
 	github.com/filecoin-project/bacalhau v0.2.3
 	github.com/rs/zerolog v1.26.1
-	github.com/spf13/pflag v1.0.5
 	github.com/slack-go/slack v0.11.3
+	github.com/spf13/pflag v1.0.5
 )
 
 require (

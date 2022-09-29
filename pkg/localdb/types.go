@@ -34,7 +34,7 @@ type LocalDB interface {
 	AddJob(ctx context.Context, j *model.Job) error
 	AddEvent(ctx context.Context, jobID string, event model.JobEvent) error
 	AddLocalEvent(ctx context.Context, jobID string, event model.JobLocalEvent) error
-	UpdateJobDeal(ctx context.Context, jobID string, deal model.JobDeal) error
+	UpdateJobDeal(ctx context.Context, jobID string, deal model.Deal) error
 	UpdateShardState(
 		ctx context.Context,
 		jobID, nodeID string,

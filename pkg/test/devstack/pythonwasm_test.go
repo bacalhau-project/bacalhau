@@ -139,10 +139,10 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-devstack-python-wasm-test")
 	require.NoError(s.T(), err)
-	require.NotEmpty(s.T(), shard.PublishedResult.Cid)
+	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
-	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-	err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, finalOutputPath)
+	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
+	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, finalOutputPath)
 	require.NoError(s.T(), err)
 
 	err = filepath.Walk(finalOutputPath,

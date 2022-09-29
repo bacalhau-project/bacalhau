@@ -28,7 +28,7 @@ type RequesterNode struct {
 	localDB            localdb.LocalDB
 	localEventConsumer eventhandler.LocalEventHandler
 	jobEventPublisher  eventhandler.JobEventHandler
-	verifiers          map[model.VerifierType]verifier.Verifier
+	verifiers          map[model.Verifier]verifier.Verifier
 	storageProviders   map[model.StorageSourceType]storage.StorageProvider
 	config             RequesterNodeConfig //nolint:gocritic
 	componentMutex     sync.Mutex
@@ -42,7 +42,7 @@ func NewRequesterNode(
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	verifiers map[model.VerifierType]verifier.Verifier,
+	verifiers map[model.Verifier]verifier.Verifier,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
@@ -115,8 +115,8 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	}
 
 	ev.ClientID = data.ClientID
-	ev.JobSpec = data.Job.Spec
-	ev.JobDeal = data.Job.Deal
+	ev.Spec = data.Job.Spec
+	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
 	job := jobutils.ConstructJobFromEvent(ev)
@@ -133,9 +133,9 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	return job, nil
 }
 
-func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal model.JobDeal) error {
+func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal model.Deal) error {
 	ev := node.constructJobEvent(jobID, model.JobEventDealUpdated)
-	ev.JobDeal = deal
+	ev.Deal = deal
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
@@ -237,7 +237,7 @@ func (node *RequesterNode) attemptVerification(
 }
 
 //nolint:dupl // methods are not duplicates
-func (node *RequesterNode) getVerifier(ctx context.Context, typ model.VerifierType) (verifier.Verifier, error) {
+func (node *RequesterNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
 	node.componentMutex.Lock()
 	defer node.componentMutex.Unlock()
 

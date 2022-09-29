@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/stretchr/testify/require"
@@ -83,7 +83,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 
 	// Create a new job
 	j := &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
@@ -94,12 +94,12 @@ func (suite *TransportSuite) TestTransportEvents() {
 		},
 		Inputs: []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
+				StorageSource: model.StorageSourceIPFS,
 			},
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

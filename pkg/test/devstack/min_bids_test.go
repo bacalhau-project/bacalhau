@@ -88,9 +88,9 @@ func (suite *MinBidsSuite) TestMinBids() {
 		j.Spec = testutils.DockerRunJob()
 		j.Spec.Inputs = []model.StorageSpec{
 			{
-				Engine: model.StorageSourceIPFS,
-				Cid:    directoryCid,
-				Path:   "/input",
+				StorageSource: model.StorageSourceIPFS,
+				CID:           directoryCid,
+				Path:          "/input",
 			},
 		}
 		j.Spec.Sharding = model.JobShardingConfig{
@@ -98,7 +98,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			BatchSize:   1,
 		}
 
-		j.Deal = model.JobDeal{
+		j.Deal = model.Deal{
 			Concurrency: testCase.concurrency,
 			MinBids:     testCase.minBids,
 		}

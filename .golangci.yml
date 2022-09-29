@@ -123,9 +123,12 @@ run:
   # but default dirs are skipped independently of this option's value (see skip-dirs-use-default).
   # "/" will be replaced by current OS file path separator to properly work on Windows.
   skip-dirs:
-    - experimental
-    - vendor
-    - viz
+    - experimental$
+    - vendor$
+    - viz$
+    - testground$
+    - ops$
+    - testdata$
   # Enables skipping of directories:
   # - vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
   # Default: true

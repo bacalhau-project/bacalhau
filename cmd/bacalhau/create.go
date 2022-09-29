@@ -138,17 +138,17 @@ var createCmd = &cobra.Command{
 
 		// the spec might use string version or proper numeric versions
 		// let's convert them to the numeric version
-		engineType, err := model.EnsureEngineType(j.Spec.Engine, j.Spec.EngineName)
+		engineType, err := model.EnsureEngine(j.Spec.Engine, j.Spec.EngineName)
 		if err != nil {
 			return err
 		}
 
-		verifierType, err := model.EnsureVerifierType(j.Spec.Verifier, j.Spec.VerifierName)
+		verifierType, err := model.EnsureVerifier(j.Spec.Verifier, j.Spec.VerifierName)
 		if err != nil {
 			return err
 		}
 
-		publisherType, err := model.EnsurePublisherType(j.Spec.Publisher, j.Spec.PublisherName)
+		publisherType, err := model.EnsurePublisher(j.Spec.Publisher, j.Spec.PublisherName)
 		if err != nil {
 			return err
 		}

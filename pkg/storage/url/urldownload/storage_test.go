@@ -47,9 +47,9 @@ func TestHasStorageLocally(t *testing.T) {
 	}
 
 	spec := model.StorageSpec{
-		Engine: model.StorageSourceURLDownload,
-		URL:    "foo",
-		Path:   "foo",
+		StorageSource: model.StorageSourceURLDownload,
+		URL:           "foo",
+		Path:          "foo",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
@@ -79,9 +79,9 @@ func TestPrepareStorage(t *testing.T) {
 
 	serverURL := ts.URL
 	spec := model.StorageSpec{
-		Engine: model.StorageSourceURLDownload,
-		URL:    serverURL + "/testfile",
-		Path:   "/foo",
+		StorageSource: model.StorageSourceURLDownload,
+		URL:           serverURL + "/testfile",
+		Path:          "/foo",
 	}
 
 	volume, err := sp.PrepareStorage(ctx, spec)

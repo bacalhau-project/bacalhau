@@ -30,7 +30,7 @@ type APIServer struct {
 	localdb          localdb.LocalDB
 	transport        transport.Transport
 	Requester        *requesternode.RequesterNode
-	Publishers       map[model.PublisherType]publisher.Publisher
+	Publishers       map[model.Publisher]publisher.Publisher
 	StorageProviders map[model.StorageSourceType]storage.StorageProvider
 	Host             string
 	Port             int
@@ -55,7 +55,7 @@ func NewServer(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
-	publishers map[model.PublisherType]publisher.Publisher,
+	publishers map[model.Publisher]publisher.Publisher,
 	storageProviders map[model.StorageSourceType]storage.StorageProvider,
 ) *APIServer {
 	a := &APIServer{
@@ -134,7 +134,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	return err
 }
 
-func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
+func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getPublisher")
 	defer span.End()
 

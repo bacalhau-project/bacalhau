@@ -200,13 +200,13 @@ func MakeNoopJob() *model.Job {
 }
 
 func MakeJob(
-	engineType model.EngineType,
-	verifierType model.VerifierType,
-	publisherType model.PublisherType,
+	engineType model.Engine,
+	verifierType model.Verifier,
+	publisherType model.Publisher,
 	entrypointArray []string) *model.Job {
 	j := &model.Job{}
 
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    engineType,
 		Verifier:  verifierType,
 		Publisher: publisherType,
@@ -218,7 +218,7 @@ func MakeJob(
 		// Outputs: testCase.Outputs,
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 

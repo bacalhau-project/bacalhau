@@ -52,12 +52,12 @@ type ComputeNode struct {
 
 	localDB                  localdb.LocalDB
 	shardStateManager        *shardStateMachineManager
-	executors                map[model.EngineType]executor.Executor
-	executorsInstalledCache  map[model.EngineType]bool
-	verifiers                map[model.VerifierType]verifier.Verifier
-	verifiersInstalledCache  map[model.VerifierType]bool
-	publishers               map[model.PublisherType]publisher.Publisher
-	publishersInstalledCache map[model.PublisherType]bool
+	executors                map[model.Engine]executor.Executor
+	executorsInstalledCache  map[model.Engine]bool
+	verifiers                map[model.Verifier]verifier.Verifier
+	verifiersInstalledCache  map[model.Verifier]bool
+	publishers               map[model.Publisher]publisher.Publisher
+	publishersInstalledCache map[model.Publisher]bool
 	capacityManager          *capacitymanager.CapacityManager
 	componentMu              sync.Mutex
 	bidMu                    sync.Mutex
@@ -76,9 +76,9 @@ func NewComputeNode(
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	executors map[model.EngineType]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	executors map[model.Engine]executor.Executor,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
 	//nolint:ineffassign,staticcheck
@@ -103,9 +103,9 @@ func constructComputeNode(
 	localDB localdb.LocalDB,
 	localEventHandler eventhandler.LocalEventHandler,
 	jobEventHandler eventhandler.JobEventHandler,
-	executors map[model.EngineType]executor.Executor,
-	verifiers map[model.VerifierType]verifier.Verifier,
-	publishers map[model.PublisherType]publisher.Publisher,
+	executors map[model.Engine]executor.Executor,
+	verifiers map[model.Verifier]verifier.Verifier,
+	publishers map[model.Publisher]publisher.Publisher,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	shardStateManager, err := NewShardComputeStateMachineManager()
@@ -126,11 +126,11 @@ func constructComputeNode(
 		jobEventPublisher:        jobEventHandler,
 		shardStateManager:        shardStateManager,
 		executors:                executors,
-		executorsInstalledCache:  map[model.EngineType]bool{},
+		executorsInstalledCache:  map[model.Engine]bool{},
 		verifiers:                verifiers,
-		verifiersInstalledCache:  map[model.VerifierType]bool{},
+		verifiersInstalledCache:  map[model.Verifier]bool{},
 		publishers:               publishers,
-		publishersInstalledCache: map[model.PublisherType]bool{},
+		publishersInstalledCache: map[model.Publisher]bool{},
 		capacityManager:          capacityManager,
 	}
 
@@ -301,7 +301,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
 		// if the user isn't going to bid unless there are minBids many bids,
 		// we'd better make sure there are minBids many bids!
-		1, n.ID, jobEvent.JobID, Max(jobEvent.JobDeal.Concurrency, jobEvent.JobDeal.MinBids),
+		1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.
@@ -319,7 +319,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	selected, processedRequirements, err := n.SelectJob(ctx, JobSelectionPolicyProbeData{
 		NodeID:        n.ID,
 		JobID:         jobEvent.JobID,
-		Spec:          jobEvent.JobSpec,
+		Spec:          jobEvent.Spec,
 		ExecutionPlan: jobEvent.JobExecutionPlan,
 	})
 	if err != nil {
@@ -579,7 +579,7 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getExecutor(ctx context.Context, typ model.EngineType) (executor.Executor, error) {
+func (n *ComputeNode) getExecutor(ctx context.Context, typ model.Engine) (executor.Executor, error) {
 	e := func() *executor.Executor {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()
@@ -615,7 +615,7 @@ func (n *ComputeNode) getExecutor(ctx context.Context, typ model.EngineType) (ex
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getVerifier(ctx context.Context, typ model.VerifierType) (verifier.Verifier, error) {
+func (n *ComputeNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
 	v := func() *verifier.Verifier {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()
@@ -651,7 +651,7 @@ func (n *ComputeNode) getVerifier(ctx context.Context, typ model.VerifierType) (
 }
 
 //nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType) (publisher.Publisher, error) {
+func (n *ComputeNode) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
 	p := func() *publisher.Publisher {
 		n.componentMu.Lock()
 		defer n.componentMu.Unlock()
@@ -686,7 +686,7 @@ func (n *ComputeNode) getPublisher(ctx context.Context, typ model.PublisherType)
 	return publisher, nil
 }
 
-func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.JobSpec) (uint64, error) {
+func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {
 	e, err := n.getExecutor(ctx, spec.Engine)
 	if err != nil {
 		return 0, err

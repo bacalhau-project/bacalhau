@@ -76,7 +76,7 @@ func (suite *ValidateSuite) TestValidate() {
 				require.Equal(suite.T(), "The Job is valid", trimmedString, fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
 				require.Equal(suite.T(), trimmedString[0:21], "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(suite.T(), trimmedString, "JobAPIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(suite.T(), trimmedString, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
 

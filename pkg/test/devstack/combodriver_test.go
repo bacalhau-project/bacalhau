@@ -79,7 +79,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		unsealedPath := ""
 
 		if unsealedMode {
-			unsealedPath = fmt.Sprintf("%s/{{.Cid}}", basePath)
+			unsealedPath = fmt.Sprintf("%s/{{.CID}}", basePath)
 		}
 
 		options := devstack.DevStackOptions{
@@ -98,7 +98,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		}
 
 		j := &model.Job{}
-		j.Spec = model.JobSpec{
+		j.Spec = model.Spec{
 			Engine:    model.EngineDocker,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
@@ -111,15 +111,15 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			},
 			Inputs: []model.StorageSpec{
 				{
-					Engine: model.StorageSourceIPFS,
-					Cid:    cid,
-					Path:   "/inputs",
+					StorageSource: model.StorageSourceIPFS,
+					CID:           cid,
+					Path:          "/inputs",
 				},
 			},
 			Outputs: []model.StorageSpec{},
 		}
 
-		j.Deal = model.JobDeal{
+		j.Deal = model.Deal{
 			Concurrency: 1,
 		}
 
@@ -155,10 +155,10 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 
 		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 		require.NoError(suite.T(), err)
-		require.NotEmpty(suite.T(), shard.PublishedResult.Cid)
+		require.NotEmpty(suite.T(), shard.PublishedResult.CID)
 
-		outputPath := filepath.Join(outputDir, shard.PublishedResult.Cid)
-		err = node.IPFSClient.Get(ctx, shard.PublishedResult.Cid, outputPath)
+		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
+		err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
 		require.NoError(suite.T(), err)
 
 		dat, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))

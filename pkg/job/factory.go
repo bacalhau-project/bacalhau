@@ -24,8 +24,8 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 		RequesterNodeID:    ev.SourceNodeID,
 		RequesterPublicKey: publicKey,
 		ClientID:           ev.ClientID,
-		Spec:               ev.JobSpec,
-		Deal:               ev.JobDeal,
+		Spec:               ev.Spec,
+		Deal:               ev.Deal,
 		ExecutionPlan:      ev.JobExecutionPlan,
 		CreatedAt:          time.Now(),
 	}
@@ -35,9 +35,9 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
-	e model.EngineType,
-	v model.VerifierType,
-	p model.PublisherType,
+	e model.Engine,
+	v model.Verifier,
+	p model.Publisher,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -109,7 +109,7 @@ func ConstructDockerJob( //nolint:funlen
 
 	j := &model.Job{}
 
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    e,
 		Verifier:  v,
 		Publisher: p,
@@ -133,7 +133,7 @@ func ConstructDockerJob( //nolint:funlen
 		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 		MinBids:     minBids,
@@ -199,7 +199,7 @@ func ConstructLanguageJob(
 		return &model.Job{}, err
 	}
 
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:   model.EngineLanguage,
 		Verifier: model.VerifierNoop,
 		// TODO: should this always be ipfs?
@@ -220,7 +220,7 @@ func ConstructLanguageJob(
 		DoNotTrack:  doNotTrack,
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 	}

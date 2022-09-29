@@ -10,7 +10,7 @@ import (
 
 var wg sync.WaitGroup
 
-func Logger_Exp() {
+func LoggerExp() {
 	numOfThreads := 3
 	fmt.Println("Running for loop…")
 
@@ -20,21 +20,14 @@ func Logger_Exp() {
 		go func(i int) {
 			defer wg.Done()
 			fmt.Printf("Inside thread: %d\n", i)
-			log_breadth(i)
+			LogBreadth(i)
 		}(i)
 	}
 	wg.Wait()
 	fmt.Println("Done running")
 }
 
-func log_breadth(i int) {
-	// subLogger := logger.LoggerWithNodeAndJobInfo(strconv.Itoa(i), string(uuid.NewString()))
-	// subLogger.Trace().Msg(fmt.Sprintf("Trace: foo %s", "mank"))
-	// subLogger.Debug().Msg(fmt.Sprintf("Debug: foo %s", "mank"))
-	// subLogger.Info().Msg(fmt.Sprintf("Info: foo %s", "mank"))
-	// subLogger.Warn().Msg(fmt.Sprintf("Warn: foo %s", "mank"))
-	// subLogger.Error().Msg(fmt.Sprintf("Error: foo %s", "mank"))
-
+func LogBreadth(i int) {
 	s := logger.LoggerWithRuntimeInfo(fmt.Sprintf("%d - %s", i, uuid.NewString()))
 
 	s.Trace().Msgf("Trace: foo %s", "mank")
@@ -42,5 +35,4 @@ func log_breadth(i int) {
 	s.Info().Msgf("Info: foo %s", "mank")
 	s.Warn().Msgf("Warn: foo %s", "mank")
 	s.Error().Msgf("Error: foo %s", "mank")
-
 }
