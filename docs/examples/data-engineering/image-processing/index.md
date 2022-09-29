@@ -149,7 +149,7 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 ## Where to go next?
 
-* [Take a look at other examples](../../../index.md)
+* [Take a look at other examples](../../index.md)
 * [How to run an existing workload on Bacalhau](../../../getting-started/workload-onboarding.md)
 * [Check out the Bacalhau CLI Reference page](../../../all-flags.md)
 
