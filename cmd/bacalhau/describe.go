@@ -118,7 +118,7 @@ var describeCmd = &cobra.Command{
 		)
 		var b bytes.Buffer
 		yamlEncoder := yaml.NewEncoder(&b)
-		yamlEncoder.SetIndent(2) // this is what you're looking for
+		yamlEncoder.SetIndent(2)
 		err = yamlEncoder.Encode(&jobDesc)
 		if err != nil {
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
