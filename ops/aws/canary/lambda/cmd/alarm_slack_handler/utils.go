@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/slack-go/slack"
 	"os"
+	"strconv"
+	"time"
 )
 
 func mustGetSlackSecret() slackSecretType {
@@ -54,7 +56,7 @@ func NewSlackMessageFromEvent(event *events.CloudWatchAlarmSNSPayload, dashboard
 		Actions: []slack.AttachmentAction{
 			{Name: "View Dashboard", Type: "button", Text: "View Dashboard", URL: dashboardUrl},
 		},
-		Ts: json.Number(event.StateChangeTime),
+		Ts: json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 
 	return slack.Msg{
