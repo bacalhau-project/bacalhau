@@ -58,15 +58,15 @@ const (
 
 // IsTerminal returns true if the given event type signals the end of the
 // lifecycle of a job. After this, all nodes can safely ignore the job.
-func (event JobEventType) IsTerminal() bool {
-	return event == JobEventError || event == JobEventResultsPublished
+func (je JobEventType) IsTerminal() bool {
+	return je == JobEventError || je == JobEventResultsPublished
 }
 
 // IsIgnorable returns true if given event type signals that a node can safely
 // ignore the rest of the job's lifecycle. This is the case for events caused
 // by a node's bid being rejected.
-func (event JobEventType) IsIgnorable() bool {
-	return event.IsTerminal() || event == JobEventBidRejected
+func (je JobEventType) IsIgnorable() bool {
+	return je.IsTerminal() || je == JobEventBidRejected
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {
