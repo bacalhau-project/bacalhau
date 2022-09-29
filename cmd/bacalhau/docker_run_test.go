@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 
 	"strings"
 	"testing"

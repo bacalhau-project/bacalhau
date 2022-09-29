@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
 )
 
 const (

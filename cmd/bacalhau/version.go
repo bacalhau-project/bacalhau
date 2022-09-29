@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 )
 
 var oV = &VersionOptions{}

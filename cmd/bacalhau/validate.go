@@ -12,8 +12,8 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
 	convert "sigs.k8s.io/yaml"
 
 	"github.com/xeipuuv/gojsonschema"

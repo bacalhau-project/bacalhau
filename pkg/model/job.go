@@ -138,20 +138,20 @@ type JobShardingConfig struct {
 // JobShardState are updatable and the JobState is queried by the rest
 // of the system.
 type JobState struct {
-	Nodes map[string]JobNodeState `json:"Nodes"`
+	Nodes map[string]JobNodeState `json:"Nodes,omitempty"`
 }
 
 type JobNodeState struct {
-	Shards map[int]JobShardState `json:"Shards"`
+	Shards map[int]JobShardState `json:"Shards,omitempty"`
 }
 
 type JobShardState struct {
 	// which node is running this shard
-	NodeID string `json:"NodeId"`
+	NodeID string `json:"NodeId,omitempty"`
 	// what shard is this we are running
-	ShardIndex int `json:"ShardIndex"`
+	ShardIndex int `json:"ShardIndex,omitempty"`
 	// what is the state of the shard on this node
-	State JobStateType `json:"State"`
+	State JobStateType `json:"State,omitempty"`
 	// an arbitrary status message
 	Status string `json:"Status,omitempty"`
 	// the proposed results for this shard
@@ -265,30 +265,30 @@ type JobSpecLanguage struct {
 // can keep state against a job without broadcasting it
 // to the rest of the network
 type JobLocalEvent struct {
-	EventName    JobLocalEventType `json:"EventName"`
-	JobID        string            `json:"JobID"`
-	ShardIndex   int               `json:"ShardIndex"`
+	EventName    JobLocalEventType `json:"EventName,omitempty"`
+	JobID        string            `json:"JobID,omitempty"`
+	ShardIndex   int               `json:"ShardIndex,omitempty"`
 	TargetNodeID string            `json:"TargetNodeID,omitempty"`
 }
 
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
-	JobID string `json:"JobID"`
+	JobID string `json:"JobID,omitempty"`
 	// what shard is this event for
-	ShardIndex int `json:"ShardIndex"`
+	ShardIndex int `json:"ShardIndex,omitempty"`
 	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID"`
+	ClientID string `json:"ClientID,omitempty"`
 	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID"`
+	SourceNodeID string `json:"SourceNodeID,omitempty"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
 	TargetNodeID string       `json:"TargetNodeID,omitempty"`
-	EventName    JobEventType `json:"EventName"`
+	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events
 	Spec Spec `json:"Spec,omitempty"`
 	// this is only defined in "create" events
-	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan"`
+	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan,omitempty"`
 	// this is only defined in "update_deal" events
 	Deal                 Deal               `json:"Deal,omitempty"`
 	Status               string             `json:"Status,omitempty"`
@@ -296,8 +296,8 @@ type JobEvent struct {
 	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
 	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
 
-	EventTime       time.Time `json:"EventTime"`
-	SenderPublicKey PublicKey `json:"SenderPublicKey"`
+	EventTime       time.Time `json:"EventTime,omitempty"`
+	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`
 
 	// RunOutput of the job
 	RunOutput *RunCommandResult `json:"RunOutput,omitempty"`
@@ -308,147 +308,19 @@ type JobEvent struct {
 // means "I've not verified yet" or "verification failed"
 // b) we might want to add further fields to the result later
 type VerificationResult struct {
-	Complete bool `json:"Complete"`
-	Result   bool `json:"Result"`
+	Complete bool `json:"Complete,omitempty"`
+	Result   bool `json:"Result,omitempty"`
 }
 
 type JobCreatePayload struct {
 	// the id of the client that is submitting the job
-	ClientID string `json:"ClientID"`
+	ClientID string `json:"ClientID,omitempty"`
 
 	// The job specification:
-	Job *Job `json:"Job"`
+	Job *Job `json:"Job,omitempty"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't
 	// flood the transport layer with it (potentially very large).
 	Context string `json:"Context,omitempty"`
-}
-
-// JobStateType is the state of a job on a particular node. Note that the job
-// will typically have different states on different nodes.
-//
-//go:generate stringer -type=JobStateType --trimprefix=JobState
-type JobStateType int
-
-// these are the states a job can be in against a single node
-const (
-	jobStateUnknown JobStateType = iota // must be first
-
-	// a compute node has selected a job and has bid on it
-	// we are currently waiting to hear back from the requester
-	// node whether our bid was accepted or not
-	JobStateBidding
-
-	// a requester node has either rejected the bid or the compute node has canceled the bid
-	// either way - this node will not progress with this job any more
-	JobStateCancelled
-
-	// the bid has been accepted but we have not yet started the job
-	JobStateWaiting
-
-	// the job is in the process of running
-	JobStateRunning
-
-	// the job had an error - this is an end state
-	JobStateError
-
-	// the compute node has finished execution and has communicated the ResultsProposal
-	JobStateVerifying
-
-	// our results have been processed and published
-	JobStateCompleted
-
-	jobStateDone // must be last
-)
-
-// IsTerminal returns true if the given job type signals the end of the
-// lifecycle of that job on a particular node. After this, the job can be
-// safely ignored by the node.
-func (state JobStateType) IsTerminal() bool {
-	return state == JobStateCompleted || state == JobStateError || state == JobStateCancelled
-}
-
-// IsComplete returns true if the given job has succeeded at the bid stage
-// and has finished running the job - this is used to calculate if a job
-// has completed across all nodes because a cancelation does not count
-// towards actually "running" the job whereas an error does (even though it failed
-// it still "ran")
-func (state JobStateType) IsComplete() bool {
-	return state == JobStateCompleted || state == JobStateError
-}
-
-func (state JobStateType) IsError() bool {
-	return state == JobStateError
-}
-
-// tells you if this event is a valid one
-func IsValidJobState(state JobStateType) bool {
-	return state > jobStateUnknown && state < jobStateDone
-}
-
-func ParseJobStateType(str string) (JobStateType, error) {
-	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
-		if equal(typ.String(), str) {
-			return typ, nil
-		}
-	}
-
-	return jobStateUnknown, fmt.Errorf(
-		"executor: unknown job typ type '%s'", str)
-}
-
-func JobStateTypes() []JobStateType {
-	var res []JobStateType
-	for typ := jobStateUnknown + 1; typ < jobStateDone; typ++ {
-		res = append(res, typ)
-	}
-
-	return res
-}
-
-// given an event name - return a job state
-func GetStateFromEvent(eventType JobEventType) JobStateType {
-	switch eventType {
-	// we have bid and are waiting to hear if that has been accepted
-	case JobEventBid:
-		return JobStateBidding
-
-	// our bid has been accepted but we've not yet started the job
-	case JobEventBidAccepted:
-		return JobStateWaiting
-
-	// out bid got rejected so we are canceled
-	case JobEventBidRejected:
-		return JobStateCancelled
-
-	// we canceled our bid so we are canceled
-	case JobEventBidCancelled:
-		return JobStateCancelled
-
-	// we are running
-	case JobEventRunning:
-		return JobStateRunning
-
-	// yikes
-	case JobEventError:
-		return JobStateError
-
-	// we are complete
-	case JobEventResultsProposed:
-		return JobStateVerifying
-
-	// both of these are "finalized"
-	case JobEventResultsAccepted:
-		return JobStateVerifying
-
-	case JobEventResultsRejected:
-		return JobStateVerifying
-
-	case JobEventResultsPublished:
-		return JobStateCompleted
-
-	default:
-		return jobStateUnknown
-	}
 }

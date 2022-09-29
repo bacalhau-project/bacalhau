@@ -1,14 +1,14 @@
 package bacalhau
 
 import (
-	"bytes"
+	"encoding/json"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -116,15 +116,16 @@ var describeCmd = &cobra.Command{
 			ColumnID        ColumnEnum = "id"
 			ColumnCreatedAt ColumnEnum = "created_at"
 		)
-		var b bytes.Buffer
-		yamlEncoder := yaml.NewEncoder(&b)
-		yamlEncoder.SetIndent(2)
-		err = yamlEncoder.Encode(&jobDesc)
+		b, err := json.Marshal(jobDesc)
 		if err != nil {
 			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
 			return err
 		}
-		cmd.Print(b.String())
+
+		// Convert Json to Yaml
+		y, err := yaml.JSONToYAML(b)
+
+		cmd.Print(string(y))
 
 		return nil
 	},
