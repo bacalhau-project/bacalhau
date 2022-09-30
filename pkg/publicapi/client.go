@@ -64,7 +64,7 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-func (apiClient *APIClient)  List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
+func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
 	[]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()

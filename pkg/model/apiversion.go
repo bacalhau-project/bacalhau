@@ -10,5 +10,5 @@ const (
 )
 
 func APIVersionLatest() APIVersion {
-	return APIVersion(done - 1)
+	return done - 1
 }

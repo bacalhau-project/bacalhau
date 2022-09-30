@@ -93,7 +93,7 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(workingDir) > 0 {
-		err := system.ValidateWorkingDir(workingDir)
+		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
 			return &model.Job{}, err
