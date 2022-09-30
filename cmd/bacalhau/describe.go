@@ -124,6 +124,10 @@ var describeCmd = &cobra.Command{
 
 		// Convert Json to Yaml
 		y, err := yaml.JSONToYAML(b)
+		if err != nil {
+			log.Error().Err(err).Msgf("Able to marshal to YAML but not JSON whatttt '%s'", j.ID)
+			return err
+		}
 
 		cmd.Print(string(y))
 

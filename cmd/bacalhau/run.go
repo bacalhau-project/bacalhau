@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +17,7 @@ var runCmd = &cobra.Command{
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-			log.Err(err)
+			cmd.Println(err.Error())
 			return err
 		}
 

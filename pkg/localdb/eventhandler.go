@@ -34,8 +34,8 @@ func (h *LocalDBEventHandler) HandleJobEvent(ctx context.Context, event model.Jo
 	var err error
 	switch event.EventName {
 	case model.JobEventCreated:
-		job := jobutils.ConstructJobFromEvent(event)
-		err = h.localDB.AddJob(ctx, job)
+		j := jobutils.ConstructJobFromEvent(event)
+		err = h.localDB.AddJob(ctx, j)
 	case model.JobEventDealUpdated:
 		err = h.localDB.UpdateJobDeal(ctx, event.JobID, event.Deal)
 	}

@@ -91,8 +91,8 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		return nil
 	}
 	if s.GreaterThan(c) {
-		return fmt.Errorf(
-			"server version %s is newer than client version %s, please upgrade your client",
+		return fmt.Errorf(`the server version %s is newer than client version %s, please upgrade your client with the following command:
+curl -sL https://get.bacalhau.org/install.sh | bash`,
 			serverVersion.GitVersion,
 			clientVersion.GitVersion,
 		)

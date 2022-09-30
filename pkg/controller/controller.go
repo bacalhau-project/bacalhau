@@ -177,6 +177,7 @@ func (ctrl *Controller) SubmitJob(
 	}
 
 	ev.ClientID = data.ClientID
+	ev.APIVersion = data.Job.APIVersion
 	ev.Spec = data.Job.Spec
 	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan

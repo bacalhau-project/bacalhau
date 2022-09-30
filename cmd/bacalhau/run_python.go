@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
@@ -188,6 +189,7 @@ var runPythonCmd = &cobra.Command{
 		//nolint:lll // it's ok to be long
 		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 		j, err := job.ConstructLanguageJob(
+			model.APIVersionLatest(),
 			OLR.InputVolumes,
 			OLR.InputUrls,
 			OLR.OutputVolumes,

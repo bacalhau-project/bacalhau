@@ -4,6 +4,11 @@ package model
 type APIVersion int
 
 const (
-	Unknown APIVersion = iota // must be first
+	unknown APIVersion = iota // must be first
 	V1alpha1
+	done // must be last
 )
+
+func APIVersionLatest() APIVersion {
+	return APIVersion(done - 1)
+}

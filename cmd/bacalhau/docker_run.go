@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -226,7 +225,7 @@ var dockerCmd = &cobra.Command{
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-			log.Err(err)
+			cmd.Println(err.Error())
 			return err
 		}
 		return nil
@@ -332,6 +331,7 @@ func CreateJob(ctx context.Context,
 	}
 
 	j, err := jobutils.ConstructDockerJob(
+		model.APIVersionLatest(),
 		engineType,
 		verifierType,
 		publisherType,

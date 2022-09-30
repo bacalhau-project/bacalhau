@@ -14,7 +14,6 @@ import (
 
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
-	convert "sigs.k8s.io/yaml"
 
 	"github.com/xeipuuv/gojsonschema"
 
@@ -87,38 +86,50 @@ var validateCmd = &cobra.Command{
 			_ = cmd.Usage()
 			return fmt.Errorf("no filename specified")
 		}
+
 		OV.Filename = cmdArgs[0]
+		var byteResult []byte
 
-		fileextension := filepath.Ext(OV.Filename)
-		fileContent, err := os.Open(OV.Filename)
-
-		if err != nil {
-			return fmt.Errorf("could not open file '%s': %s", OV.Filename, err)
-		}
-
-		byteResult, err := io.ReadAll(fileContent)
-
-		if err != nil {
-			return err
-		}
-
-		if fileextension == ".json" {
-			err = json.Unmarshal(byteResult, &j)
+		if OV.Filename == "-" {
+			// Read from stdin
+			byteResult, err = io.ReadAll(cmd.InOrStdin())
 			if err != nil {
-				return fmt.Errorf("error reading json file '%s': %s", OV.Filename, err)
+				return err
 			}
-		} else if fileextension == ".yaml" || fileextension == ".yml" {
-			err = yaml.Unmarshal(byteResult, &j)
-			if err != nil {
-				return fmt.Errorf("error reading yaml file '%s': %s", OV.Filename, err)
-			}
+
 		} else {
-			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OV.Filename)
-		}
+			var file *os.File
+			fileextension := filepath.Ext(OV.Filename)
+			file, err = os.Open(OV.Filename)
 
+			if err != nil {
+				return fmt.Errorf("could not open file '%s': %s", OV.Filename, err)
+			}
+
+			byteResult, err = io.ReadAll(file)
+
+			if err != nil {
+				return err
+			}
+
+			if fileextension == ".json" {
+				err = json.Unmarshal(byteResult, &j)
+				if err != nil {
+					return fmt.Errorf("error reading json file '%s': %s", OV.Filename, err)
+				}
+			} else if fileextension == ".yaml" || fileextension == ".yml" {
+				err = yaml.Unmarshal(byteResult, &j)
+				if err != nil {
+					return fmt.Errorf("error reading yaml file '%s': %s", OV.Filename, err)
+				}
+			} else {
+				return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OV.Filename)
+			}
+
+		}
 		// Convert the schema to JSON - this is required for the gojsonschema library
 		// Noop if you pass JSON through
-		fileContentsAsJSONBytes, err := convert.YAMLToJSON(byteResult)
+		fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
 		if err != nil {
 			return fmt.Errorf("error converting from YAML to JSON %s", err)
 		}

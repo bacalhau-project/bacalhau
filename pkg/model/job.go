@@ -50,7 +50,7 @@ type Job struct {
 // TODO: There's probably a better way we want to globally version APIs
 func NewJob() *Job {
 	return &Job{
-		APIVersion: V1alpha1.String(),
+		APIVersion: APIVersionLatest().String(),
 	}
 }
 
@@ -274,6 +274,9 @@ type JobLocalEvent struct {
 // we emit these to other nodes so they update their
 // state locally and can emit events locally
 type JobEvent struct {
+	// APIVersion of the Job
+	APIVersion string `json:"APIVersion,omitempty"`
+
 	JobID string `json:"JobID,omitempty"`
 	// what shard is this event for
 	ShardIndex int `json:"ShardIndex,omitempty"`
