@@ -137,6 +137,8 @@ Once the executor has completed the running of the job - a “verification propo
 
 It’s possible to use other types of verification methods by re-implementing the verification interface and using another technique.
 
+![image](../../static/img/architecture/architecture-verification.jpeg)
+
 ### Publishing
 
 Once verification has resulted in “results accepted” or “results rejected” events - the publisher will publish the raw results folder currently residing on the compute node.
