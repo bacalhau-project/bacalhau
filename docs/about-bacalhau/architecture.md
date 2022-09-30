@@ -108,7 +108,7 @@ The job might also mention the use of “volumes” (for example some IPFS CIDs)
 
 As these bids from compute nodes arrive back at the originating requester node - it can choose which bids to accept and which ones to reject.  This can be based on the previous reputation of each compute node or any other factors the requestor node might take into account (like locality, hardware resources, cost etc).  The requestor node will also have the same http or exec hooks to decide if it wants to accept a bid from a given compute node.  This means a node operator can give fine grained rules as to what bids they are willing to accept.  The “min-bids” setting is useful to ensure that we don’t accept bids on a first bid first accepted basis.
 
-![image](../../static/img/architecture/architecture-accept-job-big.jpeg)
+![image](../../static/img/architecture/architecture-accept-job-bid.jpeg)
 
 
 ### Job Execution
