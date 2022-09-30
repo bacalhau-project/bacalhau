@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
+	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -136,6 +139,50 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			log.Error().Err(err).Msg("Error creating a job from input. Error:")
 			return err
+		}
+
+		// Warn on fields with data that will be ignored
+		var unusedFieldList []string
+		if j.ClientID != "" {
+			unusedFieldList = append(unusedFieldList, "ClientID")
+			j.ClientID = ""
+		}
+		if !reflect.DeepEqual(j.CreatedAt, time.Time{}) {
+			unusedFieldList = append(unusedFieldList, "CreatedAt")
+			j.CreatedAt = time.Time{}
+		}
+		if !reflect.DeepEqual(j.ExecutionPlan, model.JobExecutionPlan{}) {
+			unusedFieldList = append(unusedFieldList, "Verification")
+			j.ExecutionPlan = model.JobExecutionPlan{}
+		}
+		if len(j.Events) != 0 {
+			unusedFieldList = append(unusedFieldList, "Events")
+			j.Events = nil
+		}
+		if j.ID != "" {
+			unusedFieldList = append(unusedFieldList, "ID")
+			j.ID = ""
+		}
+		if len(j.LocalEvents) != 0 {
+			unusedFieldList = append(unusedFieldList, "LocalEvents")
+			j.LocalEvents = nil
+		}
+		if j.RequesterNodeID != "" {
+			unusedFieldList = append(unusedFieldList, "RequesterNodeID")
+			j.RequesterNodeID = ""
+		}
+		if len(j.RequesterPublicKey) != 0 {
+			unusedFieldList = append(unusedFieldList, "RequesterPublicKey")
+			j.RequesterPublicKey = nil
+		}
+		if !reflect.DeepEqual(j.State, model.JobState{}) {
+			unusedFieldList = append(unusedFieldList, "State")
+			j.State = model.JobState{}
+		}
+
+		// Warn on fields with data that will be ignored
+		if len(unusedFieldList) > 0 {
+			cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))
 		}
 
 		err = ExecuteJob(ctx,
