@@ -19,6 +19,8 @@ var doNotTrack bool
 var Fatal = FatalErrorHandler
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
+	
+
 	RootCmd.AddCommand(serveCmd)
 
 	// Porcelain commands (language specific easy to use commands)

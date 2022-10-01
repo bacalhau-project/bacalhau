@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -53,6 +53,8 @@ func (s *ValidateSuite) TestValidate() {
 	}
 	for name, test := range tests {
 		func() {
+			Fatal = FakeFatalErrorHandler
+
 			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
@@ -70,13 +72,14 @@ func (s *ValidateSuite) TestValidate() {
 
 			require.NoError(s.T(), err)
 
-			trimmedString := strings.TrimSpace(out)
 			// fmt.Print(s)
 			if test.valid {
-				require.Equal(s.T(), "The Job is valid", trimmedString, fmt.Sprintf("%s: Jobspec Invalid", name))
+				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
-				require.Equal(s.T(), trimmedString[0:21], "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(s.T(), trimmedString, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				fatalError, err := testutils.FirstFatalError(s.T(), out)
+				require.NoError(s.T(), err)
+				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
 

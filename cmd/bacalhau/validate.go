@@ -148,11 +148,11 @@ var validateCmd = &cobra.Command{
 		if result.Valid() {
 			cmd.Println("The Job is valid")
 		} else {
-			cmd.Println("The Job is not valid. See errors:")
+			msg := "The Job is not valid. See errors:\n"
 			for _, desc := range result.Errors() {
-				cmd.Printf("- %s\n", desc)
+				msg += fmt.Sprintf("- %s\n", desc)
 			}
-			os.Exit(1)
+			Fatal(msg, 1)
 		}
 		return nil
 	},
