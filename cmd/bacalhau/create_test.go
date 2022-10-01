@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -69,9 +70,12 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 			)
 			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, strings.TrimSpace(out))
+			jobID := system.FindJobIDInTestOutput(out)
+			uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
+			require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
+			job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
 			require.NoError(s.T(), err)
-			require.NotNil(s.T(), job, "Failed to get job with ID: %s", out)
+			require.NotNil(s.T(), job, "Failed to get job with ID: %s", jobID)
 		}()
 	}
 }
@@ -108,9 +112,12 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 
 				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
+				jobID := system.FindJobIDInTestOutput(out)
+				uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
+				require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
+				job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
 				require.NoError(s.T(), err)
-				require.NotNil(s.T(), job, "Failed to get job with ID: %s", out)
+				require.NotNil(s.T(), job, "Failed to get job with ID: %s\nOutput: %s", out)
 			}()
 		}
 	}
@@ -136,11 +143,15 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	require.NoError(s.T(), err, "Error submitting job.")
 
+	jobID := system.FindJobIDInTestOutput(out)
+	uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
+	require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
+
 	// Now run describe on the ID we got back
 	_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
 		"--api-host", host,
 		"--api-port", port,
-		strings.TrimSpace(out),
+		jobID,
 	)
 
 	require.NoError(s.T(), err, "Error describing job.")

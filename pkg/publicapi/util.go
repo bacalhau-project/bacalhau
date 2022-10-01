@@ -204,7 +204,7 @@ func MakeJob(
 	verifierType model.Verifier,
 	publisherType model.Publisher,
 	entrypointArray []string) *model.Job {
-	j := &model.Job{}
+	j := model.NewJob()
 
 	j.Spec = model.Spec{
 		Engine:    engineType,

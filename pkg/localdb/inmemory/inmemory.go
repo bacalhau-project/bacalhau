@@ -2,13 +2,13 @@ package inmemory
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -38,6 +38,11 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 	return res, nil
 }
 
+// Gets a job from the datastore.
+//
+// Errors:
+//
+//   - error-job-not-found        		  -- if the given argument is nil
 func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJob")
@@ -59,12 +64,21 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, 
 
 	j, ok := d.jobs[id]
 	if !ok {
-		return &model.Job{}, fmt.Errorf("no job found: %s", id)
+		var returnError bacerrors.JobNotFound
+		returnError.SetID(id)
+		return nil, &returnError
 	}
 
 	return j, nil
 }
 
+// Get Job Events from a job ID
+//
+// Errors:
+//
+//   - examples-error-invalid-arg        -- if the given argument is nil
+//   - examples-error-invalid-collection -- if the given collection is nil or invalid
+//   - examples-error-limit-reached      -- if the limit of values in the collection is reached
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobEvents")
@@ -74,7 +88,7 @@ func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]mode
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
-		return []model.JobEvent{}, fmt.Errorf("no job found: %s", id)
+		return []model.JobEvent{}, bacerrors.NewJobNotFound(id)
 	}
 	result, ok := d.events[id]
 	if !ok {
@@ -92,7 +106,7 @@ func (d *InMemoryDatastore) GetJobLocalEvents(ctx context.Context, id string) ([
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[id]
 	if !ok {
-		return []model.JobLocalEvent{}, fmt.Errorf("no job found: %s", id)
+		return []model.JobLocalEvent{}, bacerrors.NewJobNotFound(id)
 	}
 	result, ok := d.localEvents[id]
 	if !ok {
@@ -113,8 +127,11 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 		log.Debug().Msgf("querying for single job %s", query.ID)
 		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
-			log.Error().Msgf("error getting single job %s: %s", query.ID, err)
-			return result, err
+			if _, ok := err.(*bacerrors.JobNotFound); ok {
+				return nil, bacerrors.NewJobNotFound(query.ID)
+			} else {
+				return nil, err
+			}
 		}
 		result = append(result, j)
 	} else {
@@ -207,7 +224,7 @@ func (d *InMemoryDatastore) AddEvent(ctx context.Context, jobID string, ev model
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
-		return fmt.Errorf("no job found: %s", jobID)
+		return bacerrors.NewJobNotFound(jobID)
 	}
 	eventArr, ok := d.events[jobID]
 	if !ok {
@@ -227,7 +244,7 @@ func (d *InMemoryDatastore) AddLocalEvent(ctx context.Context, jobID string, ev 
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
-		return fmt.Errorf("no job found: %s", jobID)
+		return bacerrors.NewJobNotFound(jobID)
 	}
 	eventArr, ok := d.localEvents[jobID]
 	if !ok {
@@ -247,7 +264,7 @@ func (d *InMemoryDatastore) UpdateJobDeal(ctx context.Context, jobID string, dea
 	defer d.mtx.Unlock()
 	job, ok := d.jobs[jobID]
 	if !ok {
-		return fmt.Errorf("no job found: %s", jobID)
+		return bacerrors.NewJobNotFound(jobID)
 	}
 	job.Deal = deal
 	return nil
@@ -263,7 +280,7 @@ func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (mode
 	defer d.mtx.RUnlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
-		return model.JobState{}, fmt.Errorf("no job found: %s", jobID)
+		return model.JobState{}, bacerrors.NewJobNotFound(jobID)
 	}
 	state, ok := d.states[jobID]
 	if !ok {
@@ -295,7 +312,7 @@ func (d *InMemoryDatastore) UpdateShardState(
 	defer d.mtx.Unlock()
 	_, ok := d.jobs[jobID]
 	if !ok {
-		return fmt.Errorf("no job found: %s", jobID)
+		return bacerrors.NewJobNotFound(jobID)
 	}
 	jobState, ok := d.states[jobID]
 	if !ok {

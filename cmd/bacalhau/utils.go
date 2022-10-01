@@ -3,6 +3,7 @@ package bacalhau
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -91,8 +93,8 @@ func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model
 		return nil
 	}
 	if s.GreaterThan(c) {
-		return fmt.Errorf(
-			"server version %s is newer than client version %s, please upgrade your client",
+		return fmt.Errorf(`the server version %s is newer than client version %s, please upgrade your client with the following command:
+curl -sL https://get.bacalhau.org/install.sh | bash`,
 			serverVersion.GitVersion,
 			clientVersion.GitVersion,
 		)
@@ -256,7 +258,11 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	cmd.Printf("%s\n", j.ID)
+	err = PrintReturnedJobIDToUser(j)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+	}
+
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
 		// We have a jobID now, add it to the context baggage
 		ctx = system.AddJobIDToBaggage(ctx, j.ID)
@@ -363,4 +369,50 @@ func downloadResults(ctx context.Context,
 	cmd.Println(string(body))
 
 	return nil
+}
+
+func ReadFromStdinIfAvailable(cmd *cobra.Command, input string) ([]byte, error) {
+	if input == "" {
+		byteResult, err := io.ReadAll(cmd.InOrStdin())
+		if err != nil {
+			return nil, errors.Wrap(err, "Error reading from stdin")
+		}
+		if byteResult == nil {
+			cmd.Println(userstrings.NoFilenameProvidedErrorString)
+			return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+		}
+		return byteResult, nil
+	}
+	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+}
+
+func PrintReturnedJobIDToUser(j *model.Job) error {
+	if j == nil || j.ID == "" {
+		return errors.New("No job returned from the server.")
+	}
+
+	RootCmd.Printf("Job ID: %s\n\n", j.ID)
+	RootCmd.Println("To get the status of the job, run:")
+	RootCmd.Printf("  bacalhau describe %s", j.ID)
+	return nil
+}
+
+func FatalErrorHandler(msg string, code int) {
+	if len(msg) > 0 {
+		// add newline if needed
+		if !strings.HasSuffix(msg, "\n") {
+			msg += "\n"
+		}
+		RootCmd.Print(msg)
+	}
+	os.Exit(code)
+}
+
+// Captures for testing, responsibility of the test to handle the exit (if any)
+// NOTE: If your test is not idempotent, you can cause side effects
+// (the underlying function will continue to run)
+func FakeFatalErrorHandler(msg string, code int) {
+	c := model.TestFatalErrorHandlerContents{Message: msg, Code: code}
+	b, _ := json.Marshal(c)
+	RootCmd.Println(string(b))
 }

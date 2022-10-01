@@ -152,7 +152,7 @@ var listCmd = &cobra.Command{
 
 		jobs, err := GetAPIClient().List(ctx, OL.IDFilter, OL.MaxJobs, OL.ReturnAll, OL.SortBy.String(), OL.SortReverse)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error listing jobs: %s", err), 1)
 		}
 
 		numberInTable := system.Min(OL.MaxJobs, len(jobs))
@@ -162,7 +162,7 @@ var listCmd = &cobra.Command{
 			var msgBytes []byte
 			msgBytes, err = json.MarshalIndent(jobs, "", "    ")
 			if err != nil {
-				return err
+				Fatal(fmt.Sprintf("Error marshaling jobs to JSON: %s", err), 1)
 			}
 			cmd.Printf("%s\n", msgBytes)
 		} else {
@@ -179,7 +179,7 @@ var listCmd = &cobra.Command{
 				var summaryRow table.Row
 				summaryRow, err = summarizeJob(ctx, j)
 				if err != nil {
-					log.Error().Msgf("Error summarizing job: %s", err)
+					Fatal(fmt.Sprintf("Error summarizing job: %s", err), 1)
 				}
 				rows = append(rows, summaryRow)
 			}

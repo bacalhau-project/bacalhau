@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -103,7 +104,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.Job{}, false, nil
+		return &model.Job{}, false, bacerrors.NewJobNotFound(jobID)
 	}
 }
 
@@ -130,9 +131,9 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (stat
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
-		j, ok, err := apiClient.Get(ctx, jobID)
-		if !ok {
-			return &model.Job{}, fmt.Errorf("no job found with id %s", jobID)
+		j, _, err := apiClient.Get(ctx, jobID)
+		if err != nil {
+			return &model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
 		}
 		return j, err
 	}
@@ -240,7 +241,8 @@ func (apiClient *APIClient) Submit(
 		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
-	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
+	err = apiClient.post(ctx, "submit", req, &res)
+	if err != nil {
 		return &model.Job{}, err
 	}
 
@@ -269,7 +271,8 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	defer span.End()
 
 	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
+	var err error
+	if err = json.NewEncoder(&body).Encode(reqData); err != nil {
 		return fmt.Errorf("publicapi: error encoding request body: %v", err)
 	}
 
@@ -281,37 +284,51 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	req.Header.Set("Content-type", "application/json")
 	req.Close = true // don't keep connections lying around
 
-	res, err := apiClient.client.Do(req)
+	var res *http.Response
+	res, err = apiClient.client.Do(req)
 	if err != nil {
 		return err
 	}
-
-	defer res.Body.Close()
 
 	if err != nil {
 		return fmt.Errorf("publicapi: error sending post request: %v", err)
 	}
 
 	defer func() {
-		if err := res.Body.Close(); err != nil {
-			log.Error().Msgf("error closing response body: %v", err)
+		if err = res.Body.Close(); err != nil {
+			err = fmt.Errorf("error closing response body: %v", err)
 		}
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(res.Body)
-		if err == nil { // not critical if this fails
-			log.Error().Msgf(
-				"publicapi: %d body returned from API server: %s", res.StatusCode, string(body))
+		var responseBody []byte
+		responseBody, err = io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("publicapi: error reading response body: %v", err)
 		}
 
-		return fmt.Errorf(
-			"publicapi: received non-200 status: %d %s", res.StatusCode, string(body))
+		var serverError bacerrors.BacalhauErrorInterface
+		if err = json.Unmarshal(responseBody, &serverError); err != nil {
+			serverError = &bacerrors.UnknownServerError{}
+			serverError.SetMessage(string(responseBody))
+			serverError.SetError(fmt.Errorf("publicapi: error unmarshaling response body: %v", string(responseBody)))
+		}
+
+		if !reflect.DeepEqual(serverError, bacerrors.BacalhauError{}) {
+			return serverError
+		}
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {
-		return fmt.Errorf("publicapi: error decoding response body: %v", err)
+	err = json.NewDecoder(res.Body).Decode(resData)
+	a := resData
+	_ = a
+	if err != nil {
+		if err == io.EOF {
+			return nil // No error, just no data
+		} else {
+			return fmt.Errorf("publicapi: error decoding response body: %v", err)
+		}
 	}
 
-	return nil
+	return err // From the defer function
 }

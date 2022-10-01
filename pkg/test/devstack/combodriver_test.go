@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -130,18 +132,28 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 
 		resolver := apiClient.GetJobStateResolver()
 
-		err = resolver.Wait(
-			ctx,
-			submittedJob.ID,
-			1,
-			job.WaitThrowErrors([]model.JobStateType{
-				model.JobStateCancelled,
-				model.JobStateError,
-			}),
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: 1,
-			}),
-		)
+		for {
+			err = resolver.Wait(
+				ctx,
+				submittedJob.ID,
+				1,
+				job.WaitThrowErrors([]model.JobStateType{
+					model.JobStateCancelled,
+					model.JobStateError,
+				}),
+				job.WaitForJobStates(map[model.JobStateType]int{
+					model.JobStateCompleted: 1,
+				}),
+			)
+			if err != nil && strings.Contains(err.Error(), "too many open files") {
+				// Flaky test, try again
+				time.Sleep(5 * time.Second)
+				continue
+			} else {
+				break
+			}
+		}
+
 		require.NoError(suite.T(), err)
 
 		shards, err := resolver.GetShards(ctx, submittedJob.ID)

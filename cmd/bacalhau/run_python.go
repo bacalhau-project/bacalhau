@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
@@ -178,7 +179,7 @@ var runPythonCmd = &cobra.Command{
 		}
 
 		if OLR.Command == "" && programPath == "" {
-			return fmt.Errorf("must specify an inline command or a path to a python file")
+			Fatal("Please specify an inline command or a path to a python file.", 1)
 		}
 
 		for _, i := range ODR.Inputs {
@@ -188,6 +189,7 @@ var runPythonCmd = &cobra.Command{
 		//nolint:lll // it's ok to be long
 		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 		j, err := job.ConstructLanguageJob(
+			model.APIVersionLatest(),
 			OLR.InputVolumes,
 			OLR.InputUrls,
 			OLR.OutputVolumes,
@@ -212,14 +214,14 @@ var runPythonCmd = &cobra.Command{
 		var buf bytes.Buffer
 
 		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
-			log.Info().Msgf("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+			cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
 			OLR.ContextPath = ""
 		}
 
 		if OLR.ContextPath != "" {
 			// construct a tar file from the contextPath directory
 			// tar + gzip
-			log.Info().Msgf("uploading %s to server to execute command in context, press Ctrl+C to cancel", OLR.ContextPath)
+			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
 			time.Sleep(1 * time.Second)
 			err = compress(ctx, OLR.ContextPath, &buf)
 			if err != nil {
@@ -228,7 +230,7 @@ var runPythonCmd = &cobra.Command{
 
 			// check size of buf
 			if buf.Len() > 10*1024*1024 {
-				return fmt.Errorf("context tar file is too large (>10MiB)")
+				Fatal("context tar file is too large (>10MiB)", 1)
 			}
 
 		}
@@ -238,10 +240,13 @@ var runPythonCmd = &cobra.Command{
 
 		returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 		}
 
-		cmd.Printf("%s\n", returnedJob.ID)
+		err = PrintReturnedJobIDToUser(returnedJob)
+		if err != nil {
+			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+		}
 		return nil
 	},
 }

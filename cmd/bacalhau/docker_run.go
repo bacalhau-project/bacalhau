@@ -12,10 +12,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -226,7 +225,7 @@ var dockerCmd = &cobra.Command{
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
-			log.Err(err)
+			cmd.Println(err.Error())
 			return err
 		}
 		return nil
@@ -251,18 +250,18 @@ var dockerRunCmd = &cobra.Command{
 
 		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
-			return errors.Wrap(err, "CreateJob")
+			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
 		}
 		err = jobutils.VerifyJob(j)
 		if err != nil {
-			return fmt.Errorf("error validating job: %s", err)
+			Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
 		}
 		if ODR.DryRun {
 			// Converting job to yaml
 			var yamlBytes []byte
 			yamlBytes, err = yaml.Marshal(j)
 			if err != nil {
-				return fmt.Errorf("error converting job to yaml: %s", err)
+				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
 			}
 			cmd.Print(string(yamlBytes))
 			return nil
@@ -277,7 +276,7 @@ var dockerRunCmd = &cobra.Command{
 		)
 
 		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
 		}
 
 		return nil
@@ -332,6 +331,7 @@ func CreateJob(ctx context.Context,
 	}
 
 	j, err := jobutils.ConstructDockerJob(
+		model.APIVersionLatest(),
 		engineType,
 		verifierType,
 		publisherType,
@@ -355,7 +355,7 @@ func CreateJob(ctx context.Context,
 		doNotTrack,
 	)
 	if err != nil {
-		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")
 	}
 
 	return j, nil

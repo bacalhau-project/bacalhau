@@ -52,7 +52,6 @@ func SetupTest(
 }
 
 func TeardownTest(stack *devstack.DevStack, cm *system.CleanupManager) {
-	stack.PrintNodeInfo()
 	cm.Cleanup()
 }
 

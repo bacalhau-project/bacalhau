@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -24,25 +24,25 @@ func TestValidateSuite(t *testing.T) {
 }
 
 //before all the suite
-func (suite *ValidateSuite) SetupSuite() {
+func (s *ValidateSuite) SetupSuite() {
 
 }
 
 //before each test
-func (suite *ValidateSuite) SetupTest() {
-	require.NoError(suite.T(), system.InitConfigForTesting())
-	suite.rootCmd = RootCmd
+func (s *ValidateSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
+	s.rootCmd = RootCmd
 }
 
-func (suite *ValidateSuite) TearDownTest() {
-
-}
-
-func (suite *ValidateSuite) TearDownAllSuite() {
+func (s *ValidateSuite) TearDownTest() {
 
 }
 
-func (suite *ValidateSuite) TestValidate() {
+func (s *ValidateSuite) TearDownAllSuite() {
+
+}
+
+func (s *ValidateSuite) TestValidate() {
 
 	tests := map[string]struct {
 		testFile string
@@ -53,30 +53,33 @@ func (suite *ValidateSuite) TestValidate() {
 	}
 	for name, test := range tests {
 		func() {
-			c, cm := publicapi.SetupTests(suite.T())
+			Fatal = FakeFatalErrorHandler
+
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*OV = *NewValidateOptions()
 
 			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "validate",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "validate",
 				"--api-host", host,
 				"--api-port", port,
 				test.testFile,
 			)
 
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 
-			trimmedString := strings.TrimSpace(out)
 			// fmt.Print(s)
 			if test.valid {
-				require.Equal(suite.T(), "The Job is valid", trimmedString, fmt.Sprintf("%s: Jobspec Invalid", name))
+				require.Contains(s.T(), out, "The Job is valid", fmt.Sprintf("%s: Jobspec Invalid", name))
 			} else {
-				require.Equal(suite.T(), trimmedString[0:21], "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
-				require.Contains(suite.T(), trimmedString, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				fatalError, err := testutils.FirstFatalError(s.T(), out)
+				require.NoError(s.T(), err)
+				require.Contains(s.T(), fatalError.Message, "The Job is not valid.", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
+				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
 

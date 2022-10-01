@@ -45,8 +45,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.7.0
 	go.opentelemetry.io/otel/trace v1.7.0
 	google.golang.org/grpc v1.46.2
-	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.1
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/kubectl v0.24.3
 	mvdan.cc/sh/v3 v3.5.1
 )
@@ -65,6 +65,7 @@ require (
 	github.com/multiformats/go-multicodec v0.5.0
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/serum-errors/go-serum v0.0.0-20220330071315-9fb7f2f25447
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
@@ -342,5 +343,5 @@ require (
 	lukechampine.com/blake3 v1.1.7 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )

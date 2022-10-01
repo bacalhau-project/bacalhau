@@ -1,14 +1,16 @@
 package bacalhau
 
 import (
-	"bytes"
+	"encoding/json"
+	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -72,36 +74,44 @@ var describeCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
+		var err error
 		inputJobID := cmdArgs[0]
-
-		j, ok, err := GetAPIClient().Get(ctx, cmdArgs[0])
+		if inputJobID == "" {
+			var byteResult []byte
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+				// Both filename and stdin are empty
+				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+			} else if err != nil {
+				// Error not related to fields being empty
+				return err
+			}
+			inputJobID = string(byteResult)
+		}
+		j, _, err := GetAPIClient().Get(ctx, inputJobID)
 
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job ID '%s': %s", inputJobID, err)
-			return err
-		}
-
-		if !ok {
-			cmd.Printf("No job ID found matching ID: %s", inputJobID)
-			return nil
+			if _, ok := err.(*bacerrors.JobNotFound); ok {
+				cmd.Printf(err.Error() + "\n")
+				Fatal("", 1)
+			} else {
+				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", inputJobID, err), 1)
+			}
 		}
 
 		shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job states '%s': %s", j.ID, err)
-			return err
+			Fatal(fmt.Sprintf("Failure retrieving job states '%s': %s\n", j.ID, err), 1)
 		}
 
 		jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
-			return err
+			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
 		}
 
 		localEvents, err := GetAPIClient().GetLocalEvents(ctx, j.ID)
 		if err != nil {
-			log.Error().Msgf("Failure retrieving job events '%s': %s", j.ID, err)
-			return err
+			Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
 		}
 
 		jobDesc := j
@@ -116,15 +126,18 @@ var describeCmd = &cobra.Command{
 			ColumnID        ColumnEnum = "id"
 			ColumnCreatedAt ColumnEnum = "created_at"
 		)
-		var b bytes.Buffer
-		yamlEncoder := yaml.NewEncoder(&b)
-		yamlEncoder.SetIndent(2)
-		err = yamlEncoder.Encode(&jobDesc)
+		b, err := json.Marshal(jobDesc)
 		if err != nil {
-			log.Error().Msgf("Failure marshaling job description '%s': %s", j.ID, err)
-			return err
+			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
 		}
-		cmd.Print(b.String())
+
+		// Convert Json to Yaml
+		y, err := yaml.JSONToYAML(b)
+		if err != nil {
+			Fatal(fmt.Sprintf("Able to marshal to YAML but not JSON whatttt '%s': %s\n", j.ID, err), 1)
+		}
+
+		cmd.Print(string(y))
 
 		return nil
 	},

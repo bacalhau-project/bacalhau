@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -36,17 +37,20 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
-		log.Error().Err(err).Msg("error getting job list")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		if _, ok := err.(*bacerrors.JobNotFound); !ok {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	// get JobStates
-	err = apiServer.getJobStates(ctx, jobList)
-	if err != nil {
-		log.Error().Err(err).Msgf("error getting job states")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+	if len(jobList) > 0 {
+		// get JobStates
+		err = apiServer.getJobStates(ctx, jobList)
+		if err != nil {
+			log.Error().Err(err).Msg("error getting job states")
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	res.WriteHeader(http.StatusOK)

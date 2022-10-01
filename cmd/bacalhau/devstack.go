@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/spf13/cobra"
@@ -86,7 +85,8 @@ var devstackCmd = &cobra.Command{
 		config.DevstackSetShouldPrintInfo()
 
 		if ODs.NumberOfBadActors >= ODs.NumberOfNodes {
-			return fmt.Errorf("cannot have more bad actors than there are nodes")
+			Fatal(fmt.Sprintf("You cannot have more bad actors (%d) than there are nodes (%d).",
+				ODs.NumberOfBadActors, ODs.NumberOfNodes), 1)
 		}
 
 		// Context ensures main goroutine waits until killed with ctrl+c:
@@ -99,11 +99,11 @@ var devstackCmd = &cobra.Command{
 		if _, ignore := os.LookupEnv("IGNORE_PID_AND_PORT_FILES"); !ignore {
 			_, err := os.Stat(portFileName)
 			if err == nil {
-				log.Fatal().Msgf("Found file %s - Devstack likely already running", portFileName)
+				Fatal(fmt.Sprintf("Found file %s - Devstack likely already running", portFileName), 1)
 			}
 			_, err = os.Stat(pidFileName)
 			if err == nil {
-				log.Fatal().Msgf("Found file %s - Devstack likely already running", pidFileName)
+				Fatal(fmt.Sprintf("Found file %s - Devstack likely already running", pidFileName), 1)
 			}
 		}
 
@@ -123,33 +123,37 @@ var devstackCmd = &cobra.Command{
 			return stackErr
 		}
 
-		stack.PrintNodeInfo()
+		nodeInfoOutput, err := stack.PrintNodeInfo()
+		if err != nil {
+			Fatal(fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
+		}
+		cmd.Println(nodeInfoOutput)
 
 		f, err := os.Create(portFileName)
 		if err != nil {
-			log.Fatal().Msgf("Error writing out port file to %v", portFileName)
+			Fatal(fmt.Sprintf("Error writing out port file to %v", portFileName), 1)
 		}
 		defer os.Remove(portFileName)
 		firstNode := stack.Nodes[0]
 		_, err = f.WriteString(strconv.Itoa(firstNode.APIServer.Port))
 		if err != nil {
-			log.Fatal().Msgf("Error writing out port file: %v", portFileName)
+			Fatal(fmt.Sprintf("Error writing out port file: %v", portFileName), 1)
 		}
 
 		fPid, err := os.Create(pidFileName)
 		if err != nil {
-			log.Fatal().Msgf("Error writing out pid file to %v", pidFileName)
+			Fatal(fmt.Sprintf("Error writing out pid file to %v", pidFileName), 1)
 		}
 		defer os.Remove(pidFileName)
 
 		_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
 		if err != nil {
-			log.Fatal().Msgf("Error writing out pid file: %v", pidFileName)
+			Fatal(fmt.Sprintf("Error writing out pid file: %v", pidFileName), 1)
 		}
 
 		<-ctx.Done() // block until killed
 
-		log.Info().Msg("Shutting down devstack")
+		cmd.Println("Shutting down devstack")
 		return nil
 	},
 }

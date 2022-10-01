@@ -20,6 +20,7 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 	}
 
 	return &model.Job{
+		APIVersion:         ev.APIVersion,
 		ID:                 ev.JobID,
 		RequesterNodeID:    ev.SourceNodeID,
 		RequesterPublicKey: publicKey,
@@ -35,6 +36,7 @@ func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
+	a model.APIVersion,
 	e model.Engine,
 	v model.Verifier,
 	p model.Publisher,
@@ -91,7 +93,7 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(workingDir) > 0 {
-		err := system.ValidateWorkingDir(workingDir)
+		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
 			return &model.Job{}, err
@@ -107,7 +109,11 @@ func ConstructDockerJob( //nolint:funlen
 		BatchSize:   shardingBatchSize,
 	}
 
-	j := &model.Job{}
+	j, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		return &model.Job{}, err
+	}
+	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
 		Engine:    e,
@@ -143,6 +149,7 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
+	a model.APIVersion,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
@@ -162,7 +169,6 @@ func ConstructLanguageJob(
 	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-
 	if concurrency <= 0 {
 		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
 	}
@@ -198,6 +204,7 @@ func ConstructLanguageJob(
 	if err != nil {
 		return &model.Job{}, err
 	}
+	j.APIVersion = a.String()
 
 	j.Spec = model.Spec{
 		Engine:   model.EngineLanguage,

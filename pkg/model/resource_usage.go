@@ -4,13 +4,13 @@ package model
 
 type ResourceUsageConfig struct {
 	// https://github.com/BTBurke/k8sresource string
-	CPU string `json:"CPU,omitempty" yaml:"CPU,omitempty"`
+	CPU string `json:"CPU,omitempty"`
 	// github.com/c2h5oh/datasize string
-	Memory string `json:"Memory,omitempty" yaml:"Memory,omitempty"`
+	Memory string `json:"Memory,omitempty"`
 	// github.com/c2h5oh/datasize string
 
-	Disk string `json:"Disk,omitempty" yaml:"Disk,omitempty"`
-	GPU  string `json:"GPU" yaml:"GPU"` // unsigned integer string
+	Disk string `json:"Disk,omitempty"`
+	GPU  string `json:"GPU"` // unsigned integer string
 
 }
 

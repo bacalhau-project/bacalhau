@@ -255,6 +255,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 			// what the job is doesn't matter - it will only end up
 			j, err := job.ConstructDockerJob(
+				model.APIVersionLatest(),
 				model.EngineNoop,
 				model.VerifierNoop,
 				model.PublisherNoop,

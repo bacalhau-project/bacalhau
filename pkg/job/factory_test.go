@@ -76,6 +76,7 @@ func (suite *JobFactorySuite) TestRun_Outputs() {
 				}
 
 				j, err := ConstructDockerJob( //nolint:funlen
+					model.APIVersionLatest(),
 					model.EngineNoop,
 					model.VerifierNoop,
 					model.PublisherNoop,

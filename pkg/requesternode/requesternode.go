@@ -114,6 +114,7 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 		return &model.Job{}, fmt.Errorf("error generating execution plan: %s", err)
 	}
 
+	ev.APIVersion = data.Job.APIVersion
 	ev.ClientID = data.ClientID
 	ev.Spec = data.Job.Spec
 	ev.Deal = data.Job.Deal

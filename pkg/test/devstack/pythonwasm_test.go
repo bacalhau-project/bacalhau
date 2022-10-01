@@ -62,6 +62,8 @@ func (s *DevstackPythonWASMSuite) TearDownAllSuite() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+	cmd.Fatal = cmd.FakeFatalErrorHandler
+
 	nodeCount := 1
 	inputPath := "/input"
 	outputPath := "/output"
@@ -118,9 +120,9 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		"--deterministic",
 		"main.py",
 	)
+	jobID := system.FindJobIDInTestOutput(out)
 	require.NoError(s.T(), err)
-	jobId := strings.TrimSpace(out)
-	log.Debug().Msgf("jobId=%s", jobId)
+	log.Debug().Msgf("jobId=%s", jobID)
 	time.Sleep(time.Second * 5)
 
 	node := stack.Nodes[0]
@@ -128,10 +130,10 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	apiClient := publicapi.NewAPIClient(apiUri)
 	resolver := apiClient.GetJobStateResolver()
 	require.NoError(s.T(), err)
-	err = resolver.WaitUntilComplete(ctx, jobId)
+	err = resolver.WaitUntilComplete(ctx, jobID)
 	require.NoError(s.T(), err)
 
-	shards, err := resolver.GetShards(ctx, jobId)
+	shards, err := resolver.GetShards(ctx, jobID)
 	require.NoError(s.T(), err)
 	require.True(s.T(), len(shards) > 0)
 

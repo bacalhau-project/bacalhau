@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type VersionSuite struct {
@@ -61,13 +61,13 @@ func (suite *VersionSuite) Test_Version() {
 	)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), string(out), "Client Version", "Client version not in output")
-	require.Contains(suite.T(), string(out), "Server Version", "Server version not in output")
+	require.Contains(suite.T(), string(out), "clientVersion", "Client version not in output")
+	require.Contains(suite.T(), string(out), "serverVersion", "Server version not in output")
 }
 
 type ThisVersions struct {
-	ClientVersion model.BuildVersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion model.BuildVersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion model.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion model.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {

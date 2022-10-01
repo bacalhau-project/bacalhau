@@ -12,9 +12,8 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 
-	"gopkg.in/yaml.v3"
 	"k8s.io/kubectl/pkg/util/i18n"
-	convert "sigs.k8s.io/yaml"
+	"sigs.k8s.io/yaml"
 
 	"github.com/xeipuuv/gojsonschema"
 
@@ -30,14 +29,18 @@ var (
 
 	//nolint:lll // Documentation
 	validateExample = templates.Examples(i18n.T(`
-		# validate a job using the data in job.yaml
+		# Validate a job using the data in job.yaml
 		bacalhau validate ./job.yaml
+
+		# Validate a job using stdin
+		cat job.yaml | bacalhau validate
+
+		# Output the jsonschema for a bacalhau job
+		bacalhau validate --output-schema
 `))
 
 	// Set Defaults (probably a better way to do this)
 	OV = NewValidateOptions()
-
-	// For the -f flag
 )
 
 type ValidateOptions struct {
@@ -84,42 +87,53 @@ var validateCmd = &cobra.Command{
 
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
-			return fmt.Errorf("no filename specified")
+			Fatal("You must specify a filename or provide the content to be validated via stdin.", 1)
 		}
+
 		OV.Filename = cmdArgs[0]
+		var byteResult []byte
 
-		fileextension := filepath.Ext(OV.Filename)
-		fileContent, err := os.Open(OV.Filename)
-
-		if err != nil {
-			return fmt.Errorf("could not open file '%s': %s", OV.Filename, err)
-		}
-
-		byteResult, err := io.ReadAll(fileContent)
-
-		if err != nil {
-			return err
-		}
-
-		if fileextension == ".json" {
-			err = json.Unmarshal(byteResult, &j)
+		if OV.Filename == "" {
+			// Read from stdin
+			byteResult, err = io.ReadAll(cmd.InOrStdin())
 			if err != nil {
-				return fmt.Errorf("error reading json file '%s': %s", OV.Filename, err)
+				Fatal(fmt.Sprintf("Error reading from stdin: %s", err), 1)
 			}
-		} else if fileextension == ".yaml" || fileextension == ".yml" {
-			err = yaml.Unmarshal(byteResult, &j)
-			if err != nil {
-				return fmt.Errorf("error reading yaml file '%s': %s", OV.Filename, err)
+			if byteResult == nil {
+				// Can you ever get here?
+				Fatal("No filename provided.", 1)
 			}
 		} else {
-			return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OV.Filename)
-		}
+			var file *os.File
+			fileextension := filepath.Ext(OV.Filename)
+			file, err = os.Open(OV.Filename)
 
+			if err != nil {
+				Fatal(fmt.Sprintf("Error opening file (%s): %s", OV.Filename, err), 1)
+			}
+
+			byteResult, err = io.ReadAll(file)
+
+			if err != nil {
+				return err
+			}
+
+			if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
+				// Yaml can parse json
+				err = yaml.Unmarshal(byteResult, &j)
+				if err != nil {
+					Fatal(fmt.Sprintf("Error unmarshaling yaml from file (%s): %s", OV.Filename, err), 1)
+				}
+			} else {
+				Fatal(fmt.Sprintf("File extension (%s) not supported. The file must end in either .yaml, .yml or .json.", fileextension), 1)
+			}
+
+		}
 		// Convert the schema to JSON - this is required for the gojsonschema library
 		// Noop if you pass JSON through
-		fileContentsAsJSONBytes, err := convert.YAMLToJSON(byteResult)
+		fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
 		if err != nil {
-			return fmt.Errorf("error converting from YAML to JSON %s", err)
+			Fatal(fmt.Sprintf("Error converting yaml to json: %s", err), 1)
 		}
 
 		// println(str)
@@ -128,18 +142,19 @@ var validateCmd = &cobra.Command{
 
 		result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error validating json: %s", err), 1)
 		}
 
 		if result.Valid() {
 			cmd.Println("The Job is valid")
 		} else {
-			cmd.Println("The Job is not valid. See errors:")
+			msg := "The Job is not valid. See errors:\n"
 			for _, desc := range result.Errors() {
-				cmd.Printf("- %s\n", desc)
+				msg += fmt.Sprintf("- %s\n", desc)
 			}
+			Fatal(msg, 1)
 		}
-		return err
+		return nil
 	},
 }
 

@@ -376,6 +376,8 @@ func (suite *ShardingSuite) TestNoShards() {
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
 }
 
+// "publicapi: error unmarshaling error response: invalid character 'e' looking for beginning of value"
+
 func (suite *ShardingSuite) TestExplodeVideos() {
 	const nodeCount = 1
 	ctx := context.Background()

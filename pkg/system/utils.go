@@ -10,12 +10,14 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+
 	"github.com/rs/zerolog/log"
 )
 
@@ -438,4 +440,24 @@ func ReverseList(s []string) []string {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
+}
+
+func SplitLines(s string) []string {
+	var lines []string
+	sc := bufio.NewScanner(strings.NewReader(s))
+	for sc.Scan() {
+		lines = append(lines, sc.Text())
+	}
+	return lines
+}
+
+func FindJobIDInTestOutput(testOutput string) string {
+	// Build a regex starting with Job ID and ending with a UUID
+	r := regexp.MustCompile(`Job ID: ([a-f0-9-]{36})`)
+
+	b := r.FindStringSubmatch(testOutput)
+	if len(b) > 1 {
+		return b[1]
+	}
+	return ""
 }

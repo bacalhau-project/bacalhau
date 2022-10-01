@@ -21,21 +21,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 )
 
-var oV = &VersionOptions{}
+var oV = &VersionOptions{
+	Output: "yaml",
+}
 
 // Versions is a struct for version information
 type Versions struct {
-	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty" yaml:"clientVersion,omitempty"`
-	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty" yaml:"serverVersion,omitempty"`
+	ClientVersion *model.BuildVersionInfo `json:"clientVersion,omitempty"`
+	ServerVersion *model.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -69,20 +72,17 @@ var versionCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		_, validateSpan := t.Start(ctx, "validate")
+		oV.Output = strings.TrimSpace(strings.ToLower(oV.Output))
+
 		err := oV.Validate(cmd)
 		if err != nil {
-			log.Error().Msgf("error validating version - %s", err)
+			Fatal(fmt.Sprintf("Error validating version: %s\n", err), 1)
 		}
-		validateSpan.End()
 
-		// Adding the span to the context so functions inside will be children
-		ctx, runSpan := t.Start(ctx, "run")
 		err = oV.Run(ctx, cmd)
 		if err != nil {
-			log.Error().Msgf("error running version - %s", err)
+			Fatal(fmt.Sprintf("Error running version: %s\n", err), 1)
 		}
-		runSpan.End()
 
 		return nil
 	},
@@ -106,13 +106,6 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	var (
 		versions Versions
 	)
-	cm := system.NewCleanupManager()
-	defer cm.Cleanup()
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	versions.ClientVersion = version.Get()
 
