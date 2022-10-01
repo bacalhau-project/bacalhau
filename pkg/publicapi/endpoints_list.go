@@ -37,6 +37,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
 		if _, ok := err.(*model.JobNotFound); !ok {
+			log.Error().Err(err).Msg("error getting job list")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -46,6 +47,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		// get JobStates
 		err = apiServer.getJobStates(ctx, jobList)
 		if err != nil {
+			log.Error().Err(err).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}

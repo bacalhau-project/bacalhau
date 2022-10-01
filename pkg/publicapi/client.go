@@ -102,7 +102,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.Job{}, true, &model.JobNotFound{ID: jobID}
+		return &model.Job{}, false, &model.JobNotFound{ID: jobID}
 	}
 }
 

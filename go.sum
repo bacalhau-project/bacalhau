@@ -1747,8 +1747,6 @@ github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMI
 github.com/wI2L/jsondiff v0.2.0 h1:dE00WemBa1uCjrzQUUTE/17I6m5qAaN0EMFOg2Ynr/k=
 github.com/wI2L/jsondiff v0.2.0/go.mod h1:axTcwtBkY4TsKuV+RgoMhHyHKKFRI6nnjRLi8LLYQnA=
 github.com/wangjia184/sortedset v0.0.0-20160527075905-f5d03557ba30/go.mod h1:YkocrP2K2tcw938x9gCOmT5G5eCD6jsTz0SZuyAqwIE=
-github.com/warpfork/go-errcat v0.0.0-20180917083543-335044ffc86e h1:FIB2fi7XJGHIdf5rWNsfFQqatIKxutT45G+wNuMQNgs=
-github.com/warpfork/go-errcat v0.0.0-20180917083543-335044ffc86e/go.mod h1:/qe02xr3jvTUz8u/PV0FHGpP8t96OQNP7U9BJMwMLEw=
 github.com/warpfork/go-testmark v0.3.0/go.mod h1:jhEf8FVxd+F17juRubpmut64NEG6I2rgkUhlcqqXwE0=
 github.com/warpfork/go-testmark v0.9.0/go.mod h1:jhEf8FVxd+F17juRubpmut64NEG6I2rgkUhlcqqXwE0=
 github.com/warpfork/go-testmark v0.10.0 h1:E86YlUMYfwIacEsQGlnTvjk1IgYkyTGjPhF0RnwTCmw=
