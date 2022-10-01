@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -102,7 +104,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 	if len(jobsList) > 0 {
 		return jobsList[0], true, nil
 	} else {
-		return &model.Job{}, false, &model.JobNotFound{ID: jobID}
+		return &model.Job{}, false, bacerrors.NewJobNotFound(jobID)
 	}
 }
 
@@ -131,7 +133,7 @@ func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
 	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
 		j, _, err := apiClient.Get(ctx, jobID)
 		if err != nil {
-			return &model.Job{}, err
+			return &model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
 		}
 		return j, err
 	}
@@ -239,7 +241,8 @@ func (apiClient *APIClient) Submit(
 		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
-	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
+	err = apiClient.post(ctx, "submit", req, &res)
+	if err != nil {
 		return &model.Job{}, err
 	}
 
@@ -301,16 +304,23 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		var responseBody []byte
 		responseBody, err = io.ReadAll(res.Body)
 		if err != nil {
-			if _, ok := err.(*model.JobNotFound); ok {
-				return err
-			} else {
-				return fmt.Errorf(
-					"publicapi: received non-200 status: %d %s", res.StatusCode, string(responseBody))
-			}
+			return fmt.Errorf("publicapi: error reading response body: %v", err)
+		}
+
+		var serverError bacerrors.BacalhauErrorInterface
+		if err = json.Unmarshal(responseBody, &serverError); err != nil {
+			return fmt.Errorf("publicapi: error unmarshaling error response: %v", err)
+		}
+
+		if !reflect.DeepEqual(serverError, bacerrors.BacalhauError{}) {
+			return serverError
 		}
 	}
 
-	if err = json.NewDecoder(res.Body).Decode(resData); err != nil {
+	err = json.NewDecoder(res.Body).Decode(resData)
+	a := resData
+	_ = a
+	if err != nil {
 		if err == io.EOF {
 			return nil // No error, just no data
 		} else {

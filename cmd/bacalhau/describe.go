@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -91,7 +91,7 @@ var describeCmd = &cobra.Command{
 		j, _, err := GetAPIClient().Get(ctx, inputJobID)
 
 		if err != nil {
-			if _, ok := err.(*model.JobNotFound); ok {
+			if _, ok := err.(*bacerrors.JobNotFound); ok {
 				cmd.Printf(err.Error() + "\n")
 				Fatal("", 1)
 			} else {

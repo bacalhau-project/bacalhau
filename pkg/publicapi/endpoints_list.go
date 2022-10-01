@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -36,8 +37,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
-		if _, ok := err.(*model.JobNotFound); !ok {
-			log.Error().Err(err).Msg("error getting job list")
+		if _, ok := err.(*bacerrors.JobNotFound); !ok {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
