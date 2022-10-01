@@ -309,7 +309,9 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 
 		var serverError bacerrors.BacalhauErrorInterface
 		if err = json.Unmarshal(responseBody, &serverError); err != nil {
-			return fmt.Errorf("publicapi: error unmarshaling error response: %v", err)
+			serverError = &bacerrors.UnknownServerError{}
+			serverError.SetMessage(string(responseBody))
+			serverError.SetError(fmt.Errorf("publicapi: error unmarshaling response body: %v", string(responseBody)))
 		}
 
 		if !reflect.DeepEqual(serverError, bacerrors.BacalhauError{}) {

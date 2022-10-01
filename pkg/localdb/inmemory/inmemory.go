@@ -42,9 +42,9 @@ func NewInMemoryDatastore() (*InMemoryDatastore, error) {
 //
 // Errors:
 //
-//    - error-job-not-found        		  -- if the given argument is nil
-//    - examples-error-invalid-collection -- if the given collection is nil or invalid
-//    - examples-error-limit-reached      -- if the limit of values in the collection is reached
+//   - error-job-not-found        		  -- if the given argument is nil
+//   - examples-error-invalid-collection -- if the given collection is nil or invalid
+//   - examples-error-limit-reached      -- if the limit of values in the collection is reached
 func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJob")
@@ -78,9 +78,9 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, 
 //
 // Errors:
 //
-//    - examples-error-invalid-arg        -- if the given argument is nil
-//    - examples-error-invalid-collection -- if the given collection is nil or invalid
-//    - examples-error-limit-reached      -- if the limit of values in the collection is reached
+//   - examples-error-invalid-arg        -- if the given argument is nil
+//   - examples-error-invalid-collection -- if the given collection is nil or invalid
+//   - examples-error-limit-reached      -- if the limit of values in the collection is reached
 func (d *InMemoryDatastore) GetJobEvents(ctx context.Context, id string) ([]model.JobEvent, error) {
 	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/localdb/inmemory/InMemoryDatastore.GetJobEvents")

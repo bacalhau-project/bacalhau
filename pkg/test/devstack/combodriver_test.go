@@ -133,7 +133,6 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		resolver := apiClient.GetJobStateResolver()
 
 		for {
-			state, err := resolver.Resolve(ctx, submittedJob.ID)
 			err = resolver.Wait(
 				ctx,
 				submittedJob.ID,
