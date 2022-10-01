@@ -53,7 +53,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
 		log.Debug().Msgf("====> VerifyJob error: %s", err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
