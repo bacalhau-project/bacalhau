@@ -123,7 +123,11 @@ var devstackCmd = &cobra.Command{
 			return stackErr
 		}
 
-		stack.PrintNodeInfo()
+		nodeInfoOutput, err := stack.PrintNodeInfo()
+		if err != nil {
+			Fatal(fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
+		}
+		cmd.Println(nodeInfoOutput)
 
 		f, err := os.Create(portFileName)
 		if err != nil {

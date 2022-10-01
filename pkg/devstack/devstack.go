@@ -281,11 +281,11 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
-func (stack *DevStack) PrintNodeInfo() {
+func (stack *DevStack) PrintNodeInfo() (string, error) {
 	ctx := context.Background()
 
 	if !config.DevstackGetShouldPrintInfo() {
-		return
+		return "", nil
 	}
 
 	logString := ""
@@ -301,7 +301,7 @@ func (stack *DevStack) PrintNodeInfo() {
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
 		if err != nil {
-			log.Error().Msgf("Cannot get swarm addresses for node %d", nodeIndex)
+			return "", fmt.Errorf("Cannot get swarm addresses for node %d", nodeIndex)
 		} else {
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}
@@ -340,9 +340,10 @@ export BACALHAU_API_PORT=%s`,
 
 	log.Debug().Msg(logString)
 
-	log.Info().Msg("Devstack is ready!")
-	log.Info().Msg("To use the devstack, run the following commands in your shell:")
-	log.Info().Msg(summaryShellVariablesString)
+	returnString := fmt.Sprintf(`
+Devstack is ready!
+To use the devstack, run the following commands in your shell: %s`, summaryShellVariablesString)
+	return returnString, nil
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
