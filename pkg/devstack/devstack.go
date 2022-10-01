@@ -301,7 +301,7 @@ func (stack *DevStack) PrintNodeInfo() (string, error) {
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
 		if err != nil {
-			return "", fmt.Errorf("Cannot get swarm addresses for node %d", nodeIndex)
+			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
 		} else {
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}

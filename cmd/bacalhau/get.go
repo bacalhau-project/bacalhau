@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -82,10 +83,15 @@ var getCmd = &cobra.Command{
 
 		cmd.Printf("Fetching results of job '%s'...", jobID)
 
-		j, ok, err := GetAPIClient().Get(ctx, jobID)
+		j, _, err := GetAPIClient().Get(ctx, jobID)
 
-		if !ok || err != nil {
-			Fatal(fmt.Sprintf("Job not found: %s", jobID), 1)
+		if err != nil {
+			if _, ok := err.(*model.JobNotFound); ok {
+				cmd.Printf("job not found.\n")
+				Fatal("", 1)
+			} else {
+				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
+			}
 		}
 
 		results, err := GetAPIClient().GetResults(ctx, j.ID)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -87,14 +88,15 @@ var describeCmd = &cobra.Command{
 			}
 			inputJobID = string(byteResult)
 		}
-		j, ok, err := GetAPIClient().Get(ctx, inputJobID)
+		j, _, err := GetAPIClient().Get(ctx, inputJobID)
 
 		if err != nil {
-			Fatal(fmt.Sprintf("Failure retrieving job ID '%s': %s\n", inputJobID, err), 1)
-		}
-
-		if !ok {
-			Fatal(fmt.Sprintf("No job ID found matching ID: %s\n", inputJobID), 1)
+			if _, ok := err.(*model.JobNotFound); ok {
+				cmd.Printf(err.Error() + "\n")
+				Fatal("", 1)
+			} else {
+				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", inputJobID, err), 1)
+			}
 		}
 
 		shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)

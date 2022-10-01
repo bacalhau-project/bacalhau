@@ -355,7 +355,7 @@ func CreateJob(ctx context.Context,
 		doNotTrack,
 	)
 	if err != nil {
-		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal:")
+		return &model.Job{}, errors.Wrap(err, "CreateJobSpecAndDeal")
 	}
 
 	return j, nil

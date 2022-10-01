@@ -36,17 +36,19 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
-		log.Error().Err(err).Msg("error getting job list")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		if _, ok := err.(*model.JobNotFound); !ok {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	// get JobStates
-	err = apiServer.getJobStates(ctx, jobList)
-	if err != nil {
-		log.Error().Err(err).Msgf("error getting job states")
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+	if len(jobList) > 0 {
+		// get JobStates
+		err = apiServer.getJobStates(ctx, jobList)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	res.WriteHeader(http.StatusOK)
