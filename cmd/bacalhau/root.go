@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -16,6 +15,8 @@ import (
 var apiHost string
 var apiPort int
 var doNotTrack bool
+
+var Fatal = FatalErrorHandler
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(serveCmd)
@@ -113,7 +114,6 @@ func Execute() {
 	RootCmd.SetOutput(system.Stdout)
 
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		Fatal(err.Error(), 1)
 	}
 }

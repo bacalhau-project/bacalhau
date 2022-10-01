@@ -247,11 +247,11 @@ var serveCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		if OS.IPFSConnect == "" {
-			return fmt.Errorf("must specify ipfs-connect")
+			Fatal("You must specify --ipfs-connect.", 1)
 		}
 
 		if OS.JobSelectionDataLocality != "local" && OS.JobSelectionDataLocality != "anywhere" {
-			return fmt.Errorf("job-selection-data-locality must be either 'local' or 'anywhere'")
+			Fatal("--job-selection-data-locality must be either 'local' or 'anywhere'", 1)
 		}
 
 		// Establishing p2p connection
@@ -260,18 +260,18 @@ var serveCmd = &cobra.Command{
 
 		transport, err := libp2p.NewTransport(ctx, cm, OS.SwarmPort, peers)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
 		}
 
 		// Establishing IPFS connection
 		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error creating IPFS client: %s", err), 1)
 		}
 
 		datastore, err := inmemory.NewInMemoryDatastore()
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error creating in memory datastore: %s", err), 1)
 		}
 
 		// Create node config from cmd arguments
@@ -295,19 +295,19 @@ var serveCmd = &cobra.Command{
 		// Create node
 		node, err := node.NewStandardNode(ctx, nodeConfig)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error creating node: %s", err), 1)
 		}
 
 		// Start transport layer
 		err = transport.Start(ctx)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error starting transport layer: %s", err), 1)
 		}
 
 		// Start node
 		err = node.Start(ctx)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error starting node: %s", err), 1)
 		}
 
 		<-ctx.Done() // block until killed

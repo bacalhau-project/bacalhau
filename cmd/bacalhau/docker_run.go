@@ -250,18 +250,18 @@ var dockerRunCmd = &cobra.Command{
 
 		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
-			return errors.Wrap(err, "CreateJob")
+			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
 		}
 		err = jobutils.VerifyJob(j)
 		if err != nil {
-			return fmt.Errorf("error validating job: %s", err)
+			Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
 		}
 		if ODR.DryRun {
 			// Converting job to yaml
 			var yamlBytes []byte
 			yamlBytes, err = yaml.Marshal(j)
 			if err != nil {
-				return fmt.Errorf("error converting job to yaml: %s", err)
+				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
 			}
 			cmd.Print(string(yamlBytes))
 			return nil
@@ -276,7 +276,7 @@ var dockerRunCmd = &cobra.Command{
 		)
 
 		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
 		}
 
 		return nil

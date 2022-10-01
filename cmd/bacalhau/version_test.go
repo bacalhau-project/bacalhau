@@ -61,8 +61,8 @@ func (suite *VersionSuite) Test_Version() {
 	)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), string(out), "Client Version", "Client version not in output")
-	require.Contains(suite.T(), string(out), "Server Version", "Server version not in output")
+	require.Contains(suite.T(), string(out), "clientVersion", "Client version not in output")
+	require.Contains(suite.T(), string(out), "serverVersion", "Server version not in output")
 }
 
 type ThisVersions struct {

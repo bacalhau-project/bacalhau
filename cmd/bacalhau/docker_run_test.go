@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -51,24 +52,24 @@ func TestDockerRunSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DockerRunSuite) SetupSuite() {
+func (s *DockerRunSuite) SetupSuite() {
 }
 
 // Before each test
-func (suite *DockerRunSuite) SetupTest() {
-	require.NoError(suite.T(), system.InitConfigForTesting())
-	suite.rootCmd = RootCmd
+func (s *DockerRunSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
+	s.rootCmd = RootCmd
 }
 
-func (suite *DockerRunSuite) TearDownTest() {
+func (s *DockerRunSuite) TearDownTest() {
 }
 
-func (suite *DockerRunSuite) TearDownSuite() {
+func (s *DockerRunSuite) TearDownSuite() {
 
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
-func (suite *DockerRunSuite) TestRun_GenericSubmit() {
+func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -79,7 +80,7 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -87,21 +88,19 @@ func (suite *DockerRunSuite) TestRun_GenericSubmit() {
 			randomUUID := uuid.New()
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				fmt.Sprintf("ubuntu echo %s", randomUUID.String()),
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_DryRun() {
+func (s *DockerRunSuite) TestRun_DryRun() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -110,7 +109,7 @@ func (suite *DockerRunSuite) TestRun_DryRun() {
 
 	for i, tc := range tests {
 		func() {
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -120,27 +119,27 @@ func (suite *DockerRunSuite) TestRun_DryRun() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu",
 				entrypointCommand,
 				"--dry-run",
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			require.NoError(suite.T(), err)
-			require.Contains(suite.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
+			require.NoError(s.T(), err)
+			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
 			yaml.Unmarshal([]byte(out), &j)
-			require.NotNil(suite.T(), j, "Failed to unmarshal job from dry run output")
-			require.Equal(suite.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
+			require.NotNil(s.T(), j, "Failed to unmarshal job from dry run output")
+			require.Equal(s.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_GPURequests() {
+func (s *DockerRunSuite) TestRun_GPURequests() {
 	tests := []struct {
 		submitArgs []string
 		fatalErr   bool
@@ -161,7 +160,7 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -170,30 +169,29 @@ func (suite *DockerRunSuite) TestRun_GPURequests() {
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
 
 			if tc.fatalErr {
-				require.Contains(suite.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
+				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
 				return
 			} else {
-				require.NoError(suite.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
+				require.NoError(s.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
 			}
 
-			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
+			require.True(s.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
 
-			j, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
-			require.True(suite.T(), foundJob, "error getting job")
-			require.NotNil(suite.T(), j, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
+			j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
 			if tc.errString != "" {
 				o := logBuf.String()
-				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
+				require.Contains(s.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
-			require.Equal(suite.T(), tc.numGPUs, j.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, j.Spec.Resources.GPU)
+			require.Equal(s.T(), tc.numGPUs, j.Spec.Resources.GPU, "Expected %d GPUs, but got %d", tc.numGPUs, j.Spec.Resources.GPU)
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
+func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -203,23 +201,23 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(ctx, suite.T(), 1, 0, computenode.ComputeNodeConfig{})
+			devstack, cm := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
 
 			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 
 			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
 			ODR.DownloadFlags.OutputDir = dir
 
 			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-			require.NoError(suite.T(), err)
+			require.NoError(s.T(), err)
 
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
 				"--wait",
@@ -228,17 +226,15 @@ func (suite *DockerRunSuite) TestRun_GenericSubmitWait() {
 				"--",
 				"echo", "hello from docker submit wait",
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			client := publicapi.NewAPIClient(devstack.Nodes[0].APIServer.GetURI())
-			job, _, err := client.Get(ctx, strings.TrimSpace(out))
-			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", devstack.Nodes[0].APIServer.Host, devstack.Nodes[0].APIServer.Port))
+			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_SubmitInputs() {
+func (s *DockerRunSuite) TestRun_SubmitInputs() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -273,7 +269,7 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
+				c, cm := publicapi.SetupTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -292,16 +288,14 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /inputs/foo.txt") // This doesn't exist, but shouldn't error
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
+				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
-				require.Equal(suite.T(), len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
+				require.Equal(s.T(), len(tcids.inputVolumes), len(j.Spec.Inputs), "Number of job inputs != # of test inputs .")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidIV := range tcids.inputVolumes {
@@ -313,18 +307,18 @@ func (suite *DockerRunSuite) TestRun_SubmitInputs() {
 							if tcidIV.path != "" {
 								testPath = tcidIV.path
 							}
-							require.Equal(suite.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
+							require.Equal(s.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
 							break
 						}
 					}
-					require.True(suite.T(), testCIDinJobInputs, "Test CID not in job inputs.")
+					require.True(s.T(), testCIDinJobInputs, "Test CID not in job inputs.")
 				}
 			}()
 		}
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
+func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -352,7 +346,7 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
+				c, cm := publicapi.SetupTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -372,16 +366,14 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 					flagsArray...,
 				)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
 
-				j, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
+				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
-				require.Equal(suite.T(), len(turls.inputURLs), len(j.Spec.Inputs), "Number of job urls != # of test urls.")
+				require.Equal(s.T(), len(turls.inputURLs), len(j.Spec.Inputs), "Number of job urls != # of test urls.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, turlIU := range turls.inputURLs {
@@ -393,18 +385,18 @@ func (suite *DockerRunSuite) TestRun_SubmitUrlInputs() {
 							if turlIU.path != "" {
 								testPath = turlIU.path
 							}
-							require.Equal(suite.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
+							require.Equal(s.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
 							break
 						}
 					}
-					require.True(suite.T(), testURLinJobInputs, "Test URL not in job inputs.")
+					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs.")
 				}
 			}()
 		}
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
+func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -433,8 +425,10 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 
 		for _, tcids := range testCids {
 			func() {
+				Fatal = FakeFatalErrorHandler
+
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
+				c, cm := publicapi.SetupTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -458,21 +452,23 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 				}
 				flagsArray = append(flagsArray, "ubuntu echo 'hello world'")
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 					flagsArray...,
 				)
+
 				if tcids.err != "" {
-					require.Error(suite.T(), err, "Expected an error, but none provided. %+v", tcids)
-					require.Contains(suite.T(), err.Error(), "invalid output volume", "Missed detection of invalid output volume.")
+					firstFatalError, err := testutils.FirstFatalError(s.T(), out)
+
+					require.NoError(s.T(), err, "Error unmarshaling errors. Run - Number of Jobs: %s. Job number: %s", tc.numberOfJobs, i)
+					require.Greater(s.T(), firstFatalError.Code, 0, "Expected an error, but none provided. %+v", tcids)
+					require.Contains(s.T(), firstFatalError.Message, "invalid output volume", "Missed detection of invalid output volume.")
 					return // Go to next in loop
 				}
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				j, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NoError(suite.T(), err)
-				require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
+				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
-				require.Equal(suite.T(), tcids.correctLength, len(j.Spec.Outputs), "Number of job outputs != correct number.")
+				require.Equal(s.T(), tcids.correctLength, len(j.Spec.Outputs), "Number of job outputs != correct number.")
 
 				// Need to do the below because ordering is not guaranteed
 				for _, tcidOV := range tcids.outputVolumes {
@@ -499,15 +495,15 @@ func (suite *DockerRunSuite) TestRun_SubmitOutputs() {
 							}
 						}
 					}
-					require.True(suite.T(), testNameinJobOutputs, "Test OutputVolume Name not in job output names.")
-					require.True(suite.T(), testPathinJobOutputs, "Test OutputVolume Path not in job output paths.")
+					require.True(s.T(), testNameinJobOutputs, "Test OutputVolume Name not in job output names.")
+					require.True(s.T(), testPathinJobOutputs, "Test OutputVolume Path not in job output paths.")
 				}
 			}()
 		}
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_CreatedAt() {
+func (s *DockerRunSuite) TestRun_CreatedAt() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -520,31 +516,30 @@ func (suite *DockerRunSuite) TestRun_CreatedAt() {
 			*ODR = *NewDockerRunOptions()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
 				"ubuntu echo 'hello world'",
 			)
-			assert.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+			assert.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-			j, _, err := c.Get(ctx, strings.TrimSpace(out))
-			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), j, "Failed to get job with ID: %s", out)
-			require.LessOrEqual(suite.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
+			j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+			require.LessOrEqual(s.T(), j.CreatedAt, time.Now(), "Created at time is not less than or equal to now.")
 
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
-			require.GreaterOrEqual(suite.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
+			require.GreaterOrEqual(s.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
 
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_Annotations() {
+func (s *DockerRunSuite) TestRun_Annotations() {
 	tests := []struct {
 		numberOfJobs int
 	}{
@@ -583,7 +578,7 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
@@ -591,10 +586,10 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 
 				// log.Warn().Msgf("%s - Args: %+v", labelTest.Name, os.Args)
 				parsedBasedURI, err := url.Parse(c.BaseURI)
-				require.NoError(suite.T(), err)
+				require.NoError(s.T(), err)
 
 				host, port, err := net.SplitHostPort(parsedBasedURI.Host)
-				require.NoError(suite.T(), err)
+				require.NoError(s.T(), err)
 
 				var args []string
 
@@ -606,17 +601,16 @@ func (suite *DockerRunSuite) TestRun_Annotations() {
 				randNum, _ := crand.Int(crand.Reader, big.NewInt(10000))
 				args = append(args, fmt.Sprintf("ubuntu echo 'hello world - %s'", randNum.String()))
 
-				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, args...)
-				require.NoError(suite.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
+				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+				require.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
-				testJob, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NoError(suite.T(), err)
+				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
 				if labelTest.BadCase {
-					require.Contains(suite.T(), out, "rror")
+					require.Contains(s.T(), out, "rror")
 				} else {
-					require.NotNil(suite.T(), testJob, "Failed to get job with ID: %s", out)
-					require.NotContains(suite.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
+					require.NotNil(s.T(), j, "Failed to get job with ID: %s", out)
+					require.NotContains(s.T(), out, "rror", "'%s' caused an error", labelTest.Annotations)
 					msg := fmt.Sprintf(`
 Number of Annotations stored not equal to expected length.
 Name: %s
@@ -625,15 +619,15 @@ Actual length: %d
 
 Expected Annotations: %+v
 Actual Annotations: %+v
-`, labelTest.Name, len(labelTest.Annotations), len(testJob.Spec.Annotations), labelTest.Annotations, testJob.Spec.Annotations)
-					require.Equal(suite.T(), labelTest.CorrectLength, len(testJob.Spec.Annotations), msg)
+`, labelTest.Name, len(labelTest.Annotations), len(j.Spec.Annotations), labelTest.Annotations, j.Spec.Annotations)
+					require.Equal(s.T(), labelTest.CorrectLength, len(j.Spec.Annotations), msg)
 				}
 			}
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
+func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 	tests := []struct {
 		submitArgs []string
 		fatalErr   bool
@@ -655,7 +649,7 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -664,29 +658,28 @@ func (suite *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 			allArgs := []string{"docker", "run", "--api-host", host, "--api-port", port}
 			allArgs = append(allArgs, tc.submitArgs...)
-			_, out, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
+			_, out, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
 
 			if tc.fatalErr {
-				require.Contains(suite.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
+				require.Contains(s.T(), out, tc.errString, "Did not find expected error message for fatalError in error string.\nExpected: %s\nActual: %s", tc.errString, out)
 				return
 			} else {
-				require.NoError(suite.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
+				require.NoError(s.T(), submitErr, "Error submitting job. Run - Test-Number: %d - String: %s", i, tc.submitArgs)
 			}
 
-			require.True(suite.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
+			require.True(s.T(), !tc.fatalErr, "Expected fatal err, but submitted.")
 
-			job, foundJob, getErr := c.Get(ctx, strings.TrimSpace(out))
-			require.True(suite.T(), foundJob, "error getting job")
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s\nErr: %+v", out, getErr)
+			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
 			if tc.errString != "" {
 				o := logBuf.String()
-				require.Contains(suite.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
+				require.Contains(s.T(), o, tc.errString, "Did not find expected error message in error string.\nExpected: %s\nActual: %s", tc.errString, o)
 			}
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
+func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 	tests := []struct {
 		workdir    string
 		error_code int
@@ -702,8 +695,10 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 	for _, tc := range tests {
 		func() {
+			Fatal = FakeFatalErrorHandler
+
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -716,24 +711,28 @@ func (suite *DockerRunSuite) TestRun_SubmitWorkdir() {
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu pwd")
 
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 				flagsArray...,
 			)
 
 			if tc.error_code != 0 {
-				require.Error(suite.T(), err)
+				fatalError, err := testutils.FirstFatalError(s.T(), out)
+				require.NoError(s.T(), err, "Error getting first fatal error")
+
+				require.NotNil(s.T(), fatalError, "Expected fatal error, but none found")
 			} else {
-				require.NoError(suite.T(), err, "Error submitting job.")
-				job, _, err := c.Get(ctx, strings.TrimSpace(out))
-				require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
-				require.Equal(suite.T(), tc.workdir, job.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
-				require.NoError(suite.T(), err, "Error in running command.")
+				require.NoError(s.T(), err, "Error submitting job.")
+
+				j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+				require.Equal(s.T(), tc.workdir, j.Spec.Docker.WorkingDirectory, "Job workdir != test workdir.")
+				require.NoError(s.T(), err, "Error in running command.")
 			}
 		}()
 	}
 }
 
-func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
+func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 	ctx := context.Background()
 	const nodeCount = 1
 
@@ -745,7 +744,7 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	stack, cm := devstack_tests.SetupTest(
 		ctx,
-		suite.T(),
+		s.T(),
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -755,18 +754,18 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 	*ODR = *NewDockerRunOptions()
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 	for _, video := range videos {
 		err = os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
 		)
-		require.NoError(suite.T(), err)
+		require.NoError(s.T(), err)
 	}
 
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
@@ -783,8 +782,8 @@ func (suite *DockerRunSuite) TestRun_ExplodeVideos() {
 		"ubuntu", "echo", "hello",
 	}
 
-	_, _, submitErr := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, allArgs...)
-	require.NoError(suite.T(), submitErr)
+	_, _, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
+	require.NoError(s.T(), submitErr)
 }
 
 type deterministicVerifierTestArgs struct {
@@ -795,7 +794,7 @@ type deterministicVerifierTestArgs struct {
 	expectedFailed int
 }
 
-func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
+func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 	ctx := context.Background()
 
 	apiSubmitJob := func(
@@ -809,7 +808,7 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		ODR.Inputs = make([]string, 0)
 		ODR.InputVolumes = make([]string, 0)
 
-		_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 			"docker", "run",
 			"--api-host", host,
 			"--api-port", port,
@@ -825,14 +824,14 @@ func (suite *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		if err != nil {
 			return "", err
 		}
-		jobId := strings.TrimSpace(out)
-		return jobId, nil
+		j := testutils.GetJobFromTestOutput(ctx, s.T(), apiClient, out)
+		return j.ID, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
+	devstack_tests.RunDeterministicVerifierTests(ctx, s.T(), apiSubmitJob)
 }
 
-func (suite *DockerRunSuite) TestTruncateReturn() {
+func (s *DockerRunSuite) TestTruncateReturn() {
 	system.MaxStderrReturnLengthInBytes = 10 // Make it artificially small for this run
 
 	tests := map[string]struct {
@@ -859,9 +858,9 @@ func (suite *DockerRunSuite) TestTruncateReturn() {
 	defer os.RemoveAll(outputDir)
 
 	for name, tc := range tests {
-		suite.T().Run(name, func(t *testing.T) {
+		s.T().Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -874,14 +873,12 @@ func (suite *DockerRunSuite) TestTruncateReturn() {
 
 			flagsArray = append(flagsArray, fmt.Sprintf(`ubuntu perl -e "print \"=\" x %d"`, tc.inputLength))
 
-			_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd,
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd,
 				flagsArray...,
 			)
-			require.NoError(suite.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
+			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
-			job, _, err := c.Get(ctx, strings.TrimSpace(out))
-			require.NoError(suite.T(), err)
-			require.NotNil(suite.T(), job, "Failed to get job with ID: %s", out)
+			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
 			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
 

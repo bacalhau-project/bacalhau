@@ -29,10 +29,13 @@ var (
 
 	//nolint:lll // Documentation
 	validateExample = templates.Examples(i18n.T(`
-		# validate a job using the data in job.yaml
+		# Validate a job using the data in job.yaml
 		bacalhau validate ./job.yaml
 
-		# output the jsonschema for a bacalhau job
+		# Validate a job using stdin
+		cat job.yaml | bacalhau validate
+
+		# Output the jsonschema for a bacalhau job
 		bacalhau validate --output-schema
 `))
 
@@ -84,26 +87,29 @@ var validateCmd = &cobra.Command{
 
 		if len(cmdArgs) == 0 {
 			_ = cmd.Usage()
-			return fmt.Errorf("no filename specified")
+			Fatal("You must specify a filename or provide the content to be validated via stdin.", 1)
 		}
 
 		OV.Filename = cmdArgs[0]
 		var byteResult []byte
 
-		if OV.Filename == "-" {
+		if OV.Filename == "" {
 			// Read from stdin
 			byteResult, err = io.ReadAll(cmd.InOrStdin())
 			if err != nil {
-				return err
+				Fatal(fmt.Sprintf("Error reading from stdin: %s", err), 1)
 			}
-
+			if byteResult == nil {
+				// Can you ever get here?
+				Fatal("No filename provided.", 1)
+			}
 		} else {
 			var file *os.File
 			fileextension := filepath.Ext(OV.Filename)
 			file, err = os.Open(OV.Filename)
 
 			if err != nil {
-				return fmt.Errorf("could not open file '%s': %s", OV.Filename, err)
+				Fatal(fmt.Sprintf("Error opening file (%s): %s", OV.Filename, err), 1)
 			}
 
 			byteResult, err = io.ReadAll(file)
@@ -112,18 +118,14 @@ var validateCmd = &cobra.Command{
 				return err
 			}
 
-			if fileextension == ".json" {
-				err = json.Unmarshal(byteResult, &j)
-				if err != nil {
-					return fmt.Errorf("error reading json file '%s': %s", OV.Filename, err)
-				}
-			} else if fileextension == ".yaml" || fileextension == ".yml" {
+			if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
+				// Yaml can parse json
 				err = yaml.Unmarshal(byteResult, &j)
 				if err != nil {
-					return fmt.Errorf("error reading yaml file '%s': %s", OV.Filename, err)
+					Fatal(fmt.Sprintf("Error unmarshaling yaml from file (%s): %s", OV.Filename, err), 1)
 				}
 			} else {
-				return fmt.Errorf("file '%s' must be a .json or .yaml/.yml file", OV.Filename)
+				Fatal(fmt.Sprintf("File extension (%s) not supported. The file must end in either .yaml, .yml or .json.", fileextension), 1)
 			}
 
 		}
@@ -131,7 +133,7 @@ var validateCmd = &cobra.Command{
 		// Noop if you pass JSON through
 		fileContentsAsJSONBytes, err := yaml.YAMLToJSON(byteResult)
 		if err != nil {
-			return fmt.Errorf("error converting from YAML to JSON %s", err)
+			Fatal(fmt.Sprintf("Error converting yaml to json: %s", err), 1)
 		}
 
 		// println(str)
@@ -140,7 +142,7 @@ var validateCmd = &cobra.Command{
 
 		result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error validating json: %s", err), 1)
 		}
 
 		if result.Valid() {
@@ -150,8 +152,9 @@ var validateCmd = &cobra.Command{
 			for _, desc := range result.Errors() {
 				cmd.Printf("- %s\n", desc)
 			}
+			os.Exit(1)
 		}
-		return err
+		return nil
 	},
 }
 

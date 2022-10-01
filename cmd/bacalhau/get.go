@@ -1,10 +1,12 @@
 package bacalhau
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -62,24 +64,33 @@ var getCmd = &cobra.Command{
 		defer span.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		jobID := cmdArgs[0]
+		var err error
 
-		log.Info().Msgf("Fetching results of job '%s'...", jobID)
+		jobID := cmdArgs[0]
+		if jobID == "" {
+			var byteResult []byte
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+				// Both filename and stdin are empty
+				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+			} else if err != nil {
+				// Error not related to fields being empty
+				return err
+			}
+			jobID = string(byteResult)
+		}
+
+		cmd.Printf("Fetching results of job '%s'...", jobID)
 
 		j, ok, err := GetAPIClient().Get(ctx, jobID)
 
-		if !ok {
-			cmd.Printf("No job ID found matching ID: %s", jobID)
-			return nil
-		}
-
-		if err != nil {
-			return err
+		if !ok || err != nil {
+			Fatal(fmt.Sprintf("Job not found: %s", jobID), 1)
 		}
 
 		results, err := GetAPIClient().GetResults(ctx, j.ID)
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error getting results for job ID (%s): %s", jobID, err), 1)
 		}
 
 		err = ipfs.DownloadJob(
@@ -91,7 +102,7 @@ var getCmd = &cobra.Command{
 		)
 
 		if err != nil {
-			return err
+			Fatal(fmt.Sprintf("Error downloading results from job ID (%s): %s", jobID, err), 1)
 		}
 
 		return nil

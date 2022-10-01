@@ -11,9 +11,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"sigs.k8s.io/yaml"
@@ -81,55 +80,56 @@ var createCmd = &cobra.Command{
 		// Custom unmarshaller
 		// https://stackoverflow.com/questions/70635636/unmarshaling-yaml-into-different-struct-based-off-yaml-field?rq=1
 		var jwi model.JobWithInfo
-		j, err := model.NewJobWithSaneProductionDefaults()
-		if err != nil {
-			return err
-		}
+		var j *model.Job
+		var err error
 		var byteResult []byte
 		var rawMap map[string]interface{}
 
-		if len(cmdArgs) == 0 {
-			_ = cmd.Usage()
-			return fmt.Errorf("no filename specified")
+		j, err = model.NewJobWithSaneProductionDefaults()
+		if err != nil {
+			return err
 		}
 
 		OC.Filename = cmdArgs[0]
 
-		if OC.Filename == "-" {
-			byteResult, err = io.ReadAll(cmd.InOrStdin())
-			if err != nil {
-				return errors.Wrap(err, "failed to read from stdin")
+		if OC.Filename == "" {
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+				// Both filename and stdin are empty
+				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+			} else if err != nil {
+				// Error not related to fields being empty
+				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 			}
 		} else {
 			var fileContent *os.File
 			fileContent, err = os.Open(OC.Filename)
 
 			if err != nil {
-				return fmt.Errorf("could not open file '%s': %s", OC.Filename, err)
+				Fatal(fmt.Sprintf("Error opening file: %s", err), 1)
 			}
 
 			byteResult, err = io.ReadAll(fileContent)
 			if err != nil {
-				return errors.Wrap(err, "failed to read from file")
+				Fatal(fmt.Sprintf("Error reading file: %s", err), 1)
 			}
 		}
 
 		// Do a first pass for parsing to see if it's a Job or JobWithInfo
 		err = yaml.Unmarshal(byteResult, &rawMap)
 		if err != nil {
-			return errors.Wrap(err, "failed to read the file initial pass")
+			Fatal(fmt.Sprintf("Error parsing file: %s", err), 1)
 		}
 
 		// If it's a JobWithInfo, we need to convert it to a Job
 		if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
 			err = yaml.Unmarshal(byteResult, &jwi)
 			if err != nil {
-				log.Error().Err(err).Msg("Error creating a job from yaml. Error:")
-				return err
+				Fatal(fmt.Sprintf("Error parsing file as JobWithInfo: %s", err), 1)
 			}
 			byteResult, err = yaml.Marshal(jwi.Job)
 			if err != nil {
-				return errors.Wrap(err, "Error getting job out of input")
+				Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
 			}
 		}
 
@@ -137,8 +137,7 @@ var createCmd = &cobra.Command{
 		// so we can just use that
 		err = yaml.Unmarshal(byteResult, &j)
 		if err != nil {
-			log.Error().Err(err).Msg("Error creating a job from input. Error:")
-			return err
+			Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
 		}
 
 		// Warn on fields with data that will be ignored
@@ -194,7 +193,7 @@ var createCmd = &cobra.Command{
 		)
 
 		if err != nil {
-			return fmt.Errorf("error executing job: %s", err)
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
 		}
 
 		return nil
