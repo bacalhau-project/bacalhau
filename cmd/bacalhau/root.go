@@ -19,18 +19,38 @@ var doNotTrack bool
 var Fatal = FatalErrorHandler
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
-	RootCmd.AddCommand(serveCmd)
-
-	// Porcelain commands (language specific easy to use commands)
-	RootCmd.AddCommand(runCmd)
+	// ====== Start a job
 
 	// Create job from file
 	RootCmd.AddCommand(createCmd)
 
-	RootCmd.AddCommand(validateCmd)
-
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
+
+	// Porcelain commands (language specific easy to use commands)
+	RootCmd.AddCommand(runCmd)
+
+	RootCmd.AddCommand(validateCmd)
+
+	RootCmd.AddCommand(versionCmd)
+
+	// ====== Get information or results about a job
+	// Describe a job
+	RootCmd.AddCommand(describeCmd)
+
+	// Get the results of a job
+	RootCmd.AddCommand(getCmd)
+
+	// List jobs
+	RootCmd.AddCommand(listCmd)
+
+	// ====== Run a server
+
+	// Serve commands
+	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(idCmd)
+	RootCmd.AddCommand(devstackCmd)
+
 	// TODO: RootCmd.AddCommand(wasmCmd)
 
 	defaultAPIHost := system.Envs[system.Production].APIHost
@@ -47,20 +67,16 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		}
 	}
 
-	RootCmd.AddCommand(getCmd)
-	RootCmd.AddCommand(listCmd)
-	RootCmd.AddCommand(idCmd)
-	RootCmd.AddCommand(describeCmd)
-	RootCmd.AddCommand(devstackCmd)
 	RootCmd.PersistentFlags().StringVar(
 		&apiHost, "api-host", defaultAPIHost,
-		`The host for the client and server to communicate on (via REST). Ignored if BACALHAU_API_HOST environment variable is set.`,
+		`The host for the client and server to communicate on (via REST).
+Ignored if BACALHAU_API_HOST environment variable is set.`,
 	)
 	RootCmd.PersistentFlags().IntVar(
 		&apiPort, "api-port", defaultAPIPort,
-		`The port for the client and server to communicate on (via REST). Ignored if BACALHAU_API_PORT environment variable is set.`,
+		`The port for the client and server to communicate on (via REST).
+Ignored if BACALHAU_API_PORT environment variable is set.`,
 	)
-	RootCmd.AddCommand(versionCmd)
 }
 
 var RootCmd = &cobra.Command{
