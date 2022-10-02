@@ -461,3 +461,10 @@ func FindJobIDInTestOutput(testOutput string) string {
 	}
 	return ""
 }
+
+// Checks to see if an object implements an interface
+// First parameter is the interface, second is the object
+func CheckIfObjectImplementsType[T any](_ T, n interface{}) bool {
+	_, ok := n.(T)
+	return ok
+}
