@@ -81,7 +81,8 @@ func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs i
 
 	var res listResponse
 	if err := apiClient.post(ctx, "list", req, &res); err != nil {
-		return nil, err
+		e := err
+		return nil, e
 	}
 
 	return res.Jobs, nil
@@ -273,13 +274,13 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	var body bytes.Buffer
 	var err error
 	if err = json.NewEncoder(&body).Encode(reqData); err != nil {
-		return fmt.Errorf("publicapi: error encoding request body: %v", err)
+		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error encoding request body: %v", err))
 	}
 
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
-		return fmt.Errorf("publicapi: error creating post request: %v", err)
+		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating post request: %v", err))
 	}
 	req.Header.Set("Content-type", "application/json")
 	req.Close = true // don't keep connections lying around
@@ -287,11 +288,11 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	var res *http.Response
 	res, err = apiClient.client.Do(req)
 	if err != nil {
-		return err
-	}
-
-	if err != nil {
-		return fmt.Errorf("publicapi: error sending post request: %v", err)
+		if errorResponse, ok := err.(*bacerrors.ErrorResponse); ok {
+			return errorResponse
+		} else {
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v", err))
+		}
 	}
 
 	defer func() {
@@ -304,31 +305,28 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		var responseBody []byte
 		responseBody, err = io.ReadAll(res.Body)
 		if err != nil {
-			return fmt.Errorf("publicapi: error reading response body: %v", err)
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error reading response body: %v", err))
 		}
 
-		var serverError bacerrors.BacalhauErrorInterface
+		var serverError *bacerrors.ErrorResponse
 		if err = json.Unmarshal(responseBody, &serverError); err != nil {
-			serverError = &bacerrors.UnknownServerError{}
-			serverError.SetMessage(string(responseBody))
-			serverError.SetError(fmt.Errorf("publicapi: error unmarshaling response body: %v", string(responseBody)))
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v",
+				string(responseBody)))
 		}
 
-		if !reflect.DeepEqual(serverError, bacerrors.BacalhauError{}) {
+		if !reflect.DeepEqual(serverError, bacerrors.BacalhauErrorInterface(nil)) {
 			return serverError
 		}
 	}
 
 	err = json.NewDecoder(res.Body).Decode(resData)
-	a := resData
-	_ = a
 	if err != nil {
 		if err == io.EOF {
 			return nil // No error, just no data
 		} else {
-			return fmt.Errorf("publicapi: error decoding response body: %v", err)
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error decoding response body: %v", err))
 		}
 	}
 
-	return err // From the defer function
+	return nil
 }

@@ -186,6 +186,12 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, fmt.Sprintf("%s:/inputs", i))
 		}
 
+		if len(OLR.InputVolumes) == 0 {
+			// TODO: #765 this is a hack to make the job run when no inputs provided
+			// Just put a default one down - nothing will be in there.
+			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
+		}
+
 		//nolint:lll // it's ok to be long
 		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 		j, err := job.ConstructLanguageJob(

@@ -78,25 +78,32 @@ var describeCmd = &cobra.Command{
 		inputJobID := cmdArgs[0]
 		if inputJobID == "" {
 			var byteResult []byte
-			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
 			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
 				// Both filename and stdin are empty
 				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+				return nil
 			} else if err != nil {
 				// Error not related to fields being empty
 				return err
 			}
 			inputJobID = string(byteResult)
 		}
-		j, _, err := GetAPIClient().Get(ctx, inputJobID)
+		j, foundJob, err := GetAPIClient().Get(ctx, inputJobID)
 
 		if err != nil {
-			if _, ok := err.(*bacerrors.JobNotFound); ok {
-				cmd.Printf(err.Error() + "\n")
-				Fatal("", 1)
+			if er, ok := err.(*bacerrors.ErrorResponse); ok {
+				Fatal(er.Message, 1)
+				return nil
 			} else {
 				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", inputJobID, err), 1)
+				return nil
 			}
+		}
+
+		if !foundJob {
+			cmd.Printf(err.Error() + "\n")
+			Fatal("", 1)
 		}
 
 		shardStates, err := GetAPIClient().GetJobState(ctx, j.ID)

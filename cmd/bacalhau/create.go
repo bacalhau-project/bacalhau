@@ -93,7 +93,7 @@ var createCmd = &cobra.Command{
 		OC.Filename = cmdArgs[0]
 
 		if OC.Filename == "" {
-			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
 			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
 				// Both filename and stdin are empty
 				Fatal(userstrings.NoFilenameProvidedErrorString, 1)

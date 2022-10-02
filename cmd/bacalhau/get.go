@@ -70,7 +70,8 @@ var getCmd = &cobra.Command{
 		jobID := cmdArgs[0]
 		if jobID == "" {
 			var byteResult []byte
-			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs[0])
+			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
+			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
 				// Both filename and stdin are empty
 				Fatal(userstrings.NoFilenameProvidedErrorString, 1)

@@ -371,8 +371,8 @@ func downloadResults(ctx context.Context,
 	return nil
 }
 
-func ReadFromStdinIfAvailable(cmd *cobra.Command, input string) ([]byte, error) {
-	if input == "" {
+func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error) {
+	if len(args) == 0 {
 		byteResult, err := io.ReadAll(cmd.InOrStdin())
 		if err != nil {
 			return nil, errors.Wrap(err, "Error reading from stdin")
@@ -411,6 +411,7 @@ func FatalErrorHandler(msg string, code int) {
 // Captures for testing, responsibility of the test to handle the exit (if any)
 // NOTE: If your test is not idempotent, you can cause side effects
 // (the underlying function will continue to run)
+// Returned as text JSON to wherever RootCmd is printing.
 func FakeFatalErrorHandler(msg string, code int) {
 	c := model.TestFatalErrorHandlerContents{Message: msg, Code: code}
 	b, _ := json.Marshal(c)

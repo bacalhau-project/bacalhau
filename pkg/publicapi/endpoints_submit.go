@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -42,18 +43,22 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
 		log.Debug().Msgf("====> Decode submitReq error: %s", err)
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
 	if err := verifySubmitRequest(&submitReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("====> VerifySubmitRequest error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
 	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
 		log.Debug().Msgf("====> VerifyJob error: %s", err)
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
@@ -63,14 +68,16 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		decoded, err := base64.StdEncoding.DecodeString(submitReq.Data.Context)
 		if err != nil {
 			log.Debug().Msgf("====> DecodeContext error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
 		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
 		if err != nil {
 			log.Debug().Msgf("====> Create tmp dir error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
@@ -78,7 +85,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> Decompress error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
@@ -89,7 +97,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
@@ -117,7 +126,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		Job: j,
 	})
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
 }

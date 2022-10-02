@@ -2,11 +2,13 @@ package bacalhau
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -70,7 +72,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				defer cm.Cleanup()
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
-					for i := 0; i < n.numOfJobs; i++ {
+					for k := 0; k < n.numOfJobs; k++ {
 						j := publicapi.MakeNoopJob()
 						j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
 						s, err := c.Submit(ctx, j, nil)
@@ -190,6 +192,81 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 			// 	fmt.Sprintf("Events included: %v\nExpected: %v", localEventsWereIncluded, tc.includeEvents))
 
 		}()
+	}
+
+}
+
+func (s *DescribeSuite) TestDescribeJobEdgeCases() {
+	tests := []struct {
+		describeIDEdgecase string
+		errorMessage       string
+	}{
+		{describeIDEdgecase: "", errorMessage: ""},
+		{describeIDEdgecase: "BAD_JOB_ID", errorMessage: "No job ID found."},
+	}
+
+	numOfJobsTests := []struct {
+		numOfJobs int
+	}{
+		{numOfJobs: 1}, // just enough that describe could get screwed up
+	}
+
+	for _, tc := range tests {
+		for _, n := range numOfJobsTests {
+			func() {
+				Fatal = FakeFatalErrorHandler
+
+				var submittedJob *model.Job
+				ctx := context.Background()
+				c, cm := publicapi.SetupTests(s.T())
+				defer cm.Cleanup()
+
+				for i := 0; i < n.numOfJobs; i++ {
+					j := publicapi.MakeNoopJob()
+					j.Spec.Docker.Entrypoint = []string{"Entrypoint-Unique-Array", uuid.NewString()}
+					jj, err := c.Submit(ctx, j, nil)
+					require.Nil(s.T(), err)
+					submittedJob = jj // Default to the last job submitted, should be fine?
+				}
+
+				parsedBasedURI, _ := url.Parse(c.BaseURI)
+				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				var returnedJob = model.NewJob()
+				var err error
+				var out string
+				var jobID string
+
+				// If describeID is empty, should return use submitted ID. Otherwise, use describeID
+				if tc.describeIDEdgecase == "" {
+					jobID = submittedJob.ID
+				} else {
+					jobID = tc.describeIDEdgecase
+				}
+
+				_, out, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "describe",
+					"--api-host", host,
+					"--api-port", port,
+					jobID,
+				)
+				if tc.describeIDEdgecase == "" {
+					require.NoError(s.T(), err, "Error in describing job: %+v", err)
+
+					err = yaml.Unmarshal([]byte(out), &returnedJob)
+					require.NoError(s.T(), err, "Error in unmarshalling description: %+v", err)
+					require.Equal(s.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
+					require.Equal(s.T(),
+						submittedJob.Spec.Docker.Entrypoint[0],
+						returnedJob.Spec.Docker.Entrypoint[0],
+						fmt.Sprintf("Submitted job entrypoints not the same as the description. Edgecase: %s", tc.describeIDEdgecase))
+				} else {
+					c := &model.TestFatalErrorHandlerContents{}
+					json.Unmarshal([]byte(out), &c)
+					e := bacerrors.NewJobNotFound(tc.describeIDEdgecase)
+					require.Contains(s.T(), c.Message, e.GetMessage(), "Job not found error string not found.", err)
+				}
+
+			}()
+		}
 	}
 
 }

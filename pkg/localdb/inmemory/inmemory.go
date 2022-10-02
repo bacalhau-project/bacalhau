@@ -64,9 +64,8 @@ func (d *InMemoryDatastore) GetJob(ctx context.Context, id string) (*model.Job, 
 
 	j, ok := d.jobs[id]
 	if !ok {
-		var returnError bacerrors.JobNotFound
-		returnError.SetID(id)
-		return nil, &returnError
+		returnError := bacerrors.NewJobNotFound(id)
+		return nil, returnError
 	}
 
 	return j, nil
@@ -125,11 +124,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 		log.Debug().Msgf("querying for single job %s", query.ID)
 		j, err := d.GetJob(ctx, query.ID)
 		if err != nil {
-			if _, ok := err.(*bacerrors.JobNotFound); ok {
-				return nil, bacerrors.NewJobNotFound(query.ID)
-			} else {
-				return nil, err
-			}
+			return nil, err
 		}
 		result = append(result, j)
 	} else {

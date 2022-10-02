@@ -37,8 +37,9 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
-		if _, ok := err.(*bacerrors.JobNotFound); !ok {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+		_, ok := err.(*bacerrors.JobNotFound)
+		if ok {
+			http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 			return
 		}
 	}
