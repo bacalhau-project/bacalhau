@@ -15,7 +15,7 @@ while [[ ! -e /dev/sdb ]]; do
 done
 # mount /dev/sdb at /data
 mkdir -p /data
-mount /dev/sdb /data
+mount /dev/sdb /data || true
 
 # import the secrets
 source /data/secrets.sh
