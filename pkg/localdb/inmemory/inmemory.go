@@ -148,18 +148,14 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 			case "id":
 				if query.SortReverse {
 					// what does it mean to sort by ID?
-					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
 					return result[i].ID > result[j].ID
 				} else {
-					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
 					return result[i].ID < result[j].ID
 				}
 			case "created_at":
 				if query.SortReverse {
-					log.Debug().Msgf("sorting results by %s: reverse", query.SortBy)
 					return result[i].CreatedAt.UTC().Unix() > result[j].CreatedAt.UTC().Unix()
 				} else {
-					log.Debug().Msgf("sorting results by %s: normally", query.SortBy)
 					return result[i].CreatedAt.UTC().Unix() < result[j].CreatedAt.UTC().Unix()
 				}
 			default:
