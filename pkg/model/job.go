@@ -47,6 +47,10 @@ type Job struct {
 	LocalEvents []JobLocalEvent `json:"LocalJobEvents,omitempty"`
 }
 
+func (job Job) String() string {
+	return job.ID
+}
+
 // TODO: There's probably a better way we want to globally version APIs
 func NewJob() *Job {
 	return &Job{

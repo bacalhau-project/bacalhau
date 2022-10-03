@@ -546,7 +546,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
 		require.NoError(suite.T(), err)
 
-		executor := stack.Node.Executors[model.EngineDocker]
+		executor, err := stack.Node.Executors.GetExecutor(ctx, model.EngineDocker)
+		require.NoError(suite.T(), err)
 
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,

@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode/tooling"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
@@ -109,8 +111,7 @@ func TestJobSelectionPolicy(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			suite := tooling.NewTestSuite()
-			executor, err := tooling.NewNoopExecutor(suite.Cm, tooling.HasStorageNoopExecutorConfig(test.hasStorageLocally))
+			executor, err := noop_executor.NewNoopExecutorWithConfig(tooling.HasStorageNoopExecutorConfig(test.hasStorageLocally))
 			require.NoError(t, err)
 			result, err := ApplyJobSelectionPolicy(
 				context.Background(),
@@ -145,8 +146,7 @@ func TestJobSelectionHttp(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			suite := tooling.NewTestSuite()
-			executor, err := tooling.NewNoopExecutor(suite.Cm, tooling.BlankNoopExecutorConfig())
+			executor, err := noop_executor.NewNoopExecutorWithConfig(tooling.BlankNoopExecutorConfig())
 
 			var requestPayload JobSelectionPolicyProbeData
 
@@ -207,8 +207,7 @@ func TestJobSelectionExec(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			suite := tooling.NewTestSuite()
-			executor, err := tooling.NewNoopExecutor(suite.Cm, tooling.BlankNoopExecutorConfig())
+			executor, err := noop_executor.NewNoopExecutorWithConfig(tooling.BlankNoopExecutorConfig())
 			require.NoError(t, err)
 			command := "exit 0"
 			if test.failMode {

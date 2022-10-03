@@ -38,7 +38,7 @@ const (
 	ExpectedModeContains
 )
 
-type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error)
+type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (storage.Storage, error)
 
 //nolint:lll
 type ISetupStorage func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error)
@@ -48,13 +48,13 @@ type IGetJobSpec func() model.JobSpecDocker
 /*
 Storage Drivers
 */
-func FuseStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
+func FuseStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.Storage, error) {
 	return fusedocker.NewStorageProvider(
 		ctx, stack.CleanupManager, stack.IPFSClients[0].APIAddress())
 }
 
-func APICopyStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.StorageProvider, error) {
-	return apicopy.NewStorageProvider(
+func APICopyStorageDriverFactoryHandler(ctx context.Context, stack *devstack.DevStackIPFS) (storage.Storage, error) {
+	return apicopy.NewStorage(
 		stack.CleanupManager, stack.IPFSClients[0].APIAddress())
 }
 

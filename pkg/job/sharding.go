@@ -96,7 +96,7 @@ func GetJobTotalExecutionCount(j *model.Job) int {
 func ExplodeShardedVolumes(
 	ctx context.Context,
 	spec model.Spec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProviders storage.StorageProvider,
 ) ([]model.StorageSpec, error) {
 	// this is an exploded list of all storage inodes
 	// once the storage driver has expanded the volume
@@ -112,12 +112,12 @@ func ExplodeShardedVolumes(
 
 	// loop over each input volume and explode it using the storage driver
 	for _, volume := range spec.Inputs {
-		storageProvider, ok := storageProviders[volume.StorageSource]
-		if !ok {
-			return allVolumes, fmt.Errorf("storage provider not found for engine %s", volume.StorageSource)
+		volumeStorage, err := storageProviders.GetStorage(ctx, volume.StorageSource)
+		if err != nil {
+			return allVolumes, err
 		}
-		explodedVolumes, err := storageProvider.Explode(ctx, volume)
-		if !ok {
+		explodedVolumes, err := volumeStorage.Explode(ctx, volume)
+		if err != nil {
 			return allVolumes, err
 		}
 		allVolumes = append(allVolumes, explodedVolumes...)
@@ -130,7 +130,7 @@ func ExplodeShardedVolumes(
 func GetShardsStorageSpecs(
 	ctx context.Context,
 	spec model.Spec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProviders storage.StorageProvider,
 ) ([][]model.StorageSpec, error) {
 	config := spec.Sharding
 	batchSize := config.BatchSize
@@ -162,7 +162,7 @@ func GetShardsStorageSpecs(
 func GetShardStorageSpec(
 	ctx context.Context,
 	shard model.JobShard,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProviders storage.StorageProvider,
 ) ([]model.StorageSpec, error) {
 	shards, err := GetShardsStorageSpecs(ctx, shard.Job.Spec, storageProviders)
 	if err != nil {
@@ -183,7 +183,7 @@ func GetShardStorageSpec(
 func GenerateExecutionPlan(
 	ctx context.Context,
 	spec model.Spec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProviders storage.StorageProvider,
 ) (model.JobExecutionPlan, error) {
 	config := spec.Sharding
 	// this means there is no sharding and we use the input volumes as is

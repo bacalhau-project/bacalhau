@@ -16,7 +16,6 @@ import (
 
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -30,8 +29,8 @@ type APIServer struct {
 	localdb          localdb.LocalDB
 	transport        transport.Transport
 	Requester        *requesternode.RequesterNode
-	Publishers       map[model.Publisher]publisher.Publisher
-	StorageProviders map[model.StorageSourceType]storage.StorageProvider
+	Publishers       publisher.PublisherProvider
+	StorageProviders storage.StorageProvider
 	Host             string
 	Port             int
 	componentMu      sync.Mutex
@@ -55,8 +54,8 @@ func NewServer(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
-	publishers map[model.Publisher]publisher.Publisher,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	publishers publisher.PublisherProvider,
+	storageProviders storage.StorageProvider,
 ) *APIServer {
 	a := &APIServer{
 		localdb:          localdb,
@@ -132,29 +131,6 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	}
 
 	return err
-}
-
-func (apiServer *APIServer) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi/getPublisher")
-	defer span.End()
-
-	apiServer.componentMu.Lock()
-	defer apiServer.componentMu.Unlock()
-
-	if _, ok := apiServer.Publishers[typ]; !ok {
-		return nil, fmt.Errorf("no matching verifier found on this server: %s", typ.String())
-	}
-
-	v := apiServer.Publishers[typ]
-	installed, err := v.IsInstalled(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !installed {
-		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
-	}
-
-	return v, nil
 }
 
 func verifySubmitRequest(req *submitRequest) error {

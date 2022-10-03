@@ -470,4 +470,4 @@ func newSpan(ctx context.Context, apiName string) (
 }
 
 // Compile-time interface check:
-var _ storage.StorageProvider = (*StorageProvider)(nil)
+var _ storage.Storage = (*StorageProvider)(nil)

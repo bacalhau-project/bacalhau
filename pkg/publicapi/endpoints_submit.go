@@ -93,7 +93,12 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// write the "context" for a job to storage
 		// this is used to upload code files
 		// we presently just fix on ipfs to do this
-		ipfsStorage := apiServer.StorageProviders[model.StorageSourceIPFS]
+		ipfsStorage, err := apiServer.StorageProviders.GetStorage(ctx, model.StorageSourceIPFS)
+		if err != nil {
+			log.Debug().Msgf("====> GetStorage error: %s", err)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Debug().Msgf("====> PinContext error: %s", err)

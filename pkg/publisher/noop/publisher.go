@@ -9,6 +9,21 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
+// Publisher provider that always return NoopPublisher regardless of requested publisher type
+type NoopPublisherProvider struct {
+	noopPublisher *NoopPublisher
+}
+
+func NewNoopPublisherProvider(noopPublisher *NoopPublisher) *NoopPublisherProvider {
+	return &NoopPublisherProvider{
+		noopPublisher: noopPublisher,
+	}
+}
+
+func (s *NoopPublisherProvider) GetPublisher(ctx context.Context, publisherType model.Publisher) (publisher.Publisher, error) {
+	return s.noopPublisher, nil
+}
+
 type NoopPublisher struct {
 	StateResolver *job.StateResolver
 }
@@ -52,4 +67,5 @@ func (publisher *NoopPublisher) ComposeResultReferences(
 }
 
 // Compile-time check that Verifier implements the correct interface:
+var _ publisher.PublisherProvider = (*NoopPublisherProvider)(nil)
 var _ publisher.Publisher = (*NoopPublisher)(nil)

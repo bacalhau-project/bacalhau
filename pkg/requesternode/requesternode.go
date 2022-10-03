@@ -11,8 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/google/uuid"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
-
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
@@ -28,12 +26,11 @@ type RequesterNode struct {
 	localDB            localdb.LocalDB
 	localEventConsumer eventhandler.LocalEventHandler
 	jobEventPublisher  eventhandler.JobEventHandler
-	verifiers          map[model.Verifier]verifier.Verifier
-	storageProviders   map[model.StorageSourceType]storage.StorageProvider
+	verifiers          verifier.VerifierProvider
+	storageProviders   storage.StorageProvider
 	config             RequesterNodeConfig //nolint:gocritic
-	componentMutex     sync.Mutex
-	bidMutex           sync.Mutex
-	verifyMutex        sync.Mutex
+
+	shardStateManager *shardStateMachineManager
 }
 
 func NewRequesterNode(
@@ -42,8 +39,8 @@ func NewRequesterNode(
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	verifiers map[model.Verifier]verifier.Verifier,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	verifiers verifier.VerifierProvider,
+	storageProviders storage.StorageProvider,
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
@@ -55,16 +52,8 @@ func NewRequesterNode(
 		verifiers:          verifiers,
 		storageProviders:   storageProviders,
 		config:             config,
+		shardStateManager:  newShardStateMachineManager(),
 	}
-	requesterNode.bidMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "RequesterNode.bidMutex",
-	})
-	requesterNode.verifyMutex.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "RequesterNode.verifyMutex",
-	})
-
 	return requesterNode, nil
 }
 
@@ -80,12 +69,9 @@ func (node *RequesterNode) HandleJobEvent(ctx context.Context, event model.JobEv
 	}
 
 	switch event.EventName {
-	case model.JobEventBid:
-		return node.handleEventBid(ctx, j, event)
-	case model.JobEventResultsProposed:
-		return node.handleEventShardExecutionComplete(ctx, j, event)
-	case model.JobEventError:
-		return node.handleEventShardExecutionComplete(ctx, j, event)
+	case model.JobEventBid, model.JobEventResultsProposed, model.JobEventResultsPublished, model.JobEventComputeError:
+		shard := model.JobShard{Job: j, Index: event.ShardIndex}
+		return node.triggerStateTransition(ctx, event, shard)
 	}
 	return nil
 }
@@ -126,6 +112,8 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 		return &model.Job{}, fmt.Errorf("error saving job id: %w", err)
 	}
 
+	node.shardStateManager.startShardsState(ctx, job, node)
+
 	err = node.jobEventPublisher.HandleJobEvent(jobCtx, ev)
 	if err != nil {
 		return &model.Job{}, fmt.Errorf("error handling new job event: %s", err)
@@ -140,31 +128,24 @@ func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal mo
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
-func (node *RequesterNode) handleEventBid(ctx context.Context, j *model.Job, event model.JobEvent) error {
-	node.bidMutex.Lock()
-	defer node.bidMutex.Unlock()
-
-	// Need to declare span separately to prevent shadowing
-	var span trace.Span
-	ctx, span = node.newSpan(ctx, "JobEventBid")
+func (node *RequesterNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
+	ctx, span := node.newSpan(ctx, event.EventName.String())
 	defer span.End()
 
-	bidQueueResults, err := processIncomingBid(ctx, node.localDB, j, event)
-
-	if err != nil {
-		return err
-	}
-
-	// we don't fail on first error from the bid queue to avoid a poison pill blocking any progress
-	var firstError error
-	for _, bidQueueResult := range bidQueueResults {
-		err := node.notifyBidDecision(ctx, j.ID, event.ShardIndex, bidQueueResult)
-		if err != nil && firstError == nil {
-			firstError = err
+	if shardState, ok := node.shardStateManager.GetShardState(shard); ok {
+		switch event.EventName {
+		case model.JobEventBid:
+			shardState.bid(ctx, event.SourceNodeID)
+		case model.JobEventResultsProposed, model.JobEventComputeError:
+			// will trigger verifying the results when all shards are complete, gracefully or ungracefully.
+			shardState.verifyResult(ctx, event.SourceNodeID)
+		case model.JobEventResultsPublished:
+			shardState.resultsPublished(ctx, event.SourceNodeID)
 		}
+	} else {
+		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
 	}
-
-	return firstError
+	return nil
 }
 
 // called for both JobEventShardCompleted and JobEventShardError
@@ -172,109 +153,68 @@ func (node *RequesterNode) handleEventBid(ctx context.Context, j *model.Job, eve
 // verifying the results - each verifier might have a different
 // answer for IsExecutionComplete so we pass off to it to decide
 // we mark the job as "verifying" to prevent duplicate verification
-func (node *RequesterNode) handleEventShardExecutionComplete(
+func (node *RequesterNode) verifyShard(
 	ctx context.Context,
-	j *model.Job,
-	jobEvent model.JobEvent,
-) error {
-	node.verifyMutex.Lock()
-	defer node.verifyMutex.Unlock()
-	err := node.attemptVerification(ctx, j)
+	shard model.JobShard,
+) ([]verifier.VerifierResult, error) {
+	jobVerifier, err := node.verifiers.GetVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
-		ev := node.constructJobEvent(j.ID, model.JobEventError)
-		ev.Status = err.Error()
-		ev.ShardIndex = jobEvent.ShardIndex
-
-		errShard := node.jobEventPublisher.HandleJobEvent(ctx, jobEvent)
-		if errShard != nil {
-			log.Warn().Msgf("ErrorShard failed: %s", errShard.Error())
-		}
-	}
-	return err
-}
-
-func (node *RequesterNode) attemptVerification(
-	ctx context.Context,
-	j *model.Job,
-) error {
-	jobVerifier, err := node.getVerifier(ctx, j.Spec.Verifier)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	// ask the verifier if we have enough to start the verification yet
-	isExecutionComplete, err := jobVerifier.IsExecutionComplete(ctx, j.ID)
+	isExecutionComplete, err := jobVerifier.IsExecutionComplete(ctx, shard)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !isExecutionComplete {
-		return nil
+		return nil, fmt.Errorf("verifying shard %s but execution is not complete", shard)
 	}
-	// check that we have not already verified this job
-	hasVerified, err := node.localDB.HasLocalEvent(ctx, j.ID, localdb.EventFilterByType(model.JobLocalEventVerified))
+
+	verificationResults, err := jobVerifier.VerifyShard(ctx, shard)
 	if err != nil {
-		return err
-	}
-	if hasVerified {
-		return nil
-	}
-	verificationResults, err := jobVerifier.VerifyJob(ctx, j.ID)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// we don't fail on first error from the bid queue to avoid a poison pill blocking any progress
 	var firstError error
+	var verifiedResults []verifier.VerifierResult
 	// loop over each verification result and publish events
 	for _, verificationResult := range verificationResults {
-		err := node.notifyVerificationResult(ctx, verificationResult)
-		if err != nil && firstError == nil {
-			firstError = err
+		notifyErr := node.notifyVerificationResult(ctx, verificationResult)
+		if notifyErr != nil && firstError == nil {
+			firstError = notifyErr
+		} else if verificationResult.Verified {
+			verifiedResults = append(verifiedResults, verificationResult)
 		}
 	}
 	if firstError != nil {
-		return firstError
-	}
-	return node.notifyVerificationComplete(ctx, j.ID)
-}
-
-//nolint:dupl // methods are not duplicates
-func (node *RequesterNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
-	node.componentMutex.Lock()
-	defer node.componentMutex.Unlock()
-
-	if _, ok := node.verifiers[typ]; !ok {
-		return nil, fmt.Errorf(
-			"no matching verifier found on this server: %s", typ.String())
+		return verifiedResults, firstError
 	}
 
-	v := node.verifiers[typ]
-	installed, err := v.IsInstalled(ctx)
+	err = node.notifyVerificationComplete(ctx, shard.Job.ID)
 	if err != nil {
 		return nil, err
 	}
-	if !installed {
-		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
-	}
 
-	return v, nil
+	return verifiedResults, nil
 }
 
 // send a job event to notify the compute node that the bid has been accepted or rejected
-func (node *RequesterNode) notifyBidDecision(ctx context.Context, jobID string, shardIndex int, bidResult bidQueueResult) error {
+func (node *RequesterNode) notifyBidDecision(ctx context.Context, shard model.JobShard, targetNodeID string, accepted bool) error {
 	jobEventName := model.JobEventBidAccepted
 	localEventName := model.JobLocalEventBidAccepted
-	if !bidResult.accepted {
+	if !accepted {
 		jobEventName = model.JobEventBidRejected
 		localEventName = model.JobLocalEventBidRejected
 	}
-	log.Debug().Msgf("Requester node %s responding with %s for bid: %s %d", node.ID, jobEventName, jobID, shardIndex)
+	log.Debug().Msgf("Requester node %s responding with %s for bid: %s", node.ID, jobEventName, shard)
 
 	// publish a local event
 	localEvent := model.JobLocalEvent{
 		EventName:    localEventName,
-		JobID:        jobID,
-		TargetNodeID: bidResult.nodeID,
-		ShardIndex:   shardIndex,
+		JobID:        shard.Job.ID,
+		ShardIndex:   shard.Index,
+		TargetNodeID: targetNodeID,
 	}
 	err := node.localEventConsumer.HandleLocalEvent(ctx, localEvent)
 	if err != nil {
@@ -283,9 +223,8 @@ func (node *RequesterNode) notifyBidDecision(ctx context.Context, jobID string, 
 
 	// the target node is the "nodeID" because the requester node calls this
 	// function and so knows which node it is accepting/rejecting the bid for
-	jobEvent := node.constructJobEvent(jobID, jobEventName)
-	jobEvent.TargetNodeID = bidResult.nodeID
-	jobEvent.ShardIndex = shardIndex
+	jobEvent := node.constructShardEvent(shard, jobEventName)
+	jobEvent.TargetNodeID = targetNodeID
 	return node.jobEventPublisher.HandleJobEvent(ctx, jobEvent)
 }
 
@@ -317,6 +256,16 @@ func (node *RequesterNode) notifyVerificationComplete(ctx context.Context, jobID
 	})
 }
 
+func (node *RequesterNode) notifyShardError(
+	ctx context.Context,
+	shard model.JobShard,
+	status string,
+) error {
+	ev := node.constructShardEvent(shard, model.JobEventError)
+	ev.Status = status
+	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
 func (node *RequesterNode) constructJobEvent(jobID string, eventName model.JobEventType) model.JobEvent {
 	return model.JobEvent{
 		SourceNodeID: node.ID,
@@ -324,6 +273,12 @@ func (node *RequesterNode) constructJobEvent(jobID string, eventName model.JobEv
 		EventName:    eventName,
 		EventTime:    time.Now(),
 	}
+}
+
+func (node *RequesterNode) constructShardEvent(shard model.JobShard, eventName model.JobEventType) model.JobEvent {
+	event := node.constructJobEvent(shard.Job.ID, eventName)
+	event.ShardIndex = shard.Index
+	return event
 }
 
 func (node *RequesterNode) newSpan(ctx context.Context, name string) (context.Context, trace.Span) {

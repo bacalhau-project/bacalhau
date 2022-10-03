@@ -50,16 +50,16 @@ func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
-	storage.StorageProvider, error)
+	storage.Storage, error)
 
 func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 	runFileTest(
 		suite.T(),
 		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
+			storage.Storage, error) {
 
-			return apicopy.NewStorageProvider(cm, api)
+			return apicopy.NewStorage(cm, api)
 		},
 	)
 }
@@ -69,9 +69,9 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		suite.T(),
 		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api string) (
-			storage.StorageProvider, error) {
+			storage.Storage, error) {
 
-			return apicopy.NewStorageProvider(cm, api)
+			return apicopy.NewStorage(cm, api)
 		},
 	)
 }

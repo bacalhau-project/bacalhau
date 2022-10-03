@@ -66,7 +66,8 @@ func dockerExecutorStorageTest(
 		stack := testutils.NewDockerIpfsStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
-		dockerExecutor := stack.Node.Executors[model.EngineDocker]
+		dockerExecutor, err := stack.Node.Executors.GetExecutor(ctx, model.EngineDocker)
+		require.NoError(t, err)
 
 		inputStorageList, err := testCase.SetupStorage(ctx,
 			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:TEST_NODE_COUNT]...)

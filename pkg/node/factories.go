@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -18,55 +17,55 @@ import (
 
 // Interfaces to inject dependencies into the stack
 type StorageProvidersFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
 }
 
 type ExecutorsFactory interface {
-	Get(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error)
+	Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 }
 
 type VerifiersFactory interface {
 	Get(ctx context.Context,
-		nodeConfig NodeConfig) (map[model.Verifier]verifier.Verifier, error)
+		nodeConfig NodeConfig) (verifier.VerifierProvider, error)
 }
 
 type PublishersFactory interface {
 	Get(ctx context.Context,
-		nodeConfig NodeConfig) (map[model.Publisher]publisher.Publisher, error)
+		nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 }
 
 // Functions that implement the factories for easier creation of new implementations
 type StorageProvidersFactoryFunc func(
-	ctx context.Context, nodeConfig NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error)
+	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error)
 
 func (f StorageProvidersFactoryFunc) Get(
-	ctx context.Context, nodeConfig NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error) {
+	ctx context.Context, nodeConfig NodeConfig) (storage.StorageProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
-type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error)
+type ExecutorsFactoryFunc func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error)
 
-func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error) {
+func (f ExecutorsFactoryFunc) Get(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
 type VerifiersFactoryFunc func(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Verifier]verifier.Verifier, error)
+	nodeConfig NodeConfig) (verifier.VerifierProvider, error)
 
 func (f VerifiersFactoryFunc) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Verifier]verifier.Verifier, error) {
+	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
 type PublishersFactoryFunc func(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Publisher]publisher.Publisher, error)
+	nodeConfig NodeConfig) (publisher.PublisherProvider, error)
 
 func (f PublishersFactoryFunc) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Publisher]publisher.Publisher, error) {
+	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 	return f(ctx, nodeConfig)
 }
 
@@ -75,8 +74,8 @@ type StandardStorageProvidersFactory struct{}
 
 func (f *StandardStorageProvidersFactory) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	return executor_util.NewStandardStorageProviders(
+	nodeConfig NodeConfig) (storage.StorageProvider, error) {
+	return executor_util.NewStandardStorageProvider(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardStorageProviderOptions{
@@ -94,8 +93,8 @@ type StandardExecutorsFactory struct{}
 
 func (f *StandardExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Engine]executor.Executor, error) {
-	return executor_util.NewStandardExecutors(
+	nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+	return executor_util.NewStandardExecutorProvider(
 		ctx,
 		nodeConfig.CleanupManager,
 		executor_util.StandardExecutorOptions{
@@ -117,7 +116,7 @@ type StandardVerifiersFactory struct{}
 
 func (f *StandardVerifiersFactory) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Verifier]verifier.Verifier, error) {
+	nodeConfig NodeConfig) (verifier.VerifierProvider, error) {
 	return verifier_util.NewStandardVerifiers(
 		ctx,
 		nodeConfig.CleanupManager,
@@ -135,7 +134,7 @@ type StandardPublishersFactory struct{}
 
 func (f *StandardPublishersFactory) Get(
 	ctx context.Context,
-	nodeConfig NodeConfig) (map[model.Publisher]publisher.Publisher, error) {
+	nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 	return publisher_util.NewIPFSPublishers(
 		ctx,
 		nodeConfig.CleanupManager,
