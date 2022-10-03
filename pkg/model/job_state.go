@@ -17,21 +17,21 @@ const (
 	// node whether our bid was accepted or not
 	JobStateBidding
 
-	// a requester node has either rejected the bid or the compute node has canceled the bid
-	// either way - this node will not progress with this job any more
-	JobStateCancelled
-
 	// the bid has been accepted but we have not yet started the job
 	JobStateWaiting
 
 	// the job is in the process of running
 	JobStateRunning
 
-	// the job had an error - this is an end state
-	JobStateError
-
 	// the compute node has finished execution and has communicated the ResultsProposal
 	JobStateVerifying
+
+	// a requester node has either rejected the bid or the compute node has canceled the bid
+	// either way - this node will not progress with this job any more
+	JobStateCancelled
+
+	// the job had an error - this is an end state
+	JobStateError
 
 	// our results have been processed and published
 	JobStateCompleted
@@ -108,7 +108,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateRunning
 
 	// yikes
-	case JobEventError:
+	case JobEventError, JobEventComputeError:
 		return JobStateError
 
 	// we are complete
@@ -120,7 +120,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateVerifying
 
 	case JobEventResultsRejected:
-		return JobStateVerifying
+		return JobStateError
 
 	case JobEventResultsPublished:
 		return JobStateCompleted

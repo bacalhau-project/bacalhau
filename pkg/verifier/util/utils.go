@@ -17,7 +17,7 @@ func NewStandardVerifiers(
 	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
-) (map[model.Verifier]verifier.Verifier, error) {
+) (verifier.VerifierProvider, error) {
 	noopVerifier, err := noop.NewNoopVerifier(
 		ctx,
 		cm,
@@ -38,28 +38,20 @@ func NewStandardVerifiers(
 		return nil, err
 	}
 
-	return map[model.Verifier]verifier.Verifier{
+	return verifier.NewMappedVerifierProvider(map[model.Verifier]verifier.Verifier{
 		model.VerifierNoop:          noopVerifier,
 		model.VerifierDeterministic: deterministicVerifier,
-	}, nil
+	}), nil
 }
 
 func NewNoopVerifiers(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (map[model.Verifier]verifier.Verifier, error) {
-	noopVerifier, err := noop.NewNoopVerifier(
-		ctx,
-		cm,
-		resolver,
-	)
+) (verifier.VerifierProvider, error) {
+	noopVerifier, err := noop.NewNoopVerifier(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}
-
-	return map[model.Verifier]verifier.Verifier{
-		model.VerifierNoop:          noopVerifier,
-		model.VerifierDeterministic: noopVerifier,
-	}, nil
+	return noop.NewNoopVerifierProvider(noopVerifier), nil
 }

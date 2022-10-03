@@ -3,8 +3,9 @@ package eventhandler
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler/mock_eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -101,9 +102,9 @@ func (suite *jobEventHandlerSuite) TestChainedJobEventHandler_HandleJobEventEmpt
 	require.Error(suite.T(), suite.chainedHandler.HandleJobEvent(context.Background(), suite.event))
 }
 
-////////////////////////////
+// //////////////////////////
 // local event handler tests
-////////////////////////////
+// //////////////////////////
 type localEventHandlerSuite struct {
 	suite.Suite
 	ctrl            *gomock.Controller

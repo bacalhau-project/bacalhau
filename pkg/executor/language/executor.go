@@ -19,13 +19,13 @@ import (
 type Executor struct {
 	Jobs map[string]*model.Job
 
-	executors map[model.Engine]executor.Executor
+	executors executor.ExecutorProvider
 }
 
 func NewExecutor(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[model.Engine]executor.Executor,
+	executors executor.ExecutorProvider,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -59,7 +59,11 @@ func (e *Executor) RunShard(
 		log.Debug().Msgf("running deterministic python 3.10")
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
-		return e.executors[model.EnginePythonWasm].RunShard(ctx, shard, jobResultsDir)
+		pythonWasmExecutor, err := e.executors.GetExecutor(ctx, model.EnginePythonWasm)
+		if err != nil {
+			return nil, err
+		}
+		return pythonWasmExecutor.RunShard(ctx, shard, jobResultsDir)
 	} else {
 		log.Debug().Msgf("running arbitrary python 3.10")
 		err := fmt.Errorf("arbitrary python not supported yet")

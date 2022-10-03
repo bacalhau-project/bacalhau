@@ -11,9 +11,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"go.opentelemetry.io/otel/trace"
 
-	sync "github.com/lukemarsden/golang-mutex-tracer"
-	"go.opentelemetry.io/otel/baggage"
-
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
@@ -21,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
@@ -50,17 +48,14 @@ type ComputeNode struct {
 	localEventConsumer eventhandler.LocalEventHandler
 	jobEventPublisher  eventhandler.JobEventHandler
 
-	localDB                  localdb.LocalDB
-	shardStateManager        *shardStateMachineManager
-	executors                map[model.Engine]executor.Executor
-	executorsInstalledCache  map[model.Engine]bool
-	verifiers                map[model.Verifier]verifier.Verifier
-	verifiersInstalledCache  map[model.Verifier]bool
-	publishers               map[model.Publisher]publisher.Publisher
-	publishersInstalledCache map[model.Publisher]bool
-	capacityManager          *capacitymanager.CapacityManager
-	componentMu              sync.Mutex
-	bidMu                    sync.Mutex
+	localDB           localdb.LocalDB
+	shardStateManager *shardStateMachineManager
+	executors         executor.ExecutorProvider
+	verifiers         verifier.VerifierProvider
+	publishers        publisher.PublisherProvider
+	capacityManager   *capacitymanager.CapacityManager
+	componentMu       sync.Mutex
+	bidMu             sync.Mutex
 }
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
@@ -76,9 +71,9 @@ func NewComputeNode(
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
 	jobEventPublisher eventhandler.JobEventHandler,
-	executors map[model.Engine]executor.Executor,
-	verifiers map[model.Verifier]verifier.Verifier,
-	publishers map[model.Publisher]publisher.Publisher,
+	executors executor.ExecutorProvider,
+	verifiers verifier.VerifierProvider,
+	publishers publisher.PublisherProvider,
 	config ComputeNodeConfig, //nolint:gocritic
 ) (*ComputeNode, error) {
 	//nolint:ineffassign,staticcheck
@@ -103,9 +98,9 @@ func constructComputeNode(
 	localDB localdb.LocalDB,
 	localEventHandler eventhandler.LocalEventHandler,
 	jobEventHandler eventhandler.JobEventHandler,
-	executors map[model.Engine]executor.Executor,
-	verifiers map[model.Verifier]verifier.Verifier,
-	publishers map[model.Publisher]publisher.Publisher,
+	executors executor.ExecutorProvider,
+	verifiers verifier.VerifierProvider,
+	publishers publisher.PublisherProvider,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
 	shardStateManager, err := NewShardComputeStateMachineManager()
@@ -119,19 +114,16 @@ func constructComputeNode(
 	}
 
 	computeNode := &ComputeNode{
-		ID:                       nodeID,
-		config:                   config,
-		localDB:                  localDB,
-		localEventConsumer:       localEventHandler,
-		jobEventPublisher:        jobEventHandler,
-		shardStateManager:        shardStateManager,
-		executors:                executors,
-		executorsInstalledCache:  map[model.Engine]bool{},
-		verifiers:                verifiers,
-		verifiersInstalledCache:  map[model.Verifier]bool{},
-		publishers:               publishers,
-		publishersInstalledCache: map[model.Publisher]bool{},
-		capacityManager:          capacityManager,
+		ID:                 nodeID,
+		config:             config,
+		localDB:            localDB,
+		localEventConsumer: localEventHandler,
+		jobEventPublisher:  jobEventHandler,
+		shardStateManager:  shardStateManager,
+		executors:          executors,
+		verifiers:          verifiers,
+		publishers:         publishers,
+		capacityManager:    capacityManager,
 	}
 
 	computeNode.componentMu.EnableTracerWithOpts(sync.Opts{
@@ -203,16 +195,12 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 	defer span.End()
 
 	shard := bidShards[i]
-
-	log.Debug().Msgf("Processing BidShard - ctx => %+v", ctx)
-	log.Debug().Msgf("Processing BidShard - baggage => %+v", baggage.FromContext(ctx))
-
 	shardState, shardStateFound := n.shardStateManager.Get(shard.ID())
 	if !shardStateFound {
 		return
 	}
 
-	if shardState.bidSent {
+	if shardState.currentState >= shardBidding {
 		log.Trace().Msgf("node %s has already bid on job shard %s", n.ID, shard)
 		return
 	}
@@ -414,9 +402,7 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 		case model.JobEventResultsAccepted:
 			shardState.Publish(ctx)
 		case model.JobEventResultsRejected:
-			// TODO: we are still publishing the results even when they are rejected. Shouldn't we fail instead?
-			// shardState.Fail(ctx, fmt.Sprintf("results rejected: %s", event.Status))
-			shardState.Publish(ctx)
+			shardState.ResultsRejected(ctx)
 		}
 	} else {
 		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
@@ -438,13 +424,13 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	requirements := model.ResourceUsageData{}
 
 	// check that we have the executor and it's installed
-	e, err := n.getExecutor(ctx, data.Spec.Engine)
+	e, err := n.executors.GetExecutor(ctx, data.Spec.Engine)
 	if err != nil {
 		return false, requirements, fmt.Errorf("getExecutor: %v", err)
 	}
 
 	// check that we have the verifier and it's installed
-	_, err = n.getVerifier(ctx, data.Spec.Verifier)
+	_, err = n.verifiers.GetVerifier(ctx, data.Spec.Verifier)
 	if err != nil {
 		return false, requirements, fmt.Errorf("getVerifier: %v", err)
 	}
@@ -505,7 +491,7 @@ this is a separate method to RunShard because then we can invoke tests on it dir
 */
 func (n *ComputeNode) RunShardExecution(ctx context.Context, shard model.JobShard, resultFolder string) (*model.RunCommandResult, error) {
 	// check that we have the executor to run this job
-	e, err := n.getExecutor(ctx, shard.Job.Spec.Engine)
+	e, err := n.executors.GetExecutor(ctx, shard.Job.Spec.Engine)
 	if err != nil {
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
@@ -516,12 +502,12 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 	shardProposal := []byte{}
 	runOutput := &model.RunCommandResult{}
 
-	verifier, err := n.getVerifier(ctx, shard.Job.Spec.Verifier)
+	jobVerifier, err := n.verifiers.GetVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
 		runOutput.ErrorMsg = err.Error()
 		return shardProposal, runOutput, err
 	}
-	resultFolder, err := verifier.GetShardResultPath(ctx, shard)
+	resultFolder, err := jobVerifier.GetShardResultPath(ctx, shard)
 	if err != nil {
 		runOutput.ErrorMsg = err.Error()
 		return shardProposal, runOutput, err
@@ -545,7 +531,7 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 	// if there was an error running the job
 	// we don't pass the results off to the verifier
 	if err == nil {
-		shardProposal, err = verifier.GetShardProposal(ctx, shard, resultFolder)
+		shardProposal, err = jobVerifier.GetShardProposal(ctx, shard, resultFolder)
 		if err != nil {
 			runOutput.ErrorMsg = err.Error()
 		}
@@ -555,19 +541,19 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 }
 
 func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) error {
-	verifier, err := n.getVerifier(ctx, shard.Job.Spec.Verifier)
+	jobVerifier, err := n.verifiers.GetVerifier(ctx, shard.Job.Spec.Verifier)
 	if err != nil {
 		return err
 	}
-	resultFolder, err := verifier.GetShardResultPath(ctx, shard)
+	resultFolder, err := jobVerifier.GetShardResultPath(ctx, shard)
 	if err != nil {
 		return err
 	}
-	publisher, err := n.getPublisher(ctx, shard.Job.Spec.Publisher)
+	jobPublisher, err := n.publishers.GetPublisher(ctx, shard.Job.Spec.Publisher)
 	if err != nil {
 		return err
 	}
-	publishedResult, err := publisher.PublishShardResult(ctx, shard, n.ID, resultFolder)
+	publishedResult, err := jobPublisher.PublishShardResult(ctx, shard, n.ID, resultFolder)
 	if err != nil {
 		return err
 	}
@@ -578,116 +564,8 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 	return nil
 }
 
-//nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getExecutor(ctx context.Context, typ model.Engine) (executor.Executor, error) {
-	e := func() *executor.Executor {
-		n.componentMu.Lock()
-		defer n.componentMu.Unlock()
-		if _, ok := n.executors[typ]; !ok {
-			return nil
-		}
-		ee := n.executors[typ]
-		return &ee
-	}()
-	if e == nil {
-		return nil, fmt.Errorf(
-			"no matching executor found on this server: %s", typ.String(),
-		)
-	}
-	executorEngine := *e
-
-	// cache it being installed so we're not hammering it
-	if n.executorsInstalledCache[typ] {
-		return executorEngine, nil
-	}
-
-	installed, err := executorEngine.IsInstalled(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !installed {
-		return nil, fmt.Errorf("executor is not installed: %s", typ.String())
-	}
-
-	n.executorsInstalledCache[typ] = true
-
-	return executorEngine, nil
-}
-
-//nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getVerifier(ctx context.Context, typ model.Verifier) (verifier.Verifier, error) {
-	v := func() *verifier.Verifier {
-		n.componentMu.Lock()
-		defer n.componentMu.Unlock()
-		if _, ok := n.verifiers[typ]; !ok {
-			return nil
-		}
-		vv := n.verifiers[typ]
-		return &vv
-	}()
-
-	if v == nil {
-		return nil, fmt.Errorf(
-			"no matching verifier found on this server: %s", typ.String())
-	}
-	verifier := *v
-
-	// cache it being installed so we're not hammering it
-	if n.verifiersInstalledCache[typ] {
-		return verifier, nil
-	}
-
-	installed, err := verifier.IsInstalled(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !installed {
-		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
-	}
-
-	n.verifiersInstalledCache[typ] = true
-
-	return verifier, nil
-}
-
-//nolint:dupl // methods are not duplicates
-func (n *ComputeNode) getPublisher(ctx context.Context, typ model.Publisher) (publisher.Publisher, error) {
-	p := func() *publisher.Publisher {
-		n.componentMu.Lock()
-		defer n.componentMu.Unlock()
-		if _, ok := n.publishers[typ]; !ok {
-			return nil
-		}
-		pp := n.publishers[typ]
-		return &pp
-	}()
-
-	if p == nil {
-		return nil, fmt.Errorf(
-			"no matching publisher found on this server: %s", typ.String())
-	}
-	publisher := *p
-
-	// cache it being installed so we're not hammering it
-	if n.publishersInstalledCache[typ] {
-		return publisher, nil
-	}
-
-	installed, err := publisher.IsInstalled(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !installed {
-		return nil, fmt.Errorf("verifier is not installed: %s", typ.String())
-	}
-
-	n.publishersInstalledCache[typ] = true
-
-	return publisher, nil
-}
-
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {
-	e, err := n.getExecutor(ctx, spec.Engine)
+	e, err := n.executors.GetExecutor(ctx, spec.Engine)
 	if err != nil {
 		return 0, err
 	}
@@ -766,7 +644,7 @@ func (n *ComputeNode) notifyShardError(
 	status string,
 	runOutput *model.RunCommandResult,
 ) error {
-	ev := n.constructEvent(shard, model.JobEventError)
+	ev := n.constructEvent(shard, model.JobEventComputeError)
 	ev.Status = status
 	ev.ShardIndex = shard.Index
 	ev.RunOutput = runOutput

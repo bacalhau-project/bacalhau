@@ -2,6 +2,7 @@ package noop
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -24,20 +25,38 @@ type ExecutorConfig struct {
 	ExternalHooks ExecutorConfigExternalHooks
 }
 
-type Executor struct {
+type NoopExecutorProvider struct {
+	noopExecutor *NoopExecutor
+}
+
+func NewNoopExecutorProvider(noopExecutor *NoopExecutor) *NoopExecutorProvider {
+	return &NoopExecutorProvider{
+		noopExecutor: noopExecutor,
+	}
+}
+
+func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model.Engine, executor executor.Executor) error {
+	return fmt.Errorf("noop executor provider does not support adding executors")
+}
+
+func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
+	return p.noopExecutor, nil
+}
+
+type NoopExecutor struct {
 	Jobs   []model.Job
 	Config ExecutorConfig
 }
 
-func NewExecutor() (*Executor, error) {
-	Executor := &Executor{
+func NewNoopExecutor() (*NoopExecutor, error) {
+	Executor := &NoopExecutor{
 		Jobs: []model.Job{},
 	}
 	return Executor, nil
 }
 
-func NewExecutorWithConfig(config ExecutorConfig) (*Executor, error) {
-	e, err := NewExecutor()
+func NewNoopExecutorWithConfig(config ExecutorConfig) (*NoopExecutor, error) {
+	e, err := NewNoopExecutor()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +64,7 @@ func NewExecutorWithConfig(config ExecutorConfig) (*Executor, error) {
 	return e, nil
 }
 
-func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
+func (e *NoopExecutor) IsInstalled(ctx context.Context) (bool, error) {
 	if e.Config.ExternalHooks.IsInstalled != nil {
 		handler := e.Config.ExternalHooks.IsInstalled
 		return handler(ctx)
@@ -53,7 +72,7 @@ func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (e *NoopExecutor) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
 	if e.Config.ExternalHooks.HasStorageLocally != nil {
 		handler := e.Config.ExternalHooks.HasStorageLocally
 		return handler(ctx, volume)
@@ -61,7 +80,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	return true, nil
 }
 
-func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (e *NoopExecutor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
 	if e.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := e.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)
@@ -69,7 +88,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 	return 0, nil
 }
 
-func (e *Executor) RunShard(
+func (e *NoopExecutor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
 	jobResultsDir string,
@@ -83,4 +102,5 @@ func (e *Executor) RunShard(
 }
 
 // Compile-time check that Executor implements the Executor interface.
-var _ executor.Executor = (*Executor)(nil)
+var _ executor.ExecutorProvider = (*NoopExecutorProvider)(nil)
+var _ executor.Executor = (*NoopExecutor)(nil)

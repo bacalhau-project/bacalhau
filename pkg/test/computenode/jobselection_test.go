@@ -183,17 +183,3 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 	// hook says yes - we accept
 	runTest(false, true)
 }
-
-// TestJobSelectionEmptySpec tests that a job with an empty spec is rejected
-func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionEmptySpec() {
-	ctx := context.Background()
-	stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{}, noop_executor.ExecutorConfig{})
-	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
-	defer cm.Cleanup()
-
-	_, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
-		NodeID: "test",
-		JobID:  "test",
-	})
-	require.Error(suite.T(), err)
-}

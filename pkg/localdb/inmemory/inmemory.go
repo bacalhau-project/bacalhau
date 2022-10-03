@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -325,6 +326,11 @@ func (d *InMemoryDatastore) UpdateShardState(
 			NodeID:     nodeID,
 			ShardIndex: shardIndex,
 		}
+	}
+
+	if update.State < shardSate.State {
+		return fmt.Errorf("cannot update shard state to %s as current state is %s. [NodeID: %s, ShardID: %s_%d]",
+			update.State, shardSate.State, nodeID, jobID, shardIndex)
 	}
 
 	shardSate.State = update.State

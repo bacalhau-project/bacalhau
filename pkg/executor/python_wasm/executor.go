@@ -20,13 +20,13 @@ import (
 type Executor struct {
 	Jobs map[string]*model.Job
 
-	executors map[model.Engine]executor.Executor
+	executors executor.ExecutorProvider
 }
 
 func NewExecutor(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[model.Engine]executor.Executor,
+	executors executor.ExecutorProvider,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -75,7 +75,11 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	return e.executors[model.EngineDocker].RunShard(ctx, shard, resultsDir)
+	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.RunShard(ctx, shard, resultsDir)
 }
 
 // Compile-time check that Executor implements the Executor interface.

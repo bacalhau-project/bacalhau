@@ -28,7 +28,7 @@ type StorageProvider struct {
 	IPFSClient *ipfs.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvider, error) {
+func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvider, error) {
 	cl, err := ipfs.NewClient(ipfsAPIAddress)
 	if err != nil {
 		return nil, err
@@ -189,4 +189,4 @@ func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) 
 }
 
 // Compile time interface check:
-var _ storage.StorageProvider = (*StorageProvider)(nil)
+var _ storage.Storage = (*StorageProvider)(nil)

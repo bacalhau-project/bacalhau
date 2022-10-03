@@ -9,7 +9,6 @@ import (
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -60,7 +59,7 @@ type Node struct {
 	LocalDB        localdb.LocalDB
 	Transport      transport.Transport
 	CleanupManager *system.CleanupManager
-	Executors      map[model.Engine]executor.Executor
+	Executors      executor.ExecutorProvider
 	IPFSClient     *ipfs.Client
 
 	HostID      string

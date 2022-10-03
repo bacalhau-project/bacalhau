@@ -38,7 +38,7 @@ const (
 	JobEventRunning
 
 	// a compute node had an error running a job
-	JobEventError
+	JobEventComputeError
 
 	// a compute node completed running a job
 	JobEventResultsProposed
@@ -53,6 +53,9 @@ const (
 	// the compute node will publish them and issue this event
 	JobEventResultsPublished
 
+	// a requester node declared an error running a job
+	JobEventError
+
 	jobEventDone // must be last
 )
 
@@ -66,7 +69,7 @@ func (event JobEventType) IsTerminal() bool {
 // ignore the rest of the job's lifecycle. This is the case for events caused
 // by a node's bid being rejected.
 func (event JobEventType) IsIgnorable() bool {
-	return event.IsTerminal() || event == JobEventBidRejected
+	return event.IsTerminal() || event == JobEventComputeError || event == JobEventBidRejected
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {

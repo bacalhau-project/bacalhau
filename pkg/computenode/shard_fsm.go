@@ -20,7 +20,7 @@ const (
 	actionBid shardStateAction = iota // must be first
 
 	// bid was rejected, and do cancel the bid
-	actionRejected
+	actionBidRejected
 
 	// job has failed for some reason outside of the fsm
 	actionFail
@@ -28,12 +28,15 @@ const (
 	// bid was accepted, resources are available, and do run the job
 	actionRun
 
+	// proposed results were rejected
+	actionResultsRejected
+
 	// results were verified, and do publish them
 	actionPublish
 )
 
 func (a shardStateAction) String() string {
-	return [...]string{"ActionBid", "ActionRejected", "ActionFail", "ActionRun"}[a]
+	return [...]string{"ActionBid", "ActionBidRejected", "ActionFail", "ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
 }
 
 // request to change the state of the fsm
@@ -212,7 +215,7 @@ type shardStateMachine struct {
 	resultProposal []byte
 	errorMsg       string
 
-	bidSent bool
+	notifyOnFailure bool
 }
 
 func (m *shardStateMachineManager) newStateMachine(
@@ -254,11 +257,15 @@ func (m *shardStateMachine) Bid(ctx context.Context) {
 }
 
 func (m *shardStateMachine) BidRejected(ctx context.Context) {
-	m.sendRequest(ctx, shardStateRequest{action: actionRejected})
+	m.sendRequest(ctx, shardStateRequest{action: actionBidRejected})
 }
 
 func (m *shardStateMachine) Execute(ctx context.Context) {
 	m.sendRequest(ctx, shardStateRequest{action: actionRun})
+}
+
+func (m *shardStateMachine) ResultsRejected(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionResultsRejected})
 }
 
 func (m *shardStateMachine) Publish(ctx context.Context) {
@@ -304,7 +311,7 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 		switch req.action {
 		case actionRun:
 			return runningState
-		case actionRejected:
+		case actionBidRejected:
 			return completedState
 		case actionFail:
 			m.errorMsg = req.failureReason
@@ -336,7 +343,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 
 			// we've sent a bid, which means we are to send an error if anything fails afterwards
 			// to let the requesterNode know fast to cancel the job or retry on another node.
-			m.bidSent = true
+			m.notifyOnFailure = true
 
 			return biddingState
 		case actionFail:
@@ -411,6 +418,11 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 		switch req.action {
 		case actionPublish:
 			return publishingToRequesterState
+		case actionResultsRejected:
+			// no need to publish an event since the requester node
+			// already published a failure event
+			m.notifyOnFailure = false
+			return completedState
 		case actionFail:
 			m.errorMsg = req.failureReason
 			return errorState
@@ -448,7 +460,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	if m.bidSent {
+	if m.notifyOnFailure {
 		// we sent a bid, so we need to publish our failure to the network
 		err := m.node.notifyShardError(
 			ctx,

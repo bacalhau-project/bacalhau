@@ -38,7 +38,7 @@ type Executor struct {
 	ResultsDir string
 
 	// the storage providers we can implement for a job
-	StorageProviders map[model.StorageSourceType]storage.StorageProvider
+	StorageProvider storage.StorageProvider
 
 	Client *dockerclient.Client
 }
@@ -47,7 +47,7 @@ func NewExecutor(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	id string,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -60,10 +60,10 @@ func NewExecutor(
 	}
 
 	de := &Executor{
-		ID:               id,
-		ResultsDir:       dir,
-		StorageProviders: storageProviders,
-		Client:           dockerClient,
+		ID:              id,
+		ResultsDir:      dir,
+		StorageProvider: storageProvider,
+		Client:          dockerClient,
 	}
 
 	cm.RegisterCallback(func() error {
@@ -74,8 +74,8 @@ func NewExecutor(
 	return de, nil
 }
 
-func (e *Executor) getStorageProvider(ctx context.Context, engine model.StorageSourceType) (storage.StorageProvider, error) {
-	return util.GetStorageProvider(ctx, engine, e.StorageProviders)
+func (e *Executor) getStorage(ctx context.Context, engine model.StorageSourceType) (storage.Storage, error) {
+	return e.StorageProvider.GetStorage(ctx, engine)
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -88,7 +88,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 	ctx, span := system.GetTracer().Start(ctx, "pkg/executor/docker/Executor.HasStorageLocally")
 	defer span.End()
 
-	s, err := e.getStorageProvider(ctx, volume.StorageSource)
+	s, err := e.getStorage(ctx, volume.StorageSource)
 	if err != nil {
 		return false, err
 	}
@@ -97,7 +97,7 @@ func (e *Executor) HasStorageLocally(ctx context.Context, volume model.StorageSp
 }
 
 func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	storageProvider, err := e.getStorageProvider(ctx, volume.StorageSource)
+	storageProvider, err := e.getStorage(ctx, volume.StorageSource)
 	if err != nil {
 		return 0, err
 	}
@@ -122,16 +122,16 @@ func (e *Executor) RunShard(
 
 	var err error
 
-	shardStorageSpec, err := jobutils.GetShardStorageSpec(ctx, shard, e.StorageProviders)
+	shardStorageSpec, err := jobutils.GetShardStorageSpec(ctx, shard, e.StorageProvider)
 	if err != nil {
 		return &model.RunCommandResult{}, err
 	}
 
 	// reusable between the input shards and the input context
 	addInputStorageHandler := func(spec model.StorageSpec) error {
-		var storageProvider storage.StorageProvider
+		var storageProvider storage.Storage
 		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorageProvider(ctx, spec.StorageSource)
+		storageProvider, err = e.getStorage(ctx, spec.StorageSource)
 		if err != nil {
 			return err
 		}

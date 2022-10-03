@@ -56,7 +56,7 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
+	noopStorageProviders, err := util.NewNoopStorageProvider(ctx, cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	noopPublishers, err := publisher_utils.NewNoopPublishers(

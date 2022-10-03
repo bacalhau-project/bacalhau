@@ -30,7 +30,7 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	publisher, err := apiServer.getPublisher(ctx, model.PublisherIpfs)
+	publisher, err := apiServer.Publishers.GetPublisher(ctx, model.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

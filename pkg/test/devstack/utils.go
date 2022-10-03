@@ -157,7 +157,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 	})
 
 	executorsFactory := node.ExecutorsFactoryFunc(func(
-		ctx context.Context, nodeConfig node.NodeConfig) (map[model.Engine]executor.Executor, error) {
+		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
 			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
@@ -208,11 +208,8 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		args.NodeCount*args.ShardCount,
 		job.WaitThrowErrors([]model.JobStateType{
 			model.JobStateCancelled,
-			model.JobStateError,
 		}),
-		job.WaitForJobStates(map[model.JobStateType]int{
-			model.JobStateCompleted: args.NodeCount * args.ShardCount,
-		}),
+		job.WaitForTerminalStates(args.NodeCount*args.ShardCount),
 	)
 	require.NoError(t, err)
 

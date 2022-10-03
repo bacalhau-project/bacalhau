@@ -52,7 +52,7 @@ func (suite *FilecoinUnsealedSuite) SetupTest() {
 	ctx = context.Background()
 	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-unsealed-test")
 	require.NoError(suite.T(), setupErr)
-	driver, setupErr = NewStorageProvider(cm, filepath.Join(tempDir, "{{.CID}}"))
+	driver, setupErr = NewStorage(cm, filepath.Join(tempDir, "{{.CID}}"))
 	require.NoError(suite.T(), setupErr)
 }
 

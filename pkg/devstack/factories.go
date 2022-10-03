@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -40,8 +39,8 @@ type NoopStorageProvidersFactory struct {
 
 func (f *NoopStorageProvidersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	return executor_util.NewNoopStorageProviders(ctx, nodeConfig.CleanupManager, f.config)
+	nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
+	return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, f.config)
 }
 
 func NewNoopStorageProvidersFactory() *NoopStorageProvidersFactory {
@@ -58,7 +57,7 @@ type NoopExecutorsFactory struct {
 
 func (f *NoopExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.Engine]executor.Executor, error) {
+	nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 	return executor_util.NewNoopExecutors(ctx, nodeConfig.CleanupManager, f.config)
 }
 
@@ -74,7 +73,7 @@ type NoopVerifiersFactory struct{}
 
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.Verifier]verifier.Verifier, error) {
+	nodeConfig node.NodeConfig) (verifier.VerifierProvider, error) {
 	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 
@@ -86,7 +85,7 @@ type NoopPublishersFactory struct{}
 
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.Publisher]publisher.Publisher, error) {
+	nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
 	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 
