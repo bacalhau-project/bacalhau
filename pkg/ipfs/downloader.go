@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,12 +94,6 @@ func loopOverResults(ctx context.Context,
 		return err
 	}
 
-	scratchFolder, err := ioutil.TempDir("", "bacalhau-ipfs-job-downloader")
-	if err != nil {
-		return err
-	}
-	log.Debug().Msgf("Created download scratch folder: %s", scratchFolder)
-
 	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
 		log.Error().Msgf("Failed to get absolute path for output dir: %s", err)
@@ -121,13 +114,8 @@ func loopOverResults(ctx context.Context,
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
 	for _, result := range results {
-		shardDownloadDir := filepath.Join(scratchFolder, result.Name)
+		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Name)
 		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
-		if err != nil {
-			return err
-		}
-
-		err = moveResults(ctx, j, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
@@ -174,65 +162,6 @@ func fetchResult(ctx context.Context,
 
 		return err
 	}
-	return nil
-}
-
-func moveResults(ctx context.Context,
-	j *model.Job,
-	shardDownloadDir string,
-	finalOutputDirAbs string,
-	result model.StorageSpec) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
-	defer span.End()
-
-	for _, outputVolume := range j.Spec.Outputs {
-		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
-		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
-		err := os.MkdirAll(volumeOutputDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		log.Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
-
-		moveFunc := func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				// If there is an error reading a path, we should continue with the rest
-				log.Error().Err(err).Msgf("Error with path %s", path)
-				return nil
-			}
-
-			if d.IsDir() {
-				return nil
-			}
-
-			basePath, err := filepath.Rel(volumeSourceDir, path)
-			if err != nil {
-				return err
-			}
-
-			newPath := filepath.Join(volumeOutputDir, basePath)
-			log.Debug().Msgf("Move '%s' to '%s'", path, newPath)
-			return os.Rename(path, newPath)
-		}
-
-		err = filepath.WalkDir(volumeSourceDir, moveFunc)
-		if err != nil {
-			return err
-		}
-	}
-
-	err := catStdFiles(ctx, shardDownloadDir, finalOutputDirAbs)
-	if err != nil {
-		return err
-	}
-
-	shardOutputDir := filepath.Join(finalOutputDirAbs, "shards", result.Name)
-
-	err = moveStdFiles(ctx, shardDownloadDir, shardOutputDir)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
