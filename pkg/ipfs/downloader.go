@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,13 +122,8 @@ func loopOverResults(ctx context.Context,
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
 	for _, result := range results {
-		shardDownloadDir := filepath.Join(scratchFolder, result.Name)
+		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Name)
 		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
-		if err != nil {
-			return err
-		}
-
-		err = moveResults(ctx, j, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
