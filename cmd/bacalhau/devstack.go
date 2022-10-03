@@ -42,6 +42,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:              "",
 		PublicIPFSMode:    false,
 		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
+		SimulatorURL:      "",
 	}
 }
 
@@ -61,6 +62,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
+		`Use the simulator transport at the given URL`,
 	)
 
 	setupJobSelectionCLIFlags(devstackCmd)
