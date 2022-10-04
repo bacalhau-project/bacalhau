@@ -44,6 +44,8 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 func (wallets *walletsModel) created(event model.JobEvent) error {
 	fmt.Printf("received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	wallets.jobOwners[event.JobID] = event.ClientID
+	// if we want to use the requester node as the wallet address then it's this
+	//wallets.jobOwners[event.JobID] = event.SourceNodeID
 	return nil
 }
 
