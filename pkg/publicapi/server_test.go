@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -97,6 +98,27 @@ func (suite *ServerSuite) TestVarz() {
 	err := json.Unmarshal(rawVarZBody, &varZ)
 	require.NoError(suite.T(), err, "Error unmarshalling /varz data.")
 
+}
+
+func (suite *ServerSuite) TestTimeout() {
+	config := &APIServerConfig{
+		RequestHandlerTimeout: 1 * time.Millisecond,
+	}
+	c, cm := SetupTestsWithConfig(suite.T(), config)
+	defer cm.Cleanup()
+
+	// This API takes longer than 1ms to complete, so it should timeout.
+	endpoint := "/logz"
+	res, err := http.Get(c.BaseURI + endpoint)
+	require.NoError(suite.T(), err, "Could not get %s endpoint.", endpoint)
+	require.Equal(suite.T(), res.StatusCode, http.StatusServiceUnavailable)
+
+	// validate response body
+	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(suite.T(), err, "Could not read %s response body", endpoint)
+	require.Equal(suite.T(), body, []byte("Server Timeout!"))
+
+	defer res.Body.Close()
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {

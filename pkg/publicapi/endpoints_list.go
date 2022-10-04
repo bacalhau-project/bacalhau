@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -34,6 +35,8 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, listReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, listReq.JobID)
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {

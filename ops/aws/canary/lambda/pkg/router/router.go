@@ -32,7 +32,7 @@ func Route(ctx context.Context, event models.Event) error {
 	}
 	err := handler(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("testcase %s failed: %s", event.Action, err)
 	}
 	log.Info().Msgf("testcase %s passed", event.Action)
 	return nil

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -27,6 +28,8 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, stateReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
 	jobState, err := getJobStateFromRequest(ctx, apiServer, stateReq)
