@@ -194,9 +194,29 @@ CMD ["python","run_openmm_simulation.py"]
     Overwriting Dockerfile
 
 
+
+```bash
+#docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/examples/openmm:0.3 .
+```
+
 ### Test the Container Locally
 
 Before we upload the container to the Bacalhau network, we should test it locally to make sure it works.
+
+
+```bash
+docker run \
+    -v $(pwd)/dataset:/inputs/ \
+    -v $(pwd)/output:/output \
+    ghcr.io/bacalhau-project/examples/openmm:0.3
+```
+
+    Building system...
+    Performing energy minimization...
+    Equilibrating...
+    Simulating...
+    Simulation complete, file written to disk at: /outputs/final_state.pdbx
+
 
 ### Run a Bacalhau Job
 
