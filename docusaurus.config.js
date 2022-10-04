@@ -80,10 +80,6 @@ const config = {
                 href: "https://stackoverflow.com/questions/tagged/bacalhau",
               },
               {
-                label: "Discord",
-                href: "https://discordapp.com/invite/bacalhau",
-              },
-              {
                 label: "Twitter",
                 href: "https://twitter.com/BacalhauProject",
               },
