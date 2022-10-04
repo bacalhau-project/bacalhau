@@ -393,7 +393,7 @@ func PrintReturnedJobIDToUser(j *model.Job) error {
 
 	RootCmd.Printf("Job ID: %s\n\n", j.ID)
 	RootCmd.Println("To get the status of the job, run:")
-	RootCmd.Printf("  bacalhau describe %s", j.ID)
+	RootCmd.Printf("  bacalhau describe %s\n", j.ID)
 	return nil
 }
 
