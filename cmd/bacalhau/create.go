@@ -44,6 +44,7 @@ type CreateOptions struct {
 	Confidence      int                       // Minimum number of nodes that must agree on a verification result
 	RunTimeSettings RunTimeSettings           // Run time settings for execution (e.g. wait, get, etc after submission)
 	DownloadFlags   ipfs.IPFSDownloadSettings // Settings for running Download
+	IDOnly          bool                      // Only print the ID of the job and exit
 }
 
 func NewCreateOptions() *CreateOptions {
@@ -53,6 +54,7 @@ func NewCreateOptions() *CreateOptions {
 		Confidence:      0,
 		DownloadFlags:   *ipfs.NewIPFSDownloadSettings(),
 		RunTimeSettings: *NewRunTimeSettings(),
+		IDOnly:          false,
 	}
 }
 
@@ -190,6 +192,7 @@ var createCmd = &cobra.Command{
 			j,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
+			OC.IDOnly,
 		)
 
 		if err != nil {

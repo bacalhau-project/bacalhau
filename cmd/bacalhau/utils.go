@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -230,6 +231,7 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
+	idOnly bool,
 ) error {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -258,9 +260,13 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	err = PrintReturnedJobIDToUser(j)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+	if !idOnly {
+		err = PrintReturnedJobIDToUser(ctx, j)
+		if err != nil {
+			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+		}
+	} else {
+		cmd.Print(j.ID)
 	}
 
 	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
@@ -386,14 +392,71 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
 }
 
-func PrintReturnedJobIDToUser(j *model.Job) error {
+func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
+	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
 
-	RootCmd.Printf("Job ID: %s\n\n", j.ID)
-	RootCmd.Println("To get the status of the job, run:")
-	RootCmd.Printf("  bacalhau describe %s", j.ID)
+	// Struct for tracking what's been printed
+	type printed struct {
+		jobStateType model.JobStateType
+		printed      bool
+	}
+
+	// Create a map of job state types to printed structs
+	printedArray := []printed{
+		{model.JobStateBidding, false},
+		{model.JobStateWaiting, false},
+		{model.JobStateRunning, false},
+	}
+
+	jStatus, _, err := GetAPIClient().Get(ctx, j.ID)
+
+	// TODO: #786 Figure out why devstack doesn't produce events
+	// Don't know why, but devstack doesn't do events
+	// If there's not an event by the first one, there's not going to be any
+	if len(jStatus.Events) != 0 {
+		for {
+			jStatus, _, err = GetAPIClient().Get(ctx, j.ID)
+
+			if err != nil {
+				if _, ok := err.(*bacerrors.JobNotFound); ok {
+					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
+				} else {
+					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.ID, err), 1)
+				}
+			}
+
+			for i := range jStatus.Events {
+				s := model.GetStateFromEvent(jStatus.Events[i].EventName)
+				if s == model.JobStateBidding && !printedArray[0].printed {
+					RootCmd.Print("Nodes bidding on job ... ")
+					printedArray[0].printed = true
+				} else if s == model.JobStateWaiting && !printedArray[1].printed {
+					RootCmd.Println("done.")
+					RootCmd.Print("Nodes waiting to run job ... ")
+					printedArray[1].printed = true
+				} else if s == model.JobStateRunning && !printedArray[2].printed {
+					RootCmd.Println("done.")
+					RootCmd.Println("Job is now executing.")
+					printedArray[2].printed = true
+					break
+				}
+			}
+
+			// Printed the final message, so we can exit
+			if printedArray[2].printed {
+				break
+			}
+
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	RootCmd.Printf(`
+To get the status of the job, run:
+   bacalhau describe %s`, j.ID)
 	return nil
 }
 

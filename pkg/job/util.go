@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -47,19 +48,35 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 	jobInputs := []model.StorageSpec{}
 
 	for _, inputURL := range inputUrls {
-		// split using LastIndex to support port numbers in URL
-		lastInd := strings.LastIndex(inputURL, ":")
-		rawURL := inputURL[:lastInd]
-		path := inputURL[lastInd+1:]
+		u, err := url.Parse(strings.Trim(inputURL, " '\"`"))
+		if err != nil {
+			return nil, err
+		}
+
 		// should loop through all available storage providers?
-		_, err := urldownload.IsURLSupported(rawURL)
+		_, err = urldownload.IsURLSupported(u)
 		if err != nil {
 			return []model.StorageSpec{}, err
 		}
+
+		var urlString string
+		if u.Port() != "" {
+			urlString = fmt.Sprintf("%s://%s:%s", u.Scheme, u.Hostname(), u.Port())
+		} else {
+			urlString = fmt.Sprintf("%s://%s", u.Scheme, u.Hostname())
+		}
+
+		var urlPathWithQuery string
+		if len(u.Query()) > 0 {
+			urlPathWithQuery = fmt.Sprintf("%s?%s", u.Path, u.RawQuery)
+		} else {
+			urlPathWithQuery = u.Path
+		}
+
 		jobInputs = append(jobInputs, model.StorageSpec{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           rawURL,
-			Path:          path,
+			URL:           urlString,
+			Path:          urlPathWithQuery,
 		})
 	}
 

@@ -56,6 +56,7 @@ type DockerRunOptions struct {
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
 	Env              []string // Array of environment variables
+	IDOnly           bool     // Only print the job ID
 	Concurrency      int      // Number of concurrent jobs to run
 	Confidence       int      // Minimum number of nodes that must agree on a verification result
 	MinBids          int      // Minimum number of bids before they will be accepted (at random)
@@ -91,6 +92,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		InputVolumes:       []string{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
+		IDOnly:             false,
 		Concurrency:        1,
 		Confidence:         0,
 		MinBids:            0, // 0 means no minimum before bidding
@@ -215,6 +217,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
+	)
+
 	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
 
@@ -273,6 +279,7 @@ var dockerRunCmd = &cobra.Command{
 			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
+			ODR.IDOnly,
 		)
 
 		if err != nil {

@@ -62,7 +62,12 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
 
-	_, err := IsURLSupported(storageSpec.URL)
+	u, err := url.Parse(storageSpec.URL)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+
+	_, err = IsURLSupported(u)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -129,17 +134,11 @@ func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) 
 	}, nil
 }
 
-func IsURLSupported(rawURL string) (bool, error) {
-	// The string url is assumed NOT to have a #fragment suffix
-	// thus the valid form is: [scheme:][//[userinfo@]host][/]path[?query]
-	parsedURL, err := url.ParseRequestURI(rawURL)
-	if err != nil {
-		return false, err
-	}
-	if (parsedURL.Scheme == "http") || (parsedURL.Scheme == "https") {
+func IsURLSupported(u *url.URL) (bool, error) {
+	if (u.Scheme == "http") || (u.Scheme == "https") {
 		return true, nil
 	}
-	return false, fmt.Errorf("protocol scheme in URL not supported: %s", rawURL)
+	return false, fmt.Errorf("protocol scheme in URL not supported: %s", u.String())
 }
 
 // Compile time interface check:
