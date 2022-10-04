@@ -85,7 +85,7 @@ const config = {
               },
               {
                 label: "Twitter",
-                href: "https://twitter.com/bacalhau",
+                href: "https://twitter.com/BacalhauProject",
               },
             ],
           },
