@@ -27,6 +27,7 @@ type SimulationAPIServer struct {
 	Port          int
 	localDB       localdb.LocalDB
 	eventConsumer *eventhandler.ChainedJobEventHandler
+	wallets       *walletsModel
 }
 
 const ServerReadHeaderTimeout = 10 * time.Second
@@ -53,6 +54,7 @@ func NewServer(
 		Port:          port,
 		localDB:       localDB,
 		eventConsumer: eventConsumer,
+		wallets:       newWalletsModel(localDB),
 	}
 	return server
 }
@@ -109,21 +111,23 @@ func (apiServer *SimulationAPIServer) websocketHandler(res http.ResponseWriter, 
 		payload := jobEventEnvelope{}
 		err = json.Unmarshal(message, &payload)
 
-		err = apiServer.eventConsumer.HandleJobEvent(context.Background(), payload.JobEvent)
+		event := payload.JobEvent
+
+		// step 1: feed the event into the localDB so that it can be queried
+		err = apiServer.eventConsumer.HandleJobEvent(context.Background(), event)
 		if err != nil {
 			log.Error().Msgf("error writing job event to consumer: %s\n", err.Error())
 			continue
 		}
 
-		// step 1: handle message i.e. mutate our internal state
-		// switch event.EventName {
-		// case model.JobEventBid:
-		// 	fmt.Printf("received bid event: %s", event.JobID)
-		// case model.JobEventBidAccepted:
-		// 	fmt.Printf("received bid accepted event: %s", event.JobID)
-		// }
+		// step 2: apply the event to the wallets model
+		err = apiServer.wallets.addEvent(event)
+		if err != nil {
+			log.Error().Msgf("error adding event to wallet model: %s\n", err.Error())
+			continue
+		}
 
-		// step 2: broacast the message back to all subscribers
+		// step 3: broacast the message back to all subscribers
 		for _, conn := range connections {
 			err := conn.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
