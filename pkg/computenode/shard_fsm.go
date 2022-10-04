@@ -112,8 +112,8 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 
 // Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
-func (m *shardStateMachineManager) StartShardStateIfNecessery(
-	shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
+func (m *shardStateMachineManager) StartShardStateIfNecessary(
+	ctx context.Context, shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -121,7 +121,7 @@ func (m *shardStateMachineManager) StartShardStateIfNecessery(
 		shardState := m.newStateMachine(shard, n, requirements)
 
 		// ANCHOR: Start of the shard state machine span
-		ctx, span := system.GetTracer().Start(context.Background(), "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessery")
+		ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessary") //nolint:govet
 		defer span.End()
 		ctx = system.AddNodeIDToBaggage(ctx, n.ID)
 		system.AddNodeIDFromBaggageToSpan(ctx, span)
@@ -286,7 +286,7 @@ func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
 		}
 	}()
 	m.req <- request
@@ -297,7 +297,7 @@ type StateFn func(context.Context, *shardStateMachine) StateFn
 func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	log.Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
+	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
 	m.previousState = m.currentState
 	m.currentState = newState
 }
@@ -317,7 +317,7 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -350,7 +350,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -427,7 +427,7 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -453,7 +453,7 @@ func publishingToRequesterState(ctx context.Context, m *shardStateMachine) State
 func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardError)
 	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
-	log.Error().Msgf(errMessage)
+	log.Ctx(ctx).Error().Msgf(errMessage)
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.errorState")
 	defer span.End()
@@ -469,7 +469,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.runOutput,
 		)
 		if err != nil {
-			log.Error().Msgf("%s failed to report error of job due to %s",
+			log.Ctx(ctx).Error().Msgf("%s failed to report error of job due to %s",
 				m, err.Error())
 		}
 	}

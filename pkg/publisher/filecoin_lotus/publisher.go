@@ -69,7 +69,7 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/PublishShardResult")
 	defer span.End()
 
-	log.Debug().Msgf(
+	log.Ctx(ctx).Debug().Msgf(
 		"Uploading results folder to filecoin lotus: %s %s %s",
 		hostID,
 		shard,

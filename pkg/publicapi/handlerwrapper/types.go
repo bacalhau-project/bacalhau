@@ -1,5 +1,7 @@
 package handlerwrapper
 
+import "context"
+
 type HTTPRequestInfo struct {
 	JobID      string `json:"JobID,omitempty"` // bacalhau job id
 	URI        string `json:"URI"`             // GET etc.
@@ -16,5 +18,5 @@ type HTTPRequestInfo struct {
 }
 
 type RequestInfoHandler interface {
-	Handle(*HTTPRequestInfo)
+	Handle(context.Context, *HTTPRequestInfo)
 }

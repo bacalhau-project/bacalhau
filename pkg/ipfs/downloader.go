@@ -50,7 +50,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 	defer span.End()
 
 	if len(results) == 0 {
-		log.Debug().Msg("No results to download")
+		log.Ctx(ctx).Debug().Msg("No results to download")
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 			settings.IPFSSwarmAddrs = os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES")
 		}
 	case system.EnvironmentStaging:
-		log.Warn().Msg("Staging environment has no IPFS swarm addresses attached")
+		log.Ctx(ctx).Warn().Msg("Staging environment has no IPFS swarm addresses attached")
 	}
 
 	// NOTE: we have to spin up a temporary IPFS node as we don't
@@ -89,7 +89,7 @@ func loopOverResults(ctx context.Context,
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.loopingOverResults")
 	defer span.End()
 
-	log.Debug().Msg("Connecting client to new IPFS node...")
+	log.Ctx(ctx).Debug().Msg("Connecting client to new IPFS node...")
 	cl, err := n.Client()
 	if err != nil {
 		return err
@@ -99,11 +99,11 @@ func loopOverResults(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	log.Debug().Msgf("Created download scratch folder: %s", scratchFolder)
+	log.Ctx(ctx).Debug().Msgf("Created download scratch folder: %s", scratchFolder)
 
 	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
-		log.Error().Msgf("Failed to get absolute path for output dir: %s", err)
+		log.Ctx(ctx).Error().Msgf("Failed to get absolute path for output dir: %s", err)
 		return err
 	}
 
@@ -112,7 +112,7 @@ func loopOverResults(ctx context.Context,
 	// it's "name" and "path" is named after the shard index
 	// so we write the shard output to our scratch folder
 	// and then merge each outout volume into the global results
-	log.Info().Msgf("Found %d result shards, downloading to temporary folder.", len(results))
+	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to temporary folder.", len(results))
 
 	// we move all the contents of the output volume to the global results dir
 	// for this output volume
@@ -141,7 +141,7 @@ func spinUpIPFSNode(ctx context.Context,
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
 	defer span.End()
 
-	log.Debug().Msg("Spinning up IPFS node...")
+	log.Ctx(ctx).Debug().Msg("Spinning up IPFS node...")
 	n, err := NewNode(ctx, cm, strings.Split(ipfsSwarmAddrs, ","))
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func fetchResult(ctx context.Context,
 	defer span.End()
 
 	err := func() error {
-		log.Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.CID, shardDownloadDir)
+		log.Ctx(ctx).Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.CID, shardDownloadDir)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
 			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
@@ -169,7 +169,7 @@ func fetchResult(ctx context.Context,
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			log.Error().Msg("Timed out while downloading result.")
+			log.Ctx(ctx).Error().Msg("Timed out while downloading result.")
 		}
 
 		return err
@@ -192,12 +192,12 @@ func moveResults(ctx context.Context,
 		if err != nil {
 			return err
 		}
-		log.Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
+		log.Ctx(ctx).Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
 
 		moveFunc := func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				// If there is an error reading a path, we should continue with the rest
-				log.Error().Err(err).Msgf("Error with path %s", path)
+				log.Ctx(ctx).Error().Err(err).Msgf("Error with path %s", path)
 				return nil
 			}
 
@@ -211,7 +211,7 @@ func moveResults(ctx context.Context,
 			}
 
 			newPath := filepath.Join(volumeOutputDir, basePath)
-			log.Debug().Msgf("Move '%s' to '%s'", path, newPath)
+			log.Ctx(ctx).Debug().Msgf("Move '%s' to '%s'", path, newPath)
 			return os.Rename(path, newPath)
 		}
 

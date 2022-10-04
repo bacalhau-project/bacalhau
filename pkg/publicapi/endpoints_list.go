@@ -51,7 +51,7 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		// get JobStates
 		err = apiServer.getJobStates(ctx, jobList)
 		if err != nil {
-			log.Error().Err(err).Msg("error getting job states")
+			log.Ctx(ctx).Error().Err(err).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -93,7 +93,7 @@ func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.J
 	for k := range jobList {
 		jobList[k].State, err = apiServer.localdb.GetJobState(ctx, jobList[k].ID)
 		if err != nil {
-			log.Error().Msgf("error getting job state: %s", err)
+			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
 			return err
 		}
 	}

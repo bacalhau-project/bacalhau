@@ -59,7 +59,7 @@ func (r *ChainedJobEventHandler) AddHandlers(handlers ...JobEventHandler) {
 
 func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
 	startTime := time.Now()
-	defer logEvent(event, startTime)(&err)
+	defer logEvent(ctx, event, startTime)(&err)
 
 	if r.eventHandlers == nil {
 		return fmt.Errorf("no event handlers registered")
@@ -76,7 +76,7 @@ func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model
 	return nil
 }
 
-func logEvent(event model.JobEvent, startTime time.Time) func(*error) {
+func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) func(*error) {
 	return func(handlerError *error) {
 		// construct log event
 		logData := eventLog{
@@ -95,14 +95,14 @@ func logEvent(event model.JobEvent, startTime time.Time) func(*error) {
 
 		jsonBytes, err := json.Marshal(logData)
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to marshal event for logging purposes: %+v", event)
+			log.Ctx(ctx).Error().Err(err).Msgf("failed to marshal event for logging purposes: %+v", event)
 		}
 
 		// log event
 		if *handlerError != nil {
-			log.Error().Msg(string(jsonBytes))
+			log.Ctx(ctx).Error().Msg(string(jsonBytes))
 		} else {
-			log.Info().Msg(string(jsonBytes))
+			log.Ctx(ctx).Info().Msg(string(jsonBytes))
 		}
 	}
 }

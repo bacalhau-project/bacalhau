@@ -2,7 +2,7 @@ package scenarios
 
 import (
 	"context"
-	"fmt"
+	"github.com/rs/zerolog/log"
 
 	"github.com/filecoin-project/bacalhau/cmd/bacalhau"
 )
@@ -12,18 +12,10 @@ func List(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := bacalhau.GetAPIClient()
 
-	jobs, err := client.List(ctx)
+	jobs, err := client.List(ctx, "", 10, false, "created_at", true)
 	if err != nil {
 		return err
 	}
-
-	count := 0
-	for i := range jobs {
-		fmt.Printf("Job: %s\n", jobs[i].ID)
-		count++
-		if count > 10 { //nolint:gomnd
-			break
-		}
-	}
+	log.Info().Msgf("listed %d jobs", len(jobs))
 	return nil
 }

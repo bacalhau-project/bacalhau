@@ -19,7 +19,7 @@ func SubmitAndGet(ctx context.Context) error {
 
 	cm := system.NewCleanupManager()
 	j := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, j.Spec, j.Deal, nil)
+	submittedJob, err := client.Submit(ctx, j, nil)
 	if err != nil {
 		return err
 	}

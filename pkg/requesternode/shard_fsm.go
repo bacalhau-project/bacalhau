@@ -188,7 +188,7 @@ func (m *shardStateMachine) resultsPublished(ctx context.Context, sourceNodeID s
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
 		}
 	}()
 	m.req <- request
@@ -200,7 +200,7 @@ func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateR
 type stateFn func(context.Context, *shardStateMachine) stateFn
 
 func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
-	log.Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
+	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
 	m.previousState = m.currentState
 	m.currentState = newState
 }
@@ -221,10 +221,10 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) stateFn {
 					return selectingBidsState
 				}
 			} else {
-				log.Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
+				log.Ctx(ctx).Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
 			}
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -246,7 +246,7 @@ func selectingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 		if len(acceptedBids) < m.shard.Job.Deal.Concurrency {
 			err := m.node.notifyBidDecision(ctx, m.shard, candidate, true)
 			if err != nil {
-				log.Error().Err(err).Msgf("%s failed to notify bid acceptance to %s", m, candidate)
+				log.Ctx(ctx).Error().Err(err).Msgf("%s failed to notify bid acceptance to %s", m, candidate)
 				continue
 			} else {
 				acceptedBids[candidate] = struct{}{}
@@ -254,7 +254,7 @@ func selectingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 		} else {
 			err := m.node.notifyBidDecision(ctx, m.shard, candidate, false)
 			if err != nil {
-				log.Warn().Err(err).Msgf("%s failed to notify bid rejection to %s", m, candidate)
+				log.Ctx(ctx).Warn().Err(err).Msgf("%s failed to notify bid rejection to %s", m, candidate)
 			}
 		}
 	}
@@ -281,7 +281,7 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 			if _, ok := m.biddingNodes[req.sourceNodeID]; !ok {
 				err := m.node.notifyBidDecision(ctx, m.shard, req.sourceNodeID, true)
 				if err != nil {
-					log.Error().Msgf("%s failed to notify bid acceptance. Will wait for more bids: %s", m, err)
+					log.Ctx(ctx).Error().Msgf("%s failed to notify bid acceptance. Will wait for more bids: %s", m, err)
 				} else {
 					// add the bid to the list of accepted bids.
 					m.biddingNodes[req.sourceNodeID] = struct{}{}
@@ -291,16 +291,16 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 					}
 				}
 			} else {
-				log.Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
+				log.Ctx(ctx).Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
 			}
 		case actionResultReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
 				m.completedNodes[req.sourceNodeID] = struct{}{}
 			} else {
-				log.Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
+				log.Ctx(ctx).Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
 			}
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -316,7 +316,7 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 			// reject all bids at this state
 			err := m.node.notifyBidDecision(ctx, m.shard, req.sourceNodeID, false)
 			if err != nil {
-				log.Warn().Msgf("%s failed to notify bid rejection: %s", m, err)
+				log.Ctx(ctx).Warn().Msgf("%s failed to notify bid rejection: %s", m, err)
 			}
 		case actionResultReceived:
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
@@ -329,10 +329,10 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 					return verifyingResultsState
 				}
 			} else {
-				log.Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
+				log.Ctx(ctx).Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
 			}
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -365,7 +365,7 @@ func waitingToPublishResultsState(ctx context.Context, m *shardStateMachine) sta
 			//  publish the result and not all the compute nodes.
 			return completedState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -373,7 +373,7 @@ func waitingToPublishResultsState(ctx context.Context, m *shardStateMachine) sta
 func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 	m.transitionedTo(ctx, shardError)
 	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
-	log.Error().Msgf(errMessage)
+	log.Ctx(ctx).Error().Msgf(errMessage)
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/requesterNode/ShardFSM.errorState")
 	defer span.End()
@@ -386,7 +386,7 @@ func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 		errMessage,
 	)
 	if err != nil {
-		log.Error().Msgf("%s failed to report error of job due to %s",
+		log.Ctx(ctx).Error().Msgf("%s failed to report error of job due to %s",
 			m, err.Error())
 	}
 

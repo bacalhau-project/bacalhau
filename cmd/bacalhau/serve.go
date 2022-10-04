@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -262,6 +264,9 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			Fatal(fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
 		}
+
+		// add nodeID to logging context
+		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
 
 		// Establishing IPFS connection
 		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
