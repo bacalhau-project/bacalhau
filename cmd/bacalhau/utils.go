@@ -392,6 +392,7 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
 }
 
+//nolint:gocyclo // Better way to do this, Go doesn't have a switch on type
 func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
@@ -410,12 +411,20 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 		{model.JobStateBidding, false},
 		{model.JobStateWaiting, false},
 		{model.JobStateRunning, false},
+		{model.JobStateVerifying, false},
+		{model.JobStateCompleted, false},
+		{model.JobStateError, false},
+		{model.JobStateCancelled, false},
 	}
 
 	jStatus, _, err := GetAPIClient().Get(ctx, j.ID)
 	if err != nil {
 		return err
 	}
+
+	moreInformationString := fmt.Sprintf(`
+To get the status of the job, run:
+   bacalhau describe %s`, j.ID)
 
 	// TODO: #786 Figure out why devstack doesn't produce events
 	// Don't know why, but devstack doesn't do events
@@ -438,29 +447,45 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 					RootCmd.Print("Nodes bidding on job ... ")
 					printedArray[0].printed = true
 				} else if s == model.JobStateWaiting && !printedArray[1].printed {
-					RootCmd.Println("done.")
+					RootCmd.Println(" done.")
 					RootCmd.Print("Nodes waiting to run job ... ")
 					printedArray[1].printed = true
 				} else if s == model.JobStateRunning && !printedArray[2].printed {
-					RootCmd.Println("done.")
+					RootCmd.Println(" done.")
 					RootCmd.Println("Job is executing ...")
 					printedArray[2].printed = true
-
+				} else if s == model.JobStateVerifying && !printedArray[3].printed {
+					RootCmd.Println(" done.")
+					RootCmd.Println("Verifying results ...")
+					printedArray[3].printed = true
+				} else if s == model.JobStateCompleted && !printedArray[4].printed {
+					RootCmd.Println(" done.")
+					RootCmd.Println("Job completed successfully.")
+					printedArray[4].printed = true
+				} else if s == model.JobStateError && !printedArray[5].printed {
+					RootCmd.Printf("\nJob failed with an error.\n\n%s\n", moreInformationString)
+					printedArray[5].printed = true
+				} else if s == model.JobStateCancelled && !printedArray[6].printed {
+					RootCmd.Printf("\nJob was canceled.\n\n%s\n", moreInformationString)
+					printedArray[6].printed = true
 				}
 			}
 
-			// Printed the final message, so we can exit
-			if printedArray[2].printed {
+			// If job is in terminal state, we're done
+			jst := job.ComputeStateSummary(jStatus)
+			// Convert string to JobStateType
+			jstType, err := model.ParseJobStateType(jst)
+			if err != nil {
+				return err
+			}
+			if jstType.IsTerminal() {
 				break
 			}
 
 			time.Sleep(2 * time.Second)
-		}
+		} // end for
 	}
 
-	RootCmd.Printf(`
-To get the status of the job, run:
-   bacalhau describe %s`, j.ID)
 	return nil
 }
 

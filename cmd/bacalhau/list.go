@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -230,36 +230,14 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	}
 
 	// compute state summary
-	var currentJobState model.JobStateType
-	for _, shardState := range jobutils.FlattenShardStates(j.State) { //nolint:gocritic
-		if shardState.State > currentJobState {
-			currentJobState = shardState.State
-		}
-	}
-	stateSummary := currentJobState.String()
+	//nolint:gocritic
+	stateSummary := job.ComputeStateSummary(j)
 
 	// compute verifiedSummary
-	var verifiedSummary string
-	if j.Spec.Verifier == model.VerifierNoop {
-		verifiedSummary = ""
-	} else {
-		totalShards := jobutils.GetJobTotalExecutionCount(j)
-		verifiedShardCount := jobutils.GetVerifiedShardStates(j.State)
-		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
-	}
+	verifiedSummary := job.ComputeVerifiedSummary(j)
 
 	// compute resultSummary
-	var resultSummary string
-	if jobutils.GetJobTotalShards(j) > 1 {
-		resultSummary = ""
-	} else {
-		completedShards := jobutils.GetCompletedShardStates(j.State)
-		if len(completedShards) == 0 {
-			resultSummary = ""
-		} else {
-			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
-		}
-	}
+	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
 		shortenTime(OL.OutputWide, j.CreatedAt),

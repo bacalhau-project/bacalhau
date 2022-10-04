@@ -118,3 +118,42 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 func ShortID(id string) string {
 	return id[:8]
 }
+
+func ComputeStateSummary(j *model.Job) string {
+	var currentJobState model.JobStateType
+	jobShardStates := FlattenShardStates(j.State)
+	for i := range jobShardStates {
+		if jobShardStates[i].State > currentJobState {
+			currentJobState = jobShardStates[i].State
+		}
+	}
+	stateSummary := currentJobState.String()
+	return stateSummary
+}
+
+func ComputeResultsSummary(j *model.Job) string {
+	var resultSummary string
+	if GetJobTotalShards(j) > 1 {
+		resultSummary = ""
+	} else {
+		completedShards := GetCompletedShardStates(j.State)
+		if len(completedShards) == 0 {
+			resultSummary = ""
+		} else {
+			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
+		}
+	}
+	return resultSummary
+}
+
+func ComputeVerifiedSummary(j *model.Job) string {
+	var verifiedSummary string
+	if j.Spec.Verifier == model.VerifierNoop {
+		verifiedSummary = ""
+	} else {
+		totalShards := GetJobTotalExecutionCount(j)
+		verifiedShardCount := GetVerifiedShardStates(j.State)
+		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
+	}
+	return verifiedSummary
+}
