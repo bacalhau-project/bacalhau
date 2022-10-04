@@ -1,8 +1,7 @@
 package bacalhau
 
 import (
-	"fmt"
-
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/simulator"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
@@ -21,10 +20,14 @@ var simulatorCmd = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTraceProvider)
 		defer cm.Cleanup()
 		ctx := cmd.Context()
-		server := simulator.NewServer(ctx, "0.0.0.0", 9075)
-		err := server.ListenAndServe(ctx, cm)
+		localDB, err := inmemory.NewInMemoryDatastore()
 		if err != nil {
-			Fatal(fmt.Sprintf("Error starting node: %s", err), 1)
+			return err
+		}
+		server := simulator.NewServer(ctx, "0.0.0.0", 9075, localDB)
+		err = server.ListenAndServe(ctx, cm)
+		if err != nil {
+			return err
 		}
 		<-ctx.Done()
 		return nil

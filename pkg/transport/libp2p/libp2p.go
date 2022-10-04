@@ -326,6 +326,9 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
 	payload := jobEventEnvelope{}
+
+	fmt.Printf("ABOUT TO UNMARSHALL --------------------------------------\n")
+
 	err := json.Unmarshal(msg.Data, &payload)
 	if err != nil {
 		log.Error().Msgf("error unmarshalling libp2p event: %v", err)

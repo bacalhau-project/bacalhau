@@ -85,15 +85,15 @@ func (t *SimulatorTransport) Start(ctx context.Context) error {
 				continue
 			}
 
-			var envelope *jobEventEnvelope
-			err = json.Unmarshal(msg, &envelope)
+			payload := jobEventEnvelope{}
+			err = json.Unmarshal(msg, &payload)
 			if err != nil {
 				log.Error().Msgf(
 					"Simulation Transport error unmarshalling message %s", err.Error())
 				continue
 			}
 
-			go t.readMessage(envelope)
+			go t.readMessage(&payload)
 		}
 	}()
 	return nil
