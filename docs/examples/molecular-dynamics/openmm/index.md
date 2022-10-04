@@ -198,21 +198,6 @@ CMD ["python","run_openmm_simulation.py"]
 
 Before we upload the container to the Bacalhau network, we should test it locally to make sure it works.
 
-
-```bash
-docker run \
-    -v $(pwd)/dataset:/inputs/ \
-    -v $(pwd)/output:/output \
-    ghcr.io/bacalhau-project/examples/openmm:0.3
-```
-
-    Building system...
-    Performing energy minimization...
-    Equilibrating...
-    Simulating...
-    Simulation complete, file written to disk at: /outputs/final_state.pdbx
-
-
 ### Run a Bacalhau Job
 
 Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
@@ -293,8 +278,3 @@ bacalhau get ${JOB_ID} # Download the results
     [90m14:30:51.304 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
     [90m14:30:56.784 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/enricorotundo/winderresearch/ProtocolLabs/examples/todo/openmm'
 
-
-
-```python
-
-```
