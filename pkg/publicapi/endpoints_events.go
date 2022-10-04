@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 )
 
 type eventsRequest struct {
@@ -23,6 +24,8 @@ func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, eventsReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
 	events, err := apiServer.localdb.GetJobEvents(req.Context(), eventsReq.JobID)
 	if err != nil {
