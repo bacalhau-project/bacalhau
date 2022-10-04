@@ -102,12 +102,13 @@ func (suite *ServerSuite) TestVarz() {
 
 func (suite *ServerSuite) TestTimeout() {
 	config := &APIServerConfig{
-		RequestHandlerTimeout: 1 * time.Millisecond,
+		RequestHandlerTimeoutByURI: map[string]time.Duration{
+			"/logz": 10 * time.Nanosecond,
+		},
 	}
 	c, cm := SetupTestsWithConfig(suite.T(), config)
 	defer cm.Cleanup()
 
-	// This API takes longer than 1ms to complete, so it should timeout.
 	endpoint := "/logz"
 	res, err := http.Get(c.BaseURI + endpoint)
 	require.NoError(suite.T(), err, "Could not get %s endpoint.", endpoint)

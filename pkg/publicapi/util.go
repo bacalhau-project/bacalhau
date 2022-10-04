@@ -131,7 +131,7 @@ func SetupTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return cl, cm
 }
 
 func waitForHealthy(ctx context.Context, c *APIClient) error {

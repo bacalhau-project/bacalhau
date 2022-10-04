@@ -35,14 +35,16 @@ type APIServerConfig struct {
 	WriteTimeout      time.Duration // the maximum duration before timing out writes of the response
 
 	// This represents maximum duration for handlers to complete, or else fail the request with 503 error code.
-	RequestHandlerTimeout time.Duration
+	RequestHandlerTimeout      time.Duration
+	RequestHandlerTimeoutByURI map[string]time.Duration
 }
 
 var DefaultAPIServerConfig = &APIServerConfig{
-	ReadHeaderTimeout:     10 * time.Second,
-	ReadTimeout:           20 * time.Second,
-	WriteTimeout:          20 * time.Second,
-	RequestHandlerTimeout: 30 * time.Second,
+	ReadHeaderTimeout:          10 * time.Second,
+	ReadTimeout:                20 * time.Second,
+	WriteTimeout:               20 * time.Second,
+	RequestHandlerTimeout:      30 * time.Second,
+	RequestHandlerTimeoutByURI: map[string]time.Duration{},
 }
 
 // APIServer configures a node's public REST API.
@@ -114,20 +116,20 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 
 	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server
 	sm := http.NewServeMux()
-	sm.Handle("/list", apiServer.instrument("list", apiServer.list))
-	sm.Handle("/states", apiServer.instrument("states", apiServer.states))
-	sm.Handle("/results", apiServer.instrument("results", apiServer.results))
-	sm.Handle("/events", apiServer.instrument("events", apiServer.events))
-	sm.Handle("/local_events", apiServer.instrument("local_events", apiServer.localEvents))
-	sm.Handle("/id", apiServer.instrument("id", apiServer.id))
-	sm.Handle("/peers", apiServer.instrument("peers", apiServer.peers))
-	sm.Handle("/submit", apiServer.instrument("submit", apiServer.submit))
-	sm.Handle("/version", apiServer.instrument("version", apiServer.version))
-	sm.Handle("/healthz", apiServer.instrument("healthz", apiServer.healthz))
-	sm.Handle("/logz", apiServer.instrument("logz", apiServer.logz))
-	sm.Handle("/varz", apiServer.instrument("varz", apiServer.varz))
-	sm.Handle("/livez", apiServer.instrument("livez", apiServer.livez))
-	sm.Handle("/readyz", apiServer.instrument("readyz", apiServer.readyz))
+	sm.Handle(apiServer.chainHandlers("/list", apiServer.list))
+	sm.Handle(apiServer.chainHandlers("/states", apiServer.states))
+	sm.Handle(apiServer.chainHandlers("/results", apiServer.results))
+	sm.Handle(apiServer.chainHandlers("/events", apiServer.events))
+	sm.Handle(apiServer.chainHandlers("/local_events", apiServer.localEvents))
+	sm.Handle(apiServer.chainHandlers("/id", apiServer.id))
+	sm.Handle(apiServer.chainHandlers("/peers", apiServer.peers))
+	sm.Handle(apiServer.chainHandlers("/submit", apiServer.submit))
+	sm.Handle(apiServer.chainHandlers("/version", apiServer.version))
+	sm.Handle(apiServer.chainHandlers("/healthz", apiServer.healthz))
+	sm.Handle(apiServer.chainHandlers("/logz", apiServer.logz))
+	sm.Handle(apiServer.chainHandlers("/varz", apiServer.varz))
+	sm.Handle(apiServer.chainHandlers("/livez", apiServer.livez))
+	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
 	sm.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
@@ -190,9 +192,9 @@ func verifySubmitRequest(req *submitRequest) error {
 	return nil
 }
 
-func (apiServer *APIServer) instrument(name string, fn http.HandlerFunc) http.Handler {
+func (apiServer *APIServer) chainHandlers(uri string, handlerFunc http.HandlerFunc) (string, http.Handler) {
 	// otel handler
-	handler := otelhttp.NewHandler(fn, fmt.Sprintf("pkg/publicapi/%s", name))
+	handler := otelhttp.NewHandler(handlerFunc, fmt.Sprintf("pkg/publicapi%s", uri))
 
 	// throttling handler
 	handler = tollbooth.LimitHandler(
@@ -201,10 +203,19 @@ func (apiServer *APIServer) instrument(name string, fn http.HandlerFunc) http.Ha
 			&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}),
 		handler)
 
-	// timeout handler
-	handler = http.TimeoutHandler(handler, apiServer.Config.RequestHandlerTimeout, "Server Timeout!")
+	// timeout handler. Find timeout for this endpoint, or use the fallback value
+	handlerTimeout, ok := apiServer.Config.RequestHandlerTimeoutByURI[uri]
+	if !ok {
+		if apiServer.Config.RequestHandlerTimeout != 0 {
+			handlerTimeout = apiServer.Config.RequestHandlerTimeout
+		} else {
+			// if no fallback timeout is defined, then use the default value
+			handlerTimeout = DefaultAPIServerConfig.RequestHandlerTimeout
+		}
+	}
+	handler = http.TimeoutHandler(handler, handlerTimeout, "Server Timeout!")
 
 	// logging handler. Should be last in the chain.
 	handler = handlerwrapper.NewHTTPHandlerWrapper(apiServer.Requester.ID, handler, handlerwrapper.NewJSONLogHandler())
-	return handler
+	return uri, handler
 }
