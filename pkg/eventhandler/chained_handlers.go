@@ -2,7 +2,9 @@ package eventhandler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -55,7 +57,10 @@ func (r *ChainedJobEventHandler) AddHandlers(handlers ...JobEventHandler) {
 	r.eventHandlers = append(r.eventHandlers, handlers...)
 }
 
-func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
+	startTime := time.Now()
+	defer logEvent(event, startTime)(&err)
+
 	if r.eventHandlers == nil {
 		return fmt.Errorf("no event handlers registered")
 	}
@@ -64,10 +69,51 @@ func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model
 
 	// All handlers are called, unless one of them returns an error.
 	for _, handler := range r.eventHandlers {
-		if err := handler.HandleJobEvent(jobCtx, event); err != nil {
+		if err = handler.HandleJobEvent(jobCtx, event); err != nil { //nolint:gocritic
 			return err
 		}
 	}
-	log.Trace().Msgf("handleJobEvent: %+v", event)
 	return nil
+}
+
+func logEvent(event model.JobEvent, startTime time.Time) func(*error) {
+	return func(handlerError *error) {
+		// construct log event
+		logData := eventLog{
+			EventName:    event.EventName,
+			ShardID:      fmt.Sprintf("%s_%d", event.JobID, event.ShardIndex),
+			SourceNodeID: event.SourceNodeID,
+			TargetNodeID: event.TargetNodeID,
+			Duration:     time.Since(startTime).Milliseconds(),
+			ClientID:     event.ClientID,
+			Status:       event.Status,
+		}
+
+		if *handlerError != nil {
+			logData.HandlerError = (*handlerError).Error()
+		}
+
+		jsonBytes, err := json.Marshal(logData)
+		if err != nil {
+			log.Error().Err(err).Msgf("failed to marshal event for logging purposes: %+v", event)
+		}
+
+		// log event
+		if *handlerError != nil {
+			log.Error().Msg(string(jsonBytes))
+		} else {
+			log.Info().Msg(string(jsonBytes))
+		}
+	}
+}
+
+type eventLog struct {
+	EventName    model.JobEventType `json:"EventName"`
+	ShardID      string             `json:"ShardID"`
+	SourceNodeID string             `json:"SourceNodeID"`
+	TargetNodeID string             `json:"TargetNodeID"`
+	ClientID     string             `json:"ClientID,omitempty"`
+	Status       string             `json:"Status,omitempty"`
+	Duration     int64              `json:"Duration"`
+	HandlerError string             `json:"HandlerError,omitempty"`
 }
