@@ -40,7 +40,15 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 	suite.contextProvider = mock_eventhandler.NewMockContextProvider(suite.ctrl)
 	suite.chainedHandler = NewChainedJobEventHandler(suite.contextProvider)
 	suite.context = context.WithValue(context.Background(), "test", "test")
-	suite.event = model.JobEvent{JobID: uuid.NewString()}
+	suite.event = model.JobEvent{
+		EventName:    model.JobEventCreated,
+		JobID:        uuid.NewString(),
+		ShardIndex:   1,
+		SourceNodeID: "nodeA",
+		TargetNodeID: "nodeB",
+		ClientID:     "clientX",
+		Status:       "this is a test event",
+	}
 }
 
 func (suite *jobEventHandlerSuite) TearDownTest() {

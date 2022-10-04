@@ -44,3 +44,4 @@ stdout
 unittests.xml
 output_dir
 experimental/*
+.idea/

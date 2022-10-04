@@ -38,9 +38,19 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	return SetupTestsWithPort(t, port)
 }
 
+func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+	return SetupTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
+}
+
+func SetupTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	return SetupTestsWithPortAndConfig(t, port, config)
+}
+
 // TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
 // and only keep simple unit tests here.
-func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+func SetupTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting()
 	require.NoError(t, err)
@@ -113,15 +123,15 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 
 	host := "0.0.0.0"
 
-	s := NewServer(ctx, host, port, inmemoryDatastore, inprocessTransport,
-		requesterNode, noopPublishers, noopStorageProviders)
+	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
+		requesterNode, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return cl, cm
 }
 
 func waitForHealthy(ctx context.Context, c *APIClient) error {

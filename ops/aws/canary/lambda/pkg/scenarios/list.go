@@ -12,7 +12,7 @@ func List(ctx context.Context) error {
 	// scenario to mimic the behavior of bacalhau cli.
 	client := bacalhau.GetAPIClient()
 
-	jobs, err := client.List(ctx, "", 10, false, "created_at", true)
+	jobs, err := client.List(ctx)
 	if err != nil {
 		return err
 	}

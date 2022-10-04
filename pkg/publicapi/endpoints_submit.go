@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -47,6 +48,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.Data.ClientID)
 
 	if err := verifySubmitRequest(&submitReq); err != nil {
 		log.Debug().Msgf("====> VerifySubmitRequest error: %s", err)
@@ -120,6 +122,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		ctx,
 		submitReq.Data,
 	)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.ID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
