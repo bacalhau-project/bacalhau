@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Molecular Simulation with OpenMM"
+sidebar_label: "Simulation with OpenMM"
 sidebar_position: 1
 ---
 # Molecular Simulation with OpenMM
@@ -30,7 +30,9 @@ Make sure you have the latest `bacalhau` client installed by following the [gett
 We use a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the known [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
 You can find details on this data at the related [RCSB Protein Data Bank page](https://www.rcsb.org/structure/2dri).
 
-![image.png](attachment:4d31b531-06f6-4286-8fc3-4e654dc1628d.png)
+![image.png](./2dri-image.png)
+
+
 
 Protein data can be stored in a `.pdb` file, this is a human readable format.
 It provides for description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
