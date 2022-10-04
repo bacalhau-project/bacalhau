@@ -12,39 +12,65 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNewStorageProvider(t *testing.T) {
+// Define the suite, and absorb the built-in basic suite
+// functionality from testify - including a T() method which
+// returns the current testing context
+type StorageSuite struct {
+	suite.Suite
+	RootCmd *cobra.Command
+}
+
+func TestStorageSuite(t *testing.T) {
+	suite.Run(t, new(StorageSuite))
+}
+
+// Before all suite
+func (s *StorageSuite) SetupSuite() {
+}
+
+// Before each test
+func (s *StorageSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
+}
+
+func (s *StorageSuite) TearDownTest() {
+}
+
+func (s *StorageSuite) TearDownSuite() {
+
+}
+
+func (s *StorageSuite) TestNewStorageProvider() {
 	cm := system.NewCleanupManager()
 
 	sp, err := NewStorage(cm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to create storage provider")
+
 	// is dir writable?
 	fmt.Println(sp.LocalDir)
 	f, err := os.Create(filepath.Join(sp.LocalDir, "data.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to create file")
+
 	_, err = f.WriteString("test\n")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to write to file")
+
 	f.Close()
 	if sp.HTTPClient == nil {
-		t.Error("HTTP client in StorageProvider is nil")
+		require.Fail(s.T(), "HTTPClient is nil")
 	}
 }
 
-func TestHasStorageLocally(t *testing.T) {
+func (s *StorageSuite) TestHasStorageLocally() {
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 
 	sp, err := NewStorage(cm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to create storage provider")
 
 	spec := model.StorageSpec{
 		StorageSource: model.StorageSourceURLDownload,
@@ -53,15 +79,15 @@ func TestHasStorageLocally(t *testing.T) {
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to check if storage is locally available")
+
 	if locally != false {
-		t.Error("StorageProvider should not have any files stored locally")
+		require.Fail(s.T(), "storage should not be locally available")
 	}
 }
 
-func TestPrepareStorage(t *testing.T) {
+func (s *StorageSuite) TestPrepareStorage() {
+	fileName := "testfile"
 	testString := "Here's your data"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.String() == "/testfile" {
@@ -73,9 +99,7 @@ func TestPrepareStorage(t *testing.T) {
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
 	sp, err := NewStorage(cm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to create storage provider")
 
 	serverURL := ts.URL
 	spec := model.StorageSpec{
@@ -85,26 +109,20 @@ func TestPrepareStorage(t *testing.T) {
 	}
 
 	volume, err := sp.PrepareStorage(ctx, spec)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to prepare storage")
 
-	file, err := os.Open(volume.Source)
-	if err != nil {
-		t.Fatal(err)
-	}
+	file, err := os.Open(filepath.Join(volume.Source, fileName))
+	require.NoError(s.T(), err, "failed to open file")
+
 	defer func() {
 		if err = file.Close(); err != nil {
-			t.Fatal(err)
+			require.Fail(s.T(), "failed to close file")
 		}
 	}()
 
 	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(s.T(), err, "failed to read file")
+
 	text := string(content)
-	if text != testString {
-		t.Errorf("Should be \"%s\", but is \"%s\"", testString, text)
-	}
+	require.Equal(s.T(), testString, text, "content of file does not match")
 }

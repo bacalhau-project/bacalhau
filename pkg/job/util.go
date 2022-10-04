@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -47,36 +46,17 @@ func NewNoopStateLoader() StateLoader {
 func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
 	jobInputs := []model.StorageSpec{}
 
+	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
 	for _, inputURL := range inputUrls {
-		u, err := url.Parse(strings.Trim(inputURL, " '\"`"))
-		if err != nil {
-			return nil, err
-		}
-
 		// should loop through all available storage providers?
-		_, err = urldownload.IsURLSupported(u)
+		u, err := urldownload.IsURLSupported(inputURL)
 		if err != nil {
 			return []model.StorageSpec{}, err
 		}
-
-		var urlString string
-		if u.Port() != "" {
-			urlString = fmt.Sprintf("%s://%s:%s", u.Scheme, u.Hostname(), u.Port())
-		} else {
-			urlString = fmt.Sprintf("%s://%s", u.Scheme, u.Hostname())
-		}
-
-		var urlPathWithQuery string
-		if len(u.Query()) > 0 {
-			urlPathWithQuery = fmt.Sprintf("%s?%s", u.Path, u.RawQuery)
-		} else {
-			urlPathWithQuery = u.Path
-		}
-
 		jobInputs = append(jobInputs, model.StorageSpec{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           urlString,
-			Path:          urlPathWithQuery,
+			URL:           u.String(),
+			Path:          "/inputs",
 		})
 	}
 

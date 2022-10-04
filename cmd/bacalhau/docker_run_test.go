@@ -325,12 +325,14 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		{numberOfJobs: 1},
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 		type (
 			InputURL struct {
-				url  string
-				path string
-				flag string
+				url             string
+				pathInContainer string
+				flag            string
 			}
 		)
 
@@ -338,9 +340,9 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			inputURLs []InputURL
 			err       error
 		}{
-			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", path: "/app/data.tar.gz", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", pathInContainer: "/inputs/data.tar.gz", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", pathInContainer: "/inputs/sam.zip", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://ifps.io/CID", pathInContainer: "/inputs/file.csv", flag: "-u"}}, err: nil},
 		}
 
 		for _, turls := range testURLs {
@@ -359,9 +361,6 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 
 				for _, iurl := range turls.inputURLs {
 					iurlString := iurl.url
-					if iurl.path != "" {
-						iurlString += fmt.Sprintf(":%s", iurl.path)
-					}
 					flagsArray = append(flagsArray, iurl.flag, iurlString)
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
@@ -381,15 +380,10 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 					for _, jobInput := range j.Spec.Inputs {
 						if turlIU.url == jobInput.URL {
 							testURLinJobInputs = true
-							testPath := "/app2"
-							if turlIU.path != "" {
-								testPath = turlIU.path
-							}
-							require.Equal(s.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
-							break
 						}
 					}
-					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs.")
+					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs: %s", turlIU.url)
+					
 				}
 			}()
 		}
