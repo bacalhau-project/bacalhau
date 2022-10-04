@@ -27,8 +27,8 @@ Make sure you have the latest `bacalhau` client installed by following the [gett
 
 ## Protein data
 
-We use a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the known [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
-You can find details on this data at the related [RCSB Protein Data Bank page](https://www.rcsb.org/structure/2dri).
+We use a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
+You can find more details on this protein at the related [RCSB Protein Data Bank page](https://www.rcsb.org/structure/2dri).
 
 ![image.png](./2dri-image.png)
 
@@ -38,25 +38,13 @@ Protein data can be stored in a `.pdb` file, this is a human readable format.
 It provides for description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
 Please find more info about PDB format in [this article](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html).
 
-Let us sneak peak into the dataset by printing the head of the file.
-Among other thigns, we can see it contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
+Let us sneak peak into the dataset by printing the first 10 lines of the file.
+Among other things, we can see it contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
 
 
 ```bash
 head ./dataset/2dri-processed.pdb
 ```
-
-    REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
-    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1 
-    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N  
-    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C  
-    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H  
-    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C  
-    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O  
-    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C  
-    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H  
-    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H  
-
 
 ## Prepare & Run the task
 
@@ -78,7 +66,7 @@ This resulted in the IPFS CID of `bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef
 
 ### Create a Docker Image to Process the Data
 
-Next we will create the docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated [wesfloyd](https://github.com/wesfloyd/openmm-test). Thank you! 🤗
+Next we will create the docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated with [wesfloyd](https://github.com/wesfloyd/openmm-test). Thank you Wes!
 
 :::tip
 For more information about working with custom containers, see the [custom containers example](../../workload-onboarding/custom-containers/).
@@ -174,8 +162,9 @@ with open(output_path, mode="w+") as file:
 print('Simulation complete, file written to disk at: {}'.format(output_path))
 ```
 
-    Overwriting run_openmm_simulation.py
-
+To run the script above all we need is a Python environment with the OpenMM library installed.
+We install that via the package manager [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html).
+Below is the resulting Dockerfile.
 
 
 ```python
@@ -192,9 +181,6 @@ LABEL org.opencontainers.image.source https://github.com/bacalhau-project/exampl
 
 CMD ["python","run_openmm_simulation.py"]
 ```
-
-    Overwriting Dockerfile
-
 
 
 ```bash
@@ -213,13 +199,6 @@ docker run \
     ghcr.io/bacalhau-project/examples/openmm:0.3
 ```
 
-    Building system...
-    Performing energy minimization...
-    Equilibrating...
-    Simulating...
-    Simulation complete, file written to disk at: /outputs/final_state.pdbx
-
-
 ### Run a Bacalhau Job
 
 Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
@@ -235,17 +214,7 @@ bacalhau docker run \
         ubuntu -- ls /inputs
 ```
 
-    423d220d-fef4-41ea-ae08-f6a9361bff38
-
-
-    [90m14:22:16.554 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m14:22:19.096 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/enricorotundo/winderresearch/ProtocolLabs/examples/todo/openmm'
-
-
-    
-    2dri-processed.pdb
-    
-
+Let's switch to our custom container image.
 
 
 ```bash
@@ -255,9 +224,6 @@ bacalhau docker run \
     --download \
     ghcr.io/bacalhau-project/examples/openmm:0.3 -- ls -la /inputs/
 ```
-
-    44e995c7-d6fd-4e69-a461-e88e5f6dc01c
-
 
 And finally let's run the full job. This time I will not download the data immediately, because the job takes a few minutes to complete. The commands are below, but you will need to wait until the job completes before they work.
 
@@ -274,21 +240,14 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=971da05e-6de0-42d7-a5b5-b91df199c548
-
-
 
 ```bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
-     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     12:26:13  971da05e  Docker ghcr.io/bacal...  Completed            /ipfs/QmT1QECs5NsQLj... 
-
-
 ### Get Results
 
-Now let's download and display the result from the results directory. We can use the `bacalhau get` command to download the results from the output data volume. The `--output-dir` argument specifies the directory to download the results to.
+Now let's download and display the result from the results directory. We can use the `bacalhau get` command to download the results from the output data volume.
 
 
 ```bash
@@ -296,7 +255,12 @@ rm -rf stdout stderr volumes shards
 bacalhau get ${JOB_ID} # Download the results
 ```
 
-    [90m14:30:50.098 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '971da05e-6de0-42d7-a5b5-b91df199c548'...
-    [90m14:30:51.304 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m14:30:56.784 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/enricorotundo/winderresearch/ProtocolLabs/examples/todo/openmm'
 
+```bash
+ls -l volumes/outputs
+```
+
+
+```python
+
+```
