@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -184,10 +183,6 @@ func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageS
 	}
 
 	return volume, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "storage/ipfs/api_copy", apiName)
 }
 
 // Compile time interface check:

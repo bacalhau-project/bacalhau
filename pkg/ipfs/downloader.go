@@ -165,6 +165,7 @@ func fetchResult(ctx context.Context,
 	return nil
 }
 
+//nolint:unused // ok that this is unused for now
 func appendFile(sourcePath, sinkPath string) error {
 	source, err := os.Open(sourcePath)
 	if err != nil {
@@ -186,6 +187,7 @@ func appendFile(sourcePath, sinkPath string) error {
 	return nil
 }
 
+//nolint:unused // ok that this is unused for now
 func catStdFiles(ctx context.Context,
 	shardDownloadDir, finalOutputDirAbs string) error {
 	for _, filename := range []string{
@@ -203,6 +205,7 @@ func catStdFiles(ctx context.Context,
 	return nil
 }
 
+//nolint:unused // ok that this is unused for now
 func moveStdFiles(ctx context.Context,
 	shardDownloadDir, shardOutputDir string) error {
 	err := os.MkdirAll(shardOutputDir, os.ModePerm)

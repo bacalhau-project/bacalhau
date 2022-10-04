@@ -383,7 +383,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 						}
 					}
 					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs: %s", turlIU.url)
-					
+
 				}
 			}()
 		}

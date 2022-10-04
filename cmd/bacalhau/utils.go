@@ -397,6 +397,7 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 		return errors.New("No job returned from the server.")
 	}
 	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
+	RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
 	// Struct for tracking what's been printed
 	type printed struct {
@@ -412,6 +413,9 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 	}
 
 	jStatus, _, err := GetAPIClient().Get(ctx, j.ID)
+	if err != nil {
+		return err
+	}
 
 	// TODO: #786 Figure out why devstack doesn't produce events
 	// Don't know why, but devstack doesn't do events
@@ -439,9 +443,9 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 					printedArray[1].printed = true
 				} else if s == model.JobStateRunning && !printedArray[2].printed {
 					RootCmd.Println("done.")
-					RootCmd.Println("Job is now executing.")
+					RootCmd.Println("Job is executing ...")
 					printedArray[2].printed = true
-					break
+
 				}
 			}
 
