@@ -13,7 +13,7 @@ func Submit(ctx context.Context) error {
 	client := bacalhau.GetAPIClient()
 
 	j := getSampleDockerJob()
-	submittedJob, err := client.Submit(ctx, j, nil)
+	submittedJob, err := client.Submit(ctx, j.Spec, j.Deal, nil)
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ func SubmitWithConcurrency(ctx context.Context) error {
 
 	j := getSampleDockerJob()
 	j.Deal.Concurrency = 3
-	submittedJob, err := client.Submit(ctx, j, nil)
+	submittedJob, err := client.Submit(ctx, j.Spec, j.Deal, nil)
 	if err != nil {
 		return err
 	}
