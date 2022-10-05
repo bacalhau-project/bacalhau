@@ -114,7 +114,7 @@ curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}"
 
 #### 5. Pin Multiple Local Files Via Node.JS
 
-Web3.Storage has a [node.js library](https://web3.storage/docs/reference/js-client-library/) to interact with their API. The following example requires node.js to be installed. The following code uses a docker container. The javascript code is located on [their website](https://web3.storage/docs/intro/#create-the-upload-script) or on [github](./nodejs/put-files.js).
+Web3.Storage has a [node.js library](https://web3.storage/docs/reference/js-client-library/) to interact with their API. The following example requires node.js to be installed. The following code uses a docker container. The javascript code is located on [their website](https://web3.storage/docs/intro/#create-the-upload-script) or on [github](https://github.com/bacalhau-project/examples/blob/main/data-ingestion/nodejs/put-files.js).
 
 First create some files to upload.
 
