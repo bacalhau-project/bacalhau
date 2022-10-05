@@ -268,7 +268,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	err = ipfs.DownloadJob(
 		ctx,
 		cm,
-		submittedJob,
+		submittedJob.Spec.Outputs,
 		jobResults,
 		ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,
