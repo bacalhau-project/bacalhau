@@ -885,3 +885,60 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 		})
 	}
 }
+
+func (s *DockerRunSuite) TestRun_MutlipleURLs() {
+
+	tests := []struct {
+		expectedVolumes int
+		inputFlags      []string
+	}{
+		{
+			0,
+			[]string{},
+		},
+		{
+			1,
+			[]string{"-u", "http://127.0.0.1:/inputs/url1.txt"},
+		},
+		{
+			2,
+			[]string{
+				"-u", "http://127.0.0.1:/inputs/url1.txt",
+				"-u", "http://127.0.0.1:/inputs/url2.txt",
+			},
+		},
+		{
+			2,
+			[]string{
+				"-u", "http://127.0.0.1:/inputs/url1.txt,http://127.0.0.1:/inputs/url2.txt",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		ctx := context.Background()
+		c, cm := publicapi.SetupTests(s.T())
+		defer cm.Cleanup()
+
+		*ODR = *NewDockerRunOptions()
+
+		parsedBasedURI, _ := url.Parse(c.BaseURI)
+		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+		args := []string{}
+
+		args = append(args, "docker", "run",
+			"--api-host", host,
+			"--api-port", port,
+		)
+		args = append(args, tc.inputFlags...)
+		args = append(args, "ubuntu", "--", "ls", "/input")
+
+		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+		require.NoError(s.T(), err, "Error submitting job")
+
+		job := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+		require.Equal(s.T(), tc.expectedVolumes, len(job.Spec.Inputs))
+	}
+}
