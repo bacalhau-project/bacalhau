@@ -407,32 +407,23 @@ func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
 	}
 
 	// Create a map of job state types to printed structs
-	printedArray := []printed{
-		{model.JobStateBidding, false},
-		{model.JobStateWaiting, false},
-		{model.JobStateRunning, false},
-		{model.JobStateVerifying, false},
-		{model.JobStateCompleted, false},
-		{model.JobStateError, false},
-		{model.JobStateCancelled, false},
-	}
 
-	jStatus, _, err := GetAPIClient().Get(ctx, j.ID)
-	if err != nil {
-		return err
+	printedArray := []printed{}
+	for _, jobStateType := range model.JobStateTypes() {
+		printedArray = append(printedArray, printed{
+			jobStateType: jobStateType, printed: false})
 	}
 
 	moreInformationString := fmt.Sprintf(`
 To get the status of the job, run:
    bacalhau describe %s`, j.ID)
 
-	// TODO: #786 Figure out why devstack doesn't produce events
-	// Don't know why, but devstack doesn't do events
-	// If there's not an event by the first one, there's not going to be any
-	if len(jStatus.Events) != 0 {
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+	}
+	if len(jobEvents) != 0 {
 		for {
-			jStatus, _, err = GetAPIClient().Get(ctx, j.ID)
-
 			if err != nil {
 				if _, ok := err.(*bacerrors.JobNotFound); ok {
 					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
@@ -441,48 +432,56 @@ To get the status of the job, run:
 				}
 			}
 
-			for i := range jStatus.Events {
-				s := model.GetStateFromEvent(jStatus.Events[i].EventName)
+			for i := range jobEvents {
+				s := model.GetStateFromEvent(jobEvents[i].EventName)
 				if s == model.JobStateBidding && !printedArray[0].printed {
 					RootCmd.Print("Nodes bidding on job ... ")
 					printedArray[0].printed = true
 				} else if s == model.JobStateWaiting && !printedArray[1].printed {
-					RootCmd.Println(" done.")
+					RootCmd.Println("done.")
 					RootCmd.Print("Nodes waiting to run job ... ")
 					printedArray[1].printed = true
 				} else if s == model.JobStateRunning && !printedArray[2].printed {
-					RootCmd.Println(" done.")
-					RootCmd.Println("Job is executing ...")
+					RootCmd.Println("done.")
+					RootCmd.Print("Job is executing ... ")
 					printedArray[2].printed = true
 				} else if s == model.JobStateVerifying && !printedArray[3].printed {
-					RootCmd.Println(" done.")
-					RootCmd.Println("Verifying results ...")
+					RootCmd.Println("done.")
+					RootCmd.Print("Verifying results ... ")
 					printedArray[3].printed = true
 				} else if s == model.JobStateCompleted && !printedArray[4].printed {
-					RootCmd.Println(" done.")
+					RootCmd.Println("done.")
 					RootCmd.Println("Job completed successfully.")
 					printedArray[4].printed = true
 				} else if s == model.JobStateError && !printedArray[5].printed {
-					RootCmd.Printf("\nJob failed with an error.\n\n%s\n", moreInformationString)
+					RootCmd.Printf("\nJob failed with an error.\n%s\n", moreInformationString)
 					printedArray[5].printed = true
 				} else if s == model.JobStateCancelled && !printedArray[6].printed {
-					RootCmd.Printf("\nJob was canceled.\n\n%s\n", moreInformationString)
+					RootCmd.Printf("\nJob was canceled.\n%s\n", moreInformationString)
 					printedArray[6].printed = true
 				}
 			}
 
-			// If job is in terminal state, we're done
-			jst := job.ComputeStateSummary(jStatus)
-			// Convert string to JobStateType
-			jstType, err := model.ParseJobStateType(jst)
+			m := jobEvents[0]
+			for i := range jobEvents {
+				if jobEvents[i].EventName > m.EventName {
+					m = jobEvents[i]
+				}
+			}
+
 			if err != nil {
 				return err
 			}
-			if jstType.IsTerminal() {
+			if m.EventName.IsTerminal() {
+				RootCmd.Print(moreInformationString)
 				break
 			}
 
 			time.Sleep(2 * time.Second)
+			jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
+			if err != nil {
+				return errors.Wrap(err, "Error getting job events")
+			}
 		} // end for
 	}
 
