@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"

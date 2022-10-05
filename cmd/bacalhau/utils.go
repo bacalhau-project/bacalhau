@@ -32,6 +32,45 @@ const (
 	DefaultDockerRunWaitSeconds        = 600
 )
 
+var eventsWorthPrinting = map[model.JobEventType]eventStruct{
+	// In Rough execution order
+	model.JobEventCreated: {msg: "Creating job for submission", terminal: false},
+
+	// Job is on Requester
+	model.JobEventBid:         {msg: "Finding node(s) for the job", terminal: false},
+	model.JobEventBidAccepted: {msg: "Node accepted the job", terminal: false},
+
+	// Job is on ComputeNode
+	model.JobEventRunning:      {msg: "Node started running the job", terminal: false},
+	model.JobEventComputeError: {msg: "Error while executing the job.", terminal: true},
+
+	// Job is on StorageNode
+	model.JobEventResultsProposed:  {msg: "Job finished, verifying results", terminal: false},
+	model.JobEventResultsRejected:  {msg: "Results failed verification.", terminal: true},
+	model.JobEventResultsAccepted:  {msg: "Results accepted, publishing", terminal: false},
+	model.JobEventResultsPublished: {msg: "Results are ready for download!", terminal: true},
+
+	// General Error?
+	model.JobEventError: {msg: "Unknown error while running job.", terminal: true},
+
+	// Should we print at all?
+	model.JobEventBidCancelled: {},
+	model.JobEventBidRejected:  {},
+	model.JobEventDealUpdated:  {},
+}
+
+// Struct for tracking what's been printedEvents
+type printedEvents struct {
+	jobEventType model.JobEventType
+	order        int
+	printed      bool
+}
+
+type eventStruct struct {
+	msg      string
+	terminal bool
+}
+
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
 	if outputWide {
 		return t.Format("06-01-02-15:04:05")
@@ -261,7 +300,7 @@ func ExecuteJob(ctx context.Context,
 	}
 
 	if !idOnly {
-		err = PrintReturnedJobIDToUser(ctx, j)
+		err = PrintResultsToUser(ctx, j)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 		}
@@ -393,30 +432,26 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 }
 
 //nolint:gocyclo // Better way to do this, Go doesn't have a switch on type
-func PrintReturnedJobIDToUser(ctx context.Context, j *model.Job) error {
+func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
 	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
 	RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
-	// Struct for tracking what's been printed
-	type printed struct {
-		jobStateType model.JobStateType
-		printed      bool
-	}
-
 	// Create a map of job state types to printed structs
-
-	printedArray := []printed{}
-	for _, jobStateType := range model.JobStateTypes() {
-		printedArray = append(printedArray, printed{
-			jobStateType: jobStateType, printed: false})
+	printedEventsTracker := make(map[model.JobEventType]*printedEvents)
+	for _, jobEventType := range model.JobEventTypes() {
+		printedEventsTracker[jobEventType] = &printedEvents{
+			printed: false,
+			order:   int(jobEventType),
+		}
 	}
 
 	moreInformationString := fmt.Sprintf(`
-To get the status of the job, run:
-   bacalhau describe %s`, j.ID)
+To get the more information, run:
+   bacalhau describe %s
+`, j.ID)
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
@@ -424,6 +459,15 @@ To get the status of the job, run:
 	}
 	if len(jobEvents) != 0 {
 		for {
+			log.Debug().Msgf("Job Events:")
+			for i := range jobEvents {
+				log.Debug().Msgf("\t%s - %s - %s",
+					model.GetStateFromEvent(jobEvents[i].EventName),
+					jobEvents[i].EventTime.UTC().String(),
+					jobEvents[i].EventName)
+			}
+			log.Debug().Msgf("\n")
+
 			if err != nil {
 				if _, ok := err.(*bacerrors.JobNotFound); ok {
 					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
@@ -433,104 +477,15 @@ To get the status of the job, run:
 			}
 
 			for i := range jobEvents {
-				s := model.GetStateFromEvent(jobEvents[i].EventName)
-				if s == model.JobStateBidding && !printedArray[0].printed {
-					RootCmd.Print("Nodes bidding on job ... ")
-					printedArray[0].printed = true
-				} else if s == model.JobStateWaiting && !printedArray[1].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Nodes waiting to run job ... ")
-					printedArray[1].printed = true
-				} else if s == model.JobStateRunning && !printedArray[2].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Job is executing ... ")
-					printedArray[2].printed = true
-				} else if s == model.JobStateVerifying && !printedArray[3].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Verifying results ... ")
-					printedArray[3].printed = true
-				} else if s == model.JobStateCompleted && !printedArray[4].printed {
-					RootCmd.Println("done.")
-					RootCmd.Println("Job completed successfully.")
-					printedArray[4].printed = true
-				} else if s == model.JobStateError && !printedArray[5].printed {
-					RootCmd.Printf("\nJob failed with an error.\n%s\n", moreInformationString)
-					printedArray[5].printed = true
-				} else if s == model.JobStateCancelled && !printedArray[6].printed {
-					RootCmd.Printf("\nJob was canceled.\n%s\n", moreInformationString)
-					printedArray[6].printed = true
+				printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+			}
+
+			// Look for any terminal event in all the events. If it's done, we're done.
+			for _, je := range jobEvents {
+				if eventsWorthPrinting[je.EventName].terminal {
+					RootCmd.Print(moreInformationString)
+					return nil
 				}
-			}
-
-	// Create a map of job state types to printed structs
-
-	printedArray := []printed{}
-	for _, jobStateType := range model.JobStateTypes() {
-		printedArray = append(printedArray, printed{
-			jobStateType: jobStateType, printed: false})
-	}
-
-	moreInformationString := fmt.Sprintf(`
-To get the status of the job, run:
-   bacalhau describe %s`, j.ID)
-
-	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
-	if err != nil {
-		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
-	}
-	if len(jobEvents) != 0 {
-		for {
-			if err != nil {
-				if _, ok := err.(*bacerrors.JobNotFound); ok {
-					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
-				} else {
-					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.ID, err), 1)
-				}
-			}
-
-			for i := range jobEvents {
-				s := model.GetStateFromEvent(jobEvents[i].EventName)
-				if s == model.JobStateBidding && !printedArray[0].printed {
-					RootCmd.Print("Nodes bidding on job ... ")
-					printedArray[0].printed = true
-				} else if s == model.JobStateWaiting && !printedArray[1].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Nodes waiting to run job ... ")
-					printedArray[1].printed = true
-				} else if s == model.JobStateRunning && !printedArray[2].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Job is executing ... ")
-					printedArray[2].printed = true
-				} else if s == model.JobStateVerifying && !printedArray[3].printed {
-					RootCmd.Println("done.")
-					RootCmd.Print("Verifying results ... ")
-					printedArray[3].printed = true
-				} else if s == model.JobStateCompleted && !printedArray[4].printed {
-					RootCmd.Println("done.")
-					RootCmd.Println("Job completed successfully.")
-					printedArray[4].printed = true
-				} else if s == model.JobStateError && !printedArray[5].printed {
-					RootCmd.Printf("\nJob failed with an error.\n%s\n", moreInformationString)
-					printedArray[5].printed = true
-				} else if s == model.JobStateCancelled && !printedArray[6].printed {
-					RootCmd.Printf("\nJob was canceled.\n%s\n", moreInformationString)
-					printedArray[6].printed = true
-				}
-			}
-
-			m := jobEvents[0]
-			for i := range jobEvents {
-				if jobEvents[i].EventName > m.EventName {
-					m = jobEvents[i]
-				}
-			}
-
-			if err != nil {
-				return err
-			}
-			if m.EventName.IsTerminal() {
-				RootCmd.Print(moreInformationString)
-				break
 			}
 
 			time.Sleep(2 * time.Second)
@@ -544,6 +499,27 @@ To get the status of the job, run:
 	return nil
 }
 
+func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
+	// If it hasn't been printed yet, we'll print this event.
+	if !pe[jet].printed {
+		// Only print " done" after the first line.
+		firstLine := true
+		for v := range pe {
+			firstLine = firstLine && !pe[v].printed
+		}
+		if !firstLine {
+			RootCmd.Println("done")
+		}
+
+		RootCmd.Print(eventsWorthPrinting[jet].msg)
+		if !eventsWorthPrinting[jet].terminal {
+			RootCmd.Print(" ... ")
+		} else {
+			RootCmd.Println()
+		}
+		pe[jet].printed = true
+	}
+}
 func FatalErrorHandler(msg string, code int) {
 	if len(msg) > 0 {
 		// add newline if needed
