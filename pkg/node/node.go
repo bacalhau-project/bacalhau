@@ -69,13 +69,13 @@ type Node struct {
 func (n *Node) Start(ctx context.Context) error {
 	go func(ctx context.Context) {
 		if err := n.APIServer.ListenAndServe(ctx, n.CleanupManager); err != nil {
-			log.Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
+			log.Ctx(ctx).Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
 		}
 	}(ctx)
 
 	go func(ctx context.Context) {
 		if err := system.ListenAndServeMetrics(ctx, n.CleanupManager, n.metricsPort); err != nil {
-			log.Error().Msgf("Cannot serve metrics: %v", err)
+			log.Ctx(ctx).Error().Msgf("Cannot serve metrics: %v", err)
 		}
 	}(ctx)
 

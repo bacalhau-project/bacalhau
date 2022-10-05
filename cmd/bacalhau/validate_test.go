@@ -23,12 +23,12 @@ func TestValidateSuite(t *testing.T) {
 	suite.Run(t, new(ValidateSuite))
 }
 
-//before all the suite
+// before all the suite
 func (s *ValidateSuite) SetupSuite() {
 
 }
 
-//before each test
+// before each test
 func (s *ValidateSuite) SetupTest() {
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd

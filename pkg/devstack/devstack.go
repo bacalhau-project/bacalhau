@@ -9,6 +9,8 @@ import (
 	"runtime/pprof"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
@@ -160,6 +162,9 @@ func NewDevStack(
 		if transportErr != nil {
 			return nil, transportErr
 		}
+
+		// add NodeID to logging context
+		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
 
 		//////////////////////////////////////
 		// port for API

@@ -28,7 +28,7 @@ func NewIPFSPublisher(
 		return nil, err
 	}
 
-	log.Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
+	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
 	return &IPFSPublisher{
 		IPFSClient:    cl,
 		StateResolver: resolver,

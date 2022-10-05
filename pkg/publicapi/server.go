@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 
@@ -138,6 +141,9 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 		ReadHeaderTimeout: apiServer.Config.ReadHeaderTimeout,
 		ReadTimeout:       apiServer.Config.ReadTimeout,
 		WriteTimeout:      apiServer.Config.WriteTimeout,
+		BaseContext: func(_ net.Listener) context.Context {
+			return logger.ContextWithNodeIDLogger(context.Background(), apiServer.Requester.ID)
+		},
 	}
 
 	log.Debug().Msgf(

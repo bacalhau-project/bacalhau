@@ -15,8 +15,8 @@ import (
 
 const defaultEchoMessage = "hello λ!"
 
-func getSampleDockerJob() model.Job {
-	var j = model.Job{}
+func getSampleDockerJob() *model.Job {
+	var j = &model.Job{}
 	j.Spec = model.JobSpec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
@@ -48,7 +48,7 @@ func getIPFSDownloadSettings() (*ipfs.IPFSDownloadSettings, error) {
 	}, nil
 }
 
-func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob model.Job) error {
+func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submittedJob *model.Job) error {
 	resolver := client.GetJobStateResolver()
 	totalShards := job.GetJobTotalExecutionCount(submittedJob)
 	return resolver.Wait(

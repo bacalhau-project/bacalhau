@@ -83,7 +83,7 @@ func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIA
 		return cleanupStorageDriver(ctx, storageHandler)
 	})
 
-	log.Debug().Msgf(
+	log.Ctx(ctx).Debug().Msgf(
 		"Docker IPFS storage initialized with address: %s", ipfsAPIAddress)
 	return storageHandler, nil
 }
@@ -339,7 +339,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 	logs, err := docker.WaitForContainerLogs(ctx, sp.DockerClient, sidecarContainer.ID, MaxAttemptsForDocker, time.Second*2, "Daemon is ready")
 
 	if err != nil {
-		log.Error().Msg(logs)
+		log.Ctx(ctx).Error().Msg(logs)
 		stopErr := cleanupStorageDriver(ctx, sp)
 		if stopErr != nil {
 			err = fmt.Errorf("original error: %s\nstop error: %s", err.Error(), stopErr.Error())
@@ -413,7 +413,7 @@ func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) 
 			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}
 	}
-	log.Debug().Msgf("Docker IPFS sidecar has stopped")
+	log.Ctx(ctx).Debug().Msgf("Docker IPFS sidecar has stopped")
 	return nil
 }
 

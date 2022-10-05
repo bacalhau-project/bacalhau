@@ -43,7 +43,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
-		log.Debug().Msgf("====> Decode submitReq error: %s", err)
+		log.Ctx(ctx).Debug().Msgf("====> Decode submitReq error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
@@ -51,14 +51,14 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.Data.ClientID)
 
 	if err := verifySubmitRequest(&submitReq); err != nil {
-		log.Debug().Msgf("====> VerifySubmitRequest error: %s", err)
+		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
 	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
-		log.Debug().Msgf("====> VerifyJob error: %s", err)
+		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
@@ -69,7 +69,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// TODO: gc pinned contexts
 		decoded, err := base64.StdEncoding.DecodeString(submitReq.Data.Context)
 		if err != nil {
-			log.Debug().Msgf("====> DecodeContext error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> DecodeContext error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
 			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
@@ -77,7 +77,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 
 		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
 		if err != nil {
-			log.Debug().Msgf("====> Create tmp dir error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> Create tmp dir error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
 			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
@@ -86,7 +86,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		tarReader := bytes.NewReader(decoded)
 		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
 		if err != nil {
-			log.Debug().Msgf("====> Decompress error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> Decompress error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
 			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
@@ -97,13 +97,13 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// we presently just fix on ipfs to do this
 		ipfsStorage, err := apiServer.StorageProviders.GetStorage(ctx, model.StorageSourceIPFS)
 		if err != nil {
-			log.Debug().Msgf("====> GetStorage error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> GetStorage error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
 		if err != nil {
-			log.Debug().Msgf("====> PinContext error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> PinContext error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
 			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return

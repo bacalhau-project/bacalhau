@@ -143,7 +143,7 @@ func (node *RequesterNode) triggerStateTransition(ctx context.Context, event mod
 			shardState.resultsPublished(ctx, event.SourceNodeID)
 		}
 	} else {
-		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (node *RequesterNode) notifyBidDecision(ctx context.Context, shard model.Jo
 		jobEventName = model.JobEventBidRejected
 		localEventName = model.JobLocalEventBidRejected
 	}
-	log.Debug().Msgf("Requester node %s responding with %s for bid: %s", node.ID, jobEventName, shard)
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with %s for bid: %s", node.ID, jobEventName, shard)
 
 	// publish a local event
 	localEvent := model.JobLocalEvent{
@@ -234,7 +234,7 @@ func (node *RequesterNode) notifyVerificationResult(ctx context.Context, result 
 	if !result.Verified {
 		jobEventName = model.JobEventResultsRejected
 	}
-	log.Debug().Msgf("Requester node %s responding with %s results: job=%s node=%s shard=%d",
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with %s results: job=%s node=%s shard=%d",
 		node.ID, jobEventName, result.JobID, result.NodeID, result.ShardIndex,
 	)
 
