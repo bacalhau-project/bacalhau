@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -222,68 +221,5 @@ func moveResults(ctx context.Context,
 		return err
 	}
 
-	return nil
-}
-
-func appendFile(sourcePath, sinkPath string) error {
-	source, err := os.Open(sourcePath)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	sink, err := os.OpenFile(sinkPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	defer sink.Close()
-
-	_, err = io.Copy(sink, source)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//nolint:unused // ok that this is unused for now
-func catStdFiles(ctx context.Context,
-	shardDownloadDir, finalOutputDirAbs string) error {
-	for _, filename := range []string{
-		"stdout",
-		"stderr",
-	} {
-		err := appendFile(
-			filepath.Join(shardDownloadDir, filename),
-			filepath.Join(finalOutputDirAbs, filename),
-		)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-//nolint:unused // ok that this is unused for now
-func moveStdFiles(ctx context.Context,
-	shardDownloadDir, shardOutputDir string) error {
-	err := os.MkdirAll(shardOutputDir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	for _, filename := range []string{
-		"stdout",
-		"stderr",
-		"exitCode",
-	} {
-		err = os.Rename(
-			filepath.Join(shardDownloadDir, filename),
-			filepath.Join(shardOutputDir, filename),
-		)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
