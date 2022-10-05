@@ -183,6 +183,10 @@ func IsURLSupported(rawURL string) (*url.URL, error) {
 		return nil, fmt.Errorf("URLs must begin with 'http' or 'https'. The submitted one began with %s", u.Scheme)
 	}
 
+	if path.Base(u.Path) == "" {
+		return nil, fmt.Errorf("URL must end with a file name")
+	}
+
 	return u, nil
 }
 

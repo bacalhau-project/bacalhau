@@ -44,7 +44,7 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 		LocalDir:   dir,
 	}
 
-	log.Debug().Msgf("IPFS API Copy driver created with address: %s", ipfsAPIAddress)
+	log.Trace().Msgf("IPFS API Copy driver created with address: %s", ipfsAPIAddress)
 	return storageHandler, nil
 }
 
