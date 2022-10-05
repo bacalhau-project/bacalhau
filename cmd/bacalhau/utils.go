@@ -462,6 +462,62 @@ To get the status of the job, run:
 				}
 			}
 
+	// Create a map of job state types to printed structs
+
+	printedArray := []printed{}
+	for _, jobStateType := range model.JobStateTypes() {
+		printedArray = append(printedArray, printed{
+			jobStateType: jobStateType, printed: false})
+	}
+
+	moreInformationString := fmt.Sprintf(`
+To get the status of the job, run:
+   bacalhau describe %s`, j.ID)
+
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+	}
+	if len(jobEvents) != 0 {
+		for {
+			if err != nil {
+				if _, ok := err.(*bacerrors.JobNotFound); ok {
+					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
+				} else {
+					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.ID, err), 1)
+				}
+			}
+
+			for i := range jobEvents {
+				s := model.GetStateFromEvent(jobEvents[i].EventName)
+				if s == model.JobStateBidding && !printedArray[0].printed {
+					RootCmd.Print("Nodes bidding on job ... ")
+					printedArray[0].printed = true
+				} else if s == model.JobStateWaiting && !printedArray[1].printed {
+					RootCmd.Println("done.")
+					RootCmd.Print("Nodes waiting to run job ... ")
+					printedArray[1].printed = true
+				} else if s == model.JobStateRunning && !printedArray[2].printed {
+					RootCmd.Println("done.")
+					RootCmd.Print("Job is executing ... ")
+					printedArray[2].printed = true
+				} else if s == model.JobStateVerifying && !printedArray[3].printed {
+					RootCmd.Println("done.")
+					RootCmd.Print("Verifying results ... ")
+					printedArray[3].printed = true
+				} else if s == model.JobStateCompleted && !printedArray[4].printed {
+					RootCmd.Println("done.")
+					RootCmd.Println("Job completed successfully.")
+					printedArray[4].printed = true
+				} else if s == model.JobStateError && !printedArray[5].printed {
+					RootCmd.Printf("\nJob failed with an error.\n%s\n", moreInformationString)
+					printedArray[5].printed = true
+				} else if s == model.JobStateCancelled && !printedArray[6].printed {
+					RootCmd.Printf("\nJob was canceled.\n%s\n", moreInformationString)
+					printedArray[6].printed = true
+				}
+			}
+
 			m := jobEvents[0]
 			for i := range jobEvents {
 				if jobEvents[i].EventName > m.EventName {

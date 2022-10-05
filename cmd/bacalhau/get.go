@@ -39,7 +39,7 @@ type GetOptions struct {
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
 		IPFSDownloadSettings: ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    600,
+			TimeoutSecs:    int(ipfs.DefaultIPFSTimeout.Seconds()),
 			OutputDir:      ".",
 			IPFSSwarmAddrs: "",
 		},

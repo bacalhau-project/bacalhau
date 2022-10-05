@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,9 +20,11 @@ type IPFSDownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
+const DefaultIPFSTimeout time.Duration = 5 * time.Minute
+
 func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 	return &IPFSDownloadSettings{
-		TimeoutSecs:    10,
+		TimeoutSecs:    int(DefaultIPFSTimeout.Seconds()),
 		OutputDir:      ".",
 		IPFSSwarmAddrs: "",
 	}
