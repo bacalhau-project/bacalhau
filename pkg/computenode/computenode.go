@@ -180,7 +180,7 @@ func (n *ComputeNode) controlLoopBidOnJobs(ctx context.Context) {
 	bidShards := n.capacityManager.GetNextItems()
 
 	if len(bidShards) > 0 {
-		log.Debug().Msgf("Found %d BidShards => Starting loop", len(bidShards))
+		log.Ctx(ctx).Debug().Msgf("Found %d BidShards => Starting loop", len(bidShards))
 	}
 
 	for i := range bidShards {
@@ -201,7 +201,7 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 	}
 
 	if shardState.currentState >= shardBidding {
-		log.Trace().Msgf("node %s has already bid on job shard %s", n.ID, shard)
+		log.Ctx(ctx).Trace().Msgf("node %s has already bid on job shard %s", n.ID, shard)
 		return
 	}
 
@@ -218,7 +218,7 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 
 	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, j, jobState, shard.Index)
 	if hasShardReachedCapacity {
-		log.Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", n.ID, shard)
+		log.Ctx(ctx).Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", n.ID, shard)
 		shardState.Fail(ctx, "shard has reached capacity")
 		return
 	}
@@ -235,12 +235,12 @@ func (n *ComputeNode) HandleJobEvent(ctx context.Context, event model.JobEvent) 
 
 	job, err := n.localDB.GetJob(ctx, event.JobID)
 	if err != nil {
-		log.Error().Msgf("could not get job: %s - %s", event.JobID, err.Error())
+		log.Ctx(ctx).Error().Msgf("could not get job: %s - %s", event.JobID, err.Error())
 		return nil
 	}
 
 	if event.EventName == model.JobEventCreated {
-		log.Debug().Msgf("[%s] job created: %s", n.ID, job.ID)
+		log.Ctx(ctx).Debug().Msgf("[%s] job created: %s", n.ID, job.ID)
 		return n.subscriptionEventCreated(ctx, event, job)
 	} else {
 		// we only care if the event is related to us
@@ -289,7 +289,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
 		// if the user isn't going to bid unless there are minBids many bids,
 		// we'd better make sure there are minBids many bids!
-		1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
+		ctx, 1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.
@@ -298,7 +298,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 		return nil
 	}
 	if jobNodeDistanceDelayMs > 0 {
-		log.Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
+		log.Ctx(ctx).Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
 	}
 
 	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
@@ -326,7 +326,7 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 		// even if an error is returned, some shards might have been partially added to the backlog
 		for _, shardIndex := range shardIndexes {
 			shard := model.JobShard{Job: j, Index: shardIndex}
-			n.shardStateManager.StartShardStateIfNecessery(shard, n, processedRequirements)
+			n.shardStateManager.StartShardStateIfNecessary(ctx, shard, n, processedRequirements)
 		}
 		if err != nil {
 			return fmt.Errorf("error adding job to backlog: %w", err)
@@ -349,7 +349,7 @@ func diff(a, b int) int {
 	return a - b
 }
 
-func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concurrency int) int {
+func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID, jobID string, concurrency int) int {
 	// Calculate how long to wait to bid on the job by using a circular hashing
 	// style approach: Invent a metric for distance between node ID and job ID.
 	// If the node and job ID happen to be close to eachother, such that we'd
@@ -375,7 +375,7 @@ func CalculateJobNodeDistanceDelay(networkSize int, nodeID, jobID string, concur
 	// chunk, bid immediately. If we're one chunk away, wait a bit before
 	// bidding. If we're very far away, wait a very long time.
 	delay := (distance / chunk) * 1000 //nolint:gomnd
-	log.Trace().Msgf(
+	log.Ctx(ctx).Trace().Msgf(
 		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
 		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
 	)
@@ -405,7 +405,7 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 			shardState.ResultsRejected(ctx)
 		}
 	} else {
-		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
 	}
 	return nil
 }
@@ -458,7 +458,7 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	withinCapacityLimits, processedRequirements := n.capacityManager.FilterRequirements(requirements)
 
 	if !withinCapacityLimits {
-		log.Debug().Msgf("Compute node %s skipped bidding on job because resource requirements were too much: %+v",
+		log.Ctx(ctx).Debug().Msgf("Compute node %s skipped bidding on job because resource requirements were too much: %+v",
 			n.ID, data.Spec)
 		return false, processedRequirements, nil
 	}
@@ -477,7 +477,7 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	}
 
 	if !acceptedByPolicy {
-		log.Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %s",
+		log.Ctx(ctx).Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %s",
 			n.ID, data.JobID)
 		return false, processedRequirements, nil
 	}

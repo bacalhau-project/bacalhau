@@ -56,7 +56,7 @@ func (e *Executor) RunShard(
 	}
 
 	if shard.Job.Spec.Language.Deterministic {
-		log.Debug().Msgf("running deterministic python 3.10")
+		log.Ctx(ctx).Debug().Msgf("running deterministic python 3.10")
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
 		pythonWasmExecutor, err := e.executors.GetExecutor(ctx, model.EnginePythonWasm)
@@ -65,7 +65,7 @@ func (e *Executor) RunShard(
 		}
 		return pythonWasmExecutor.RunShard(ctx, shard, jobResultsDir)
 	} else {
-		log.Debug().Msgf("running arbitrary python 3.10")
+		log.Ctx(ctx).Debug().Msgf("running arbitrary python 3.10")
 		err := fmt.Errorf("arbitrary python not supported yet")
 		// TODO: Instantiate a docker with python:3.10 image
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err

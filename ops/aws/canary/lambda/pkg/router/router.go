@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var testcasesMap = map[string]Handler{
+var TestcasesMap = map[string]Handler{
 	"list":                  scenarios.List,
 	"submit":                scenarios.Submit,
 	"submitAndGet":          scenarios.SubmitAndGet,
@@ -26,7 +26,7 @@ func init() {
 }
 
 func Route(ctx context.Context, event models.Event) error {
-	handler, ok := testcasesMap[event.Action]
+	handler, ok := TestcasesMap[event.Action]
 	if !ok {
 		return fmt.Errorf("no handler found for action: %s", event.Action)
 	}

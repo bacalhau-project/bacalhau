@@ -1,6 +1,7 @@
 package handlerwrapper
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/rs/zerolog/log"
@@ -13,14 +14,14 @@ func NewJSONLogHandler() *JSONLogHandler {
 	return &JSONLogHandler{}
 }
 
-func (h *JSONLogHandler) Handle(ri *HTTPRequestInfo) {
+func (h *JSONLogHandler) Handle(ctx context.Context, ri *HTTPRequestInfo) {
 	jsonBytes, err := json.Marshal(ri)
 	if err != nil {
-		log.Info().Err(err).Msgf("failed to marshal request info %+v", ri)
+		log.Ctx(ctx).Info().Err(err).Msgf("failed to marshal request info %+v", ri)
 	}
 	if ri.StatusCode >= 400 { //nolint:gomnd
-		log.Error().Msg(string(jsonBytes))
+		log.Ctx(ctx).Error().Msg(string(jsonBytes))
 	} else {
-		log.Info().Msg(string(jsonBytes))
+		log.Ctx(ctx).Info().Msg(string(jsonBytes))
 	}
 }

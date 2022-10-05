@@ -44,7 +44,7 @@ func (wrapper *HTTPHandlerWrapper) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	ri.Duration = m.Duration.Milliseconds()
 	ri.ClientID = w.Header().Get(HTTPHeaderClientID)
 	ri.JobID = w.Header().Get(HTTPHeaderJobID)
-	wrapper.requestInfoHandler.Handle(ri)
+	wrapper.requestInfoHandler.Handle(r.Context(), ri)
 }
 
 // Request.RemoteAddress contains port, which we want to remove i.e.:

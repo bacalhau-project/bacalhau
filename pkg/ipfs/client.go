@@ -63,7 +63,7 @@ func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 
 		_, err := cl.ID(ctx)
 		if err != nil {
-			log.Debug().Msgf("non-critical error waiting for node availability: %v", err)
+			log.Ctx(ctx).Debug().Msgf("non-critical error waiting for node availability: %v", err)
 		} else {
 			return nil
 		}

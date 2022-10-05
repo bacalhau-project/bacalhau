@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+
 	realsync "sync"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
@@ -152,6 +154,7 @@ func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, e
 
 func (t *LibP2PTransport) Start(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Start")
+	ctx = logger.ContextWithNodeIDLogger(ctx, t.HostID())
 	defer span.End()
 
 	if len(t.subscribeFunctions) == 0 {
@@ -169,7 +172,7 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 
 	go t.listenForEvents(ctx)
 
-	log.Trace().Msg("Libp2p transport has started")
+	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
 
 	return nil
 }
@@ -182,9 +185,9 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	closeErr := t.host.Close()
 
 	if closeErr != nil {
-		log.Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
+		log.Ctx(ctx).Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
 	} else {
-		log.Debug().Msg("Libp2p transport has stopped")
+		log.Ctx(ctx).Debug().Msg("Libp2p transport has stopped")
 	}
 
 	return nil
@@ -282,7 +285,7 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
+		log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
 	}
 
 	return nil
@@ -318,17 +321,18 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEven
 		return err
 	}
 
-	log.Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
 	return t.jobEventTopic.Publish(ctx, bs)
 }
 
 func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
+	ctx := logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
 	payload := jobEventEnvelope{}
 	err := json.Unmarshal(msg.Data, &payload)
 	if err != nil {
-		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
 	}
 
@@ -337,21 +341,21 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	latency := now.Sub(then)
 	latencyMilli := int64(latency / time.Millisecond)
 	if latencyMilli > 500 { //nolint:gomnd
-		log.Warn().Msgf(
+		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] VERY High message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
 			t.host.ID().String()[:8],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else if latencyMilli > 50 { //nolint:gomnd
-		log.Warn().Msgf(
+		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] High message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
 			t.host.ID().String()[:8],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
-		log.Trace().Msgf(
+		log.Ctx(ctx).Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
 			payload.JobEvent.SourceNodeID[:8],
 			t.host.ID().String()[:8],
@@ -359,10 +363,10 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 		)
 	}
 
-	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
+	log.Ctx(ctx).Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 
 	// Notify all the listeners in this process of the event:
-	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
+	jobCtx := otel.GetTextMapPropagator().Extract(ctx, payload.TraceData)
 
 	ev := payload.JobEvent
 	// NOTE: Do not use msg.ReceivedFrom as the original sender, it's not. It's
@@ -381,7 +385,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 				defer wg.Done()
 				err := f(jobCtx, ev)
 				if err != nil {
-					log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
+					log.Ctx(jobCtx).Error().Msgf("error in handle event: %s\n%+v", err, ev)
 				}
 			}(fn)
 		}
@@ -394,9 +398,9 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 		msg, err := t.jobEventSubscription.Next(ctx)
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
-				log.Trace().Msgf("libp2p transport shutting down: %v", err)
+				log.Ctx(ctx).Trace().Msgf("libp2p transport shutting down: %v", err)
 			} else {
-				log.Error().Msgf(
+				log.Ctx(ctx).Error().Msgf(
 					"libp2p encountered an unexpected error, shutting down: %v", err)
 			}
 			return

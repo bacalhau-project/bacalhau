@@ -125,7 +125,7 @@ func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nam
 	if container == nil {
 		return nil
 	}
-	log.Debug().Msgf("Container Stop: %s", container.ID)
+	log.Ctx(ctx).Debug().Msgf("Container Stop: %s", container.ID)
 	timeout := time.Millisecond * 100
 	err = dockerClient.ContainerStop(ctx, container.ID, &timeout)
 	if err != nil {
