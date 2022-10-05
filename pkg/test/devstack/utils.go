@@ -42,7 +42,7 @@ func SetupTest(
 		NumberOfBadActors: badActors,
 	}
 
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig())
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, config)
 	require.NoError(t, err)
 
 	// important to give the pubsub network time to connect
