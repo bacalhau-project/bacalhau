@@ -103,7 +103,7 @@ var getCmd = &cobra.Command{
 		err = ipfs.DownloadJob(
 			ctx,
 			cm,
-			j,
+			j.Spec.Outputs,
 			results,
 			OG.IPFSDownloadSettings,
 		)

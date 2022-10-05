@@ -289,7 +289,7 @@ func ExecuteJob(ctx context.Context,
 				return fmt.Errorf("no results found")
 			}
 
-			err = downloadResults(ctx, cmd, cm, j, results, downloadSettings)
+			err = downloadResults(ctx, cmd, cm, j.Spec.Outputs, results, downloadSettings)
 			if err != nil {
 				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
 			}
@@ -345,7 +345,7 @@ func getResults(ctx context.Context, apiClient *publicapi.APIClient, j *model.Jo
 func downloadResults(ctx context.Context,
 	cmd *cobra.Command,
 	cm *system.CleanupManager,
-	j *model.Job,
+	outputs []model.StorageSpec,
 	results []model.StorageSpec,
 	downloadSettings ipfs.IPFSDownloadSettings) error {
 	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
@@ -354,7 +354,7 @@ func downloadResults(ctx context.Context,
 	err := ipfs.DownloadJob(
 		ctx,
 		cm,
-		j,
+		outputs,
 		results,
 		downloadSettings,
 	)
