@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -173,6 +174,7 @@ func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) 
 }
 
 func IsURLSupported(rawURL string) (*url.URL, error) {
+	rawURL = strings.Trim(rawURL, " '\"")
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %s", err)
