@@ -1,6 +1,6 @@
 ---
 sidebar_label: "Data Ingestion"
-sidebar_position: 1
+sidebar_position: 10
 ---
 # How to Ingest Data For Use in Bacalhau
 
