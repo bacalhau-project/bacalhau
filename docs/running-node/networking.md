@@ -9,7 +9,7 @@ Bacalhau uses [libp2p](https://libp2p.io/) under the hood to communicate with ot
 
 ## Peer identity
 
-Because bacalhau is built using libp2p - the concept of [peer identity](https://docs.libp2p.io/concepts/peer-id/) is used to identify nodes on the network.
+Because bacalhau is built using libp2p - the concept of peer identity is used to identify nodes on the network.
 
 When you start a bacalhau node using `bacalhau serve` - it will look for a RSA private key in the `~/.bacalhau` directory. If it doesn't find one, it will generate a new one and save it there.
 
