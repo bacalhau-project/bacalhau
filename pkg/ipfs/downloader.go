@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,24 +116,17 @@ func loopOverResults(ctx context.Context,
 	// append all stdout and stderr to a global concatenated log
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
-<<<<<<< HEAD
-	for _, result := range results {
-=======
 	for _, result := range shardResults {
->>>>>>> main
 		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Name)
 		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
 		if err != nil {
 			return err
 		}
-<<<<<<< HEAD
-=======
 
 		err = moveResults(ctx, outputs, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
->>>>>>> main
 	}
 	return nil
 }
@@ -178,8 +172,6 @@ func fetchResult(ctx context.Context,
 	}
 	return nil
 }
-<<<<<<< HEAD
-=======
 
 func moveResults(ctx context.Context,
 	outputVolumes []model.StorageSpec,
@@ -306,4 +298,3 @@ func moveStdFiles(ctx context.Context,
 	}
 	return nil
 }
->>>>>>> main
