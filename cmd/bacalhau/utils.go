@@ -391,13 +391,9 @@ func PrintReturnedJobIDToUser(j *model.Job) error {
 		return errors.New("No job returned from the server.")
 	}
 
-	// so you can run job_id=$(bacalhau docker run ...)
-	// DO NOT REGRESS THIS BEHAVIOR, THE EXAMPLES DEPEND ON IT
-	RootCmd.Printf("%s\n", j.ID)
-
-	// so the user knows they can use describe
-	fmt.Fprintln(system.Stderr, "\nTo get the status of the job, run:")
-	fmt.Fprintf(system.Stderr, "  bacalhau describe %s\n", j.ID)
+	RootCmd.Printf("Job ID: %s\n\n", j.ID)
+	RootCmd.Println("To get the status of the job, run:")
+	RootCmd.Printf("  bacalhau describe %s\n", j.ID)
 	return nil
 }
 
