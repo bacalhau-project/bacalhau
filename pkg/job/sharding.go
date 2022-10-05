@@ -137,6 +137,10 @@ func GetShardsStorageSpecs(
 	if batchSize <= 0 {
 		batchSize = 1
 	}
+	// this means there is no sharding and we use the input volumes as is
+	if config.GlobPattern == "" {
+		return [][]model.StorageSpec{spec.Inputs}, nil
+	}
 	results := [][]model.StorageSpec{}
 	filteredVolumes, err := ExplodeShardedVolumes(ctx, spec, storageProviders)
 	if err != nil {
@@ -168,6 +172,7 @@ func GetShardStorageSpec(
 	if err != nil {
 		return []model.StorageSpec{}, err
 	}
+
 	// if we have no volumes at all - we are still processing
 	// shard #0 so just return empty array
 	if len(shards) == 0 {
