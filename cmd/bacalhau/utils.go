@@ -436,6 +436,12 @@ func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 		return errors.New("No job returned from the server.")
 	}
 	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
+RootCmd.Sprintf(`
+
+To get more information at any time, run:
+   bacalhau describe %s
+
+`, j.ID)
 	RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
 	// Create a map of job state types to printed structs
@@ -447,10 +453,7 @@ func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 		}
 	}
 
-	moreInformationString := fmt.Sprintf(`
-To get the more information, run:
-   bacalhau describe %s
-`, j.ID)
+	moreInformationString := 
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
