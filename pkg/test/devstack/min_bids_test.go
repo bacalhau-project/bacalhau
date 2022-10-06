@@ -90,7 +90,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           directoryCid,
-				MountPath:     "/input",
+				Path:          "/input",
 			},
 		}
 		j.Spec.Sharding = model.JobShardingConfig{

@@ -139,7 +139,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: cidMountPath,
-		Target: storageSpec.MountPath,
+		Target: storageSpec.Path,
 	}
 
 	return volume, nil

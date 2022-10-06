@@ -75,7 +75,7 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	spec := model.StorageSpec{
 		StorageSource: model.StorageSourceURLDownload,
 		URL:           "foo",
-		MountPath:     "foo",
+		Path:          "foo",
 	}
 	// files are not cached thus shall never return true
 	locally, err := sp.HasStorageLocally(ctx, spec)
@@ -88,9 +88,10 @@ func (s *StorageSuite) TestHasStorageLocally() {
 
 func (s *StorageSuite) TestPrepareStorage() {
 	fileName := "testfile"
+
 	testString := "Here's your data"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.String() == "/testfile" {
+		if r.URL.String() == fileName {
 			w.Write([]byte(testString))
 		}
 	}))
@@ -105,13 +106,13 @@ func (s *StorageSuite) TestPrepareStorage() {
 	spec := model.StorageSpec{
 		StorageSource: model.StorageSourceURLDownload,
 		URL:           serverURL + "/testfile",
-		MountPath:     "/foo",
+		Path:          "/foo",
 	}
 
 	volume, err := sp.PrepareStorage(ctx, spec)
 	require.NoError(s.T(), err, "failed to prepare storage")
 
-	file, err := os.Open(filepath.Join(volume.Source, fileName))
+	file, err := os.Open(volume.Source)
 	require.NoError(s.T(), err, "failed to open file")
 
 	defer func() {

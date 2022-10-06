@@ -56,7 +56,7 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 		jobInputs = append(jobInputs, model.StorageSpec{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           u.String(),
-			MountPath:     "/inputs",
+			Path:          "/inputs",
 		})
 	}
 
@@ -70,7 +70,7 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			StorageSource: model.StorageSourceIPFS,
 			CID:           slices[0],
-			MountPath:     slices[1],
+			Path:          slices[1],
 		})
 	}
 	return jobInputs, nil
@@ -91,7 +91,7 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 		if _, containsKey := outputVolumesMap[slices[1]]; containsKey {
 			log.Warn().Msgf("Output volumes already contain a mapping to '%s:%s'. Replacing it with '%s:%s'.",
 				outputVolumesMap[slices[1]].Name,
-				outputVolumesMap[slices[1]].MountPath,
+				outputVolumesMap[slices[1]].Path,
 				slices[0],
 				slices[1],
 			)
@@ -102,7 +102,7 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 			// e.g. --cid ipfs:abc --cid filecoin:efg
 			StorageSource: model.StorageSourceIPFS,
 			Name:          slices[0],
-			MountPath:     slices[1],
+			Path:          slices[1],
 		}
 	}
 

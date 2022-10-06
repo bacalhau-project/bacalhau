@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -55,6 +56,12 @@ func (s *MultipleCIDSuite) TearDownAllSuite() {
 func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	ctx := context.Background()
 
+	dirCID1 := "/input-1"
+	dirCID2 := "/input-2"
+
+	fileName1 := "hello-cid-1.txt"
+	fileName2 := "hello-cid-2.txt"
+
 	stack, cm := SetupTest(
 		ctx,
 		s.T(),
@@ -86,7 +93,9 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
-				"ls",
+				"bash",
+				"-c",
+				fmt.Sprintf("ls && ls %s && ls %s", dirCID1, dirCID2),
 			},
 		},
 	}
@@ -94,12 +103,12 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           fileCid1,
-			MountPath:     "/inputs-1",
+			Path:          path.Join(dirCID1, fileName1),
 		},
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           fileCid2,
-			MountPath:     "/inputs-2",
+			Path:          path.Join(dirCID2, fileName2),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
@@ -142,8 +151,8 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	require.NoError(s.T(), err)
 
 	// check that the stdout string containts the text hello-cid-1.txt and hello-cid-2.txt
-	require.Contains(s.T(), string(stdout), "hello-cid-1.txt")
-	require.Contains(s.T(), string(stdout), "hello-cid-2.txt")
+	require.Contains(s.T(), string(stdout), fileName1)
+	require.Contains(s.T(), string(stdout), fileName2)
 }
 
 func (s *MultipleCIDSuite) TestMultipleURLs() {
@@ -192,31 +201,32 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
+	entrypoint := []string{
+		"bash", "-c",
+		fmt.Sprintf("cat %s/%s && cat %s/%s",
+			mount1, file1,
+			mount2, file2),
+	}
 	j := model.NewJob()
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
 		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash", "-c",
-				fmt.Sprintf("cat /%s/%s && cat /%s/%s",
-					mount1, file1,
-					mount2, file2),
-			},
+			Image:      "ubuntu",
+			Entrypoint: entrypoint,
 		},
 	}
 	j.Spec.Inputs = []model.StorageSpec{
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, file1),
-			MountPath:     fmt.Sprintf("/%s", mount1),
+			Path:          fmt.Sprintf("%s/%s", mount1, file1),
 		},
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, file2),
-			MountPath:     fmt.Sprintf("/%s", mount2),
+			Path:          fmt.Sprintf("%s/%s", mount2, file2),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
@@ -325,10 +335,10 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"bash", "-c",
-				fmt.Sprintf("cat %s/%s", ipfsmount, ipfsfile),
-				// fmt.Sprintf("cat %s/%s && cat %s/%s",
-				// 	ipfsmount, ipfsfile,
-				// 	urlmount, urlfile),
+				fmt.Sprintf("cat %s && cat %s",
+					path.Join(urlmount, urlfile),
+					path.Join(ipfsmount, ipfsfile),
+				),
 			},
 		},
 	}
@@ -336,12 +346,12 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, urlfile),
-			MountPath:     urlmount,
+			Path:          path.Join(urlmount, urlfile),
 		},
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           cid,
-			MountPath:     ipfsmount,
+			Path:          path.Join(ipfsmount, ipfsfile),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}

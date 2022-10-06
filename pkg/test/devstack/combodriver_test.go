@@ -115,7 +115,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 				{
 					StorageSource: model.StorageSourceIPFS,
 					CID:           cid,
-					MountPath:     "/inputs",
+					Path:          "/inputs",
 				},
 			},
 			Outputs: []model.StorageSpec{},

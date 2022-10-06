@@ -44,7 +44,7 @@ func explodeStringArray(arr []string) []model.StorageSpec {
 	for _, str := range arr {
 		results = append(results, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
-			MountPath:     str,
+			Path:          str,
 		})
 	}
 	return results
@@ -53,7 +53,7 @@ func explodeStringArray(arr []string) []model.StorageSpec {
 func joinStringArray(arr []model.StorageSpec) []string {
 	results := []string{}
 	for _, str := range arr {
-		results = append(results, str.MountPath)
+		results = append(results, str.Path)
 	}
 	return results
 }

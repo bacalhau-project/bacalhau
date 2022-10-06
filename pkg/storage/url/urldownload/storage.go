@@ -126,8 +126,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
-		Source: outputPath,
-		Target: storageSpec.MountPath,
+		Source: filePath,
+		Target: storageSpec.Path,
 	}
 
 	return volume, nil
@@ -167,7 +167,7 @@ func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) 
 		{
 			Name:          spec.Name,
 			StorageSource: model.StorageSourceURLDownload,
-			MountPath:     spec.MountPath,
+			Path:          spec.Path,
 			URL:           spec.URL,
 		},
 	}, nil

@@ -114,7 +114,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		submitReq.Data.Job.Spec.Contexts = append(submitReq.Data.Job.Spec.Contexts, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           result.CID,
-			MountPath:     "/job",
+			Path:          "/job",
 		})
 	}
 

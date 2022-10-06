@@ -307,7 +307,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 							if tcidIV.path != "" {
 								testPath = tcidIV.path
 							}
-							require.Equal(s.T(), testPath, jobInput.MountPath, "Test Path not equal to Path from job.")
+							require.Equal(s.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
 							break
 						}
 					}
@@ -480,11 +480,11 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 						}
 
 						if tcidOV.path == "" {
-							if jobOutput.MountPath == "/outputs" {
+							if jobOutput.Path == "/outputs" {
 								testPathinJobOutputs = true
 							}
 						} else {
-							if tcidOV.path == jobOutput.MountPath {
+							if tcidOV.path == jobOutput.Path {
 								testPathinJobOutputs = true
 							}
 						}

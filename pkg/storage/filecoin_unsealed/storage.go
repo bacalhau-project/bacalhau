@@ -76,7 +76,7 @@ func (driver *StorageProvider) PrepareStorage(
 	return storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: localPath,
-		Target: storageSpec.MountPath,
+		Target: storageSpec.Path,
 	}, nil
 }
 
