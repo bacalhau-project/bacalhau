@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -30,6 +31,8 @@ var (
 
 	OLR = NewLanguageRunOptions()
 )
+
+const maximumContextSize datasize.ByteSize = 10 * datasize.MB
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
@@ -165,12 +168,6 @@ var runPythonCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		// error if determinism is false
-		if !OLR.Deterministic {
-			return fmt.Errorf("determinism=false not supported yet " +
-				"(python only supports wasm backend with forced determinism)")
-		}
-
 		// TODO: prepare context
 
 		var programPath string
@@ -192,69 +189,102 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
 		}
 
-		//nolint:lll // it's ok to be long
-		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
-		j, err := job.ConstructLanguageJob(
-			model.APIVersionLatest(),
-			OLR.InputVolumes,
-			OLR.InputUrls,
-			OLR.OutputVolumes,
-			[]string{}, // no env vars (yet)
-			OLR.Concurrency,
-			OLR.Confidence,
-			OLR.MinBids,
-			"python",
-			"3.10",
-			OLR.Command,
-			programPath,
-			OLR.RequirementsPath,
-			OLR.ContextPath,
-			OLR.Deterministic,
-			OLR.Labels,
-			doNotTrack,
-		)
+		return submitLanguageJob(cmd, ctx, "python", "3.10", programPath)
+	},
+}
+
+var runWasmCommand = &cobra.Command{
+	Use:     "wasm",
+	Short:   "Run a WASM job on the network",
+	Long:    languageRunLong,
+	Example: languageRunExample,
+	Args:    cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+		ctx := cmd.Context()
+
+		t := system.GetTracer()
+		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/runLanguage.runWasmCommand")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		programPath := cmdArgs[0]
+		OLR.ContextPath = programPath
+		OLR.Command = cmdArgs[1]
+
+		return submitLanguageJob(cmd, ctx, "wasm", "2.0", programPath)
+	},
+}
+
+func submitLanguageJob(cmd *cobra.Command, ctx context.Context, language, version, programPath string) error {
+	//nolint:lll // it's ok to be long
+	// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
+	j, err := job.ConstructLanguageJob(
+		model.APIVersionLatest(),
+		OLR.InputVolumes,
+		OLR.InputUrls,
+		OLR.OutputVolumes,
+		[]string{}, // no env vars (yet)
+		OLR.Concurrency,
+		OLR.Confidence,
+		OLR.MinBids,
+		language,
+		version,
+		OLR.Command,
+		programPath,
+		OLR.RequirementsPath,
+		OLR.ContextPath,
+		OLR.Deterministic,
+		OLR.Labels,
+		doNotTrack,
+	)
+	if err != nil {
+		return err
+	}
+
+	// error if determinism is false
+	if !OLR.Deterministic {
+		return fmt.Errorf("determinism=false not supported yet " +
+			"(languages only support wasm backend with forced determinism)")
+	}
+
+	var buf bytes.Buffer
+
+	if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
+		cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+		OLR.ContextPath = ""
+	}
+
+	if OLR.ContextPath != "" {
+		// construct a tar file from the contextPath directory
+		// tar + gzip
+		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
+		time.Sleep(1 * time.Second)
+		err = compress(ctx, OLR.ContextPath, &buf)
 		if err != nil {
 			return err
 		}
 
-		var buf bytes.Buffer
-
-		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
-			cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
-			OLR.ContextPath = ""
+		// check size of buf
+		if buf.Len() > int(maximumContextSize) {
+			Fatal(fmt.Sprintf("context tar file is too large (> %s)", maximumContextSize.HumanReadable()), 1)
 		}
+	}
 
-		if OLR.ContextPath != "" {
-			// construct a tar file from the contextPath directory
-			// tar + gzip
-			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
-			time.Sleep(1 * time.Second)
-			err = compress(ctx, OLR.ContextPath, &buf)
-			if err != nil {
-				return err
-			}
+	log.Debug().Msgf(
+		"submitting job %+v", j)
 
-			// check size of buf
-			if buf.Len() > 10*1024*1024 {
-				Fatal("context tar file is too large (>10MiB)", 1)
-			}
+	returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+	}
 
-		}
-
-		log.Debug().Msgf(
-			"submitting job %+v", j)
-
-		returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-		}
-
-		err = PrintResultsToUser(ctx, returnedJob)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-		}
-		return nil
-	},
+	err = PrintResultsToUser(ctx, returnedJob)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+	}
+	return nil
 }
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2

@@ -80,7 +80,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	EXAMPLE_TEXT := "hello from job selection locality"
 	config.SetVolumeSizeRequestTimeout(2)
 	cid, err := func() (string, error) {
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		ipfsStack, cm := stack.IpfsStack, stack.Node.CleanupManager
 
 		defer cm.Cleanup()
@@ -90,7 +90,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewDevStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
 			},

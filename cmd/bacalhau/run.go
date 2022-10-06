@@ -10,6 +10,7 @@ import (
 //nolint:gochecknoinits
 func init() {
 	runCmd.AddCommand(runPythonCmd)
+	runCmd.AddCommand(runWasmCommand)
 }
 
 var runCmd = &cobra.Command{

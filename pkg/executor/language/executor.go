@@ -28,6 +28,7 @@ type LanguageSpec struct {
 
 var supportedVersions = map[LanguageSpec]model.Engine{
 	{"python", "3.10"}: model.EnginePythonWasm,
+	{"wasm", "2.0"}:    model.EngineWasm,
 }
 
 func NewExecutor(

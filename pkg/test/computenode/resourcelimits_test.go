@@ -405,7 +405,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 	ctx := context.Background()
 	CPU_LIMIT := "100m"
 
-	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
@@ -450,7 +450,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 	ctx := context.Background()
 	MEMORY_LIMIT := "100mb"
 
-	stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
@@ -480,7 +480,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 	ctx := context.Background()
 
 	runTest := func(text, diskSize string, expected bool) {
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.ComputeNodeConfig{
+		stack := testutils.NewDevStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			CapacityManagerConfig: capacitymanager.Config{
 				ResourceLimitTotal: model.ResourceUsageConfig{
 					// so we have a compute node with 1 byte of disk space
@@ -539,7 +539,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 	ctx := context.Background()
 
 	runTest := func(text string, expected uint64) {
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
 		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
