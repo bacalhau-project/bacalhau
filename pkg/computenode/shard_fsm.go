@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -22,6 +23,11 @@ const (
 	// bid was rejected, and do cancel the bid
 	actionBidRejected
 
+	// cancel the job mainly due to requester node already accepted other bids.
+	// Can only cancel a shard before a bid is sent. After that the action will be ignored and you can
+	// only fail the shard.
+	actionCancel
+
 	// job has failed for some reason outside of the fsm
 	actionFail
 
@@ -36,13 +42,15 @@ const (
 )
 
 func (a shardStateAction) String() string {
-	return [...]string{"ActionBid", "ActionBidRejected", "ActionFail", "ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
+	return [...]string{
+		"ActionBid", "ActionBidRejected", "ActionCancel", "ActionFail",
+		"ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
 }
 
 // request to change the state of the fsm
 type shardStateRequest struct {
-	action        shardStateAction
-	failureReason string
+	action shardStateAction
+	reason string
 }
 
 // types of shard state machines
@@ -71,6 +79,9 @@ const (
 	// The results of the job has been verified, and publishing the results to the requester.
 	shardPublishingToRequester
 
+	// The job has been canceled, mainly due to other bids already accepted.
+	shardCancelled
+
 	// The job has failed due to an error.
 	shardError
 
@@ -81,7 +92,7 @@ const (
 func (s shardStateType) String() string {
 	return [...]string{
 		"InitialState", "Enqueued", "Bidding", "Running", "PublishingToVerifier",
-		"VerifyingResults", "PublishingToRequester", "Error", "Completed"}[s]
+		"VerifyingResults", "PublishingToRequester", "Canceled", "Error", "Completed"}[s]
 }
 
 type shardStateMachineManager struct {
@@ -205,15 +216,15 @@ type shardStateMachine struct {
 
 	manager *shardStateMachineManager
 	node    *ComputeNode
-	mu      sync.Mutex
 	req     chan shardStateRequest
 
 	currentState  shardStateType
 	previousState shardStateType
 
-	runOutput      *model.RunCommandResult
-	resultProposal []byte
-	errorMsg       string
+	runOutput       *model.RunCommandResult
+	resultProposal  []byte
+	cancellationMsg string
+	errorMsg        string
 
 	notifyOnFailure bool
 }
@@ -228,11 +239,6 @@ func (m *shardStateMachineManager) newStateMachine(
 		req:          make(chan shardStateRequest),
 		currentState: shardInitialState,
 	}
-
-	stateMachine.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "ComputeNode.ShardStateMachinerMu",
-	})
 
 	return stateMachine
 }
@@ -272,8 +278,14 @@ func (m *shardStateMachine) Publish(ctx context.Context) {
 	m.sendRequest(ctx, shardStateRequest{action: actionPublish})
 }
 
+// Can only cancel a shard before a bid is sent. After that the action will be ignored and you can
+// only fail the shard.
+func (m *shardStateMachine) Cancel(ctx context.Context, reason string) {
+	m.sendRequest(ctx, shardStateRequest{action: actionCancel, reason: reason})
+}
+
 func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionFail, failureReason: reason})
+	m.sendRequest(ctx, shardStateRequest{action: actionFail, reason: reason})
 }
 
 // send a request to the state machine by enquing it in the request channel.
@@ -294,32 +306,14 @@ func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateR
 
 type StateFn func(context.Context, *shardStateMachine) StateFn
 
-func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
+func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType, reasons ...string) {
+	reason := ""
+	if reasons != nil {
+		reason = " due to " + strings.Join(reasons, ", ")
+	}
+	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s%s", m, m.currentState, newState, reason)
 	m.previousState = m.currentState
 	m.currentState = newState
-}
-
-// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
-func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
-	m.transitionedTo(ctx, shardBidding)
-
-	for {
-		req := <-m.req
-		switch req.action {
-		case actionRun:
-			return runningState
-		case actionBidRejected:
-			return completedState
-		case actionFail:
-			m.errorMsg = req.failureReason
-			return errorState
-		default:
-			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
-		}
-	}
 }
 
 // ------------------------------------
@@ -346,8 +340,31 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.notifyOnFailure = true
 
 			return biddingState
+		case actionCancel:
+			m.cancellationMsg = req.reason
+			return cancelledState
 		case actionFail:
-			m.errorMsg = req.failureReason
+			m.errorMsg = req.reason
+			return errorState
+		default:
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+		}
+	}
+}
+
+// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
+func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardBidding)
+
+	for {
+		req := <-m.req
+		switch req.action {
+		case actionRun:
+			return runningState
+		case actionBidRejected:
+			return completedState
+		case actionFail:
+			m.errorMsg = req.reason
 			return errorState
 		default:
 			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
@@ -424,7 +441,7 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.notifyOnFailure = false
 			return completedState
 		case actionFail:
-			m.errorMsg = req.failureReason
+			m.errorMsg = req.reason
 			return errorState
 		default:
 			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
@@ -474,6 +491,12 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 		}
 	}
 
+	return completedState
+}
+
+func cancelledState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardCancelled, m.cancellationMsg)
+	// no notifications need to be sent here as you can only cancel a shard before a bid is sent.
 	return completedState
 }
 
