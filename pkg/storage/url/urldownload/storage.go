@@ -114,6 +114,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to write to file %s: %s", filePath, err)
 	}
 
+	if n == 0 {
+		return storage.StorageVolume{}, fmt.Errorf("no bytes written to file %s", filePath)
+	}
+
 	log.Trace().Msgf("Wrote %d bytes to %s", n, filePath)
 
 	// Closing everything

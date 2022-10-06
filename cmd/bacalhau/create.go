@@ -92,18 +92,20 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		OC.Filename = cmdArgs[0]
-
-		if OC.Filename == "" {
+		if len(cmdArgs) == 0 {
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-			} else if err != nil {
+			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
+			if err != nil {
+				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+					// Both filename and stdin are empty
+					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+				}
 				// Error not related to fields being empty
 				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 			}
 		} else {
+			OC.Filename = cmdArgs[0]
+
 			var fileContent *os.File
 			fileContent, err = os.Open(OC.Filename)
 

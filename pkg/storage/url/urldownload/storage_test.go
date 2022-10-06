@@ -86,44 +86,96 @@ func (s *StorageSuite) TestHasStorageLocally() {
 	}
 }
 
-func (s *StorageSuite) TestPrepareStorage() {
+func (s *StorageSuite) TestPrepareStorageURL() {
 	fileName := "testfile"
-
 	testString := "Here's your data"
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.String() == fileName {
-			w.Write([]byte(testString))
-		}
-	}))
-	defer ts.Close()
 
-	cm := system.NewCleanupManager()
-	ctx := context.Background()
-	sp, err := NewStorage(cm)
-	require.NoError(s.T(), err, "failed to create storage provider")
-
-	serverURL := ts.URL
-	spec := model.StorageSpec{
-		StorageSource: model.StorageSourceURLDownload,
-		URL:           serverURL + "/testfile",
-		Path:          "/foo",
+	tc := map[string]struct {
+		fileName      string
+		content       string
+		valid         bool
+		errorContains string
+		errorMsg      string
+	}{
+		"Test-Valid": {fileName: fileName,
+			content:       testString,
+			valid:         true,
+			errorContains: "",
+			errorMsg:      "TYPE: Valid"},
+		"Test-No Filename": {fileName: "",
+			content:       testString,
+			valid:         false,
+			errorContains: "is a directory",
+			errorMsg:      "TYPE: Invalid (no file)"},
+		"Test-No Content": {fileName: fileName,
+			content:       "",
+			valid:         false,
+			errorContains: "no bytes written",
+			errorMsg:      "TYPE: Invalid (no content)"},
 	}
 
-	volume, err := sp.PrepareStorage(ctx, spec)
-	require.NoError(s.T(), err, "failed to prepare storage")
+	for name, tt := range tc {
 
-	file, err := os.Open(volume.Source)
-	require.NoError(s.T(), err, "failed to open file")
+		content, err := func() (string, error) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.String() == ("/" + tt.fileName) {
+					w.Write([]byte(tt.content))
+				}
+			}))
+			defer ts.Close()
 
-	defer func() {
-		if err = file.Close(); err != nil {
-			require.Fail(s.T(), "failed to close file")
+			cm := system.NewCleanupManager()
+			ctx := context.Background()
+			sp, err := NewStorage(cm)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to create storage provider", name)
+			}
+
+			serverURL := ts.URL
+			spec := model.StorageSpec{
+				StorageSource: model.StorageSourceURLDownload,
+				URL:           serverURL + "/" + tt.fileName,
+				Path:          tt.fileName,
+			}
+
+			volume, err := sp.PrepareStorage(ctx, spec)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
+			}
+
+			file, err := os.Open(volume.Source)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
+			}
+
+			defer func() {
+				if err = file.Close(); err != nil {
+					require.Fail(s.T(), "failed to close file: %s", name)
+				}
+			}()
+
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
+			}
+
+			if len(content) == 0 {
+				return "", fmt.Errorf("%s: file is empty", name)
+			}
+
+			return string(content), nil
+		}()
+
+		if tt.valid {
+			text := string(content)
+			require.Equal(s.T(), tt.content, text, "%s: content of file does not match", name)
+		} else {
+			require.Error(s.T(), err, "%s: expected error", name)
+			require.Contains(s.T(),
+				err.Error(),
+				tt.errorContains,
+				"%s: error does not contain expected string",
+				name)
 		}
-	}()
-
-	content, err := ioutil.ReadAll(file)
-	require.NoError(s.T(), err, "failed to read file")
-
-	text := string(content)
-	require.Equal(s.T(), testString, text, "content of file does not match")
+	}
 }

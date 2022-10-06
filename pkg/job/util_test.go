@@ -53,6 +53,9 @@ func (s *JobUtilSuite) TestRun_URLs() {
 			errorMsg     string
 		}{
 			{submittedURL: "http://example.com",
+				valid:    false,
+				errorMsg: "TYPE: Invalid (no file)"},
+			{submittedURL: "http://example.com/file.txt",
 				valid:    true,
 				errorMsg: "TYPE: Valid"},
 			{submittedURL: "ttps://example.com",
@@ -61,12 +64,9 @@ func (s *JobUtilSuite) TestRun_URLs() {
 			{submittedURL: "example.com",
 				valid:    false,
 				errorMsg: "TYPE: Mising scheme"},
-			{submittedURL: "http://example.com:8080",
+			{submittedURL: "http://example.com:8080/file.txt",
 				valid:    true,
 				errorMsg: "TYPE: With Ports"},
-			{submittedURL: "http://example.com:8080/",
-				valid:    true,
-				errorMsg: "TYPE: With Ports and trailing slash"},
 			{submittedURL: `https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD`,
 				valid:    true,
 				errorMsg: "TYPE: With query string"},
