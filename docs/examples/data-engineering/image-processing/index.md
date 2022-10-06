@@ -17,6 +17,29 @@ For a live walk-through of this demo please watch the first part of the video be
 
 [![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
+## Prerequistes
+
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation), or using the installation command below (which installs Bacalhau local to the notebook).
+
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    env: PATH=./:./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
+
+```bash
+bacalhau version
+```
+
+    Client Version: v0.2.3
+    Server Version: v0.2.3
+
+
 ## Submit the workload
 
 To submit a workload to Bacalhau you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
@@ -95,55 +118,55 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 
     
-![jpeg](index_files/index_11_0.jpg)
+![jpeg](index_files/index_14_0.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_1.jpg)
+![jpeg](index_files/index_14_1.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_2.jpg)
+![jpeg](index_files/index_14_2.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_3.jpg)
+![jpeg](index_files/index_14_3.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_4.jpg)
+![jpeg](index_files/index_14_4.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_5.jpg)
+![jpeg](index_files/index_14_5.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_6.jpg)
+![jpeg](index_files/index_14_6.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_7.jpg)
+![jpeg](index_files/index_14_7.jpg)
     
 
 
 
     
-![jpeg](index_files/index_11_8.jpg)
+![jpeg](index_files/index_14_8.jpg)
     
 
 
