@@ -60,7 +60,6 @@ func RunDockerTest(
 		submittedJob.ID,
 		concurrency,
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{

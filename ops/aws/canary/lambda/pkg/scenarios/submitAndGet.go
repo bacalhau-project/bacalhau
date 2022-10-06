@@ -46,7 +46,7 @@ func SubmitAndGet(ctx context.Context) error {
 	}
 	defer os.RemoveAll(downloadSettings.OutputDir)
 
-	err = ipfs.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, *downloadSettings)
+	err = ipfs.DownloadJob(ctx, cm, submittedJob, results, *downloadSettings)
 	if err != nil {
 		return err
 	}

@@ -30,8 +30,8 @@ func SafeAnnotationRegex() *regexp.Regexp {
 }
 
 func NewNoopJobLoader() JobLoader {
-	jobLoader := func(ctx context.Context, id string) (model.Job, error) {
-		return model.Job{}, nil
+	jobLoader := func(ctx context.Context, id string) (*model.Job, error) {
+		return &model.Job{}, nil
 	}
 	return jobLoader
 }
@@ -57,9 +57,9 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 			return []model.StorageSpec{}, err
 		}
 		jobInputs = append(jobInputs, model.StorageSpec{
-			Engine: model.StorageSourceURLDownload,
-			URL:    rawURL,
-			Path:   path,
+			StorageSource: model.StorageSourceURLDownload,
+			URL:           rawURL,
+			Path:          path,
 		})
 	}
 
@@ -71,9 +71,9 @@ func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, erro
 		jobInputs = append(jobInputs, model.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: model.StorageSourceIPFS,
-			Cid:    slices[0],
-			Path:   slices[1],
+			StorageSource: model.StorageSourceIPFS,
+			CID:           slices[0],
+			Path:          slices[1],
 		})
 	}
 	return jobInputs, nil
@@ -103,9 +103,9 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 		outputVolumesMap[slices[1]] = model.StorageSpec{
 			// we have a chance to have a kind of storage multiaddress here
 			// e.g. --cid ipfs:abc --cid filecoin:efg
-			Engine: model.StorageSourceIPFS,
-			Name:   slices[0],
-			Path:   slices[1],
+			StorageSource: model.StorageSourceIPFS,
+			Name:          slices[0],
+			Path:          slices[1],
 		}
 	}
 
@@ -115,4 +115,9 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 	}
 
 	return returnOutputVolumes, nil
+}
+
+// Shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
+func ShortID(id string) string {
+	return id[:8]
 }

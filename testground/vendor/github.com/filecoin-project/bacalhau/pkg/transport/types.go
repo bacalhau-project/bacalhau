@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // SubscribeFn is provided by an in-process listener as an event callback.
-type SubscribeFn func(context.Context, model.JobEvent)
+type SubscribeFn func(context.Context, model.JobEvent) error
 
 // Transport is an interface representing a communication channel between
 // nodes, through which they can submit, bid on and complete jobs.
@@ -25,7 +26,10 @@ type Transport interface {
 
 	// HostID returns a unique string per host in whatever network the
 	// scheduler is connecting to. Must be unique per instance.
-	HostID(ctx context.Context) (string, error)
+	HostID() string
+
+	// Returns the listen addresses of the Host
+	HostAddrs() ([]multiaddr.Multiaddr, error)
 
 	/////////////////////////////////////////////////////////////
 	/// EVENT HANDLING
@@ -55,5 +59,5 @@ type ListResponse struct {
 
 // data structure for a Version response
 type VersionResponse struct {
-	VersionInfo model.VersionInfo
+	VersionInfo model.BuildVersionInfo
 }

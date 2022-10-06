@@ -18,14 +18,15 @@ import (
 )
 
 type Executor struct {
-	Jobs []*model.Job
+	Jobs map[string]*model.Job
 
-	executors map[model.EngineType]executor.Executor
+	executors executor.ExecutorProvider
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[model.EngineType]executor.Executor,
+	executors executor.ExecutorProvider,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -45,8 +46,9 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec)
 	return 0, nil
 }
 
-func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) error {
-	log.Debug().Msgf("in python_wasm executor!")
+func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) (
+	*model.RunCommandResult, error) {
+	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
 	shard.Job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
 	if shard.Job.Spec.Language.Command != "" {
@@ -73,7 +75,11 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 	}
 
 	// TODO: pass in command, and have n.js interpret it and pass it on to pyodide
-	return e.executors[model.EngineDocker].RunShard(ctx, shard, resultsDir)
+	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	if err != nil {
+		return nil, err
+	}
+	return dockerExecutor.RunShard(ctx, shard, resultsDir)
 }
 
 // Compile-time check that Executor implements the Executor interface.

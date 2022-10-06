@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -18,7 +19,7 @@ type resultsResponse struct {
 }
 
 func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
-	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi/publicapi/results")
+	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.results")
 	defer span.End()
 
 	var stateReq stateRequest
@@ -26,11 +27,13 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, stateReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	publisher, err := apiServer.getPublisher(ctx, model.PublisherIpfs)
+	publisher, err := apiServer.Publishers.GetPublisher(ctx, model.PublisherIpfs)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

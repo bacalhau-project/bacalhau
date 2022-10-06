@@ -18,7 +18,7 @@ func NewIPFSPublishers(
 	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 	estuaryAPIKey string,
-) (map[model.PublisherType]publisher.Publisher, error) {
+) (publisher.PublisherProvider, error) {
 	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
@@ -41,25 +41,22 @@ func NewIPFSPublishers(
 		}
 	}
 
-	return map[model.PublisherType]publisher.Publisher{
+	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop:    noopPublisher,
 		model.PublisherIpfs:    ipfsPublisher,
 		model.PublisherEstuary: estuaryPublisher,
-	}, nil
+	}), nil
 }
 
 func NewNoopPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-) (map[model.PublisherType]publisher.Publisher, error) {
+) (publisher.PublisherProvider, error) {
 	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[model.PublisherType]publisher.Publisher{
-		model.PublisherNoop: noopPublisher,
-		model.PublisherIpfs: noopPublisher,
-	}, nil
+	return noop.NewNoopPublisherProvider(noopPublisher), nil
 }

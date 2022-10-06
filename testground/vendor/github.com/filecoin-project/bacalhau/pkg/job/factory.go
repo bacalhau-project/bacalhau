@@ -10,22 +10,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func ConstructJobFromEvent(ev model.JobEvent) model.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev.JobID)
-	log.Trace().Msgf("Full job event: %+v", ev)
-
+func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
 	publicKey := ev.SenderPublicKey
 	if publicKey == nil {
 		publicKey = []byte{}
 	}
 
-	return model.Job{
+	return &model.Job{
+		APIVersion:         ev.APIVersion,
 		ID:                 ev.JobID,
 		RequesterNodeID:    ev.SourceNodeID,
 		RequesterPublicKey: publicKey,
 		ClientID:           ev.ClientID,
-		Spec:               ev.JobSpec,
-		Deal:               ev.JobDeal,
+		Spec:               ev.Spec,
+		Deal:               ev.Deal,
 		ExecutionPlan:      ev.JobExecutionPlan,
 		CreatedAt:          time.Now(),
 	}
@@ -35,9 +33,10 @@ func ConstructJobFromEvent(ev model.JobEvent) model.Job {
 // to pass in the collection of CLI args as strings
 // and have a Job struct returned
 func ConstructDockerJob( //nolint:funlen
-	e model.EngineType,
-	v model.VerifierType,
-	p model.PublisherType,
+	a model.APIVersion,
+	e model.Engine,
+	v model.Verifier,
+	p model.Publisher,
 	cpu, memory, gpu string,
 	inputUrls []string,
 	inputVolumes []string,
@@ -54,9 +53,9 @@ func ConstructDockerJob( //nolint:funlen
 	shardingBasePath string,
 	shardingBatchSize int,
 	doNotTrack bool,
-) (*model.JobSpec, *model.JobDeal, error) {
+) (*model.Job, error) {
 	if concurrency <= 0 {
-		return &model.JobSpec{}, &model.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
 	}
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
@@ -67,11 +66,11 @@ func ConstructDockerJob( //nolint:funlen
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return &model.JobSpec{}, &model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	var jobAnnotations []string
@@ -91,10 +90,10 @@ func ConstructDockerJob( //nolint:funlen
 	}
 
 	if len(workingDir) > 0 {
-		err := system.ValidateWorkingDir(workingDir)
+		err = system.ValidateWorkingDir(workingDir)
 		if err != nil {
 			log.Error().Msg(err.Error())
-			return &model.JobSpec{}, &model.JobDeal{}, err
+			return &model.Job{}, err
 		}
 	}
 
@@ -107,14 +106,20 @@ func ConstructDockerJob( //nolint:funlen
 		BatchSize:   shardingBatchSize,
 	}
 
-	spec := model.JobSpec{
+	j, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		return &model.Job{}, err
+	}
+	j.APIVersion = a.String()
+
+	j.Spec = model.Spec{
 		Engine:    e,
 		Verifier:  v,
 		Publisher: p,
 		Docker: model.JobSpecDocker{
-			Image:      image,
-			Entrypoint: entrypoint,
-			Env:        env,
+			Image:                image,
+			Entrypoint:           entrypoint,
+			EnvironmentVariables: env,
 		},
 
 		Resources:   jobResources,
@@ -128,19 +133,20 @@ func ConstructDockerJob( //nolint:funlen
 
 	// override working dir if provided
 	if len(workingDir) > 0 {
-		spec.Docker.WorkingDir = workingDir
+		j.Spec.Docker.WorkingDirectory = workingDir
 	}
 
-	deal := model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 		MinBids:     minBids,
 	}
 
-	return &spec, &deal, nil
+	return j, nil
 }
 
 func ConstructLanguageJob(
+	a model.APIVersion,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
@@ -158,22 +164,21 @@ func ConstructLanguageJob(
 	deterministic bool,
 	annotations []string,
 	doNotTrack bool,
-) (model.JobSpec, model.JobDeal, error) {
+) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-
 	if concurrency <= 0 {
-		return model.JobSpec{}, model.JobDeal{}, fmt.Errorf("concurrency must be >= 1")
+		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
 	}
 
 	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
 	if err != nil {
-		return model.JobSpec{}, model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 	jobOutputs, err := buildJobOutputs(outputVolumes)
 	if err != nil {
-		return model.JobSpec{}, model.JobDeal{}, err
+		return &model.Job{}, err
 	}
 
 	var jobAnnotations []string
@@ -192,7 +197,13 @@ func ConstructLanguageJob(
 			strings.Join(unSafeAnnotations, ", "))
 	}
 
-	spec := model.JobSpec{
+	j, err := model.NewJobWithSaneProductionDefaults()
+	if err != nil {
+		return &model.Job{}, err
+	}
+	j.APIVersion = a.String()
+
+	j.Spec = model.Spec{
 		Engine:   model.EngineLanguage,
 		Verifier: model.VerifierNoop,
 		// TODO: should this always be ipfs?
@@ -213,10 +224,10 @@ func ConstructLanguageJob(
 		DoNotTrack:  doNotTrack,
 	}
 
-	deal := model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
 	}
 
-	return spec, deal, nil
+	return j, err
 }

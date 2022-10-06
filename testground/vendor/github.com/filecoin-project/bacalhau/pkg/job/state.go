@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -10,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type JobLoader func(ctx context.Context, id string) (model.Job, error)
+type JobLoader func(ctx context.Context, id string) (*model.Job, error)
 type StateLoader func(ctx context.Context, id string) (model.JobState, error)
 
 // a function that is given a map of nodeid -> job states
@@ -36,7 +37,7 @@ func NewStateResolver(
 	}
 }
 
-func (resolver *StateResolver) GetJob(ctx context.Context, id string) (model.Job, error) {
+func (resolver *StateResolver) GetJob(ctx context.Context, id string) (*model.Job, error) {
 	return resolver.jobLoader(ctx, id)
 }
 
@@ -82,12 +83,12 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	job, err := resolver.jobLoader(ctx, jobID)
+	j, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return "", err
 	}
 
-	if job.Spec.Verifier == model.VerifierNoop {
+	if j.Spec.Verifier == model.VerifierNoop {
 		return "", nil
 	}
 
@@ -95,7 +96,7 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 	if err != nil {
 		return "", err
 	}
-	totalShards := GetJobTotalExecutionCount(job)
+	totalShards := GetJobTotalExecutionCount(j)
 	verifiedShardCount := GetVerifiedShardStates(jobState)
 
 	return fmt.Sprintf("%d/%d", verifiedShardCount, totalShards), nil
@@ -121,7 +122,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if len(completedShards) == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.Cid), nil
+	return fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID), nil
 }
 
 func (resolver *StateResolver) Wait(
@@ -146,9 +147,9 @@ func (resolver *StateResolver) Wait(
 
 			allOk := true
 			for _, checkFunction := range checkJobStateFunctions {
-				stepOk, err := checkFunction(jobState)
-				if err != nil {
-					return false, err
+				stepOk, checkErr := checkFunction(jobState)
+				if checkErr != nil {
+					return false, checkErr
 				}
 				if !stepOk {
 					allOk = false
@@ -162,17 +163,13 @@ func (resolver *StateResolver) Wait(
 			// some of the check functions returned false
 			// let's see if we can quiet early because all expectedd states are
 			// in terminal state
-			allShardStates := FlattenShardStates(jobState)
+			allTerminal, err := WaitForTerminalStates(totalShards)(jobState)
+			if err != nil {
+				return false, err
+			}
 
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
-			allTerminal := len(allShardStates) == totalShards
-			for _, shard := range allShardStates { //nolint:gocritic
-				if !shard.State.IsTerminal() {
-					allTerminal = false
-					break
-				}
-			}
 			if allTerminal {
 				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
 			}
@@ -204,7 +201,7 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 			model.JobStateError,
 		}),
 		WaitForJobStates(map[model.JobStateType]int{
-			model.JobStatePublished: totalShards,
+			model.JobStateCompleted: totalShards,
 		}),
 	)
 }
@@ -259,7 +256,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 
 		// again this should never happen but just in case
 		// a shard result with an empty CID has made it through somehow
-		if shardResult.PublishedResult.Cid == "" {
+		if shardResult.PublishedResult.CID == "" {
 			return results, fmt.Errorf(
 				"job (%s) has a missing results id at shard index %d",
 				jobID,
@@ -285,36 +282,30 @@ type ShardStateChecker func(
 // this is useful for example to say "do we have enough to begin verification"
 func (resolver *StateResolver) CheckShardStates(
 	ctx context.Context,
-	jobID string,
+	shard model.JobShard,
 	shardStateChecker ShardStateChecker,
 ) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/job.CheckShardStates")
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	jobState, err := resolver.stateLoader(ctx, jobID)
+	jobState, err := resolver.stateLoader(ctx, shard.Job.ID)
 	if err != nil {
 		return false, err
 	}
-	job, err := resolver.jobLoader(ctx, jobID)
+
+	concurrency := int(math.Max(float64(shard.Job.Deal.Concurrency), 1))
+	shardStates := GetStatesForShardIndex(jobState, shard.Index)
+	if len(shardStates) == 0 {
+		return false, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+	}
+
+	shardCheckResult, err := shardStateChecker(shardStates, concurrency)
 	if err != nil {
 		return false, err
 	}
-	shardCount := GetJobTotalShards(job)
-	concurrency := GetJobConcurrency(job)
-	shardGroups := GroupShardStates(FlattenShardStates(jobState))
-	for i := 0; i < shardCount; i++ {
-		shardStates, ok := shardGroups[i]
-		if !ok {
-			return false, fmt.Errorf("job (%s) has no shard state for shard index %d", jobID, i)
-		}
-		shardCheckResult, err := shardStateChecker(shardStates, concurrency)
-		if err != nil {
-			return false, err
-		}
-		if !shardCheckResult {
-			return false, nil
-		}
+	if !shardCheckResult {
+		return false, nil
 	}
 	return true, nil
 }
@@ -324,6 +315,18 @@ func FlattenShardStates(jobState model.JobState) []model.JobShardState {
 	for _, nodeState := range jobState.Nodes {
 		for _, shardState := range nodeState.Shards { //nolint:gocritic
 			ret = append(ret, shardState)
+		}
+	}
+	return ret
+}
+
+func GetStatesForShardIndex(jobState model.JobState, shardIndex int) []model.JobShardState {
+	ret := []model.JobShardState{}
+	for _, nodeState := range jobState.Nodes {
+		for _, shardState := range nodeState.Shards { //nolint:gocritic
+			if shardState.ShardIndex == shardIndex {
+				ret = append(ret, shardState)
+			}
 		}
 	}
 	return ret
@@ -350,10 +353,10 @@ func GetVerifiedShardStates(jobState model.JobState) int {
 }
 
 func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
-	return GetFilteredShardStates(jobState, model.JobStatePublished)
+	return GetFilteredShardStates(jobState, model.JobStateCompleted)
 }
 
-func HasShardReachedCapacity(ctx context.Context, j model.Job, jobState model.JobState, shardIndex int) bool {
+func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.JobState, shardIndex int) bool {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.HasShardReachedCapacity")
 	defer span.End()
 
@@ -415,8 +418,10 @@ func WaitThrowErrors(errorStates []model.JobStateType) CheckStatesFunction {
 	return func(jobState model.JobState) (bool, error) {
 		allShardStates := FlattenShardStates(jobState)
 		for _, shard := range allShardStates { //nolint:gocritic
-			if shard.State.IsError() {
-				return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
+			for _, errorState := range errorStates {
+				if shard.State == errorState {
+					return false, fmt.Errorf("job has error state %s on node %s (%s)", shard.State.String(), shard.NodeID, shard.Status)
+				}
 			}
 		}
 		return true, nil
@@ -435,6 +440,21 @@ func WaitForJobStates(requiredStateCounts map[model.JobStateType]int) CheckState
 				discoveredCount = 0
 			}
 			if discoveredCount != requiredStateCount {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+}
+
+func WaitForTerminalStates(totalShards int) CheckStatesFunction {
+	return func(jobState model.JobState) (bool, error) {
+		allShardStates := FlattenShardStates(jobState)
+		if len(allShardStates) < totalShards {
+			return false, nil
+		}
+		for _, shard := range allShardStates { //nolint:gocritic
+			if !shard.State.IsTerminal() {
 				return false, nil
 			}
 		}

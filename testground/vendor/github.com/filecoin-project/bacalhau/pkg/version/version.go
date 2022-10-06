@@ -26,11 +26,11 @@ import (
 
 // Get returns the overall codebase version. It's for detecting
 // what code a binary was built from.
-func Get() *model.VersionInfo {
+func Get() *model.BuildVersionInfo {
 	// These variables typically come from -ldflags settings and in
 	// their absence fallback to the settings in pkg/version/base.go
 
-	versionInfo := &model.VersionInfo{}
+	versionInfo := &model.BuildVersionInfo{}
 	s, err := semver.NewVersion(GITVERSION)
 	if err != nil {
 		log.Fatal().Msgf("Could not parse GITVERSION during build - %s", GITVERSION)
