@@ -197,7 +197,6 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 		jobID,
 		totalShards,
 		WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		WaitForJobStates(map[model.JobStateType]int{

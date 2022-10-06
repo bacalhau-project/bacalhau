@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,6 +23,8 @@ type JobEvent struct {
 
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
+
+var nodeIDFieldName = "NodeID"
 
 func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 	zerolog.TimeFieldFormat = time.RFC3339Nano
@@ -49,14 +52,18 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 		zerolog.CallerFieldName,
 		zerolog.MessageFieldName}}
 
-	textWriter.FormatMessage = func(i interface{}) string {
-		return fmt.Sprintf("%s", i)
-	}
+	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
+	//  Adding the fields to the parts section didn't help as it just printed the fields twice.
 	textWriter.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("%s:", i)
+		return fmt.Sprintf("[%s:", i)
 	}
+
 	textWriter.FormatFieldValue = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("%s", i))
+		// don't print nil in case field value wasn't preset. e.g. no nodeID
+		if i == nil {
+			i = ""
+		}
+		return fmt.Sprintf("%s]", i)
 	}
 
 	zerolog.CallerMarshalFunc = func(file string, line int) string {
@@ -99,8 +106,17 @@ func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
 }
 
-func LoggerWithNodeAndJobInfo(nodeID, jobID string) zerolog.Logger {
-	return log.With().Str("N", nodeID).Str("J", jobID).Logger()
+func LoggerWithNodeID(nodeID string) zerolog.Logger {
+	if len(nodeID) > 8 { //nolint:gomnd // 8 is a magic number
+		nodeID = nodeID[:8]
+	}
+	return log.With().Str(nodeIDFieldName, nodeID).Logger()
+}
+
+// return a context with nodeID is added to the logging context.
+func ContextWithNodeIDLogger(ctx context.Context, nodeID string) context.Context {
+	l := LoggerWithNodeID(nodeID)
+	return l.WithContext(ctx)
 }
 
 func LoggerTestLogger(logBuffer *bytes.Buffer) zerolog.Logger {

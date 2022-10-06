@@ -3,11 +3,11 @@ package devstack
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	executor_util "github.com/filecoin-project/bacalhau/pkg/executor/util"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	publisher_util "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -18,7 +18,7 @@ import (
 )
 
 // Noop implementations of node factories used to mock certain components, which is useful for testing.
-func NewNoopNodeDepdencyInjector() node.NodeDependencyInjector {
+func NewNoopNodeDependencyInjector() node.NodeDependencyInjector {
 	return node.NodeDependencyInjector{
 		StorageProvidersFactory: NewNoopStorageProvidersFactory(),
 		ExecutorsFactory:        NewNoopExecutorsFactory(),
@@ -27,14 +27,20 @@ func NewNoopNodeDepdencyInjector() node.NodeDependencyInjector {
 	}
 }
 
+func NewNoopNode(
+	ctx context.Context,
+	config node.NodeConfig) (*node.Node, error) {
+	return node.NewNode(ctx, config, NewNoopNodeDependencyInjector())
+}
+
 type NoopStorageProvidersFactory struct {
 	config noop_storage.StorageConfig
 }
 
 func (f *NoopStorageProvidersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	return executor_util.NewNoopStorageProviders(ctx, nodeConfig.CleanupManager, f.config)
+	nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
+	return executor_util.NewNoopStorageProvider(ctx, nodeConfig.CleanupManager, f.config)
 }
 
 func NewNoopStorageProvidersFactory() *NoopStorageProvidersFactory {
@@ -51,7 +57,7 @@ type NoopExecutorsFactory struct {
 
 func (f *NoopExecutorsFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig) (map[model.EngineType]executor.Executor, error) {
+	nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
 	return executor_util.NewNoopExecutors(ctx, nodeConfig.CleanupManager, f.config)
 }
 
@@ -67,9 +73,8 @@ type NoopVerifiersFactory struct{}
 
 func (f *NoopVerifiersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig,
-	controller *controller.Controller) (map[model.VerifierType]verifier.Verifier, error) {
-	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+	nodeConfig node.NodeConfig) (verifier.VerifierProvider, error) {
+	return verifier_util.NewNoopVerifiers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 
 func NewNoopVerifiersFactory() *NoopVerifiersFactory {
@@ -80,9 +85,8 @@ type NoopPublishersFactory struct{}
 
 func (f *NoopPublishersFactory) Get(
 	ctx context.Context,
-	nodeConfig node.NodeConfig,
-	controller *controller.Controller) (map[model.PublisherType]publisher.Publisher, error) {
-	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, controller.GetStateResolver())
+	nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
+	return publisher_util.NewNoopPublishers(ctx, nodeConfig.CleanupManager, localdb.GetStateResolver(nodeConfig.LocalDB))
 }
 
 func NewNoopPublishersFactory() *NoopPublishersFactory {

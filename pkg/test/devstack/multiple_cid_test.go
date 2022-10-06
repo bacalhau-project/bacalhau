@@ -113,7 +113,6 @@ func (suite *MultipleCIDSuite) TestMultipleCIDs() {
 		submittedJob.ID,
 		1,
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
@@ -225,7 +224,6 @@ func (suite *MultipleCIDSuite) TestMultipleURLs() {
 		submittedJob.ID,
 		1,
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{
@@ -329,7 +327,6 @@ func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
 		submittedJob.ID,
 		1,
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{

@@ -25,13 +25,13 @@ func NewDockerClient() (*dockerclient.Client, error) {
 	return dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 }
 
-func IsInstalled(dockerClient *dockerclient.Client) bool {
-	_, err := dockerClient.Info(context.Background())
+func IsInstalled(ctx context.Context, dockerClient *dockerclient.Client) bool {
+	_, err := dockerClient.Info(ctx)
 	return err == nil
 }
 
-func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Container, error) {
-	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
+func GetContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (*types.Container, error) {
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{
 		All: true,
 	})
 	if err != nil {
@@ -59,9 +59,11 @@ func GetContainer(dockerClient *dockerclient.Client, nameOrID string) (*types.Co
 	return nil, nil
 }
 
-func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelValue string) ([]types.Container, error) {
+func GetContainersWithLabel(ctx context.Context,
+	dockerClient *dockerclient.Client,
+	labelName, labelValue string) ([]types.Container, error) {
 	results := []types.Container{}
-	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{
 		All: true,
 	})
 
@@ -82,8 +84,8 @@ func GetContainersWithLabel(dockerClient *dockerclient.Client, labelName, labelV
 	return results, nil
 }
 
-func GetLogs(dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
-	container, err := GetContainer(dockerClient, nameOrID)
+func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr string, err error) {
+	container, err := GetContainer(ctx, dockerClient, nameOrID)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get container: %w", err)
 	}
@@ -91,7 +93,7 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr
 		return "", "", fmt.Errorf("no container found: %s", nameOrID)
 	}
 
-	logsReader, err := dockerClient.ContainerLogs(context.Background(), container.ID, types.ContainerLogsOptions{
+	logsReader, err := dockerClient.ContainerLogs(ctx, container.ID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	})
@@ -115,17 +117,15 @@ func GetLogs(dockerClient *dockerclient.Client, nameOrID string) (stdout, stderr
 	return stdoutBuffer.String(), stderrBuffer.String(), nil
 }
 
-func RemoveContainer(dockerClient *dockerclient.Client, nameOrID string) error {
-	ctx := context.Background()
-
-	container, err := GetContainer(dockerClient, nameOrID)
+func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
+	container, err := GetContainer(ctx, dockerClient, nameOrID)
 	if err != nil {
 		return err
 	}
 	if container == nil {
 		return nil
 	}
-	log.Debug().Msgf("Container Stop: %s", container.ID)
+	log.Ctx(ctx).Debug().Msgf("Container Stop: %s", container.ID)
 	timeout := time.Millisecond * 100
 	err = dockerClient.ContainerStop(ctx, container.ID, &timeout)
 	if err != nil {
@@ -141,13 +141,13 @@ func RemoveContainer(dockerClient *dockerclient.Client, nameOrID string) error {
 	return nil
 }
 
-func WaitForContainer(client *dockerclient.Client, id string, maxAttempts int, delay time.Duration) error {
+func WaitForContainer(ctx context.Context, client *dockerclient.Client, id string, maxAttempts int, delay time.Duration) error {
 	waiter := &system.FunctionWaiter{
 		Name:        fmt.Sprintf("wait for container to be running: %s", id),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
 		Handler: func() (bool, error) {
-			container, err := GetContainer(client, id)
+			container, err := GetContainer(ctx, client, id)
 			if err != nil {
 				return false, err
 			}
@@ -160,14 +160,19 @@ func WaitForContainer(client *dockerclient.Client, id string, maxAttempts int, d
 	return waiter.Wait()
 }
 
-func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts int, delay time.Duration, findString string) (string, error) {
+func WaitForContainerLogs(ctx context.Context,
+	client *dockerclient.Client,
+	id string,
+	maxAttempts int,
+	delay time.Duration,
+	findString string) (string, error) {
 	lastLogs := ""
 	waiter := &system.FunctionWaiter{
 		Name:        fmt.Sprintf("wait for container to be running: %s", id),
 		MaxAttempts: maxAttempts,
 		Delay:       delay,
 		Handler: func() (bool, error) {
-			container, err := GetContainer(client, id)
+			container, err := GetContainer(ctx, client, id)
 			if err != nil {
 				return false, err
 			}
@@ -177,7 +182,7 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 			if container.State != "running" {
 				return false, nil
 			}
-			stdout, stderr, err := GetLogs(client, id)
+			stdout, stderr, err := GetLogs(ctx, client, id)
 			if err != nil {
 				return false, err
 			}
@@ -189,9 +194,9 @@ func WaitForContainerLogs(client *dockerclient.Client, id string, maxAttempts in
 	return lastLogs, err
 }
 
-func PullImage(dockerClient *dockerclient.Client, image string) error {
+func PullImage(ctx context.Context, dockerClient *dockerclient.Client, image string) error {
 	imagePullStream, err := dockerClient.ImagePull(
-		context.Background(),
+		ctx,
 		image,
 		types.ImagePullOptions{},
 	)

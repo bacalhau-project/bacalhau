@@ -12,12 +12,10 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -77,11 +75,20 @@ func InitConfig() error {
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
 // NOTE: this will overwrite the global config cache if called twice.
-func InitConfigForTesting(t *testing.T) {
+func InitConfigForTesting() error {
 	configDir, err := ioutil.TempDir("", "bacalhau-test")
-	require.NoError(t, err)
-	require.NoError(t, os.Setenv("BACALHAU_DIR", configDir))
-	require.NoError(t, InitConfig())
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("BACALHAU_DIR", configDir)
+	if err != nil {
+		return err
+	}
+	err = InitConfig()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // SignForClient signs a message with the user's private ID key.

@@ -6,6 +6,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
+// Returns a executor for the given engine type
+type ExecutorProvider interface {
+	AddExecutor(ctx context.Context, engineType model.Engine, executor Executor) error
+	GetExecutor(ctx context.Context, engineType model.Engine) (Executor, error)
+}
+
 // Executor represents an execution provider, which can execute jobs on some
 // kind of backend, such as a docker daemon.
 type Executor interface {
@@ -27,5 +33,5 @@ type Executor interface {
 		ctx context.Context,
 		shard model.JobShard,
 		resultsDir string,
-	) error
+	) (*model.RunCommandResult, error)
 }

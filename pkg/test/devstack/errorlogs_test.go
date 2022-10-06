@@ -99,7 +99,6 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		submittedJob.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{

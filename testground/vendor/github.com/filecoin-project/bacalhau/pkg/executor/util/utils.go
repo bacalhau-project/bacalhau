@@ -29,41 +29,41 @@ type StandardExecutorOptions struct {
 	Storage    StandardStorageProviderOptions
 }
 
-func NewStandardStorageProviders(
+func NewStandardStorageProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options StandardStorageProviderOptions,
-) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	ipfsAPICopyStorage, err := apicopy.NewStorageProvider(cm, options.IPFSMultiaddress)
+) (storage.StorageProvider, error) {
+	ipfsAPICopyStorage, err := apicopy.NewStorage(cm, options.IPFSMultiaddress)
 	if err != nil {
 		return nil, err
 	}
 
-	urlDownloadStorage, err := urldownload.NewStorageProvider(cm)
+	urlDownloadStorage, err := urldownload.NewStorage(cm)
 	if err != nil {
 		return nil, err
 	}
 
-	filecoinUnsealedStorage, err := filecoinunsealed.NewStorageProvider(cm, options.FilecoinUnsealedPath)
+	filecoinUnsealedStorage, err := filecoinunsealed.NewStorage(cm, options.FilecoinUnsealedPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var useIPFSDriver storage.StorageProvider = ipfsAPICopyStorage
+	var useIPFSDriver storage.Storage = ipfsAPICopyStorage
 
 	// if we are using a FilecoinUnsealedPath then construct a combo
 	// driver that will give preference to the filecoin unsealed driver
 	// if the cid is deemed to be local
 	if options.FilecoinUnsealedPath != "" {
-		comboDriver, err := combo.NewStorageProvider(
+		comboDriver, err := combo.NewStorage(
 			cm,
-			func(ctx context.Context) ([]storage.StorageProvider, error) {
-				return []storage.StorageProvider{
+			func(ctx context.Context) ([]storage.Storage, error) {
+				return []storage.Storage{
 					filecoinUnsealedStorage,
 					ipfsAPICopyStorage,
 				}, nil
 			},
-			func(ctx context.Context, spec model.StorageSpec) (storage.StorageProvider, error) {
+			func(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {
 				filecoinUnsealedHasCid, err := filecoinUnsealedStorage.HasStorageLocally(ctx, spec)
 				if err != nil {
 					return ipfsAPICopyStorage, err
@@ -74,7 +74,7 @@ func NewStandardStorageProviders(
 					return ipfsAPICopyStorage, nil
 				}
 			},
-			func(ctx context.Context) (storage.StorageProvider, error) {
+			func(ctx context.Context) (storage.Storage, error) {
 				return ipfsAPICopyStorage, nil
 			},
 		)
@@ -86,57 +86,61 @@ func NewStandardStorageProviders(
 		useIPFSDriver = comboDriver
 	}
 
-	return map[model.StorageSourceType]storage.StorageProvider{
+	return storage.NewMappedStorageProvider(map[model.StorageSourceType]storage.Storage{
 		model.StorageSourceIPFS:             useIPFSDriver,
 		model.StorageSourceURLDownload:      urlDownloadStorage,
 		model.StorageSourceFilecoinUnsealed: filecoinUnsealedStorage,
-	}, nil
+	}), nil
 }
 
-func NewNoopStorageProviders(
+func NewNoopStorageProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	config noop_storage.StorageConfig,
-) (map[model.StorageSourceType]storage.StorageProvider, error) {
-	noopStorage, err := noop_storage.NewStorageProvider(ctx, cm, config)
+) (storage.StorageProvider, error) {
+	noopStorage, err := noop_storage.NewNoopStorage(ctx, cm, config)
 	if err != nil {
 		return nil, err
 	}
-	return map[model.StorageSourceType]storage.StorageProvider{
-		model.StorageSourceIPFS:        noopStorage,
-		model.StorageSourceURLDownload: noopStorage,
-	}, nil
+	return noop_storage.NewNoopStorageProvider(noopStorage), nil
 }
 
-func NewStandardExecutors(
+func NewStandardExecutorProvider(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
-) (map[model.EngineType]executor.Executor, error) {
-	storageProviders, err := NewStandardStorageProviders(ctx, cm, executorOptions.Storage)
+) (executor.ExecutorProvider, error) {
+	storageProviders, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
 	if err != nil {
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewExecutor(cm, executorOptions.DockerID, storageProviders)
+	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProviders)
 
 	if err != nil {
 		return nil, err
 	}
 
-	executors := map[model.EngineType]executor.Executor{
+	executors := executor.NewTypeExecutorProvider(map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
-	}
+	})
 
 	// language executors wrap other executors, so pass them a reference to all
 	// the executors so they can look up the ones they need
-	exLang, err := language.NewExecutor(cm, executors)
-	executors[model.EngineLanguage] = exLang
+	exLang, err := language.NewExecutor(ctx, cm, executors)
 	if err != nil {
 		return nil, err
 	}
-	exPythonWasm, err := pythonwasm.NewExecutor(cm, executors)
-	executors[model.EnginePythonWasm] = exPythonWasm
+	err = executors.AddExecutor(ctx, model.EngineLanguage, exLang)
+	if err != nil {
+		return nil, err
+	}
+
+	exPythonWasm, err := pythonwasm.NewExecutor(ctx, cm, executors)
+	if err != nil {
+		return nil, err
+	}
+	err = executors.AddExecutor(ctx, model.EnginePythonWasm, exPythonWasm)
 	if err != nil {
 		return nil, err
 	}
@@ -148,15 +152,10 @@ func NewNoopExecutors(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	config noop_executor.ExecutorConfig,
-) (map[model.EngineType]executor.Executor, error) {
-	noopExecutor, err := noop_executor.NewExecutorWithConfig(config)
-
+) (executor.ExecutorProvider, error) {
+	noopExecutor, err := noop_executor.NewNoopExecutorWithConfig(config)
 	if err != nil {
 		return nil, err
 	}
-
-	return map[model.EngineType]executor.Executor{
-		model.EngineDocker: noopExecutor,
-		model.EngineNoop:   noopExecutor,
-	}, nil
+	return noop_executor.NewNoopExecutorProvider(noopExecutor), nil
 }
