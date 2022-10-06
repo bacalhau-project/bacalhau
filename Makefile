@@ -24,7 +24,7 @@ endif
 # Env Variables
 export GO111MODULE = on
 export GO = go
-export CGO = 0
+export CGO_ENABLED = 1
 export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
@@ -33,6 +33,7 @@ BINARY_NAME = bacalhau
 
 ifeq ($(GOOS),windows)
 BINARY_NAME := ${BINARY_NAME}.exe
+CC = gcc.exe
 endif
 
 BINARY_PATH = bin/${GOOS}_${GOARCH}/${BINARY_NAME}
@@ -42,10 +43,6 @@ COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
-
-# Temp dirs
-TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
-TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 
 PRIVATE_KEY_FILE := /tmp/private.pem
@@ -59,18 +56,29 @@ define BUILD_FLAGS
 -X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
 endef
 
+# If we are cross-compiling, bring in the appropriate compilers
+ifneq ($(GOOS)_$(GOARCH),$(OS)_$(ARCH))
+compile/${OS}/$(GOOS)_$(GOARCH).env:
+	$(info No compilation method for ${GOOS}_${GOARCH} on host ${OS})
+
+include compile/${OS}/${GOOS}_${GOARCH}.env
+export CC
+endif
+
 all: build
 
 # Run go fmt against code
+.PHONY: fmt
 fmt:
-	@${GO} fmt ./cmd/...
-	@${GO} fmt ./pkg/...
+	${GO} fmt ./cmd/...
+	${GO} fmt ./pkg/...
 
 
 # Run go vet against code
+.PHONY: vet
 vet:
-	@${GO} vet ./cmd/...
-	@${GO} vet ./pkg/...
+	${GO} vet ./cmd/...
+	${GO} vet ./pkg/...
 
 
 ## Run all pre-commit hooks
@@ -85,7 +93,7 @@ precommit:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau
+build: fmt vet build-bacalhau 
 
 .PHONY: build-dev
 build-dev: build
@@ -95,8 +103,10 @@ build-dev: build
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
-build-bacalhau: fmt vet
-	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
+build-bacalhau: ${BINARY_PATH}
+
+${BINARY_PATH}: $(shell git ls-files cmd) $(shell git ls-files pkg)
+	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
 
 ################################################################################
 # Target: build-docker-images
@@ -115,29 +125,22 @@ build-docker-images:
 # Target: build-bacalhau-tgz
 ################################################################################
 .PHONY: build-bacalhau-tgz
-build-bacalhau-tgz:
-	@echo "CWD: $(shell pwd)"
-	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
-	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
-	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp ${BINARY_PATH} $(TMPARTIFACTDIR)/$(PACKAGE)/${BINARY_NAME}
-	cd $(TMPRELEASEWORKINGDIR)
-	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
-	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
-	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
-	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
-	@echo "export ARTIFACT_DIR=$(TMPARTIFACTDIR)" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
+build-bacalhau-tgz: dist/${PACKAGE}.tar.gz dist/${PACKAGE}.tar.gz.signature.sha256
+
+dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
+	tar cvzf $@ -C $(dir $(BINARY_PATH)) $(notdir ${BINARY_PATH})
+
+dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
 ################################################################################
 # Target: clean
 ################################################################################
 .PHONY: clean
 clean:
-	go clean
+	${GO} clean
+	${RM} -r bin/*
+	${RM} dist/bacalhau_*
 
 
 ################################################################################
@@ -251,8 +254,7 @@ check-diff:
 # Target: test-test-and-report
 ################################################################################
 .PHONY: test-and-report
-test-and-report: build-bacalhau
-	CGO_ENABLED=${CGO} \
+test-and-report: ${BINARY_PATH}
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 			--junitfile unittests.xml \
@@ -264,7 +266,7 @@ test-and-report: build-bacalhau
 
 .PHONY: generate
 generate:
-	CGO_ENABLED=0 GOARCH=$(shell go env GOARCH) GO111MODULE=${GO111MODULE} ${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
+	${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
 	echo "[OK] Files added to pipeline template directory!"
 
 .PHONY: security
