@@ -23,8 +23,8 @@ type StorageSpec struct {
 	// The path that the spec's data should be mounted on, where it makes
 	// sense (for example, in a Docker storage spec this will be a filesystem
 	// path).
-	// TODO: #668 Replace with "Path" (note the caps) for yaml/json when we update the n.js file
-	Path string `json:"path,omitempty"`
+	// TODO: #668 Replace with "MountPath" (note the caps) for yaml/json when we update the n.js file
+	MountPath string `json:"path,omitempty"`
 
 	// Additional properties specific to each driver
 	Metadata map[string]string `json:"Metadata,omitempty"`

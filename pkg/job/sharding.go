@@ -48,14 +48,14 @@ func ApplyGlobPattern(
 	usePattern := prependSlash(pattern)
 	useBasePath := prependSlash(basePath)
 	for _, file := range files {
-		file.Path = prependSlash(file.Path)
+		file.MountPath = prependSlash(file.MountPath)
 
-		usePath := file.Path
+		usePath := file.MountPath
 
 		// remove the base path from the file path because
 		// we will apply the glob pattern from below the base path
 		if useBasePath != "" {
-			usePath = strings.TrimPrefix(file.Path, useBasePath)
+			usePath = strings.TrimPrefix(file.MountPath, useBasePath)
 		}
 
 		matches, err := doublestar.Match(usePattern, usePath)

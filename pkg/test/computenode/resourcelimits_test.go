@@ -510,7 +510,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 					{
 						StorageSource: model.StorageSourceIPFS,
 						CID:           cid,
-						Path:          "/data/file.txt",
+						MountPath:     "/data/file.txt",
 					},
 				},
 				Docker: model.JobSpecDocker{
@@ -552,7 +552,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
 		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           cid,
-			Path:          "/",
+			MountPath:     "/",
 		})
 
 		require.NoError(suite.T(), err)

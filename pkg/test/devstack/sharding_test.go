@@ -127,7 +127,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	require.NoError(suite.T(), err)
 
 	results, err := ipfsProvider.Explode(ctx, model.StorageSpec{
-		Path:          "/input",
+		MountPath:     "/input",
 		StorageSource: model.StorageSourceIPFS,
 		CID:           directoryCid,
 	})
@@ -135,7 +135,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 
 	resultPaths := []string{}
 	for _, result := range results {
-		resultPaths = append(resultPaths, result.Path)
+		resultPaths = append(resultPaths, result.MountPath)
 	}
 
 	// the top level node is en empty path
@@ -209,14 +209,14 @@ func (suite *ShardingSuite) TestEndToEnd() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           directoryCid,
-				Path:          "/input",
+				MountPath:     "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "results",
-				Path:          "/output",
+				MountPath:     "/output",
 			},
 		},
 		Sharding: model.JobShardingConfig{
@@ -355,7 +355,7 @@ func (suite *ShardingSuite) TestNoShards() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           directoryCid,
-				Path:          "/input",
+				MountPath:     "/input",
 			},
 		},
 		Outputs: []model.StorageSpec{},
@@ -432,7 +432,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           directoryCid,
-				Path:          "/inputs",
+				MountPath:     "/inputs",
 			},
 		},
 		Outputs: []model.StorageSpec{},

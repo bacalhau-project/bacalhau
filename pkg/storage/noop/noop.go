@@ -113,7 +113,7 @@ func (s *NoopStorage) Upload(ctx context.Context, localPath string) (model.Stora
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceIPFS,
 		CID:           "test",
-		Path:          "/",
+		MountPath:     "/",
 	}, nil
 }
 

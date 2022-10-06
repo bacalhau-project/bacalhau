@@ -20,7 +20,7 @@ func GetJobSpec(cid string) model.Spec {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				CID:           cid,
-				Path:          "/test_file.txt",
+				MountPath:     "/test_file.txt",
 			},
 		}
 	}

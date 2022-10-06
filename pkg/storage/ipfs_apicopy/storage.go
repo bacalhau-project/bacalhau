@@ -92,7 +92,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	var volume storage.StorageVolume
 	volume, err = dockerIPFS.getFileFromIPFS(ctx, storageSpec)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.MountPath, err)
 	}
 
 	return volume, nil
@@ -129,7 +129,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 	if err != nil {
 		return []model.StorageSpec{}, err
 	}
-	basePath := strings.TrimPrefix(spec.Path, "/")
+	basePath := strings.TrimPrefix(spec.MountPath, "/")
 	basePath = strings.TrimSuffix(basePath, "/")
 	specs := []model.StorageSpec{}
 	seenPaths := map[string]bool{}
@@ -147,7 +147,7 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 		specs = append(specs, model.StorageSpec{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           node.Cid.String(),
-			Path:          usePath,
+			MountPath:     usePath,
 		})
 	}
 	return specs, nil
@@ -179,7 +179,7 @@ func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageS
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
-		Target: storageSpec.Path,
+		Target: storageSpec.MountPath,
 	}
 
 	return volume, nil

@@ -182,7 +182,7 @@ func (e *Executor) RunShard(
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 		}
 
-		if output.Path == "" {
+		if output.MountPath == "" {
 			err = fmt.Errorf("output volume has no path: %+v", output)
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 		}
@@ -206,7 +206,7 @@ func (e *Executor) RunShard(
 			Source: srcd,
 
 			// the path of the output volume is from the perspective of inside the container
-			Target: output.Path,
+			Target: output.MountPath,
 		})
 	}
 

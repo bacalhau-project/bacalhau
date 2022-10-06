@@ -102,7 +102,7 @@ func singleFileSetupStorageWithData(
 			{
 				StorageSource: driverName,
 				CID:           fileCid,
-				Path:          mountPath,
+				MountPath:     mountPath,
 			},
 		}
 		log.Debug().Msgf("Added file with cid %s", fileCid)
@@ -125,7 +125,7 @@ func singleFileSetupStorageWithFile(
 			{
 				StorageSource: driverName,
 				CID:           fileCid,
-				Path:          mountPath,
+				MountPath:     mountPath,
 			},
 		}
 		return inputStorageSpecs, nil

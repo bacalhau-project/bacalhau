@@ -59,8 +59,8 @@ func CatFileToVolume() TestCase {
 		),
 		Outputs: []model.StorageSpec{
 			{
-				Name: "test",
-				Path: "/output_data",
+				Name:      "test",
+				MountPath: "/output_data",
 			},
 		},
 		GetJobSpec: func() model.JobSpecDocker {

@@ -155,7 +155,7 @@ func (suite *DownloaderSuite) TestFullOutput() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
-				Path:          "/outputs",
+				MountPath:     "/outputs",
 			},
 		},
 		[]model.StorageSpec{
@@ -190,7 +190,7 @@ func (suite *DownloaderSuite) TestOutputWithNoStdFiles() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
-				Path:          "/outputs",
+				MountPath:     "/outputs",
 			},
 		},
 		[]model.StorageSpec{
@@ -226,7 +226,7 @@ func (suite *DownloaderSuite) TestOutputFromMultipleShards() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "outputs",
-				Path:          "/outputs",
+				MountPath:     "/outputs",
 			},
 		},
 		[]model.StorageSpec{
@@ -265,7 +265,7 @@ func (suite *DownloaderSuite) TestCustomVolumeNames() {
 			{
 				StorageSource: model.StorageSourceIPFS,
 				Name:          "secrets",
-				Path:          "/sensitive",
+				MountPath:     "/sensitive",
 				// TODO: Path is currently ignored but is set on Docker jobs?
 			},
 		},

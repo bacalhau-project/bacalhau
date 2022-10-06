@@ -30,7 +30,7 @@ func (suite *FilecoinUnsealedSuite) prepareCid(cid string) model.StorageSpec {
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceFilecoinUnsealed,
 		CID:           cid,
-		Path:          folderPath,
+		MountPath:     folderPath,
 	}
 }
 
@@ -85,7 +85,7 @@ func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
 	cid := "123"
 	fileContents := "hello world"
 	spec := suite.prepareCid(cid)
-	filePath := filepath.Join(spec.Path, "file")
+	filePath := filepath.Join(spec.MountPath, "file")
 	err := os.WriteFile(filePath, []byte(fileContents), 0644)
 	require.NoError(suite.T(), err)
 	volumeSize, err := driver.GetVolumeSize(ctx, spec)
@@ -98,7 +98,7 @@ func (suite *FilecoinUnsealedSuite) TestPrepareStorage() {
 	spec := suite.prepareCid(cid)
 	volume, err := driver.PrepareStorage(ctx, spec)
 	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), spec.Path, volume.Source, "the volume source should be the same as the spec path")
+	require.Equal(suite.T(), spec.MountPath, volume.Source, "the volume source should be the same as the spec path")
 }
 
 func (suite *FilecoinUnsealedSuite) TestExplode() {

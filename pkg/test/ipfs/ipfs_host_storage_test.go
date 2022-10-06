@@ -101,7 +101,7 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 	storage := model.StorageSpec{
 		StorageSource: engine,
 		CID:           fileCid,
-		Path:          "/data/file.txt",
+		MountPath:     "/data/file.txt",
 	}
 
 	// does the storage client think we have the cid locally?
@@ -161,7 +161,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	storage := model.StorageSpec{
 		StorageSource: engine,
 		CID:           folderCid,
-		Path:          "/data/folder",
+		MountPath:     "/data/folder",
 	}
 
 	// does the storage client think we have the cid locally?

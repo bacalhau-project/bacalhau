@@ -127,7 +127,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputPath,
-		Target: storageSpec.Path,
+		Target: storageSpec.MountPath,
 	}
 
 	return volume, nil
@@ -167,7 +167,7 @@ func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) 
 		{
 			Name:          spec.Name,
 			StorageSource: model.StorageSourceURLDownload,
-			Path:          spec.Path,
+			MountPath:     spec.MountPath,
 			URL:           spec.URL,
 		},
 	}, nil
@@ -183,7 +183,11 @@ func IsURLSupported(rawURL string) (*url.URL, error) {
 		return nil, fmt.Errorf("URLs must begin with 'http' or 'https'. The submitted one began with %s", u.Scheme)
 	}
 
-	if path.Base(u.Path) == "" {
+	basePath := path.Base(u.Path)
+
+	// Need to check for both because a bare host
+	// Like http://localhost/ gets converted to "." by path.Base
+	if basePath == "" || u.Path == "" {
 		return nil, fmt.Errorf("URL must end with a file name")
 	}
 
