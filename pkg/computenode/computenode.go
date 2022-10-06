@@ -218,8 +218,7 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 
 	hasShardReachedCapacity := jobutils.HasShardReachedCapacity(ctx, j, jobState, shard.Index)
 	if hasShardReachedCapacity {
-		log.Ctx(ctx).Debug().Msgf("node %s: shard %s has already reached capacity - not bidding", n.ID, shard)
-		shardState.Fail(ctx, "shard has reached capacity")
+		shardState.Cancel(ctx, "shard has reached capacity")
 		return
 	}
 
