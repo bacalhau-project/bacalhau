@@ -61,9 +61,8 @@ var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 
 // Struct for tracking what's been printedEvents
 type printedEvents struct {
-	jobEventType model.JobEventType
-	order        int
-	printed      bool
+	order   int
+	printed bool
 }
 
 type eventStruct struct {
@@ -481,8 +480,8 @@ To get the more information, run:
 			}
 
 			// Look for any terminal event in all the events. If it's done, we're done.
-			for _, je := range jobEvents {
-				if eventsWorthPrinting[je.EventName].terminal {
+			for i := range jobEvents {
+				if eventsWorthPrinting[jobEvents[i].EventName].terminal {
 					RootCmd.Print(moreInformationString)
 					return nil
 				}
