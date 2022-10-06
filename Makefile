@@ -56,6 +56,15 @@ define BUILD_FLAGS
 -X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
 endef
 
+# If we are cross-compiling, bring in the appropriate compilers
+ifneq ($(GOOS)_$(GOARCH),$(OS)_$(ARCH))
+compile/${OS}/$(GOOS)_$(GOARCH).env:
+	$(info No compilation method for ${GOOS}_${GOARCH} on host ${OS})
+
+include compile/${OS}/${GOOS}_${GOARCH}.env
+export CC
+endif
+
 all: build
 
 # Run go fmt against code
