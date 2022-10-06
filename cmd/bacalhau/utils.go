@@ -436,7 +436,7 @@ func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 		return errors.New("No job returned from the server.")
 	}
 	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
-RootCmd.Sprintf(`
+	RootCmd.Printf(`
 
 To get more information at any time, run:
    bacalhau describe %s
@@ -452,8 +452,6 @@ To get more information at any time, run:
 			order:   int(jobEventType),
 		}
 	}
-
-	moreInformationString := 
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
@@ -485,7 +483,6 @@ To get more information at any time, run:
 			// Look for any terminal event in all the events. If it's done, we're done.
 			for i := range jobEvents {
 				if eventsWorthPrinting[jobEvents[i].EventName].terminal {
-					RootCmd.Print(moreInformationString)
 					return nil
 				}
 			}
