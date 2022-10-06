@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,12 +96,6 @@ func loopOverResults(ctx context.Context,
 	if err != nil {
 		return err
 	}
-
-	scratchFolder, err := ioutil.TempDir("", "bacalhau-ipfs-job-downloader")
-	if err != nil {
-		return err
-	}
-	log.Ctx(ctx).Debug().Msgf("Created download scratch folder: %s", scratchFolder)
 
 	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
 	if err != nil {

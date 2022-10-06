@@ -1,6 +1,8 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // JobStateType is the state of a job on a particular node. Note that the job
 // will typically have different states on different nodes.

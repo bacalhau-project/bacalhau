@@ -56,6 +56,7 @@ type DockerRunOptions struct {
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
 	Env              []string // Array of environment variables
+	IDOnly           bool     // Only print the job ID
 	Concurrency      int      // Number of concurrent jobs to run
 	Confidence       int      // Minimum number of nodes that must agree on a verification result
 	MinBids          int      // Minimum number of bids before they will be accepted (at random)
@@ -91,6 +92,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		InputVolumes:       []string{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
+		IDOnly:             false,
 		Concurrency:        1,
 		Confidence:         0,
 		MinBids:            0, // 0 means no minimum before bidding
@@ -133,9 +135,9 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	//nolint:lll // Documentation, ok if long.
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputUrls, "input-urls", "u", ODR.InputUrls,
-		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz'
-		mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz')
-		and supports HTTP and HTTPS.`,
+		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
+		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
+		and supports both HTTP and HTTPS.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputVolumes, "input-volumes", "v", ODR.InputVolumes,
@@ -215,6 +217,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
+	)
+
 	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
 
@@ -251,10 +257,12 @@ var dockerRunCmd = &cobra.Command{
 		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
+			return nil
 		}
 		err = jobutils.VerifyJob(j)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+			return nil
 		}
 		if ODR.DryRun {
 			// Converting job to yaml
@@ -262,6 +270,7 @@ var dockerRunCmd = &cobra.Command{
 			yamlBytes, err = yaml.Marshal(j)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
+				return nil
 			}
 			cmd.Print(string(yamlBytes))
 			return nil
@@ -273,10 +282,12 @@ var dockerRunCmd = &cobra.Command{
 			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
+			ODR.IDOnly,
 		)
 
 		if err != nil {
 			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return nil
 		}
 
 		return nil

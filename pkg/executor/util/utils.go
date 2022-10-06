@@ -21,6 +21,7 @@ import (
 type StandardStorageProviderOptions struct {
 	IPFSMultiaddress     string
 	FilecoinUnsealedPath string
+	DownloadPath         string
 }
 
 type StandardExecutorOptions struct {

@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // a storage driver runs the downloads content
@@ -45,28 +44,21 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 		LocalDir:   dir,
 	}
 
-	log.Debug().Msgf("IPFS API Copy driver created with address: %s", ipfsAPIAddress)
+	log.Trace().Msgf("IPFS API Copy driver created with address: %s", ipfsAPIAddress)
 	return storageHandler, nil
 }
 
 func (dockerIPFS *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := newSpan(ctx, "IsInstalled")
-	defer span.End()
-
 	_, err := dockerIPFS.IPFSClient.ID(ctx)
 	return err == nil, err
 }
 
 func (dockerIPFS *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
-	ctx, span := newSpan(ctx, "HasStorageLocally")
-	defer span.End()
 	return dockerIPFS.IPFSClient.HasCID(ctx, volume.CID)
 }
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
 func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
-	ctx, span := newSpan(ctx, "GetVolumeResourceUsage")
-	defer span.End()
 	result, err := system.Timeout(config.GetVolumeSizeRequestTimeout(), func() (interface{}, error) {
 		return dockerIPFS.IPFSClient.GetCidSize(ctx, volume.CID)
 	})
@@ -85,7 +77,7 @@ func (dockerIPFS *StorageProvider) GetVolumeSize(ctx context.Context, volume mod
 }
 
 func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
-	ctx, span := newSpan(ctx, "PrepareStorage")
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.PrepareStorage")
 	defer span.End()
 
 	stat, err := dockerIPFS.IPFSClient.Stat(ctx, storageSpec.CID)
@@ -98,7 +90,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 	}
 
 	var volume storage.StorageVolume
-	volume, err = dockerIPFS.copyFile(ctx, storageSpec)
+	volume, err = dockerIPFS.getFileFromIPFS(ctx, storageSpec)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Path, err)
 	}
@@ -112,6 +104,9 @@ func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSp
 }
 
 func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.Upload")
+	defer span.End()
+
 	cid, err := dockerIPFS.IPFSClient.Put(ctx, localPath)
 	if err != nil {
 		return model.StorageSpec{}, err
@@ -123,6 +118,9 @@ func (dockerIPFS *StorageProvider) Upload(ctx context.Context, localPath string)
 }
 
 func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.Explode")
+	defer span.End()
+
 	treeNode, err := dockerIPFS.IPFSClient.GetTreeNode(ctx, spec.CID)
 	if err != nil {
 		return []model.StorageSpec{}, err
@@ -155,7 +153,10 @@ func (dockerIPFS *StorageProvider) Explode(ctx context.Context, spec model.Stora
 	return specs, nil
 }
 
-func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+func (dockerIPFS *StorageProvider) getFileFromIPFS(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
+	ctx, span := system.GetTracer().Start(ctx, "storage/ipfs/apicopy.copyFile")
+	defer span.End()
+
 	outputPath := filepath.Join(dockerIPFS.LocalDir, storageSpec.CID)
 
 	// If the output path already exists, we already have the data, as
@@ -182,10 +183,6 @@ func (dockerIPFS *StorageProvider) copyFile(ctx context.Context, storageSpec mod
 	}
 
 	return volume, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "storage/ipfs/api_copy", apiName)
 }
 
 // Compile time interface check:

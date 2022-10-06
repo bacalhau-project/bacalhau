@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,29 +36,35 @@ func TestMultipleCIDSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *MultipleCIDSuite) SetupAllSuite() {
+func (s *MultipleCIDSuite) SetupAllSuite() {
 
 }
 
 // Before each test
-func (suite *MultipleCIDSuite) SetupTest() {
+func (s *MultipleCIDSuite) SetupTest() {
 	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 }
 
 func (suite *MultipleCIDSuite) TearDownTest() {
 }
 
-func (suite *MultipleCIDSuite) TearDownAllSuite() {
+func (s *MultipleCIDSuite) TearDownAllSuite() {
 
 }
 
-func (suite *MultipleCIDSuite) TestMultipleCIDs() {
+func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	ctx := context.Background()
+
+	dirCID1 := "/input-1"
+	dirCID2 := "/input-2"
+
+	fileName1 := "hello-cid-1.txt"
+	fileName2 := "hello-cid-2.txt"
 
 	stack, cm := SetupTest(
 		ctx,
-		suite.T(),
+		s.T(),
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
@@ -69,10 +77,10 @@ func (suite *MultipleCIDSuite) TestMultipleCIDs() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	fileCid1, err := devstack.AddTextToNodes(ctx, []byte("file1"), devstack.ToIPFSClients(stack.Nodes[:1])...)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	fileCid2, err := devstack.AddTextToNodes(ctx, []byte("file2"), devstack.ToIPFSClients(stack.Nodes[:1])...)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
@@ -85,7 +93,9 @@ func (suite *MultipleCIDSuite) TestMultipleCIDs() {
 		Docker: model.JobSpecDocker{
 			Image: "ubuntu",
 			Entrypoint: []string{
-				"ls",
+				"bash",
+				"-c",
+				fmt.Sprintf("ls && ls %s && ls %s", dirCID1, dirCID2),
 			},
 		},
 	}
@@ -93,18 +103,18 @@ func (suite *MultipleCIDSuite) TestMultipleCIDs() {
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           fileCid1,
-			Path:          "/hello-cid-1.txt",
+			Path:          path.Join(dirCID1, fileName1),
 		},
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           fileCid2,
-			Path:          "/hello-cid-2.txt",
+			Path:          path.Join(dirCID2, fileName2),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
 
 	submittedJob, err := apiClient.Submit(ctx, j, nil)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()
 
@@ -119,44 +129,48 @@ func (suite *MultipleCIDSuite) TestMultipleCIDs() {
 			model.JobStateCompleted: 1,
 		}),
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	shards, err := resolver.GetShards(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	shard := shards[0]
 
 	node, err := stack.GetNode(ctx, shard.NodeID)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-cid-test")
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.CID)
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
 	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	stdout, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	// check that the stdout string containts the text hello-cid-1.txt and hello-cid-2.txt
-	require.Contains(suite.T(), string(stdout), "hello-cid-1.txt")
-	require.Contains(suite.T(), string(stdout), "hello-cid-2.txt")
+	require.Contains(s.T(), string(stdout), fileName1)
+	require.Contains(s.T(), string(stdout), fileName2)
 }
 
-func (suite *MultipleCIDSuite) TestMultipleURLs() {
+func (s *MultipleCIDSuite) TestMultipleURLs() {
+	file1 := "hello-cid-1.txt"
+	file2 := "hello-cid-2.txt"
+	mount1 := "/inputs-1"
+	mount2 := "/inputs-2"
 
 	files := map[string]string{
-		"/file1.txt": "Before you marry a person, you should first make them use a computer with slow Internet to see who they really are.\n",
-		"/file2.txt": "I walk around like everything’s fine, but deep down, inside my shoe, my sock is sliding off.\n",
+		fmt.Sprintf("/%s", file1): "Before you marry a person, you should first make them use a computer with slow Internet to see who they really are.\n",
+		fmt.Sprintf("/%s", file2): "I walk around like everything's fine, but deep down, inside my shoe, my sock is sliding off.\n",
 	}
 
 	ctx := context.Background()
 
 	stack, cm := SetupTest(
 		ctx,
-		suite.T(),
+		s.T(),
 		1,
 		0,
 		computenode.ComputeNodeConfig{
@@ -187,35 +201,38 @@ func (suite *MultipleCIDSuite) TestMultipleURLs() {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
-	j := &model.Job{}
+	entrypoint := []string{
+		"bash", "-c",
+		fmt.Sprintf("cat %s/%s && cat %s/%s",
+			mount1, file1,
+			mount2, file2),
+	}
+	j := model.NewJob()
 	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
 		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash", "-c",
-				"cat /inputs/hello-url-1.txt && cat /inputs/hello-url-2.txt",
-			},
+			Image:      "ubuntu",
+			Entrypoint: entrypoint,
 		},
 	}
 	j.Spec.Inputs = []model.StorageSpec{
 		{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           fmt.Sprintf("%s/file1.txt", svr.URL),
-			Path:          "/inputs/hello-url-1.txt",
+			URL:           fmt.Sprintf("%s/%s", svr.URL, file1),
+			Path:          fmt.Sprintf("%s/%s", mount1, file1),
 		},
 		{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           fmt.Sprintf("%s/file2.txt", svr.URL),
-			Path:          "/inputs/hello-url-2.txt",
+			URL:           fmt.Sprintf("%s/%s", svr.URL, file2),
+			Path:          fmt.Sprintf("%s/%s", mount2, file2),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
 
 	submittedJob, err := apiClient.Submit(ctx, j, nil)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()
 
@@ -230,31 +247,48 @@ func (suite *MultipleCIDSuite) TestMultipleURLs() {
 			model.JobStateCompleted: 1,
 		}),
 	)
-	require.NoError(suite.T(), err)
-
-	shards, err := resolver.GetShards(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-
-	shard := shards[0]
-
-	node, err := stack.GetNode(ctx, shard.NodeID)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.CID)
+	require.NoError(s.T(), err)
+
+	shards, err := resolver.GetShards(ctx, submittedJob.ID)
+	require.NoError(s.T(), err)
+	require.True(s.T(), len(shards) > 0, "No shards created during submit job.")
+
+	jobEvents, err := apiClient.GetEvents(ctx, submittedJob.ID)
+	require.NoError(s.T(), err, "Could not get job events.")
+	fmt.Printf("=========== JOB EVENTS =========")
+	for _, e := range jobEvents {
+		fmt.Printf("Event: %+v\n", e.EventName)
+	}
+
+	shard := shards[0]
+	require.NotEmpty(s.T(), shard.PublishedResult.CID)
+
+	node, err := stack.GetNode(ctx, shard.NodeID)
+	require.NoError(s.T(), err)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
 	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
+	require.FileExists(s.T(), fmt.Sprintf("%s/stdout", outputPath))
 
 	stdout, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(suite.T(), err)
+	log.Debug().Str("stdout", string(stdout)).Msg("stdout")
+	require.NoError(s.T(), err)
 
-	require.Equal(suite.T(), files["/file1.txt"]+files["/file2.txt"], string(stdout))
+	require.Equal(s.T(), files[fmt.Sprintf("/%s", file1)]+
+		files[fmt.Sprintf("/%s", file2)],
+		string(stdout))
 }
 
-func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
+func (s *MultipleCIDSuite) TestIPFSURLCombo() {
+	ipfsfile := "hello-ipfs.txt"
+	urlfile := "hello-url.txt"
+	ipfsmount := "/inputs-1"
+	urlmount := "/inputs-2"
+
 	URLContent := "Common sense is like deodorant. The people who need it most never use it.\n"
 	IPFSContent := "Truth hurts. Maybe not as much as jumping on a bicycle with a seat missing, but it hurts.\n"
 
@@ -262,7 +296,7 @@ func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
 
 	stack, cm := SetupTest(
 		ctx,
-		suite.T(),
+		s.T(),
 		1,
 		0,
 		computenode.ComputeNodeConfig{
@@ -284,8 +318,10 @@ func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
-	cid, err := devstack.AddTextToNodes(ctx, []byte(IPFSContent), devstack.ToIPFSClients(stack.Nodes[:1])...)
-	require.NoError(suite.T(), err)
+	cid, err := devstack.AddTextToNodes(ctx,
+		[]byte(IPFSContent),
+		devstack.ToIPFSClients(stack.Nodes[:1])...)
+	require.NoError(s.T(), err)
 
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
@@ -299,26 +335,29 @@ func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
 			Image: "ubuntu",
 			Entrypoint: []string{
 				"bash", "-c",
-				"cat /inputs/hello-url.txt && cat /inputs/hello-ipfs.txt",
+				fmt.Sprintf("cat %s && cat %s",
+					path.Join(urlmount, urlfile),
+					path.Join(ipfsmount, ipfsfile),
+				),
 			},
 		},
 	}
 	j.Spec.Inputs = []model.StorageSpec{
 		{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           svr.URL,
-			Path:          "/inputs/hello-url.txt",
+			URL:           fmt.Sprintf("%s/%s", svr.URL, urlfile),
+			Path:          path.Join(urlmount, urlfile),
 		},
 		{
 			StorageSource: model.StorageSourceIPFS,
 			CID:           cid,
-			Path:          "/inputs/hello-ipfs.txt",
+			Path:          path.Join(ipfsmount, ipfsfile),
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
 
 	submittedJob, err := apiClient.Submit(ctx, j, nil)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	resolver := apiClient.GetJobStateResolver()
 
@@ -333,26 +372,26 @@ func (suite *MultipleCIDSuite) TestIPFSURLCombo() {
 			model.JobStateCompleted: 1,
 		}),
 	)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	shards, err := resolver.GetShards(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	shard := shards[0]
 
 	node, err := stack.GetNode(ctx, shard.NodeID)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(suite.T(), err)
-	require.NotEmpty(suite.T(), shard.PublishedResult.CID)
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
 	err = node.IPFSClient.Get(ctx, shard.PublishedResult.CID, outputPath)
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
 	stdout, err := os.ReadFile(fmt.Sprintf("%s/stdout", outputPath))
-	require.NoError(suite.T(), err)
+	require.NoError(s.T(), err)
 
-	require.Equal(suite.T(), URLContent+IPFSContent, string(stdout))
+	require.Equal(s.T(), URLContent+IPFSContent, string(stdout))
 }

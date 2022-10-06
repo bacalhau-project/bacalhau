@@ -249,7 +249,7 @@ var runPythonCmd = &cobra.Command{
 			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 		}
 
-		err = PrintReturnedJobIDToUser(returnedJob)
+		err = PrintResultsToUser(ctx, returnedJob)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 		}

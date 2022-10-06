@@ -421,6 +421,13 @@ func Min(a, b int) int {
 	return b
 }
 
+func Max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func MinFromArray(intArray []int) (int, error) {
 	if len(intArray) == 0 {
 		return 0, errors.New("cannot get min from empty array")
