@@ -46,6 +46,18 @@ Among other things, we can see it contains a number of ATOM records. These descr
 head ./dataset/2dri-processed.pdb
 ```
 
+    REMARK   1 CREATED WITH OPENMM 7.6, 2022-07-12
+    CRYST1   81.309   81.309   81.309  90.00  90.00  90.00 P 1           1 
+    ATOM      1  N   LYS A   1      64.731   9.461  59.430  1.00  0.00           N  
+    ATOM      2  CA  LYS A   1      63.588  10.286  58.927  1.00  0.00           C  
+    ATOM      3  HA  LYS A   1      62.707   9.486  59.038  1.00  0.00           H  
+    ATOM      4  C   LYS A   1      63.790  10.671  57.468  1.00  0.00           C  
+    ATOM      5  O   LYS A   1      64.887  11.089  57.078  1.00  0.00           O  
+    ATOM      6  CB  LYS A   1      63.458  11.567  59.749  1.00  0.00           C  
+    ATOM      7  HB2 LYS A   1      63.333  12.366  58.879  1.00  0.00           H  
+    ATOM      8  HB3 LYS A   1      64.435  11.867  60.372  1.00  0.00           H  
+
+
 ## Prepare & Run the task
 
 
@@ -162,9 +174,12 @@ with open(output_path, mode="w+") as file:
 print('Simulation complete, file written to disk at: {}'.format(output_path))
 ```
 
+    Writing run_openmm_simulation.py
+
+
 To run the script above all we need is a Python environment with the OpenMM library installed.
 We install that via the package manager [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html).
-Below is the resulting Dockerfile.
+Below is the resulting Dockerfile; to keep this example concise we the Docker build command is commented out.
 
 
 ```python
@@ -181,6 +196,9 @@ LABEL org.opencontainers.image.source https://github.com/bacalhau-project/exampl
 
 CMD ["python","run_openmm_simulation.py"]
 ```
+
+    Writing Dockerfile
+
 
 
 ```bash
@@ -199,6 +217,13 @@ docker run \
     ghcr.io/bacalhau-project/examples/openmm:0.3
 ```
 
+    Building system...
+    Performing energy minimization...
+    Equilibrating...
+    Simulating...
+    Simulation complete, file written to disk at: /outputs/final_state.pdbx
+
+
 ### Run a Bacalhau Job
 
 Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
@@ -214,6 +239,15 @@ bacalhau docker run \
         ubuntu -- ls /inputs
 ```
 
+    Job ID: 77268057-7f25-4ac6-ab92-4d37da29c679
+    
+    To get the status of the job, run:
+      bacalhau describe 77268057-7f25-4ac6-ab92-4d37da29c679
+    
+    2dri-processed.pdb
+    
+
+
 Let's switch to our custom container image.
 
 
@@ -225,6 +259,18 @@ bacalhau docker run \
     ghcr.io/bacalhau-project/examples/openmm:0.3 -- ls -la /inputs/
 ```
 
+    Job ID: ad1bada3-2962-4dd8-9e64-e6debea5314f
+    
+    To get the status of the job, run:
+      bacalhau describe ad1bada3-2962-4dd8-9e64-e6debea5314f
+    
+    total 4080
+    drwxr-xr-x 2 root root    4096 Oct  5 09:20 .
+    drwxr-xr-x 1 root root    4096 Oct  6 07:04 ..
+    -rw-r--r-- 1 root root 4167654 Oct  5 09:20 2dri-processed.pdb
+    
+
+
 And finally let's run the full job. This time I will not download the data immediately, because the job takes a few minutes to complete. The commands are below, but you will need to wait until the job completes before they work.
 
 
@@ -235,15 +281,28 @@ bacalhau docker run \
     ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py
 ```
 
+    Job ID: c3dd1500-e397-4607-aff4-c49fc31c9726
+    
+    To get the status of the job, run:
+      bacalhau describe c3dd1500-e397-4607-aff4-c49fc31c9726
+
+
 
 ```python
-%env JOB_ID={job_id}
+%env JOB_ID=c3dd1500-e397-4607-aff4-c49fc31c9726
 ```
+
+    env: JOB_ID=c3dd1500-e397-4607-aff4-c49fc31c9726
+
 
 
 ```bash
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
+
+     CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
+     07:41:13  c3dd1500  Docker ghcr.io/bacal...  Completed            /ipfs/QmZXUGCRsD2GKL... 
+
 
 ### Get Results
 
@@ -255,12 +314,15 @@ rm -rf stdout stderr volumes shards
 bacalhau get ${JOB_ID} # Download the results
 ```
 
+    Fetching results of job 'c3dd1500-e397-4607-aff4-c49fc31c9726'...
+
 
 ```bash
 ls -l volumes/outputs
 ```
 
+    total 14336
+    -rw-r--r--  1 enricorotundo  staff  6578336 Oct  6 09:48 final_state.pdbx
 
-```python
 
-```
+That's all folks!
