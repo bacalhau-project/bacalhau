@@ -24,7 +24,7 @@ endif
 # Env Variables
 export GO111MODULE = on
 export GO = go
-export CGO = 0
+export CGO_ENABLED = 1
 export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
@@ -62,15 +62,17 @@ endef
 all: build
 
 # Run go fmt against code
+.PHONY: fmt
 fmt:
-	@${GO} fmt ./cmd/...
-	@${GO} fmt ./pkg/...
+	${GO} fmt ./cmd/...
+	${GO} fmt ./pkg/...
 
 
 # Run go vet against code
+.PHONY: vet
 vet:
-	@${GO} vet ./cmd/...
-	@${GO} vet ./pkg/...
+	${GO} vet ./cmd/...
+	${GO} vet ./pkg/...
 
 
 ## Run all pre-commit hooks
@@ -96,7 +98,7 @@ build-dev: build
 ################################################################################
 .PHONY: build-bacalhau
 build-bacalhau: fmt vet
-	CGO_ENABLED=${CGO} GOOS=${GOOS} GOARCH=${GOARCH} GO111MODULE=${GO111MODULE} ${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
+	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
 
 ################################################################################
 # Target: build-docker-images
@@ -252,7 +254,6 @@ check-diff:
 ################################################################################
 .PHONY: test-and-report
 test-and-report: build-bacalhau
-	CGO_ENABLED=${CGO} \
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 			--junitfile unittests.xml \
@@ -264,7 +265,7 @@ test-and-report: build-bacalhau
 
 .PHONY: generate
 generate:
-	CGO_ENABLED=0 GOARCH=$(shell go env GOARCH) GO111MODULE=${GO111MODULE} ${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
+	${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
 	echo "[OK] Files added to pipeline template directory!"
 
 .PHONY: security

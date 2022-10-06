@@ -96,9 +96,10 @@ jobs:
             - run:
                 name: Run go mod tidy check diff
                 command: make modtidy check-diff
+
       - run:
           name: Build
-          command: GO111MODULE=on make build
+          command: make build
 
       - when:
           condition:
@@ -147,6 +148,24 @@ jobs:
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
                   mv unittests.xml "${TEST_RESULTS_FILENAME}"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
+
+      - run:
+          name: Build tarball
+          command: |
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            rm dist/.keep           # Need to remove this file so it's not persisted to github
+            make build-bacalhau-tgz
+            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
+            cp $ARTIFACT_DIR/*.tar.gz dist/
+            cp $ARTIFACT_DIR/*.sha256 dist/
+
+      - persist_to_workspace:
+          root: dist/
+          paths:
+              - "*.tar.gz"
+              - "*.sha256"
 
   # deploy:
   #   docker:
@@ -232,40 +251,8 @@ jobs:
   release:
     executor: linux
     steps:
-      - checkout
-      - run:
-          name: Build tarballs
-          command: |
-            GOOS=linux GOARCH=amd64 make build
-            GOOS=linux GOARCH=arm64 make build
-            GOOS=darwin GOARCH=amd64 make build
-            GOOS=darwin GOARCH=arm64 make build
-            GOOS=windows GOARCH=amd64 make build
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            rm dist/.keep           # Need to remove this file so it's not persisted to github
-            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            find dist/
+      - attach_workspace:
+          at: dist/
       - run:
           name: Install gh
           command: |
@@ -393,8 +380,17 @@ workflows:
             <<: *filters_main_only
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
-      - release:
-          name: release-all-binaries
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin", "windows"]
+              target_arch: ["amd64", "arm64"]
+              run_tests: [false]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: false
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -402,6 +398,12 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - release:
+          name: release-all-binaries
+          requires:
+              - build
+          filters:
+            <<: *filters_tags_only
       - update_ops:
           name: update-terraform-files
           requires:
