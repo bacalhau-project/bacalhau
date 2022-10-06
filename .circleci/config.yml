@@ -3,11 +3,14 @@
 version: 2.1
 
 executors:
-  linux: &linux
+  linux:
     machine:
       image: ubuntu-2204:2022.07.1
       resource_class: xlarge
-  darwin: *linux
+  darwin:
+    macos:
+      xcode: 13.4.1
+    resource_class: large
   windows:
     machine:
       image: windows-server-2022-gui:current
@@ -43,15 +46,28 @@ jobs:
             equal: ["windows", << parameters.target_os >>]
           steps:
             - run:
-                name: Install GNU Make
+                name: Install GNU Make and GCC
                 command: |
-                  choco install -y make
+                  choco install -y make mingw
                 shell: powershell.exe
             - run:
                 name: Downgrade Golang
                 command: |
                   choco install golang -y --allow-downgrade --version $Env:GOVER
                 shell: powershell.exe
+
+      - when:
+          condition:
+            equal: ["darwin", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install golang
+                environment:
+                  HOMEBREW_NO_AUTO_UPDATE: 1
+                command: |
+                  export BREW_GO_VERSION=$(echo $GOVER | grep -Eo '^\d\.\d+')
+                  brew install go@$BREW_GO_VERSION
+                  echo "export PATH='/usr/local/opt/go@$BREW_GO_VERSION/bin:$PATH'" >> ~/.bash_profile
 
       - run:
           name: Install IPFS
@@ -71,18 +87,12 @@ jobs:
       - when:
           condition:
             and:
-              - or:
-                  - equal: ["linux", << parameters.target_os >>]
-                  - equal: ["windows", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test
                 command: |
-                  echo "---------------------------------------"
-                  docker version
-                  echo "---------------------------------------"
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
@@ -124,9 +134,6 @@ jobs:
             export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
             rm dist/.keep           # Need to remove this file so it's not persisted to github
             make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
 
       - persist_to_workspace:
           root: dist/

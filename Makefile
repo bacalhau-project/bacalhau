@@ -33,6 +33,7 @@ BINARY_NAME = bacalhau
 
 ifeq ($(GOOS),windows)
 BINARY_NAME := ${BINARY_NAME}.exe
+CC = gcc.exe
 endif
 
 BINARY_PATH = bin/${GOOS}_${GOARCH}/${BINARY_NAME}
@@ -42,10 +43,6 @@ COMMIT ?= $(eval COMMIT := $(shell git rev-parse HEAD))$(COMMIT)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
-
-# Temp dirs
-TMPRELEASEWORKINGDIR := $(shell mktemp -d -t bacalhau-release-dir.XXXXXXX)
-TMPARTIFACTDIR := $(shell mktemp -d -t bacalhau-artifact-dir.XXXXXXX)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 
 PRIVATE_KEY_FILE := /tmp/private.pem
@@ -87,7 +84,7 @@ precommit:
 # Target: build
 ################################################################################
 .PHONY: build
-build: build-bacalhau
+build: fmt vet build-bacalhau 
 
 .PHONY: build-dev
 build-dev: build
@@ -97,7 +94,9 @@ build-dev: build
 # Target: build-bacalhau
 ################################################################################
 .PHONY: build-bacalhau
-build-bacalhau: fmt vet
+build-bacalhau: ${BINARY_PATH}
+
+${BINARY_PATH}: $(shell git ls-files cmd) $(shell git ls-files pkg)
 	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
 
 ################################################################################
@@ -117,29 +116,22 @@ build-docker-images:
 # Target: build-bacalhau-tgz
 ################################################################################
 .PHONY: build-bacalhau-tgz
-build-bacalhau-tgz:
-	@echo "CWD: $(shell pwd)"
-	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
-	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
-	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
-	cp ${BINARY_PATH} $(TMPARTIFACTDIR)/$(PACKAGE)/${BINARY_NAME}
-	cd $(TMPRELEASEWORKINGDIR)
-	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
-	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
-	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
-	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
-	@echo "export ARTIFACT_DIR=$(TMPARTIFACTDIR)" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
-	@echo "export BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> /tmp/packagevars
+build-bacalhau-tgz: dist/${PACKAGE}.tar.gz dist/${PACKAGE}.tar.gz.signature.sha256
+
+dist/${PACKAGE}.tar.gz: ${BINARY_PATH}
+	tar cvzf $@ -C $(dir $(BINARY_PATH)) $(notdir ${BINARY_PATH})
+
+dist/${PACKAGE}.tar.gz.signature.sha256: dist/${PACKAGE}.tar.gz
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" $^ | openssl base64 -out $@
 
 ################################################################################
 # Target: clean
 ################################################################################
 .PHONY: clean
 clean:
-	go clean
+	${GO} clean
+	${RM} -r bin/*
+	${RM} dist/bacalhau_*
 
 
 ################################################################################
@@ -253,7 +245,7 @@ check-diff:
 # Target: test-test-and-report
 ################################################################################
 .PHONY: test-and-report
-test-and-report: build-bacalhau
+test-and-report: ${BINARY_PATH}
 		gotestsum \
 			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 			--junitfile unittests.xml \

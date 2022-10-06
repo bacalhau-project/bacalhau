@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
 package bacalhau
 
