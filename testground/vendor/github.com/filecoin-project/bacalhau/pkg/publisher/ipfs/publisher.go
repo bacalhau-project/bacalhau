@@ -28,7 +28,7 @@ func NewIPFSPublisher(
 		return nil, err
 	}
 
-	log.Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
+	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
 	return &IPFSPublisher{
 		IPFSClient:    cl,
 		StateResolver: resolver,
@@ -48,21 +48,14 @@ func (publisher *IPFSPublisher) PublishShardResult(
 ) (model.StorageSpec, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.PublishShardResult")
 	defer span.End()
-
-	log.Debug().Msgf(
-		"Uploading results folder to ipfs: %s %s %s",
-		hostID,
-		shard,
-		shardResultPath,
-	)
 	cid, err := publisher.IPFSClient.Put(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
 	return model.StorageSpec{
-		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
-		Engine: model.StorageSourceIPFS,
-		Cid:    cid,
+		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		StorageSource: model.StorageSourceIPFS,
+		CID:           cid,
 	}, nil
 }
 

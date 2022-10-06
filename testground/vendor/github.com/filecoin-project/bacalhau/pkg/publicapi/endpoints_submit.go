@@ -14,8 +14,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
+	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,25 +34,33 @@ type submitRequest struct {
 }
 
 type submitResponse struct {
-	Job model.Job `json:"job"`
+	Job *model.Job `json:"job"`
 }
 
 func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
+	ctx, span := system.GetSpanFromRequest(req, "pkg/apiServer.submit")
+	defer span.End()
+
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
-		log.Debug().Msgf("====> Decode submitReq error: %s", err)
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Ctx(ctx).Debug().Msgf("====> Decode submitReq error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.Data.ClientID)
 
 	if err := verifySubmitRequest(&submitReq); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		log.Ctx(ctx).Debug().Msgf("====> VerifySubmitRequest error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Data.Spec, submitReq.Data.Deal); err != nil {
-		log.Debug().Msgf("====> VerifyJob error: %s", err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
+		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusBadRequest)
 		return
 	}
 
@@ -58,46 +69,60 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		// TODO: gc pinned contexts
 		decoded, err := base64.StdEncoding.DecodeString(submitReq.Data.Context)
 		if err != nil {
-			log.Debug().Msgf("====> DecodeContext error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			log.Ctx(ctx).Debug().Msgf("====> DecodeContext error: %s", err)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
 		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
 		if err != nil {
-			log.Debug().Msgf("====> Create tmp dir error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			log.Ctx(ctx).Debug().Msgf("====> Create tmp dir error: %s", err)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
 		tarReader := bytes.NewReader(decoded)
 		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
 		if err != nil {
-			log.Debug().Msgf("====> Decompress error: %s", err)
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			log.Ctx(ctx).Debug().Msgf("====> Decompress error: %s", err)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
-		cid, err := apiServer.Controller.PinContext(req.Context(), filepath.Join(tmpDir, "context"))
+		// write the "context" for a job to storage
+		// this is used to upload code files
+		// we presently just fix on ipfs to do this
+		ipfsStorage, err := apiServer.StorageProviders.GetStorage(ctx, model.StorageSourceIPFS)
 		if err != nil {
-			log.Debug().Msgf("====> PinContext error: %s", err)
+			log.Ctx(ctx).Debug().Msgf("====> GetStorage error: %s", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		result, err := ipfsStorage.Upload(ctx, filepath.Join(tmpDir, "context"))
+		if err != nil {
+			log.Ctx(ctx).Debug().Msgf("====> PinContext error: %s", err)
+			errorResponse := bacerrors.ErrorToErrorResponse(err)
+			http.Error(res, errorResponse, http.StatusInternalServerError)
 			return
 		}
 
 		// NOTE(luke): we could do some kind of storage multiaddr here, e.g.:
 		//               --cid ipfs:abc --cid filecoin:efg
-		submitReq.Data.Spec.Contexts = append(submitReq.Data.Spec.Contexts, model.StorageSpec{
-			Engine: model.StorageSourceIPFS,
-			Cid:    cid,
-			Path:   "/job",
+		submitReq.Data.Job.Spec.Contexts = append(submitReq.Data.Job.Spec.Contexts, model.StorageSpec{
+			StorageSource: model.StorageSourceIPFS,
+			CID:           result.CID,
+			Path:          "/job",
 		})
 	}
 
-	j, err := apiServer.Controller.SubmitJob(
-		req.Context(),
+	j, err := apiServer.Requester.SubmitJob(
+		ctx,
 		submitReq.Data,
 	)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.ID)
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -109,7 +134,8 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		Job: j,
 	})
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		errorResponse := bacerrors.ErrorToErrorResponse(err)
+		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
 }

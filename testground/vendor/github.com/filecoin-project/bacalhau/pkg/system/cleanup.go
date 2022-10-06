@@ -2,6 +2,7 @@ package system
 
 import (
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
 	"time"
@@ -61,7 +62,7 @@ func (cm *CleanupManager) Cleanup() {
 	// stop profiling now, just before we clean up, if we're profiling.
 	log.Trace().Msg("============= STOPPING PROFILING ============")
 	pprof.StopCPUProfile()
-	memprofile := "/tmp/bacalhau-devstack-mem.prof"
+	memprofile := path.Join(os.TempDir(), "bacalhau-devstack-mem.prof")
 	f, err := os.Create(memprofile)
 	if err != nil {
 		log.Fatal().Msgf("could not create memory profile: %s", err)

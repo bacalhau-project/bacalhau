@@ -69,24 +69,24 @@ func ApplyGlobPattern(
 	return result, nil
 }
 
-func GetJobTotalShards(job model.Job) int {
-	shardCount := job.ExecutionPlan.TotalShards
+func GetJobTotalShards(j *model.Job) int {
+	shardCount := j.ExecutionPlan.TotalShards
 	if shardCount == 0 {
 		shardCount = 1
 	}
 	return shardCount
 }
 
-func GetJobConcurrency(job model.Job) int {
-	concurrency := job.Deal.Concurrency
+func GetJobConcurrency(j *model.Job) int {
+	concurrency := j.Deal.Concurrency
 	if concurrency < 1 {
 		concurrency = 1
 	}
 	return concurrency
 }
 
-func GetJobTotalExecutionCount(job model.Job) int {
-	return GetJobConcurrency(job) * GetJobTotalShards(job)
+func GetJobTotalExecutionCount(j *model.Job) int {
+	return GetJobConcurrency(j) * GetJobTotalShards(j)
 }
 
 // given a sharding config and storage drivers
@@ -95,8 +95,8 @@ func GetJobTotalExecutionCount(job model.Job) int {
 // we group into batches using job.Spec.Sharding.BatchSize
 func ExplodeShardedVolumes(
 	ctx context.Context,
-	spec model.JobSpec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	spec model.Spec,
+	storageProviders storage.StorageProvider,
 ) ([]model.StorageSpec, error) {
 	// this is an exploded list of all storage inodes
 	// once the storage driver has expanded the volume
@@ -112,12 +112,12 @@ func ExplodeShardedVolumes(
 
 	// loop over each input volume and explode it using the storage driver
 	for _, volume := range spec.Inputs {
-		storageProvider, ok := storageProviders[volume.Engine]
-		if !ok {
-			return allVolumes, fmt.Errorf("storage provider not found for engine %s", volume.Engine)
+		volumeStorage, err := storageProviders.GetStorage(ctx, volume.StorageSource)
+		if err != nil {
+			return allVolumes, err
 		}
-		explodedVolumes, err := storageProvider.Explode(ctx, volume)
-		if !ok {
+		explodedVolumes, err := volumeStorage.Explode(ctx, volume)
+		if err != nil {
 			return allVolumes, err
 		}
 		allVolumes = append(allVolumes, explodedVolumes...)
@@ -129,8 +129,8 @@ func ExplodeShardedVolumes(
 // given an exploded set of volumes - we now group them based on batch size
 func GetShardsStorageSpecs(
 	ctx context.Context,
-	spec model.JobSpec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	spec model.Spec,
+	storageProviders storage.StorageProvider,
 ) ([][]model.StorageSpec, error) {
 	config := spec.Sharding
 	batchSize := config.BatchSize
@@ -162,7 +162,7 @@ func GetShardsStorageSpecs(
 func GetShardStorageSpec(
 	ctx context.Context,
 	shard model.JobShard,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	storageProviders storage.StorageProvider,
 ) ([]model.StorageSpec, error) {
 	shards, err := GetShardsStorageSpecs(ctx, shard.Job.Spec, storageProviders)
 	if err != nil {
@@ -182,8 +182,8 @@ func GetShardStorageSpec(
 // we explode each sharded volume and calculate the batch size
 func GenerateExecutionPlan(
 	ctx context.Context,
-	spec model.JobSpec,
-	storageProviders map[model.StorageSourceType]storage.StorageProvider,
+	spec model.Spec,
+	storageProviders storage.StorageProvider,
 ) (model.JobExecutionPlan, error) {
 	config := spec.Sharding
 	// this means there is no sharding and we use the input volumes as is

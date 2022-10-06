@@ -8,13 +8,13 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/BTBurke/k8sresource"
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
+	"github.com/ricochet2200/go-disk-usage/du"
 )
 
 // NvidiaCLI is the path to the Nvidia helper binary
@@ -88,12 +88,11 @@ func ParseResourceUsageConfig(usage model.ResourceUsageConfig) model.ResourceUsa
 // get free disk space for storage path
 // returns bytes
 func getFreeDiskSpace(path string) (uint64, error) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
-	if err != nil {
-		return 0, err
+	usage := du.NewDiskUsage(path)
+	if usage == nil {
+		return 0, fmt.Errorf("getFreeDiskSpace: unable to get disk space for path %s", path)
 	}
-	return fs.Bfree * uint64(fs.Bsize), nil
+	return usage.Free(), nil
 }
 
 // numSystemGPUs wraps nvidia-container-cli to get the number of GPUs

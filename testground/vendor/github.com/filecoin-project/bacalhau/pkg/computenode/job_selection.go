@@ -39,7 +39,7 @@ type JobSelectionPolicy struct {
 type JobSelectionPolicyProbeData struct {
 	NodeID        string                 `json:"node_id"`
 	JobID         string                 `json:"job_id"`
-	Spec          model.JobSpec          `json:"spec"`
+	Spec          model.Spec             `json:"spec"`
 	ExecutionPlan model.JobExecutionPlan `json:"execution_plan"`
 }
 
@@ -59,7 +59,7 @@ func applyJobSelectionPolicyExecProbe(
 	jsonData, err := json.Marshal(data)
 
 	if err != nil {
-		log.Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
+		log.Ctx(ctx).Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
 		return false, err
 	}
 
@@ -71,7 +71,7 @@ func applyJobSelectionPolicyExecProbe(
 	err = cmd.Run()
 	if err != nil {
 		// we ignore this error because it might be the script exiting 1 on purpose
-		log.Debug().Msgf("We got an error back from a job selection probe exec: %s %s", command, err.Error())
+		log.Ctx(ctx).Debug().Msgf("We got an error back from a job selection probe exec: %s %s", command, err.Error())
 	}
 
 	return cmd.ProcessState.ExitCode() == 0, nil
@@ -81,7 +81,7 @@ func applyJobSelectionPolicyHTTPProbe(ctx context.Context, url string, data JobS
 	jsonData, err := json.Marshal(data)
 
 	if err != nil {
-		log.Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
+		log.Ctx(ctx).Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
 		return false, err
 	}
 
@@ -89,13 +89,13 @@ func applyJobSelectionPolicyHTTPProbe(ctx context.Context, url string, data JobS
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	req.Header.Add("Content-Type", "application/json")
 	if err != nil {
-		log.Error().Msgf("could not create http request with context: %s", url)
+		log.Ctx(ctx).Error().Msgf("could not create http request with context: %s", url)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	resp.Body.Close()
 
 	if err != nil {
-		log.Error().Msgf("error http POST job selection policy probe data: %s %s", url, err.Error())
+		log.Ctx(ctx).Error().Msgf("error http POST job selection policy probe data: %s %s", url, err.Error())
 		return false, err
 	}
 
@@ -106,13 +106,13 @@ func applyJobSelectionPolicySettings(
 	ctx context.Context,
 	policy JobSelectionPolicy,
 	e executor.Executor,
-	job model.JobSpec,
+	job model.Spec,
 ) (bool, error) {
 	// Accept jobs where there are no cids specified
 	// if policy.RejectStatelessJobs is set then we reject this job
 	if len(job.Inputs) == 0 {
 		if policy.RejectStatelessJobs {
-			log.Trace().Msgf("Found policy of RejectStatelessJobs - rejecting job")
+			log.Ctx(ctx).Trace().Msgf("Found policy of RejectStatelessJobs - rejecting job")
 			return false, nil
 		} else {
 			return true, nil
@@ -121,7 +121,7 @@ func applyJobSelectionPolicySettings(
 
 	// if we have an "anywhere" policy for the data then we accept the job
 	if policy.Locality == Anywhere {
-		log.Trace().Msgf("Found policy of anywhere - accepting job")
+		log.Ctx(ctx).Trace().Msgf("Found policy of anywhere - accepting job")
 		return true, nil
 	}
 
@@ -133,7 +133,7 @@ func applyJobSelectionPolicySettings(
 		// see if the storage engine reports that we have the resource locally
 		hasStorage, err := e.HasStorageLocally(ctx, input)
 		if err != nil {
-			log.Error().Msgf("Error checking for storage resource locality: %s", err.Error())
+			log.Ctx(ctx).Error().Msgf("Error checking for storage resource locality: %s", err.Error())
 			return false, err
 		}
 		if hasStorage {
@@ -142,10 +142,10 @@ func applyJobSelectionPolicySettings(
 	}
 
 	if foundInputs >= len(job.Inputs) {
-		log.Trace().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
+		log.Ctx(ctx).Trace().Msgf("Found %d of %d inputs - accepting job", foundInputs, len(job.Inputs))
 		return true, nil
 	} else {
-		log.Trace().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
+		log.Ctx(ctx).Trace().Msgf("Found %d of %d inputs - passing on job", foundInputs, len(job.Inputs))
 		return false, nil
 	}
 }

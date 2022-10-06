@@ -110,7 +110,6 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			len(nodeIDs),
 			job.WaitDontExceedCount(testCase.expectedAccepts),
 			job.WaitThrowErrors([]model.JobStateType{
-				model.JobStateCancelled,
 				model.JobStateError,
 			}),
 			job.WaitForJobStates(map[model.JobStateType]int{

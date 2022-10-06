@@ -206,9 +206,6 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctx,
 		jobID,
 		args.NodeCount*args.ShardCount,
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
-		}),
 		job.WaitForTerminalStates(args.NodeCount*args.ShardCount),
 	)
 	require.NoError(t, err)

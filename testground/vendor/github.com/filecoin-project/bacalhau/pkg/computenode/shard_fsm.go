@@ -20,7 +20,7 @@ const (
 	actionBid shardStateAction = iota // must be first
 
 	// bid was rejected, and do cancel the bid
-	actionRejected
+	actionBidRejected
 
 	// job has failed for some reason outside of the fsm
 	actionFail
@@ -28,12 +28,15 @@ const (
 	// bid was accepted, resources are available, and do run the job
 	actionRun
 
+	// proposed results were rejected
+	actionResultsRejected
+
 	// results were verified, and do publish them
 	actionPublish
 )
 
 func (a shardStateAction) String() string {
-	return [...]string{"ActionBid", "ActionRejected", "ActionFail", "ActionRun"}[a]
+	return [...]string{"ActionBid", "ActionBidRejected", "ActionFail", "ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
 }
 
 // request to change the state of the fsm
@@ -109,8 +112,8 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 
 // Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
-func (m *shardStateMachineManager) StartShardStateIfNecessery(
-	shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
+func (m *shardStateMachineManager) StartShardStateIfNecessary(
+	ctx context.Context, shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -118,7 +121,7 @@ func (m *shardStateMachineManager) StartShardStateIfNecessery(
 		shardState := m.newStateMachine(shard, n, requirements)
 
 		// ANCHOR: Start of the shard state machine span
-		ctx, span := system.GetTracer().Start(context.Background(), "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessery")
+		ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessary") //nolint:govet
 		defer span.End()
 		ctx = system.AddNodeIDToBaggage(ctx, n.ID)
 		system.AddNodeIDFromBaggageToSpan(ctx, span)
@@ -205,11 +208,14 @@ type shardStateMachine struct {
 	mu      sync.Mutex
 	req     chan shardStateRequest
 
-	currentState   shardStateType
-	previousState  shardStateType
+	currentState  shardStateType
+	previousState shardStateType
+
+	runOutput      *model.RunCommandResult
 	resultProposal []byte
-	bidSent        bool
 	errorMsg       string
+
+	notifyOnFailure bool
 }
 
 func (m *shardStateMachineManager) newStateMachine(
@@ -251,11 +257,15 @@ func (m *shardStateMachine) Bid(ctx context.Context) {
 }
 
 func (m *shardStateMachine) BidRejected(ctx context.Context) {
-	m.sendRequest(ctx, shardStateRequest{action: actionRejected})
+	m.sendRequest(ctx, shardStateRequest{action: actionBidRejected})
 }
 
 func (m *shardStateMachine) Execute(ctx context.Context) {
 	m.sendRequest(ctx, shardStateRequest{action: actionRun})
+}
+
+func (m *shardStateMachine) ResultsRejected(ctx context.Context) {
+	m.sendRequest(ctx, shardStateRequest{action: actionResultsRejected})
 }
 
 func (m *shardStateMachine) Publish(ctx context.Context) {
@@ -276,7 +286,7 @@ func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
 		}
 	}()
 	m.req <- request
@@ -287,7 +297,7 @@ type StateFn func(context.Context, *shardStateMachine) StateFn
 func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	log.Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
+	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
 	m.previousState = m.currentState
 	m.currentState = newState
 }
@@ -301,13 +311,13 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 		switch req.action {
 		case actionRun:
 			return runningState
-		case actionRejected:
+		case actionBidRejected:
 			return completedState
 		case actionFail:
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -325,7 +335,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 		req := <-m.req
 		switch req.action {
 		case actionBid:
-			err := m.node.BidOnJob(ctx, m.Shard)
+			err := m.node.notifyBidJob(ctx, m.Shard)
 			if err != nil {
 				m.errorMsg = err.Error()
 				return errorState
@@ -333,14 +343,14 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 
 			// we've sent a bid, which means we are to send an error if anything fails afterwards
 			// to let the requesterNode know fast to cancel the job or retry on another node.
-			m.bidSent = true
+			m.notifyOnFailure = true
 
 			return biddingState
 		case actionFail:
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -358,7 +368,8 @@ func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	// we get a "proposal" from this method which is not the results
 	// but what the compute node verifier wants to pass to the requester
 	// node verifier
-	proposal, err := m.node.RunShard(ctx, m.Shard)
+	proposal, runOutput, err := m.node.RunShard(ctx, m.Shard)
+	m.runOutput = runOutput
 	if err == nil {
 		m.resultProposal = proposal
 		return publishingToVerifierState
@@ -377,12 +388,12 @@ func publishingToVerifierState(ctx context.Context, m *shardStateMachine) StateF
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	err := m.node.controller.ShardExecutionFinished(
+	err := m.node.notifyShardExecutionFinished(
 		ctx,
-		m.Shard.Job.ID,
-		m.Shard.Index,
+		m.Shard,
 		fmt.Sprintf("Got results proposal of length: %d", len(m.resultProposal)),
 		m.resultProposal,
+		m.runOutput,
 	)
 
 	if err != nil {
@@ -407,11 +418,16 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 		switch req.action {
 		case actionPublish:
 			return publishingToRequesterState
+		case actionResultsRejected:
+			// no need to publish an event since the requester node
+			// already published a failure event
+			m.notifyOnFailure = false
+			return completedState
 		case actionFail:
 			m.errorMsg = req.failureReason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -437,23 +453,23 @@ func publishingToRequesterState(ctx context.Context, m *shardStateMachine) State
 func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardError)
 	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
-	log.Error().Msgf(errMessage)
+	log.Ctx(ctx).Error().Msgf(errMessage)
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.errorState")
 	defer span.End()
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	if m.bidSent {
+	if m.notifyOnFailure {
 		// we sent a bid, so we need to publish our failure to the network
-		err := m.node.controller.ShardError(
+		err := m.node.notifyShardError(
 			ctx,
-			m.Shard.Job.ID,
-			m.Shard.Index,
+			m.Shard,
 			errMessage,
+			m.runOutput,
 		)
 		if err != nil {
-			log.Error().Msgf("%s failed to report error of job due to %s",
+			log.Ctx(ctx).Error().Msgf("%s failed to report error of job due to %s",
 				m, err.Error())
 		}
 	}

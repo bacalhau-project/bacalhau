@@ -25,7 +25,7 @@ type StorageProvider struct {
 	HTTPClient *resty.Client
 }
 
-func NewStorageProvider(cm *system.CleanupManager) (*StorageProvider, error) {
+func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
 	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {
@@ -101,9 +101,14 @@ func (sp *StorageProvider) CleanupStorage(
 	pathToCleanup := filepath.Dir(volume.Source)
 	log.Debug().Msgf("Cleaning up: %s", pathToCleanup)
 
-	return system.RunCommand("rm", []string{
+	_, err := system.UnsafeForUserCodeRunCommand("rm", []string{
 		"-rf", pathToCleanup,
 	})
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // we don't "upload" anything to a URL
@@ -116,10 +121,10 @@ func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.
 func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{
 		{
-			Name:   spec.Name,
-			Engine: model.StorageSourceURLDownload,
-			Path:   spec.Path,
-			URL:    spec.URL,
+			Name:          spec.Name,
+			StorageSource: model.StorageSourceURLDownload,
+			Path:          spec.Path,
+			URL:           spec.URL,
 		},
 	}, nil
 }
@@ -138,4 +143,4 @@ func IsURLSupported(rawURL string) (bool, error) {
 }
 
 // Compile time interface check:
-var _ storage.StorageProvider = (*StorageProvider)(nil)
+var _ storage.Storage = (*StorageProvider)(nil)

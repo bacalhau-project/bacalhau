@@ -14,7 +14,7 @@ type versionRequest struct {
 }
 
 type versionResponse struct {
-	VersionInfo *model.VersionInfo `json:"version_info"`
+	VersionInfo *model.BuildVersionInfo `json:"build_version_info"`
 }
 
 func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {

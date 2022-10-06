@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -119,7 +120,7 @@ func GetPrivateKey(keyName string) (crypto.PrivKey, error) {
 
 	// We include the port in the filename so that in devstack multiple nodes
 	// running on the same host get different identities
-	privKeyPath := fmt.Sprintf("%s/%s", configPath, keyName)
+	privKeyPath := filepath.Join(configPath, keyName)
 
 	if _, err := os.Stat(privKeyPath); errors.Is(err, os.ErrNotExist) {
 		// Private key does not exist - create and write it
