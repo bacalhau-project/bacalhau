@@ -34,24 +34,24 @@ const (
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	// In Rough execution order
-	model.JobEventCreated: {msg: "Creating job for submission", terminal: false},
+	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false},
 
 	// Job is on Requester
-	model.JobEventBid:         {msg: "Finding node(s) for the job", terminal: false},
-	model.JobEventBidAccepted: {msg: "Node accepted the job", terminal: false},
+	model.JobEventBid:         {Message: "Finding node(s) for the job", IsTerminal: false},
+	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false},
 
 	// Job is on ComputeNode
-	model.JobEventRunning:      {msg: "Node started running the job", terminal: false},
-	model.JobEventComputeError: {msg: "Error while executing the job.", terminal: true},
+	model.JobEventRunning:      {Message: "Node started running the job", IsTerminal: false},
+	model.JobEventComputeError: {Message: "Error while executing the job.", IsTerminal: true},
 
 	// Job is on StorageNode
-	model.JobEventResultsProposed:  {msg: "Job finished, verifying results", terminal: false},
-	model.JobEventResultsRejected:  {msg: "Results failed verification.", terminal: true},
-	model.JobEventResultsAccepted:  {msg: "Results accepted, publishing", terminal: false},
-	model.JobEventResultsPublished: {msg: "Results are ready for download!", terminal: true},
+	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false},
+	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true},
+	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false},
+	model.JobEventResultsPublished: {Message: "Results are ready for download!", IsTerminal: true},
 
 	// General Error?
-	model.JobEventError: {msg: "Unknown error while running job.", terminal: true},
+	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
 
 	// Should we print at all?
 	model.JobEventBidCancelled: {},
@@ -66,8 +66,8 @@ type printedEvents struct {
 }
 
 type eventStruct struct {
-	msg      string
-	terminal bool
+	Message    string
+	IsTerminal bool
 }
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -218,29 +218,20 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 }
 
 type RunTimeSettings struct {
-	WaitForJobToFinish               bool // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int  // Job time out in seconds
-	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
-	IsLocal                          bool // Job should be executed locally
+	WaitForJobTimeoutSecs int  // Job time out in seconds
+	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
+	IsLocal               bool // Job should be executed locally
 
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
-		WaitForJobToFinish:               false,
-		WaitForJobToFinishAndPrintOutput: false,
-		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		IPFSGetTimeOut:                   10,
-		IsLocal:                          false,
+		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:        10,
+		IsLocal:               false,
 	}
 }
 
-func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
-	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
 
 	cmd.PersistentFlags().IntVarP(
 		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
@@ -326,7 +317,7 @@ func ExecuteJob(ctx context.Context,
 		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
 			results, err := getResults(ctx, apiClient, j)
 			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error getting results")
+				return errors.Wrap(err, "error getting results")
 			}
 
 			if len(results) == 0 {
@@ -335,7 +326,7 @@ func ExecuteJob(ctx context.Context,
 
 			err = downloadResults(ctx, cmd, cm, j.Spec.Outputs, results, downloadSettings)
 			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
+				return errors.Wrap(err, "error downloading results")
 			}
 		}
 	}
@@ -392,7 +383,7 @@ func downloadResults(ctx context.Context,
 	outputs []model.StorageSpec,
 	results []model.StorageSpec,
 	downloadSettings ipfs.IPFSDownloadSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.downloadresults")
 	defer span.End()
 
 	err := ipfs.DownloadJob(
@@ -437,7 +428,6 @@ func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 	}
 	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
 	RootCmd.Printf(`
-
 To get more information at any time, run:
    bacalhau describe %s
 
@@ -482,7 +472,7 @@ To get more information at any time, run:
 
 			// Look for any terminal event in all the events. If it's done, we're done.
 			for i := range jobEvents {
-				if eventsWorthPrinting[jobEvents[i].EventName].terminal {
+				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
 					return nil
 				}
 			}
@@ -499,6 +489,13 @@ To get more information at any time, run:
 }
 
 func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
+	maxLength := 0
+	for _, v := range eventsWorthPrinting {
+		if len(v.Message) > maxLength {
+			maxLength = len(v.Message)
+		}
+	}
+
 	// If it hasn't been printed yet, we'll print this event.
 	if !pe[jet].printed {
 		// Only print " done" after the first line.
@@ -507,11 +504,13 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 			firstLine = firstLine && !pe[v].printed
 		}
 		if !firstLine {
-			RootCmd.Println("done")
+			RootCmd.Println("done ✅")
 		}
 
-		RootCmd.Print(eventsWorthPrinting[jet].msg)
-		if !eventsWorthPrinting[jet].terminal {
+		RootCmd.Printf("\t%s%s",
+			strings.Repeat(" ", maxLength-len(eventsWorthPrinting[jet].Message)+2),
+			eventsWorthPrinting[jet].Message)
+		if !eventsWorthPrinting[jet].IsTerminal {
 			RootCmd.Print(" ... ")
 		} else {
 			RootCmd.Println()
