@@ -189,35 +189,11 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
 		}
 
-		return submitLanguageJob(cmd, ctx, "python", "3.10", programPath)
+		return SubmitLanguageJob(cmd, ctx, "python", "3.10", programPath)
 	},
 }
 
-var runWasmCommand = &cobra.Command{
-	Use:     "wasm",
-	Short:   "Run a WASM job on the network",
-	Long:    languageRunLong,
-	Example: languageRunExample,
-	Args:    cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-		ctx := cmd.Context()
-
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/runLanguage.runWasmCommand")
-		defer rootSpan.End()
-		cm.RegisterCallback(system.CleanupTraceProvider)
-
-		programPath := cmdArgs[0]
-		OLR.ContextPath = programPath
-		OLR.Command = cmdArgs[1]
-
-		return submitLanguageJob(cmd, ctx, "wasm", "2.0", programPath)
-	},
-}
-
-func submitLanguageJob(cmd *cobra.Command, ctx context.Context, language, version, programPath string) error {
+func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, version, programPath string) error {
 	//nolint:lll // it's ok to be long
 	// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
