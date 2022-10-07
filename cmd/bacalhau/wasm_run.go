@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bytecodealliance/wasmtime-go"
+	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	wasmCmd.AddCommand(runWasmCommand)
+	wasmCmd.AddCommand(validateWasmCommand)
 }
 
 var wasmCmd = &cobra.Command{
@@ -47,5 +49,38 @@ var runWasmCommand = &cobra.Command{
 		OLR.Command = args[1]
 
 		return SubmitLanguageJob(cmd, ctx, "wasm", "2.0", programPath)
+	},
+}
+
+var validateWasmCommand = &cobra.Command{
+	Use:   "validate",
+	Short: "Check that a WASM program is runnable on the network",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cm := system.NewCleanupManager()
+		defer cm.Cleanup()
+
+		_, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
+		defer rootSpan.End()
+		cm.RegisterCallback(system.CleanupTraceProvider)
+
+		programPath := args[0]
+		entryPoint := args[1]
+
+		engine := wasmtime.NewEngine()
+		module, err := wasmtime.NewModuleFromFile(engine, programPath)
+		if err != nil {
+			Fatal("Could not load supplied WASM file", 1)
+			return err
+		}
+
+		err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
+		if err != nil {
+			Fatal(err.Error(), 2)
+			return err
+		} else {
+			cmd.Println("OK")
+			return nil
+		}
 	},
 }
