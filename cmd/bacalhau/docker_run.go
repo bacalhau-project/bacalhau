@@ -310,10 +310,6 @@ func CreateJob(ctx context.Context,
 		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
 	}
 
-	if odr.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
-		odr.RunTimeSettings.WaitForJobToFinish = true
-	}
-
 	engineType, err := model.ParseEngine(odr.Engine)
 	if err != nil {
 		return &model.Job{}, err
