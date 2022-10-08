@@ -96,12 +96,12 @@ go run . list --wide
  22-08-29-15:01:00  d7d4d23d-08ff-46f4-a695-f37647da67cc  Docker ubuntu echo hello world  Published  /ipfs/QmW7TdjNEMzqmWxm5WPK1p6QCkeChxMLpvhLxyUW2wpjCf
 ```
 
-Get the results:
+Download the results to the current directory:
 ```bash
 go run . get d7d4d23d-08ff-46f4-a695-f37647da67cc # Works with partial IDs - just the first 8 characters
 ```
 
-In the directory you just ran, the command in, you should now have three new files / directory:
+You should now have the following files and directories:
 - stdout
 - stderr
 - volumes/output
