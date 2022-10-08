@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"testing"
@@ -287,8 +288,6 @@ func ExecuteJob(ctx context.Context,
 		return nil
 	}
 	err = PrintResultsToUser(ctx, j)
-	log.Info().Msgf("Error printing results to user: %v", err)
-	log.Info().Msgf("Type: %s", err)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal("", 0)
@@ -297,7 +296,6 @@ func ExecuteJob(ctx context.Context,
 		}
 	}
 
-	fmt.Println("Job finished:")
 	jobReturn, found, err := apiClient.Get(ctx, j.ID)
 	if err != nil {
 		Fatal(fmt.Sprintf("Error getting job: %s", err), 1)
@@ -311,22 +309,55 @@ func ExecuteJob(ctx context.Context,
 		Fatal(fmt.Sprintf("Error getting job state: %s", err), 1)
 	}
 
-	// Get the job status
-	RootCmd.Printf("Job Status: %v\n", js)
+	// Need to create index because map ordering are not guaranteed
+	nodeIndexes := make([]string, 0, len(js.Nodes))
+	for i := range js.Nodes {
+		nodeIndexes = append(nodeIndexes, i)
+	}
+	sort.Strings(nodeIndexes)
 
-	// Get the job results
-	breakoutNodes := false
-	if len(js.Nodes) > 1 {
-		breakoutNodes = true
-	}
-	for i, nodeState := range js.Nodes {
-		tabs := ""
-		if breakoutNodes {
-			RootCmd.Printf("%sNode %s: %v\n", tabs, i, nodeState)
-			tabs = "\t"
+	printOut := "\n%s" // We only know this at the end, we'll fill it in there.
+	printOut += "Job Results By Node:\n"
+	identOne := "  "
+	identTwo := strings.Repeat(identOne, 2)
+	resultsCID := ""
+	for i := range nodeIndexes {
+		n := js.Nodes[nodeIndexes[i]]
+		printOut += fmt.Sprintf("Node %d:\n", i)
+		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
+			printOut += fmt.Sprintf(identOne+"Shard %d:\n", j)
+			printOut += fmt.Sprintf(identTwo+"Status: %s\n", s.State)
+			printOut += fmt.Sprintf(identTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
+			resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+			printResults := func(t string, s string, trunc bool) {
+				truncatedString := ""
+				if trunc {
+					truncatedString = " (truncated: last 2000 characters)"
+				}
+				if s != "" {
+					printOut += fmt.Sprintf(identTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+				} else {
+					printOut += fmt.Sprintf(identTwo+"%s%s: <NONE>\n", t, truncatedString)
+				}
+			}
+			printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
+			printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
 		}
-		RootCmd.Printf("%sJob Results: %v\n", tabs, nodeState.Shards)
 	}
+
+	printOut += fmt.Sprintf(`
+To download the results, execute:
+%sbacalhau get %s
+
+To get more details about the run, execute:
+%sbacalhau describe %s
+`, identOne, j.ID, identOne, j.ID)
+
+	// Have to do a final Sprintf so we can inject the resultsCID into the right place
+	if resultsCID != "" {
+		resultsCID = fmt.Sprintf("Results CID: %s\n", resultsCID)
+	}
+	RootCmd.Print(fmt.Sprintf(printOut, resultsCID))
 
 	if runtimeSettings.AutoDownloadResults {
 		results, err := getResults(ctx, apiClient, j)
@@ -458,7 +489,7 @@ To get more information at any time, run:
 	go func() {
 		select {
 		case s := <-signalChan: // first signal, cancel context
-			log.Info().Msgf("Captured %v. Exiting...", s)
+			log.Debug().Msgf("Captured %v. Exiting...", s)
 			if s == os.Interrupt {
 				RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
 				RootCmd.Println(getMoreInfoString)

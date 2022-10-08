@@ -93,6 +93,7 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 			logData.HandlerError = (*handlerError).Error()
 		}
 
+		// TODO: #828 Potential hotspot - json.Marshaling is expensive, and we do it for every event.
 		jsonBytes, err := json.Marshal(logData)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msgf("failed to marshal event for logging purposes: %+v", event)
@@ -102,6 +103,10 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 		if *handlerError != nil {
 			log.Ctx(ctx).Error().Msg(string(jsonBytes))
 		} else {
+			// TODO: #829 Is checking environment every event the most efficient way to do this? Could we just shunt logs to different places?
+			if system.GetEnvironment() == system.EnvironmentDev {
+				return
+			}
 			log.Ctx(ctx).Info().Msg(string(jsonBytes))
 		}
 	}

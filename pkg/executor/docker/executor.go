@@ -287,7 +287,7 @@ func (e *Executor) RunShard(
 		e.jobContainerName(shard),
 	)
 	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to create container: " + err.Error()}, err
+		return returnStdErrWithErr("failed to create container: ", err), err
 	}
 
 	err = e.Client.ContainerStart(
@@ -296,7 +296,7 @@ func (e *Executor) RunShard(
 		dockertypes.ContainerStartOptions{},
 	)
 	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to start container: " + err.Error()}, err
+		return returnStdErrWithErr("failed to start container: ", err), err
 	}
 
 	defer e.cleanupJob(ctx, shard)
@@ -370,6 +370,13 @@ func (e *Executor) RunShard(
 	return runResult, err
 }
 
+func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {
+	log.Warn().Msgf("HERE - %s: %s", msg, err.Error())
+	return &model.RunCommandResult{
+		STDERR:   err.Error(),
+		ErrorMsg: errors.Wrap(err, msg).Error(),
+	}
+}
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	if config.ShouldKeepStack() {
 		return
