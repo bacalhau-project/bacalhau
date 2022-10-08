@@ -45,8 +45,10 @@ var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false},
 
 	// Job is on ComputeNode
-	model.JobEventRunning:      {Message: "Node started running the job", IsTerminal: false},
-	model.JobEventComputeError: {Message: "Error while executing the job.", IsTerminal: true},
+	model.JobEventRunning: {Message: "Node started running the job", IsTerminal: false},
+
+	// Need to add a carriage return to the end of the line, but only this one
+	model.JobEventComputeError: {Message: "Error while executing the job.\n", IsTerminal: true},
 
 	// Job is on StorageNode
 	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false},
@@ -272,7 +274,7 @@ func ExecuteJob(ctx context.Context,
 		apiClient = GetAPIClient()
 	}
 
-	err := job.VerifyJob(j)
+	err := job.VerifyJob(ctx, j)
 	if err != nil {
 		log.Err(err).Msg("Job failed to validate.")
 		return err
@@ -316,14 +318,14 @@ func ExecuteJob(ctx context.Context,
 	}
 	sort.Strings(nodeIndexes)
 
-	printOut := "\n%s" // We only know this at the end, we'll fill it in there.
+	printOut := "%s" // We only know this at the end, we'll fill it in there.
 	printOut += "Job Results By Node:\n"
 	identOne := "  "
 	identTwo := strings.Repeat(identOne, 2)
 	resultsCID := ""
 	for i := range nodeIndexes {
 		n := js.Nodes[nodeIndexes[i]]
-		printOut += fmt.Sprintf("Node %d:\n", i)
+		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
 		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
 			printOut += fmt.Sprintf(identOne+"Shard %d:\n", j)
 			printOut += fmt.Sprintf(identTwo+"Status: %s\n", s.State)
@@ -530,6 +532,7 @@ To get more information at any time, run:
 
 			// Look for any terminal event in all the events. If it's done, we're done.
 			for i := range jobEvents {
+				// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
 				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
 					// Send a signal to the goroutine that is waiting for Ctrl+C
 					signalChan <- syscall.SIGIO

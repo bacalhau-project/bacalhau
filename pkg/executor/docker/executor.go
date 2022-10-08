@@ -15,7 +15,9 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
@@ -218,6 +220,17 @@ func (e *Executor) RunShard(
 		if err == nil {
 			log.Ctx(ctx).Debug().Msgf("Not pulling image %s, already have %s", shard.Job.Spec.Docker.Image, im.ID)
 		} else if dockerclient.IsErrNotFound(err) {
+			log.Ctx(ctx).Debug().Msgf("Pulling image %s", shard.Job.Spec.Docker.Image)
+
+			var registryResponse registry.DistributionInspect
+			registryResponse, err = e.Client.DistributionInspect(ctx, shard.Job.Spec.Docker.Image, "")
+			if err != nil || registryResponse.Descriptor.Digest == "" {
+				nfe := bacerrors.NewImageNotFound(shard.Job.Spec.Docker.Image)
+				rcr := &model.RunCommandResult{
+					ErrorMsg: nfe.Error()}
+				return rcr, nfe
+			}
+
 			r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
 				"docker",
 				[]string{"pull", shard.Job.Spec.Docker.Image},
@@ -371,7 +384,6 @@ func (e *Executor) RunShard(
 }
 
 func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {
-	log.Warn().Msgf("HERE - %s: %s", msg, err.Error())
 	return &model.RunCommandResult{
 		STDERR:   err.Error(),
 		ErrorMsg: errors.Wrap(err, msg).Error(),

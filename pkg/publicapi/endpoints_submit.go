@@ -58,7 +58,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
+	if err := job.VerifyJob(ctx, submitReq.Data.Job); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)

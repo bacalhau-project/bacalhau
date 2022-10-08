@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"golang.org/x/exp/constraints"
 
@@ -211,6 +212,10 @@ func runCommandResultsToDisk(command string, args []string,
 		log.Error().Err(err).Msg("Error reading stderr from file")
 		r.ErrorMsg = err.Error()
 		return r, err
+	}
+	if strings.Contains(r.STDERR, "executable file not found") {
+		err = bacerrors.NewExecutableNotFound(strings.Join(args[1:], " "))
+		r.STDERR = err.Error()
 	}
 
 	r.ExitCode = cmd.ProcessState.ExitCode()
@@ -490,11 +495,4 @@ func FindJobIDInTestOutput(testOutput string) string {
 		return b[1]
 	}
 	return ""
-}
-
-// Checks to see if an object implements an interface
-// First parameter is the interface, second is the object
-func CheckIfObjectImplementsType[T any](_ T, n interface{}) bool {
-	_, ok := n.(T)
-	return ok
 }

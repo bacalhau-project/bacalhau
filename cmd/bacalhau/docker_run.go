@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -259,10 +260,14 @@ var dockerRunCmd = &cobra.Command{
 			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
 			return nil
 		}
-		err = jobutils.VerifyJob(j)
+		err = jobutils.VerifyJob(ctx, j)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
-			return nil
+			if _, ok := err.(*bacerrors.ImageNotFound); ok {
+				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+			} else {
+				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+				return nil
+			}
 		}
 		if ODR.DryRun {
 			// Converting job to yaml
@@ -284,11 +289,6 @@ var dockerRunCmd = &cobra.Command{
 			ODR.DownloadFlags,
 			ODR.IDOnly,
 		)
-
-		if err != nil {
-			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
-			return nil
-		}
 
 		return nil
 	},
