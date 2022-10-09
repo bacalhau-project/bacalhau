@@ -264,6 +264,7 @@ var dockerRunCmd = &cobra.Command{
 		if err != nil {
 			if _, ok := err.(*bacerrors.ImageNotFound); ok {
 				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+				return nil
 			} else {
 				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
 				return nil

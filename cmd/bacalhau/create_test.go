@@ -51,6 +51,8 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
@@ -159,7 +161,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	// Cat the file and pipe it to stdin
 	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
 		"echo", []string{out,
-			"|", "../../bin/bacalhau create -"},
+			"|", "../../bin/bacalhau create"},
 	)
 	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
 }
