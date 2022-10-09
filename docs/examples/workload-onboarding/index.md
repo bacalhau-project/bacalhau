@@ -2,9 +2,9 @@
 sidebar_label: "How To's"
 sidebar_position: 1
 ---
-# How To Work With Bacalhau
+# Bacalhau Quickstart Examples
 
-This directory contains examples relating to performing common tasks with Bacalhau.
+This section contains examples relating to performing common tasks with Bacalhau.
 
 
 
