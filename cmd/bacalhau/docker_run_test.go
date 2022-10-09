@@ -48,6 +48,7 @@ type DockerRunSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRunSuite(t *testing.T) {
+	Fatal = FakeFatalErrorHandler
 	suite.Run(t, new(DockerRunSuite))
 }
 
@@ -518,7 +519,8 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
-				"ubuntu echo 'hello world'",
+				"ubuntu",
+				"echo 'hello world'",
 			)
 			assert.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 

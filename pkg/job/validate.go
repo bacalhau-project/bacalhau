@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/docker/docker/api/types/registry"
-	dockerclient "github.com/docker/docker/client"
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
@@ -39,18 +36,6 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 	for _, inputVolume := range j.Spec.Inputs {
 		if !model.IsValidStorageSourceType(inputVolume.StorageSource) {
 			return fmt.Errorf("invalid input volume type: %s", inputVolume.StorageSource.String())
-		}
-	}
-
-	c, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	if j.Spec.Engine == model.EngineDocker {
-		var registryResponse registry.DistributionInspect
-		registryResponse, err = c.DistributionInspect(ctx, j.Spec.Docker.Image, "")
-		if err != nil || registryResponse.Descriptor.Digest == "" {
-			return bacerrors.NewImageNotFound(j.Spec.Docker.Image)
 		}
 	}
 

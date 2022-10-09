@@ -224,16 +224,20 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 }
 
 type RunTimeSettings struct {
-	AutoDownloadResults bool // Automatically download the results after finishing
-	IPFSGetTimeOut      int  // Timeout for IPFS in seconds
-	IsLocal             bool // Job should be executed locally
+	AutoDownloadResults   bool // Automatically download the results after finishing
+	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
+	IsLocal               bool // Job should be executed locally
+	WaitForJobToFinish    bool // Wait for the job to finish before returning
+	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
-		AutoDownloadResults: false,
-		IPFSGetTimeOut:      10,
-		IsLocal:             false,
+		AutoDownloadResults:   false,
+		WaitForJobToFinish:    false,
+		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:        10,
+		IsLocal:               false,
 	}
 }
 
@@ -246,6 +250,16 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 	cmd.PersistentFlags().BoolVar(
 		&settings.IsLocal, "local", settings.IsLocal,
 		`Run the job locally. Docker is required`,
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`,
+	)
+
+	cmd.PersistentFlags().IntVar(
+		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
 	)
 }
 
