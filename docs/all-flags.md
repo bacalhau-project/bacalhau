@@ -8,7 +8,7 @@ sidebar_position: 80
 :::info
 
 The following commands refer to bacalhau cli version `v0.2.x`.
-For installing or upgrading a client follow the instructions in the [installation page](./getting-started/installation.md).
+For installing or upgrading a client, follow the instructions in the [installation page](./getting-started/installation.md).
 Run `bacalhau version` in a terminal to check what version you have.
 
 :::
@@ -220,7 +220,7 @@ dpokidov/imagemagick:7.1.0-47-ubuntu \
 ## Get
 
 ```
-Get the results of the job, including stdout and stderr.
+Get the results of the job, including `stdout` and `stderr`.
 
 Usage:
   bacalhau get [id] [flags]
