@@ -31,9 +31,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var oV = &VersionOptions{
-	Output: "yaml",
-}
+var oV = &VersionOptions{}
 
 // Versions is a struct for version information
 type Versions struct {
