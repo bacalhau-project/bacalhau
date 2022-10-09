@@ -5,7 +5,7 @@ sidebar_position: 130
 
 # Storage Providers
 
-Bacalhau has two ways in which it can make use of external storage providers:
+Bacalhau has two ways to make use of external storage providers:
 
  * **Inputs** storage resources consumed as inputs to jobs
  * **Publishers** storage resources created with the results of jobs
@@ -16,9 +16,9 @@ Bacalhau has two ways in which it can make use of external storage providers:
 
 We will need to connect our bacalhau node to an IPFS server so we can run jobs that consume CIDs as inputs.
 
-You can either [install IPFS](https://docs.ipfs.tech/install/) and run it locally or you can connect to a remote IPFS server.
+You can either [install IPFS](https://docs.ipfs.tech/install/) and run it locally, or you can connect to a remote IPFS server.
 
-In both cases - we should have an [IPFS multiaddress](https://richardschneider.github.io/net-ipfs-core/articles/multiaddress.html) for our IPFS server that should look something like this:
+In both cases, you should have an [IPFS multiaddress](https://richardschneider.github.io/net-ipfs-core/articles/multiaddress.html) for the IPFS server that should look something like this:
 
 ```bash
 export IPFS_CONNECT=/ip4/10.1.10.10/tcp/80/p2p/QmVcSqVEsvm5RR9mBLjwpb2XjFVn5bPdPL69mL8PH45pPC
@@ -26,7 +26,7 @@ export IPFS_CONNECT=/ip4/10.1.10.10/tcp/80/p2p/QmVcSqVEsvm5RR9mBLjwpb2XjFVn5bPdP
 
 :::caution
 
-The multiaddress above is just an example - you need to get the multiaddress of the IPFS server you want to connect to.
+The multiaddress above is just an example - you'll need to get the multiaddress of the IPFS server you want to connect to.
 
 :::
 
@@ -41,7 +41,7 @@ bacalhau serve \
 
 ### Estuary
 
-[Estuary](https://estuary.tech/) gives us an easy to use API for adding content to both IPFS and Filecoin.
+[Estuary](https://estuary.tech/) gives an accessible API for adding content to both IPFS and Filecoin.
 
 You can configure your bacalhau node to use Estuary by passing the `--estuary-api-key` argument to the `serve` command:
 
@@ -50,10 +50,10 @@ bacalhau serve \
   --estuary-api-key XXX
 ```
 
-To get an api key for estuary - you need to [register an account](https://estuary.tech/) and then [create an api key](https://estuary.tech/api-admin).
+To get an api key for estuary, you'll need to [register an account](https://estuary.tech/) and then [create an api key](https://estuary.tech/api-admin).
 
 ### IPFS
 
-The IPFS publisher works using the same setup as above - you need to have an IPFS server running and you need to have a multiaddress for it and then you pass that multiaddress using the `--ipfs-connect` argument to the `serve` command.
+The IPFS publisher works using the same setup as above - you'll need to have an IPFS server running, a multiaddress for it. You'll then you pass that multiaddress using the `--ipfs-connect` argument to the `serve` command.
 
 The IPFS publisher will be used as the default if there is no Estuary API Key configured.
