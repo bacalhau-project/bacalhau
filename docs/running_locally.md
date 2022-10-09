@@ -41,34 +41,23 @@ IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1
 Once everything has started up - you will see output like the following:
 
 ```bash
--------------------------------
-node 0
--------------------------------
 
-export BACALHAU_IPFS_API_PORT_0=62403
-export BACALHAU_IPFS_PATH_0=/var/folders/38/kszkvfx157q2qy4fm0gwzxpw0000gn/T/ipfs-tmp2419155176
-export BACALHAU_API_HOST_0=0.0.0.0
-export BACALHAU_API_PORT_0=62406
-cid=$(ipfs --api /ip4/127.0.0.1/tcp/62403 add --quiet ./testdata/grep_file.txt)
-curl -XPOST http://127.0.0.1:62403/api/v0/id
-
------------------------------------------
------------------------------------------
-
-export BACALHAU_IPFS_PATH_0=/var/folders/38/kszkvfx157q2qy4fm0gwzxpw0000gn/T/ipfs-tmp2419155176
-export BACALHAU_API_HOST_0=0.0.0.0
-export BACALHAU_API_PORT_0=62406
+Devstack is ready!
+To use the devstack, run the following commands in your shell:
+export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYtRzB2MXZPo6MxkeH6N2fYZRCLT57VsACn
 export BACALHAU_API_HOST=0.0.0.0
-export BACALHAU_API_PORT=62406
+export BACALHAU_API_PORT=39763
+
 ```
 
-The last two lines contain the environment variables you need for a new window.
+The last three lines contain the environment variables you need for a new window.
 
 ## New Terminal Window
 * Open an additional terminal window to be used for submitting jobs.
-* Copy and paste the last two lines into this window. EG:
+* Copy and paste the last three lines into this window. EG:
 
 ```bash
+export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYtRzB2MXZPo6MxkeH6N2fYZRCLT57VsACn
 export BACALHAU_API_HOST=0.0.0.0
 export BACALHAU_API_PORT=62406
 ```
