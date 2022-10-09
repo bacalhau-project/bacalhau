@@ -14,7 +14,7 @@ Bacalhau has two ways to make use of external storage providers:
 
 ### IPFS
 
-We will need to connect our bacalhau node to an IPFS server so we can run jobs that consume CIDs as inputs.
+To start, you'll need to connect the Bacalhau node to an IPFS server so that you can run jobs that consume CIDs as inputs.
 
 You can either [install IPFS](https://docs.ipfs.tech/install/) and run it locally, or you can connect to a remote IPFS server.
 
