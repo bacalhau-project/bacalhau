@@ -4,7 +4,7 @@ sidebar_label: 'Installation' sidebar_position: 1
 
 # Getting Started with Bacalhau
 
-In this article, you'll learn how to install and run a job with the Bacalhau client. 
+In this tutorial, you'll learn how to install and run a job with the Bacalhau client. 
 
 ## Install the Bacalhau client
 
