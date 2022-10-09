@@ -24,7 +24,8 @@ func (h *JSONLogHandler) Handle(ctx context.Context, ri *HTTPRequestInfo) {
 		log.Ctx(ctx).Error().Msg(string(jsonBytes))
 	} else {
 		// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
-		if system.GetEnvironment() == system.EnvironmentDev {
+		if system.GetEnvironment() == system.EnvironmentTest ||
+			system.GetEnvironment() == system.EnvironmentDev {
 			return
 		}
 		log.Ctx(ctx).Info().Msg(string(jsonBytes))

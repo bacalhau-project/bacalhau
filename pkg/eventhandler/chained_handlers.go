@@ -104,7 +104,8 @@ func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) fu
 			log.Ctx(ctx).Error().Msg(string(jsonBytes))
 		} else {
 			// TODO: #829 Is checking environment every event the most efficient way to do this? Could we just shunt logs to different places?
-			if system.GetEnvironment() == system.EnvironmentDev {
+			if system.GetEnvironment() == system.EnvironmentTest ||
+				system.GetEnvironment() == system.EnvironmentDev {
 				return
 			}
 			log.Ctx(ctx).Info().Msg(string(jsonBytes))

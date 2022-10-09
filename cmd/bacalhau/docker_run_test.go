@@ -81,7 +81,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -110,7 +110,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 
 	for i, tc := range tests {
 		func() {
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -161,7 +161,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -270,7 +270,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -349,7 +349,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -423,7 +423,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				Fatal = FakeFatalErrorHandler
 
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -511,7 +511,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			*ODR = *NewDockerRunOptions()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -574,7 +574,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
@@ -645,7 +645,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -694,7 +694,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			Fatal = FakeFatalErrorHandler
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -729,7 +729,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	const nodeCount = 1
 
 	videos := []string{
@@ -750,6 +750,8 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 	*ODR = *NewDockerRunOptions()
 
 	dirPath, err := os.MkdirTemp("", "sharding-test")
+	defer os.RemoveAll(dirPath)
+
 	require.NoError(s.T(), err)
 	for _, video := range videos {
 		err = os.WriteFile(
@@ -856,7 +858,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	for name, tc := range tests {
 		s.T().Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -913,7 +915,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 
 	for _, tc := range tests {
 		ctx := context.Background()
-		c, cm := publicapi.SetupTests(s.T())
+		c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 		defer cm.Cleanup()
 
 		*ODR = *NewDockerRunOptions()
@@ -933,8 +935,72 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
 		require.NoError(s.T(), err, "Error submitting job")
 
-		job := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+		j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
-		require.Equal(s.T(), tc.expectedVolumes, len(job.Spec.Inputs))
+		require.Equal(s.T(), tc.expectedVolumes, len(j.Spec.Inputs))
+	}
+}
+
+// Experiment to test bad images and bad binaries
+func (s *DockerRunSuite) TestRun_BadExecutables() {
+
+	tests := map[string]struct {
+		imageName         string
+		executable        string
+		isValid           bool
+		errStringContains string
+	}{
+		"good-image-good-executable": {
+			imageName:         "ubuntu", // Good image
+			executable:        "ls",     // Good executable
+			isValid:           true,
+			errStringContains: "",
+		},
+		"bad-image-good-executable": {
+			imageName:         "BADIMAGE", // Bad image
+			executable:        "ls",       // Good executable
+			isValid:           false,
+			errStringContains: "foo",
+		},
+		"good-image-bad-executable": {
+			imageName:         "ubuntu",        // Good image
+			executable:        "BADEXECUTABLE", // Bad executable
+			isValid:           false,
+			errStringContains: "foo",
+		},
+		"bad-image-bad-executable": {
+			imageName:         "BADIMAGE",      // Bad image
+			executable:        "BADEXECUTABLE", // Bad executable
+			isValid:           false,
+			errStringContains: "Error",
+		},
+	}
+
+	ctx := context.TODO()
+	stack, cm := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
+	defer cm.Cleanup()
+
+	for name, tc := range tests {
+		*ODR = *NewDockerRunOptions()
+
+		parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+		args := []string{}
+
+		args = append(args, "docker", "run",
+			"--api-host", host,
+			"--api-port", port,
+		)
+		args = append(args, tc.imageName, "--", tc.executable)
+
+		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+		require.NoError(s.T(), err, "Error submitting job")
+
+		if !tc.isValid {
+			require.Contains(s.T(), out, name+":"+tc.errStringContains)
+		} else {
+			require.NotContains(s.T(), out, "Error", name+":"+"Error detected in output")
+		}
 	}
 }

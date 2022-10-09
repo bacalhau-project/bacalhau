@@ -56,7 +56,7 @@ func (suite *VersionSuite) TearDownAllSuite() {
 }
 
 func (suite *VersionSuite) Test_Version() {
-	c, cm := publicapi.SetupTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -77,7 +77,7 @@ type ThisVersions struct {
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
-	c, cm := publicapi.SetupTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)

@@ -31,26 +31,26 @@ import (
 const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
-// SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
+// SetupRequesterNodeForTests sets up a client for a requester node's API server, for testing.
+func SetupRequesterNodeForTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
-	return SetupTestsWithPort(t, port)
+	return SetupRequesterNodeForTestWithPort(t, port)
 }
 
-func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
-	return SetupTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
+func SetupRequesterNodeForTestWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
 }
 
-func SetupTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
-	return SetupTestsWithPortAndConfig(t, port, config)
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, config)
 }
 
 // TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
 // and only keep simple unit tests here.
-func SetupTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting()
 	require.NoError(t, err)

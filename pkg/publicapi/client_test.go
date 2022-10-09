@@ -10,7 +10,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	c, cm := SetupTests(t)
+	c, cm := SetupRequesterNodeForTests(t)
 	defer cm.Cleanup()
 
 	ctx, span := system.Span(context.Background(),

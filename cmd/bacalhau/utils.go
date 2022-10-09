@@ -499,6 +499,7 @@ To get more information at any time, run:
 		cancel()
 	}()
 
+	finishedRunning := false
 	var returnError error
 	returnError = nil
 
@@ -507,11 +508,13 @@ To get more information at any time, run:
 		case s := <-signalChan: // first signal, cancel context
 			log.Debug().Msgf("Captured %v. Exiting...", s)
 			if s == os.Interrupt {
-				RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
-				RootCmd.Println(getMoreInfoString)
-				returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
-			} else if s == syscall.SIGIO {
-				// Got a term signal because the loop finished normally.
+				// If finishedRunning is true, then we go term signal
+				// because the loop finished normally.
+				if !finishedRunning {
+					RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
+					RootCmd.Println(getMoreInfoString)
+					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+				}
 			} else {
 				RootCmd.Println("Unexpected signal received. Exiting.")
 			}
@@ -549,7 +552,8 @@ To get more information at any time, run:
 				// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
 				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
 					// Send a signal to the goroutine that is waiting for Ctrl+C
-					signalChan <- syscall.SIGIO
+					finishedRunning = true
+					signalChan <- syscall.SIGINT
 					break
 				}
 			}

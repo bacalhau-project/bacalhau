@@ -44,7 +44,7 @@ func (suite *ServerSuite) TearDownAllSuite() {
 
 func (suite *ServerSuite) TestList() {
 	ctx := context.Background()
-	c, cm := SetupTests(suite.T())
+	c, cm := SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
@@ -106,7 +106,7 @@ func (suite *ServerSuite) TestTimeout() {
 			"/logz": 10 * time.Nanosecond,
 		},
 	}
-	c, cm := SetupTestsWithConfig(suite.T(), config)
+	c, cm := SetupRequesterNodeForTestsWithConfig(suite.T(), config)
 	defer cm.Cleanup()
 
 	endpoint := "/logz"
@@ -123,7 +123,7 @@ func (suite *ServerSuite) TestTimeout() {
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-	c, cm := SetupTests(t)
+	c, cm := SetupRequesterNodeForTests(t)
 	defer cm.Cleanup()
 
 	res, err := http.Get(c.BaseURI + endpoint)

@@ -56,7 +56,7 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*OC = *NewCreateOptions()
@@ -99,7 +99,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*OC = *NewCreateOptions()
@@ -132,7 +132,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	Fatal = FakeFatalErrorHandler
 
-	c, cm := publicapi.SetupTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 	defer cm.Cleanup()
 
 	*OC = *NewCreateOptions()
