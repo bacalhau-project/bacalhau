@@ -3,7 +3,6 @@ package bacerrors
 import (
 	"encoding/json"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,7 +39,7 @@ func ErrorToErrorResponseObject(err error) *ErrorResponse {
 		return e
 	}
 
-	if system.CheckIfObjectImplementsType(BacalhauErrorInterface(nil), err) {
+	if CheckIfObjectImplementsType(BacalhauErrorInterface(nil), err) {
 		bacErr := err.(BacalhauErrorInterface)
 		// Convert to ErrorResponse
 		e = &ErrorResponse{
@@ -68,4 +67,11 @@ func ConvertErrorToText(err *ErrorResponse) string {
 		str = append(str, []byte("\n"+msg)...)
 	}
 	return string(str)
+}
+
+// Checks to see if an object implements an interface
+// First parameter is the interface, second is the object
+func CheckIfObjectImplementsType[T any](_ T, n interface{}) bool {
+	_, ok := n.(T)
+	return ok
 }

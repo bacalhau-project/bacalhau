@@ -127,3 +127,41 @@ func (s *UtilsSuite) TestVersionCheck() {
 	require.Error(s.T(), err)
 	require.Contains(s.T(), err.Error(), "client version v0.1.37")
 }
+
+func (s *UtilsSuite) TestImages() {
+	tc := map[string]struct {
+		image string
+		valid bool
+	}{
+		// TODO: #843 Unblock when we can figure out how to check the existence of the image
+		// "no image": {
+		// 	image: "",
+		// 	valid: false,
+		// },
+		// "invalid image": {
+		// 	image: "badimageNOTFOUND",
+		// 	valid: false,
+		// },
+		"image with tag (norepo)": {
+			image: "ubuntu:latest",
+			valid: true,
+		},
+		"image with tag (repo)": {
+			image: "curlimages/curl:7.85.0",
+			valid: true,
+		},
+	}
+
+	for name, test := range tc {
+		s.Run(name, func() {
+			sampleJob, _ := model.NewJobWithSaneProductionDefaults()
+			sampleJob.Spec.Docker.Image = test.image
+			err := job.VerifyJob(context.TODO(), sampleJob)
+			if test.valid {
+				require.NoError(s.T(), err, "%s: expected valid image %s to pass", name, test.image)
+			} else {
+				require.Error(s.T(), err, "%s: expected invalid image %s to fail", name, test.image)
+			}
+		})
+	}
+}

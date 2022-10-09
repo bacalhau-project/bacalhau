@@ -66,6 +66,7 @@ linters-settings:
     require-explanation: false # don't require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
 
+# TODO #842 Check gocritic regularly to see if they support generics (finally)
 linters:
   disable-all: true
   enable:
@@ -78,7 +79,7 @@ linters:
     - funlen
     - gochecknoinits
     - goconst
-    - gocritic
+    # - gocritic
     - gocyclo
     - gofmt
     - goimports

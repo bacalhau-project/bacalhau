@@ -283,7 +283,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			)
 
 			require.NoError(suite.T(), err)
-			_, err = stack.Node.RequestorNode.SubmitJob(ctx, model.JobCreatePayload{
+			_, err = stack.Node.RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID: "123",
 				Job:      j,
 			})

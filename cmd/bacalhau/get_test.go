@@ -69,7 +69,7 @@ func (suite *GetSuite) TestGetJob() {
 	defer os.RemoveAll(outputDir)
 	for _, n := range numOfJobsTests {
 		func() {
-			c, cm := publicapi.SetupTestsWithPort(suite.T(), port)
+			c, cm := publicapi.SetupRequesterNodeForTestWithPort(suite.T(), port)
 			defer cm.Cleanup()
 
 			for i := 0; i < NumberOfNodes; i++ {

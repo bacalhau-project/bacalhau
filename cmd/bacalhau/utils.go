@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -27,31 +30,34 @@ import (
 )
 
 const (
-	JSONFormat                  string = "json"
-	YAMLFormat                  string = "yaml"
-	DefaultDockerRunWaitSeconds        = 600
+	JSONFormat                         string = "json"
+	YAMLFormat                         string = "yaml"
+	DefaultDockerRunWaitSeconds               = 600
+	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	// In Rough execution order
-	model.JobEventCreated: {msg: "Creating job for submission", terminal: false},
+	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false},
 
 	// Job is on Requester
-	model.JobEventBid:         {msg: "Finding node(s) for the job", terminal: false},
-	model.JobEventBidAccepted: {msg: "Node accepted the job", terminal: false},
+	model.JobEventBid:         {Message: "Finding node(s) for the job", IsTerminal: false},
+	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false},
 
 	// Job is on ComputeNode
-	model.JobEventRunning:      {msg: "Node started running the job", terminal: false},
-	model.JobEventComputeError: {msg: "Error while executing the job.", terminal: true},
+	model.JobEventRunning: {Message: "Node started running the job", IsTerminal: false},
+
+	// Need to add a carriage return to the end of the line, but only this one
+	model.JobEventComputeError: {Message: "Error while executing the job.\n", IsTerminal: true},
 
 	// Job is on StorageNode
-	model.JobEventResultsProposed:  {msg: "Job finished, verifying results", terminal: false},
-	model.JobEventResultsRejected:  {msg: "Results failed verification.", terminal: true},
-	model.JobEventResultsAccepted:  {msg: "Results accepted, publishing", terminal: false},
-	model.JobEventResultsPublished: {msg: "Results are ready for download!", terminal: true},
+	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false},
+	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true},
+	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false},
+	model.JobEventResultsPublished: {Message: "", IsTerminal: true},
 
 	// General Error?
-	model.JobEventError: {msg: "Unknown error while running job.", terminal: true},
+	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
 
 	// Should we print at all?
 	model.JobEventBidCancelled: {},
@@ -66,8 +72,8 @@ type printedEvents struct {
 }
 
 type eventStruct struct {
-	msg      string
-	terminal bool
+	Message    string
+	IsTerminal bool
 }
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -218,30 +224,24 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 }
 
 type RunTimeSettings struct {
-	WaitForJobToFinish               bool // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int  // Job time out in seconds
-	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
-	IsLocal                          bool // Job should be executed locally
-
+	AutoDownloadResults   bool // Automatically download the results after finishing
+	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
+	IsLocal               bool // Job should be executed locally
+	WaitForJobToFinish    bool // Wait for the job to finish before returning
+	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
-		WaitForJobToFinish:               false,
-		WaitForJobToFinishAndPrintOutput: false,
-		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		IPFSGetTimeOut:                   10,
-		IsLocal:                          false,
+		AutoDownloadResults:   false,
+		WaitForJobToFinish:    false,
+		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:        10,
+		IsLocal:               false,
 	}
 }
 
 func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
-	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
-
 	cmd.PersistentFlags().IntVarP(
 		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
 		`Timeout for getting the results of a job in --wait`,
@@ -253,8 +253,8 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 	)
 
 	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinishAndPrintOutput, "download", settings.WaitForJobToFinishAndPrintOutput,
-		`Download the results and print stdout once the job has completed (implies --wait).`,
+		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`,
 	)
 
 	cmd.PersistentFlags().IntVar(
@@ -263,6 +263,7 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 	)
 }
 
+//nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
@@ -287,7 +288,7 @@ func ExecuteJob(ctx context.Context,
 		apiClient = GetAPIClient()
 	}
 
-	err := job.VerifyJob(j)
+	err := job.VerifyJob(ctx, j)
 	if err != nil {
 		log.Err(err).Msg("Job failed to validate.")
 		return err
@@ -298,64 +299,97 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	if !idOnly {
-		err = PrintResultsToUser(ctx, j)
-		if err != nil {
+	if idOnly {
+		cmd.Print(j.ID)
+		return nil
+	}
+	err = PrintResultsToUser(ctx, j)
+	if err != nil {
+		if err.Error() == PrintoutCanceledButRunningNormally {
+			Fatal("", 0)
+		} else {
 			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 		}
-	} else {
-		cmd.Print(j.ID)
 	}
 
-	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
-		// We have a jobID now, add it to the context baggage
-		ctx = system.AddJobIDToBaggage(ctx, j.ID)
-		system.AddJobIDFromBaggageToSpan(ctx, span)
-
-		resolver := apiClient.GetJobStateResolver()
-		resolver.SetWaitTime(ODR.RunTimeSettings.WaitForJobTimeoutSecs, time.Second*1)
-		err = resolver.WaitUntilComplete(ctx, j.ID)
-		if err != nil {
-			return err
-		}
-
-		err := waitForJobToFinish(ctx, apiClient, j, runtimeSettings)
-		if err != nil {
-			return err
-		}
-		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
-			results, err := getResults(ctx, apiClient, j)
-			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error getting results")
-			}
-
-			if len(results) == 0 {
-				return fmt.Errorf("no results found")
-			}
-
-			err = downloadResults(ctx, cmd, cm, j.Spec.Outputs, results, downloadSettings)
-			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
-			}
-		}
-	}
-	return nil
-}
-
-func waitForJobToFinish(ctx context.Context,
-	apiClient *publicapi.APIClient,
-	j *model.Job,
-	runtimeSettings RunTimeSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
-	defer span.End()
-
-	resolver := apiClient.GetJobStateResolver()
-	resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
-	err := resolver.WaitUntilComplete(ctx, j.ID)
+	jobReturn, found, err := apiClient.Get(ctx, j.ID)
 	if err != nil {
-		return err
+		Fatal(fmt.Sprintf("Error getting job: %s", err), 1)
+	}
+	if !found {
+		Fatal(fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.ID), 1)
 	}
 
+	js, err := apiClient.GetJobState(ctx, jobReturn.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error getting job state: %s", err), 1)
+	}
+
+	// Need to create index because map ordering are not guaranteed
+	nodeIndexes := make([]string, 0, len(js.Nodes))
+	for i := range js.Nodes {
+		nodeIndexes = append(nodeIndexes, i)
+	}
+	sort.Strings(nodeIndexes)
+
+	printOut := "%s" // We only know this at the end, we'll fill it in there.
+	printOut += "Job Results By Node:\n"
+	identOne := "  "
+	identTwo := strings.Repeat(identOne, 2)
+	resultsCID := ""
+	for i := range nodeIndexes {
+		n := js.Nodes[nodeIndexes[i]]
+		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
+		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
+			printOut += fmt.Sprintf(identOne+"Shard %d:\n", j)
+			printOut += fmt.Sprintf(identTwo+"Status: %s\n", s.State)
+			printOut += fmt.Sprintf(identTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
+			resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+			printResults := func(t string, s string, trunc bool) {
+				truncatedString := ""
+				if trunc {
+					truncatedString = " (truncated: last 2000 characters)"
+				}
+				if s != "" {
+					printOut += fmt.Sprintf(identTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+				} else {
+					printOut += fmt.Sprintf(identTwo+"%s%s: <NONE>\n", t, truncatedString)
+				}
+			}
+			printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
+			printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
+		}
+	}
+
+	printOut += fmt.Sprintf(`
+To download the results, execute:
+%sbacalhau get %s
+
+To get more details about the run, execute:
+%sbacalhau describe %s
+`, identOne, j.ID, identOne, j.ID)
+
+	// Have to do a final Sprintf so we can inject the resultsCID into the right place
+	if resultsCID != "" {
+		resultsCID = fmt.Sprintf("Results CID: %s\n", resultsCID)
+	}
+	RootCmd.Print(fmt.Sprintf(printOut, resultsCID))
+
+	if runtimeSettings.AutoDownloadResults {
+		results, err := getResults(ctx, apiClient, j)
+		if err != nil {
+			return errors.Wrap(err, "error getting results")
+		}
+
+		if len(results) == 0 {
+			return fmt.Errorf("no results found")
+		}
+
+		err = downloadResults(ctx, cmd, cm, j.Spec.Outputs, results, downloadSettings)
+		if err != nil {
+			return errors.Wrap(err, "error downloading results")
+		}
+	}
 	return nil
 }
 
@@ -392,7 +426,7 @@ func downloadResults(ctx context.Context,
 	outputs []model.StorageSpec,
 	results []model.StorageSpec,
 	downloadSettings ipfs.IPFSDownloadSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
+	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.downloadresults")
 	defer span.End()
 
 	err := ipfs.DownloadJob(
@@ -430,18 +464,16 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
 }
 
-//nolint:gocyclo // Better way to do this, Go doesn't have a switch on type
+//nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
 func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
-	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
-	RootCmd.Printf(`
-
+	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
-   bacalhau describe %s
+   bacalhau describe %s`, j.ID)
 
-`, j.ID)
+	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
 	RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 
 	// Create a map of job state types to printed structs
@@ -457,6 +489,41 @@ To get more information at any time, run:
 	if err != nil {
 		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
 	}
+
+	// Capture Ctrl+C if the user wants to finish early the job
+	ctx, cancel := context.WithCancel(ctx)
+	signalChan := make(chan os.Signal, 2)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	defer func() {
+		signal.Stop(signalChan)
+		cancel()
+	}()
+
+	finishedRunning := false
+	var returnError error
+	returnError = nil
+
+	go func() {
+		select {
+		case s := <-signalChan: // first signal, cancel context
+			log.Debug().Msgf("Captured %v. Exiting...", s)
+			if s == os.Interrupt {
+				// If finishedRunning is true, then we go term signal
+				// because the loop finished normally.
+				if !finishedRunning {
+					RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
+					RootCmd.Println(getMoreInfoString)
+					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+				}
+			} else {
+				RootCmd.Println("Unexpected signal received. Exiting.")
+			}
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}()
+
 	if len(jobEvents) != 0 {
 		for {
 			log.Debug().Msgf("Job Events:")
@@ -482,12 +549,21 @@ To get more information at any time, run:
 
 			// Look for any terminal event in all the events. If it's done, we're done.
 			for i := range jobEvents {
-				if eventsWorthPrinting[jobEvents[i].EventName].terminal {
-					return nil
+				// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
+				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
+					// Send a signal to the goroutine that is waiting for Ctrl+C
+					finishedRunning = true
+					signalChan <- syscall.SIGINT
+					break
 				}
 			}
 
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
+			if condition := ctx.Err(); condition != nil {
+				signalChan <- syscall.SIGINT
+				break
+			}
+
 			jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
 			if err != nil {
 				return errors.Wrap(err, "Error getting job events")
@@ -495,10 +571,17 @@ To get more information at any time, run:
 		} // end for
 	}
 
-	return nil
+	return returnError
 }
 
 func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
+	maxLength := 0
+	for _, v := range eventsWorthPrinting {
+		if len(v.Message) > maxLength {
+			maxLength = len(v.Message)
+		}
+	}
+
 	// If it hasn't been printed yet, we'll print this event.
 	if !pe[jet].printed {
 		// Only print " done" after the first line.
@@ -507,11 +590,13 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 			firstLine = firstLine && !pe[v].printed
 		}
 		if !firstLine {
-			RootCmd.Println("done")
+			RootCmd.Println("done ✅")
 		}
 
-		RootCmd.Print(eventsWorthPrinting[jet].msg)
-		if !eventsWorthPrinting[jet].terminal {
+		RootCmd.Printf("\t%s%s",
+			strings.Repeat(" ", maxLength-len(eventsWorthPrinting[jet].Message)+2),
+			eventsWorthPrinting[jet].Message)
+		if !eventsWorthPrinting[jet].IsTerminal {
 			RootCmd.Print(" ... ")
 		} else {
 			RootCmd.Println()
