@@ -290,6 +290,10 @@ var dockerRunCmd = &cobra.Command{
 			ODR.DownloadFlags,
 			ODR.IDOnly,
 		)
+		if err != nil {
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return nil
+		}
 
 		return nil
 	},

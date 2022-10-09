@@ -247,9 +247,9 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 		&settings.IsLocal, "local", settings.IsLocal,
 		`Run the job locally. Docker is required`,
 	)
-
 }
 
+//nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
