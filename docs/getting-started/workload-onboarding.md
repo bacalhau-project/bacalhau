@@ -6,7 +6,7 @@ import ReactPlayer from 'react-player'
 
 # Onboarding Your Workloads
 
-This page describes how to convert your workload into a Bacalhau format. To migrate your workload, follow the instructions below for the job format you want to use. Also, don't forget to check out the examples for more inspiration.
+This tutorial describes how to convert your workload into a Bacalhau format. To migrate your workload, follow the instructions below for the job format you want to use. Check out the examples for more inspiration on this process.
 
 :::tip
 
@@ -16,14 +16,14 @@ We will be adding more job formats soon!
 
 ## Docker
 
-These instructions show you how to migrate a workload that is based on a Docker container into a format that will work with Bacalhau.
+Here you'll learn how to migrate a workload based on a Docker container into a format that will work with the Bacalhau client.
 
 ### Prerequisites and Limitations
 
-To help provide a safe, secure network for all users we add several runtime restrictions:
+To help provide a safe, secure network for all users, we add the following runtime restrictions:
 
-1. All ingress/egress networking is disabled. You won't be able to pull data/code/weights/etc. from an external source.
-2. Data passing is implemented using Docker volumes, using [Bacalhau's input/output volumes](../about-bacalhau/architecture.md#input--output-volumes).
+- All ingress/egress networking is disabled. You won't be able to pull data/code/weights/etc. from an external source.
+- Data passing is implemented with Docker volumes, using [Bacalhau's input/output volumes](../about-bacalhau/architecture.md#input--output-volumes).
 
 The following lists current limitations:
 
@@ -34,11 +34,11 @@ The following lists current limitations:
 
 ### Onboarding
 
-#### 1. (Optional) Read Data From the `/inputs` Directory
+#### Step 1 - (Optional) Read Data From the `/inputs` Directory
 
-If you need to pass data into your container, you will do this via a Docker volume, so you need to modify your code to read from a local directory.
+If you need to pass data into your container you will do this via a Docker volume, so you'll need to modify your code to read from a local directory.
 
-We assume you are reading from a directory called `/inputs`, which is the default.
+We make the assumption that you are reading from a directory called `/inputs`, which is set as the default.
 
 :::tip
 
@@ -46,11 +46,11 @@ You can specify which directory the data is written to with the `--input-volumes
 
 :::
 
-#### 2. (Optional) Write Data to the `/outputs` Directory
+#### Step 2 - (Optional) Write Data to the `/outputs` Directory
 
-If you need to return data from your container, you will do this via a Docker volume, so you need to modify your code to write to a local directory.
+If you need to return data from your container you will do this via a Docker volume, so you'll need to modify your code to write to a local directory.
 
-We assume you are writing to a directory called `/outputs`, which is the default.
+We make the assumption that you are writing to a directory called `/outputs`, which is set as the default.
 
 :::tip
 
@@ -58,7 +58,7 @@ You can specify which directory the data is written to with the `--output-volume
 
 :::
 
-#### 3. (Optional) Build and Push Your Image To a Public Registry
+#### Step 3 - (Optional) Build and Push Your Image To a Public Registry
 
 If you haven't already, [build your image](https://docs.docker.com/engine/reference/commandline/build/) and [push it](https://docs.docker.com/engine/reference/commandline/push/) to a publicly accessible container registry.
 
@@ -76,7 +76,7 @@ docker build -t ${IMAGE} .
 docker image push ${IMAGE}
 ```
 
-#### 4. Test Your Container
+#### Step 4 - Test Your Container
 
 Execute the following command to test your docker image locally, changing the environment variables as necessary:
 
@@ -103,16 +103,16 @@ docker run --rm \
 cat stdout
 ```
 
-Results in:
+This snippet results in:
 
 ```bash
 ...file listing...
 do something useful
 ```
 
-#### 5. (Optional) Upload the Input Data to IPFS
+#### Step 5 - (Optional) Upload the Input Data to IPFS
 
-We recommend uploading your data to IPFS for persistent storage:
+We recommend uploading your data to IPFS for persistent storage, because:
 
 * Bacalhau is designed to perform the computation next to the data
 * Distributing data across the solar system with IPFS distributes the Bacalhau computation
@@ -131,7 +131,7 @@ The following guides explain how to store data on the IPFS network.
 
 :::
 
-#### 6. Run the Workload on Bacalhau
+#### Step 6 - Run the Workload on Bacalhau
 
 To run your workload using input data stored in IPFS use the following command:
 
@@ -154,7 +154,7 @@ bacalhau get $job_id
 ls shards
 ```
 
-Results in:
+results in:
 
 ```bash
  CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED 
@@ -169,11 +169,11 @@ job-24440f0d-3c06-46af-9adf-cb524aa43961-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9
 
 :::caution
 
-The `--inputs` flag does not support CID subpaths. Directories only.
+The `--inputs` flag does not support CID subpaths.
 
 :::
 
-Alternatively, run your workload with a publicly accessible http(s) URL, which will download the data temporarily into IPFS:
+Alternatively, you can run your workload with a publicly accessible http(s) URL, which will download the data temporarily into IPFS:
 
 ```bash
 export URL=https://download.geofabrik.de/antarctica-latest.osm.pbf
@@ -186,7 +186,7 @@ bacalhau get JOB_ID
 
 :::caution
 
-The `--input-urls` flag does not support URL directories. Single files only.
+The `--input-urls` flag does not support URL directories.
 
 :::
 
@@ -202,4 +202,4 @@ Here is an example of running a job live on the Bacalhau network: [Youtube: Baca
 
 ## Support
 
-Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or in case of any issues.
+Please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY) if you would like help pinning data to IPFS for your job or for any issues you encounter.
