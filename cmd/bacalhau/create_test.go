@@ -90,6 +90,8 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 
 		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
@@ -127,6 +129,8 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 
 func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job-url.yaml"
+
+	Fatal = FakeFatalErrorHandler
 
 	c, cm := publicapi.SetupTests(s.T())
 	defer cm.Cleanup()
