@@ -139,7 +139,7 @@ func (s *UtilsSuite) TestImages() {
 		// 	valid: false,
 		// },
 		// "invalid image": {
-		// 	image: "BADIMAGENOTFOUND",
+		// 	image: "badimageNOTFOUND",
 		// 	valid: false,
 		// },
 		"image with tag (norepo)": {

@@ -941,9 +941,8 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 	}
 }
 
-// Experiment to test bad images and bad binaries
+// Test bad images and bad binaries
 func (s *DockerRunSuite) TestRun_BadExecutables() {
-
 	tests := map[string]struct {
 		imageName         string
 		executable        string
@@ -957,22 +956,22 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			errStringContains: "",
 		},
 		"bad-image-good-executable": {
-			imageName:         "BADIMAGE", // Bad image
+			imageName:         "badimage", // Bad image
 			executable:        "ls",       // Good executable
 			isValid:           false,
-			errStringContains: "foo",
+			errStringContains: "Could not pull image",
 		},
 		"good-image-bad-executable": {
 			imageName:         "ubuntu",        // Good image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "foo",
+			errStringContains: "Executable file not found",
 		},
 		"bad-image-bad-executable": {
-			imageName:         "BADIMAGE",      // Bad image
+			imageName:         "badimage",      // Bad image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Error",
+			errStringContains: "Could not pull image",
 		},
 	}
 
@@ -998,7 +997,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		require.NoError(s.T(), err, "Error submitting job")
 
 		if !tc.isValid {
-			require.Contains(s.T(), out, name+":"+tc.errStringContains)
+			require.Contains(s.T(), out, tc.errStringContains, "Error string does not contain expected string")
 		} else {
 			require.NotContains(s.T(), out, "Error", name+":"+"Error detected in output")
 		}
