@@ -6,15 +6,15 @@ sidebar_position: 3
 
 Bacalhau can run workloads in parallel by splitting the input data volumes and running `shards` of the workload on different nodes.
 
-This works using a **glob pattern** to slice the input data volumes into atoms and then grouping them using a **batch size** into `shards`.
+This works by using a **glob pattern** to slice the input data volumes into atoms, then grouping them using a **batch size** into `shards`.
 
-Each shard will run on a different computer and will be executed in parallel.  Once all of the shards have completed, the results can be merged and the final result combined from all the shards.
+Each shard runs on a different computer, and is executed in parallel. Once all of the shards have completed, the results are merged and the final result is combined from all the shards.
 
 ## Glob Pattern
 
-First - you need to decide how to split the input data using a glob pattern.
+First, you'll need to decide how to split the input data using a glob pattern.
 
-For example - if you have a folder with thousands of images all at the top layer as follows:
+For example, if you have a folder with thousands of images all at the top layer as follows:
 
  * image00001.jpg
  * image00002.jpg
@@ -30,13 +30,13 @@ We might have folders at the top level:
  * ...
  * folderN/
 
-Then - our glob pattern could be `folder*`.
+For this, our glob pattern could be `folder*`.
 
 ## Base Path
 
-The base path is the common path that the glob pattern will be applied to and can be useful if you combine multiple input volumes into one job.
+The base path is the common path that the glob pattern will be applied to, and can be useful if you combine multiple input volumes into one job.
 
-For example - if we have 10 input volumes each containing a sequence of images as above - then we can mount them all under a single path as follows:
+For example, if we have 10 input volumes each containing a sequence of images as above, then we can mount them all under a single path as follows:
 
  * /input_images/volume1
    * image00001.jpg
@@ -48,15 +48,15 @@ For example - if we have 10 input volumes each containing a sequence of images a
    * image04701.jpg
    * image04702.jpg
 
-We can use a base path of `/input_images` and a glob pattern of `/volume*/image*.jpg` which would result in all images in all mounted volumes becoming atoms in our shards.
+We can then use a base path of `/input_images` and a glob pattern of `/volume*/image*.jpg`, which would result in all images in all mounted volumes becoming atoms in our shards.
 
 ## Batch Size
 
 Once we've have split our into data into atoms based on the glob pattern, we will then combine those atoms into shards using the `batch size`.
 
-In our example of a folder with 10,000 images - we might set our batch size to 1000 resulting in 10 shards.
+In our example of a folder with 10,000 images, we might want to set our batch size to 1000, resulting in 10 shards.
 
-If our workload was image magick - each of the 10 shards would be operating on a different set of input images and would be executed in parallel.
+If our workload was image magic, each of the 10 shards would be operating on a different set of input images and would be executed in parallel.
 
 ## Putting it together
 
