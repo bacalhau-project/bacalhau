@@ -51,10 +51,12 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*OC = *NewCreateOptions()
@@ -88,6 +90,8 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		{numberOfJobs: 5}, // Test for five
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 
 		testFiles := []string{"../../testdata/job.yaml", "../../testdata/job-url.yaml"}
@@ -95,7 +99,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*OC = *NewCreateOptions()
@@ -126,7 +130,9 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 func (s *CreateSuite) TestCreateFromStdin() {
 	testFile := "../../testdata/job-url.yaml"
 
-	c, cm := publicapi.SetupTests(s.T())
+	Fatal = FakeFatalErrorHandler
+
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 	defer cm.Cleanup()
 
 	*OC = *NewCreateOptions()
@@ -159,7 +165,7 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	// Cat the file and pipe it to stdin
 	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
 		"echo", []string{out,
-			"|", "../../bin/bacalhau create -"},
+			"|", "../../bin/bacalhau create"},
 	)
 	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
 }

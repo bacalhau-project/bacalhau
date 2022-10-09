@@ -32,7 +32,7 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 
-	jobState, err := getJobStateFromRequest(ctx, apiServer, stateReq)
+	js, err := getJobStateFromRequest(ctx, apiServer, stateReq)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -40,7 +40,7 @@ func (apiServer *APIServer) states(res http.ResponseWriter, req *http.Request) {
 
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(stateResponse{
-		State: jobState,
+		State: js,
 	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

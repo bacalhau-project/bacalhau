@@ -160,7 +160,7 @@ func ConstructLanguageJob(
 	command string,
 	programPath string,
 	requirementsPath string,
-	contextPath string, // we have to tar this up and POST it to the requestor node
+	contextPath string, // we have to tar this up and POST it to the Requester node
 	deterministic bool,
 	annotations []string,
 	doNotTrack bool,

@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"golang.org/x/exp/constraints"
 
 	"github.com/rs/zerolog/log"
 )
@@ -210,6 +212,10 @@ func runCommandResultsToDisk(command string, args []string,
 		log.Error().Err(err).Msg("Error reading stderr from file")
 		r.ErrorMsg = err.Error()
 		return r, err
+	}
+	if strings.Contains(r.STDERR, "executable file not found") {
+		err = bacerrors.NewExecutableNotFound(strings.Join(args[1:], " "))
+		r.STDERR = err.Error()
 	}
 
 	r.ExitCode = cmd.ProcessState.ExitCode()
@@ -412,34 +418,56 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// TODO: #233 Replace when we move to go1.18
-// https://stackoverflow.com/questions/27516387/what-is-the-correct-way-to-find-the-min-between-two-integers-in-go
-func Min(a, b int) int {
+func Min[T constraints.Ordered](a, b T) T {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func Max(a, b int) int {
-	if a > b {
+func Max[T constraints.Ordered](a, b T) T {
+	if a < b {
 		return a
 	}
 	return b
 }
 
-func MinFromArray(intArray []int) (int, error) {
-	if len(intArray) == 0 {
-		return 0, errors.New("cannot get min from empty array")
+func MinFromSlice[T constraints.Ordered](s []T) (T, error) {
+	var result T
+	if len(s) == 0 {
+		return result, errors.New("cannot get min from empty array")
 	}
+	return getExtremeFromSlice(s, lessThan[T], "min")
+}
 
-	m := math.MaxInt
-	for i, e := range intArray {
-		if i == 0 || e < m {
+func MaxFromSlice[T constraints.Ordered](s []T) (T, error) {
+	var result T
+	if len(s) == 0 {
+		return result, errors.New("cannot get max from empty array")
+	}
+	return getExtremeFromSlice(s, greaterThan[T], "max")
+}
+
+func getExtremeFromSlice[T constraints.Ordered](s []T, comparer func(T, T) bool, name string) (T, error) {
+	var result T
+	if len(s) == 0 {
+		return result, fmt.Errorf("cannot get %s from empty array", name)
+	}
+	m := s[0]
+	for _, e := range s {
+		if comparer(e, m) {
 			m = e
 		}
 	}
 	return m, nil
+}
+
+func greaterThan[T constraints.Ordered](a, b T) bool {
+	return a > b
+}
+
+func lessThan[T constraints.Ordered](a, b T) bool {
+	return a < b
 }
 
 func ReverseList(s []string) []string {
@@ -467,11 +495,4 @@ func FindJobIDInTestOutput(testOutput string) string {
 		return b[1]
 	}
 	return ""
-}
-
-// Checks to see if an object implements an interface
-// First parameter is the interface, second is the object
-func CheckIfObjectImplementsType[T any](_ T, n interface{}) bool {
-	_, ok := n.(T)
-	return ok
 }

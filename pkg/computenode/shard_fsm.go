@@ -367,6 +367,7 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.errorMsg = req.reason
 			return errorState
 		default:
+			// TODO: #832 Get a lot of these, should we care? 'Bidding ignoring unknown action: ActionBid [NodeID:QmUhzQME]'
 			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
@@ -469,7 +470,10 @@ func publishingToRequesterState(ctx context.Context, m *shardStateMachine) State
 
 func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardError)
-	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
+
+	//nolint:lll
+	// TODO: #833 We throw an error into our logs for every user error, we should split things into User Errors and System Errors. If they have a bad binary, that's their fault, not ours.
+	errMessage := fmt.Sprintf("errorState: error completing job due to: %s", m.errorMsg)
 	log.Ctx(ctx).Error().Msgf(errMessage)
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.errorState")
@@ -486,8 +490,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.runOutput,
 		)
 		if err != nil {
-			log.Ctx(ctx).Error().Msgf("%s failed to report error of job due to %s",
-				m, err.Error())
+			log.Ctx(ctx).Error().Msgf("errorState: failed to report error of job due to %s", err.Error())
 		}
 	}
 

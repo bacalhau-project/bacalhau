@@ -43,10 +43,10 @@ const (
 	// a compute node completed running a job
 	JobEventResultsProposed
 
-	// a requestor node accepted the results from a node for a job
+	// a Requester node accepted the results from a node for a job
 	JobEventResultsAccepted
 
-	// a requestor node rejected the results from a node for a job
+	// a Requester node rejected the results from a node for a job
 	JobEventResultsRejected
 
 	// once the results have been accepted or rejected

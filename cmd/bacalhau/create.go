@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
@@ -186,6 +188,28 @@ var createCmd = &cobra.Command{
 		// Warn on fields with data that will be ignored
 		if len(unusedFieldList) > 0 {
 			cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))
+		}
+
+		err = jobutils.VerifyJob(ctx, j)
+		if err != nil {
+			if _, ok := err.(*bacerrors.ImageNotFound); ok {
+				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+				return nil
+			} else {
+				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+				return nil
+			}
+		}
+		if ODR.DryRun {
+			// Converting job to yaml
+			var yamlBytes []byte
+			yamlBytes, err = yaml.Marshal(j)
+			if err != nil {
+				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
+				return nil
+			}
+			cmd.Print(string(yamlBytes))
+			return nil
 		}
 
 		err = ExecuteJob(ctx,
