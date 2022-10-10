@@ -46,9 +46,9 @@ jobs:
             equal: ["windows", << parameters.target_os >>]
           steps:
             - run:
-                name: Install GNU Make and GCC
+                name: Install GNU Make
                 command: |
-                  choco install -y make mingw
+                  choco install -y make
                 shell: powershell.exe
             - run:
                 name: Downgrade Golang
@@ -68,19 +68,6 @@ jobs:
                   export BREW_GO_VERSION=$(echo $GOVER | grep -Eo '^\d\.\d+')
                   brew install go@$BREW_GO_VERSION
                   echo "export PATH='/usr/local/opt/go@$BREW_GO_VERSION/bin:$PATH'" >> ~/.bash_profile
-
-      - when:
-          condition:
-            and:
-              - equal: ["linux", << parameters.target_os >>]
-              - not:
-                  equal: ["amd64", << parameters.target_arch >>]
-          steps:
-            - run:
-                name: Install cross-compilation toolchain
-                command: |
-                  source "compile/linux/${GOOS}_${GOARCH}.env"
-                  sudo apt-get install -y $PACKAGES
 
       - run:
           name: Install IPFS
