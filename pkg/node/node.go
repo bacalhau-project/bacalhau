@@ -55,7 +55,7 @@ type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
 	ComputeNode    *computenode.ComputeNode
-	RequestorNode  *requesternode.RequesterNode
+	RequesterNode  *requesternode.RequesterNode
 	LocalDB        localdb.LocalDB
 	Transport      transport.Transport
 	CleanupManager *system.CleanupManager
@@ -203,7 +203,7 @@ func NewNode(
 		LocalDB:        config.LocalDB,
 		Transport:      config.Transport,
 		ComputeNode:    computeNode,
-		RequestorNode:  requesterNode,
+		RequesterNode:  requesterNode,
 		Executors:      executors,
 		HostID:         config.HostID,
 		metricsPort:    config.MetricsPort,

@@ -1,7 +1,7 @@
 package pythonwasm
 
 /*
-The python_wasm executor wraps the docker executor. The requestor will have
+The python_wasm executor wraps the docker executor. The Requester will have
 automatically uploaded the execution context (python files, requirements.txt) to
 ipfs so that it can be mounted into the wasm runtime container.
 */

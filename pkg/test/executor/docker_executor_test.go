@@ -1,6 +1,6 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
-package docker
+package executor
 
 import (
 	"context"
@@ -15,14 +15,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type ExecutorDockerExecutorSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -63,7 +61,7 @@ func dockerExecutorStorageTest(
 	runTest := func(getStorageDriver scenario.IGetStorageDriver) {
 		ctx := context.Background()
 
-		stack := testutils.NewDockerIpfsStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
+		stack := testutils.NewDevStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
 		defer stack.Node.CleanupManager.Cleanup()
 
 		dockerExecutor, err := stack.Node.Executors.GetExecutor(ctx, model.EngineDocker)

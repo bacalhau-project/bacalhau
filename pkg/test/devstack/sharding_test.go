@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
 package devstack
 
@@ -268,7 +268,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	err = ipfs.DownloadJob(
 		ctx,
 		cm,
-		submittedJob,
+		submittedJob.Spec.Outputs,
 		jobResults,
 		ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    10,

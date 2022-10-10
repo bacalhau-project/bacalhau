@@ -1,6 +1,8 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // JobStateType is the state of a job on a particular node. Note that the job
 // will typically have different states on different nodes.
@@ -42,8 +44,8 @@ const (
 // IsTerminal returns true if the given job type signals the end of the
 // lifecycle of that job on a particular node. After this, the job can be
 // safely ignored by the node.
-func (state JobStateType) IsTerminal() bool {
-	return state == JobStateCompleted || state == JobStateError || state == JobStateCancelled
+func (s JobStateType) IsTerminal() bool {
+	return s == JobStateCompleted || s == JobStateError || s == JobStateCancelled
 }
 
 // IsComplete returns true if the given job has succeeded at the bid stage
@@ -51,17 +53,17 @@ func (state JobStateType) IsTerminal() bool {
 // has completed across all nodes because a cancelation does not count
 // towards actually "running" the job whereas an error does (even though it failed
 // it still "ran")
-func (state JobStateType) IsComplete() bool {
-	return state == JobStateCompleted || state == JobStateError
+func (s JobStateType) IsComplete() bool {
+	return s == JobStateCompleted || s == JobStateError
 }
 
-func (state JobStateType) IsError() bool {
-	return state == JobStateError
+func (s JobStateType) IsError() bool {
+	return s == JobStateError
 }
 
 // tells you if this event is a valid one
-func IsValidJobState(state JobStateType) bool {
-	return state > jobStateUnknown && state < jobStateDone
+func IsValidJobState(s JobStateType) bool {
+	return s > jobStateUnknown && s < jobStateDone
 }
 
 func ParseJobStateType(str string) (JobStateType, error) {
@@ -82,6 +84,24 @@ func JobStateTypes() []JobStateType {
 	}
 
 	return res
+}
+
+func JobStateTypeNames() []string {
+	var names []string
+	for _, typ := range JobStateTypes() {
+		names = append(names, typ.String())
+	}
+	return names
+}
+
+func (s JobStateType) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+func (s *JobStateType) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*s, err = ParseJobStateType(name)
+	return
 }
 
 // given an event name - return a job state

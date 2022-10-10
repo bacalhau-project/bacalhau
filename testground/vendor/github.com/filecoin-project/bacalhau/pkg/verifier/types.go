@@ -16,6 +16,11 @@ type VerifierResult struct {
 	Verified   bool
 }
 
+// Returns a verifier that can be used to verify a job.
+type VerifierProvider interface {
+	GetVerifier(ctx context.Context, job model.Verifier) (Verifier, error)
+}
+
 // Verifier is an interface representing something that can verify the results
 // of a job.
 type Verifier interface {
@@ -53,7 +58,7 @@ type Verifier interface {
 	// to decide that a job has "completed"
 	IsExecutionComplete(
 		ctx context.Context,
-		jobID string,
+		shard model.JobShard,
 	) (bool, error)
 
 	// requester node
@@ -65,8 +70,8 @@ type Verifier interface {
 	// for each of the shards reported
 	//
 	// IsJobComplete must return true otherwise this function will error
-	VerifyJob(
+	VerifyShard(
 		ctx context.Context,
-		jobID string,
+		shard model.JobShard,
 	) ([]VerifierResult, error)
 }

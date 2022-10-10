@@ -17,14 +17,15 @@ import (
 )
 
 type Executor struct {
-	Jobs []*model.Job
+	Jobs map[string]*model.Job
 
-	executors map[model.EngineType]executor.Executor
+	executors executor.ExecutorProvider
 }
 
 func NewExecutor(
+	ctx context.Context,
 	cm *system.CleanupManager,
-	executors map[model.EngineType]executor.Executor,
+	executors executor.ExecutorProvider,
 ) (*Executor, error) {
 	e := &Executor{
 		executors: executors,
@@ -48,20 +49,26 @@ func (e *Executor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
 	jobResultsDir string,
-) error {
+) (*model.RunCommandResult, error) {
 	if shard.Job.Spec.Language.Language != "python" && shard.Job.Spec.Language.LanguageVersion != "3.10" {
-		return fmt.Errorf("only python 3.10 is supported")
+		err := fmt.Errorf("only python 3.10 is supported")
+		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
 
 	if shard.Job.Spec.Language.Deterministic {
-		log.Debug().Msgf("running deterministic python 3.10")
+		log.Ctx(ctx).Debug().Msgf("running deterministic python 3.10")
 		// Instantiate a python_wasm
 		// TODO: mutate job as needed?
-		return e.executors[model.EnginePythonWasm].RunShard(ctx, shard, jobResultsDir)
+		pythonWasmExecutor, err := e.executors.GetExecutor(ctx, model.EnginePythonWasm)
+		if err != nil {
+			return nil, err
+		}
+		return pythonWasmExecutor.RunShard(ctx, shard, jobResultsDir)
 	} else {
-		log.Debug().Msgf("running arbitrary python 3.10")
+		log.Ctx(ctx).Debug().Msgf("running arbitrary python 3.10")
+		err := fmt.Errorf("arbitrary python not supported yet")
 		// TODO: Instantiate a docker with python:3.10 image
-		return fmt.Errorf("arbitrary python not supported yet")
+		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
 }
 

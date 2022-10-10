@@ -108,7 +108,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		Job:      j,
 	}
 
-	_, err := node.RequestorNode.SubmitJob(ctx, payload)
+	_, err := node.RequesterNode.SubmitJob(ctx, payload)
 	require.NoError(suite.T(), err)
 	time.Sleep(time.Second * 1)
 

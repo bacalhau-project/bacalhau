@@ -27,6 +27,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestVersionSuite(t *testing.T) {
+	suite.Run(t, new(VersionSuite))
+}
+
 type VersionSuite struct {
 	suite.Suite
 	rootCmd *cobra.Command
@@ -50,7 +56,7 @@ func (suite *VersionSuite) TearDownAllSuite() {
 }
 
 func (suite *VersionSuite) Test_Version() {
-	c, cm := publicapi.SetupTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -61,8 +67,8 @@ func (suite *VersionSuite) Test_Version() {
 	)
 	require.NoError(suite.T(), err)
 
-	require.Contains(suite.T(), string(out), "clientVersion", "Client version not in output")
-	require.Contains(suite.T(), string(out), "serverVersion", "Server version not in output")
+	require.Contains(suite.T(), string(out), "Client Version", "Client version not in output")
+	require.Contains(suite.T(), string(out), "Server Version", "Server version not in output")
 }
 
 type ThisVersions struct {
@@ -71,7 +77,7 @@ type ThisVersions struct {
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
-	c, cm := publicapi.SetupTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -99,10 +105,4 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	_ = yaml.Unmarshal([]byte(out), &yamlDoc)
 	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
 
-}
-
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestVersionSuite(t *testing.T) {
-	suite.Run(t, new(VersionSuite))
 }

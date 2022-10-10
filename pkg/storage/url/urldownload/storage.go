@@ -3,9 +3,14 @@ package urldownload
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -58,11 +63,12 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Stora
 	return 0, nil
 }
 
+// For the urldownload storage provider, PrepareStorage will download the file from the URL
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
 
-	_, err := IsURLSupported(storageSpec.URL)
+	u, err := IsURLSupported(storageSpec.URL)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -73,16 +79,58 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 
 	sp.HTTPClient.SetTimeout(config.GetDownloadURLRequestTimeout())
-	_, err = sp.HTTPClient.R().
-		SetOutput(outputPath + "/file").
-		Get(storageSpec.URL)
+	sp.HTTPClient.SetOutputDirectory(outputPath)
+	sp.HTTPClient.SetDoNotParseResponse(true) // We want to stream the response to disk directly
+
+	req := sp.HTTPClient.R().SetContext(ctx)
+	req = req.SetContext(ctx)
+	r, err := req.Head(u.String())
+	log.Debug().Msgf("HEAD request to %s returned status code %d", u.String(), r.StatusCode())
 	if err != nil {
-		return storage.StorageVolume{}, err
+		return storage.StorageVolume{}, fmt.Errorf("failed to get headers from url (%s): %s", u.String(), err)
 	}
+
+	log.Trace().Msgf("Beginning get %s to %s", u.String(), outputPath)
+	r, err = req.Get(u.String())
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to begin download from url %s: %s", u.String(), err)
+	}
+
+	if r.StatusCode() != http.StatusOK {
+		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, r.Status())
+	}
+
+	// Create a new file based on the URL
+	fileName := filepath.Base(path.Base(u.Path))
+	filePath := filepath.Join(outputPath, fileName)
+	w, err := os.Create(filePath)
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to create file %s: %s", filePath, err)
+	}
+
+	// stream the body to the client without fully loading it into memory
+	n, err := io.Copy(w, r.RawBody())
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to write to file %s: %s", filePath, err)
+	}
+
+	if n == 0 {
+		return storage.StorageVolume{}, fmt.Errorf("no bytes written to file %s", filePath)
+	}
+
+	log.Trace().Msgf("Wrote %d bytes to %s", n, filePath)
+
+	// Closing everything
+	err = w.Sync()
+	if err != nil {
+		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %s", filePath, err)
+	}
+	r.RawBody().Close()
+	w.Close()
 
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
-		Source: outputPath + "/file",
+		Source: filePath,
 		Target: storageSpec.Path,
 	}
 
@@ -129,17 +177,25 @@ func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) 
 	}, nil
 }
 
-func IsURLSupported(rawURL string) (bool, error) {
-	// The string url is assumed NOT to have a #fragment suffix
-	// thus the valid form is: [scheme:][//[userinfo@]host][/]path[?query]
-	parsedURL, err := url.ParseRequestURI(rawURL)
+func IsURLSupported(rawURL string) (*url.URL, error) {
+	rawURL = strings.Trim(rawURL, " '\"")
+	u, err := url.Parse(rawURL)
 	if err != nil {
-		return false, err
+		return nil, fmt.Errorf("invalid URL: %s", err)
 	}
-	if (parsedURL.Scheme == "http") || (parsedURL.Scheme == "https") {
-		return true, nil
+	if (u.Scheme != "http") && (u.Scheme != "https") {
+		return nil, fmt.Errorf("URLs must begin with 'http' or 'https'. The submitted one began with %s", u.Scheme)
 	}
-	return false, fmt.Errorf("protocol scheme in URL not supported: %s", rawURL)
+
+	basePath := path.Base(u.Path)
+
+	// Need to check for both because a bare host
+	// Like http://localhost/ gets converted to "." by path.Base
+	if basePath == "" || u.Path == "" {
+		return nil, fmt.Errorf("URL must end with a file name")
+	}
+
+	return u, nil
 }
 
 // Compile time interface check:

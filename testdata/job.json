@@ -4,7 +4,7 @@
         "Engine": "docker",
         "Verifier": "noop",
         "Publisher": "ipfs",
-        "JobSpecDocker": {
+        "Docker": {
             "Image": "gromacs/gromacs",
             "Entrypoint": [
                 "/bin/bash",

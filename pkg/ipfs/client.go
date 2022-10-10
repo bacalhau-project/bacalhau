@@ -135,6 +135,9 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 	if err := files.WriteTo(node, tmpPath); err != nil {
 		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
 	}
+
+	//nolint:lll // long line ok for error message
+	// TODO: #794 Why is this necessary? Aren't we renaming the directory to the final destination? Won't this just be a no-op? Or worse an error?
 	defer os.RemoveAll(tmpPath)
 
 	if err := os.Rename(tmpPath, outputPath); err != nil {

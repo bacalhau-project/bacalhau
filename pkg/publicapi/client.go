@@ -109,7 +109,7 @@ func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, 
 	}
 }
 
-func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
+func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (model.JobState, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetJobState")
 	defer span.End()
 

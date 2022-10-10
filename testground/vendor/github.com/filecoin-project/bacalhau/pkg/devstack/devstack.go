@@ -3,12 +3,16 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"strings"
+
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -17,10 +21,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 )
@@ -73,7 +76,7 @@ func NewStandardDevStack(
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDepdencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
@@ -82,7 +85,7 @@ func NewNoopDevStack(
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDepdencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -97,7 +100,6 @@ func NewDevStack(
 	defer span.End()
 
 	nodes := []*node.Node{}
-	var firstNodeLibp2pPort int
 	var err error
 
 	for i := 0; i < options.NumberOfNodes; i++ {
@@ -136,36 +138,33 @@ func NewDevStack(
 			return nil, err
 		}
 
-		libp2pPeer := ""
+		libp2pPeer := []multiaddr.Multiaddr{}
 
 		if i == 0 {
-			firstNodeLibp2pPort = libp2pPort
 			if options.Peer != "" {
 				// connect 0'th node to external peer if specified
 				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-				libp2pPeer = options.Peer
+				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+				if addrErr != nil {
+					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+				}
+				libp2pPeer = []multiaddr.Multiaddr{peerAddr}
 			}
 		} else {
-			var libp2pHostID string
-			// connect the libp2p scheduler node
-			firstNode := nodes[0]
-
-			// get the libp2p id of the first scheduler node
-			libp2pHostID, err = firstNode.Transport.HostID(ctx)
+			libp2pPeer, err = nodes[0].Transport.HostAddrs()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
 			}
-
-			// connect this scheduler to the first
-			libp2pPeer = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", firstNodeLibp2pPort, libp2pHostID)
 			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 		}
 
-		var transport transport.Transport
-		transport, err = libp2p.NewTransport(ctx, cm, libp2pPort, []string{libp2pPeer})
-		if err != nil {
-			return nil, err
+		transport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
+		if transportErr != nil {
+			return nil, transportErr
 		}
+
+		// add NodeID to logging context
+		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
 
 		//////////////////////////////////////
 		// port for API
@@ -190,6 +189,15 @@ func NewDevStack(
 		}
 
 		//////////////////////////////////////
+		// in-memory datastore
+		//////////////////////////////////////
+		var datastore localdb.LocalDB
+		datastore, err = inmemory.NewInMemoryDatastore()
+		if err != nil {
+			return nil, err
+		}
+
+		//////////////////////////////////////
 		// Create and Run Node
 		//////////////////////////////////////
 		isBadActor := (options.NumberOfBadActors > 0) && (i >= options.NumberOfNodes-options.NumberOfBadActors)
@@ -197,11 +205,12 @@ func NewDevStack(
 		nodeConfig := node.NodeConfig{
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
+			LocalDB:              datastore,
 			Transport:            transport,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               strconv.Itoa(i),
+			HostID:               transport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeNodeConfig:    computeNodeConfig,
@@ -211,6 +220,12 @@ func NewDevStack(
 
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig, injector)
+		if err != nil {
+			return nil, err
+		}
+
+		// Start transport layer
+		err = transport.Start(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +245,7 @@ func NewDevStack(
 
 	log.Trace().Msg("============= STARTING PROFILING ============")
 	// devstack always records a cpu profile, it will be generally useful.
-	cpuprofile := "/tmp/bacalhau-devstack-cpu.prof"
+	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
 	f, err := os.Create(cpuprofile)
 	if err != nil {
 		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
@@ -271,11 +286,11 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
-func (stack *DevStack) PrintNodeInfo() {
+func (stack *DevStack) PrintNodeInfo() (string, error) {
 	ctx := context.Background()
 
 	if !config.DevstackGetShouldPrintInfo() {
-		return
+		return "", nil
 	}
 
 	logString := ""
@@ -291,7 +306,7 @@ func (stack *DevStack) PrintNodeInfo() {
 		swarmAddrrs := ""
 		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
 		if err != nil {
-			log.Error().Msgf("Cannot get swarm addresses for node %d", nodeIndex)
+			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
 		} else {
 			swarmAddrrs = strings.Join(swarmAddresses, ",")
 		}
@@ -330,54 +345,16 @@ export BACALHAU_API_PORT=%s`,
 
 	log.Debug().Msg(logString)
 
-	log.Info().Msg("Devstack is ready!")
-	log.Info().Msg("To use the devstack, run the following commands in your shell:")
-	log.Info().Msg(summaryShellVariablesString)
-}
-
-func (stack *DevStack) AddFileToNodes(ctx context.Context, nodeCount int, filePath string) (string, error) {
-	var res string
-	for i, node := range stack.Nodes {
-		if i >= nodeCount {
-			continue
-		}
-
-		cid, err := node.IPFSClient.Put(ctx, filePath)
-		if err != nil {
-			return "", fmt.Errorf("error adding file to node %d: %v", i, err)
-		}
-
-		log.Debug().Msgf("Added cid '%s' to ipfs node '%s'", cid, node.IPFSClient.APIAddress())
-		res = strings.TrimSpace(cid)
-	}
-
-	return res, nil
-}
-
-func (stack *DevStack) AddTextToNodes(ctx context.Context, nodeCount int, fileContent []byte) (string, error) {
-	testDir, err := ioutil.TempDir("", "bacalhau-test")
-	if err != nil {
-		return "", err
-	}
-
-	testFilePath := fmt.Sprintf("%s/test.txt", testDir)
-	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW)
-	if err != nil {
-		return "", err
-	}
-
-	return stack.AddFileToNodes(ctx, nodeCount, testFilePath)
+	returnString := fmt.Sprintf(`
+Devstack is ready!
+To use the devstack, run the following commands in your shell: %s`, summaryShellVariablesString)
+	return returnString, nil
 }
 
 func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 	*node.Node, error) {
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if id == nodeID {
+		if node.Transport.HostID() == nodeID {
 			return node, nil
 		}
 	}
@@ -388,11 +365,7 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 func (stack *DevStack) GetNodeIds() ([]string, error) {
 	ids := []string{}
 	for _, node := range stack.Nodes {
-		id, err := node.Transport.HostID(context.Background())
-		if err != nil {
-			return ids, err
-		}
-		ids = append(ids, id)
+		ids = append(ids, node.Transport.HostID())
 	}
 
 	return ids, nil

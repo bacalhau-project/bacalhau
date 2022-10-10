@@ -39,7 +39,7 @@ type GetOptions struct {
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
 		IPFSDownloadSettings: ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    600,
+			TimeoutSecs:    int(ipfs.DefaultIPFSTimeout.Seconds()),
 			OutputDir:      ".",
 			IPFSSwarmAddrs: "",
 		},
@@ -72,12 +72,13 @@ var getCmd = &cobra.Command{
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
 			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-			} else if err != nil {
+			if err != nil {
+				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+					// Both filename and stdin are empty
+					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+				}
 				// Error not related to fields being empty
-				return err
+				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 			}
 			jobID = string(byteResult)
 		}
@@ -103,7 +104,7 @@ var getCmd = &cobra.Command{
 		err = ipfs.DownloadJob(
 			ctx,
 			cm,
-			j,
+			j.Spec.Outputs,
 			results,
 			OG.IPFSDownloadSettings,
 		)

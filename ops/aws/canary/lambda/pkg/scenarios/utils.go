@@ -17,7 +17,7 @@ const defaultEchoMessage = "hello λ!"
 
 func getSampleDockerJob() *model.Job {
 	var j = &model.Job{}
-	j.Spec = model.JobSpec{
+	j.Spec = model.Spec{
 		Engine:    model.EngineDocker,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
@@ -30,7 +30,7 @@ func getSampleDockerJob() *model.Job {
 		},
 	}
 
-	j.Deal = model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 	return j
@@ -56,7 +56,6 @@ func waitUntilCompleted(ctx context.Context, client *publicapi.APIClient, submit
 		submittedJob.ID,
 		totalShards,
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{

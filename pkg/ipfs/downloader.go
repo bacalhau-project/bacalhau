@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,9 +20,11 @@ type IPFSDownloadSettings struct {
 	IPFSSwarmAddrs string
 }
 
+const DefaultIPFSTimeout time.Duration = 5 * time.Minute
+
 func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 	return &IPFSDownloadSettings{
-		TimeoutSecs:    10,
+		TimeoutSecs:    int(DefaultIPFSTimeout.Seconds()),
 		OutputDir:      ".",
 		IPFSSwarmAddrs: "",
 	}
@@ -42,14 +43,14 @@ func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
 	cm *system.CleanupManager,
-	j *model.Job,
-	results []model.StorageSpec,
+	outputs []model.StorageSpec,
+	shardResults []model.StorageSpec,
 	settings IPFSDownloadSettings,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
 	defer span.End()
 
-	if len(results) == 0 {
+	if len(shardResults) == 0 {
 		log.Ctx(ctx).Debug().Msg("No results to download")
 		return nil
 	}
@@ -57,6 +58,8 @@ func DownloadJob( //nolint:funlen,gocyclo
 	switch system.GetEnvironment() {
 	case system.EnvironmentProd:
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+	case system.EnvironmentTest:
+		log.Ctx(ctx).Warn().Msg("No action (don't use BACALHAU_IPFS_SWARM_ADDRESSES")
 	case system.EnvironmentDev:
 		// TODO: add more dev swarm addresses?
 		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
@@ -73,7 +76,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	err = loopOverResults(ctx, n, results, settings, j)
+	err = loopOverResults(ctx, n, shardResults, settings, outputs)
 	if err != nil {
 		return err
 	}
@@ -83,9 +86,10 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 func loopOverResults(ctx context.Context,
 	n *Node,
-	results []model.StorageSpec,
+	shardResults []model.StorageSpec,
 	settings IPFSDownloadSettings,
-	j *model.Job) error {
+	outputs []model.StorageSpec,
+) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.loopingOverResults")
 	defer span.End()
 
@@ -94,12 +98,6 @@ func loopOverResults(ctx context.Context,
 	if err != nil {
 		return err
 	}
-
-	scratchFolder, err := ioutil.TempDir("", "bacalhau-ipfs-job-downloader")
-	if err != nil {
-		return err
-	}
-	log.Ctx(ctx).Debug().Msgf("Created download scratch folder: %s", scratchFolder)
 
 	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
@@ -112,7 +110,7 @@ func loopOverResults(ctx context.Context,
 	// it's "name" and "path" is named after the shard index
 	// so we write the shard output to our scratch folder
 	// and then merge each outout volume into the global results
-	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to temporary folder.", len(results))
+	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to temporary folder.", len(shardResults))
 
 	// we move all the contents of the output volume to the global results dir
 	// for this output volume
@@ -120,14 +118,14 @@ func loopOverResults(ctx context.Context,
 	// append all stdout and stderr to a global concatenated log
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
-	for _, result := range results {
-		shardDownloadDir := filepath.Join(scratchFolder, result.Name)
+	for _, result := range shardResults {
+		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Name)
 		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
 		if err != nil {
 			return err
 		}
 
-		err = moveResults(ctx, j, shardDownloadDir, finalOutputDirAbs, result)
+		err = moveResults(ctx, outputs, shardDownloadDir, finalOutputDirAbs, result)
 		if err != nil {
 			return err
 		}
@@ -178,14 +176,14 @@ func fetchResult(ctx context.Context,
 }
 
 func moveResults(ctx context.Context,
-	j *model.Job,
+	outputVolumes []model.StorageSpec,
 	shardDownloadDir string,
 	finalOutputDirAbs string,
 	result model.StorageSpec) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
-	for _, outputVolume := range j.Spec.Outputs {
+	for _, outputVolume := range outputVolumes {
 		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
 		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)
@@ -267,7 +265,10 @@ func catStdFiles(ctx context.Context,
 			filepath.Join(shardDownloadDir, filename),
 			filepath.Join(finalOutputDirAbs, filename),
 		)
-		if err != nil {
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			// It's not a problem if one of these files isn't present
+			continue
+		} else if err != nil {
 			return err
 		}
 	}
@@ -290,7 +291,10 @@ func moveStdFiles(ctx context.Context,
 			filepath.Join(shardDownloadDir, filename),
 			filepath.Join(shardOutputDir, filename),
 		)
-		if err != nil {
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			// It's not a problem if one of these files isn't present
+			continue
+		} else if err != nil {
 			return err
 		}
 	}

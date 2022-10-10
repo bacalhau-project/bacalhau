@@ -37,7 +37,7 @@ type TestStack struct {
 // * "standard" executors - i.e. the default executor stack as used by devstack
 // * noop verifiers - don't use this stack if you are testing verification
 // * IPFS publishers - using the same IPFS cluster as the storage driver
-func NewDockerIpfsStackMultiNode(
+func NewDevStackMultiNode(
 	ctx context.Context,
 	t *testing.T,
 	computeNodeConfig computenode.ComputeNodeConfig, //nolint:gocritic
@@ -78,12 +78,12 @@ func NewDockerIpfsStackMultiNode(
 // Setup a docker ipfs devstack to run compute node tests against
 // This is a shortcut to NewDockerIpfsStackMultiNode but with 1 node
 // (formerly SetupTestDockerIpfs)
-func NewDockerIpfsStack(
+func NewDevStack(
 	ctx context.Context,
 	t *testing.T,
 	config computenode.ComputeNodeConfig, //nolint:gocritic
 ) *TestStack {
-	return NewDockerIpfsStackMultiNode(ctx, t, config, 1)
+	return NewDevStackMultiNode(ctx, t, config, 1)
 }
 
 // Noop stack is designed to be a "as mocked as possible" stack to write tests against

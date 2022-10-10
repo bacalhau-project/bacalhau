@@ -1,7 +1,9 @@
 package system
 
 import (
+	"flag"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -13,6 +15,7 @@ const (
 	EnvironmentStaging Environment = "staging"
 	EnvironmentProd    Environment = "production"
 	EnvironmentDev     Environment = "development"
+	EnvironmentTest    Environment = "test"
 )
 
 func (e Environment) String() string {
@@ -38,13 +41,25 @@ func init() { //nolint:gochecknoinits
 		log.Debug().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
 
 		// This usually happens in the case of a short-lived test cluster, in
-		// which case we should default to development:
-		env = EnvironmentDev
+		// which case we should default to development. However, we want to
+		// avoid using any environment-specific settings for IPFS swarms
+		// (which are only configured for production and staging)
+		if strings.Contains(os.Args[0], "/_test/") ||
+			strings.HasSuffix(os.Args[0], ".test") ||
+			flag.Lookup("test.v") != nil {
+			env = EnvironmentTest
+		} else {
+			env = EnvironmentDev
+		}
 	}
 }
 
 func GetEnvironment() Environment {
 	return env
+}
+
+func IsTest() bool {
+	return env == EnvironmentTest
 }
 
 func IsStaging() bool {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -46,11 +47,28 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	textWriter := zerolog.ConsoleWriter{Out: Stderr, TimeFormat: "15:04:05.999 |", NoColor: false, PartsOrder: []string{
-		zerolog.TimestampFieldName,
-		zerolog.LevelFieldName,
-		zerolog.CallerFieldName,
-		zerolog.MessageFieldName}}
+	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
+	var textWriter zerolog.ConsoleWriter
+
+	if isTerminal {
+		textWriter = zerolog.ConsoleWriter{Out: Stderr,
+			TimeFormat: "15:04:05.999 |",
+			NoColor:    false,
+			PartsOrder: []string{
+				zerolog.TimestampFieldName,
+				zerolog.LevelFieldName,
+				zerolog.CallerFieldName,
+				zerolog.MessageFieldName}}
+	} else {
+		textWriter = zerolog.ConsoleWriter{Out: Stderr,
+			TimeFormat: "15:04:05.999 |",
+			NoColor:    true,
+			PartsOrder: []string{
+				zerolog.TimestampFieldName,
+				zerolog.LevelFieldName,
+				zerolog.CallerFieldName,
+				zerolog.MessageFieldName}}
+	}
 
 	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
 	//  Adding the fields to the parts section didn't help as it just printed the fields twice.

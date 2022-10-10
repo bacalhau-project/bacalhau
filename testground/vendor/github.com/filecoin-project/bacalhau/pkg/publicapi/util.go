@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/controller"
+	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
+
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -22,6 +23,7 @@ import (
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
+	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +33,27 @@ const TimeToWaitForHealthy = 50
 
 // SetupTests sets up a client for a requester node's API server, for testing.
 func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
-	system.InitConfigForTesting(t)
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	return SetupTestsWithPort(t, port)
+}
+
+func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+	return SetupTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
+}
+
+func SetupTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	return SetupTestsWithPortAndConfig(t, port, config)
+}
+
+// TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
+// and only keep simple unit tests here.
+func SetupTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+	// Setup the system
+	err := system.InitConfigForTesting()
+	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()
 	ctx := context.Background()
@@ -44,53 +66,72 @@ func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	inmemoryDatastore, err := inmemory.NewInMemoryDatastore()
 	require.NoError(t, err)
 
-	noopStorageProviders, err := util.NewNoopStorageProviders(ctx, cm, noop_storage.StorageConfig{})
-	require.NoError(t, err)
-
-	c, err := controller.NewController(
-		ctx,
-		cm,
-		inmemoryDatastore,
-		inprocessTransport,
-		noopStorageProviders,
-	)
+	noopStorageProviders, err := util.NewNoopStorageProvider(ctx, cm, noop_storage.StorageConfig{})
 	require.NoError(t, err)
 
 	noopPublishers, err := publisher_utils.NewNoopPublishers(
 		ctx,
 		cm,
-		c.GetStateResolver(),
+		localdb.GetStateResolver(inmemoryDatastore),
 	)
 	require.NoError(t, err)
 
 	noopVerifiers, err := verifier_utils.NewNoopVerifiers(
 		ctx,
 		cm,
-		c.GetStateResolver(),
+		localdb.GetStateResolver(inmemoryDatastore),
 	)
 	require.NoError(t, err)
 
-	_, err = requesternode.NewRequesterNode(
+	// prepare event handlers
+	tracerContextProvider := system.NewTracerContextProvider(inprocessTransport.HostID())
+	noopContextProvider := system.NewNoopContextProvider()
+	cm.RegisterCallback(tracerContextProvider.Shutdown)
+
+	localEventConsumer := eventhandler.NewChainedLocalEventHandler(noopContextProvider)
+	jobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+	jobEventPublisher := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
+
+	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
-		cm,
-		c,
+		inprocessTransport.HostID(),
+		inmemoryDatastore,
+		localEventConsumer,
+		jobEventPublisher,
 		noopVerifiers,
+		noopStorageProviders,
 		requesternode.RequesterNodeConfig{},
 	)
 	require.NoError(t, err)
 
-	host := "0.0.0.0"
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
+	localDBEventHandler := localdb.NewLocalDBEventHandler(inmemoryDatastore)
 
-	s := NewServer(ctx, host, port, c, noopPublishers)
+	// order of event handlers is important as triggering some handlers should depend on the state of others.
+	jobEventConsumer.AddHandlers(
+		tracerContextProvider,
+		localDBEventHandler,
+		requesterNode,
+	)
+
+	jobEventPublisher.AddHandlers(
+		eventhandler.JobEventHandlerFunc(inprocessTransport.Publish),
+	)
+
+	localEventConsumer.AddHandlers(
+		localDBEventHandler,
+	)
+
+	host := "0.0.0.0"
+
+	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
+		requesterNode, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
-		require.NoError(t, s.ListenAndServe(context.Background(), cm))
+		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return cl, cm
 }
 
 func waitForHealthy(ctx context.Context, c *APIClient) error {
@@ -117,14 +158,13 @@ func waitForHealthy(ctx context.Context, c *APIClient) error {
 
 // Function to get disk usage of path/disk
 func MountUsage(path string) (disk types.MountStatus) {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
-	if err != nil {
+	usage := du.NewDiskUsage(path)
+	if usage == nil {
 		return
 	}
-	disk.All = fs.Blocks * uint64(fs.Bsize)
-	disk.Free = fs.Bfree * uint64(fs.Bsize)
-	disk.Used = disk.All - disk.Free
+	disk.All = usage.Size()
+	disk.Free = usage.Free()
+	disk.Used = usage.Used()
 	return
 }
 
@@ -147,7 +187,7 @@ func TailFile(count int, path string) ([]byte, error) {
 	return output, nil
 }
 
-func MakeEchoJob() (model.JobSpec, model.JobDeal) {
+func MakeEchoJob() *model.Job {
 	randomSuffix, _ := uuid.NewUUID()
 	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
 		"echo",
@@ -155,26 +195,28 @@ func MakeEchoJob() (model.JobSpec, model.JobDeal) {
 	})
 }
 
-func MakeGenericJob() (model.JobSpec, model.JobDeal) {
+func MakeGenericJob() *model.Job {
 	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
-		"cat",
-		"/data/file.txt",
+		"echo",
+		"$(date +%s)",
 	})
 }
 
-func MakeNoopJob() (model.JobSpec, model.JobDeal) {
+func MakeNoopJob() *model.Job {
 	return MakeJob(model.EngineNoop, model.VerifierNoop, model.PublisherNoop, []string{
-		"cat",
-		"/data/file.txt",
+		"echo",
+		"$(date +%s)",
 	})
 }
 
 func MakeJob(
-	engineType model.EngineType,
-	verifierType model.VerifierType,
-	publisherType model.PublisherType,
-	entrypointArray []string) (model.JobSpec, model.JobDeal) {
-	jobSpec := model.JobSpec{
+	engineType model.Engine,
+	verifierType model.Verifier,
+	publisherType model.Publisher,
+	entrypointArray []string) *model.Job {
+	j := model.NewJob()
+
+	j.Spec = model.Spec{
 		Engine:    engineType,
 		Verifier:  verifierType,
 		Publisher: publisherType,
@@ -186,9 +228,9 @@ func MakeJob(
 		// Outputs: testCase.Outputs,
 	}
 
-	jobDeal := model.JobDeal{
+	j.Deal = model.Deal{
 		Concurrency: 1,
 	}
 
-	return jobSpec, jobDeal
+	return j
 }

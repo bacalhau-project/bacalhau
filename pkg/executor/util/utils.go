@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/executor/language"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	pythonwasm "github.com/filecoin-project/bacalhau/pkg/executor/python_wasm"
+	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/combo"
@@ -21,6 +22,7 @@ import (
 type StandardStorageProviderOptions struct {
 	IPFSMultiaddress     string
 	FilecoinUnsealedPath string
+	DownloadPath         string
 }
 
 type StandardExecutorOptions struct {
@@ -110,19 +112,24 @@ func NewStandardExecutorProvider(
 	cm *system.CleanupManager,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	storageProviders, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
+	storageProvider, err := NewStandardStorageProvider(ctx, cm, executorOptions.Storage)
 	if err != nil {
 		return nil, err
 	}
 
-	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProviders)
+	dockerExecutor, err := docker.NewExecutor(ctx, cm, executorOptions.DockerID, storageProvider)
+	if err != nil {
+		return nil, err
+	}
 
+	wasmExecutor, err := wasm.NewExecutor(ctx, storageProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	executors := executor.NewTypeExecutorProvider(map[model.Engine]executor.Executor{
 		model.EngineDocker: dockerExecutor,
+		model.EngineWasm:   wasmExecutor,
 	})
 
 	// language executors wrap other executors, so pass them a reference to all

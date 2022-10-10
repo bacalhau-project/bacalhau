@@ -2,14 +2,29 @@ package noop
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
-	"go.opentelemetry.io/otel/trace"
 )
+
+// Verifier provider that always return NoopVerifier regardless of requested verifier type
+type NoopVerifierProvider struct {
+	noopVerifier *NoopVerifier
+}
+
+func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
+	return &NoopVerifierProvider{
+		noopVerifier: noopVerifier,
+	}
+}
+
+func (s *NoopVerifierProvider) GetVerifier(ctx context.Context, verifierType model.Verifier) (verifier.Verifier, error) {
+	return s.noopVerifier, nil
+}
 
 type NoopVerifier struct {
 	stateResolver *job.StateResolver
@@ -54,9 +69,9 @@ func (noopVerifier *NoopVerifier) GetShardProposal(
 // and they must be either JobStateError or JobStateVerifying
 func (noopVerifier *NoopVerifier) IsExecutionComplete(
 	ctx context.Context,
-	jobID string,
+	shard model.JobShard,
 ) (bool, error) {
-	return noopVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
+	return noopVerifier.stateResolver.CheckShardStates(ctx, shard, func(
 		shardStates []model.JobShardState,
 		concurrency int,
 	) (bool, error) {
@@ -64,23 +79,29 @@ func (noopVerifier *NoopVerifier) IsExecutionComplete(
 	})
 }
 
-func (noopVerifier *NoopVerifier) VerifyJob(
+func (noopVerifier *NoopVerifier) VerifyShard(
 	ctx context.Context,
-	jobID string,
+	shard model.JobShard,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := newSpan(ctx, "VerifyJob")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/noop/NoopVerifier.VerifyShard")
 	defer span.End()
+
 	results := []verifier.VerifierResult{}
-	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, jobID)
+	jobState, err := noopVerifier.stateResolver.GetJobState(ctx, shard.Job.ID)
 	if err != nil {
 		return results, err
 	}
-	for _, shardState := range job.FlattenShardStates(jobState) { //nolint:gocritic
+	shardStates := job.GetStatesForShardIndex(jobState, shard.Index)
+	if len(shardStates) == 0 {
+		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+	}
+
+	for _, shardState := range shardStates { //nolint:gocritic
 		if shardState.State != model.JobStateVerifying {
 			continue
 		}
 		results = append(results, verifier.VerifierResult{
-			JobID:      jobID,
+			JobID:      shard.Job.ID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
 			Verified:   true,
@@ -89,9 +110,6 @@ func (noopVerifier *NoopVerifier) VerifyJob(
 	return results, nil
 }
 
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "verifier/noop", apiName)
-}
-
 // Compile-time check that NoopVerifier implements the correct interface:
+var _ verifier.VerifierProvider = (*NoopVerifierProvider)(nil)
 var _ verifier.Verifier = (*NoopVerifier)(nil)

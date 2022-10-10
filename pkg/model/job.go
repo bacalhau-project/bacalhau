@@ -18,7 +18,7 @@ type Job struct {
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"RequesterNodeID,omitempty"`
 
-	// The public key of the requestor node that created this job
+	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
 
@@ -179,9 +179,9 @@ type Deal struct {
 	// deterministic verifier requires the winning group size
 	// to be at least this size
 	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the requestor
+	// The minimum number of bids that must be received before the Requester
 	// node will randomly accept concurrency-many of them. This allows the
-	// requestor node to get some level of guarantee that the execution of the
+	// Requester node to get some level of guarantee that the execution of the
 	// jobs will be spread evenly across the network (assuming that this value
 	// is some large proportion of the size of the network).
 	MinBids int `json:"MinBids,omitempty"`
@@ -289,7 +289,7 @@ type JobEvent struct {
 	// the node that emitted this event
 	SourceNodeID string `json:"SourceNodeID,omitempty"`
 	// the node that this event is for
-	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
+	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
 	TargetNodeID string       `json:"TargetNodeID,omitempty"`
 	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events

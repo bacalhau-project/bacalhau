@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
@@ -44,6 +46,7 @@ type CreateOptions struct {
 	Confidence      int                       // Minimum number of nodes that must agree on a verification result
 	RunTimeSettings RunTimeSettings           // Run time settings for execution (e.g. wait, get, etc after submission)
 	DownloadFlags   ipfs.IPFSDownloadSettings // Settings for running Download
+	IDOnly          bool                      // Only print the ID of the job and exit
 }
 
 func NewCreateOptions() *CreateOptions {
@@ -53,6 +56,7 @@ func NewCreateOptions() *CreateOptions {
 		Confidence:      0,
 		DownloadFlags:   *ipfs.NewIPFSDownloadSettings(),
 		RunTimeSettings: *NewRunTimeSettings(),
+		IDOnly:          false,
 	}
 }
 
@@ -90,18 +94,20 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		OC.Filename = cmdArgs[0]
-
-		if OC.Filename == "" {
+		if len(cmdArgs) == 0 {
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-			} else if err != nil {
+			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
+			if err != nil {
+				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
+					// Both filename and stdin are empty
+					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+				}
 				// Error not related to fields being empty
 				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 			}
 		} else {
+			OC.Filename = cmdArgs[0]
+
 			var fileContent *os.File
 			fileContent, err = os.Open(OC.Filename)
 
@@ -184,12 +190,35 @@ var createCmd = &cobra.Command{
 			cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))
 		}
 
+		err = jobutils.VerifyJob(ctx, j)
+		if err != nil {
+			if _, ok := err.(*bacerrors.ImageNotFound); ok {
+				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+				return nil
+			} else {
+				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+				return nil
+			}
+		}
+		if ODR.DryRun {
+			// Converting job to yaml
+			var yamlBytes []byte
+			yamlBytes, err = yaml.Marshal(j)
+			if err != nil {
+				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
+				return nil
+			}
+			cmd.Print(string(yamlBytes))
+			return nil
+		}
+
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
 			j,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
+			OC.IDOnly,
 		)
 
 		if err != nil {

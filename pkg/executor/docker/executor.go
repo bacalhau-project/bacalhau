@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -218,18 +219,22 @@ func (e *Executor) RunShard(
 		if err == nil {
 			log.Ctx(ctx).Debug().Msgf("Not pulling image %s, already have %s", shard.Job.Spec.Docker.Image, im.ID)
 		} else if dockerclient.IsErrNotFound(err) {
+			log.Ctx(ctx).Debug().Msgf("Pulling image %s", shard.Job.Spec.Docker.Image)
+
 			r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
 				"docker",
 				[]string{"pull", shard.Job.Spec.Docker.Image},
 			)
 			if err != nil {
-				err = fmt.Errorf("error pulling %s: %s, %s", shard.Job.Spec.Docker.Image, err, r.STDOUT)
-				return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+				//nolint:stylecheck // Error message for user
+				err = fmt.Errorf(`Could not pull image - could be due to repo/image not existing,
+ or registry needing authorization. %s: %s, %s`, shard.Job.Spec.Docker.Image, err, r.STDOUT)
+				return returnStdErrWithErr(err.Error(), err), err
 			}
 			log.Ctx(ctx).Trace().Msgf("Pull image output: %s\n%s", shard.Job.Spec.Docker.Image, r.STDOUT)
 		} else {
 			err = fmt.Errorf("error checking if we have %s locally: %s", shard.Job.Spec.Docker.Image, err)
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+			return returnStdErrWithErr(err.Error(), err), err
 		}
 	}
 
@@ -287,16 +292,24 @@ func (e *Executor) RunShard(
 		e.jobContainerName(shard),
 	)
 	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to create container: " + err.Error()}, err
+		return returnStdErrWithErr("failed to create container: ", err), err
 	}
 
-	err = e.Client.ContainerStart(
+	containerStartError := e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
-	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to start container: " + err.Error()}, err
+	if containerStartError != nil {
+		// Special error to alert people about bad executable
+		internalContainerStartErrorMsg := "failed to start container: "
+		if strings.Contains(containerStartError.Error(), "executable file not found") {
+			internalContainerStartErrorMsg = "Executable file not found: " + containerStartError.Error()
+		}
+		internalContainerStartError := fmt.Errorf(internalContainerStartErrorMsg)
+		return returnStdErrWithErr(internalContainerStartError.Error(),
+				internalContainerStartError),
+			internalContainerStartError
 	}
 
 	defer e.cleanupJob(ctx, shard)
@@ -370,6 +383,14 @@ func (e *Executor) RunShard(
 	return runResult, err
 }
 
+func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {
+	log.Debug().Msgf("Returning error %s", msg)
+	log.Debug().Msgf("Returning error %s", err.Error())
+	return &model.RunCommandResult{
+		STDERR:   err.Error(),
+		ErrorMsg: errors.Wrap(err, msg).Error(),
+	}
+}
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	if config.ShouldKeepStack() {
 		return

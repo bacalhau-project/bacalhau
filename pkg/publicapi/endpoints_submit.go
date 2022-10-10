@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -57,7 +58,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := job.VerifyJob(submitReq.Data.Job); err != nil {
+	if err := job.VerifyJob(ctx, submitReq.Data.Job); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> VerifyJob error: %s", err)
 		errorResponse := bacerrors.ErrorToErrorResponse(err)
 		http.Error(res, errorResponse, http.StatusBadRequest)
@@ -140,8 +141,15 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-//nolint:unused
+const worldReadOwnerWritePermission fs.FileMode = 0755
+
 func decompress(src io.Reader, dst string) error {
+	// ensure destination directory exists
+	err := os.Mkdir(dst, worldReadOwnerWritePermission)
+	if err != nil {
+		return err
+	}
+
 	// ungzip
 	zr, err := gzip.NewReader(src)
 	if err != nil {
@@ -179,7 +187,7 @@ func decompress(src io.Reader, dst string) error {
 		// if its a dir and it doesn't exist create it (with 0755 permission)
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil { //nolint:gomnd
+				if err := os.MkdirAll(target, worldReadOwnerWritePermission); err != nil {
 					return err
 				}
 			}

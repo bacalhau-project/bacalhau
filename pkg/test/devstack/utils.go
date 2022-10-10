@@ -42,7 +42,7 @@ func SetupTest(
 		NumberOfBadActors: badActors,
 	}
 
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig())
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, config)
 	require.NoError(t, err)
 
 	// important to give the pubsub network time to connect
@@ -206,9 +206,6 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		ctx,
 		jobID,
 		args.NodeCount*args.ShardCount,
-		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
-		}),
 		job.WaitForTerminalStates(args.NodeCount*args.ShardCount),
 	)
 	require.NoError(t, err)

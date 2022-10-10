@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
 package devstack
 
@@ -138,7 +138,6 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 				submittedJob.ID,
 				1,
 				job.WaitThrowErrors([]model.JobStateType{
-					model.JobStateCancelled,
 					model.JobStateError,
 				}),
 				job.WaitForJobStates(map[model.JobStateType]int{

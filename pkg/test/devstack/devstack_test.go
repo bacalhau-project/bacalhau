@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
 package devstack
 
@@ -100,7 +100,6 @@ func devStackDockerStorageTest(
 		submittedJob.ID,
 		len(nodeIDs),
 		job.WaitThrowErrors([]model.JobStateType{
-			model.JobStateCancelled,
 			model.JobStateError,
 		}),
 		job.WaitForJobStates(map[model.JobStateType]int{

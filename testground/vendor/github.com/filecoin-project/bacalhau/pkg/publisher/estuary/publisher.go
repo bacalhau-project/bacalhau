@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -58,12 +57,6 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 ) (model.StorageSpec, error) {
 	ctx, span := newSpan(ctx, "PublishShardResult")
 	defer span.End()
-	log.Debug().Msgf(
-		"Uploading results folder to estuary: %s %s %s",
-		hostID,
-		shard,
-		shardResultPath,
-	)
 	tempDir, err := ioutil.TempDir("", "bacalhau-estuary-publisher")
 	if err != nil {
 		return model.StorageSpec{}, err
@@ -82,9 +75,9 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 		return model.StorageSpec{}, err
 	}
 	return model.StorageSpec{
-		Name:   fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
-		Engine: model.StorageSourceEstuary,
-		Cid:    cid,
+		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		StorageSource: model.StorageSourceEstuary,
+		CID:           cid,
 	}, nil
 }
 
@@ -92,9 +85,19 @@ func (estuaryPublisher *EstuaryPublisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
-	results := []model.StorageSpec{}
-	_, span := newSpan(ctx, "ComposeResultSet")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/estuary.ComposeResultReferences")
 	defer span.End()
+
+	system.AddJobIDFromBaggageToSpan(ctx, span)
+
+	results := []model.StorageSpec{}
+	shardResults, err := estuaryPublisher.StateResolver.GetResults(ctx, jobID)
+	if err != nil {
+		return results, err
+	}
+	for _, shardResult := range shardResults {
+		results = append(results, shardResult.Results)
+	}
 	return results, nil
 }
 

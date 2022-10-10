@@ -361,7 +361,7 @@ func waitingToPublishResultsState(ctx context.Context, m *shardStateMachine) sta
 		req := <-m.req
 		switch req.action {
 		case actionResultsPublished:
-			// TODO: verify that the published results are the same as the ones we expect, or let the verifier
+			// TODO: #831 verify that the published results are the same as the ones we expect, or let the verifier
 			//  publish the result and not all the compute nodes.
 			return completedState
 		default:

@@ -2,14 +2,13 @@ package deterministic
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/verifier"
 	"github.com/filecoin-project/bacalhau/pkg/verifier/results"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -55,18 +54,18 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 	shard model.JobShard,
 	shardResultPath string,
 ) ([]byte, error) {
-	job, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
+	j, err := deterministicVerifier.stateResolver.GetJob(ctx, shard.Job.ID)
 	if err != nil {
 		return nil, err
 	}
-	if len(job.RequesterPublicKey) == 0 {
-		return nil, errors.New("no RequesterPublicKey found in the job")
+	if len(j.RequesterPublicKey) == 0 {
+		return nil, fmt.Errorf("no RequesterPublicKey found in the job")
 	}
 	dirHash, err := dirhash.HashDir(shardResultPath, "results", dirhash.Hash1)
 	if err != nil {
 		return nil, err
 	}
-	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), job.RequesterPublicKey)
+	encryptedHash, err := deterministicVerifier.encrypter(ctx, []byte(dirHash), j.RequesterPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -77,9 +76,9 @@ func (deterministicVerifier *DeterministicVerifier) GetShardProposal(
 // and they must be either JobStateError or JobStateVerifying
 func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 	ctx context.Context,
-	jobID string,
+	shard model.JobShard,
 ) (bool, error) {
-	return deterministicVerifier.stateResolver.CheckShardStates(ctx, jobID, func(
+	return deterministicVerifier.stateResolver.CheckShardStates(ctx, shard, func(
 		shardStates []model.JobShardState,
 		concurrency int,
 	) (bool, error) {
@@ -89,7 +88,7 @@ func (deterministicVerifier *DeterministicVerifier) IsExecutionComplete(
 
 func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 	ctx context.Context,
-	jobData model.Job,
+	shard model.JobShard,
 	shardStates []model.JobShardState,
 ) map[string][]*verifier.VerifierResult {
 	// group the verifier results by their reported hash
@@ -126,7 +125,7 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 			existingArray = []*verifier.VerifierResult{}
 		}
 		hashGroups[hash] = append(existingArray, &verifier.VerifierResult{
-			JobID:      jobData.ID,
+			JobID:      shard.Job.ID,
 			NodeID:     shardState.NodeID,
 			ShardIndex: shardState.ShardIndex,
 			Verified:   false,
@@ -138,16 +137,16 @@ func (deterministicVerifier *DeterministicVerifier) getHashGroups(
 
 func (deterministicVerifier *DeterministicVerifier) verifyShard(
 	ctx context.Context,
-	jobData model.Job,
+	shard model.JobShard,
 	shardStates []model.JobShardState,
 ) ([]verifier.VerifierResult, error) {
-	confidence := jobData.Deal.Confidence
+	confidence := shard.Job.Deal.Confidence
 
 	largestGroupHash := ""
 	largestGroupSize := 0
 	isVoidResult := false
 	groupSizeCounts := map[int]int{}
-	hashGroups := deterministicVerifier.getHashGroups(ctx, jobData, shardStates)
+	hashGroups := deterministicVerifier.getHashGroups(ctx, shard, shardStates)
 
 	for hash, group := range hashGroups {
 		if len(group) > largestGroupSize {
@@ -195,38 +194,29 @@ func (deterministicVerifier *DeterministicVerifier) verifyShard(
 	return allResults, nil
 }
 
-func (deterministicVerifier *DeterministicVerifier) VerifyJob(
+func (deterministicVerifier *DeterministicVerifier) VerifyShard(
 	ctx context.Context,
-	jobID string,
+	shard model.JobShard,
 ) ([]verifier.VerifierResult, error) {
-	ctx, span := newSpan(ctx, "VerifyJob")
+	ctx, span := system.GetTracer().Start(ctx, "pkg/verifier/deterministic.VerifyShard")
 	defer span.End()
-	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, jobID)
+
+	jobState, err := deterministicVerifier.stateResolver.GetJobState(ctx, shard.Job.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	jobData, err := deterministicVerifier.stateResolver.GetJob(ctx, jobID)
+	shardStates := job.GetStatesForShardIndex(jobState, shard.Index)
+	if len(shardStates) == 0 {
+		return nil, fmt.Errorf("job (%s) has no shard state for shard index %d", shard.Job.ID, shard.Index)
+	}
+
+	shardResults, err := deterministicVerifier.verifyShard(ctx, shard, shardStates)
 	if err != nil {
 		return nil, err
 	}
 
-	groupedShards := job.GroupShardStates(job.FlattenShardStates(jobState))
-	allResults := []verifier.VerifierResult{}
-
-	for _, shardStates := range groupedShards {
-		shardResults, err := deterministicVerifier.verifyShard(ctx, jobData, shardStates)
-		if err != nil {
-			return nil, err
-		}
-		allResults = append(allResults, shardResults...)
-	}
-
-	return allResults, nil
-}
-
-func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) {
-	return system.Span(ctx, "verifier/noop", apiName)
+	return shardResults, nil
 }
 
 // Compile-time check that deterministicVerifier implements the correct interface:

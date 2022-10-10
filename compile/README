@@ -1,0 +1,19 @@
+This directory contains data used by the Makefile and CI system to allow
+cross-compilation under CGO.
+
+Each directory spcifies a host OS and each file within the directory specifies a
+target that can be cross-compiled using that host OS. Each file can optionally
+specify:
+
+PACKAGES – list of packages to be installed by the host-specific package manager
+           prior to do this cross-compilation.
+
+CC – compiler that should be used to do the cross-compilation, which should be
+     on the PATH.
+
+Not specifying these just means that cross-compilation is possible with the
+default toolchain. (For example, on Apple platforms the native tools can compile
+for both amd64 and arm64 targets.)
+
+Note that files only need to exist to enable *cross*-compilation – when
+compiling for the same platform as the host, these files are not checked.

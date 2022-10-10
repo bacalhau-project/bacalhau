@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build !(unit && (windows || darwin))
 
 package computenode
 
@@ -61,7 +61,7 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	defer os.RemoveAll(tmpOutputDir)
 
 	EXAMPLE_TEXT := "hello"
-	stack := testutils.NewDockerIpfsStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDevStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
@@ -91,7 +91,7 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 
 func (s *ComputeNodeRunJobSuite) TestEmptySpec() {
 	ctx := context.Background()
-	stack := testutils.NewDockerIpfsStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDevStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())
 	computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 	defer cm.Cleanup()
 
