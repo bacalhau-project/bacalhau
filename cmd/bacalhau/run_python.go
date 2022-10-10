@@ -256,7 +256,7 @@ func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, versio
 		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 	}
 
-	err = PrintResultsToUser(ctx, returnedJob)
+	err = WaitAndPrintResultsToUser(ctx, returnedJob, false)
 	if err != nil {
 		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 	}
