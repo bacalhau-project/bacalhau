@@ -337,13 +337,15 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 			}
 		)
 
+		// For URLs, the input should be a file, the output a directory
+		// Internally the URL storage provider appends the filename to the directory path
 		testURLs := []struct {
 			inputURLs []InputURL
 			err       error
 		}{
-			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", pathInContainer: "/inputs/data.tar.gz", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", pathInContainer: "/inputs/sam.zip", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://ifps.io/CID", pathInContainer: "/inputs/file.csv", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://ifps.io/CID", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
 		}
 
 		for _, turls := range testURLs {
@@ -379,7 +381,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				for _, turlIU := range turls.inputURLs {
 					testURLinJobInputs := false
 					for _, jobInput := range j.Spec.Inputs {
-						if turlIU.url == jobInput.URL {
+						if turlIU.url == jobInput.URL && turlIU.pathInContainer == jobInput.Path {
 							testURLinJobInputs = true
 						}
 					}

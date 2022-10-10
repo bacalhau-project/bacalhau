@@ -87,7 +87,7 @@ func (s *StorageSuite) TestHasStorageLocally() {
 }
 
 func (s *StorageSuite) TestPrepareStorageURL() {
-	fileName := "testfile"
+	fileName := "testfile.py"
 	testString := "Here's your data"
 
 	tc := map[string]struct {
@@ -135,13 +135,15 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			spec := model.StorageSpec{
 				StorageSource: model.StorageSourceURLDownload,
 				URL:           serverURL + "/" + tt.fileName,
-				Path:          tt.fileName,
+				Path:          "/inputs",
 			}
 
 			volume, err := sp.PrepareStorage(ctx, spec)
 			if err != nil {
 				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
 			}
+
+			require.Equalf(s.T(), filepath.Join(spec.Path, tt.fileName), volume.Target, "%s: expected valid to be %t", name, tt.valid)
 
 			file, err := os.Open(volume.Source)
 			if err != nil {

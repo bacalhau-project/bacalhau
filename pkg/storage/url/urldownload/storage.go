@@ -103,6 +103,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	// Create a new file based on the URL
 	fileName := filepath.Base(path.Base(u.Path))
 	filePath := filepath.Join(outputPath, fileName)
+	targetPath := filepath.Join(storageSpec.Path, fileName)
 	w, err := os.Create(filePath)
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to create file %s: %s", filePath, err)
@@ -130,8 +131,8 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
-		Source: filePath,
-		Target: storageSpec.Path,
+		Source: filePath,   // The source is the full path to the file
+		Target: targetPath, // So we should alter the target to include the file name
 	}
 
 	return volume, nil
