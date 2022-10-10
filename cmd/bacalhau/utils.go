@@ -301,9 +301,11 @@ func ExecuteJob(ctx context.Context,
 
 	if idOnly {
 		cmd.Print(j.ID)
-		return nil
 	}
-	err = PrintResultsToUser(ctx, j)
+	// if we are only printing the id, set the rest of the output to "quiet",
+	// i.e. don't print
+	quiet := !idOnly
+	err = WaitAndPrintResultsToUser(ctx, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal("", 0)
@@ -469,7 +471,7 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error)
 }
 
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
-func PrintResultsToUser(ctx context.Context, j *model.Job) error {
+func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
@@ -477,8 +479,10 @@ func PrintResultsToUser(ctx context.Context, j *model.Job) error {
 To get more information at any time, run:
    bacalhau describe %s`, j.ID)
 
-	RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
-	RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+	if !quiet {
+		RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
+		RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+	}
 
 	// Create a map of job state types to printed structs
 	printedEventsTracker := make(map[model.JobEventType]*printedEvents)
@@ -515,8 +519,10 @@ To get more information at any time, run:
 				// If finishedRunning is true, then we go term signal
 				// because the loop finished normally.
 				if !finishedRunning {
-					RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
-					RootCmd.Println(getMoreInfoString)
+					if !quiet {
+						RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
+						RootCmd.Println(getMoreInfoString)
+					}
 					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
 				}
 			} else {
@@ -547,8 +553,10 @@ To get more information at any time, run:
 				}
 			}
 
-			for i := range jobEvents {
-				printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+			if !quiet {
+				for i := range jobEvents {
+					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+				}
 			}
 
 			// Look for any terminal event in all the events. If it's done, we're done.
