@@ -1,4 +1,4 @@
-bacalhau_version       = "v0.2.9"
+bacalhau_version       = "v0.3.0"
 bacalhau_port          = "1235"
 bacalhau_connect_node0 = "QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD"
 ipfs_version           = "v0.12.2"
