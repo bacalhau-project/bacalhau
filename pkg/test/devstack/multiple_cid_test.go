@@ -221,12 +221,12 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, file1),
-			Path:          fmt.Sprintf("%s/%s", mount1, file1),
+			Path:          mount1,
 		},
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, file2),
-			Path:          fmt.Sprintf("%s/%s", mount2, file2),
+			Path:          mount2,
 		},
 	}
 	j.Deal = model.Deal{Concurrency: 1}
@@ -346,7 +346,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 		{
 			StorageSource: model.StorageSourceURLDownload,
 			URL:           fmt.Sprintf("%s/%s", svr.URL, urlfile),
-			Path:          path.Join(urlmount, urlfile),
+			Path:          urlmount,
 		},
 		{
 			StorageSource: model.StorageSourceIPFS,
