@@ -56,6 +56,14 @@ define BUILD_FLAGS
 -X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
 endef
 
+define STATIC_BUILD_FLAGS
+-linkmode=external -extldflags '-static'
+endef
+
+ifeq (${GOOS},linux)
+BUILD_FLAGS += ${STATIC_BUILD_FLAGS}
+endif
+
 # If we are cross-compiling, bring in the appropriate compilers
 ifneq ($(GOOS)_$(GOARCH),$(OS)_$(ARCH))
 compile/${OS}/$(GOOS)_$(GOARCH).env:
