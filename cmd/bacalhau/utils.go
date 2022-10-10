@@ -300,11 +300,11 @@ func ExecuteJob(ctx context.Context,
 	}
 
 	if idOnly {
-		cmd.Print(j.ID)
+		cmd.Print(j.ID + "\n")
 	}
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
-	quiet := !idOnly
+	quiet := idOnly
 	err = WaitAndPrintResultsToUser(ctx, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
@@ -379,7 +379,9 @@ To get more details about the run, execute:
 	if resultsCID != "" {
 		resultsCID = fmt.Sprintf("Results CID: %s\n", resultsCID)
 	}
-	RootCmd.Print(fmt.Sprintf(printOut, resultsCID))
+	if !quiet {
+		RootCmd.Print(fmt.Sprintf(printOut, resultsCID))
+	}
 
 	if runtimeSettings.AutoDownloadResults {
 		results, err := getResults(ctx, apiClient, j)
