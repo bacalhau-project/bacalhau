@@ -14,7 +14,7 @@ type StorageSpec struct {
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
-	// NOTE: The below is capitalized to match IPFS & IPLD (even thoough it's out of golang fmt)
+	// NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
 	CID string `json:"CID,omitempty"`
 
 	// Source URL of the data
