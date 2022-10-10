@@ -52,7 +52,6 @@ require (
 )
 
 require (
-	github.com/bytecodealliance/wasmtime-go v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/imdario/mergo v0.3.5
 	github.com/invopop/jsonschema v0.6.0
@@ -66,6 +65,7 @@ require (
 	github.com/multiformats/go-multicodec v0.5.0
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/pkg/errors v0.9.1
+	github.com/tetratelabs/wazero v1.0.0-pre.2
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
