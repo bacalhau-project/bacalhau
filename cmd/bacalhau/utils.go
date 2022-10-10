@@ -334,30 +334,34 @@ func ExecuteJob(ctx context.Context,
 
 	printOut := "%s" // We only know this at the end, we'll fill it in there.
 	printOut += "Job Results By Node:\n"
-	identOne := "  "
-	identTwo := strings.Repeat(identOne, 2)
+	indentOne := "  "
+	indentTwo := strings.Repeat(indentOne, 2)
 	resultsCID := ""
 	for i := range nodeIndexes {
 		n := js.Nodes[nodeIndexes[i]]
 		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
 		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
-			printOut += fmt.Sprintf(identOne+"Shard %d:\n", j)
-			printOut += fmt.Sprintf(identTwo+"Status: %s\n", s.State)
-			printOut += fmt.Sprintf(identTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
-			resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
-			printResults := func(t string, s string, trunc bool) {
-				truncatedString := ""
-				if trunc {
-					truncatedString = " (truncated: last 2000 characters)"
+			printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
+			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
+			if s.RunOutput == nil {
+				printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
+			} else {
+				printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
+				resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+				printResults := func(t string, s string, trunc bool) {
+					truncatedString := ""
+					if trunc {
+						truncatedString = " (truncated: last 2000 characters)"
+					}
+					if s != "" {
+						printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+					} else {
+						printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
+					}
 				}
-				if s != "" {
-					printOut += fmt.Sprintf(identTwo+"%s%s:\n      %s\n", t, truncatedString, s)
-				} else {
-					printOut += fmt.Sprintf(identTwo+"%s%s: <NONE>\n", t, truncatedString)
-				}
+				printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
+				printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
 			}
-			printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
-			printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
 		}
 	}
 
@@ -367,7 +371,7 @@ To download the results, execute:
 
 To get more details about the run, execute:
 %sbacalhau describe %s
-`, identOne, j.ID, identOne, j.ID)
+`, indentOne, j.ID, indentOne, j.ID)
 
 	// Have to do a final Sprintf so we can inject the resultsCID into the right place
 	if resultsCID != "" {
