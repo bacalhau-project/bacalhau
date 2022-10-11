@@ -334,17 +334,17 @@ func (s *MultipleCIDSuite) TestURLsInParallel() {
 	}
 	runURLTest(s.T(), handler, testCase)
 
-	start1, ok := accessTimes[getAccessKey(testCase.file1, "start")]
+	start1, ok := accessTimes["/"+getAccessKey(testCase.file1, "start")]
 	require.True(s.T(), ok)
-	start2, ok := accessTimes[getAccessKey(testCase.file2, "start")]
+	start2, ok := accessTimes["/"+getAccessKey(testCase.file2, "start")]
 	require.True(s.T(), ok)
-	end1, ok := accessTimes[getAccessKey(testCase.file1, "end")]
+	end1, ok := accessTimes["/"+getAccessKey(testCase.file1, "end")]
 	require.True(s.T(), ok)
-	end2, ok := accessTimes[getAccessKey(testCase.file2, "end")]
+	end2, ok := accessTimes["/"+getAccessKey(testCase.file2, "end")]
 	require.True(s.T(), ok)
 
-	require.True(s.T(), start2 < end1)
-	require.True(s.T(), start1 < end2)
+	require.True(s.T(), start2 < end1, "start 2 should be before end 1")
+	require.True(s.T(), start1 < end2, "start 1 should be before end 2")
 }
 
 func (s *MultipleCIDSuite) TestFlakyURLs() {
