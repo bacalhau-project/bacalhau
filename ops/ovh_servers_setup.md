@@ -14,12 +14,33 @@ These are their IP addresses:
 These machine need ad-hoc preparation to host Bacalhau nodes, these steps are specific to this OVH bundle and therefore is worth keeping these notes separated from the normal installation instructions.
 This page contains instructions on how to prepare those hosts to run Bacalhau:
 
+1. Install Ubuntu via OVH Console
 1. Configure RAID for data disks
-2. Configure Firewall
+1. Configure Firewall
+1. Add team's ssh pub keys
 
 Let's dive it! :zap:
 
-## 1) Configure RAID for data disks
+## 1) Install Ubuntu via OVH Console
+
+Get the credentails from David Aaronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
+Under "Dedicated servers" you'll see 4 entries. Click on one of those (need to repeat this step for each machine), then use the `...` menu to open the installation modal.
+
+<img width="1269" alt="Screenshot 2022-10-11 at 18 04 21" src="https://user-images.githubusercontent.com/4340327/195142902-17249c42-0e27-4925-82d6-f875d254964e.png">
+
+Select `Install one of your templates` and pick `bacalhau - ubuntu2204-server`, confirm.
+
+<img width="627" alt="Screenshot 2022-10-11 at 18 06 25" src="https://user-images.githubusercontent.com/4340327/195143328-3c455971-1248-42ec-aeb9-7808b518a373.png">
+
+The default ssh key is Enrico's, you need to figure out how to add your key to OVH console.
+Once you confrim you'll see the progess bar slowing making its way to the right end of the stick.
+Go brew one or two ☕ because this step takes really a long time...
+
+<img width="609" alt="Screenshot 2022-10-11 at 18 08 52" src="https://user-images.githubusercontent.com/4340327/195143814-978f5f54-deb5-4d25-a911-9f286920a8c1.png">
+
+
+
+## 2) Configure RAID for data disks
 
 On top of the boot drive, these hosts ship with `6× 3.84TB` NVMe data disks.
 Follow the steps below to create a `RAID0` array and persist it upon reboot.
@@ -146,7 +167,7 @@ echo '/dev/md0 /data ext4 defaults,nofail,discard 0 0' | sudo tee -a /etc/fstab
 
 Ref. https://www.digitalocean.com/community/tutorials/how-to-create-raid-arrays-with-mdadm-on-ubuntu-16-04
 
-## 2) Configure Firewall
+## 3) Configure Firewall
 
 We're going to open some ports, [this terraform script](./terraform/main.tf) is the main reference for port numbers.
 
