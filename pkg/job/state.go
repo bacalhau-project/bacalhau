@@ -334,8 +334,6 @@ func (resolver *StateResolver) CheckShardStates(
 }
 
 func FlattenShardStates(jobState model.JobState) []model.JobShardState {
-	jobState.Mutex.RLock()
-	defer jobState.Mutex.RUnlock()
 	ret := []model.JobShardState{}
 	for _, nodeState := range jobState.Nodes {
 		for _, shardState := range nodeState.Shards { //nolint:gocritic
@@ -346,8 +344,6 @@ func FlattenShardStates(jobState model.JobState) []model.JobShardState {
 }
 
 func GetStatesForShardIndex(jobState model.JobState, shardIndex int) []model.JobShardState {
-	jobState.Mutex.RLock()
-	defer jobState.Mutex.RUnlock()
 	ret := []model.JobShardState{}
 	for _, nodeState := range jobState.Nodes {
 		for _, shardState := range nodeState.Shards { //nolint:gocritic

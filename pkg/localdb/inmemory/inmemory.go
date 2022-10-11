@@ -258,16 +258,9 @@ func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (mode
 	if !ok {
 		return model.JobState{}, nil
 	}
-	// copy job state because it has mutable fields (Nodes), we should return a
-	// value that isn't concurrently being modified
-	// XXX what about the mutable fields within JobNodeState :-(
-	newJobState := model.JobState{
-		Nodes: map[string]model.JobNodeState{},
-	}
-	for idx, node := range state.Nodes {
-		newJobState.Nodes[idx] = node
-	}
-	return newJobState, nil
+	// return a copy so we remain within the mutex of the localdb
+	// in terms of accessing d.states
+	return *state, nil
 }
 
 func (d *InMemoryDatastore) UpdateShardState(
@@ -293,10 +286,6 @@ func (d *InMemoryDatastore) UpdateShardState(
 		}
 	}
 
-	// we don't want to update an individual shard state
-	// if we are elsewhere iterating over it
-	jobState.Mutex.Lock()
-	defer jobState.Mutex.Unlock()
 	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
 		nodeState = model.JobNodeState{
