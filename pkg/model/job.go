@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -143,6 +144,7 @@ type JobShardingConfig struct {
 // of the system.
 type JobState struct {
 	Nodes map[string]JobNodeState `json:"Nodes,omitempty"`
+	Mutex *sync.RWMutex
 }
 
 type JobNodeState struct {

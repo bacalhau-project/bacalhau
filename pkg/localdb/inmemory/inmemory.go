@@ -292,6 +292,11 @@ func (d *InMemoryDatastore) UpdateShardState(
 			Nodes: map[string]model.JobNodeState{},
 		}
 	}
+
+	// we don't want to update an individual shard state
+	// if we are elsewhere iterating over it
+	jobState.Mutex.Lock()
+	defer jobState.Mutex.Unlock()
 	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
 		nodeState = model.JobNodeState{
