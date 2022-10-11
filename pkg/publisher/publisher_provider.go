@@ -3,14 +3,16 @@ package publisher
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
 // A simple publisher repo that selects a publisher based on the job's publisher type.
 type MappedPublisherProvider struct {
-	publishers               map[model.Publisher]Publisher
-	publishersInstalledCache map[model.Publisher]bool
+	publishers                    map[model.Publisher]Publisher
+	publishersInstalledCache      map[model.Publisher]bool
+	publishersInstalledCacheMutex sync.Mutex
 }
 
 func NewMappedPublisherProvider(publishers map[model.Publisher]Publisher) *MappedPublisherProvider {
@@ -26,6 +28,9 @@ func (p *MappedPublisherProvider) GetPublisher(ctx context.Context, publisherTyp
 		return nil, fmt.Errorf(
 			"no matching publisher found on this server: %s", publisherType)
 	}
+
+	p.publishersInstalledCacheMutex.Lock()
+	defer p.publishersInstalledCacheMutex.Unlock()
 
 	// cache it being installed so we're not hammering it
 	// TODO: we should evict the cache in case an installed publisher gets uninstalled, or vice versa
