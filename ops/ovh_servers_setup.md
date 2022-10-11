@@ -14,7 +14,7 @@ These are their IP addresses:
 These machine need ad-hoc preparation to host Bacalhau nodes, these steps are specific to this OVH bundle and therefore is worth keeping these notes separated from the normal installation instructions.
 This page contains instructions on how to prepare those hosts to run Bacalhau.
 
-## Configure RAID for data disks
+## 1) Configure RAID for data disks
 
 On top of the boot drive, these hosts ship with `6× 3.84TB` NVMe data disks.
 Follow the steps below to create a `RAID0` array and persist it upon reboot.
@@ -140,3 +140,50 @@ echo '/dev/md0 /data ext4 defaults,nofail,discard 0 0' | sudo tee -a /etc/fstab
 ```
 
 Ref. https://www.digitalocean.com/community/tutorials/how-to-create-raid-arrays-with-mdadm-on-ubuntu-16-04
+
+## 2) Configure Firewall
+
+We're going to open some ports, [this terraform script](./terraform/main.tf) is the main reference for port numbers.
+
+```bash
+> sudo ufw default deny incoming
+> sudo ufw allow ssh
+> sudo ufw allow 4001 # ipfs swarm
+> sudo ufw allow 1234 # bacalhau API
+> sudo ufw allow 1235 # bacalhau swarm
+> sudo ufw allow 2112 # bacalhau metrics
+> sudo ufw allow 9090 # prometheus service
+> sudo ufw allow 44443 # nginx is healthy - for running health check scripts
+> sudo ufw allow 44444 # nginx node health check scripts
+> sudo ufw enable
+```
+
+Confrim the last prompt, then check the firewall status:
+
+```bash
+> sudo ufw status numbered
+ubuntu@ns1012035:~$ sudo ufw status numbered
+Status: active
+
+     To                         Action      From
+     --                         ------      ----
+[ 1] 22/tcp                     ALLOW IN    Anywhere
+[ 2] 4001                       ALLOW IN    Anywhere
+[ 3] 1234                       ALLOW IN    Anywhere
+[ 4] 1235                       ALLOW IN    Anywhere
+[ 5] 2112                       ALLOW IN    Anywhere
+[ 6] 9090                       ALLOW IN    Anywhere
+[ 7] 44443                      ALLOW IN    Anywhere
+[ 8] 44444                      ALLOW IN    Anywhere
+[ 9] 22/tcp (v6)                ALLOW IN    Anywhere (v6)
+[10] 4001 (v6)                  ALLOW IN    Anywhere (v6)
+[11] 1234 (v6)                  ALLOW IN    Anywhere (v6)
+[12] 1235 (v6)                  ALLOW IN    Anywhere (v6)
+[13] 2112 (v6)                  ALLOW IN    Anywhere (v6)
+[14] 9090 (v6)                  ALLOW IN    Anywhere (v6)
+[15] 44443 (v6)                 ALLOW IN    Anywhere (v6)
+[16] 44444 (v6)                 ALLOW IN    Anywhere (v6)
+
+```
+
+Ref. https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu-22-04
