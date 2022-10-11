@@ -2,12 +2,13 @@ package bacalhau
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/bytecodealliance/wasmtime-go"
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/spf13/cobra"
+	"github.com/tetratelabs/wazero"
 )
 
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
@@ -60,15 +61,21 @@ var validateWasmCommand = &cobra.Command{
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 
-		_, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
+		ctx, rootSpan := system.NewRootSpan(cmd.Context(), system.GetTracer(), "cmd/bacalhau/wasm_run.validateWasmCommand")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		programPath := args[0]
 		entryPoint := args[1]
 
-		engine := wasmtime.NewEngine()
-		module, err := wasmtime.NewModuleFromFile(engine, programPath)
+		engine := wazero.NewRuntime(ctx)
+		bytes, err := os.ReadFile(programPath)
+		if err != nil {
+			Fatal("Could not load supplied WASM file", 1)
+			return err
+		}
+
+		module, err := engine.CompileModule(ctx, bytes)
 		if err != nil {
 			Fatal("Could not load supplied WASM file", 1)
 			return err

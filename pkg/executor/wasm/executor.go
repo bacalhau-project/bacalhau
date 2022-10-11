@@ -3,17 +3,18 @@ package wasm
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
-	"github.com/bytecodealliance/wasmtime-go"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
+	"github.com/tetratelabs/wazero"
 )
 
 type Executor struct {
-	Engine          *wasmtime.Engine
+	Engine          wazero.Runtime
 	StorageProvider storage.StorageProvider
 }
 
@@ -22,7 +23,7 @@ func NewExecutor(
 	storageProvider storage.StorageProvider,
 ) (*Executor, error) {
 	// TODO: add host-specific config about WASM runtime and mem limits
-	engine := wasmtime.NewEngine()
+	engine := wazero.NewRuntime(ctx)
 
 	executor := &Executor{
 		Engine:          engine,
@@ -60,7 +61,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 	return storageProvider.GetVolumeSize(ctx, volume)
 }
 
-func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec, programName string) (*wasmtime.Module, error) {
+func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec, programName string) (wazero.CompiledModule, error) {
 	log.Ctx(ctx).Info().Msgf("Getting object %v", spec)
 	storage, err := e.StorageProvider.GetStorage(ctx, spec.StorageSource)
 	if err != nil {
@@ -75,7 +76,12 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec,
 	// Generate a WASM module fm that.
 	log.Ctx(ctx).Info().Msgf("Loading WASM module from remote '%s'", volume.Target)
 	programPath := filepath.Join(volume.Source, filepath.Base(programName))
-	module, err := wasmtime.NewModuleFromFile(e.Engine, programPath)
+	bytes, err := os.ReadFile(programPath)
+	if err != nil {
+		return nil, err
+	}
+
+	module, err := e.Engine.CompileModule(ctx, bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -111,27 +117,21 @@ func (e *Executor) RunShard(
 	}
 
 	// Now instantiate the module and run the entry point.
-	store := wasmtime.NewStore(e.Engine)
-	instance, err := wasmtime.NewInstance(store, module, []wasmtime.AsExtern{})
+	instance, err := e.Engine.InstantiateModule(ctx, module, wazero.NewModuleConfig())
 	if err != nil {
 		return failResult(err)
 	}
 
 	log.Ctx(ctx).Info().Msgf("Running WASM '%s' from job '%s'", shard.Job.Spec.Language.Command, shard.Job.ID)
-	entryPoint := instance.GetFunc(store, shard.Job.Spec.Language.Command)
-	returnValue, err := entryPoint.Call(store)
+	entryPoint := instance.ExportedFunction(shard.Job.Spec.Language.Command)
+	returnValue, err := entryPoint.Call(ctx)
 	if err != nil {
 		return failResult(err)
 	}
 
 	// Current assumption: func returns one i32
-	exitCode, ok := returnValue.(int32)
-	if !ok {
-		err = fmt.Errorf("WASM failed to return an exit code of i32")
-		return failResult(err)
-	}
-
+	exitCode := int(returnValue[0])
 	return &model.RunCommandResult{
-		ExitCode: int(exitCode),
+		ExitCode: exitCode,
 	}, nil
 }
