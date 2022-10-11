@@ -17,12 +17,12 @@ You're probably used to running docker commands to run a container.
 
 
 ```bash
-docker run docker/whalesay cowsay sup, old fashioned container run
+docker run docker/whalesay cowsay sup old fashioned container run
 ```
 
-     __________________________________ 
-    < sup, old fashioned container run >
-     ---------------------------------- 
+     _________________________________ 
+    < sup old fashioned container run >
+     --------------------------------- 
         \
          \
           \     
@@ -47,28 +47,33 @@ Another difference is that by default Bacalhau overwrites the default entrypoint
 
 
 ```bash
-bacalhau docker run --wait --id-only docker/whalesay -- cowsay hello, web3 uber-run!
+bacalhau docker run docker/whalesay -- cowsay hello web3 uber-run
 ```
 
-
-```bash
-rm -rf ./results && mkdir -p ./results # Temporary directory to store the results
-bacalhau get --output-dir ./results ${JOB_ID} # Download the results
-```
-
-    [90m13:28:51.704 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '61d8dbaa-5ab8-4eeb-975d-2cca1f1a0b69'...
-    [90m13:28:57.848 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m13:29:00.656 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/workload-onboarding/custom-containers/results'
-
-
-
-```bash
-cat ./results/stdout
-```
-
-     _______________________ 
-    < hello, web3 uber-run! >
-     ----------------------- 
+    Job successfully submitted. Job ID: 4d82226d-c43a-4f40-bf31-6c856472f3ec
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
+    
+    	       Creating job for submission ... done ✅
+    	       Finding node(s) for the job ... done ✅
+    	             Node accepted the job ... done ✅
+    	                                   ... done ✅
+    	   Job finished, verifying results ... done ✅
+    	      Results accepted, publishing ... done ✅
+    	                                  
+    Results CID: QmPdbcfRma2MTSNkmJqRMuJ5BQfSwh3vY89G9vbaV5ZsyW
+    Job Results By Node:
+    Node QmXaXu9N:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmYgxZiy:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: 0
+        Stdout:
+          _____________________ 
+    < hello web3 uber-run >
+     --------------------- 
         \
          \
           \     
@@ -79,7 +84,18 @@ cat ./results/stdout
       ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~   
            \______ o          __/            
             \    \        __/             
-              \____\______/   
+              \____\______/
+        Stderr: <NONE>
+    Node QmdZQ7Zb:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    
+    To download the results, execute:
+      bacalhau get 4d82226d-c43a-4f40-bf31-6c856472f3ec
+    
+    To get more details about the run, execute:
+      bacalhau describe 4d82226d-c43a-4f40-bf31-6c856472f3ec
 
 
 ## Using Your Own Custom Container
@@ -111,7 +127,7 @@ $the_cow = <<"EOC";
 EOC
 ```
 
-    Writing cod.cow
+    Overwriting cod.cow
 
 
 Next, the Dockerfile adds the script and sets the entrypoint.
@@ -128,7 +144,7 @@ RUN echo '#!/bin/bash\ncowsay "${@:1}"' > /usr/bin/codsay && \
 COPY cod.cow /usr/share/cowsay/cows/default.cow
 ```
 
-    Writing Dockerfile
+    Overwriting Dockerfile
 
 
 Now let's build and test the container locally.
@@ -186,17 +202,22 @@ bacalhau docker run \
   -- codsay Look at all this data
 ```
 
-    Job successfully submitted. Job ID: f5e5d231-f4ac-43fa-b47b-c0811b8297c5
+    Job successfully submitted. Job ID: 7da4b33c-248b-4702-9e31-35b6f58eefab
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
     	       Finding node(s) for the job ... done ✅
     	             Node accepted the job ... done ✅
+    	                                   ... done ✅
     	   Job finished, verifying results ... done ✅
     	      Results accepted, publishing ... done ✅
     	                                  
     Results CID: QmaJCxwRQx3ZL8amPSVu4SbYD8kgwxWkGwdcMubUTDCQwC
     Job Results By Node:
+    Node QmXaXu9N:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
     Node QmYgxZiy:
       Shard 0:
         Status: Completed
@@ -222,10 +243,14 @@ bacalhau docker run \
                              `╣▓▓▓              ╠╬▓╬▓╬▀`
                                ╚▓▌               '╨▀╜
         Stderr: <NONE>
+    Node QmdZQ7Zb:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
     
     To download the results, execute:
-      bacalhau get f5e5d231-f4ac-43fa-b47b-c0811b8297c5
+      bacalhau get 7da4b33c-248b-4702-9e31-35b6f58eefab
     
     To get more details about the run, execute:
-      bacalhau describe f5e5d231-f4ac-43fa-b47b-c0811b8297c5
+      bacalhau describe 7da4b33c-248b-4702-9e31-35b6f58eefab
 
