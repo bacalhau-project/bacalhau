@@ -303,41 +303,41 @@ func (d *InMemoryDatastore) UpdateShardState(
 			Shards: map[int]model.JobShardState{},
 		}
 	}
-	shardSate, ok := nodeState.Shards[shardIndex]
+	shardState, ok := nodeState.Shards[shardIndex]
 	if !ok {
-		shardSate = model.JobShardState{
+		shardState = model.JobShardState{
 			NodeID:     nodeID,
 			ShardIndex: shardIndex,
 		}
 	}
 
-	if update.State < shardSate.State {
+	if update.State < shardState.State {
 		return fmt.Errorf("cannot update shard state to %s as current state is %s. [NodeID: %s, ShardID: %s_%d]",
-			update.State, shardSate.State, nodeID, jobID, shardIndex)
+			update.State, shardState.State, nodeID, jobID, shardIndex)
 	}
 
-	shardSate.State = update.State
+	shardState.State = update.State
 	if update.Status != "" {
-		shardSate.Status = update.Status
+		shardState.Status = update.Status
 	}
 
 	if update.RunOutput != nil {
-		shardSate.RunOutput = update.RunOutput
+		shardState.RunOutput = update.RunOutput
 	}
 
 	if len(update.VerificationProposal) != 0 {
-		shardSate.VerificationProposal = update.VerificationProposal
+		shardState.VerificationProposal = update.VerificationProposal
 	}
 
 	if update.VerificationResult.Complete {
-		shardSate.VerificationResult = update.VerificationResult
+		shardState.VerificationResult = update.VerificationResult
 	}
 
 	if model.IsValidStorageSourceType(update.PublishedResult.StorageSource) {
-		shardSate.PublishedResult = update.PublishedResult
+		shardState.PublishedResult = update.PublishedResult
 	}
 
-	nodeState.Shards[shardIndex] = shardSate
+	nodeState.Shards[shardIndex] = shardState
 	jobState.Nodes[nodeID] = nodeState
 	d.states[jobID] = jobState
 	return nil
