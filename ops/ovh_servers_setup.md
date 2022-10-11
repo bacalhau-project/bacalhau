@@ -162,7 +162,6 @@ Confrim the last prompt, then check the firewall status:
 
 ```bash
 > sudo ufw status numbered
-ubuntu@ns1012035:~$ sudo ufw status numbered
 Status: active
 
      To                         Action      From
@@ -185,5 +184,7 @@ Status: active
 [16] 44444 (v6)                 ALLOW IN    Anywhere (v6)
 
 ```
+
+The firewall setup is loaded at every reboot!
 
 Ref. https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu-22-04
