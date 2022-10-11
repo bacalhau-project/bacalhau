@@ -44,17 +44,16 @@ Note that [Bacalhau overwrites the default entrypoint](https://github.com/fileco
 
 ```bash
 bacalhau docker run \
-  --input-urls https://raw.githubusercontent.com/bacalhau-project/examples/trivial-python-example/workload-onboarding/trivial-python/hello-world.py \
+  --input-urls https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
   python:3.10-slim -- python3 /inputs/hello-world.py
 ```
 
-    Job successfully submitted. Job ID: b65c5d6f-9695-40a5-9c53-b91b306cbeea
+    Job successfully submitted. Job ID: 15f57de4-4ea1-45ca-899d-fba08fb53420
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
     	       Finding node(s) for the job ... done ✅
     	             Node accepted the job ... done ✅
-    	                                   ... done ✅
     	   Job finished, verifying results ... done ✅
     	      Results accepted, publishing ... done ✅
     	                                  
@@ -62,25 +61,17 @@ bacalhau docker run \
     Job Results By Node:
     Node QmXaXu9N:
       Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmYgxZiy:
-      Shard 0:
         Status: Completed
         Container Exit Code: 0
         Stdout:
           Hello, world!
         Stderr: <NONE>
-    Node QmdZQ7Zb:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
     
     To download the results, execute:
-      bacalhau get b65c5d6f-9695-40a5-9c53-b91b306cbeea
+      bacalhau get 15f57de4-4ea1-45ca-899d-fba08fb53420
     
     To get more details about the run, execute:
-      bacalhau describe b65c5d6f-9695-40a5-9c53-b91b306cbeea
+      bacalhau describe 15f57de4-4ea1-45ca-899d-fba08fb53420
 
 
 ## Get Results
