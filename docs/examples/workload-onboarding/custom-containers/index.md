@@ -47,10 +47,10 @@ Another difference is that by default Bacalhau overwrites the default entrypoint
 
 
 ```bash
-bacalhau docker run docker/whalesay -- cowsay hello web3 uber-run
+bacalhau docker run docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
-    Job successfully submitted. Job ID: 4d82226d-c43a-4f40-bf31-6c856472f3ec
+    Job successfully submitted. Job ID: 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
@@ -92,11 +92,16 @@ bacalhau docker run docker/whalesay -- cowsay hello web3 uber-run
         No RunOutput for this shard
     
     To download the results, execute:
-      bacalhau get 4d82226d-c43a-4f40-bf31-6c856472f3ec
+      bacalhau get 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
     
     To get more details about the run, execute:
-      bacalhau describe 4d82226d-c43a-4f40-bf31-6c856472f3ec
+      bacalhau describe 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
 
+
+
+```bash
+cat ./results/stdout
+```
 
 ## Using Your Own Custom Container
 
@@ -199,10 +204,10 @@ The `bacalhau docker run` command strips the default entrypoint, so don't forget
 ```bash
 bacalhau docker run \
   ghcr.io/bacalhau-project/examples/codsay:v1.0.0 \
-  -- codsay Look at all this data
+  -- bash -c 'codsay Look at all this data'
 ```
 
-    Job successfully submitted. Job ID: 7da4b33c-248b-4702-9e31-35b6f58eefab
+    Job successfully submitted. Job ID: 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
@@ -249,8 +254,8 @@ bacalhau docker run \
         No RunOutput for this shard
     
     To download the results, execute:
-      bacalhau get 7da4b33c-248b-4702-9e31-35b6f58eefab
+      bacalhau get 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
     
     To get more details about the run, execute:
-      bacalhau describe 7da4b33c-248b-4702-9e31-35b6f58eefab
+      bacalhau describe 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
 
