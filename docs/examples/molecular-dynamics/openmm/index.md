@@ -7,7 +7,7 @@ sidebar_position: 1
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/molecular-dynamics/openmm/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=molecular-dynamics/openmm/index.ipynb)
 
-[OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. Physic based libraries like OpenMM are then useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
+[OpenMM](https://github.com/openmm/openmm) is a toolkit for molecular simulation. Physics-based libraries like OpenMM are then useful for refining the structure and exploring functional interactions with other molecules. It provides a combination of extreme flexibility (through custom forces and integrators), openness, and high performance (especially on recent GPUs) that make it truly unique among simulation codes.
 
 References:
 
@@ -17,7 +17,7 @@ References:
 
 ### Goal
 
-The goal of this notebook is to showcase how to containerize an OpenMM workload so that it can be executed on the Bacalhau network and to take advantage of the distributed storage & compute resources.
+The goal of this example is to showcase how to containerize an OpenMM workload executed on the Bacalhau network, to take advantage of the distributed storage & compute resources.
 
 ### Prerequisites
 
@@ -27,19 +27,17 @@ Make sure you have the latest `bacalhau` client installed by following the [gett
 
 ## Protein data
 
-We use a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
+This example uses a processed 2DRI dataset that represents the ribose binding protein in bacterial transport and chemotaxis. The source organism is the [Escherichia coli](https://en.wikipedia.org/wiki/Escherichia_coli) bacteria.
 You can find more details on this protein at the related [RCSB Protein Data Bank page](https://www.rcsb.org/structure/2dri).
 
 ![image.png](./2dri-image.png)
 
 
 
-Protein data can be stored in a `.pdb` file, this is a human readable format.
-It provides for description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
+Protein data can be stored in a `.pdb` file, this is a human readable format that provides for description and annotation of protein and nucleic acid structures including atomic coordinates, secondary structure assignments, as well as atomic connectivity.
 Please find more info about PDB format in [this article](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html).
 
-Let us sneak peak into the dataset by printing the first 10 lines of the file.
-Among other things, we can see it contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
+Let's take a sneak peak into the dataset by printing the first 10 lines of the file. Among other things, we can see it contains a number of ATOM records. These describe the coordinates of the atoms that are part of the protein.
 
 
 ```bash
@@ -60,17 +58,18 @@ head ./dataset/2dri-processed.pdb
 
 ## Prepare & Run the task
 
+To prepare and run the task in this example, you will: 
 
-1. Upload the data to IPFS
-1. Create a docker image with the code and dependencies
-1. Run the docker image on the Bacalhau network using the IPFS data
+- Upload the data to IPFS
+- Create a docker image with the code and dependencies
+- Run the docker image on the Bacalhau network using the IPFS data
 
 
 ### Upload the Data to IPFS
 
-The first step is to upload the data to IPFS. The simplest way to do this is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
+Let's start by uploading the data to IPFS. Use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do thi,s you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
 
-For the purposes of this example I pinned the `2dri-processed.pdb` file to IPFS via [web3.storage](https://web3.storage/).
+This example pinned the `2dri-processed.pdb` file to IPFS via [web3.storage](https://web3.storage/).
 
 This resulted in the IPFS CID of `bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4`.
 
@@ -78,13 +77,13 @@ This resulted in the IPFS CID of `bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef
 
 ### Create a Docker Image to Process the Data
 
-Next we will create the docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated with [wesfloyd](https://github.com/wesfloyd/openmm-test). Thank you Wes!
+Next, let's create the Docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated with [wesfloyd](https://github.com/wesfloyd/openmm-test). Thank you, Wes!
 
 :::tip
 For more information about working with custom containers, see the [custom containers example](../../workload-onboarding/custom-containers/).
 :::
 
-The key thing to watch out for here is the paths to the data. I'm using the default bacalhau output directory `/outputs` to write my data to. And the input data is mounted to the `/inputs` directory. But as you will see in a moment, web3.storage has added another `input` directory that we need to account for.
+The key thing to watch out for here is the paths to the data. The example is using the default Bacalhau output directory `/outputs` to write data to. The input data is mounted to the `/inputs` directory. As you will see in a moment, web3.storage has added another `input` directory that we need to account for.
 
 
 ```python
@@ -177,9 +176,8 @@ print('Simulation complete, file written to disk at: {}'.format(output_path))
     Overwriting run_openmm_simulation.py
 
 
-To run the script above all we need is a Python environment with the OpenMM library installed.
-We install that via the package manager [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html).
-Below is the resulting Dockerfile; to keep this example concise we the Docker build command is commented out.
+To run the script above, you'll need is a Python environment with the OpenMM library installed.
+You can install via the package manager [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/index.html). Below is the resulting Dockerfile; to keep this example concise, the Docker build command is commented out.
 
 
 ```python
@@ -207,7 +205,7 @@ CMD ["python","run_openmm_simulation.py"]
 
 ### Test the Container Locally
 
-Before we upload the container to the Bacalhau network, we should test it locally to make sure it works.
+Before uploading the container to the Bacalhau network, test it locally to make sure it works.
 
 
 ```bash
@@ -219,9 +217,9 @@ docker run \
 
 ### Run a Bacalhau Job
 
-Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
+Now that you have the data in IPFS and the docker image pushed, you can run a job on the Bacalhau network.
 
-I find it useful to first run a simple test with a known working container to ensure the data is located in the place I expect, because some storage providers add their own opinions. E.g. web3.storage wraps the directory uploads in a top level directory.
+It's recommended to run a test with a known working container, to ensure the data is located in the expected location, because some storage providers add their own opinions. 
 
 
 ```bash
@@ -301,7 +299,7 @@ bacalhau docker run \
       bacalhau describe d9ca75a5-a766-42e1-aab5-b97a5ae1e7f1
 
 
-And finally let's run the full job. This time I will not download the data immediately, because the job takes a few minutes to complete. The commands are below, but you will need to wait until the job completes before they work.
+Finally, let's run the full job. The commands are below, but you will need to wait until the job completes before they work.
 
 
 ```bash
@@ -349,5 +347,3 @@ ls -l volumes/outputs
     total 6656
     -rw-r--r-- 1 phil staff 6578336 Oct 10 13:11 final_state.pdbx
 
-
-That's all folks!

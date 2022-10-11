@@ -22,9 +22,9 @@ The `--job-selection-reject-stateless` controls whether you want to accept jobs 
 
 ## Job selection hooks
 
-If you want more control over making the decision to take on jobs you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags.
+If you want more control over making the decision to take on jobs, you can use the `--job-selection-probe-exec` and `--job-selection-probe-http` flags.
 
-These are external programs that are passed the following data structure so they can make a decision about whether or not to take on a job:
+These are external programs that are passed the following data structure, so that they can make a decision about whether or not to take on a job:
 
 ```json
 {
@@ -46,6 +46,6 @@ These are external programs that are passed the following data structure so they
 }
 ```
 
-The `exec` probe is a script to run that will be given the job data on `stdin` and must exit with status code 0 if the job should be run.
+The `exec` probe is a script to run that will be given the job data on `stdin`, and must exit with status code 0 if the job should be run.
 
-The `http` probe is a URL to POST the job data to and must return a 200 status code if the job should be run.
+The `http` probe is a URL to POST the job data to, and must return a 200 status code if the job should be run.

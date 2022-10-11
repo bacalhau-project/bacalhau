@@ -4,12 +4,13 @@ sidebar_position: 110
 ---
 
 # Install
+This tutorial shares installation options for the Bacalhau client.
 
-### Install bacalhau binary
-So we can run `bacalhau serve` - we first need to [install the bacalhau binary](/getting-started/installation#prerequisite-install-bacalhau-client)
+### Install the bacalhau binary
+First, you should [install the bacalhau binary](/getting-started/installation#prerequisite-install-bacalhau-client) to run `bacalhau serve`. 
 
 ### Install docker
-So we can run docker based workloads - we need to have [docker installed](https://docs.docker.com/engine/install/) and running.
+To run docker based workloads, you should have [docker installed](https://docs.docker.com/engine/install/) and running.
 
 You can configure the connection to Docker with the following environment variables:
 
@@ -19,6 +20,6 @@ You can configure the connection to Docker with the following environment variab
  * `DOCKER_TLS_VERIFY` to enable or disable TLS verification, off by default.
 
 ### Windows support
-Running a Windows-based node is not officially supported but does mostly work – your mileage may vary. In particuar, some features (such as [resource limits](./resource-limits)) are not present.
+Running a Windows-based node is not officially supported, so your mileage may vary. Some features (like [resource limits](./resource-limits)) are not present in Windows-based nodes.
 
-Bacalhau currently assumes that all containers are Linux-based. Users of the Docker executor will need to manually ensure their Docker engine is running and [configured appropriately](https://docs.docker.com/desktop/install/windows-install/) to support Linux containers, e.g. using the WSL-based backend.
+Bacalhau currently makes the assumption that all containers are Linux-based. Users of the Docker executor will need to manually ensure that their Docker engine is running and [configured appropriately](https://docs.docker.com/desktop/install/windows-install/) to support Linux containers, e.g. using the WSL-based backend.

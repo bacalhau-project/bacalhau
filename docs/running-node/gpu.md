@@ -6,13 +6,13 @@ description: How to enable GPU support on your Bacalhau node.
 
 # GPU Support
 
-Bacalhau supports GPUs out of the box and defaults to allowing execution on all GPUs installed on the node.
+Bacalhau supports GPUs out of the box, and defaults to allowing execution on all GPUs installed on the node.
 
 ## Prerequisites
 
-Bacalhau assumes you have installed all the necessary NVIDIA drivers on your node. Bacalhau requires:
+Bacalhau makes the assumption that you have installed all the necessary NVIDIA drivers on your node. The Bacalhau client requires:
 
-* [docker](https://get.docker.com/)
+* [Docker](https://get.docker.com/)
 * [cuda-drivers for your GPU](https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html)
 * [NVIDIA Container Toolkit (nvidia-docker2)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 * [permission to access Docker](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
@@ -23,9 +23,9 @@ You can test whether you have a working GPU setup with the following command:
 docker run --rm --gpus all nvidia/cuda:11.0.3-base-ubuntu20.04 nvidia-smi
 ```
 
-### Unofficial GPU Node Setup One-Liner
+### Unofficial GPU Node Setup
 
-You should review the documented links above for official install instructions, but if you're desperate for something to copy and paste, this should work:
+You should review the documented links above for official install instructions. For a quickstart, you can use:
 
 ```bash
 sudo apt update
@@ -55,16 +55,16 @@ This was tested on a VM in GCP, in `europe-west1-b`, of type `n1-highmem-4`, wit
 
 ## GPU Node Configuration
 
-The following settings refer to the `bacalhau serve` command. To see all settings please refer to the [CLI documentation](../all-flags.md).
+The following settings refer to the `bacalhau serve` command. To see all settings, please refer to the [CLI documentation](../all-flags.md).
 
 ### Adding Global GPU Limits
 
-To limit the number of GPUs that Bacalhau has access to use the `limit-total-gpu` flag.
+To limit the number of GPUs that Bacalhau has access to, use the `limit-total-gpu` flag.
 
 ### Adding Job GPU Limits
 
-To limit the number of GPUs that individual jobs can use use the `limit-job-gpu` flag.
+To limit the number of GPUs that individual jobs can use, use the `limit-job-gpu` flag.
 
 ## Limitations
 
-See [GPU page in the getting started guide](../getting-started/gpu.md#limitations).
+For limitations, see [the GPU page in the getting started guide](../getting-started/gpu.md#limitations).

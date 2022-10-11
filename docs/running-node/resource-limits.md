@@ -5,7 +5,7 @@ sidebar_position: 150
 
 # Resource Limits
 
-These are the flags that control the capacity of the bacalhau node and the limits for jobs that might be run.
+These are the flags that control the capacity of the Bacalhau node, and the limits for jobs that might be run.
 
 ```
   --limit-job-cpu string                 Job CPU core limit for single job (e.g. 500m, 2, 8).
@@ -16,7 +16,7 @@ These are the flags that control the capacity of the bacalhau node and the limit
   --limit-total-memory string            Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb).
 ```
 
-The `--limit-total-*` flags control the total system resources you want to give to the network.  If left blank - the system will attempt to detect these values automatically.
+The `--limit-total-*` flags control the total system resources you want to give to the network.  If left blank, the system will attempt to detect these values automatically.
 
 The `--limit-job-*` flags control the maximum amount of resources a single job can consume for it to be selected for execution.
 

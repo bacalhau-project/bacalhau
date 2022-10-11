@@ -7,19 +7,19 @@ sidebar_position: 1
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/image-processing/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering%2Fimage-processing%2Findex.ipynb)
 
-In this example, we will show you how to use Bacalhau to process images on a Landsat dataset.
+In this example, you'll learn how to use Bacalhau to process images on a Landsat dataset.
 
 Bacalhau has the unique capability of operating at a massive scale in a distributed environment. This is made possible because data is naturally sharded across the IPFS network amongst many providers. We can take advantage of this to process images in parallel.
 
-However, before we do that, this notebook shows you how to use Bacalhau to process images using a [much smaller subset](https://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is useful for testing and debugging your code.
+However, before we do that, this example shows you how to use Bacalhau to process images using a [much smaller subset](https://cloudflare-ipfs.com/ipfs/QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72). This is useful for testing and debugging your code.
 
-For a live walk-through of this demo please watch the first part of the video below, otherwise feel free to run the demo yourself by following the steps below.
+For a live walk-through of this demo, watch the first part of the video below. You can also run the demo yourself by following the steps below.
 
 [![Bacalhau Intro Video](/img/Bacalhau_Intro_Video_thumbnail.jpg)](https://www.youtube.com/watch?v=wkOh05J5qgA)
 
 ## Prerequistes
 
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation), or using the installation command below (which installs Bacalhau local to the notebook).
+To run this example, be sure to have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation), or by using the installation command below (which installs Bacalhau local to the notebook).
 
 
 ```python
@@ -42,9 +42,9 @@ bacalhau version
 
 ## Submit the workload
 
-To submit a workload to Bacalhau you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
+To submit a workload to Bacalhau, you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
 
-Bacalhau also mounts a data volume to store output data. By default `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. See below for an example.
+Bacalhau also mounts a data volume to store output data. By default, `bacalhau docker run` creates an output data volume mounted at `/outputs`. This is a convenient location to store the results of your job. Check out this example:
 
 
 ```bash
@@ -57,8 +57,8 @@ bacalhau docker run \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
 
-The job has been submitted and Bacalhau has printed out the related job id.
-We store that in an environment variable so that we can reuse it later on.
+In the example, the job has been submitted and Bacalhau has printed out the related job id.
+Let's store the results in an environment variable so that we can reuse it later on.
 
 
 ```bash
@@ -73,9 +73,8 @@ Since the job state is published/complete, the job is ready to be downloaded.
 
 ## Get results
 
-First, let us create a new directory that will store our job outputs.
-Second, use the `get` verb to download the job outputs into the directory specified by the `--output-dir` argument.
-_Please ignore the `> /dev/null 2>&1` portion of the command, it is there only temporarily until we fix this [issue #614](https://github.com/filecoin-project/bacalhau/issues/614) and is meant to supress debug logs that are not useful for the user._
+To start, let's create a new directory that will store our job outputs. Use the `get` verb to download the job outputs into the directory specified by the `--output-dir` argument.
+_Note: Please ignore the `> /dev/null 2>&1` portion of the command, it is there only temporarily until we fix this [issue #614](https://github.com/filecoin-project/bacalhau/issues/614) and is meant to supress debug logs that are not useful for the user._
 
 
 ```bash
@@ -88,7 +87,7 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
     [90m16:16:12.377 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/image-processing/results'
 
 
-The docker run command above used the `outputs` volume as a results folder so when we download them they will be stored in a  folder within `volumes/outputs`.
+The Docker run command above used the `outputs` volume as a results folder, so when we download them, they get stored in a folder within `volumes/outputs`.
 
 
 ```bash
@@ -172,6 +171,8 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 
 ## Where to go next?
+
+To learn more about image processing: 
 
 * [Take a look at other examples](../../index.md)
 * [How to run an existing workload on Bacalhau](../../../getting-started/workload-onboarding.md)

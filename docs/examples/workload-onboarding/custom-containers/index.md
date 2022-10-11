@@ -7,13 +7,13 @@ sidebar_position: 10
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/custom-containers/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/custom-containers/index.ipynb)
 
-Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
+Bacalhau operates by executing jobs within containers. In this example, you'll learn how to build and use a custom Docker container.
 
 This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
 
 ## Running Containers in Bacalhau
 
-You're probably used to running docker commands to run a container.
+Let's start by running docker commands to run a container:
 
 
 ```bash
@@ -39,11 +39,11 @@ docker run docker/whalesay cowsay sup old fashioned container run
     WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
 
 
-Bacalhau uses a syntax that is similar to docker and you can use the same containers. The main difference is that input and output data is passed to the container via IPFS, to enable planetary scale. In this example, it doesn't make too much difference except that we need to download the stdout.
+Bacalhau uses a syntax that is similar to Docker - you can use the same containers. The main difference is that input and output data is passed to the container via IPFS to enable planetary scale. In this example,  you'll need to download the `stdout`.
 
 The `--wait` flag tells Bacalhau to wait for the job to finish before returning. This is useful in interactive sessions like this, but you would normally allow jobs to complete in the background and use the `list` command to check on their status.
 
-Another difference is that by default Bacalhau overwrites the default entrypoint for the container so you have to pass all shell commands as arguments to the `run` command after the `--` flag.
+Another difference is that by default, Bacalhau overwrites the default entrypoint for the container. You'll have to pass all shell commands as arguments to the `run` command after the `--` flag:
 
 
 ```bash
@@ -107,7 +107,7 @@ cat ./results/stdout
 
 To use your own custom container, you must publish the container to a container registry that is accessible from the Bacalhau network. At this time, only public container registries are supported.
 
-To demonstrate this, you will develop and build a simple custom container that comes from an old docker example. I remember seeing cowsay at a Docker conference about a decade ago. I think it's about time we brought it back to life and distribute it across the Bacalhau network.
+To demonstrate this, you will develop and build a simple custom container that comes from an old Docker example. It's aged, but let's bring it back to life and distribute it across the Bacalhau network!
 
 
 ```python
@@ -152,7 +152,7 @@ COPY cod.cow /usr/share/cowsay/cows/default.cow
     Overwriting Dockerfile
 
 
-Now let's build and test the container locally.
+Now, let's build and test the container locally:
 
 
 ```bash
@@ -185,7 +185,7 @@ docker run --rm ghcr.io/bacalhau-project/examples/codsay:latest codsay I like sw
                                ╚▓▌               '╨▀╜
 
 
-Once your container is working as expected then you should push it to a public container registry. In this example, I'm pushing to Github's container registry, but we'll skip the step below because you probably don't have permission.Remember that the Bacalhau nodes expect your container to have a `linux/amd64` architecture.
+Once your container is working as expected, push it to a public container registry. In this example, we're pushing to Github's container registry, but will skip the step below given permission issues. Remember that the Bacalhau nodes expect your container to have a `linux/amd64` architecture.
 
 
 ```bash
@@ -194,7 +194,7 @@ Once your container is working as expected then you should push it to a public c
 
 ## Running Your Custom Container on Bacalhau
 
-Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results and prints the stdout.
+Now you're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results, and prints the stdout.
 
 :::tip
 The `bacalhau docker run` command strips the default entrypoint, so don't forget to run your entrypoint in the command line arguments.
