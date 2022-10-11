@@ -40,9 +40,9 @@ To make sure, you can add an `ls` to the command to see what is exposed in the i
 
 ```bash
 bacalhau docker run \
-    --id-only
     --wait \
-    --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz:/inputs/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
+    --id-only \
+    --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
 ```
 
 
@@ -50,7 +50,7 @@ bacalhau docker run \
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=47e0efec-2915-427f-87c0-9283275ce216
+    env: JOB_ID=de712a10-37dc-4ceb-915d-571ad00a6bf4
 
 
 
@@ -58,8 +58,8 @@ bacalhau docker run \
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
-    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                      [0m[92;100m STATE [0m[92;100m VERIFIED [0m[92;100m PUBLISHED [0m
-    [97;40m 22-10-10-12:01:41 [0m[97;40m 47e0efec-2915-427f-87c0-9283275ce216 [0m[97;40m Docker ubuntu cp -rv /inputs/. /outputs/ [0m[97;40m Error [0m[97;40m          [0m[97;40m           [0m
+    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                      [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED                                            [0m
+    [97;40m 22-10-11-10:04:01 [0m[97;40m de712a10-37dc-4ceb-915d-571ad00a6bf4 [0m[97;40m Docker ubuntu cp -rv /inputs/. /outputs/ [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp [0m
 
 
 The output of the list command presents the CID of the output directory. You can use this in subsequent jobs. For example, let's run a simple command to `ls` the contents of that CID.
@@ -75,7 +75,7 @@ This file is not pinned. There is no guarantee that the file will exist in the f
 bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubuntu -- ls -l /inputs/outputs/
 ```
 
-    Job successfully submitted. Job ID: e8ffed86-997e-4912-b2fd-519c3bf9659c
+    Job successfully submitted. Job ID: 28850250-687d-440e-b6e6-fb809ead8f97
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
@@ -85,7 +85,7 @@ bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubun
     	   Job finished, verifying results ... done ✅
     	      Results accepted, publishing ... done ✅
     	                                  
-    Results CID: QmYcYJMXuXT6bVy5wfwyCKBHbTu2q5KiBVTKWxXcL3qNSA
+    Results CID: QmSTbh1wRkwcNkjTmCWjUWxwaBs1q2BtG5r2U6mere5ARc
     Job Results By Node:
     Node QmXaXu9N:
       Shard 0:
@@ -97,14 +97,18 @@ bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubun
         Container Exit Code: 0
         Stdout:
           total 9684
-    -rw-r--r-- 1 root root 9912422 Oct 10 12:01 train-images-idx3-ubyte.gz
+    -rw-r--r-- 1 root root 9912422 Oct 11 10:04 train-images-idx3-ubyte.gz
         Stderr: <NONE>
+    Node QmdZQ7Zb:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
     
     To download the results, execute:
-      bacalhau get e8ffed86-997e-4912-b2fd-519c3bf9659c
+      bacalhau get 28850250-687d-440e-b6e6-fb809ead8f97
     
     To get more details about the run, execute:
-      bacalhau describe e8ffed86-997e-4912-b2fd-519c3bf9659c
+      bacalhau describe 28850250-687d-440e-b6e6-fb809ead8f97
 
 
 ## Using a Third-Party to Pin Data
