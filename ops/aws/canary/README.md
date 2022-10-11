@@ -22,8 +22,8 @@ go run ./lambda/cmd/scenario_local_runner --action list # or any other scenario
 
 ### Releasing a New Version
 Follow these steps when a new version of Bacalhau is released and deployed to prod so that the canary client is also updated to a compatible version and deployed:
-1. Update `go.mod` to point to the new version of Bacalhau.
-2. Run `go mod tidy` to update the `go.sum` file.
+1. Update the `go.mod` in the [ops/aws/canary/lambda directory](ops/aws/canary/lambda/go.mod) to point to the new version of Bacalhau.
+2. Run `go mod tidy` to update the `go.sum` file by running `(cd ops/aws/canary/lambda && go mod tidy)`
 3. Update any breaking changes in Bacalhau client API.
 4. Verify the canary is compiling locally by running `(cd ops/aws/canary/lambda &&  go build -o /dev/null ./cmd/scenario_lambda_runner)`
 5. Push the changes to main, and the canary pipeline will automatically deploy the new version.
