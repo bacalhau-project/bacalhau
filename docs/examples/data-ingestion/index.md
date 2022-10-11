@@ -40,7 +40,7 @@ To make sure, you can add an `ls` to the command to see what is exposed in the i
 
 ```bash
 bacalhau docker run \
-    --id-only \
+    --id-only
     --wait \
     --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz:/inputs/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
 ```
