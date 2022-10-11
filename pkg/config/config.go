@@ -91,6 +91,18 @@ func SetDownloadURLRequestTimeoutSeconds(seconds int64) {
 	downloadURLRequestTimeoutSeconds = seconds
 }
 
+// how many times do we try to download a URL
+var downloadURLRequestRetries int = 3
+
+// how long do we wait for a URL to download
+func GetDownloadURLRequestRetries() int {
+	return downloadURLRequestRetries
+}
+
+func SetDownloadURLRequestRetries(count int) {
+	downloadURLRequestRetries = count
+}
+
 func GetConfigPath() string {
 	suffix := "/.bacalhau"
 	env := os.Getenv("BACALHAU_PATH")

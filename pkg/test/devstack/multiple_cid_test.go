@@ -368,6 +368,7 @@ func (s *MultipleCIDSuite) TestFlakyURLs() {
 		if accessCounts < 3 {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("not found"))
+			return
 		}
 		content, ok := testCase.files[r.URL.Path]
 		if !ok {
