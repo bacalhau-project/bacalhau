@@ -140,13 +140,8 @@ func (e *Executor) RunShard(
 
 	inputStorageSpecs := []model.StorageSpec{}
 
-	for _, contextStorage := range shard.Job.Spec.Contexts {
-		inputStorageSpecs = append(inputStorageSpecs, contextStorage)
-	}
-
-	for _, contextStorage := range shardStorageSpec {
-		inputStorageSpecs = append(inputStorageSpecs, contextStorage)
-	}
+	inputStorageSpecs = append(inputStorageSpecs, shard.Job.Spec.Contexts...)
+	inputStorageSpecs = append(inputStorageSpecs, shardStorageSpec...)
 
 	for _, inputStorageSpec := range inputStorageSpecs {
 		spec := inputStorageSpec // https://golang.org/doc/faq#closures_and_goroutines
