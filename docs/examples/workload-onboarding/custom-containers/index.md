@@ -47,7 +47,7 @@ Another difference is that by default, Bacalhau overwrites the default entrypoin
 
 
 ```bash
-bacalhau docker run --wait docker/whalesay -- cowsay hello, web3 uber-run!
+bacalhau docker run --wait --id-only docker/whalesay -- cowsay hello, web3 uber-run!
 ```
 
 
@@ -182,14 +182,27 @@ The `bacalhau docker run` command strips the default entrypoint, so don't forget
 
 ```bash
 bacalhau docker run \
-  --download \
   ghcr.io/bacalhau-project/examples/codsay:v1.0.0 \
   -- codsay Look at all this data
 ```
 
-    5a77bcc2-d921-492a-a504-b81e215c9a21
+    Job successfully submitted. Job ID: f5e5d231-f4ac-43fa-b47b-c0811b8297c5
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
-     _______________________
+    	       Creating job for submission ... done ✅
+    	       Finding node(s) for the job ... done ✅
+    	             Node accepted the job ... done ✅
+    	   Job finished, verifying results ... done ✅
+    	      Results accepted, publishing ... done ✅
+    	                                  
+    Results CID: QmaJCxwRQx3ZL8amPSVu4SbYD8kgwxWkGwdcMubUTDCQwC
+    Job Results By Node:
+    Node QmYgxZiy:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: 0
+        Stdout:
+          _______________________
     < Look at all this data >
      -----------------------
        \
@@ -205,38 +218,14 @@ bacalhau docker run \
            '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
                  '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
                      ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
-                            %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
+                            %!φ(MISSING)▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
                              `╣▓▓▓              ╠╬▓╬▓╬▀`
                                ╚▓▌               '╨▀╜
+        Stderr: <NONE>
     
-
-
-    [90m13:31:22.937 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m13:31:25.898 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/workload-onboarding/custom-containers'
-
-
-
-```bash
-cat ./stdout
-```
-
-     _______________________
-    < Look at all this data >
-     -----------------------
-       \
-        \
-                                   ,,,,_
-                                ┌Φ▓╬▓╬▓▓▓W      @▓▓▒,
-                               ╠▓╬▓╬╣╬╬▓╬▓▓   ╔╣╬╬▓╬╣▓,
-                        __,┌╓═╠╬╠╬╬╬Ñ╬╬╬Ñ╬╬¼,╣╬╬▓╬╬▓╬▓▓▓┐        ╔W_             ,φ▓▓
-                   ,«@▒╠╠╠╠╩╚╙╙╩Ü╚╚╚╚╩╙╙╚╠╩╚╚╟▓▒╠╠╫╣╬╬╫╬╣▓,   _φ╬▓╬╬▓,        ,φ╣▓▓╬╬
-              _,φÆ╩╬╩╙╚╩░╙╙░░╩`=░╙╚»»╦░=╓╙Ü1R░│░╚Ü░╙╙╚╠╠╠╣╣╬≡Φ╬▀╬╣╬╬▓▓▓_   ╓▄▓▓▓▓▓▓╬▌
-          _,φ╬Ñ╩▌▐█[▒░░░░R░░▀░`,_`!R`````╙`-'╚Ü░░Ü░░░░░░░│││░╚╚╙╚╩╩╩╣Ñ╩╠▒▒╩╩▀▓▓╣▓▓╬╠▌
-         '╚╩Ü╙│░░╙Ö▒Ü░░░H░░R ▒¥╣╣@@@▓▓▓  := '`   `░``````````````````````````]▓▓▓╬╬╠H
-           '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
-                 '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
-                     ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
-                            %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
-                             `╣▓▓▓              ╠╬▓╬▓╬▀`
-                               ╚▓▌               '╨▀╜
+    To download the results, execute:
+      bacalhau get f5e5d231-f4ac-43fa-b47b-c0811b8297c5
+    
+    To get more details about the run, execute:
+      bacalhau describe f5e5d231-f4ac-43fa-b47b-c0811b8297c5
 

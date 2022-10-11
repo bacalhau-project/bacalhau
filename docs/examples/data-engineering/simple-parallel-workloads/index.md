@@ -34,6 +34,7 @@ Note that [Bacalhau overwrites the default entrypoint](https://github.com/fileco
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
+  --id-only \
   --sharding-base-path "/inputs" \
   --sharding-glob-pattern "*.mp4" \
   --sharding-batch-size 1 \

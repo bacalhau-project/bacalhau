@@ -41,7 +41,10 @@ To make sure, you can add an `ls` to the command to see what is exposed in the i
 
 
 ```bash
-bacalhau docker run --wait --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz:/inputs/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
+bacalhau docker run \
+    --id-only
+    --wait \
+    --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz:/inputs/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
 ```
 
 
@@ -49,16 +52,17 @@ bacalhau docker run --wait --input-urls http://yann.lecun.com/exdb/mnist/train-i
 %env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=Job ID: 5297c04b-3dea-4f3c-8d06-fc818f919f93
-    
-    To get the status of the job, run:
-      bacalhau describe 5297c04b-3dea-4f3c-8d06-fc818f919f93
+    env: JOB_ID=47e0efec-2915-427f-87c0-9283275ce216
 
 
 
 ```bash
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
+
+    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                      [0m[92;100m STATE [0m[92;100m VERIFIED [0m[92;100m PUBLISHED [0m
+    [97;40m 22-10-10-12:01:41 [0m[97;40m 47e0efec-2915-427f-87c0-9283275ce216 [0m[97;40m Docker ubuntu cp -rv /inputs/. /outputs/ [0m[97;40m Error [0m[97;40m          [0m[97;40m           [0m
+
 
 The output of the list command presents the CID of the output directory. You can use this in subsequent jobs. For example, let's run a simple command to `ls` the contents of that CID.
 
@@ -70,13 +74,40 @@ This file is not pinned. There is no guarantee that the file will exist in the f
 
 
 ```bash
-bacalhau docker run --download --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubuntu -- ls -l /inputs/outputs/
+bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubuntu -- ls -l /inputs/outputs/
 ```
 
+    Job successfully submitted. Job ID: e8ffed86-997e-4912-b2fd-519c3bf9659c
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
+    
+    	       Creating job for submission ... done ✅
+    	       Finding node(s) for the job ... done ✅
+    	             Node accepted the job ... done ✅
+    	                                   ... done ✅
+    	   Job finished, verifying results ... done ✅
+    	      Results accepted, publishing ... done ✅
+    	                                  
+    Results CID: QmYcYJMXuXT6bVy5wfwyCKBHbTu2q5KiBVTKWxXcL3qNSA
+    Job Results By Node:
+    Node QmXaXu9N:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmYgxZiy:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: 0
+        Stdout:
+          total 9684
+    -rw-r--r-- 1 root root 9912422 Oct 10 12:01 train-images-idx3-ubyte.gz
+        Stderr: <NONE>
+    
+    To download the results, execute:
+      bacalhau get e8ffed86-997e-4912-b2fd-519c3bf9659c
+    
+    To get more details about the run, execute:
+      bacalhau describe e8ffed86-997e-4912-b2fd-519c3bf9659c
 
-```bash
-cat stdout
-```
 
 ## Using a Third-Party to Pin Data
 
@@ -125,6 +156,9 @@ Start by creating some files to upload.
 %%writefile nodejs/test1.txt
 First test file
 ```
+
+    Overwriting nodejs/test1.txt
+
 
 
 ```python

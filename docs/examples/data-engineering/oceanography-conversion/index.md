@@ -261,6 +261,7 @@ Finally let's run the full job. This time the data is not downloaded immediately
 ```bash
 bacalhau docker run \
         --inputs bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
+        --id-only \
         --wait \
         ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py
 ```

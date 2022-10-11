@@ -173,7 +173,7 @@ with open(output_path, mode="w+") as file:
 print('Simulation complete, file written to disk at: {}'.format(output_path))
 ```
 
-    Writing run_openmm_simulation.py
+    Overwriting run_openmm_simulation.py
 
 
 To run the script above, you'll need is a Python environment with the OpenMM library installed.
@@ -195,7 +195,7 @@ LABEL org.opencontainers.image.source https://github.com/bacalhau-project/exampl
 CMD ["python","run_openmm_simulation.py"]
 ```
 
-    Writing Dockerfile
+    Overwriting Dockerfile
 
 
 
@@ -215,13 +215,6 @@ docker run \
     ghcr.io/bacalhau-project/examples/openmm:0.3
 ```
 
-    Building system...
-    Performing energy minimization...
-    Equilibrating...
-    Simulating...
-    Simulation complete, file written to disk at: /outputs/final_state.pdbx
-
-
 ### Run a Bacalhau Job
 
 Now that you have the data in IPFS and the docker image pushed, you can run a job on the Bacalhau network.
@@ -232,18 +225,39 @@ It's recommended to run a test with a known working container, to ensure the dat
 ```bash
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
-        --download \
         --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
         ubuntu -- ls /inputs
 ```
 
-    Job ID: 77268057-7f25-4ac6-ab92-4d37da29c679
+    Job successfully submitted. Job ID: 5836a70b-0ed1-4741-90fa-390c6a4f1137
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
-    To get the status of the job, run:
-      bacalhau describe 77268057-7f25-4ac6-ab92-4d37da29c679
+    	       Creating job for submission ... done ✅
+    	       Finding node(s) for the job ... done ✅
+    	             Node accepted the job ... done ✅
+    	                                   ... done ✅
+    	   Job finished, verifying results ... done ✅
+    	      Results accepted, publishing ... done ✅
+    	                                  
+    Results CID: QmbVhcvWKmZbLd6ZKiDctUYY7DN5jQBKsbPsrTz5aGFY68
+    Job Results By Node:
+    Node QmXaXu9N:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmdZQ7Zb:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: 0
+        Stdout:
+          2dri-processed.pdb
+        Stderr: <NONE>
     
-    2dri-processed.pdb
+    To download the results, execute:
+      bacalhau get 5836a70b-0ed1-4741-90fa-390c6a4f1137
     
+    To get more details about the run, execute:
+      bacalhau describe 5836a70b-0ed1-4741-90fa-390c6a4f1137
 
 
 Let's switch to our custom container image.
@@ -253,20 +267,36 @@ Let's switch to our custom container image.
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
     --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
-    --download \
     ghcr.io/bacalhau-project/examples/openmm:0.3 -- ls -la /inputs/
 ```
 
-    Job ID: ad1bada3-2962-4dd8-9e64-e6debea5314f
+    Job successfully submitted. Job ID: d9ca75a5-a766-42e1-aab5-b97a5ae1e7f1
+    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
-    To get the status of the job, run:
-      bacalhau describe ad1bada3-2962-4dd8-9e64-e6debea5314f
+    	       Creating job for submission ... done ✅
+    	       Finding node(s) for the job ... done ✅
+    	             Node accepted the job ... done ✅
+    	   Job finished, verifying results ... done ✅
+    	      Results accepted, publishing ... done ✅
+    	                                  
+    Results CID: QmcVp5m7MngLa7QU9prwzZZHHgKgmJaW6wrvEyufUCwX9x
+    Job Results By Node:
+    Node QmYgxZiy:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: 0
+        Stdout:
+          total 4080
+    drwxr-xr-x 2 root root    4096 Oct 10 12:04 .
+    drwxr-xr-x 1 root root    4096 Oct 10 12:08 ..
+    -rw-r--r-- 1 root root 4167654 Oct 10 12:04 2dri-processed.pdb
+        Stderr: <NONE>
     
-    total 4080
-    drwxr-xr-x 2 root root    4096 Oct  5 09:20 .
-    drwxr-xr-x 1 root root    4096 Oct  6 07:04 ..
-    -rw-r--r-- 1 root root 4167654 Oct  5 09:20 2dri-processed.pdb
+    To download the results, execute:
+      bacalhau get d9ca75a5-a766-42e1-aab5-b97a5ae1e7f1
     
+    To get more details about the run, execute:
+      bacalhau describe d9ca75a5-a766-42e1-aab5-b97a5ae1e7f1
 
 
 Finally, let's run the full job. The commands are below, but you will need to wait until the job completes before they work.
@@ -276,21 +306,16 @@ Finally, let's run the full job. The commands are below, but you will need to wa
 bacalhau docker run \
     --inputs bafybeig63whfqyuvwqqrp5456fl4anceju24ttyycexef3k5eurg5uvrq4 \
     --wait \
+    --id-only \
     ghcr.io/bacalhau-project/examples/openmm:0.3 -- python run_openmm_simulation.py
 ```
 
-    Job ID: c3dd1500-e397-4607-aff4-c49fc31c9726
-    
-    To get the status of the job, run:
-      bacalhau describe c3dd1500-e397-4607-aff4-c49fc31c9726
-
-
 
 ```python
-%env JOB_ID=c3dd1500-e397-4607-aff4-c49fc31c9726
+%env JOB_ID={job_id}
 ```
 
-    env: JOB_ID=c3dd1500-e397-4607-aff4-c49fc31c9726
+    env: JOB_ID=10e11cba-3de2-4507-85f6-a8f2b53d110b
 
 
 
@@ -299,7 +324,7 @@ bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
      CREATED   ID        JOB                      STATE      VERIFIED  PUBLISHED               
-     07:41:13  c3dd1500  Docker ghcr.io/bacal...  Completed            /ipfs/QmZXUGCRsD2GKL... 
+     12:08:16  10e11cba  Docker ghcr.io/bacal...  Completed            /ipfs/QmUpBj6Eacz5Y5... 
 
 
 ### Get Results
@@ -312,13 +337,13 @@ rm -rf stdout stderr volumes shards
 bacalhau get ${JOB_ID} # Download the results
 ```
 
-    Fetching results of job 'c3dd1500-e397-4607-aff4-c49fc31c9726'...
+    Fetching results of job '10e11cba-3de2-4507-85f6-a8f2b53d110b'...
 
 
 ```bash
 ls -l volumes/outputs
 ```
 
-    total 14336
-    -rw-r--r--  1 enricorotundo  staff  6578336 Oct  6 09:48 final_state.pdbx
+    total 6656
+    -rw-r--r-- 1 phil staff 6578336 Oct 10 13:11 final_state.pdbx
 
