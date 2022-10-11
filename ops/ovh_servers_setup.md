@@ -12,7 +12,12 @@ These are their IP addresses:
 * 51.81.184.117
 
 These machine need ad-hoc preparation to host Bacalhau nodes, these steps are specific to this OVH bundle and therefore is worth keeping these notes separated from the normal installation instructions.
-This page contains instructions on how to prepare those hosts to run Bacalhau.
+This page contains instructions on how to prepare those hosts to run Bacalhau:
+
+1. Configure RAID for data disks
+2. Configure Firewall
+
+Let's dive it! :zap:
 
 ## 1) Configure RAID for data disks
 
