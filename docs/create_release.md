@@ -28,7 +28,7 @@ There are three environments: development, staging and production. For more info
 1. When ready, create a Bacalhau release. Once the release has been built, CI will open a new PR to update the terraform files. Test this change in development manually if you wish. Once you are happy, merge the PR.
 1. Wait for the CI scripts to release the new infrastructure to development and staging.
 1. [Manually apply the changes to the production environment.](../ops/README.md#deploying-bacalhau-mainnet) Please note that it takes a couple of minutes for the init scripts to install and start the Bacalhau servers. You can see what the server is doing with `gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -f`.
-1. Make sure the [Monitoring Canary](../ops/aws/canary.md) is up to date with the latest release.
+1. Make sure to update the [Monitoring Canary as well]](../ops/aws/canary/README.md#releasing-a-new-version).
 
 ## Hints, Tips and Troubleshooting
 
