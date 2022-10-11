@@ -59,7 +59,7 @@ var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	// General Error?
 	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
 
-	// Should we print at all?
+	// Should we print at all? Empty events get skipped
 	model.JobEventBidCancelled: {},
 	model.JobEventBidRejected:  {},
 	model.JobEventDealUpdated:  {},
@@ -597,7 +597,7 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 	}
 
 	// If it hasn't been printed yet, we'll print this event.
-	if !pe[jet].printed {
+	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
 		// Only print " done" after the first line.
 		firstLine := true
 		for v := range pe {
