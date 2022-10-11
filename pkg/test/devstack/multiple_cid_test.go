@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -301,6 +302,7 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 
 // both starts should be before both ends if we are downloading in parallel
 func (s *MultipleCIDSuite) TestURLsInParallel() {
+	mutex := sync.Mutex{}
 	testCase := getSimpleTestCase()
 
 	accessTimes := map[string]int64{}
@@ -310,11 +312,16 @@ func (s *MultipleCIDSuite) TestURLsInParallel() {
 	getAccessKey := func(filename, append string) string {
 		return fmt.Sprintf("%s_%s", filename, append)
 	}
+	setAccessTime := func(key string) {
+		mutex.Lock()
+		defer mutex.Unlock()
+		accessTimes[key] = getAccessTime()
+	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		accessTimes[getAccessKey(r.URL.Path, "start")] = getAccessTime()
+		setAccessTime(getAccessKey(r.URL.Path, "start"))
 		time.Sleep(time.Second * 1)
-		accessTimes[getAccessKey(r.URL.Path, "end")] = getAccessTime()
+		setAccessTime(getAccessKey(r.URL.Path, "end"))
 		content, ok := testCase.files[r.URL.Path]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
@@ -338,6 +345,41 @@ func (s *MultipleCIDSuite) TestURLsInParallel() {
 
 	require.True(s.T(), start2 < end1)
 	require.True(s.T(), start1 < end2)
+}
+
+func (s *MultipleCIDSuite) TestFlakyURLs() {
+	mutex := sync.Mutex{}
+	testCase := getSimpleTestCase()
+	accessCounter := map[string]int{}
+	increaseCounter := func(key string) int {
+		mutex.Lock()
+		defer mutex.Unlock()
+		accessCount, ok := accessCounter[key]
+		if !ok {
+			accessCount = 0
+		}
+		accessCount++
+		accessCounter[key] = accessCount
+		return accessCount
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		accessCounts := increaseCounter(r.URL.Path)
+		if accessCounts < 3 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("not found"))
+		}
+		content, ok := testCase.files[r.URL.Path]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("not found"))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(content))
+		}
+
+	}
+	runURLTest(s.T(), handler, testCase)
 }
 
 func (s *MultipleCIDSuite) TestIPFSURLCombo() {
