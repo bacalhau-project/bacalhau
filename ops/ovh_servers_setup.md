@@ -1,0 +1,142 @@
+# OVH Bare Metal Preparation
+
+## Context 
+
+We have 4 high-spec `ubuntu-2204-lts` nodes on OVH US @ Hillsboro (HIL1) - United States. 
+They are HGR-HCI-5 machines, check [this page](https://us.ovhcloud.com/bare-metal/high-grade/hgr-hci-5/) for more details.
+These are their IP addresses:
+
+* 51.81.184.74
+* 51.81.184.112
+* 51.81.184.118
+* 51.81.184.117
+
+These machine need ad-hoc preparation to host Bacalhau nodes, these steps are specific to this OVH bundle and therefore is worth keeping these notes separated from the normal installation instructions.
+This page contains instructions on how to prepare those hosts to run Bacalhau.
+
+## Configure RAID for data disks
+
+On top of the boot drive, these hosts ship with `6× 3.84TB` NVMe data disks.
+Follow the steps below to create a `RAID0` array and persist it upon reboot.
+
+```bash
+> lsblk -o NAME,SIZE,FSTYPE,TYPE,MOUNTPOINT
+
+NAME          SIZE FSTYPE            TYPE  MOUNTPOINT
+sda         447.1G                   disk
+...
+nvme0n1       3.5T                   disk
+nvme1n1       3.5T                   disk
+nvme2n1       3.5T                   disk
+nvme3n1       3.5T                   disk
+nvme4n1       3.5T                   disk
+nvme5n1       3.5T                   disk
+```
+
+### Partition disks
+
+Create a partition on the first disk. 
+
+```bash
+> sudo fdisk /dev/nvme0n1
+```
+
+Note `fdisk` is an interactive util so you need to manually follow a number of steps:
+
+* press `n` for a new partition
+* press enter and confirm all defaults
+* press `t` to select the partiton type
+* insert `29` that is the alias for `29 Linux RAID`
+* press `w` to write out the partiton to disk
+
+Repeat the steps above for each disk:
+
+```bash
+> sudo fdisk /dev/nvme1n1
+> sudo fdisk /dev/nvme2n1
+> sudo fdisk /dev/nvme3n1
+> sudo fdisk /dev/nvme4n1
+> sudo fdisk /dev/nvme5n1
+```
+
+At this point you should see a partition under each disk:
+
+```bash
+> lsblk -o NAME,SIZE,FSTYPE,TYPE,MOUNTPOINT
+NAME          SIZE FSTYPE            TYPE  MOUNTPOINT
+...
+nvme0n1       3.5T                   disk
+└─nvme0n1p1   3.5T linux_raid_member part
+...
+```
+
+### Format partitions
+
+```bash
+> sudo mkfs.ext4 /dev/nvme0n1p1
+> sudo mkfs.ext4 /dev/nvme1n1p1
+> sudo mkfs.ext4 /dev/nvme2n1p1
+> sudo mkfs.ext4 /dev/nvme3n1p1
+> sudo mkfs.ext4 /dev/nvme4n1p1
+> sudo mkfs.ext4 /dev/nvme5n1p1
+```
+
+### Create RAID Array
+
+```bash
+> sudo mdadm --create \
+    --verbose /dev/md0 \
+    --level=raid0 \
+    --raid-devices=6 \
+    /dev/nvme0n1p1 \
+    /dev/nvme1n1p1 \
+    /dev/nvme2n1p1 \
+    /dev/nvme3n1p1 \
+    /dev/nvme4n1p1 \
+    /dev/nvme5n1p1
+```
+
+Confirm Yes upon promtps.
+Now a new `md0` array should be visible:
+
+```bash
+> cat /proc/mdstat
+Personalities : [raid0] [raid1] [linear] [multipath] [raid6] [raid5] [raid4] [raid10]
+md3 : active raid1 sdb3[0] sda3[1]
+      466619392 blocks super 1.2 [2/2] [UU]
+      bitmap: 0/4 pages [0KB], 65536KB chunk
+
+md2 : active raid1 sdb2[1] sda2[0]
+      1046528 blocks super 1.2 [2/2] [UU]
+
+md0 : active raid0 nvme0n1p1[0]
+      3750604800 blocks super 1.2 512k chunks
+```
+
+At this point we've created the array but we still need to make it persistent.
+
+```bash
+> sudo mdadm --detail --scan | grep --color=never /dev/md0 | sudo tee -a /etc/mdadm/mdadm.conf
+> sudo update-initramfs -u
+> sudo mkdir -p /data
+> sudo mkfs.ext4 /dev/md0
+> sudo mount /dev/md0 /data
+```
+
+Check if `mount` succeeded, you should see `/dev/md0` mounted on `/data`:
+
+```bash
+> df -h
+Filesystem      Size  Used Avail Use% Mounted on
+...
+/dev/md0        21T   28K  21T   1% /data
+...
+```
+
+Last step is adding the array to `/etc/fstab` so that it's automagically mounted upon reboot:
+
+```bash
+echo '/dev/md0 /data ext4 defaults,nofail,discard 0 0' | sudo tee -a /etc/fstab
+```
+
+Ref. https://www.digitalocean.com/community/tutorials/how-to-create-raid-arrays-with-mdadm-on-ubuntu-16-04
