@@ -38,7 +38,7 @@ Go brew one or two ☕ because this step takes really a long time...
 
 <img width="609" alt="Screenshot 2022-10-11 at 18 08 52" src="https://user-images.githubusercontent.com/4340327/195143814-978f5f54-deb5-4d25-a911-9f286920a8c1.png">
 
-
+After it completes you can finally ssh into the machines with the `ubuntu` user: `ssh ubuntu@51.81.184.xx` 
 
 ## 2) Configure RAID for data disks
 
