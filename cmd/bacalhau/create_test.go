@@ -2,6 +2,7 @@ package bacalhau
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/url"
 	"os"
@@ -192,7 +193,9 @@ func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
 	time.Sleep(1 * time.Second)
 
 	stdinErr := os.Stdin.Close()
-	require.NoError(s.T(), stdinErr, "Error closing stdin")
+	if stdinErr != nil && !errors.Is(stdinErr, os.ErrClosed) {
+		require.NoError(s.T(), stdinErr, "Error closing stdin")
+	}
 
 	commandReturnValue := <-commandChan
 
