@@ -32,7 +32,7 @@ Select `Install one of your templates` and pick `bacalhau - ubuntu2204-server`, 
 
 <img width="627" alt="Screenshot 2022-10-11 at 18 06 25" src="https://user-images.githubusercontent.com/4340327/195143328-3c455971-1248-42ec-aeb9-7808b518a373.png">
 
-The default ssh key is Enrico's, you need to figure out how to add your key to OVH console.
+OVH console allows you to select only one ssh key (using Enrico's for now), that's not a problem because we'll add the team's keys later on, but to move past this point you need to figure out how to add your key to OVH console so that it's listed in the dropdown menu.
 Once you confrim you'll see the progess bar slowing making its way to the right end of the stick.
 Go brew one or two ☕ because this step takes really a long time...
 
@@ -214,3 +214,24 @@ Status: active
 The firewall setup is loaded at every reboot!
 
 Ref. https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu-22-04
+
+## 4) Add team's ssh pub keys
+
+First we need the GitHub usernames of the team members whose ssh key we'd like to add.
+The [Bacalhau's contributors](https://github.com/filecoin-project/bacalhau/graphs/contributors) is a good starting point.
+
+```bash
+> wget -q --output-document - github.com/enricorotundo.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/binocarlos.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/aronchick.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/lukemarsden.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/philwinder.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/wdbaruni.keys >> ~/.ssh/authorized_keys
+...
+```
+
+Confirm that worked with `cat ~/.ssh/authorized_keys`.
+
+--- 
+
+That's all folks 🥳
