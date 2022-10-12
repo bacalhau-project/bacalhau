@@ -178,6 +178,32 @@ func AwkFile() TestCase {
 		},
 	}
 }
+
+func WasmHelloWorld() TestCase {
+	ctx := context.Background()
+	return TestCase{
+		Name: "wasm_hello_world",
+		SetupContext: singleFileSetupStorageWithFile(
+			ctx,
+			"../../../testdata/wasm/noop",
+			"/job",
+		),
+		ResultsChecker: singleFileResultsChecker(
+			ctx,
+			stdoutString,
+			"Hello, world!\n",
+			ExpectedModeEquals,
+			2, //nolint:gomnd // magic number appropriate for test
+		),
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineLanguage,
+				Language: model.JobSpecLanguage{
+					Language:        "wasm",
+					LanguageVersion: "2.0",
+					Deterministic:   true,
+					Command:         "_start",
+					ProgramPath:     "main.wasm",
 				},
 			}
 		},
@@ -191,5 +217,6 @@ func GetAllScenarios() []TestCase {
 		GrepFile(),
 		SedFile(),
 		AwkFile(),
+		WasmHelloWorld(),
 	}
 }
