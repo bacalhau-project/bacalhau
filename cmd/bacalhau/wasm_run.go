@@ -14,6 +14,17 @@ import (
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	wasmCmd.AddCommand(runWasmCommand)
 	wasmCmd.AddCommand(validateWasmCommand)
+
+	runWasmCommand.PersistentFlags().StringSliceVarP(
+		&OLR.InputUrls, "input-urls", "u", OLR.InputUrls,
+		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
+		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
+		and supports both HTTP and HTTPS.`,
+	)
+	runWasmCommand.PersistentFlags().StringSliceVarP(
+		&OLR.InputVolumes, "input-volumes", "v", OLR.InputVolumes,
+		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
+	)
 }
 
 var wasmCmd = &cobra.Command{
