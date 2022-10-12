@@ -21,6 +21,7 @@ import (
 type TestCase struct {
 	Name           string
 	SetupStorage   ISetupStorage
+	SetupContext   ISetupStorage
 	ResultsChecker ICheckResults
 	GetJobSpec     IGetJobSpec
 	Outputs        []model.StorageSpec
@@ -43,7 +44,7 @@ type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (
 //nolint:lll
 type ISetupStorage func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error)
 type ICheckResults func(resultsDir string) error
-type IGetJobSpec func() model.JobSpecDocker
+type IGetJobSpec func() model.Spec
 
 /*
 Storage Drivers
@@ -138,14 +139,6 @@ func singleFileSetupStorageWithFile(
 
 */
 
-func singleFileGetData(
-	resultsDir string,
-	filePath string,
-) ([]byte, error) {
-	outputFile := filepath.Join(resultsDir, filePath)
-	return os.ReadFile(outputFile)
-}
-
 func singleFileResultsChecker(
 	ctx context.Context,
 	outputFilePath string,
@@ -154,7 +147,8 @@ func singleFileResultsChecker(
 	expectedLines int,
 ) ICheckResults {
 	return func(resultsDir string) error {
-		resultsContent, err := singleFileGetData(resultsDir, outputFilePath)
+		outputFile := filepath.Join(resultsDir, outputFilePath)
+		resultsContent, err := os.ReadFile(outputFile)
 		if err != nil {
 			return err
 		}
@@ -163,16 +157,16 @@ func singleFileResultsChecker(
 
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
 		if actualLineCount != expectedLines {
-			return fmt.Errorf("count mismatch:\nExpected: %d\nActual: %d", expectedLines, actualLineCount)
+			return fmt.Errorf("%s: count mismatch:\nExpected: %d\nActual: %d", outputFile, expectedLines, actualLineCount)
 		}
 
 		if expectedMode == ExpectedModeEquals {
 			if string(resultsContent) != expectedString {
-				return fmt.Errorf("content mismatch:\nExpected: %s\nActual: %s", expectedString, resultsContent)
+				return fmt.Errorf("%s: content mismatch:\nExpected: %s\nActual: %s", outputFile, expectedString, resultsContent)
 			}
 		} else if expectedMode == ExpectedModeContains {
 			if !strings.Contains(string(resultsContent), expectedString) {
-				return fmt.Errorf("content mismatch:\nExpected Contains: %s\nActual: %s", expectedString, resultsContent)
+				return fmt.Errorf("%s: content mismatch:\nExpected Contains: %s\nActual: %s", outputFile, expectedString, resultsContent)
 			}
 		} else {
 			return fmt.Errorf("unknown expected mode: %d", expectedMode)

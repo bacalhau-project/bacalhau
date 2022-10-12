@@ -29,12 +29,15 @@ func CatFileToStdout() TestCase {
 			ExpectedModeEquals,
 			1,
 		),
-		GetJobSpec: func() model.JobSpecDocker {
-			return model.JobSpecDocker{
-				Image: "ubuntu:latest",
-				Entrypoint: []string{
-					"cat",
-					SimpleMountPath,
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineDocker,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"cat",
+						SimpleMountPath,
+					},
 				},
 			}
 		},
@@ -63,12 +66,15 @@ func CatFileToVolume() TestCase {
 				Path: "/output_data",
 			},
 		},
-		GetJobSpec: func() model.JobSpecDocker {
-			return model.JobSpecDocker{
-				Image: "ubuntu:latest",
-				Entrypoint: []string{
-					"bash",
-					SimpleMountPath,
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineDocker,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"bash",
+						SimpleMountPath,
+					},
 				},
 			}
 		},
@@ -91,13 +97,16 @@ func GrepFile() TestCase {
 			ExpectedModeContains,
 			2,
 		),
-		GetJobSpec: func() model.JobSpecDocker {
-			return model.JobSpecDocker{
-				Image: "ubuntu:latest",
-				Entrypoint: []string{
-					"grep",
-					"kiwi",
-					SimpleMountPath,
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineDocker,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"grep",
+						"kiwi",
+						SimpleMountPath,
+					},
 				},
 			}
 		},
@@ -120,14 +129,17 @@ func SedFile() TestCase {
 			ExpectedModeContains,
 			5, //nolint:gomnd // magic number ok for testing
 		),
-		GetJobSpec: func() model.JobSpecDocker {
-			return model.JobSpecDocker{
-				Image: "ubuntu:latest",
-				Entrypoint: []string{
-					"sed",
-					"-n",
-					"/38.7[2-4]..,-9.1[3-7]../p",
-					SimpleMountPath,
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineDocker,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"sed",
+						"-n",
+						"/38.7[2-4]..,-9.1[3-7]../p",
+						SimpleMountPath,
+					},
 				},
 			}
 		},
@@ -150,14 +162,22 @@ func AwkFile() TestCase {
 			ExpectedModeContains,
 			501, //nolint:gomnd // magic number appropriate for test
 		),
-		GetJobSpec: func() model.JobSpecDocker {
-			return model.JobSpecDocker{
-				Image: "ubuntu:latest",
-				Entrypoint: []string{
-					"awk",
-					"-F,",
-					"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
-					SimpleMountPath,
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineDocker,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"awk",
+						"-F,",
+						"{x=38.7077507-$3; y=-9.1365919-$4; if(x^2+y^2<0.3^2) print}",
+						SimpleMountPath,
+					},
+				},
+			}
+		},
+	}
+}
 				},
 			}
 		},

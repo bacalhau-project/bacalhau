@@ -75,15 +75,11 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	j := &model.Job{}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker:    testCase.GetJobSpec(),
-		Inputs:    inputStorageList,
-		Outputs:   testCase.Outputs,
-	}
-
+	j.Spec = testCase.GetJobSpec()
+	j.Spec.Verifier = model.VerifierNoop
+	j.Spec.Publisher = model.PublisherIpfs
+	j.Spec.Inputs = inputStorageList
+	j.Spec.Outputs = testCase.Outputs
 	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}
