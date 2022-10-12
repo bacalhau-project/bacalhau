@@ -69,11 +69,11 @@ Create a partition on the first disk.
 
 Note `fdisk` is an interactive util so you need to manually follow a number of steps:
 
-* press `n` for a new partition
-* press enter and confirm all defaults
-* press `t` to select the partiton type
-* insert `29` that is the alias for `29 Linux RAID`
-* press `w` to write out the partiton to disk
+1. press `n` for a new partition
+1. press enter and confirm all defaults
+1. press `t` to select the partiton type
+1. insert `29` that is the alias for `29 Linux RAID`
+1. press `w` to write out the partiton to disk
 
 Repeat the steps above for each disk:
 
