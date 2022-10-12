@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/filecoin-project/bacalhau v0.3.2
+	github.com/filecoin-project/bacalhau v0.3.3-0.20221011164519-c8ccd1ae5698
 	github.com/rs/zerolog v1.26.1
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5
@@ -270,6 +270,7 @@ require (
 	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
+	github.com/tetratelabs/wazero v1.0.0-pre.2 // indirect
 	github.com/tidwall/gjson v1.14.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
