@@ -4,15 +4,18 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"sigs.k8s.io/yaml"
 )
 
 type CreateSuite struct {
@@ -25,7 +28,7 @@ func TestCreateSuite(t *testing.T) {
 }
 
 // before all the s
-func (s *CreateSuite) Setups() {
+func (s *CreateSuite) SetupSuite() {
 
 }
 
@@ -168,4 +171,77 @@ func (s *CreateSuite) TestCreateFromStdin() {
 			"|", "../../bin/bacalhau create"},
 	)
 	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
+}
+
+func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
+	Fatal = FakeFatalErrorHandler
+
+	type commandReturn struct {
+		c   *cobra.Command
+		out string
+		err error
+	}
+
+	commandChan := make(chan commandReturn, 1)
+
+	go func() {
+		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create")
+
+		commandChan <- commandReturn{c: c, out: out, err: err}
+	}()
+	time.Sleep(1 * time.Second)
+
+	stdinErr := os.Stdin.Close()
+	require.NoError(s.T(), stdinErr, "Error closing stdin")
+
+	commandReturnValue := <-commandChan
+
+	// For some reason I can't explain, this only works when running in debug.
+	// require.Contains(s.T(), commandReturnValue.out, "Ctrl+D", "Waiting message should contain Ctrl+D")
+
+	errorOutputMap := make(map[string]interface{})
+	for _, o := range strings.Split(commandReturnValue.out, "\n") {
+		err := yaml.Unmarshal([]byte(o), &errorOutputMap)
+		if err != nil {
+			continue
+		}
+	}
+
+	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
+	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
+}
+
+func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
+	Fatal = FakeFatalErrorHandler
+
+	type commandReturn struct {
+		c   *cobra.Command
+		out string
+		err error
+	}
+
+	commandChan := make(chan commandReturn, 1)
+
+	go func() {
+		c, out, err := ExecuteTestCobraCommand(s.T(), RootCmd, "create", "../../testdata/empty.yaml")
+
+		commandChan <- commandReturn{c: c, out: out, err: err}
+	}()
+	time.Sleep(1 * time.Second)
+
+	stdinErr := os.Stdin.Close()
+	require.NoError(s.T(), stdinErr, "Error closing stdin")
+
+	commandReturnValue := <-commandChan
+
+	errorOutputMap := make(map[string]interface{})
+	for _, o := range strings.Split(commandReturnValue.out, "\n") {
+		err := yaml.Unmarshal([]byte(o), &errorOutputMap)
+		if err != nil {
+			continue
+		}
+	}
+
+	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
+	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
 }

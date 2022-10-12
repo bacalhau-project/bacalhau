@@ -1,6 +1,6 @@
 package userstrings
 
 const (
-	NoStdInProvidedErrorString    = "no stdin provided"
 	NoFilenameProvidedErrorString = "No filename provided."
+	JobSpecBad                    = "The job provided is invalid."
 )

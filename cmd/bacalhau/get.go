@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -71,11 +70,10 @@ var getCmd = &cobra.Command{
 		if jobID == "" {
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 			if err != nil {
-				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-					// Both filename and stdin are empty
-					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
+				if err != nil {
+					Fatal(fmt.Sprintf("Unknown error reading from file or stdin: %s\n", err), 1)
+					return nil
 				}
 				// Error not related to fields being empty
 				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
