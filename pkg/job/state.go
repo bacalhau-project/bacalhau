@@ -135,12 +135,36 @@ func (resolver *StateResolver) Wait(
 	totalShards int,
 	checkJobStateFunctions ...CheckStatesFunction,
 ) error {
+	return resolver.WaitWithOptions(ctx, WaitOptions{
+		JobID:       jobID,
+		TotalShards: totalShards,
+	}, checkJobStateFunctions...)
+}
+
+type WaitOptions struct {
+	// the job we are waiting for
+	JobID string
+	// this is the total number of expected states
+	// used to quit early if we've not matched our checkJobStateFunctions
+	// but all of the loaded states are terminal
+	// this number is concurrency * total batches
+	TotalShards int
+	// in some cases we are actually waiting for an error state
+	// this switch makes that OK (i.e. we don't try to return early)
+	AllowAllTerminal bool
+}
+
+func (resolver *StateResolver) WaitWithOptions(
+	ctx context.Context,
+	options WaitOptions,
+	checkJobStateFunctions ...CheckStatesFunction,
+) error {
 	waiter := &system.FunctionWaiter{
 		Name:        "wait for job",
 		MaxAttempts: resolver.maxWaitAttempts,
 		Delay:       resolver.waitDelay,
 		Handler: func() (bool, error) {
-			jobState, err := resolver.stateLoader(ctx, jobID)
+			jobState, err := resolver.stateLoader(ctx, options.JobID)
 			if err != nil {
 				return false, err
 			}
@@ -163,14 +187,14 @@ func (resolver *StateResolver) Wait(
 			// some of the check functions returned false
 			// let's see if we can quiet early because all expectedd states are
 			// in terminal state
-			allTerminal, err := WaitForTerminalStates(totalShards)(jobState)
+			allTerminal, err := WaitForTerminalStates(options.TotalShards)(jobState)
 			if err != nil {
 				return false, err
 			}
 
 			// If all the jobs are in terminal states, then nothing is going
 			// to change if we keep polling, so we should exit early.
-			if allTerminal {
+			if allTerminal && !options.AllowAllTerminal {
 				return false, fmt.Errorf("all jobs are in terminal states and conditions aren't met")
 			}
 			return false, nil

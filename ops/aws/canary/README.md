@@ -20,6 +20,16 @@ You can run the scenarios locally before deploying to lambda by using the follow
 go run ./lambda/cmd/scenario_local_runner --action list # or any other scenario
 ```
 
+### Releasing a New Version
+Follow these steps when a new version of Bacalhau is released and deployed to prod so that the canary client is also updated to a compatible version and deployed:
+1. Update the `go.mod` in the [ops/aws/canary/lambda directory](ops/aws/canary/lambda/go.mod) to point to the new version of Bacalhau.
+2. Run `go mod tidy` to update the `go.sum` file by running `(cd ops/aws/canary/lambda && go mod tidy)`
+3. Update any breaking changes in Bacalhau client API.
+4. Verify the canary is compiling locally by running `(cd ops/aws/canary/lambda &&  go build -o /dev/null ./cmd/scenario_lambda_runner)`
+5. Push the changes to main, and the canary pipeline will automatically deploy the new version.
+
+This is a [sample commit](https://github.com/filecoin-project/bacalhau/commit/958630dbe4ad9ba35b0715be2f82c66c60797ba4) updating the canary to Bacalhau v0.2.6
+
 ## Infrastructure Stacks
 There are two types of stacks in this project:
 - Canary stack(s): one stack per environment (e.g. prod, dev), containing the Lambda function and the CloudWatch alarm.

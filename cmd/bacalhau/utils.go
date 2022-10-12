@@ -234,7 +234,7 @@ type RunTimeSettings struct {
 func NewRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
 		AutoDownloadResults:   false,
-		WaitForJobToFinish:    false,
+		WaitForJobToFinish:    true,
 		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
 		IPFSGetTimeOut:        10,
 		IsLocal:               false,
@@ -299,9 +299,19 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
+	// if we are in --wait=false - print the id then exit
+	// because all code after this point is related to
+	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
+	if !runtimeSettings.WaitForJobToFinish {
+		cmd.Print(j.ID + "\n")
+		return nil
+	}
+
+	// if we are in --id-only mode - print the id
 	if idOnly {
 		cmd.Print(j.ID + "\n")
 	}
+
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
 	quiet := idOnly

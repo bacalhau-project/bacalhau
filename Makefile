@@ -24,7 +24,7 @@ endif
 # Env Variables
 export GO111MODULE = on
 export GO = go
-export CGO_ENABLED = 1
+export CGO_ENABLED = 0
 export PYTHON = python3
 export PRECOMMIT = poetry run pre-commit
 
@@ -55,23 +55,6 @@ define BUILD_FLAGS
 -X github.com/filecoin-project/bacalhau/pkg/version.GOOS=$(GOOS) \
 -X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
 endef
-
-define STATIC_BUILD_FLAGS
--linkmode=external -extldflags '-static'
-endef
-
-ifeq (${GOOS},linux)
-BUILD_FLAGS += ${STATIC_BUILD_FLAGS}
-endif
-
-# If we are cross-compiling, bring in the appropriate compilers
-ifneq ($(GOOS)_$(GOARCH),$(OS)_$(ARCH))
-compile/${OS}/$(GOOS)_$(GOARCH).env:
-	$(info No compilation method for ${GOOS}_${GOARCH} on host ${OS})
-
-include compile/${OS}/${GOOS}_${GOARCH}.env
-export CC
-endif
 
 all: build
 
