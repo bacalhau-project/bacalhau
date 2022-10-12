@@ -4,7 +4,7 @@ sidebar_position: 20
 ---
 # Examples
 
-Bacalhau comes pre-loaded with examples that showcase its abilities and help to get you started.
+Bacalhau comes pre-loaded with exciting examples to showcase its abilities and help get you started.
 
 :::tip
 
@@ -12,9 +12,9 @@ Use the navigation bar on the left to browse through the examples. You can also 
 
 :::
 
-## Organization
+## Organisation
 
-Examples are organized by task. Each task has a number of examples that showcase different ways to solve the same problem.
+Examples are organised by task. Each task has a number of examples that showcase different ways to solve the same problem.
 
 :::tip
 

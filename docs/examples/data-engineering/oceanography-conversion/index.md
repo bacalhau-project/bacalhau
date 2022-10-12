@@ -7,7 +7,7 @@ sidebar_position: 10
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-engineering/oceanography-conversion/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-engineering/oceanography-conversion/index.ipynb)
 
-The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO2 in seawater around the globe. To calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to the partial pressure of CO2. In this example, you will convert the units by combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
+The Surface Ocean CO₂ Atlas (SOCAT) contains measurements of the [fugacity](https://en.wikipedia.org/wiki/Fugacity) of CO2 in seawater around the globe. But to calculate how much carbon the ocean is taking up from the atmosphere, these measurements need to be converted to the partial pressure of CO2. We will convert the units by combining measurements of the surface temperature and fugacity.  Python libraries (xarray, pandas, numpy) and the pyseaflux package facilitate this process.
 
 References:
 - https://www.socat.info/
@@ -17,7 +17,7 @@ References:
 
 ### Goal
 
-The goal of this example is to investigate the data and dockerize the workload so that it can be executed on the Bacalhau network, to take advantage of the distributed storage and compute resources.
+The goal of this notebook is to investigate the data and convert dockerize the workload so that it can be executed on the Bacalhau network, to take advantage of the distributed storage and compute resources.
 
 ### Prerequisites
 
@@ -27,7 +27,7 @@ Make sure you have the latest `bacalhau` client installed by following the [gett
 
 ## The Data
 
-The raw data used in this example is available on the [SOCAT website](https://www.socat.info/). This example uses the [SOCATv2021](https://www.socat.info/index.php/version-2021/) dataset in the "Gridded" format to perform this calculation. Let's take a quick look at some data:
+The raw data is available on the [SOCAT website](https://www.socat.info/). We will use the [SOCATv2021](https://www.socat.info/index.php/version-2021/) dataset in the "Gridded" format to perform this calculation. First, let's take a quick look at some data:
 
 
 ```bash
@@ -36,7 +36,7 @@ curl --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.soca
 curl --output ./inputs/sst.mnmean.nc https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc
 ```
 
-Next, let's write the requirements.txt and install the dependencies. This file will also be used by the Dockerfile to install the dependencies.
+Next let's write the requirements.txt and install the dependencies. This file will also be used by the Dockerfile to install the dependencies.
 
 
 ```python
@@ -76,40 +76,40 @@ res.plot() # plot the result
 
 ```
 
-The dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above, you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have travelled.
+We can see that the dataset contains lat-long coordinates, the date, and a series of seawater measurements. Above you can see a plot of the average surface sea temperature (sst) between 2010-2020, where recording buoys and boats have travelled.
 
 ## The Task - Large Scale Data Conversion
 
-The goal of this example is to convert the data from fugacity of CO2 (fCO2) to partial pressure of CO2 (pCO2). This is a common task in oceanography, and is performed by combining the measurements of the surface temperature and fugacity. The conversion is performed by the [pyseaflux](https://seaflux.readthedocs.io/en/latest/api.html?highlight=fCO2_to_pCO2#pyseaflux.fco2_pco2_conversion.fCO2_to_pCO2) package.
+The goal of this notebook is to convert the data from fugacity of CO2 (fCO2) to partial pressure of CO2 (pCO2). This is a common task in oceanography, and is performed by combining the measurements of the surface temperature and fugacity. The conversion is performed by the [pyseaflux](https://seaflux.readthedocs.io/en/latest/api.html?highlight=fCO2_to_pCO2#pyseaflux.fco2_pco2_conversion.fCO2_to_pCO2) package.
 
-To execute this workload on the Bacalhau network, we need to perform three steps:
+To execute this workload on the Bacalhau network we need to perform three steps:
 
-- Upload the data to IPFS
-- Create a docker image with the code and dependencies
-- Run the docker image on the Bacalhau network using the IPFS data
+1. Upload the data to IPFS
+2. Create a docker image with the code and dependencies
+3. Run the docker image on the Bacalhau network using the IPFS data
 
 ### Upload the Data to IPFS
 
-Let's start by uploading the data to IPFS. Use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this, you'll need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
+The first step is to upload the data to IPFS. The simplest way to do this is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.
 
-Here's the steps followed in the example:
-1. Download the latest monthly data from the [SOCAT website](https://www.socat.info/)
-2. Download the latest long-term global sea surface temperature data from [NOAA](https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc) - information about that dataset can be found [here](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html).
-3. Pin the data to IPFS
+For the purposes of this example I:
+1. Downloaded the latest monthly data from the [SOCAT website](https://www.socat.info/)
+2. Downloaded the latest long-term global sea surface temperature data from [NOAA](https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc) - information about that dataset can be found [here](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html).
+3. Pinned the data to IPFS
 
-Following these steps resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
+This resulted in the IPFS CID of `bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y`.
 
 <!-- TODO: Add link to notebook showing people how to upload data to IPFS -->
 
 ### Create a Docker Image to Process the Data
 
-Next, we will create the Docker image that will process the data. The Docker image will contain the code and dependencies needed to perform the conversion. This code originated with [lgloege](https://github.com/lgloege/bacalhau_socat_test) via [wesfloyd](https://github.com/wesfloyd/bacalhau_socat_test/). Thank you, Wes! 🤗
+Next we will create the docker image that will process the data. The docker image will contain the code and dependencies needed to perform the conversion. This code originated with [lgloege](https://github.com/lgloege/bacalhau_socat_test) via [wesfloyd](https://github.com/wesfloyd/bacalhau_socat_test/). Thank you! 🤗
 
 :::tip
 For more information about working with custom containers, see the [custom containers example](../../workload-onboarding/custom-containers/).
 :::
 
-The key thing to watch out for here is the paths to the data. This example uses the default Bacalhau output directory `/outputs` to write data to. The input data is mounted to the `/inputs` directory. As you will see in a moment, web3.storage has added another `input` directory that should be accounted for.
+The key thing to watch out for here is the paths to the data. I'm using the default bacalhau output directory `/outputs` to write my data to. And the input data is mounted to the `/inputs` directory. But as you will see in a moment, web3.storage has added another `input` directory that we need to account for.
 
 
 ```python
@@ -219,7 +219,7 @@ CMD ["python","main.py"]
 
 ### Test the Container Locally
 
-Before uploading the container to the Bacalhau network, test it locally to make sure it works.
+Before we upload the container to the Bacalhau network, we should test it locally to make sure it works.
 
 
 ```bash
@@ -231,9 +231,9 @@ docker run \
 
 ### Run a Bacalhau Job
 
-Now that there's data in IPFS and the Docker image is pushed, you can run a job on the Bacalhau network.
+Now that we have the data in IPFS and the docker image pushed, we can run a job on the Bacalhau network.
 
-It's suggested to run a simple test with a known working container to ensure the data is located in the expected location, because some storage providers add their own opinions (e.g. web3.storage wraps the directory uploads in a top level directory).
+I find it useful to first run a simple test with a known working container to ensure the data is located in the place I expect, because some storage providers add their own opinions. E.g. web3.storage wraps the directory uploads in a top level directory.
 
 
 ```bash
@@ -244,7 +244,7 @@ bacalhau docker run \
         ubuntu -- ls /inputs
 ```
 
-You can also run a simple test with a custom container:
+Then I like to run a simple test with my custom container ...
 
 
 ```bash
@@ -255,7 +255,7 @@ bacalhau docker run \
 	ghcr.io/bacalhau-project/examples/socat:0.0.11 -- ls -la /inputs/
 ```
 
-Finally let's run the full job. This time the data is not downloaded immediately - the job takes around 100 seconds. It takes another few minutes to download the results. The commands are below, but you will need to wait until the job completes before they work.
+And finally let's run the full job. This time I will not download the data immediately, because the job takes around 100s. And it takes another few minutes to download the results. The commands are below, but you will need to wait until the job completes before they work.
 
 
 ```bash
@@ -268,7 +268,7 @@ bacalhau docker run \
 
 ## Get Results
 
-Now, let's download and display the result from the results directory. Use the `bacalhau get` command to download the results from the output data volume. The `--output-dir` argument specifies the directory to download the results to.
+Now let's download and display the result from the results directory. We can use the `bacalhau get` command to download the results from the output data volume. The `--output-dir` argument specifies the directory to download the results to.
 
 
 ```bash

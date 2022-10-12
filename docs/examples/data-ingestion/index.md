@@ -7,30 +7,28 @@ sidebar_position: 10
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-ingestion/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/index.ipynb)
 
-Before you can start crunching data, you'll need to make it addressable and accessible via [IPFS](https://ipfs.io/). This tutorial shares various ways to make your data ingestible.
+Before you can start crunching data, you need to make it addressable and accessible via [IPFS](https://ipfs.io/). This notebook will demonstrate several ways to do that.
 
 ### Introduction
 
-The goal of the Bacalhau project is to make it easy to perform distributed, decentralized computation next to where the data resides. A key step in this process is making your data accessible.
+The goal of the Bacalhau project is to make it easy to perform distributed, decentralised computation next to where the data resides. So a key step in this process is making your data accessible.
 
-The Interplanetary File System (IPFS) is a set of protocols that allow data to be discovered and accessed in a decentralized way. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. Let's learn about two ways of interacting with IPFS to move your data from one place (e.g. your machine) to IPFS.
+IPFS is a set of protocols that allow data to be discovered and accessed in a decentralised way. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. This notebook will show you two ways of interacting with IPFS to move your data from one place (e.g. your machine) to IPFS.
 
 ### Prerequisites
 
-To successfully complete the steps in this tutorial, you'll need: 
-
-* The [Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation) (to run the Bacalhau examples)
-* [Docker](https://docs.docker.com/engine/install/) (to run the Docker examples)
+* The [Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation) (if you want to run the Bacalhau examples)
+* [Docker](https://docs.docker.com/engine/install/) (if you want to run the Docker examples)
 
 ## Moving Data via Bacalhau
 
-The recommended way to move data into IPFS is by leveraging helper functions in the Bacalhau CLI.
+The easiest way to move data into IPFS is by leveraging helper functions in the Bacalhau CLI.
 
 ### URL -> IPFS
 
-The Bacalhau binary includes a helper function to upload from a public URL. This is useful if you have data hosted on a website or in a public S3 bucket, as an example.
+The Bacalhau binary includes a helper function to upload from a public URL. This is useful if you have data hosted on a website or in a public S3 bucket (for example).
 
-The following code copies the data from a specified URL to the `/ouputs` directory of a Bacalhau job, then uploads it to IPFS. Bacalhau will return the CID of the uploaded data.
+The following code copies the data from a specified URL to the `/ouputs` directory of a Bacalhau job, and then uploads it to IPFS. Bacalhau will return the CID of the uploaded data.
 
 :::tip
 
@@ -121,27 +119,27 @@ If you have data that you want to make available to your Bacalhau jobs (or other
 
 This example will demonstrate how to pin data using Web3.Storage. Web3.Storage is a pinning service that is built on top of IPFS and Filecoin. It is free to use for small amounts of data, and has a generous free tier. You can find more information about Web3.Storage [here](https://web3.storage/).
 
-#### Step 1 - Create an Account
+#### 1. Create an Account
 
-First, create an account (if you don't have one already). Browse to https://web3.storage/login/ and sign up.
+First you need to create an account (if you don't have one already). Browse to https://web3.storage/login/ and sign up.
 
-#### Step 2 - Sign In and Create an API Key
+#### 2. Sign In and Create an API Key
 
 Next, sign in and browse to the ["Create API Key" page](https://web3.storage/tokens/?create=true). Follow the instructions to create an API key. Once created, you will need to copy the API key to your clipboard.
 
-#### Step 3 - Pin a Local File Using Their Test Client
+#### 3. Pin a Local File Using Their Test Client
 
 To test that your API key is working, use [web3.storage's test client to test that it's working](https://bafybeic5r5yxjh5xpmeczfp34ysrjcoa66pllnjgffahopzrl5yhex7d7i.ipfs.dweb.link/).
 
 You can now see (or upload) your file via the web3.storage account page: https://web3.storage/account/.
 
 :::warning
-Don't share your API key with anyone. Delete this API key once you have finished with this example.
+Note that you shouldn't share your API key with anyone. Delete this API key once you have finished with this example.
 :::
 
-#### Step 4 - Pin a Local File Via Curl
+#### 4. Pin a Local File Via Curl
 
-You can also pin a file via `curl`. Please view the [API documentation](https://web3.storage/docs/reference/http-api/) to see all available commands. This example submits a single file to be pinned.
+You can also pin a file via curl. Please view the [API documentation](https://web3.storage/docs/reference/http-api/) to see all available commands. This example submits a single file to be pinned.
 
 ```bash
 export TOKEN=YOUR_API_KEY
@@ -149,11 +147,11 @@ echo hello world > foo.txt
 curl -X POST https://api.web3.storage/upload -H "Authorization: Bearer ${TOKEN}" -H "X-NAME: foo.txt" -d @foo.txt
 ```
 
-#### Step 5 - Pin Multiple Local Files Via Node.JS
+#### 5. Pin Multiple Local Files Via Node.JS
 
-Web3.Storage has a [node.js library](https://web3.storage/docs/reference/js-client-library/) to interact with their API. The following example requires node.js to be installed. The following code uses a Docker container. The javascript code is located on [their website](https://web3.storage/docs/intro/#create-the-upload-script) or on [github](https://github.com/bacalhau-project/examples/blob/main/data-ingestion/nodejs/put-files.js).
+Web3.Storage has a [node.js library](https://web3.storage/docs/reference/js-client-library/) to interact with their API. The following example requires node.js to be installed. The following code uses a docker container. The javascript code is located on [their website](https://web3.storage/docs/intro/#create-the-upload-script) or on [github](https://github.com/bacalhau-project/examples/blob/main/data-ingestion/nodejs/put-files.js).
 
-Start by creating some files to upload.
+First create some files to upload.
 
 
 ```python
@@ -170,7 +168,10 @@ First test file
 Second test file
 ```
 
-Then run the following command, using the environmental variable `TOKEN` to authenticate with the API.
+    Overwriting nodejs/test2.txt
+
+
+Then run the following command, which uses the environmental variable `TOKEN` to authenticate with the API.
 
 ```bash
 export TOKEN=YOUR_API_KEY
@@ -191,11 +192,11 @@ Content added with CID: bafybeic5smk3bgbsisp566kapp5clmo2ofgmvf223behdpcvjpndpna
 
 The CID listed at the bottom can now be used as an input to Bacalhau.
 
-#### Step 6 - Pin Files Via the IPFS CLI
+#### 6. Pin Files Via the IPFS CLI
 
 See the web3.storage documentation for [instructions on how to pin files via the IPFS CLI](https://web3.storage/docs/how-tos/pinning-services-api/#using-the-ipfs-cli).
 
-#### Step 7 - Pin A File from a URL Via Curl
+#### 7. Pin A File from a URL Via Curl
 
 You can use curl to download a file then re-upload to web3.storage. For example:
 
@@ -214,7 +215,7 @@ Which results in something like:
 {"cid":"bafybeiereqxn546lkskldoybaa4xe7wk5fricm33nor4oofrxphlaywwd4","carCid":"bagbaieran5ufs752r5vdforovbnjc2gur7kzrsanr3avphsyp7hd6fms7pia"}%  
 ```
 
-#### Step 8 - Pin A File from a URL Via Node.JS
+#### 8. Pin A File from a URL Via Node.JS
 
 You can combine the node.js example above with a `wget` to then upload it to web3.storage.
 
