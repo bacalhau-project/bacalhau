@@ -4,12 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/mountfs"
+	"github.com/filecoin-project/bacalhau/pkg/util/touchfs"
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -90,15 +95,63 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec,
 	programPath := filepath.Join(volume.Source, filepath.Base(programName))
 	return LoadModule(ctx, e.Engine, programPath)
 }
+
+// makeFsFromStorage sets up a virtual filesystem (represented by an fs.FS) that
+// will be the filesystem exposed to our WASM. The strategy for this is to:
+//
+//   - mount each input at the name specified by Path
+//   - make a directory in the job results directory for each output and mount that
+//     at the name specified by Name
+func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
+	var err error
+	fs := mountfs.New()
+
+	for _, input := range inputs {
+		var volume *storage.StorageVolume
+		volume, err = e.getVolume(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Ctx(ctx).Info().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+
+		err = fs.Mount(input.Path, os.DirFS(volume.Source))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return module, nil
+	for _, output := range outputs {
+		if output.Name == "" {
+			return nil, fmt.Errorf("output volume has no name: %+v", output)
+		}
+
+		if output.Path == "" {
+			return nil, fmt.Errorf("output volume has no path: %+v", output)
+		}
+
+		srcd := filepath.Join(jobResultsDir, output.Name)
+		log.Ctx(ctx).Info().Msgf("Collecting output '%s' at '%s'", output.Name, srcd)
+
+		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
+		if err != nil {
+			return nil, err
+		}
+
+		err = fs.Mount(output.Name, touchfs.New(srcd))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return fs, nil
 }
 
 func failResult(err error) (*model.RunCommandResult, error) {
 	return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 }
 
+//nolint:funlen  // Will be made shorter when we do more module linking
 func (e *Executor) RunShard(
 	ctx context.Context,
 	shard model.JobShard,
@@ -120,6 +173,16 @@ func (e *Executor) RunShard(
 	}
 	defer module.Close(ctx)
 
+	shardStorageSpec, err := job.GetShardStorageSpec(ctx, shard, e.StorageProvider)
+	if err != nil {
+		return failResult(err)
+	}
+
+	fs, err := e.makeFsFromStorage(ctx, jobResultsDir, shardStorageSpec, shard.Job.Spec.Outputs)
+	if err != nil {
+		return failResult(err)
+	}
+
 	// Configure the modules. We will write STDOUT and STDERR to a buffer so
 	// that we can later include them in the job results. We don't want to
 	// execute any start functions automatically as we will do it manually
@@ -131,7 +194,8 @@ func (e *Executor) RunShard(
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
-		WithStderr(stderr)
+		WithStderr(stderr).
+		WithFS(fs)
 	entryPoint := shard.Job.Spec.Language.Command
 
 	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)

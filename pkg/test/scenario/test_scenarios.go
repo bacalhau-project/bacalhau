@@ -210,6 +210,48 @@ func WasmHelloWorld() TestCase {
 	}
 }
 
+func WasmCsvTransform() TestCase {
+	ctx := context.Background()
+	return TestCase{
+		Name: "wasm_csv_transform",
+		SetupStorage: singleFileSetupStorageWithFile(
+			ctx,
+			"../../../testdata/wasm/csv/inputs",
+			"inputs",
+		),
+		SetupContext: singleFileSetupStorageWithFile(
+			ctx,
+			"../../../testdata/wasm/csv",
+			"/job",
+		),
+		ResultsChecker: singleFileResultsChecker(
+			ctx,
+			"outputs/parents-children.csv",
+			"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva",
+			ExpectedModeContains,
+			269, //nolint:gomnd // magic number appropriate for test
+		),
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineLanguage,
+				Language: model.JobSpecLanguage{
+					Language:        "wasm",
+					LanguageVersion: "2.0",
+					Deterministic:   true,
+					Command:         "_start",
+					ProgramPath:     "main.wasm",
+				},
+			}
+		},
+		Outputs: []model.StorageSpec{
+			{
+				Name: "outputs",
+				Path: "/outputs",
+			},
+		},
+	}
+}
+
 func GetAllScenarios() []TestCase {
 	return []TestCase{
 		CatFileToStdout(),
@@ -218,5 +260,6 @@ func GetAllScenarios() []TestCase {
 		SedFile(),
 		AwkFile(),
 		WasmHelloWorld(),
+		WasmCsvTransform(),
 	}
 }
