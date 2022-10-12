@@ -2,13 +2,13 @@ package bacalhau
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
@@ -69,15 +69,21 @@ var validateWasmCommand = &cobra.Command{
 		entryPoint := args[1]
 
 		engine := wazero.NewRuntime(ctx)
-		bytes, err := os.ReadFile(programPath)
+		module, err := wasm.LoadModule(ctx, engine, programPath)
 		if err != nil {
-			Fatal("Could not load supplied WASM file", 1)
+			Fatal(err.Error(), 1)
 			return err
 		}
 
-		module, err := engine.CompileModule(ctx, bytes)
+		wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
 		if err != nil {
-			Fatal("Could not load supplied WASM file", 1)
+			Fatal(err.Error(), 3)
+			return err
+		}
+
+		err = wasm.ValidateModuleImports(module, wasi)
+		if err != nil {
+			Fatal(err.Error(), 2)
 			return err
 		}
 
@@ -85,9 +91,9 @@ var validateWasmCommand = &cobra.Command{
 		if err != nil {
 			Fatal(err.Error(), 2)
 			return err
-		} else {
-			cmd.Println("OK")
-			return nil
 		}
+
+		cmd.Println("OK")
+		return nil
 	},
 }

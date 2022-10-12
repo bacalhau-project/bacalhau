@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+	"golang.org/x/exp/maps"
 )
 
 // ValidateModuleAgainstJob will return an error if the passed job does not
@@ -14,16 +15,61 @@ import (
 func ValidateModuleAgainstJob(
 	module wazero.CompiledModule,
 	job model.Spec,
+	importModules ...wazero.CompiledModule,
 ) error {
 	if !job.Language.Deterministic {
 		return fmt.Errorf("WASM jobs are all deterministic but Deterministic is not set to true")
 	}
 
-	if len(module.ImportedFunctions()) > 0 {
-		return fmt.Errorf("imports are specified for the WASM module but there should be none")
+	err := ValidateModuleImports(module, importModules...)
+	if err != nil {
+		return err
 	}
 
 	return ValidateModuleAsEntryPoint(module, job.Language.Command)
+}
+
+// ValidateModuleImports will return an error if the passed module requires
+// imports that are not found in any of the passed importModules. Imports have
+// to match exactly, i.e. function names and signatures must be an exact match.
+func ValidateModuleImports(
+	module wazero.CompiledModule,
+	importModules ...wazero.CompiledModule,
+) error {
+	availableImports := make(map[string]api.FunctionDefinition)
+	for _, importModule := range importModules {
+		maps.Copy(importModule.ExportedFunctions(), availableImports)
+	}
+
+	for _, requiredImport := range module.ImportedFunctions() {
+		importNamespace, funcName, _ := requiredImport.Import()
+		exists := false
+		for _, importModule := range importModules {
+			_, exists = importModule.ExportedFunctions()[funcName]
+			if exists {
+				err := ValidateModuleHasFunction(
+					importModule,
+					funcName,
+					requiredImport.ParamTypes(),
+					requiredImport.ResultTypes(),
+				)
+
+				// If the module has the import but the signature doesn't match,
+				// as we enforce that imports are unique, this will break even
+				// if there is another import with correct name and signature.
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if !exists {
+			// We didn't find an export from any module.
+			return fmt.Errorf("no export found for '%s::%s' required by module", importNamespace, funcName)
+		}
+	}
+
+	return nil
 }
 
 // ValidateModuleAsEntryPoint returns an error if the passed module is not
@@ -41,7 +87,7 @@ func ValidateModuleAsEntryPoint(
 		module,
 		name,
 		[]api.ValueType{},
-		[]api.ValueType{api.ValueTypeI32},
+		[]api.ValueType{},
 	)
 }
 
