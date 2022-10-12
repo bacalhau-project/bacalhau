@@ -23,7 +23,7 @@ Let's dive in! :zap:
 
 ## 1) Install Ubuntu via OVH Console
 
-Get the credentails from David Aaronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
+Get the credentails from David Aronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
 Under "Dedicated servers" you'll see 4 entries. Click on one of those (need to repeat this step for each machine), then use the `...` menu to open the installation modal.
 
 <img width="1269" alt="Screenshot 2022-10-11 at 18 04 21" src="https://user-images.githubusercontent.com/4340327/195142902-17249c42-0e27-4925-82d6-f875d254964e.png">
