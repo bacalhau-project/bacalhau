@@ -19,7 +19,7 @@ This page contains instructions on how to prepare those hosts to run Bacalhau:
 1. Configure Firewall
 1. Add team's ssh pub keys
 
-Let's dive it! :zap:
+Let's dive in! :zap:
 
 ## 1) Install Ubuntu via OVH Console
 
