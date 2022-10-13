@@ -71,12 +71,8 @@ var getCmd = &cobra.Command{
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
 			if err != nil {
-				if err != nil {
-					Fatal(fmt.Sprintf("Unknown error reading from file or stdin: %s\n", err), 1)
-					return nil
-				}
-				// Error not related to fields being empty
 				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+				return err
 			}
 			jobID = string(byteResult)
 		}
@@ -92,11 +88,13 @@ var getCmd = &cobra.Command{
 			} else {
 				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
 			}
+			return err
 		}
 
 		results, err := GetAPIClient().GetResults(ctx, j.ID)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error getting results for job ID (%s): %s", jobID, err), 1)
+			return err
 		}
 
 		err = ipfs.DownloadJob(
@@ -109,6 +107,7 @@ var getCmd = &cobra.Command{
 
 		if err != nil {
 			Fatal(fmt.Sprintf("Error downloading results from job ID (%s): %s", jobID, err), 1)
+			return err
 		}
 
 		return nil
