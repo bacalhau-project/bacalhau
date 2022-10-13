@@ -25,7 +25,7 @@ endif
 export GO111MODULE = on
 export GO = go
 export CGO_ENABLED = 0
-export PYTHON = python3
+export PYTHON = python3ƒ
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau
@@ -44,7 +44,7 @@ REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
-PRECOMMITINSTALLEDINGIT ?= $(shell grep -R "pre-commit.com" .git/hooks)
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -109,7 +109,7 @@ buildenvcorrect:
 # Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
 # before each commit.
 # Error if it's empty or not found.
-ifeq ($(PRECOMMITINSTALLEDINGIT),)
+ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
 	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
 	@exit 1
 endif
@@ -120,7 +120,7 @@ endif
 # Target: build
 ################################################################################
 .PHONY: build
-build: buildenvcorrect precommit build-bacalhau
+build: buildenvcorrect build-bacalhau
 
 .PHONY: build-dev
 build-dev: build
@@ -174,31 +174,31 @@ clean:
 # Target: test
 ################################################################################
 .PHONY: test
-test: buildenvcorrect
+test:
 	go test ./... -v -p 4
 
 .PHONY: grc-test
-grc-test: buildenvcorrect
+grc-test:
 	grc go test ./... -v -p 4
 
 .PHONY: test-debug
-test-debug: buildenvcorrect
+test-debug:
 	LOG_LEVEL=debug go test ./... -v -p 4
 
 .PHONY: grc-test-debug
-grc-test-debug: buildenvcorrect
+grc-test-debug:
 	LOG_LEVEL=debug grc go test ./... -v -p 4
 
 .PHONY: test-one
-test-one: buildenvcorrect
+test-one:
 	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
-test-devstack: buildenvcorrect
+test-devstack:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/pkg/test/devstack/
 
 .PHONY: test-commands
-test-commands: buildenvcorrect
+test-commands:
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 # .PHONY: test-badactors
