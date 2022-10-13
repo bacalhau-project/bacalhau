@@ -8,7 +8,6 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/url"
@@ -200,23 +199,20 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	}
 
 	for i, tc := range tests {
-		func() {
+		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
-			defer cm.Cleanup()
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
 
 			*ODR = *NewDockerRunOptions()
 
-			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
-			require.NoError(s.T(), err)
+			dir := s.T().TempDir()
 
 			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(s.T(), err)
 			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
 			ODR.DownloadFlags.OutputDir = dir
 
-			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-			require.NoError(s.T(), err)
+			outputDir := s.T().TempDir()
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
@@ -231,7 +227,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", devstack.Nodes[0].APIServer.Host, devstack.Nodes[0].APIServer.Port))
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
-		}()
+		})
 	}
 }
 
@@ -740,14 +736,13 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	stack, cm := devstack_tests.SetupTest(
+	stack, _ := devstack_tests.SetupTest(
 		ctx,
 		s.T(),
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer cm.Cleanup()
 
 	*ODR = *NewDockerRunOptions()
 
@@ -978,8 +973,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 	}
 
 	ctx := context.TODO()
-	stack, cm := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
-	defer cm.Cleanup()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
 
 	for name, tc := range tests {
 		*ODR = *NewDockerRunOptions()

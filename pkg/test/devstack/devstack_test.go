@@ -59,14 +59,13 @@ func devStackDockerStorageTest(
 ) {
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, _ := SetupTest(
 		ctx,
 		t,
 		nodeCount,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)

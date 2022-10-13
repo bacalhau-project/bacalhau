@@ -75,7 +75,6 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
-		defer TeardownTest(stack, cm)
 
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
@@ -149,6 +148,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			expectedAccepts: 3,
 		},
 	} {
-		runTest(testCase)
+		suite.Run(testCase.name, func() {
+			runTest(testCase)
+		})
 	}
 }

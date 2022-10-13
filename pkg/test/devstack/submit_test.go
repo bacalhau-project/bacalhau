@@ -52,7 +52,6 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")

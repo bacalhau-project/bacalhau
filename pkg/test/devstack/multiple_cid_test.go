@@ -69,7 +69,6 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/multiple_cid_test/testmultiplecids")
@@ -179,7 +178,6 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 			},
 		},
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/multiple_cid_test/testmultipleurls")
@@ -305,7 +303,6 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 			},
 		},
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/multiple_cid_test/testmultipleurls")

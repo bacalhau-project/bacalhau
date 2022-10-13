@@ -66,7 +66,6 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	testCase := scenario.CatFileToVolume()
 	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)

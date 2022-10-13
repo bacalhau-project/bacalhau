@@ -59,7 +59,6 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/publish_on_error/test")

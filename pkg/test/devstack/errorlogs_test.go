@@ -56,14 +56,13 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, _ := SetupTest(
 		ctx,
 		suite.T(),
 		1,
 		0,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)
