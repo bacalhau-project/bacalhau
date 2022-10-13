@@ -36,7 +36,7 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaAlarmSlackHandlerFunc()
         this.createLambdaScenarioFunc({action: "list", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.createLambdaScenarioFunc({action: "submit", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
-        this.createLambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 512});
+        this.createLambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 1024});
         this.createLambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.createLambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
     }
