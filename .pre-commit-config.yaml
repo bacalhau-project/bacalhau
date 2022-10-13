@@ -10,3 +10,9 @@ repos:
       - id: detect-private-key
       - id: check-yaml
       - id: check-json
+  - repo: local
+    hooks:
+      - id: extra-credential-checking
+        name: Extra Credential Checking
+        entry: .gitprecommit/aws_key_checker.sh
+        language: script
