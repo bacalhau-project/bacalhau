@@ -1,6 +1,7 @@
 package bacalhau
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -59,7 +59,7 @@ var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	// General Error?
 	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
 
-	// Should we print at all?
+	// Should we print at all? Empty events get skipped
 	model.JobEventBidCancelled: {},
 	model.JobEventBidRejected:  {},
 	model.JobEventDealUpdated:  {},
@@ -469,17 +469,41 @@ func downloadResults(ctx context.Context,
 
 func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error) {
 	if len(args) == 0 {
-		byteResult, err := io.ReadAll(cmd.InOrStdin())
-		if err != nil {
-			return nil, errors.Wrap(err, "Error reading from stdin")
+		r := bufio.NewReader(RootCmd.InOrStdin())
+		var bytesResult []byte
+		scanner := bufio.NewScanner(r)
+
+		// buffered channel of dataStream
+		dataStream := make(chan []byte, 1)
+
+		// Run scanner.Bytes() function in it's own goroutine and pass back it's
+		// response into dataStream channel.
+		go func() {
+			for scanner.Scan() {
+				dataStream <- scanner.Bytes()
+			}
+			close(dataStream)
+		}()
+
+		// Listen on dataStream channel AND a timeout channel - which ever happens first.
+		timedOut := false
+		select {
+		case res := <-dataStream:
+			bytesResult = append(bytesResult, res...)
+		case <-time.After(time.Duration(10) * time.Millisecond): //nolint:gomnd // 10ms timeout
+			timedOut = true
 		}
-		if byteResult == nil {
-			cmd.Println(userstrings.NoFilenameProvidedErrorString)
-			return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+
+		if timedOut {
+			RootCmd.Println("No input provided, waiting ... (Ctrl+D to complete)")
 		}
-		return byteResult, nil
+		for scanner.Scan() {
+			bytesResult = append(bytesResult, scanner.Bytes()...)
+		}
+
+		return bytesResult, nil
 	}
-	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
 
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
@@ -607,7 +631,7 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 	}
 
 	// If it hasn't been printed yet, we'll print this event.
-	if !pe[jet].printed {
+	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
 		// Only print " done" after the first line.
 		firstLine := true
 		for v := range pe {
