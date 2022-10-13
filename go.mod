@@ -52,6 +52,7 @@ require (
 )
 
 require (
+	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/golang/mock v1.6.0
 	github.com/imdario/mergo v0.3.5
 	github.com/invopop/jsonschema v0.6.0
