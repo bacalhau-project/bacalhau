@@ -81,6 +81,21 @@ jobs:
             ${EXEC:-sudo bash} ./go-ipfs/install.sh
 
       - run:
+          name: Install Pre-commit
+          command: |
+            make install-pre-commit
+
+      - run:
+          name: Cache Precommit
+          command: |
+            cp .pre-commit-config.yaml pre-commit-cache-key.txt
+            python --version --version >> pre-commit-cache-key.txt
+
+      - restore_cache:
+          keys:
+            - v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
+
+      - run:
           name: Build
           command: make build
 
@@ -138,11 +153,16 @@ jobs:
       - persist_to_workspace:
           root: dist/
           paths:
-              - "*.tar.gz"
-              - "*.sha256"
+            - "*.tar.gz"
+            - "*.sha256"
 
       - store_artifacts:
           path: dist/
+
+      - save_cache:
+          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
+          paths:
+            - ~/.cache/pre-commit
 
   lint:
     parallelism: 1
@@ -417,7 +437,7 @@ workflows:
       - release:
           name: release-all-binaries
           requires:
-              - build
+            - build
           filters:
             <<: *filters_tags_only
       - update_ops:

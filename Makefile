@@ -44,6 +44,7 @@ REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
+PRECOMMITINSTALLEDINGIT ?= $(shell grep -R "pre-commit.com" .git/hooks)
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -61,7 +62,19 @@ all: build
 # Run init repo after cloning it
 .PHONY: init
 init:
-  git config core.hooksPath .githooks
+	$(shell python3 -q -m pip install --upgrade pip 1&>/dev/null)
+	$(shell pip3 install poetry 1&>/dev/null)
+	$(shell poetry install 1&>/dev/null)
+	$(shell poetry run pre-commit install 1&>/dev/null)
+	@echo "Build environment initialized."
+
+# Run install pre-commit
+.PHONY: install-pre-commit
+install-pre-commit:
+	$(shell pip3 install poetry 1&>/dev/null)
+	$(shell poetry install 1&>/dev/null)
+	$(shell poetry run pre-commit install 1&>/dev/null)
+	@echo "Pre-commit installed."
 
 # Run go fmt against code
 .PHONY: fmt
@@ -82,14 +95,45 @@ vet:
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit:
+precommit: buildenvcorrect
 	${PRECOMMIT} run --all
+
+.PHONY: buildenvcorrect
+buildenvcorrect:
+	@echo "Checking build environment..."
+# Checking GO
+# @echo "Checking for go..."
+# @which go
+# @echo "Checking for go version..."
+# @go version
+# @echo "Checking for go env..."
+# @go env
+# @echo "Checking for go env GOOS..."
+# @go env GOOS
+# @echo "Checking for go env GOARCH..."
+# @go env GOARCH
+# @echo "Checking for go env GO111MODULE..."
+# @go env GO111MODULE
+# @echo "Checking for go env GOPATH..."
+# @go env GOPATH
+# @echo "Checking for go env GOCACHE..."
+# @go env GOCACHE
+# ===============
+# Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
+# before each commit.
+# Error if it's empty or not found.
+ifeq ($(PRECOMMITINSTALLEDINGIT),)
+	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
+	@exit 1
+endif
+	@echo "Build environment correct."
+
 
 ################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
-build: fmt vet precommit build-bacalhau 
+build: buildenvcorrect fmt vet precommit build-bacalhau
 
 .PHONY: build-dev
 build-dev: build
@@ -143,31 +187,31 @@ clean:
 # Target: test
 ################################################################################
 .PHONY: test
-test:
+test: buildenvcorrect
 	go test ./... -v -p 4
 
 .PHONY: grc-test
-grc-test:
+grc-test: buildenvcorrect
 	grc go test ./... -v -p 4
 
 .PHONY: test-debug
-test-debug: 
+test-debug: buildenvcorrect
 	LOG_LEVEL=debug go test ./... -v -p 4
 
 .PHONY: grc-test-debug
-grc-test-debug:
+grc-test-debug: buildenvcorrect
 	LOG_LEVEL=debug grc go test ./... -v -p 4
 
 .PHONY: test-one
-test-one:
+test-one: buildenvcorrect
 	go test -v -count 1 -timeout 3000s -run ^$(TEST)$$ github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 .PHONY: test-devstack
-test-devstack:
+test-devstack: buildenvcorrect
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/pkg/test/devstack/
 
 .PHONY: test-commands
-test-commands:
+test-commands: buildenvcorrect
 	go test -v -count 1 -timeout 3000s -run '^Test\w+Suite$$' github.com/filecoin-project/bacalhau/cmd/bacalhau/
 
 # .PHONY: test-badactors
@@ -223,11 +267,11 @@ devstack-badactor:
 # Target: lint
 ################################################################################
 .PHONY: lint
-lint:
+lint: buildenvcorrect
 	golangci-lint run --timeout 10m
 
 .PHONY: lint-fix
-lint-fix:
+lint-fix: buildenvcorrect
 	golangci-lint run --timeout 10m --fix
 
 ################################################################################
