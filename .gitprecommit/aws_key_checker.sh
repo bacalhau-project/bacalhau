@@ -28,23 +28,7 @@ if [[ -n "${FILES}" ]]; then
         echo "${KEY}"
         echo ""
 
-        if [[ -z "${PS1}" ]]; then
-            exec < /dev/tty # Capture input
-            while true; do
-                read -rp "[AWS Key Check] Possible AWS keys found. Commit files anyway? (y/N) " yn
-                if [[ "${yn}" = "" ]]; then
-                    yn='N'
-                fi
-                case ${yn} in
-                    [Yy] ) exit 0;;
-                    [Nn] ) exit 1;;
-                    * ) echo "Please answer y or n for yes or no.";;
-                esac
-            done
-        else
-            exit 1
-        fi
-        exec <&- # Release input
+        exit 1
     fi
 fi
 
