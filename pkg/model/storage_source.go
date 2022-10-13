@@ -33,34 +33,6 @@ func ParseStorageSourceType(str string) (StorageSourceType, error) {
 		"executor: unknown source type '%s'", str)
 }
 
-func EnsureStorageSourceType(typ StorageSourceType, str string) (StorageSourceType, error) {
-	if IsValidStorageSourceType(typ) {
-		return typ, nil
-	}
-	return ParseStorageSourceType(str)
-}
-
-func EnsureStorageSpecSourceType(spec StorageSpec) (StorageSpec, error) {
-	engine, err := EnsureStorageSourceType(spec.StorageSource, spec.StorageSourceName)
-	if err != nil {
-		return spec, err
-	}
-	spec.StorageSource = engine
-	return spec, nil
-}
-
-func EnsureStorageSpecsSourceTypes(specs []StorageSpec) ([]StorageSpec, error) {
-	ret := []StorageSpec{}
-	for _, spec := range specs {
-		newSpec, err := EnsureStorageSpecSourceType(spec)
-		if err != nil {
-			return ret, err
-		}
-		ret = append(ret, newSpec)
-	}
-	return ret, nil
-}
-
 func IsValidStorageSourceType(sourceType StorageSourceType) bool {
 	return sourceType > storageSourceUnknown && sourceType < storageSourceDone
 }
