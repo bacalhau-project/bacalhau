@@ -16,3 +16,15 @@ repos:
         name: Extra Credential Checking
         entry: .gitprecommit/aws_key_checker.sh
         language: script
+      - id: go-vet
+        name: go vet
+        entry: .gitprecommit/go_vet.sh
+        language: script
+      - id: go-fmt
+        name: go fmt
+        entry: .gitprecommit/go_fmt.sh
+        language: script
+      - id: golangci-lint
+        name: golangci-lint --fix
+        entry: .gitprecommit/golangci-lint.sh
+        language: script

@@ -76,19 +76,6 @@ install-pre-commit:
 	$(shell poetry run pre-commit install 1&>/dev/null)
 	@echo "Pre-commit installed."
 
-# Run go fmt against code
-.PHONY: fmt
-fmt:
-	${GO} fmt ./cmd/...
-	${GO} fmt ./pkg/...
-
-
-# Run go vet against code
-.PHONY: vet
-vet:
-	${GO} vet ./cmd/...
-	${GO} vet ./pkg/...
-
 
 ## Run all pre-commit hooks
 ################################################################################
@@ -133,7 +120,7 @@ endif
 # Target: build
 ################################################################################
 .PHONY: build
-build: buildenvcorrect fmt vet precommit build-bacalhau
+build: buildenvcorrect precommit build-bacalhau
 
 .PHONY: build-dev
 build-dev: build
