@@ -1,0 +1,7 @@
+# Keys have been disabled
+aws_access_key_id = AKIAZSLBVM64EEXAMPLE
+aws_secret_access_key = T3DVctGGq2Tc5wwLMevtZ7lDxyIImJ78oEXAMPLE
+
+# Keys have been disabled
+AKIAZSLBVM64EEXAMPLE
+T3DVctGGq2Tc5wwLMevtZ7lDxyIImJ78oEXAMPLE
