@@ -1,9 +1,9 @@
 ---
-sidebar_label: 'Job Selection'
+sidebar_label: 'Job Selection Policy'
 sidebar_position: 140
 ---
 
-# Job selection
+# Job selection policy
 
 When running a node, you can choose which jobs you want to run. This is done by passing a combination of `--job-selection` type flags to `bacalhau serve`.
 
