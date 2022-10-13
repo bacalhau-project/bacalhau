@@ -58,6 +58,11 @@ endef
 
 all: build
 
+# Run init repo after cloning it
+.PHONY: init
+init:
+  git config core.hooksPath .githooks
+
 # Run go fmt against code
 .PHONY: fmt
 fmt:
@@ -84,7 +89,7 @@ precommit:
 # Target: build
 ################################################################################
 .PHONY: build
-build: fmt vet build-bacalhau 
+build: fmt vet precommit build-bacalhau 
 
 .PHONY: build-dev
 build-dev: build
