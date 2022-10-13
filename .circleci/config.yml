@@ -81,6 +81,11 @@ jobs:
             ${EXEC:-sudo bash} ./go-ipfs/install.sh
 
       - run:
+          name: Init tools
+          command: |
+            make init
+
+      - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
