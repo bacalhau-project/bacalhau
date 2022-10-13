@@ -176,6 +176,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -323,6 +324,7 @@ func (suite *ShardingSuite) TestNoShards() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -385,6 +387,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

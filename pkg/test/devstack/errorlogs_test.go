@@ -61,6 +61,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		suite.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

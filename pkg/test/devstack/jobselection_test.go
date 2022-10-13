@@ -72,7 +72,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		scenario := scenario.CatFileToStdout()
-		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, false, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
 

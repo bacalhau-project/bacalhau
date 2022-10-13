@@ -68,6 +68,7 @@ func NewExecutor(
 	}
 
 	cm.RegisterCallback(func() error {
+		// TODO this shouldn't be reusing the context as there's the possibility that it's already canceled
 		de.cleanupAll(ctx)
 		return nil
 	})
@@ -145,7 +146,7 @@ func (e *Executor) RunShard(
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
-				Type: "bind",
+				Type: mount.TypeBind,
 				// this is an input volume so is read only
 				ReadOnly: true,
 				Source:   volumeMount.Source,
@@ -199,7 +200,7 @@ func (e *Executor) RunShard(
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
 
-			Type: "bind",
+			Type: mount.TypeBind,
 			// this is an output volume so can be written to
 			ReadOnly: false,
 

@@ -57,6 +57,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

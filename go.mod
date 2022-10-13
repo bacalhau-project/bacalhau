@@ -111,7 +111,7 @@ require (
 	github.com/dgraph-io/ristretto v0.0.2 // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect

@@ -50,6 +50,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
