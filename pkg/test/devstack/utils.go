@@ -45,14 +45,12 @@ func SetupTest(
 	stack, err := devstack.NewStandardDevStack(ctx, cm, options, config)
 	require.NoError(t, err)
 
+	t.Cleanup(cm.Cleanup)
+
 	// important to give the pubsub network time to connect
 	time.Sleep(time.Second)
 
 	return stack, cm
-}
-
-func TeardownTest(stack *devstack.DevStack, cm *system.CleanupManager) {
-	cm.Cleanup()
 }
 
 type DeterministicVerifierTestArgs struct {

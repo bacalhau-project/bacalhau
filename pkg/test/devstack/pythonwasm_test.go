@@ -71,7 +71,6 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
@@ -176,7 +175,6 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
@@ -216,7 +214,6 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
