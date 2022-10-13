@@ -1,8 +1,8 @@
 # Running locally with the 'devstack' command
 
-The `devstack` command of bacalhau will start a 3 node cluster alongside isolated ipfs servers.
+The `devstack` command of `bacalhau` will start a 3 node cluster alongside isolated ipfs servers.
 
-This is useful to kick the tires and/or developing on the codebase.  It's also the tool used by some of the tests.
+This is useful to kick the tires and/or developing on the codebase.  It's also the tool used by some tests.
 
 ## Pre-requisites
 
@@ -29,14 +29,16 @@ go build
 ./bin/<YOUR_ARCHITECTURE>/bacalhau devstack
 ```
 
-This will start a 3 node bacalhau cluster connected with libp2p.
+This will start a 3 node Bacalhau cluster connected with libp2p.
 
-Each node has it's own ipfs server isolated using the `IPFS_PATH` environment variable and it's own API RPC server isolated using a random port.
+Each node has its own ipfs server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port.
 
 If you would like to make it a bit more predictable and/or ignore errors (such as during CI), you can add the following before your execution:
 ```
 IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1
 ```
+
+If you wish to also have a [Lotus](https://lotus.filecoin.io/) node to test against, then you can include the `--lotus-node` flag. This will start a Docker container running Lotus against a [local network](https://lotus.filecoin.io/lotus/developers/local-network/), making it easy to test the functionality without any cost concerns. 
 
 Once everything has started up - you will see output like the following:
 
