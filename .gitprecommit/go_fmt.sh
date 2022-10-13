@@ -12,7 +12,7 @@ FILES=$(git diff --cached --name-only "${against}")
 if [[ -n "${FILES}" ]]; then
     for f in ${FILES}; do
         if [[ "${f}" == *.go ]]; then
-            go fmt -l -s -w "${f}"
+            gofmt -w -s "${f}"
         fi
     done
 fi

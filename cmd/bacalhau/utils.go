@@ -606,7 +606,6 @@ To get more information at any time, run:
 				}
 			}
 
-			time.Sleep(1 * time.Second)
 			if condition := ctx.Err(); condition != nil {
 				signalChan <- syscall.SIGINT
 				break
@@ -631,6 +630,7 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 	}
 
 	// If it hasn't been printed yet, we'll print this event.
+	// We'll also skip lines where there's no message to print.
 	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
 		// Only print " done" after the first line.
 		firstLine := true
