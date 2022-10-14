@@ -315,6 +315,7 @@ func ExecuteJob(ctx context.Context,
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
 	quiet := idOnly
+
 	err = WaitAndPrintResultsToUser(ctx, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
@@ -606,16 +607,22 @@ To get more information at any time, run:
 				}
 			}
 
-			time.Sleep(1 * time.Second)
 			if condition := ctx.Err(); condition != nil {
 				signalChan <- syscall.SIGINT
 				break
+			} else {
+				jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
+				if err != nil {
+					if _, ok := err.(*bacerrors.ContextCanceledError); ok {
+						// We're done, the user canceled the job
+						break
+					} else {
+						return errors.Wrap(err, "Error getting job events")
+					}
+				}
 			}
 
-			jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
-			if err != nil {
-				return errors.Wrap(err, "Error getting job events")
-			}
+			time.Sleep(time.Duration(1) * time.Millisecond) //nolint:gomnd // 500ms sleep
 		} // end for
 	}
 
@@ -631,6 +638,7 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 	}
 
 	// If it hasn't been printed yet, we'll print this event.
+	// We'll also skip lines where there's no message to print.
 	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
 		// Only print " done" after the first line.
 		firstLine := true

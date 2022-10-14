@@ -25,7 +25,7 @@ endif
 export GO111MODULE = on
 export GO = go
 export CGO_ENABLED = 0
-export PYTHON = python3
+export PYTHON = python3ƒ
 export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = bacalhau
@@ -44,6 +44,7 @@ REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
+PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -58,36 +59,68 @@ endef
 
 all: build
 
-# Run go fmt against code
-.PHONY: fmt
-fmt:
-	${GO} fmt ./cmd/...
-	${GO} fmt ./pkg/...
+# Run init repo after cloning it
+.PHONY: init
+init:
+	@ops/repo_init.sh 1>/dev/null
+	@echo "Build environment initialized."
 
-
-# Run go vet against code
-.PHONY: vet
-vet:
-	${GO} vet ./cmd/...
-	${GO} vet ./pkg/...
-
+# Run install pre-commit
+.PHONY: install-pre-commit
+install-pre-commit:
+	@ops/install_pre_commit.sh 1>/dev/null
+	@echo "Pre-commit installed."
 
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
 ################################################################################
 .PHONY: precommit
-precommit:
+precommit: buildenvcorrect
 	${PRECOMMIT} run --all
+
+.PHONY: buildenvcorrect
+buildenvcorrect:
+	@echo "Checking build environment..."
+# Checking GO
+# @echo "Checking for go..."
+# @which go
+# @echo "Checking for go version..."
+# @go version
+# @echo "Checking for go env..."
+# @go env
+# @echo "Checking for go env GOOS..."
+# @go env GOOS
+# @echo "Checking for go env GOARCH..."
+# @go env GOARCH
+# @echo "Checking for go env GO111MODULE..."
+# @go env GO111MODULE
+# @echo "Checking for go env GOPATH..."
+# @go env GOPATH
+# @echo "Checking for go env GOCACHE..."
+# @go env GOCACHE
+# ===============
+# Ensure that "pre-commit.com" is in .git/hooks/pre-commit to run all pre-commit hooks
+# before each commit.
+# Error if it's empty or not found.
+ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
+	@echo "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it."
+	@exit 1
+endif
+	@echo "Build environment correct."
+
 
 ################################################################################
 # Target: build
 ################################################################################
 .PHONY: build
-build: fmt vet build-bacalhau 
+build: buildenvcorrect build-bacalhau
+
+.PHONY: build-ci
+build-ci: build-bacalhau
 
 .PHONY: build-dev
-build-dev: build
+build-dev: build-ci
 	sudo cp ${BINARY_PATH} /usr/local/bin
 
 ################################################################################
@@ -146,7 +179,7 @@ grc-test:
 	grc go test ./... -v -p 4
 
 .PHONY: test-debug
-test-debug: 
+test-debug:
 	LOG_LEVEL=debug go test ./... -v -p 4
 
 .PHONY: grc-test-debug
