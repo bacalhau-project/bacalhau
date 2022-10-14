@@ -71,6 +71,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			suite.T(),
 			testCase.nodes,
 			0,
+			false,
 			computenode.NewDefaultComputeNodeConfig(),
 		)
 

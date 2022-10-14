@@ -64,6 +64,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		suite.T(),
 		3,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

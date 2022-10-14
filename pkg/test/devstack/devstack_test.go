@@ -64,6 +64,7 @@ func devStackDockerStorageTest(
 		t,
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

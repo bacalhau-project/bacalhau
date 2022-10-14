@@ -67,6 +67,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -172,6 +173,7 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,
@@ -297,6 +299,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,
