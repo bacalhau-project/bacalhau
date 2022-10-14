@@ -3,17 +3,21 @@ package docker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/moby/moby/pkg/stdcopy"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -141,25 +145,6 @@ func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nam
 	return nil
 }
 
-func WaitForContainer(ctx context.Context, client *dockerclient.Client, id string, maxAttempts int, delay time.Duration) error {
-	waiter := &system.FunctionWaiter{
-		Name:        fmt.Sprintf("wait for container to be running: %s", id),
-		MaxAttempts: maxAttempts,
-		Delay:       delay,
-		Handler: func() (bool, error) {
-			container, err := GetContainer(ctx, client, id)
-			if err != nil {
-				return false, err
-			}
-			if container == nil {
-				return false, nil
-			}
-			return container.State == "running", nil
-		},
-	}
-	return waiter.Wait()
-}
-
 func WaitForContainerLogs(ctx context.Context,
 	client *dockerclient.Client,
 	id string,
@@ -195,22 +180,94 @@ func WaitForContainerLogs(ctx context.Context,
 }
 
 func PullImage(ctx context.Context, dockerClient *dockerclient.Client, image string) error {
-	imagePullStream, err := dockerClient.ImagePull(
-		ctx,
-		image,
-		types.ImagePullOptions{},
-	)
+	_, _, err := dockerClient.ImageInspectWithRaw(ctx, image)
+	if err == nil {
+		return nil
+	}
+	if !dockerclient.IsErrNotFound(err) {
+		return err
+	}
 
+	log.Debug().Str("image", image).Msg("Pulling image as it wasn't found")
+
+	output, err := dockerClient.ImagePull(ctx, image, types.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
 
-	if config.IsDebug() {
-		_, err = io.Copy(os.Stdout, imagePullStream)
-		if err != nil {
+	defer closer.CloseWithLogOnError("image-pull", output)
+
+	stop := make(chan struct{}, 1)
+	defer func() {
+		stop <- struct{}{}
+	}()
+	t := time.NewTicker(3 * time.Second)
+	defer t.Stop()
+
+	layers := &sync.Map{}
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-t.C:
+				logImagePullStatus(layers)
+			}
+		}
+	}()
+
+	dec := json.NewDecoder(output)
+	for {
+		var mess jsonmessage.JSONMessage
+		if err := dec.Decode(&mess); err != nil {
+			if err == io.EOF {
+				return nil
+			}
 			return err
 		}
+		if mess.Aux != nil {
+			continue
+		}
+		if mess.Error != nil {
+			return mess.Error
+		}
+		layers.Store(mess.ID, mess)
+	}
+}
+
+func logImagePullStatus(m *sync.Map) {
+	withUnits := map[string]*zerolog.Event{}
+	withoutUnits := map[string][]string{}
+	m.Range(func(_, value any) bool {
+		mess := value.(jsonmessage.JSONMessage)
+
+		if mess.Progress == nil || mess.Progress.Current <= 0 {
+			withoutUnits[mess.Status] = append(withoutUnits[mess.Status], mess.ID)
+		} else {
+			var status string
+			if mess.Progress.Total <= 0 {
+				status = fmt.Sprintf("%d %s", mess.Progress.Total, mess.Progress.Units)
+			} else {
+				status = fmt.Sprintf("%.3f%%", float64(mess.Progress.Current)/float64(mess.Progress.Total)*100) //nolint:gomnd
+			}
+
+			if _, ok := withUnits[mess.Status]; !ok {
+				withUnits[mess.Status] = zerolog.Dict()
+			}
+
+			withUnits[mess.Status].Str(mess.ID, status)
+		}
+
+		return true
+	})
+	e := log.Debug()
+	for s, l := range withUnits {
+		e = e.Dict(s, l)
+	}
+	for s, l := range withoutUnits {
+		sort.Strings(l)
+		e = e.Strs(s, l)
 	}
 
-	return imagePullStream.Close()
+	e.Msg("Pulling layers")
 }

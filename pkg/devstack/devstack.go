@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
@@ -33,11 +34,13 @@ type DevStackOptions struct {
 	NumberOfBadActors    int    // Number of nodes to be bad actors
 	Peer                 string // Connect node 0 to another network node
 	PublicIPFSMode       bool   // Use public IPFS nodes
+	LocalNetworkLotus    bool
 	FilecoinUnsealedPath string
 	EstuaryAPIKey        string
 }
 type DevStack struct {
 	Nodes []*node.Node
+	Lotus *LotusNode
 }
 
 func NewDevStackForRunLocal(
@@ -100,6 +103,7 @@ func NewDevStack(
 	defer span.End()
 
 	nodes := []*node.Node{}
+	var lotus *LotusNode
 	var err error
 
 	for i := 0; i < options.NumberOfNodes; i++ {
@@ -239,6 +243,19 @@ func NewDevStack(
 		nodes = append(nodes, n)
 	}
 
+	if options.LocalNetworkLotus {
+		lotus, err = newLotusNode(ctx) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		cm.RegisterCallback(lotus.Close)
+
+		if err := lotus.start(ctx); err != nil { //nolint:govet
+			return nil, err
+		}
+	}
+
 	// only start profiling after we've set everything up!
 	// do a GC before we start profiling
 	runtime.GC()
@@ -250,13 +267,14 @@ func NewDevStack(
 	if err != nil {
 		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
 	}
-	defer f.Close()
+	defer closer.CloseWithLogOnError("cpuprofile", f)
 	if err := pprof.StartCPUProfile(f); err != nil {
 		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}
 
 	return &DevStack{
 		Nodes: nodes,
+		Lotus: lotus,
 	}, nil
 }
 
@@ -363,22 +381,10 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 }
 
 func (stack *DevStack) GetNodeIds() ([]string, error) {
-	ids := []string{}
+	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Transport.HostID())
 	}
 
 	return ids, nil
-}
-
-func (stack *DevStack) GetShortIds() ([]string, error) {
-	ids, err := stack.GetNodeIds()
-	if err != nil {
-		return ids, err
-	}
-	shortids := []string{}
-	for _, id := range ids {
-		shortids = append(shortids, system.ShortID(id))
-	}
-	return shortids, nil
 }

@@ -68,6 +68,7 @@ func NewExecutor(
 	}
 
 	cm.RegisterCallback(func() error {
+		// TODO this shouldn't be reusing the context as there's the possibility that it's already canceled
 		de.cleanupAll(ctx)
 		return nil
 	})
@@ -119,7 +120,7 @@ func (e *Executor) RunShard(
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
-	mounts := []mount.Mount{}
+	var mounts []mount.Mount
 
 	var err error
 
@@ -145,7 +146,7 @@ func (e *Executor) RunShard(
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
 			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
-				Type: "bind",
+				Type: mount.TypeBind,
 				// this is an input volume so is read only
 				ReadOnly: true,
 				Source:   volumeMount.Source,
@@ -199,7 +200,7 @@ func (e *Executor) RunShard(
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
 
-			Type: "bind",
+			Type: mount.TypeBind,
 			// this is an output volume so can be written to
 			ReadOnly: false,
 
@@ -212,28 +213,10 @@ func (e *Executor) RunShard(
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		// TODO: #283 work out why this does not work in github actions
-		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
-		var im dockertypes.ImageInspect
-		im, _, err = e.Client.ImageInspectWithRaw(ctx, shard.Job.Spec.Docker.Image)
-		if err == nil {
-			log.Ctx(ctx).Debug().Msgf("Not pulling image %s, already have %s", shard.Job.Spec.Docker.Image, im.ID)
-		} else if dockerclient.IsErrNotFound(err) {
-			log.Ctx(ctx).Debug().Msgf("Pulling image %s", shard.Job.Spec.Docker.Image)
-
-			r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
-				"docker",
-				[]string{"pull", shard.Job.Spec.Docker.Image},
-			)
-			if err != nil {
-				//nolint:stylecheck // Error message for user
-				err = fmt.Errorf(`Could not pull image - could be due to repo/image not existing,
- or registry needing authorization. %s: %s, %s`, shard.Job.Spec.Docker.Image, err, r.STDOUT)
-				return returnStdErrWithErr(err.Error(), err), err
-			}
-			log.Ctx(ctx).Trace().Msgf("Pull image output: %s\n%s", shard.Job.Spec.Docker.Image, r.STDOUT)
-		} else {
-			err = fmt.Errorf("error checking if we have %s locally: %s", shard.Job.Spec.Docker.Image, err)
+		if err := docker.PullImage(ctx, e.Client, shard.Job.Spec.Docker.Image); err != nil { //nolint:govet // ignore err shadowing
+			//nolint:stylecheck // Error message for user
+			err = fmt.Errorf(`Could not pull image - could be due to repo/image not existing,
+ or registry needing authorization. %s: %s`, shard.Job.Spec.Docker.Image, err)
 			return returnStdErrWithErr(err.Error(), err), err
 		}
 	}
@@ -415,11 +398,9 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 		return
 	}
 	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	//nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
-		err = docker.RemoveContainer(ctx, e.Client, container.ID)
-		if err != nil {
-			log.Ctx(ctx).Error().Msgf("Non-critical error cleaning up container: %s", err.Error())
+		if err := docker.RemoveContainer(ctx, e.Client, container.ID); err != nil { //nolint:govet // ignore err shadowing
+			log.Ctx(ctx).Err(err).Msgf("Non-critical error cleaning up container")
 		}
 	}
 }

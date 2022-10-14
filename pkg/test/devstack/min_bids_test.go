@@ -30,7 +30,7 @@ func TestMinBidsSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *MinBidsSuite) SetupAllSuite() {
+func (suite *MinBidsSuite) SetupSuite() {
 
 }
 
@@ -43,7 +43,7 @@ func (suite *MinBidsSuite) SetupTest() {
 func (suite *MinBidsSuite) TearDownTest() {
 }
 
-func (suite *MinBidsSuite) TearDownAllSuite() {
+func (suite *MinBidsSuite) TearDownSuite() {
 
 }
 
@@ -71,6 +71,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			suite.T(),
 			testCase.nodes,
 			0,
+			false,
 			computenode.NewDefaultComputeNodeConfig(),
 		)
 

@@ -36,7 +36,7 @@ func TestMultipleCIDSuite(t *testing.T) {
 }
 
 // Before all suite
-func (s *MultipleCIDSuite) SetupAllSuite() {
+func (s *MultipleCIDSuite) SetupSuite() {
 
 }
 
@@ -49,7 +49,7 @@ func (s *MultipleCIDSuite) SetupTest() {
 func (suite *MultipleCIDSuite) TearDownTest() {
 }
 
-func (s *MultipleCIDSuite) TearDownAllSuite() {
+func (s *MultipleCIDSuite) TearDownSuite() {
 
 }
 
@@ -67,6 +67,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -172,6 +173,7 @@ func (s *MultipleCIDSuite) TestMultipleURLs() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,
@@ -297,6 +299,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,

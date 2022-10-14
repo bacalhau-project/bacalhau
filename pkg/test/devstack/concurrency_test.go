@@ -31,7 +31,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackConcurrencySuite) SetupAllSuite() {
+func (suite *DevstackConcurrencySuite) SetupSuite() {
 
 }
 
@@ -45,7 +45,7 @@ func (suite *DevstackConcurrencySuite) TearDownTest() {
 
 }
 
-func (suite *DevstackConcurrencySuite) TearDownAllSuite() {
+func (suite *DevstackConcurrencySuite) TearDownSuite() {
 
 }
 
@@ -64,6 +64,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		suite.T(),
 		3,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

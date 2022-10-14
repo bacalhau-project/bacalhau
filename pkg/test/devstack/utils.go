@@ -22,14 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var StorageNames = []model.StorageSourceType{
-	model.StorageSourceIPFS,
-}
-
 func SetupTest(
 	ctx context.Context,
 	t *testing.T,
 	nodes int, badActors int,
+	lotusNode bool,
 	//nolint:gocritic
 	config computenode.ComputeNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
@@ -40,6 +37,7 @@ func SetupTest(
 	options := devstack.DevStackOptions{
 		NumberOfNodes:     nodes,
 		NumberOfBadActors: badActors,
+		LocalNetworkLotus: lotusNode,
 	}
 
 	stack, err := devstack.NewStandardDevStack(ctx, cm, options, config)

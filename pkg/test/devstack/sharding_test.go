@@ -36,7 +36,7 @@ func TestShardingSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *ShardingSuite) SetupAllSuite() {
+func (suite *ShardingSuite) SetupSuite() {
 
 }
 
@@ -49,7 +49,7 @@ func (suite *ShardingSuite) SetupTest() {
 func (suite *ShardingSuite) TearDownTest() {
 }
 
-func (suite *ShardingSuite) TearDownAllSuite() {
+func (suite *ShardingSuite) TearDownSuite() {
 
 }
 
@@ -176,6 +176,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -323,6 +324,7 @@ func (suite *ShardingSuite) TestNoShards() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -385,6 +387,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 

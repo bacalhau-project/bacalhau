@@ -42,6 +42,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:              "",
 		PublicIPFSMode:    false,
 		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
+		LocalNetworkLotus: false,
 	}
 }
 
@@ -61,6 +62,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
+	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.LocalNetworkLotus, "lotus-node", ODs.LocalNetworkLotus,
+		"Also start a Lotus FileCoin instance",
 	)
 
 	setupJobSelectionCLIFlags(devstackCmd)
@@ -110,6 +115,10 @@ var devstackCmd = &cobra.Command{
 		computeNodeConfig := computenode.ComputeNodeConfig{
 			JobSelectionPolicy:    getJobSelectionConfig(),
 			CapacityManagerConfig: getCapacityManagerConfig(),
+		}
+
+		if ODs.LocalNetworkLotus {
+			cmd.Println("Note that starting up the Lotus node can take many minutes!")
 		}
 
 		var stack *devstack.DevStack

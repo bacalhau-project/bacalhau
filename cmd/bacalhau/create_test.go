@@ -43,7 +43,7 @@ func (s *CreateSuite) TearDownTest() {
 
 }
 
-func (s *CreateSuite) TearDownAlls() {
+func (s *CreateSuite) TearDownSuite() {
 
 }
 

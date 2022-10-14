@@ -201,7 +201,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
 
 			*ODR = *NewDockerRunOptions()
 
@@ -741,6 +741,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		s.T(),
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
@@ -779,14 +780,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	_, _, submitErr := ExecuteTestCobraCommand(s.T(), s.rootCmd, allArgs...)
 	require.NoError(s.T(), submitErr)
-}
-
-type deterministicVerifierTestArgs struct {
-	nodeCount      int
-	badActors      int
-	confidence     int
-	expectedPassed int
-	expectedFailed int
 }
 
 func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
@@ -972,8 +965,8 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		},
 	}
 
-	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
+	ctx := context.TODO()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
 
 	for name, tc := range tests {
 		*ODR = *NewDockerRunOptions()
