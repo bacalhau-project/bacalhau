@@ -28,7 +28,7 @@ function cleanup {
 trap cleanup EXIT
 
 cd ..
-make build
+make build-ci
 
 cd benchmark
 export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
