@@ -972,7 +972,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		},
 	}
 
-	ctx := context.TODO()
+	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
 
 	for name, tc := range tests {

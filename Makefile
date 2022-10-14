@@ -71,7 +71,6 @@ install-pre-commit:
 	@ops/install_pre_commit.sh 1>/dev/null
 	@echo "Pre-commit installed."
 
-
 ## Run all pre-commit hooks
 ################################################################################
 # Target: precommit
