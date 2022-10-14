@@ -62,18 +62,13 @@ all: build
 # Run init repo after cloning it
 .PHONY: init
 init:
-	$(shell python3 -q -m pip install --upgrade pip 1&>/dev/null)
-	$(shell pip3 install poetry 1&>/dev/null)
-	$(shell poetry install 1&>/dev/null)
-	$(shell poetry run pre-commit install 1&>/dev/null)
+	@ops/repo_init.sh 1>/dev/null
 	@echo "Build environment initialized."
 
 # Run install pre-commit
 .PHONY: install-pre-commit
 install-pre-commit:
-	$(shell pip3 install poetry 1&>/dev/null)
-	$(shell poetry install 1&>/dev/null)
-	$(shell poetry run pre-commit install 1&>/dev/null)
+	@ops/install_pre_commit.sh 1>/dev/null
 	@echo "Pre-commit installed."
 
 
