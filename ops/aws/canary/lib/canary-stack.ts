@@ -3,6 +3,7 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -39,6 +40,7 @@ export class CanaryStack extends cdk.Stack {
         this.createLambdaScenarioFunc({action: "submitAndGet", timeoutMinutes: 1, rateMinutes: 2, memorySize: 1024});
         this.createLambdaScenarioFunc({action: "submitAndDescribe", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
         this.createLambdaScenarioFunc({action: "submitWithConcurrency", timeoutMinutes: 1, rateMinutes: 2, memorySize: 256});
+        this.createOperatorGroup(id)
     }
 
     // Create a lambda function that handles alarms and sends a slack notification
@@ -154,4 +156,40 @@ export class CanaryStack extends cdk.Stack {
         alarm.addOkAction(new cloudwatchActions.SnsAction(this.snsAlarmTopic));
     }
 
+    private createOperatorGroup(stackID: string) {
+        const group = new iam.Group(this, 'OperatorGroup', {
+            groupName: 'BacalhauCanaryOperators-' + this.config.envTitle
+        })
+
+        // add managed policies
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSLambda_ReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEventBridgeReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEventBridgeSchemasReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodePipeline_ReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeBuildReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeDeployReadOnlyAccess'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeCommitReadOnly'))
+
+        // Create users and add them to the group
+        const users = [
+            'kai.davenport',
+            'luke.marsden',
+            'enrico.rotundo',
+        ]
+
+        const initialPassword = new secretsmanager.Secret(this, 'CanaryOperatorsInitialPassword', {
+            description: 'Canary Operators Initial Password',
+        });
+
+        users.forEach(user => {
+            new iam.User(this, 'OperatorUser' + user, {
+                userName: user,
+                password: initialPassword.secretValue,
+                passwordResetRequired: true,
+                groups: [group]
+            })
+        })
+    }
 }
