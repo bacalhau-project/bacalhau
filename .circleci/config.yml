@@ -55,6 +55,11 @@ jobs:
                 command: |
                   choco install golang -y --allow-downgrade --version $Env:GOVER
                 shell: powershell.exe
+            - run:
+                name: Install Python3
+                command: |
+                  choco install python -y
+                  python -m pip install -U pip
 
       - when:
           condition:
