@@ -116,6 +116,9 @@ endif
 .PHONY: build
 build: buildenvcorrect build-bacalhau
 
+.PHONY: build-ci
+build-ci: buildenvcorrect build-bacalhau
+
 .PHONY: build-dev
 build-dev: build
 	sudo cp ${BINARY_PATH} /usr/local/bin

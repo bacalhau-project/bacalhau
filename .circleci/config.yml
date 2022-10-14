@@ -102,7 +102,7 @@ jobs:
 
       - run:
           name: Build
-          command: make build
+          command: make build-ci
 
       - when:
           condition:
