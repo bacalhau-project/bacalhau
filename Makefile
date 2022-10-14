@@ -248,11 +248,11 @@ devstack-badactor:
 # Target: lint
 ################################################################################
 .PHONY: lint
-lint: buildenvcorrect
+lint:
 	golangci-lint run --timeout 10m
 
 .PHONY: lint-fix
-lint-fix: buildenvcorrect
+lint-fix:
 	golangci-lint run --timeout 10m --fix
 
 ################################################################################

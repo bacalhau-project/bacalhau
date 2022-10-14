@@ -94,7 +94,7 @@ jobs:
           name: Cache Precommit
           command: |
             cp .pre-commit-config.yaml pre-commit-cache-key.txt
-            python --version --version >> pre-commit-cache-key.txt
+            python3 --version --version >> pre-commit-cache-key.txt
 
       - restore_cache:
           keys:
