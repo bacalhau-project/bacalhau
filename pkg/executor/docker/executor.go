@@ -68,7 +68,6 @@ func NewExecutor(
 	}
 
 	cm.RegisterCallback(func() error {
-		// TODO this shouldn't be reusing the context as there's the possibility that it's already canceled
 		de.cleanupAll(ctx)
 		return nil
 	})
@@ -391,15 +390,18 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 		return
 	}
 
+	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// canceled and so would prevent us from performing any cleanup work.
+	safeCtx := context.Background()
+
 	log.Ctx(ctx).Debug().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
-	containersWithLabel, err := docker.GetContainersWithLabel(ctx, e.Client, "bacalhau-executor", e.ID)
+	containersWithLabel, err := docker.GetContainersWithLabel(safeCtx, e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
 	}
-	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
 	for _, container := range containersWithLabel {
-		if err := docker.RemoveContainer(ctx, e.Client, container.ID); err != nil { //nolint:govet // ignore err shadowing
+		if err := docker.RemoveContainer(safeCtx, e.Client, container.ID); err != nil { //nolint:govet // ignore err shadowing
 			log.Ctx(ctx).Err(err).Msgf("Non-critical error cleaning up container")
 		}
 	}

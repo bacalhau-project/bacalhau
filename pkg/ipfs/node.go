@@ -363,7 +363,7 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 	for _, listener := range listeners {
 		go func(listener manet.Listener) {
 			cm.RegisterCallback(func() error {
-				return listener.Close()
+				return fmt.Errorf("problem when shutting down IPFS listener: %w", listener.Close())
 			})
 
 			// NOTE: this is not critical, but we should log for debugging
