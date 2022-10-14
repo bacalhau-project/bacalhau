@@ -77,6 +77,7 @@ export class CanaryStack extends cdk.Stack {
             environment: {
                 'BACALHAU_DIR': '/tmp', //bacalhau uses $HOME to store configs by default, which doesn't exist in lambda
                 'LOG_LEVEL': 'DEBUG',
+                'BACALHAU_ENVIRONMENT': this.config.bacalhauEnvironment,
             }
         });
 
@@ -144,8 +145,8 @@ export class CanaryStack extends cdk.Stack {
             alarmDescription: actionTitle + ' ' + this.config.envTitle + ' Availability',
             threshold: threshold,
             comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-            evaluationPeriods: 3,
-            datapointsToAlarm: 2,
+            evaluationPeriods: 5,
+            datapointsToAlarm: 3,
             treatMissingData: cloudwatch.TreatMissingData.BREACHING,
         });
 
