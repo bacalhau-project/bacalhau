@@ -36,7 +36,7 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 }
 
 // Before all suite
-func (s *DevstackPythonWASMSuite) SetupAllSuite() {
+func (s *DevstackPythonWASMSuite) SetupSuite() {
 
 }
 
@@ -49,7 +49,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 func (s *DevstackPythonWASMSuite) TearDownTest() {
 }
 
-func (s *DevstackPythonWASMSuite) TearDownAllSuite() {
+func (s *DevstackPythonWASMSuite) TearDownSuite() {
 
 }
 

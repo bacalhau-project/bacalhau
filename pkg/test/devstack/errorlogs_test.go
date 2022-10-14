@@ -30,7 +30,7 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackErrorLogsSuite) SetupAllSuite() {
+func (suite *DevstackErrorLogsSuite) SetupSuite() {
 
 }
 
@@ -44,7 +44,7 @@ func (suite *DevstackErrorLogsSuite) TearDownTest() {
 
 }
 
-func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {
+func (suite *DevstackErrorLogsSuite) TearDownSuite() {
 
 }
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {

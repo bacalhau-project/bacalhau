@@ -34,7 +34,7 @@ func TestComboDriverSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *ComboDriverSuite) SetupAllSuite() {
+func (suite *ComboDriverSuite) SetupSuite() {
 
 }
 
@@ -47,7 +47,7 @@ func (suite *ComboDriverSuite) SetupTest() {
 func (suite *ComboDriverSuite) TearDownTest() {
 }
 
-func (suite *ComboDriverSuite) TearDownAllSuite() {
+func (suite *ComboDriverSuite) TearDownSuite() {
 
 }
 

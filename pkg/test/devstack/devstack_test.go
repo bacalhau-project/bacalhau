@@ -32,7 +32,7 @@ func TestDevStackSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevStackSuite) SetupAllSuite() {
+func (suite *DevStackSuite) SetupSuite() {
 
 }
 
@@ -46,7 +46,7 @@ func (suite *DevStackSuite) TearDownTest() {
 
 }
 
-func (suite *DevStackSuite) TearDownAllSuite() {
+func (suite *DevStackSuite) TearDownSuite() {
 
 }
 

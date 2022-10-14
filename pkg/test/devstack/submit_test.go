@@ -24,7 +24,7 @@ func TestDevstackSubmitSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackSubmitSuite) SetupAllSuite() {
+func (suite *DevstackSubmitSuite) SetupSuite() {
 
 }
 
@@ -37,7 +37,7 @@ func (suite *DevstackSubmitSuite) SetupTest() {
 func (suite *DevstackSubmitSuite) TearDownTest() {
 }
 
-func (suite *DevstackSubmitSuite) TearDownAllSuite() {
+func (suite *DevstackSubmitSuite) TearDownSuite() {
 
 }
 

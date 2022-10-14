@@ -2,26 +2,19 @@ package devstack
 
 import (
 	"archive/tar"
-	"encoding/json"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/context"
 )
@@ -55,7 +48,7 @@ func newLotusNode(ctx context.Context) (*LotusNode, error) {
 		return nil, err
 	}
 
-	if err := pullImage(ctx, dockerClient, image); err != nil {
+	if err := docker.PullImage(ctx, dockerClient, image); err != nil {
 		closer.CloseWithLogOnError("docker", dockerClient)
 		return nil, err
 	}
@@ -191,97 +184,4 @@ func (l *LotusNode) Close() error {
 	}
 
 	return nil
-}
-
-func pullImage(ctx context.Context, client dockerclient.ImageAPIClient, image string) error {
-	_, _, err := client.ImageInspectWithRaw(ctx, image)
-	if err == nil {
-		return nil
-	}
-	if !dockerclient.IsErrNotFound(err) {
-		return err
-	}
-
-	log.Debug().Str("image", image).Msg("Pulling image as it wasn't found")
-
-	output, err := client.ImagePull(ctx, image, dockertypes.ImagePullOptions{})
-	if err != nil {
-		return err
-	}
-
-	defer closer.CloseWithLogOnError("image-pull", output)
-
-	stop := make(chan struct{}, 1)
-	defer func() {
-		stop <- struct{}{}
-	}()
-	t := time.NewTicker(3 * time.Second)
-	defer t.Stop()
-
-	layers := &sync.Map{}
-	go func() {
-		for {
-			select {
-			case <-stop:
-				return
-			case <-t.C:
-				logImagePullStatus(layers)
-			}
-		}
-	}()
-
-	dec := json.NewDecoder(output)
-	for {
-		var mess jsonmessage.JSONMessage
-		if err := dec.Decode(&mess); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if mess.Aux != nil {
-			continue
-		}
-		if mess.Error != nil {
-			return mess.Error
-		}
-		layers.Store(mess.ID, mess)
-	}
-}
-
-func logImagePullStatus(m *sync.Map) {
-	withUnits := map[string]*zerolog.Event{}
-	withoutUnits := map[string][]string{}
-	m.Range(func(_, value any) bool {
-		mess := value.(jsonmessage.JSONMessage)
-
-		if mess.Progress == nil || mess.Progress.Current <= 0 {
-			withoutUnits[mess.Status] = append(withoutUnits[mess.Status], mess.ID)
-		} else {
-			var status string
-			if mess.Progress.Total <= 0 {
-				status = fmt.Sprintf("%d %s", mess.Progress.Total, mess.Progress.Units)
-			} else {
-				status = fmt.Sprintf("%.3f%%", float64(mess.Progress.Current)/float64(mess.Progress.Total)*100) //nolint:gomnd
-			}
-
-			if _, ok := withUnits[mess.Status]; !ok {
-				withUnits[mess.Status] = zerolog.Dict()
-			}
-
-			withUnits[mess.Status].Str(mess.ID, status)
-		}
-
-		return true
-	})
-	e := log.Debug()
-	for s, l := range withUnits {
-		e = e.Dict(s, l)
-	}
-	for s, l := range withoutUnits {
-		sort.Strings(l)
-		e = e.Strs(s, l)
-	}
-
-	e.Msg("Pulling layers")
 }
