@@ -28,7 +28,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackJobSelectionSuite) SetupAllSuite() {
+func (suite *DevstackJobSelectionSuite) SetupSuite() {
 
 }
 
@@ -42,7 +42,7 @@ func (suite *DevstackJobSelectionSuite) TearDownTest() {
 
 }
 
-func (suite *DevstackJobSelectionSuite) TearDownAllSuite() {
+func (suite *DevstackJobSelectionSuite) TearDownSuite() {
 
 }
 

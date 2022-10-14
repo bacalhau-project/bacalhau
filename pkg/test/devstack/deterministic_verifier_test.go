@@ -24,7 +24,7 @@ func TestDeterministicVerifierSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DeterministicVerifierSuite) SetupAllSuite() {
+func (suite *DeterministicVerifierSuite) SetupSuite() {
 
 }
 
@@ -37,7 +37,7 @@ func (suite *DeterministicVerifierSuite) SetupTest() {
 func (suite *DeterministicVerifierSuite) TearDownTest() {
 }
 
-func (suite *DeterministicVerifierSuite) TearDownAllSuite() {
+func (suite *DeterministicVerifierSuite) TearDownSuite() {
 
 }
 

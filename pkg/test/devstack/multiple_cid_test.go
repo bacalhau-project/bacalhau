@@ -36,7 +36,7 @@ func TestMultipleCIDSuite(t *testing.T) {
 }
 
 // Before all suite
-func (s *MultipleCIDSuite) SetupAllSuite() {
+func (s *MultipleCIDSuite) SetupSuite() {
 
 }
 
@@ -49,7 +49,7 @@ func (s *MultipleCIDSuite) SetupTest() {
 func (suite *MultipleCIDSuite) TearDownTest() {
 }
 
-func (s *MultipleCIDSuite) TearDownAllSuite() {
+func (s *MultipleCIDSuite) TearDownSuite() {
 
 }
 
