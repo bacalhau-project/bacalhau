@@ -14,27 +14,40 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestLotusNode(t *testing.T) {
-	require.NoError(t, system.InitConfigForTesting())
+type LotusNodeSuite struct {
+	suite.Suite
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+func TestLotusNodeSuite(t *testing.T) {
+	suite.Run(t, new(LotusNodeSuite))
+}
+
+func (s *LotusNodeSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
+}
+
+func (s *LotusNodeSuite) TearDownTest() {}
+
+func (s *LotusNodeSuite) TestLotusNode() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	stack, _ := SetupTest(ctx, t, 1, 0, true, computenode.NewDefaultComputeNodeConfig())
+	stack, _ := SetupTest(ctx, s.T(), 1, 0, true, computenode.NewDefaultComputeNodeConfig())
 
-	require.NotNil(t, stack.Lotus)
-	assert.NotEmpty(t, stack.Lotus.Dir)
-	require.NotEmpty(t, stack.Lotus.Token)
-	require.NotEmpty(t, stack.Lotus.Port)
+	require.NotNil(s.T(), stack.Lotus)
+	assert.NotEmpty(s.T(), stack.Lotus.Dir)
+	require.NotEmpty(s.T(), stack.Lotus.Token)
+	require.NotEmpty(s.T(), stack.Lotus.Port)
 
-	lotus := lotusApi(t, ctx, stack.Lotus.Port, stack.Lotus.Token)
+	lotus := lotusApi(s.T(), ctx, stack.Lotus.Port, stack.Lotus.Token)
 
 	version, err := lotus.Version(ctx)
-	require.NoError(t, err)
+	require.NoError(s.T(), err)
 
-	t.Log(version.Version)
+	s.T().Log(version.Version)
 }
 
 func lotusApi(t *testing.T, ctx context.Context, port string, token string) *lotusNodeCommonStruct {
@@ -45,9 +58,7 @@ func lotusApi(t *testing.T, ctx context.Context, port string, token string) *lot
 
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", []interface{}{&lotus.Internal}, headers)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		closer()
-	})
+	t.Cleanup(closer)
 
 	return &lotus
 }
