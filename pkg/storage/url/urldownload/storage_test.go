@@ -90,7 +90,18 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 	fileName := "testfile.py"
 	testString := "Here's your data"
 
-	tc := map[string]struct {
+	redirectCases := map[string]struct {
+		redirect bool
+	}{
+		"no-redirect": {
+			redirect: false,
+		},
+		"redirect": {
+			redirect: true,
+		},
+	}
+
+	filetypeCases := map[string]struct {
 		fileName      string
 		content       string
 		valid         bool
@@ -105,7 +116,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 		"Test-No Filename": {fileName: "",
 			content:       testString,
 			valid:         false,
-			errorContains: "is a directory",
+			errorContains: "ends with a slash",
 			errorMsg:      "TYPE: Invalid (no file)"},
 		"Test-No Content": {fileName: fileName,
 			content:       "",
@@ -114,70 +125,84 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			errorMsg:      "TYPE: Invalid (no content)"},
 	}
 
-	for name, tt := range tc {
+	for redirectName, rc := range redirectCases {
+		for filetypeName, ftc := range filetypeCases {
+			name := fmt.Sprintf("%s-%s", redirectName, filetypeName)
 
-		content, err := func() (string, error) {
-			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.String() == ("/" + tt.fileName) {
-					w.Write([]byte(tt.content))
+			content, err := func() (string, error) {
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if rc.redirect && r.URL.Path == "/redirect" {
+						http.Redirect(w, r, "/"+ftc.fileName, http.StatusFound)
+					} else {
+						if r.URL.String() == ("/" + ftc.fileName) {
+							w.Write([]byte(ftc.content))
+						}
+					}
+				}))
+				defer ts.Close()
+
+				cm := system.NewCleanupManager()
+				ctx := context.Background()
+				sp, err := NewStorage(cm)
+				if err != nil {
+					return "", fmt.Errorf("%s: failed to create storage provider", name)
 				}
-			}))
-			defer ts.Close()
 
-			cm := system.NewCleanupManager()
-			ctx := context.Background()
-			sp, err := NewStorage(cm)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to create storage provider", name)
-			}
-
-			serverURL := ts.URL
-			spec := model.StorageSpec{
-				StorageSource: model.StorageSourceURLDownload,
-				URL:           serverURL + "/" + tt.fileName,
-				Path:          "/inputs",
-			}
-
-			volume, err := sp.PrepareStorage(ctx, spec)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
-			}
-
-			require.Equalf(s.T(), filepath.Join(spec.Path, tt.fileName), volume.Target, "%s: expected valid to be %t", name, tt.valid)
-
-			file, err := os.Open(volume.Source)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
-			}
-
-			defer func() {
-				if err = file.Close(); err != nil {
-					require.Fail(s.T(), "failed to close file: %s", name)
+				serverURL := ts.URL
+				finalURL := ""
+				if rc.redirect {
+					finalURL = ts.URL + "/redirect"
+				} else {
+					finalURL = serverURL + "/" + ftc.fileName
 				}
+
+				spec := model.StorageSpec{
+					StorageSource: model.StorageSourceURLDownload,
+					URL:           finalURL,
+					Path:          "/inputs",
+				}
+
+				volume, err := sp.PrepareStorage(ctx, spec)
+				if err != nil {
+					return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
+				}
+
+				require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
+
+				file, err := os.Open(volume.Source)
+				if err != nil {
+					return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
+				}
+
+				defer func() {
+					if err = file.Close(); err != nil {
+						require.Fail(s.T(), "failed to close file: %s", name)
+					}
+				}()
+
+				content, err := ioutil.ReadAll(file)
+				if err != nil {
+					return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
+				}
+
+				if len(content) == 0 {
+					return "", fmt.Errorf("%s: file is empty", name)
+				}
+
+				return string(content), nil
 			}()
 
-			content, err := ioutil.ReadAll(file)
-			if err != nil {
-				return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
+			if ftc.valid {
+				text := string(content)
+				require.Equal(s.T(), ftc.content, text, "%s: content of file does not match", name)
+			} else {
+				require.Error(s.T(), err, "%s: expected error", name)
+				require.Contains(s.T(),
+					err.Error(),
+					ftc.errorContains,
+					"%s: error does not contain expected string",
+					name)
 			}
-
-			if len(content) == 0 {
-				return "", fmt.Errorf("%s: file is empty", name)
-			}
-
-			return string(content), nil
-		}()
-
-		if tt.valid {
-			text := string(content)
-			require.Equal(s.T(), tt.content, text, "%s: content of file does not match", name)
-		} else {
-			require.Error(s.T(), err, "%s: expected error", name)
-			require.Contains(s.T(),
-				err.Error(),
-				tt.errorContains,
-				"%s: error does not contain expected string",
-				name)
 		}
 	}
 }

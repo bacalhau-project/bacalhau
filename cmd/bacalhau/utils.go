@@ -622,7 +622,7 @@ To get more information at any time, run:
 				}
 			}
 
-			time.Sleep(time.Duration(1) * time.Millisecond) //nolint:gomnd // 500ms sleep
+			time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
 		} // end for
 	}
 
