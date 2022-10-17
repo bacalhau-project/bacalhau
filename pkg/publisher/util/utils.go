@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/estuary"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/fallback"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -42,9 +43,12 @@ func NewIPFSPublishers(
 	}
 
 	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:    noopPublisher,
-		model.PublisherIpfs:    ipfsPublisher,
-		model.PublisherEstuary: estuaryPublisher,
+		model.PublisherNoop: noopPublisher,
+		model.PublisherIpfs: ipfsPublisher,
+		model.PublisherEstuary: fallback.NewFallbackPublisher(
+			estuaryPublisher,
+			ipfsPublisher,
+		),
 	}), nil
 }
 
