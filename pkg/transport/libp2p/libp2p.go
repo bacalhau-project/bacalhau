@@ -178,7 +178,6 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 }
 
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
-	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
 
