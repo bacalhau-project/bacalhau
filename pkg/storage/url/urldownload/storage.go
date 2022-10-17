@@ -87,6 +87,9 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	sp.HTTPClient.SetOutputDirectory(outputPath)
 	sp.HTTPClient.SetDoNotParseResponse(true) // We want to stream the response to disk directly
 
+	// Trying a check for head - just trying to fail quickly if the site is clearly wrong.
+	// This MAY fail with 405 (method not allowed) if the server doesn't support HEAD which is generally
+	// OK because we will fail if the server is down - so it is a best effort.
 	req := sp.HTTPClient.R().SetContext(ctx)
 	req = req.SetContext(ctx)
 	r, err := req.Head(u.String())
@@ -95,14 +98,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to get headers from url (%s): %s", u.String(), err)
 	}
 
+	// Checking to see about redirect here (does not 100% work because could have rejected the HEAD request)
 	finalURL := r.RawResponse.Request.URL
 	if finalURL != u {
 		log.Debug().Msgf("URL %s redirected to %s", u.String(), finalURL.String())
-	}
-	// If url ends with a slash, we need to error out because we don't support directories
-	if strings.HasSuffix(finalURL.Path, "/") {
-		return storage.StorageVolume{},
-			fmt.Errorf("URL %s ends with a slash, which is not supported", finalURL.String())
 	}
 
 	// Create a new file based on the URL
@@ -144,6 +143,17 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %s", filePath, err)
 	}
+
+	// Path.base gets the URL without the query string
+	finalFileName := filepath.Join(outputPath, path.Base(r.RawResponse.Request.URL.Path))
+	if finalFileName != w.Name() {
+		log.Debug().Msgf("Downloaded file has different name than final name - renaming: %s to %s", w.Name(), finalFileName)
+		err = os.Rename(w.Name(), finalFileName)
+		if err != nil {
+			return storage.StorageVolume{}, fmt.Errorf("failed to rename file %s to %s: %s", w.Name(), finalFileName, err)
+		}
+	}
+
 	r.RawBody().Close()
 	w.Close()
 
