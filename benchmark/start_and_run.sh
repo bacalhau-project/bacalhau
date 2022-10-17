@@ -30,24 +30,16 @@ trap cleanup EXIT
 cd ..
 make build
 
-echo "DONE BUILD"
-
 cd benchmark
 export BACALHAU_BIN=${BACALHAU_BIN:-"../bin/linux_amd64/bacalhau"}
 export PREDICTABLE_API_PORT=1
 
 ${BACALHAU_BIN} devstack &
 
-echo "DONE DEVSTACK"
-
 wait_file "/tmp/bacalhau-devstack.pid" 1500
-
-echo "DONE WAIT FILE"
 
 # trunk-ignore(shellcheck/SC2155)
 export API_PORT="$(cat /tmp/bacalhau-devstack.port)"
-
-echo "PORT: ${API_PORT}"
 
 # Wait for the Bacalhau API to be ready
 for i in 1 2 3 4 5; do curl -sSf localhost:${API_PORT}/healthz > /dev/null && break || sleep 1; done
