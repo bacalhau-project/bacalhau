@@ -72,7 +72,7 @@ Note `fdisk` is an interactive util so you need to manually follow a number of s
 1. press `n` for a new partition
 1. press enter and confirm all defaults
 1. press `t` to select the partiton type
-1. insert `29` that is the alias for `29 Linux RAID`
+1. insert `29` that is the alias for `29 Linux RAID` for `51.81.184.74` only. For the other 3 hosts use `FD` that stands for `raid`. The machines are different, not sure why.
 1. press `w` to write out the partiton to disk
 
 Repeat the steps above for each disk:
