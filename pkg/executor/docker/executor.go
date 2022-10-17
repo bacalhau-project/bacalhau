@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -119,7 +121,9 @@ func (e *Executor) RunShard(
 
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
-	var mounts []mount.Mount
+	mounts := []mount.Mount{}
+	addMountMutex := sync.Mutex{}
+	addMountWaitGroup := new(errgroup.Group)
 
 	var err error
 
@@ -128,49 +132,54 @@ func (e *Executor) RunShard(
 		return &model.RunCommandResult{}, err
 	}
 
-	// reusable between the input shards and the input context
-	addInputStorageHandler := func(spec model.StorageSpec) error {
-		var storageProvider storage.Storage
-		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorage(ctx, spec.StorageSource)
-		if err != nil {
-			return err
-		}
-
-		volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
-		if err != nil {
-			return err
-		}
-
-		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
-			mounts = append(mounts, mount.Mount{
-				Type: mount.TypeBind,
-				// this is an input volume so is read only
-				ReadOnly: true,
-				Source:   volumeMount.Source,
-				Target:   volumeMount.Target,
-			})
-		} else {
-			return fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
-		}
-		return nil
+	addMountHandler := func(mount mount.Mount) {
+		addMountMutex.Lock()
+		defer addMountMutex.Unlock()
+		mounts = append(mounts, mount)
 	}
 
-	// loop over the job contexts and prepare them
-	for _, contextStorage := range shard.Job.Spec.Contexts {
-		err = addInputStorageHandler(contextStorage)
-		if err != nil {
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+	inputStorageSpecs := []model.StorageSpec{}
+
+	inputStorageSpecs = append(inputStorageSpecs, shard.Job.Spec.Contexts...)
+	inputStorageSpecs = append(inputStorageSpecs, shardStorageSpec...)
+
+	for _, inputStorageSpec := range inputStorageSpecs {
+		spec := inputStorageSpec // https://golang.org/doc/faq#closures_and_goroutines
+
+		addStorageSpec := func() error {
+			var storageProvider storage.Storage
+			var volumeMount storage.StorageVolume
+			storageProvider, err = e.getStorage(ctx, spec.StorageSource)
+			if err != nil {
+				return err
+			}
+
+			volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
+			if err != nil {
+				return err
+			}
+
+			if volumeMount.Type == storage.StorageVolumeConnectorBind {
+				log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+				addMountHandler(mount.Mount{
+					Type: mount.TypeBind,
+					// this is an input volume so is read only
+					ReadOnly: true,
+					Source:   volumeMount.Source,
+					Target:   volumeMount.Target,
+				})
+			} else {
+				return fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
+			}
+			return nil
 		}
+
+		addMountWaitGroup.Go(addStorageSpec)
 	}
 
-	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range shardStorageSpec {
-		err = addInputStorageHandler(inputStorage)
-		if err != nil {
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-		}
+	err = addMountWaitGroup.Wait()
+	if err != nil {
+		return &model.RunCommandResult{}, err
 	}
 
 	// for this phase of the outputs we ignore the engine because it's just about collecting the

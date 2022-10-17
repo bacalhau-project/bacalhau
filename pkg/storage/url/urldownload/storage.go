@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -40,6 +41,10 @@ func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 	client := resty.New()
 	// Setting output directory path, If directory not exists then resty creates one
 	client.SetOutputDirectory(dir)
+	// Setting the number of times to try downloading the URL
+	client.SetRetryCount(config.GetDownloadURLRequestRetries())
+	client.SetRetryWaitTime(time.Second * 1)
+	client.AddRetryAfterErrorCondition()
 
 	storageHandler := &StorageProvider{
 		HTTPClient: client,

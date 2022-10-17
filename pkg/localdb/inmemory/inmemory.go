@@ -258,16 +258,9 @@ func (d *InMemoryDatastore) GetJobState(ctx context.Context, jobID string) (mode
 	if !ok {
 		return model.JobState{}, nil
 	}
-	// copy job state because it has mutable fields (Nodes), we should return a
-	// value that isn't concurrently being modified
-	// XXX what about the mutable fields within JobNodeState :-(
-	newJobState := model.JobState{
-		Nodes: map[string]model.JobNodeState{},
-	}
-	for idx, node := range state.Nodes {
-		newJobState.Nodes[idx] = node
-	}
-	return newJobState, nil
+	// return a copy so we remain within the mutex of the localdb
+	// in terms of accessing d.states
+	return *state, nil
 }
 
 func (d *InMemoryDatastore) UpdateShardState(
@@ -292,47 +285,48 @@ func (d *InMemoryDatastore) UpdateShardState(
 			Nodes: map[string]model.JobNodeState{},
 		}
 	}
+
 	nodeState, ok := jobState.Nodes[nodeID]
 	if !ok {
 		nodeState = model.JobNodeState{
 			Shards: map[int]model.JobShardState{},
 		}
 	}
-	shardSate, ok := nodeState.Shards[shardIndex]
+	shardState, ok := nodeState.Shards[shardIndex]
 	if !ok {
-		shardSate = model.JobShardState{
+		shardState = model.JobShardState{
 			NodeID:     nodeID,
 			ShardIndex: shardIndex,
 		}
 	}
 
-	if update.State < shardSate.State {
+	if update.State < shardState.State {
 		return fmt.Errorf("cannot update shard state to %s as current state is %s. [NodeID: %s, ShardID: %s_%d]",
-			update.State, shardSate.State, nodeID, jobID, shardIndex)
+			update.State, shardState.State, nodeID, jobID, shardIndex)
 	}
 
-	shardSate.State = update.State
+	shardState.State = update.State
 	if update.Status != "" {
-		shardSate.Status = update.Status
+		shardState.Status = update.Status
 	}
 
 	if update.RunOutput != nil {
-		shardSate.RunOutput = update.RunOutput
+		shardState.RunOutput = update.RunOutput
 	}
 
 	if len(update.VerificationProposal) != 0 {
-		shardSate.VerificationProposal = update.VerificationProposal
+		shardState.VerificationProposal = update.VerificationProposal
 	}
 
 	if update.VerificationResult.Complete {
-		shardSate.VerificationResult = update.VerificationResult
+		shardState.VerificationResult = update.VerificationResult
 	}
 
 	if model.IsValidStorageSourceType(update.PublishedResult.StorageSource) {
-		shardSate.PublishedResult = update.PublishedResult
+		shardState.PublishedResult = update.PublishedResult
 	}
 
-	nodeState.Shards[shardIndex] = shardSate
+	nodeState.Shards[shardIndex] = shardState
 	jobState.Nodes[nodeID] = nodeState
 	d.states[jobID] = jobState
 	return nil
