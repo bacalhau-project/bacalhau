@@ -34,7 +34,7 @@ func NewIPFSPublishers(
 	// and so let's only add the
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher, err = estuary.NewEstuaryPublisher(cm, resolver, estuary.EstuaryPublisherConfig{
+		estuaryPublisher, err = estuary.NewEstuaryPublisher(ctx, cm, resolver, estuary.EstuaryPublisherConfig{
 			APIKey: estuaryAPIKey,
 		})
 		if err != nil {
