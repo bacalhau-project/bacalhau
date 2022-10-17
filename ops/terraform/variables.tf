@@ -102,7 +102,7 @@ variable "gpu_machine_type" {
 
 // Version number, omit the 'v' prefix
 variable "prometheus_version" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -116,14 +116,14 @@ variable "grafana_cloud_api_key" {
 }
 
 variable "grafana_cloud_api_user" {
-  type = string
+  type    = string
   default = ""
 }
 
 // Remote Write Endpoint 
 // e.g. https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
 variable "grafana_cloud_api_endpoint" {
-  type = string
+  type    = string
   default = ""
 }
 
