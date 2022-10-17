@@ -31,7 +31,7 @@ func TestPublishOnErrorSuite(t *testing.T) {
 }
 
 // Before all suite
-func (s *PublishOnErrorSuite) SetupAllSuite() {
+func (s *PublishOnErrorSuite) SetupSuite() {
 
 }
 
@@ -44,7 +44,7 @@ func (s *PublishOnErrorSuite) SetupTest() {
 func (suite *PublishOnErrorSuite) TearDownTest() {
 }
 
-func (s *PublishOnErrorSuite) TearDownAllSuite() {
+func (s *PublishOnErrorSuite) TearDownSuite() {
 
 }
 
@@ -57,9 +57,9 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/publish_on_error/test")

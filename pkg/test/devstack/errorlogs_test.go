@@ -30,7 +30,7 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackErrorLogsSuite) SetupAllSuite() {
+func (suite *DevstackErrorLogsSuite) SetupSuite() {
 
 }
 
@@ -44,7 +44,7 @@ func (suite *DevstackErrorLogsSuite) TearDownTest() {
 
 }
 
-func (suite *DevstackErrorLogsSuite) TearDownAllSuite() {
+func (suite *DevstackErrorLogsSuite) TearDownSuite() {
 
 }
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
@@ -56,14 +56,14 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, _ := SetupTest(
 		ctx,
 		suite.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(suite.T(), err)

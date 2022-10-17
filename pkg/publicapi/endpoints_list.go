@@ -46,7 +46,6 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
 	if len(jobList) > 0 {
 		// get JobStates
 		err = apiServer.getJobStates(ctx, jobList)
@@ -56,7 +55,6 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: jobList,

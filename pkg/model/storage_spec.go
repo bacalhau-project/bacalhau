@@ -4,17 +4,17 @@ package model
 // specific to particular execution engines, as different execution engines
 // will mount data in different ways.
 type StorageSpec struct {
-	// TODO: #645 Is this engine name the same as the Job EngineName?
-	// StorageSource is the execution engine that can mount the spec's data.
-	StorageSource     StorageSourceType `json:"StorageSource,omitempty"`
-	StorageSourceName string            `json:"StorageSourceName,omitempty"`
+	// StorageSource is the abstract source of the data. E.g. a storage source
+	// might be a URL download, but doesn't specify how the execution engine
+	// does the download or what it will do with the downloaded data.
+	StorageSource StorageSourceType `json:"StorageSource,omitempty"`
 
 	// Name of the spec's data, for reference.
 	Name string `json:"Name,omitempty"`
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).
-	// NOTE: The below is capitalized to match IPFS & IPLD (even thoough it's out of golang fmt)
+	// NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
 	CID string `json:"CID,omitempty"`
 
 	// Source URL of the data

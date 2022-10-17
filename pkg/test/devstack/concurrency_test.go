@@ -31,7 +31,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackConcurrencySuite) SetupAllSuite() {
+func (suite *DevstackConcurrencySuite) SetupSuite() {
 
 }
 
@@ -45,7 +45,7 @@ func (suite *DevstackConcurrencySuite) TearDownTest() {
 
 }
 
-func (suite *DevstackConcurrencySuite) TearDownAllSuite() {
+func (suite *DevstackConcurrencySuite) TearDownSuite() {
 
 }
 
@@ -64,9 +64,9 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		suite.T(),
 		3,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	testCase := scenario.CatFileToVolume()
 	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
@@ -74,15 +74,11 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 
 	// create a job
 	j := &model.Job{}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherNoop,
-		Docker:    testCase.GetJobSpec(),
-		Inputs:    inputStorageList,
-		Outputs:   testCase.Outputs,
-	}
-
+	j.Spec = testCase.GetJobSpec()
+	j.Spec.Verifier = model.VerifierNoop
+	j.Spec.Publisher = model.PublisherNoop
+	j.Spec.Inputs = inputStorageList
+	j.Spec.Outputs = testCase.Outputs
 	j.Deal = model.Deal{
 		Concurrency: 2,
 	}

@@ -28,7 +28,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackJobSelectionSuite) SetupAllSuite() {
+func (suite *DevstackJobSelectionSuite) SetupSuite() {
 
 }
 
@@ -42,7 +42,7 @@ func (suite *DevstackJobSelectionSuite) TearDownTest() {
 
 }
 
-func (suite *DevstackJobSelectionSuite) TearDownAllSuite() {
+func (suite *DevstackJobSelectionSuite) TearDownSuite() {
 
 }
 
@@ -72,10 +72,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		scenario := scenario.CatFileToStdout()
-		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, computenode.ComputeNodeConfig{
+		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, false, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
 		})
-		defer TeardownTest(stack, cm)
 
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)
@@ -84,15 +83,9 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		require.NoError(suite.T(), err)
 
 		j := &model.Job{}
-		j.Spec = model.Spec{
-			Engine:    model.EngineDocker,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherNoop,
-			Docker:    scenario.GetJobSpec(),
-			Inputs:    inputStorageList,
-			Outputs:   scenario.Outputs,
-		}
-
+		j.Spec = scenario.GetJobSpec()
+		j.Spec.Inputs = inputStorageList
+		j.Spec.Outputs = scenario.Outputs
 		j.Deal = model.Deal{
 			Concurrency: testCase.nodeCount,
 		}
@@ -149,6 +142,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			expectedAccepts: 3,
 		},
 	} {
-		runTest(testCase)
+		suite.Run(testCase.name, func() {
+			runTest(testCase)
+		})
 	}
 }

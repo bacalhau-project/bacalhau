@@ -52,6 +52,7 @@ require (
 )
 
 require (
+	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/golang/mock v1.6.0
 	github.com/imdario/mergo v0.3.5
 	github.com/invopop/jsonschema v0.6.0
@@ -111,7 +112,7 @@ require (
 	github.com/dgraph-io/ristretto v0.0.2 // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect

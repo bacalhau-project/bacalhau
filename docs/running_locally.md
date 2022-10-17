@@ -1,8 +1,8 @@
 # Running locally with the 'devstack' command
 
-The `devstack` command of bacalhau will start a 3 node cluster alongside isolated ipfs servers.
+The `devstack` command of `bacalhau` will start a 3 node cluster alongside isolated ipfs servers.
 
-This is useful to kick the tires and/or developing on the codebase.  It's also the tool used by some of the tests.
+This is useful to kick the tires and/or developing on the codebase.  It's also the tool used by some tests.
 
 ## Pre-requisites
 
@@ -29,46 +29,37 @@ go build
 ./bin/<YOUR_ARCHITECTURE>/bacalhau devstack
 ```
 
-This will start a 3 node bacalhau cluster connected with libp2p.
+This will start a 3 node Bacalhau cluster connected with libp2p.
 
-Each node has it's own ipfs server isolated using the `IPFS_PATH` environment variable and it's own API RPC server isolated using a random port.
+Each node has its own ipfs server isolated using the `IPFS_PATH` environment variable and its own API RPC server isolated using a random port.
 
 If you would like to make it a bit more predictable and/or ignore errors (such as during CI), you can add the following before your execution:
 ```
 IGNORE_PID_AND_PORT_FILES=true PREDICTABLE_API_PORT=1
 ```
 
+If you wish to also have a [Lotus](https://lotus.filecoin.io/) node to test against, then you can include the `--lotus-node` flag. This will start a Docker container running Lotus against a [local network](https://lotus.filecoin.io/lotus/developers/local-network/), making it easy to test the functionality without any cost concerns. 
+
 Once everything has started up - you will see output like the following:
 
 ```bash
--------------------------------
-node 0
--------------------------------
 
-export BACALHAU_IPFS_API_PORT_0=62403
-export BACALHAU_IPFS_PATH_0=/var/folders/38/kszkvfx157q2qy4fm0gwzxpw0000gn/T/ipfs-tmp2419155176
-export BACALHAU_API_HOST_0=0.0.0.0
-export BACALHAU_API_PORT_0=62406
-cid=$(ipfs --api /ip4/127.0.0.1/tcp/62403 add --quiet ./testdata/grep_file.txt)
-curl -XPOST http://127.0.0.1:62403/api/v0/id
-
------------------------------------------
------------------------------------------
-
-export BACALHAU_IPFS_PATH_0=/var/folders/38/kszkvfx157q2qy4fm0gwzxpw0000gn/T/ipfs-tmp2419155176
-export BACALHAU_API_HOST_0=0.0.0.0
-export BACALHAU_API_PORT_0=62406
+Devstack is ready!
+To use the devstack, run the following commands in your shell:
+export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYtRzB2MXZPo6MxkeH6N2fYZRCLT57VsACn
 export BACALHAU_API_HOST=0.0.0.0
-export BACALHAU_API_PORT=62406
+export BACALHAU_API_PORT=39763
+
 ```
 
-The last two lines contain the environment variables you need for a new window.
+The last three lines contain the environment variables you need for a new window.
 
 ## New Terminal Window
 * Open an additional terminal window to be used for submitting jobs.
-* Copy and paste the last two lines into this window. EG:
+* Copy and paste the last three lines into this window. EG:
 
 ```bash
+export BACALHAU_IPFS_SWARM_ADDRESSES=/ip4/127.0.0.1/tcp/33033/p2p/QmNp5XqbkePNYtRzB2MXZPo6MxkeH6N2fYZRCLT57VsACn
 export BACALHAU_API_HOST=0.0.0.0
 export BACALHAU_API_PORT=62406
 ```
@@ -96,12 +87,12 @@ go run . list --wide
  22-08-29-15:01:00  d7d4d23d-08ff-46f4-a695-f37647da67cc  Docker ubuntu echo hello world  Published  /ipfs/QmW7TdjNEMzqmWxm5WPK1p6QCkeChxMLpvhLxyUW2wpjCf
 ```
 
-Get the results:
+Download the results to the current directory:
 ```bash
 go run . get d7d4d23d-08ff-46f4-a695-f37647da67cc # Works with partial IDs - just the first 8 characters
 ```
 
-In the directory you just ran, the command in, you should now have three new files / directory:
+You should now have the following files and directories:
 - stdout
 - stderr
 - volumes/output

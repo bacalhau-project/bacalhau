@@ -9,12 +9,14 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -157,8 +159,15 @@ func (apiClient *APIClient) GetEvents(ctx context.Context, jobID string) (events
 		JobID:    jobID,
 	}
 
+	// Test if the context has been canceled before making the request.
 	var res eventsResponse
-	if err := apiClient.post(ctx, "events", req, &res); err != nil {
+	err = apiClient.post(ctx, "events", req, &res)
+	if err != nil {
+		if strings.Contains(err.Error(), "context canceled") {
+			return nil, bacerrors.NewContextCanceledError(ctx.Err().Error())
+		}
+
+		log.Debug().Err(err).Msg("request error")
 		return nil, err
 	}
 
@@ -288,8 +297,11 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	var res *http.Response
 	res, err = apiClient.client.Do(req)
 	if err != nil {
+		errString := err.Error()
 		if errorResponse, ok := err.(*bacerrors.ErrorResponse); ok {
 			return errorResponse
+		} else if errString == "context canceled" {
+			return bacerrors.NewContextCanceledError(err.Error())
 		} else {
 			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v", err))
 		}

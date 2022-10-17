@@ -3,7 +3,6 @@ package system
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -13,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
@@ -29,31 +27,11 @@ var MaxStdoutReturnLengthInBytes = 2048
 var MaxStderrReturnLengthInBytes = 2048
 var ReadChunkSizeInBytes = 1024
 
-const BufferedWriterSize = 4096
-
 // TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
 
 var Stdout = struct{ io.Writer }{os.Stdout}
 var Stderr = struct{ io.Writer }{os.Stderr}
-
-func TryUntilSucceedsN(f func() error, desc string, retries int) error {
-	attempt := 0
-	for {
-		err := f()
-		if err != nil {
-			if attempt > retries {
-				return err
-			} else {
-				log.Trace().Msgf("Error %s: %v, pausing and trying again...", desc, err)
-				time.Sleep(1 * time.Second)
-			}
-		} else {
-			return nil
-		}
-		attempt++
-	}
-}
 
 func UnsafeForUserCodeRunCommand(command string, args []string) (*model.RunCommandResult, error) {
 	stdoutBuf := new(bytes.Buffer)
@@ -332,70 +310,6 @@ func GetSystemDirectory(path string) (string, error) {
 	return fmt.Sprintf("%s/.bacalhau/%s", homeDir, path), nil
 }
 
-func EnsureSystemDirectory(path string) (string, error) {
-	path, err := GetSystemDirectory(path)
-	if err != nil {
-		return "", err
-	}
-
-	log.Trace().Msgf("Enforcing creation of results dir: %s", path)
-
-	_, err = UnsafeForUserCodeRunCommand("mkdir", []string{
-		"-p",
-		path,
-	})
-	return path, err
-}
-
-func GetResultsDirectory(jobID, hostID string) string {
-	return fmt.Sprintf("results/%s/%s", ShortID(jobID), hostID)
-}
-
-func ShortID(id string) string {
-	parts := strings.Split(id, "-")
-	return parts[0]
-}
-
-func StringArrayContains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
-func MapStringArray(vs []string, f func(string) string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(v)
-	}
-	return vsm
-}
-
-func MapByteArray(vs []byte, f func(byte) byte) []byte {
-	vsm := make([]byte, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(v)
-	}
-	return vsm
-}
-
-func GetJobStateStringArray(states []model.JobStateType) []string {
-	ret := []string{}
-	for _, state := range states {
-		ret = append(ret, state.String())
-	}
-	return ret
-}
-
-func ShortString(s string, n int) string {
-	if len(s) < n {
-		return s
-	}
-	return s[0:n] + "..."
-}
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func GetRandomString(n int) string {
@@ -423,51 +337,6 @@ func Min[T constraints.Ordered](a, b T) T {
 		return a
 	}
 	return b
-}
-
-func Max[T constraints.Ordered](a, b T) T {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func MinFromSlice[T constraints.Ordered](s []T) (T, error) {
-	var result T
-	if len(s) == 0 {
-		return result, errors.New("cannot get min from empty array")
-	}
-	return getExtremeFromSlice(s, lessThan[T], "min")
-}
-
-func MaxFromSlice[T constraints.Ordered](s []T) (T, error) {
-	var result T
-	if len(s) == 0 {
-		return result, errors.New("cannot get max from empty array")
-	}
-	return getExtremeFromSlice(s, greaterThan[T], "max")
-}
-
-func getExtremeFromSlice[T constraints.Ordered](s []T, comparer func(T, T) bool, name string) (T, error) {
-	var result T
-	if len(s) == 0 {
-		return result, fmt.Errorf("cannot get %s from empty array", name)
-	}
-	m := s[0]
-	for _, e := range s {
-		if comparer(e, m) {
-			m = e
-		}
-	}
-	return m, nil
-}
-
-func greaterThan[T constraints.Ordered](a, b T) bool {
-	return a > b
-}
-
-func lessThan[T constraints.Ordered](a, b T) bool {
-	return a < b
 }
 
 func ReverseList(s []string) []string {

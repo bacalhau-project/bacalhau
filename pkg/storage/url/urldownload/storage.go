@@ -95,18 +95,31 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to get headers from url (%s): %s", u.String(), err)
 	}
 
-	log.Trace().Msgf("Beginning get %s to %s", u.String(), outputPath)
-	r, err = req.Get(u.String())
-	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to begin download from url %s: %s", u.String(), err)
+	finalURL := r.RawResponse.Request.URL
+	if finalURL != u {
+		log.Debug().Msgf("URL %s redirected to %s", u.String(), finalURL.String())
 	}
-
-	if r.StatusCode() != http.StatusOK {
-		return storage.StorageVolume{}, fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, r.Status())
+	// If url ends with a slash, we need to error out because we don't support directories
+	if strings.HasSuffix(finalURL.Path, "/") {
+		return storage.StorageVolume{},
+			fmt.Errorf("URL %s ends with a slash, which is not supported", finalURL.String())
 	}
 
 	// Create a new file based on the URL
-	fileName := filepath.Base(path.Base(u.Path))
+	fileName := filepath.Base(path.Base(finalURL.String()))
+
+	log.Trace().Msgf("Beginning get %s to %s", finalURL, outputPath)
+	r, err = req.Get(finalURL.String())
+	if err != nil {
+		return storage.StorageVolume{},
+			fmt.Errorf("failed to begin download from url %s: %s", finalURL, err)
+	}
+
+	if r.StatusCode() != http.StatusOK {
+		return storage.StorageVolume{},
+			fmt.Errorf("non-200 response from URL (%s): %s", storageSpec.URL, r.Status())
+	}
+
 	filePath := filepath.Join(outputPath, fileName)
 	targetPath := filepath.Join(storageSpec.Path, fileName)
 	w, err := os.Create(filePath)

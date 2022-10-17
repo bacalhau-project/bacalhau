@@ -36,7 +36,7 @@ func TestShardingSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *ShardingSuite) SetupAllSuite() {
+func (suite *ShardingSuite) SetupSuite() {
 
 }
 
@@ -49,7 +49,7 @@ func (suite *ShardingSuite) SetupTest() {
 func (suite *ShardingSuite) TearDownTest() {
 }
 
-func (suite *ShardingSuite) TearDownAllSuite() {
+func (suite *ShardingSuite) TearDownSuite() {
 
 }
 
@@ -176,9 +176,9 @@ func (suite *ShardingSuite) TestEndToEnd() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testendtoend")
@@ -324,9 +324,9 @@ func (suite *ShardingSuite) TestNoShards() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testnoshards")
@@ -387,9 +387,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/devstack/shardingtest/testexplodevideos")

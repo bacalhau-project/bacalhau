@@ -2,6 +2,7 @@ package system
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 
@@ -46,9 +47,17 @@ func init() { //nolint:gochecknoinits
 		// (which are only configured for production and staging)
 		if strings.Contains(os.Args[0], "/_test/") ||
 			strings.HasSuffix(os.Args[0], ".test") ||
-			flag.Lookup("test.v") != nil {
+			flag.Lookup("test.v") != nil ||
+			flag.Lookup("test.run") != nil {
 			env = EnvironmentTest
 		} else {
+			flags := []string{}
+			fn := func(f *flag.Flag) {
+				flags = append(flags, fmt.Sprintf("%s - %s\n", f.Name, f.Value))
+			}
+			flag.VisitAll(fn)
+			log.Debug().Msgf("Defaulting to development environment: \n os.Args: %v\nflags: %v", os.Args, flags)
+
 			env = EnvironmentDev
 		}
 	}

@@ -38,7 +38,7 @@ func TestMultipleCIDSuite(t *testing.T) {
 }
 
 // Before all suite
-func (s *MultipleCIDSuite) SetupAllSuite() {
+func (s *MultipleCIDSuite) SetupSuite() {
 
 }
 
@@ -51,7 +51,7 @@ func (s *MultipleCIDSuite) SetupTest() {
 func (suite *MultipleCIDSuite) TearDownTest() {
 }
 
-func (s *MultipleCIDSuite) TearDownAllSuite() {
+func (s *MultipleCIDSuite) TearDownSuite() {
 
 }
 
@@ -69,9 +69,9 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/multiple_cid_test/testmultiplecids")
@@ -177,13 +177,13 @@ func runURLTest(
 		t,
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,
 			},
 		},
 	)
-	defer TeardownTest(stack, cm)
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "pkg/test/devstack/multiple_cid_test/testmultipleurls")
 	defer rootSpan.End()
@@ -399,13 +399,13 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 		s.T(),
 		1,
 		0,
+		false,
 		computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: computenode.Anywhere,
 			},
 		},
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/multiple_cid_test/testmultipleurls")

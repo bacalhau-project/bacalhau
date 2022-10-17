@@ -190,19 +190,13 @@ type Deal struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
 	Engine Engine `json:"Engine,omitempty"`
-	// allow the engine to be provided as a string for JSON job specs
-	EngineName string `json:"EngineName,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
-	// allow the verifier to be provided as a string for JSON job specs
-	VerifierName string `json:"VerifierName,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher     Publisher `json:"Publisher,omitempty"`
-	PublisherName string    `json:"PublisherName,omitempty"`
+	Publisher Publisher `json:"Publisher,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty"`

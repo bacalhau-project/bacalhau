@@ -19,11 +19,11 @@ This page contains instructions on how to prepare those hosts to run Bacalhau:
 1. Configure Firewall
 1. Add team's ssh pub keys
 
-Let's dive it! :zap:
+Let's dive in! :zap:
 
 ## 1) Install Ubuntu via OVH Console
 
-Get the credentails from David Aaronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
+Get the credentails from David Aronchick, then head over to https://us.ovhcloud.com/manager/#/dedicated/configuration.
 Under "Dedicated servers" you'll see 4 entries. Click on one of those (need to repeat this step for each machine), then use the `...` menu to open the installation modal.
 
 <img width="1269" alt="Screenshot 2022-10-11 at 18 04 21" src="https://user-images.githubusercontent.com/4340327/195142902-17249c42-0e27-4925-82d6-f875d254964e.png">
@@ -32,7 +32,7 @@ Select `Install one of your templates` and pick `bacalhau - ubuntu2204-server`, 
 
 <img width="627" alt="Screenshot 2022-10-11 at 18 06 25" src="https://user-images.githubusercontent.com/4340327/195143328-3c455971-1248-42ec-aeb9-7808b518a373.png">
 
-The default ssh key is Enrico's, you need to figure out how to add your key to OVH console.
+OVH console allows you to select only one ssh key (using Enrico's for now), that's not a problem because we'll add the team's keys later on, but to move past this point you need to figure out how to add your key to OVH console so that it's listed in the dropdown menu.
 Once you confrim you'll see the progess bar slowing making its way to the right end of the stick.
 Go brew one or two ☕ because this step takes really a long time...
 
@@ -69,11 +69,11 @@ Create a partition on the first disk.
 
 Note `fdisk` is an interactive util so you need to manually follow a number of steps:
 
-* press `n` for a new partition
-* press enter and confirm all defaults
-* press `t` to select the partiton type
-* insert `29` that is the alias for `29 Linux RAID`
-* press `w` to write out the partiton to disk
+1. press `n` for a new partition
+1. press enter and confirm all defaults
+1. press `t` to select the partiton type
+1. insert `29` that is the alias for `29 Linux RAID`
+1. press `w` to write out the partiton to disk
 
 Repeat the steps above for each disk:
 
@@ -214,3 +214,24 @@ Status: active
 The firewall setup is loaded at every reboot!
 
 Ref. https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu-22-04
+
+## 4) Add team's ssh pub keys
+
+First we need the GitHub usernames of the team members whose ssh key we'd like to add.
+The [Bacalhau's contributors](https://github.com/filecoin-project/bacalhau/graphs/contributors) is a good starting point.
+
+```bash
+> wget -q --output-document - github.com/enricorotundo.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/binocarlos.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/aronchick.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/lukemarsden.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/philwinder.keys >> ~/.ssh/authorized_keys
+> wget -q --output-document - github.com/wdbaruni.keys >> ~/.ssh/authorized_keys
+...
+```
+
+Confirm that worked with `cat ~/.ssh/authorized_keys`.
+
+--- 
+
+That's all folks 🥳

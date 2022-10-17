@@ -27,12 +27,12 @@ func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, eventsReq.ClientID)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, eventsReq.JobID)
 
-	events, err := apiServer.localdb.GetJobEvents(req.Context(), eventsReq.JobID)
+	ctx := req.Context()
+	events, err := apiServer.localdb.GetJobEvents(ctx, eventsReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(eventsResponse{
 		Events: events,

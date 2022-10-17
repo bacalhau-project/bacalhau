@@ -2,18 +2,29 @@ package bacalhau
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	wasmCmd.AddCommand(runWasmCommand)
 	wasmCmd.AddCommand(validateWasmCommand)
+
+	runWasmCommand.PersistentFlags().StringSliceVarP(
+		&OLR.InputUrls, "input-urls", "u", OLR.InputUrls,
+		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
+		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
+		and supports both HTTP and HTTPS.`,
+	)
+	runWasmCommand.PersistentFlags().StringSliceVarP(
+		&OLR.InputVolumes, "input-volumes", "v", OLR.InputVolumes,
+		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
+	)
 }
 
 var wasmCmd = &cobra.Command{
@@ -69,15 +80,21 @@ var validateWasmCommand = &cobra.Command{
 		entryPoint := args[1]
 
 		engine := wazero.NewRuntime(ctx)
-		bytes, err := os.ReadFile(programPath)
+		module, err := wasm.LoadModule(ctx, engine, programPath)
 		if err != nil {
-			Fatal("Could not load supplied WASM file", 1)
+			Fatal(err.Error(), 1)
 			return err
 		}
 
-		module, err := engine.CompileModule(ctx, bytes)
+		wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
 		if err != nil {
-			Fatal("Could not load supplied WASM file", 1)
+			Fatal(err.Error(), 3)
+			return err
+		}
+
+		err = wasm.ValidateModuleImports(module, wasi)
+		if err != nil {
+			Fatal(err.Error(), 2)
 			return err
 		}
 
@@ -85,9 +102,9 @@ var validateWasmCommand = &cobra.Command{
 		if err != nil {
 			Fatal(err.Error(), 2)
 			return err
-		} else {
-			cmd.Println("OK")
-			return nil
 		}
+
+		cmd.Println("OK")
+		return nil
 	},
 }

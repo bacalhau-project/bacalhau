@@ -30,7 +30,7 @@ func TestMinBidsSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *MinBidsSuite) SetupAllSuite() {
+func (suite *MinBidsSuite) SetupSuite() {
 
 }
 
@@ -43,7 +43,7 @@ func (suite *MinBidsSuite) SetupTest() {
 func (suite *MinBidsSuite) TearDownTest() {
 }
 
-func (suite *MinBidsSuite) TearDownAllSuite() {
+func (suite *MinBidsSuite) TearDownSuite() {
 
 }
 
@@ -66,14 +66,14 @@ func (suite *MinBidsSuite) TestMinBids() {
 		ctx, span := system.NewRootSpan(ctx, t, "pkg/test/devstack/min_bids_test")
 		defer span.End()
 
-		stack, cm := SetupTest(
+		stack, _ := SetupTest(
 			ctx,
 			suite.T(),
 			testCase.nodes,
 			0,
+			false,
 			computenode.NewDefaultComputeNodeConfig(),
 		)
-		defer TeardownTest(stack, cm)
 
 		dirPath, err := prepareFolderWithFiles(testCase.shards)
 		require.NoError(suite.T(), err)
@@ -119,50 +119,56 @@ func (suite *MinBidsSuite) TestMinBids() {
 	}
 
 	// sanity test that with min bids at zero and 1 node we get the job through
-	runTest(minBidsTestCase{
-		nodes:       1,
-		shards:      1,
-		concurrency: 1,
-		minBids:     0,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateCompleted: 1,
-		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
-		},
+	suite.Run("minBids0And1Node", func() {
+		runTest(minBidsTestCase{
+			nodes:       1,
+			shards:      1,
+			concurrency: 1,
+			minBids:     0,
+			expectedResult: map[model.JobStateType]int{
+				model.JobStateCompleted: 1,
+			},
+			errorStates: []model.JobStateType{
+				model.JobStateError,
+			},
+		})
 	})
 
 	// test that when min bids is concurrency we get the job through
-	runTest(minBidsTestCase{
-		nodes:       3,
-		shards:      1,
-		concurrency: 3,
-		minBids:     3,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateCompleted: 3,
-		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
-		},
+	suite.Run("minBidsIsConcurrency", func() {
+		runTest(minBidsTestCase{
+			nodes:       3,
+			shards:      1,
+			concurrency: 3,
+			minBids:     3,
+			expectedResult: map[model.JobStateType]int{
+				model.JobStateCompleted: 3,
+			},
+			errorStates: []model.JobStateType{
+				model.JobStateError,
+			},
+		})
 	})
 
 	// test that no bids are made because there are not enough nodes on the network
 	// to satisfy the min bids
-	runTest(minBidsTestCase{
-		nodes:       3,
-		shards:      1,
-		concurrency: 3,
-		minBids:     5,
-		expectedResult: map[model.JobStateType]int{
-			model.JobStateBidding: 3,
-		},
-		errorStates: []model.JobStateType{
-			model.JobStateError,
-			model.JobStateWaiting,
-			model.JobStateRunning,
-			model.JobStateVerifying,
-			model.JobStateCompleted,
-		},
+	suite.Run("noBids", func() {
+		runTest(minBidsTestCase{
+			nodes:       3,
+			shards:      1,
+			concurrency: 3,
+			minBids:     5,
+			expectedResult: map[model.JobStateType]int{
+				model.JobStateBidding: 3,
+			},
+			errorStates: []model.JobStateType{
+				model.JobStateError,
+				model.JobStateWaiting,
+				model.JobStateRunning,
+				model.JobStateVerifying,
+				model.JobStateCompleted,
+			},
+		})
 	})
 
 }

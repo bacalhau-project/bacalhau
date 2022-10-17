@@ -24,7 +24,7 @@ func TestDevstackSubmitSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevstackSubmitSuite) SetupAllSuite() {
+func (suite *DevstackSubmitSuite) SetupSuite() {
 
 }
 
@@ -37,7 +37,7 @@ func (suite *DevstackSubmitSuite) SetupTest() {
 func (suite *DevstackSubmitSuite) TearDownTest() {
 }
 
-func (suite *DevstackSubmitSuite) TearDownAllSuite() {
+func (suite *DevstackSubmitSuite) TearDownSuite() {
 
 }
 
@@ -50,9 +50,9 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")

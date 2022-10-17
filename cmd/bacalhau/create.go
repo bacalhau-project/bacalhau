@@ -96,14 +96,9 @@ var createCmd = &cobra.Command{
 
 		if len(cmdArgs) == 0 {
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 			if err != nil {
-				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-					// Both filename and stdin are empty
-					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-				}
-				// Error not related to fields being empty
-				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+				Fatal(fmt.Sprintf("Unknown error reading from file or stdin: %s\n", err), 1)
+				return err
 			}
 		} else {
 			OC.Filename = cmdArgs[0]
@@ -113,11 +108,13 @@ var createCmd = &cobra.Command{
 
 			if err != nil {
 				Fatal(fmt.Sprintf("Error opening file: %s", err), 1)
+				return err
 			}
 
 			byteResult, err = io.ReadAll(fileContent)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error reading file: %s", err), 1)
+				return err
 			}
 		}
 
@@ -125,17 +122,20 @@ var createCmd = &cobra.Command{
 		err = yaml.Unmarshal(byteResult, &rawMap)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error parsing file: %s", err), 1)
+			return err
 		}
 
 		// If it's a JobWithInfo, we need to convert it to a Job
 		if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
 			err = yaml.Unmarshal(byteResult, &jwi)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error parsing file as JobWithInfo: %s", err), 1)
+				Fatal(userstrings.JobSpecBad, 1)
+				return err
 			}
 			byteResult, err = yaml.Marshal(jwi.Job)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
+				Fatal(userstrings.JobSpecBad, 1)
+				return err
 			}
 		}
 
@@ -143,7 +143,14 @@ var createCmd = &cobra.Command{
 		// so we can just use that
 		err = yaml.Unmarshal(byteResult, &j)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
+		}
+
+		// See if the job spec is empty
+		if j == nil || reflect.DeepEqual(j.Spec, &model.Job{}) {
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
 		}
 
 		// Warn on fields with data that will be ignored
@@ -194,10 +201,10 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			if _, ok := err.(*bacerrors.ImageNotFound); ok {
 				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
-				return nil
+				return err
 			} else {
 				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
-				return nil
+				return err
 			}
 		}
 		if ODR.DryRun {
@@ -206,7 +213,7 @@ var createCmd = &cobra.Command{
 			yamlBytes, err = yaml.Marshal(j)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
-				return nil
+				return err
 			}
 			cmd.Print(string(yamlBytes))
 			return nil
@@ -223,6 +230,7 @@ var createCmd = &cobra.Command{
 
 		if err != nil {
 			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return err
 		}
 
 		return nil

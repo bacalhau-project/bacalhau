@@ -17,8 +17,8 @@ terraform {
 resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
-  machine_type = count.index < var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
-  zone         = var.zone
+  machine_type = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
+  zone         = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
 
   boot_disk {
     initialize_params {
@@ -51,7 +51,7 @@ export BACALHAU_PORT="${var.bacalhau_port}"
 export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
 export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
-export GPU_NODE="${count.index < var.num_gpu_machines ? "true" : "false"}"
+export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "true" : "false"}"
 export PROMETHEUS_VERSION="${var.prometheus_version}"
 export GRAFANA_CLOUD_API_ENDPOINT="${var.grafana_cloud_api_endpoint}"
 export GRAFANA_CLOUD_API_USER="${var.grafana_cloud_api_user}"
@@ -154,17 +154,18 @@ EOF
 
   scheduling {
     // Required for GPU. See https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_instance#guest_accelerator
-    on_host_maintenance = count.index < var.num_gpu_machines ? "TERMINATE" : ""
+    on_host_maintenance = count.index >= var.instance_count - var.num_gpu_machines ? "TERMINATE" : ""
   }
 
   // GPUs are accelerators
   guest_accelerator {
-    type  = count.index < var.num_gpu_machines ? var.gpu_type : ""
-    count = count.index < var.num_gpu_machines ? var.num_gpus_per_machine : 0
+    type  = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_type : ""
+    count = count.index >= var.instance_count - var.num_gpu_machines ? var.num_gpus_per_machine : 0
   }
 }
 
 resource "google_compute_address" "ipv4_address" {
+  region = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
   # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
   name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.protect_resources ? var.instance_count : 0
@@ -188,7 +189,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
-  zone     = var.zone
+  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
@@ -201,21 +202,22 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? 0 : var.instance_count
   type     = "pd-ssd"
-  zone     = var.zone
+  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
-  name  = google_compute_resource_policy.bacalhau_disk_backups.name
+  name  = google_compute_resource_policy.bacalhau_disk_backups[count.index].name
   disk  = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].name : google_compute_disk.bacalhau_disk_unprotected[count.index].name
-  zone  = var.zone
+  zone  = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
   count = var.instance_count
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
-  name   = "bacalhau-disk-backups-${terraform.workspace}"
-  region = var.region
+  name   = "bacalhau-disk-backups-${terraform.workspace}-${count.index}"
+  region = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
+  count  = var.instance_count
   snapshot_schedule_policy {
     schedule {
       daily_schedule {
@@ -241,6 +243,7 @@ resource "google_compute_attached_disk" "default" {
   disk     = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].self_link : google_compute_disk.bacalhau_disk_unprotected[count.index].self_link
   instance = google_compute_instance.bacalhau_vm[count.index].self_link
   count    = var.instance_count
+  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {

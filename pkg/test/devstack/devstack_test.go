@@ -32,7 +32,7 @@ func TestDevStackSuite(t *testing.T) {
 }
 
 // Before all suite
-func (suite *DevStackSuite) SetupAllSuite() {
+func (suite *DevStackSuite) SetupSuite() {
 
 }
 
@@ -46,7 +46,7 @@ func (suite *DevStackSuite) TearDownTest() {
 
 }
 
-func (suite *DevStackSuite) TearDownAllSuite() {
+func (suite *DevStackSuite) TearDownSuite() {
 
 }
 
@@ -59,14 +59,14 @@ func devStackDockerStorageTest(
 ) {
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, _ := SetupTest(
 		ctx,
 		t,
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(t, err)
@@ -75,15 +75,11 @@ func devStackDockerStorageTest(
 	require.NoError(t, err)
 
 	j := &model.Job{}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker:    testCase.GetJobSpec(),
-		Inputs:    inputStorageList,
-		Outputs:   testCase.Outputs,
-	}
-
+	j.Spec = testCase.GetJobSpec()
+	j.Spec.Verifier = model.VerifierNoop
+	j.Spec.Publisher = model.PublisherIpfs
+	j.Spec.Inputs = inputStorageList
+	j.Spec.Outputs = testCase.Outputs
 	j.Deal = model.Deal{
 		Concurrency: nodeCount,
 	}

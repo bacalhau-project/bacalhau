@@ -11,27 +11,31 @@ actions:
 plugins:
   sources:
     - id: trunk
-      ref: v0.0.3
+      ref: v0.0.5
       uri: https://github.com/trunk-io/plugins
 cli:
-  version: 0.18.0-beta
+  version: 0.18.1-beta
 lint:
   enabled:
-    - actionlint@1.6.15
-    - black@22.6.0
-    - flake8@4.0.1
-    - gitleaks@8.8.11
+    - clippy@1.58.1
+    - git-diff-check@SYSTEM
+    - prettier@2.7.1
+    - rustfmt@1.58.1
+    - actionlint@1.6.21
+    - black@22.10.0
+    - flake8@5.0.4
+    - gitleaks@8.15.0
     - gofmt@1.16.7
-    - golangci-lint@1.46.2
+    - golangci-lint@1.50.0
     - hadolint@2.10.0
     - isort@5.10.1
-    - markdownlint@0.31.1
+    - markdownlint@0.32.2
     - shellcheck@0.8.0
     - shfmt@3.5.0
-    - taplo@release-taplo-cli-0.6.8
-    - tflint@0.35.0
+    - taplo@release-taplo-cli-0.7.0
+    - tflint@0.41.0
   ignore:
     - linters: [ALL]
       paths:
-        - */vendor/*
-        - experimental/*
+        - "*/vendor/*"
+        - "experimental/*"

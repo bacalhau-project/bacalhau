@@ -80,6 +80,7 @@ func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIA
 	})
 
 	cm.RegisterCallback(func() error {
+		// TODO: #893 this shouldn't be reusing the context as there's the possibility that it's already canceled
 		return cleanupStorageDriver(ctx, storageHandler)
 	})
 
@@ -110,7 +111,7 @@ func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.S
 	return sp.IPFSClient.HasCID(ctx, volume.CID)
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ model.StorageSpec) (uint64, error) {
 	_, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	return 0, nil
@@ -148,18 +149,18 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+	_ model.StorageSpec, _ storage.StorageVolume) error {
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 
 	return nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+func (sp *StorageProvider) Explode(context.Context, model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
@@ -392,16 +393,20 @@ func (sp *StorageProvider) canSeeFuseMount(ctx context.Context, cid string) bool
 }
 
 func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) error {
+	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// canceled and so would prevent us from performing any cleanup work.
+	safeCtx := context.Background()
+
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
-	c, err := docker.GetContainer(ctx, dockerClient, storageHandler.sidecarContainerName())
+	c, err := docker.GetContainer(safeCtx, dockerClient, storageHandler.sidecarContainerName())
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
 	if c != nil {
-		err = docker.RemoveContainer(ctx, dockerClient, c.ID)
+		err = docker.RemoveContainer(safeCtx, dockerClient, c.ID)
 		if err != nil {
 			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}

@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -71,14 +70,9 @@ var getCmd = &cobra.Command{
 		if jobID == "" {
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
 			if err != nil {
-				if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-					// Both filename and stdin are empty
-					Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-				}
-				// Error not related to fields being empty
 				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+				return err
 			}
 			jobID = string(byteResult)
 		}
@@ -94,11 +88,13 @@ var getCmd = &cobra.Command{
 			} else {
 				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
 			}
+			return err
 		}
 
 		results, err := GetAPIClient().GetResults(ctx, j.ID)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error getting results for job ID (%s): %s", jobID, err), 1)
+			return err
 		}
 
 		err = ipfs.DownloadJob(
@@ -111,6 +107,7 @@ var getCmd = &cobra.Command{
 
 		if err != nil {
 			Fatal(fmt.Sprintf("Error downloading results from job ID (%s): %s", jobID, err), 1)
+			return err
 		}
 
 		return nil
