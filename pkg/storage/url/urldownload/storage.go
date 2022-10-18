@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/go-resty/resty/v2"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -105,7 +106,14 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	}
 
 	// Create a new file based on the URL
-	fileName := filepath.Base(path.Base(finalURL.String()))
+	baseName := path.Base(finalURL.Path)
+	var fileName string
+	if baseName == "." || baseName == "/" {
+		// There is no filename in the URL, so we need to a temp one
+		fileName = uuid.UUID.String(uuid.New())
+	} else {
+		fileName = baseName
+	}
 
 	log.Trace().Msgf("Beginning get %s to %s", finalURL, outputPath)
 	r, err = req.Get(finalURL.String())
@@ -144,9 +152,19 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %s", filePath, err)
 	}
 
-	// Path.base gets the URL without the query string
-	finalFileName := filepath.Join(outputPath, path.Base(r.RawResponse.Request.URL.Path))
-	if finalFileName != w.Name() {
+	// If path.Base isn't empty, we'll see if it got redirected to a different file name
+	// and if so, we'll rename it to the original file name from the URL
+	// Otherwise, we'll just use the filename we created
+	var finalFileName string
+	if baseName != "." && baseName != "/" {
+		finalFileName = filepath.Join(outputPath, path.Base(r.RawResponse.Request.URL.Path))
+	} else {
+		finalFileName = filePath
+	}
+	fileWriteName := w.Name()
+	log.Debug().Msgf("Final file name based on URL: %s", finalFileName)
+	log.Debug().Msgf("Final written name: %s", fileWriteName)
+	if finalFileName != fileWriteName {
 		log.Debug().Msgf("Downloaded file has different name than final name - renaming: %s to %s", w.Name(), finalFileName)
 		err = os.Rename(w.Name(), finalFileName)
 		if err != nil {

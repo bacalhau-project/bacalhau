@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -88,15 +89,16 @@ func (s *StorageSuite) TestHasStorageLocally() {
 
 func (s *StorageSuite) TestPrepareStorageURL() {
 	fileName := "testfile.py"
+	_ = fileName
 	testString := "Here's your data"
 
 	redirectCases := map[string]struct {
 		redirect bool
 	}{
-		"no-redirect": {
+		"No-redirect": {
 			redirect: false,
 		},
-		"redirect": {
+		"Redirect": {
 			redirect: true,
 		},
 	}
@@ -115,9 +117,9 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			errorMsg:      "TYPE: Valid"},
 		"Test-No Filename": {fileName: "",
 			content:       testString,
-			valid:         false,
-			errorContains: "ends with a slash",
-			errorMsg:      "TYPE: Invalid (no file)"},
+			valid:         true,
+			errorContains: "",
+			errorMsg:      "TYPE: Valid (create file with random name)"},
 		"Test-No Content": {fileName: fileName,
 			content:       "",
 			valid:         false,
@@ -167,7 +169,14 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 					return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
 				}
 
-				require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
+				// If we have a filename, it should exist in the spec
+				if ftc.fileName != "" {
+					require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
+				} else {
+					// The spec should end with a UUID after /inputs
+					re := regexp.MustCompile(`/inputs/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
+					require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with /inputs/<UUID>. Actual ending: ", name, volume.Target)
+				}
 
 				file, err := os.Open(volume.Source)
 				if err != nil {
