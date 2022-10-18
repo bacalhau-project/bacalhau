@@ -174,8 +174,8 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 					require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
 				} else {
 					// The spec should end with a UUID after /inputs
-					re := regexp.MustCompile(`/inputs/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
-					require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with /inputs/<UUID>. Actual ending: ", name, volume.Target)
+					re := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`)
+					require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with <UUID>. Actual ending: ", name, volume.Target)
 				}
 
 				file, err := os.Open(volume.Source)
