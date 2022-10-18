@@ -13,7 +13,6 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
@@ -37,7 +36,6 @@ const maximumContextSize datasize.ByteSize = 10 * datasize.MB
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
 	Deterministic bool     // Execute this job deterministically
-	Verifier      string   // Verifier - verifier.Verifier
 	Inputs        []string // Array of input CIDs
 	InputUrls     []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
@@ -69,7 +67,6 @@ type LanguageRunOptions struct {
 func NewLanguageRunOptions() *LanguageRunOptions {
 	return &LanguageRunOptions{
 		Deterministic:    true,
-		Verifier:         "ipfs",
 		Inputs:           []string{},
 		InputUrls:        []string{},
 		InputVolumes:     []string{},
@@ -136,11 +133,6 @@ func init() {
 		"Path to context (e.g. python code) to send to server (via public IPFS network) "+
 			"for execution (max 10MiB). Set to empty string to disable",
 	)
-	runPythonCmd.PersistentFlags().StringVar(
-		&OLR.Verifier, "verifier", OLR.Verifier,
-		`What verification engine to use to run the job`,
-	)
-
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&OLR.Labels, "labels", "l", OLR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
@@ -197,7 +189,6 @@ func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, versio
 	//nolint:lll // it's ok to be long
 	// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
 	j, err := job.ConstructLanguageJob(
-		model.APIVersionLatest(),
 		OLR.InputVolumes,
 		OLR.InputUrls,
 		OLR.OutputVolumes,
