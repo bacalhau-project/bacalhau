@@ -146,7 +146,6 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
-	a model.APIVersion,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
@@ -201,28 +200,22 @@ func ConstructLanguageJob(
 	if err != nil {
 		return &model.Job{}, err
 	}
-	j.APIVersion = a.String()
 
-	j.Spec = model.Spec{
-		Engine:   model.EngineLanguage,
-		Verifier: model.VerifierNoop,
-		// TODO: should this always be ipfs?
-		Publisher: model.PublisherIpfs,
-		Language: model.JobSpecLanguage{
-			Language:         language,
-			LanguageVersion:  languageVersion,
-			Deterministic:    deterministic,
-			Context:          model.StorageSpec{},
-			Command:          command,
-			ProgramPath:      programPath,
-			RequirementsPath: requirementsPath,
-		},
-		Inputs:      jobInputs,
-		Contexts:    jobContexts,
-		Outputs:     jobOutputs,
-		Annotations: jobAnnotations,
-		DoNotTrack:  doNotTrack,
+	j.Spec.Engine = model.EngineLanguage
+	j.Spec.Language = model.JobSpecLanguage{
+		Language:         language,
+		LanguageVersion:  languageVersion,
+		Deterministic:    deterministic,
+		Context:          model.StorageSpec{},
+		Command:          command,
+		ProgramPath:      programPath,
+		RequirementsPath: requirementsPath,
 	}
+	j.Spec.Inputs = jobInputs
+	j.Spec.Contexts = jobContexts
+	j.Spec.Outputs = jobOutputs
+	j.Spec.Annotations = jobAnnotations
+	j.Spec.DoNotTrack = doNotTrack
 
 	j.Deal = model.Deal{
 		Concurrency: concurrency,

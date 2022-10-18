@@ -61,7 +61,7 @@ func NewJob() *Job {
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
 	err := mergo.Merge(j, &Job{
-		APIVersion: V1alpha1.String(),
+		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
 			Engine:    EngineDocker,
 			Verifier:  VerifierNoop,
