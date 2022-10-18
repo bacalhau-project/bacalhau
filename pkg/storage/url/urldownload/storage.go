@@ -70,6 +70,8 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Stora
 }
 
 // For the urldownload storage provider, PrepareStorage will download the file from the URL
+//
+//nolint:funlen,gocyclo // TODO: refactor this function
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
