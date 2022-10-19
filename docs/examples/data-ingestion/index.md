@@ -222,3 +222,47 @@ You can combine the node.js example above with a `wget` to then upload it to web
 ```bash
 docker run --rm --env TOKEN=$TOKEN -v $PWD/nodejs:/nodejs node:18-alpine ash -c 'cd /nodejs && wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz && npm install && node put-files.js --token=$TOKEN train-images-idx3-ubyte.gz'
 ```
+
+### Estuary
+
+This example show you how to pin data using [https://estuary.tech](https://estuary.tech/api-admin).
+
+#### 1. Create an Account
+
+Before you can upload files via estuary, you need an account. [Sign up](https://estuary.tech).
+
+#### 2. Create an API Key
+
+Browse to [the API Key mangement page](https://estuary.tech/api-admin) and create a key.
+
+#### 3. Pin a Local File via the Esturay UI
+
+You can [browse to the Estuary UI](https://estuary.tech/upload) to upload a file via your web browser.
+
+:::tip
+
+Due to the way Estuary batches files for pinning, it may take some time before your file is accessible/listable.
+
+:::
+
+#### 4. Pin a Local File Via Curl
+
+Please view the [API documentation](https://docs.estuary.tech/tutorial-uploading-your-first-file) to see all available commands. This example submits a single file to be pinned.
+
+```bash
+export TOKEN=YOUR_API_KEY
+echo hello world > foo.txt
+curl -X POST https://upload.estuary.tech/content/add -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: multipart/form-data" -F "data=@foo.txt"
+```
+
+The response will return the CID of the file.
+
+#### 5. View Pinned Files
+
+If the upload was successful, you can view the file via your [estuary account page](https://estuary.tech/home).
+
+Alternatively, you can obtain this information from the CLI:
+
+```bash
+curl -X GET -H "Authorization: Bearer ${TOKEN}" https://api.estuary.tech/content/list
+```
