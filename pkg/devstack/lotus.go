@@ -2,8 +2,11 @@ package devstack
 
 import (
 	"archive/tar"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,8 +16,10 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/filecoin-project/bacalhau/pkg/docker"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/context"
 )
@@ -26,12 +31,10 @@ type LotusNode struct {
 	image     string
 	container string
 
-	// Port is the port number that Lotus will be listening on
-	Port string
-	// Dir is the directory where files to be uploaded to Lotus should be stored
-	Dir string
-	// Token is actor in the local network with some FIL to do some work
-	Token string
+	// UploadDir is the directory where files to be uploaded to Lotus should be stored
+	UploadDir string
+	// PathDir is the directory will be used as `$LOTUS_PATH`, containing various bits of config
+	PathDir string
 }
 
 func newLotusNode(ctx context.Context) (*LotusNode, error) {
@@ -65,12 +68,17 @@ func (l *LotusNode) start(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.start")
 	defer span.End()
 
-	dir, err := ioutil.TempDir("", "bacalhau-lotus")
+	uploadDir, err := ioutil.TempDir("", "bacalhau-lotus-upload-dir")
 	if err != nil {
 		return err
 	}
+	l.UploadDir = uploadDir
 
-	l.Dir = dir
+	pathDir, err := ioutil.TempDir("", "bacalhau-lotus-path-dir")
+	if err != nil {
+		return err
+	}
+	l.PathDir = pathDir
 
 	c, err := l.client.ContainerCreate(ctx, &container.Config{
 		Image: l.image,
@@ -84,8 +92,8 @@ func (l *LotusNode) start(ctx context.Context) error {
 			{
 				Type:     mount.TypeBind,
 				ReadOnly: true,
-				Source:   dir,
-				Target:   dir,
+				Source:   l.UploadDir,
+				Target:   l.UploadDir,
 			},
 		},
 	}, nil, nil, "")
@@ -97,7 +105,8 @@ func (l *LotusNode) start(ctx context.Context) error {
 
 	log.Debug().
 		Str("image", l.image).
-		Str("dir", l.Dir).
+		Str("UploadDir", l.UploadDir).
+		Str("PathDir", l.PathDir).
 		Str("containerId", l.container).
 		Msg("Starting Lotus container")
 
@@ -133,7 +142,9 @@ func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
 		}
 
 		if state.State.Health.Status == dockertypes.Healthy {
-			l.Port = state.NetworkSettings.Ports["1234/tcp"][0].HostPort
+			if err := l.writeConfigToml(state.NetworkSettings.Ports["1234/tcp"][0].HostPort); err != nil {
+				return err
+			}
 			break
 		}
 
@@ -145,6 +156,14 @@ func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
 		time.Sleep(5 * time.Second) //nolint:gomnd
 	}
 
+	if err := l.copyOutTokenFile(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *LotusNode) copyOutTokenFile(ctx context.Context) error {
 	content, _, err := l.client.CopyFromContainer(ctx, l.container, "/home/lotus_user/.lotus-local-net/token")
 	if err != nil {
 		return err
@@ -157,30 +176,55 @@ func (l *LotusNode) waitForLotusToBeHealthy(ctx context.Context) error {
 		return err
 	}
 
-	token, err := ioutil.ReadAll(tarContent)
+	tokenFile, err := os.OpenFile(filepath.Join(l.PathDir, "token"), os.O_CREATE|os.O_WRONLY, util.OS_USER_RW)
 	if err != nil {
 		return err
 	}
 
-	l.Token = string(token)
+	defer closer.CloseWithLogOnError("token-file", tokenFile)
+
+	if _, err := io.Copy(tokenFile, tarContent); err != nil { //nolint:gosec // This can't DoS as it's writing to a file
+		return err
+	}
+
+	return nil
+}
+
+func (l *LotusNode) writeConfigToml(port string) error {
+	config := fmt.Sprintf(`#https://lotus.filecoin.io/lotus/configure/defaults/
+[API]
+ListenAddress = "/ip4/0.0.0.0/tcp/%s/http"
+`, port)
+
+	if err := os.WriteFile(filepath.Join(l.PathDir, "config.toml"), []byte(config), util.OS_USER_RW); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (l *LotusNode) Close() error {
+	var errs error
+
 	defer closer.CloseWithLogOnError("Docker client", l.client)
 	if l.container != "" {
 		if err := docker.RemoveContainer(context.Background(), l.client, l.container); err != nil {
-			return err
+			errs = multierror.Append(errs, err)
+		}
+	}
+	if l.UploadDir != "" {
+		if err := os.RemoveAll(l.UploadDir); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+	if l.PathDir != "" {
+		if err := os.RemoveAll(l.PathDir); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 	}
 
-	if l.Dir != "" {
-		// This may not happen if Docker fails to remove the container, but this isn't seen as a big problem
-		// as the OS is expected to clean it up
-		if err := os.RemoveAll(l.Dir); err != nil {
-			return err
-		}
+	if errs != nil {
+		return errs
 	}
 
 	return nil

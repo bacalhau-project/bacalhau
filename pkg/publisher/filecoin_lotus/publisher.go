@@ -2,65 +2,101 @@ package filecoinlotus
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"strings"
+	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/go-address"
+	big2 "github.com/filecoin-project/go-state-types/big"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog/log"
 )
 
-type FilecoinLotusPublisherConfig struct {
-	ExecutablePath  string
-	MinerAddress    string
-	StoragePrice    string
-	StorageDuration string
+type PublisherConfig struct {
+	// Address of the miner to upload to
+	MinerAddress string
+	// How long the deal for the data should be created for
+	StorageDuration time.Duration
+	// Location of the Lotus configuration directory - either $LOTUS_PATH or ~/.lotus
+	LotusDataDir string
+	// Directory to use when uploading content to Lotus - optional
+	LotusUploadDir string
 }
 
-type FilecoinLotusPublisher struct {
-	StateResolver *job.StateResolver
-	Config        FilecoinLotusPublisherConfig
+type Publisher struct {
+	stateResolver *job.StateResolver
+	config        PublisherConfig
+	client        api.Client
 }
 
 func NewFilecoinLotusPublisher(
+	ctx context.Context,
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
-	config FilecoinLotusPublisherConfig,
-) (*FilecoinLotusPublisher, error) {
-	processedConfig, err := processConfig(config)
+	config PublisherConfig,
+) (*Publisher, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewFilecoinLotusPublisher")
+	defer span.End()
+
+	if config.MinerAddress == "" {
+		return nil, errors.New("MinerAddress is required")
+	}
+	if config.StorageDuration == time.Duration(0) {
+		return nil, errors.New("StorageDuration is required")
+	}
+	if config.LotusDataDir == "" {
+		return nil, errors.New("LotusDataDir is required")
+	}
+
+	tokenFile := filepath.Join(config.LotusDataDir, "token")
+	token, err := os.ReadFile(tokenFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open token file %s: %w", tokenFile, err)
+	}
+
+	configFile := filepath.Join(config.LotusDataDir, "config.toml")
+	hostname, err := fetchHostnameFromConfig(configFile)
 	if err != nil {
 		return nil, err
 	}
-	if config.MinerAddress == "" {
-		return nil, fmt.Errorf("MinerAddress is required")
+
+	log.Ctx(ctx).Debug().Str("hostname", hostname).Msg("Building Lotus client")
+
+	client, err := api.NewClient(ctx, hostname, string(token))
+	if err != nil {
+		return nil, err
 	}
-	if config.StoragePrice == "" {
-		return nil, fmt.Errorf("StoragePrice is required")
-	}
-	if config.StorageDuration == "" {
-		return nil, fmt.Errorf("StorageDuration is required")
-	}
-	return &FilecoinLotusPublisher{
-		StateResolver: resolver,
-		Config:        processedConfig,
+	cm.RegisterCallback(client.Close)
+
+	return &Publisher{
+		stateResolver: resolver,
+		config:        config,
+		client:        client,
 	}, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) IsInstalled(ctx context.Context) (bool, error) {
+func (l *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/IsInstalled")
 	defer span.End()
 
-	_, err := lotusPublisher.runLotusCommand(ctx, []string{"version"})
-	if err != nil {
+	if _, err := l.client.Version(ctx); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
+func (l *Publisher) PublishShardResult(
 	ctx context.Context,
 	shard model.JobShard,
 	hostID string,
@@ -69,35 +105,38 @@ func (lotusPublisher *FilecoinLotusPublisher) PublishShardResult(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/PublishShardResult")
 	defer span.End()
 
-	log.Ctx(ctx).Debug().Msgf(
-		"Uploading results folder to filecoin lotus: %s %s %s",
-		hostID,
-		shard,
-		shardResultPath,
-	)
-	tarFile, err := lotusPublisher.tarResultsDir(ctx, shardResultPath)
+	log.Ctx(ctx).Debug().
+		Stringer("shard", shard).
+		Str("host", hostID).
+		Str("shardResultPath", shardResultPath).
+		Msg("Uploading results folder to filecoin lotus")
+
+	tarFile, err := l.carResultsDir(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	contentCid, err := lotusPublisher.importData(ctx, tarFile)
+
+	contentCid, err := l.importData(ctx, tarFile)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	dealCid, err := lotusPublisher.createDeal(ctx, contentCid)
+
+	dealCid, err := l.createDeal(ctx, contentCid)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
+
 	return model.StorageSpec{
 		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
 		StorageSource: model.StorageSourceFilecoin,
-		CID:           contentCid,
+		CID:           contentCid.String(),
 		Metadata: map[string]string{
 			"deal_cid": dealCid,
 		},
 	}, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
+func (l *Publisher) ComposeResultReferences(
 	ctx context.Context,
 	jobID string,
 ) ([]model.StorageSpec, error) {
@@ -106,8 +145,8 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	results := []model.StorageSpec{}
-	shardResults, err := lotusPublisher.StateResolver.GetResults(ctx, jobID)
+	var results []model.StorageSpec
+	shardResults, err := l.stateResolver.GetResults(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
@@ -117,85 +156,182 @@ func (lotusPublisher *FilecoinLotusPublisher) ComposeResultReferences(
 	return results, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) tarResultsDir(ctx context.Context, resultsDir string) (string, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/tarResultsDir")
+func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (string, error) {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/carResultsDir")
 	defer span.End()
 
-	tempDir, err := ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
+	tempDir, err := os.MkdirTemp(l.config.LotusUploadDir, "bacalhau-filecoin-lotus-*")
 	if err != nil {
 		return "", err
 	}
-	tempFile := fmt.Sprintf("%s/results.tar", tempDir)
-	_, err = system.UnsafeForUserCodeRunCommand("tar", []string{
-		"-cvf",
-		tempFile,
-		resultsDir,
-	})
-	if err != nil {
+	tempFile := filepath.Join(tempDir, "results.tar")
+
+	if _, err := car.CreateCar(ctx, resultsDir, tempFile, 1); err != nil {
 		return "", err
 	}
+
 	return tempFile, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) importData(ctx context.Context, filePath string) (string, error) {
+func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/importData")
 	defer span.End()
 
-	r, err := lotusPublisher.runLotusCommand(ctx, []string{"client", "import", filePath})
+	res, err := l.client.ClientImport(ctx, api.FileRef{
+		Path:  filePath,
+		IsCAR: true,
+	})
 	if err != nil {
-		return "", err
+		return cid.Cid{}, err
 	}
-	parts := strings.Split(strings.TrimSpace(r.STDOUT), " ")
-	return parts[len(parts)-1], nil
+	return res.Root, nil
 }
 
-func (lotusPublisher *FilecoinLotusPublisher) createDeal(ctx context.Context, contentCid string) (string, error) {
+func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/createDeal")
 	defer span.End()
 
-	r, err := lotusPublisher.runLotusCommand(ctx, []string{
-		"client", "deal",
-		contentCid,
-		lotusPublisher.Config.MinerAddress,
-		lotusPublisher.Config.StoragePrice,
-		lotusPublisher.Config.StorageDuration,
+	dataSize, err := l.client.ClientDealPieceCID(ctx, contentCid)
+	if err != nil {
+		return "", err
+	}
+
+	miner, err := address.NewFromString(l.config.MinerAddress)
+	if err != nil {
+		return "", err
+	}
+
+	params, err := l.client.StateGetNetworkParams(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	minerInfo, err := l.client.StateMinerInfo(ctx, miner, api.TipSetKey{})
+	if err != nil {
+		return "", err
+	}
+
+	// Note for the future - if we want to find miners, rather than be told them, then the lotus client currently:
+	// * checks `StateMinerPower` to see if `HasMinPower` is true
+	// * plays around with the 'ping' of each node, that is how long it took for the node to respond to `ClientQueryAsk`
+	// * filters candidates based on whether their proposed amount is less than the budget
+	// * select _n_ of the remaining miners
+
+	power, err := l.client.StateMinerPower(ctx, miner, api.TipSetKey{})
+	if err != nil {
+		return "", err
+	}
+	if !power.HasMinPower {
+		return "", fmt.Errorf("doesn't have min power")
+	}
+
+	ask, err := l.client.ClientQueryAsk(ctx, *minerInfo.PeerId, miner)
+	if err != nil {
+		return "", err
+	}
+
+	if ask.Response.MinPieceSize > dataSize.PieceSize {
+		return "", fmt.Errorf("data too small")
+	}
+	if ask.Response.MaxPieceSize < dataSize.PieceSize {
+		return "", fmt.Errorf("data too big")
+	}
+
+	epochPrice := big2.Div(big2.Mul(ask.Response.Price, big2.NewIntUnsigned(uint64(dataSize.PieceSize))), big2.NewInt(oneGibibyte))
+
+	epochs := api.ChainEpoch(l.config.StorageDuration / (time.Duration(params.BlockDelaySecs) * time.Second))
+
+	wallet, err := l.client.WalletDefaultAddress(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	deal, err := l.client.ClientStartDeal(ctx, &api.StartDealParams{
+		Data: &api.DataRef{
+			TransferType: "graphsync", // storagemarket.TTGraphsync
+			Root:         contentCid,
+			PieceCid:     &dataSize.PieceCID,
+			PieceSize:    dataSize.PieceSize.Unpadded(),
+		},
+		Wallet:            wallet,
+		Miner:             miner,
+		EpochPrice:        epochPrice,
+		MinBlocksDuration: uint64(epochs),
 	})
 	if err != nil {
 		return "", err
 	}
-	dealCid := ""
-	for _, line := range strings.Split(strings.TrimSpace(r.STDOUT), "\n") {
-		if !strings.Contains(line, lotusPublisher.Config.MinerAddress) {
-			continue
-		}
-		parts := strings.Split(strings.TrimSpace(line), " ")
-		dealCid = parts[len(parts)-1]
-	}
-	if dealCid == "" {
-		return "", fmt.Errorf("no deal cid found in output")
-	}
-	return dealCid, nil
-}
 
-func (lotusPublisher *FilecoinLotusPublisher) runLotusCommand(ctx context.Context, args []string) (*model.RunCommandResult, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/runLotusCommand")
-	defer span.End()
+	log.Ctx(ctx).Info().Stringer("cid", deal).Msg("Deal started")
 
-	return system.UnsafeForUserCodeRunCommand(lotusPublisher.Config.ExecutablePath, args)
-}
-
-func processConfig(config FilecoinLotusPublisherConfig) (FilecoinLotusPublisherConfig, error) {
-	if config.ExecutablePath == "" {
-		r, err := system.UnsafeForUserCodeRunCommand("which", []string{"lotus"})
+	for {
+		info, err := l.client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {
-			return config, err
+			return "", err
 		}
-		config.ExecutablePath = r.STDOUT
+		wanted := storagemarket.StorageDealCheckForAcceptance
+		if info.State == wanted {
+			return deal.String(), nil
+		}
+
+		if info.State == storagemarket.StorageDealFailing || info.State == storagemarket.StorageDealError {
+			return "", fmt.Errorf("deal not accepted: %s", info.Message)
+		}
+
+		log.Ctx(ctx).Info().
+			Stringer("cid", deal).
+			Str("current", storagemarket.DealStates[info.State]).
+			Str("expected", storagemarket.DealStates[wanted]).
+			Msg("Deal not currently in expected state")
+		time.Sleep(2 * time.Second)
 	}
-	return config, nil
 }
 
-// Compile-time check that Verifier implements the correct interface:
-var _ publisher.Publisher = (*FilecoinLotusPublisher)(nil)
+func fetchHostnameFromConfig(file string) (string, error) {
+	unparsedConfig, err := os.ReadFile(file)
+	if err != nil {
+		return "", fmt.Errorf("unable to open config file %s: %w", file, err)
+	}
+	var config struct {
+		API struct {
+			ListenAddress string
+		}
+	}
+	if err := toml.Unmarshal(unparsedConfig, &config); err != nil { //nolint:govet
+		return "", fmt.Errorf("unable to parse config file %s: %w", file, err)
+	}
+
+	addr, err := multiaddr.NewMultiaddr(config.API.ListenAddress)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse ListenAddress in config file %s: %w", file, err)
+	}
+
+	var host, port string
+	multiaddr.SplitFunc(addr, func(component multiaddr.Component) bool {
+		switch component.Protocol().Code {
+		case multiaddr.P_IP4:
+			h := component.Value()
+			if h == "0.0.0.0" {
+				h = "localhost"
+			}
+			host = h
+		case multiaddr.P_TCP:
+			port = component.Value()
+		}
+
+		return host != "" && port != ""
+	})
+
+	if host == "" {
+		return "", fmt.Errorf("unable to parse host from ListenAddress in config file %s", file)
+	}
+	if port == "" {
+		return "", fmt.Errorf("unable to parse port from ListenAddress in config file %s", file)
+	}
+
+	return fmt.Sprintf("%s:%s", host, port), nil
+}
+
+var _ publisher.Publisher = &Publisher{}
+
+const oneGibibyte = 1 << 30

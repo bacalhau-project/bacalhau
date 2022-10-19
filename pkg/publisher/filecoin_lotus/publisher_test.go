@@ -2,54 +2,48 @@ package filecoinlotus
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
-var ctx context.Context
-var tempDir string
-var driver *FilecoinLotusPublisher
-var cm *system.CleanupManager
-
-const TestJobId = "job-123"
-const TestHostId = "host-123"
-const TestContentCid = "QmQEDtn7tSFxgquj5ZHdFVKimSb14w1bmnbGyRQ5ukQLcF"
-const TestDealCid = "bafyreict2zhkbwy2arri3jgthk2jyznck47umvpqis3hc5oclvskwpteau"
-const TestMinerAddress = "f01000"
-const TestStoragePrice = "5"
-const TestStorageDuration = "100"
-
 type FilecoinPublisherSuite struct {
 	suite.Suite
+
+	dataDir   string
+	uploadDir string
+
+	driver *Publisher
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestFilecoinPublisherSuite(t *testing.T) {
-	suite.Run(t, new(FilecoinPublisherSuite))
+	dataDir := os.Getenv("LOTUS_PATH")
+	uploadDir := os.Getenv("LOTUS_UPLOAD_DIR")
+	if dataDir == "" || uploadDir == "" {
+		t.Skip("Skipping Lotus provider as it currently needs the Lotus to be started manually")
+	}
+
+	suite.Run(t, &FilecoinPublisherSuite{
+		dataDir:   dataDir,
+		uploadDir: uploadDir,
+	})
 }
 
-// Before all suite
-func (suite *FilecoinPublisherSuite) SetupAllSuite() {
+func (s *FilecoinPublisherSuite) SetupTest() {
+	require.NoError(s.T(), system.InitConfigForTesting())
 
-}
+	cm := system.NewCleanupManager()
+	s.T().Cleanup(cm.Cleanup)
 
-// Before each test
-func (suite *FilecoinPublisherSuite) SetupTest() {
-	var setupErr error
-	cm = system.NewCleanupManager()
-	ctx = context.Background()
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (*model.Job, error) {
 			return &model.Job{}, nil
@@ -58,81 +52,48 @@ func (suite *FilecoinPublisherSuite) SetupTest() {
 			return model.JobState{}, nil
 		},
 	)
-	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-lotus-test")
-	require.NoError(suite.T(), setupErr)
-	os.Setenv("LOTUS_LOGFILE", filepath.Join(tempDir, "logs.txt"))
-	os.Setenv("LOTUS_TEST_CONTENT_CID", TestContentCid)
-	os.Setenv("LOTUS_TEST_DEAL_CID", TestDealCid)
-	driver, setupErr = NewFilecoinLotusPublisher(cm, resolver, FilecoinLotusPublisherConfig{
-		ExecutablePath:  MockLotusExecutable,
-		MinerAddress:    TestMinerAddress,
-		StoragePrice:    TestStoragePrice,
-		StorageDuration: TestStorageDuration,
+	driver, setupErr := NewFilecoinLotusPublisher(context.Background(), cm, resolver, PublisherConfig{
+		MinerAddress:    "t01000",
+		StorageDuration: 24 * 24 * time.Hour,
+		LotusDataDir:    s.dataDir,
+		LotusUploadDir:  s.uploadDir,
 	})
-	require.NoError(suite.T(), setupErr)
+	require.NoError(s.T(), setupErr)
+
+	s.driver = driver
 }
 
-func (suite *FilecoinPublisherSuite) TearDownTest() {
+func (s *FilecoinPublisherSuite) TestIsInstalled() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	installed, err := s.driver.IsInstalled(ctx)
+
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), installed)
 }
 
-func (suite *FilecoinPublisherSuite) TearDownAllSuite() {
+func (s *FilecoinPublisherSuite) TestPublishShardResult() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-}
+	resultsDir := s.T().TempDir()
+	require.NoError(s.T(), os.WriteFile(filepath.Join(resultsDir, "file.txt"), []byte("hello"), 0644))
 
-func (suite *FilecoinPublisherSuite) TestIsInstalled() {
-	installed, err := driver.IsInstalled(ctx)
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), installed)
-	dat, err := os.ReadFile(filepath.Join(tempDir, "logs.txt"))
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), "command: version\n0.0.1\n", string(dat))
-}
-
-func (suite *FilecoinPublisherSuite) TestPublishShardResult() {
-	tmpDirPrefix := "bacalhau-filecoin-lotus-test"
-	resultsDir, err := ioutil.TempDir("", tmpDirPrefix)
-	require.NoError(suite.T(), err)
-	err = os.WriteFile(filepath.Join(resultsDir, "file.txt"), []byte("hello"), 0644)
-	require.NoError(suite.T(), err)
-	publishResult, err := driver.PublishShardResult(ctx, model.JobShard{
+	publishResult, err := s.driver.PublishShardResult(ctx, model.JobShard{
 		Job: &model.Job{
-			ID: TestJobId,
+			ID: "job-123",
 		},
-	}, TestHostId, resultsDir)
-	require.NoError(suite.T(), err)
+	}, "host-123", resultsDir)
+	require.NoError(s.T(), err)
 
-	commandLogs, err := os.ReadFile(filepath.Join(tempDir, "logs.txt"))
-	require.NoError(suite.T(), err)
+	assert.NotEmpty(s.T(), publishResult.Name)
+	assert.NotEmpty(s.T(), publishResult.CID)
+	require.Equal(s.T(), model.StorageSourceFilecoin, publishResult.StorageSource)
+	require.NotNil(s.T(), publishResult.Metadata)
+	require.Equal(s.T(), 1, len(publishResult.Metadata))
+	dealCid := publishResult.Metadata["deal_cid"]
+	assert.NotEmpty(s.T(), dealCid)
 
-	require.Equal(suite.T(), fmt.Sprintf("job-%s-shard-%d-host-%s", TestJobId, 0, TestHostId), publishResult.Name)
-	require.Equal(suite.T(), TestContentCid, publishResult.CID)
-	require.Equal(suite.T(), model.StorageSourceFilecoin, publishResult.StorageSource)
-	require.NotNil(suite.T(), publishResult.Metadata)
-	require.Equal(suite.T(), 1, len(publishResult.Metadata))
-	dealCid, ok := publishResult.Metadata["deal_cid"]
-	require.True(suite.T(), ok)
-	require.Equal(suite.T(), TestDealCid, dealCid)
-
-	logLines := strings.Split(string(commandLogs), "\n")
-	firstLine := logLines[0]
-	logLines = logLines[1:]
-
-	require.True(suite.T(), strings.Contains(firstLine, "command: client import"))
-	require.True(suite.T(), strings.Contains(firstLine, tmpDirPrefix))
-
-	expectedLogs := fmt.Sprintf(`Import 3, Root %s
-command: client deal %s %s %s %s
-.. executing
-Deal (%s) CID: %s
-`,
-		TestContentCid,
-		TestContentCid,
-		TestMinerAddress,
-		TestStoragePrice,
-		TestStorageDuration,
-		TestMinerAddress,
-		TestDealCid,
-	)
-
-	require.Equal(suite.T(), expectedLogs, strings.Join(logLines, "\n"))
+	// Need to re-read the file back out of Filecoin to verify it was saved successfully
 }
