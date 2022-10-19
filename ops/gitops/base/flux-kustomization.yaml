@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: tenant-secrets
+spec:
+  targetNamespace: bacalhau
+  interval: 10m
+  decryption:
+    provider: sops
+    secretRef:
+      name: tenant-sops-gpg
+  sourceRef:
+    kind: GitRepository
+    name: bacalhau
+    namespace: flux-system
+  path: ""
+  prune: true

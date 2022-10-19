@@ -1,0 +1,38 @@
+apiVersion: infra.contrib.fluxcd.io/v1alpha1
+kind: Terraform
+metadata:
+  name: tf-manifest
+spec:
+  storeReadablePlan: human
+  fileMappings:
+  - location: workspace
+    path: ./.terraform/environment
+    secretRef:
+      name: workspace
+      key: workspace
+  - secretRef:
+      name: override-vars
+      key: terraform.tfvars
+    location: workspace 
+    path: ./terraform.tfvars
+  runnerPodTemplate:
+    spec:
+      env:
+      - name: "GOOGLE_APPLICATION_CREDENTIALS"
+        valueFrom: 
+          secretKeyRef:
+            name: google-auth
+            key: key.json
+  disableDriftDetection: false
+  backendConfig:
+    customConfiguration: |
+      backend "gcs" {
+        bucket = "bacalhau-global-storage"
+        prefix = "terraform/state"
+      }
+  interval: 1m
+  path: ./ops/terraform
+  sourceRef:
+    kind: GitRepository
+    name: bacalhau
+    namespace: flux-system

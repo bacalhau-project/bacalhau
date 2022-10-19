@@ -1,0 +1,18 @@
+# This lets the k8s api know that the value mapped is a configmap and secret.  
+# This is needed so the configMapGenerator and secretGenerator can add 
+# the necessary hash to the object name
+nameReference:
+- kind: ConfigMap
+  version: v1
+  fieldSpecs:
+  - path: spec/varsFrom/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
+- kind: Secret
+  version: v1
+  fieldSpecs:
+  - path: spec/fileMappings/secretRef/name
+    group: infra.contrib.fluxcd.io
+    version: v1alpha1
+    kind: Terraform
