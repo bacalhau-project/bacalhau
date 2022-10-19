@@ -2,7 +2,7 @@
 sidebar_label: Stable Diffusion - CPU
 sidebar_position: 1
 ---
-# Stable Diffusion
+# Stable Diffusion on a CPU
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/model-inference/stable-diffusion/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=model-inference/stable-diffusion/index.ipynb)
