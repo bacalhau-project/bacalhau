@@ -1,19 +1,14 @@
 package bacalhau
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -30,8 +25,6 @@ var (
 
 	OLR = NewLanguageRunOptions()
 )
-
-const maximumContextSize datasize.ByteSize = 10 * datasize.MB
 
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
@@ -228,14 +221,9 @@ func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, versio
 		// tar + gzip
 		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
 		time.Sleep(1 * time.Second)
-		err = compress(ctx, OLR.ContextPath, &buf)
+		err = targzip.Compress(ctx, OLR.ContextPath, &buf)
 		if err != nil {
 			return err
-		}
-
-		// check size of buf
-		if buf.Len() > int(maximumContextSize) {
-			Fatal(fmt.Sprintf("context tar file is too large (> %s)", maximumContextSize.HumanReadable()), 1)
 		}
 	}
 
@@ -251,93 +239,5 @@ func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, versio
 	if err != nil {
 		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
 	}
-	return nil
-}
-
-// from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
-
-//nolint:gocyclo
-func compress(ctx context.Context, src string, buf io.Writer) error {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/runPython.compress")
-	defer span.End()
-
-	// tar > gzip > buf
-	zr := gzip.NewWriter(buf)
-	tw := tar.NewWriter(zr)
-
-	// is file a folder?
-	fi, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	mode := fi.Mode()
-	if mode.IsRegular() {
-		// get header
-		var header *tar.Header
-		header, err = tar.FileInfoHeader(fi, src)
-		if err != nil {
-			return err
-		}
-		// write header
-		if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-			return err
-		}
-		// get content
-		var data *os.File
-		data, err = os.Open(src)
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(tw, data); err != nil {
-			return err
-		}
-	} else if mode.IsDir() { // folder
-		// walk through every file in the folder
-		err = filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
-			// generate tar header
-			var header *tar.Header
-			header, err = tar.FileInfoHeader(fi, file)
-			if err != nil {
-				return err
-			}
-
-			// must provide real name
-			// (see https://golang.org/src/archive/tar/common.go?#L626)
-			header.Name = filepath.ToSlash(file)
-
-			// write header
-			if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-				return err
-			}
-			// if not a dir, write file content
-			if !fi.IsDir() {
-				var data *os.File
-				data, err = os.Open(file)
-				if err != nil {
-					return err
-				}
-				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("error: file type not supported")
-	}
-
-	// produce tar
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	// produce gzip
-	if err := zr.Close(); err != nil {
-		return err
-	}
-	//
 	return nil
 }
