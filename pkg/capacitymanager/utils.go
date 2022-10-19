@@ -17,6 +17,16 @@ import (
 	"github.com/ricochet2200/go-disk-usage/du"
 )
 
+// this is used mainly for tests to be deterministic
+// or for tests to say "I know I don't have GPUs I am pretenting I do"
+func SetIgnorePhysicalResources(value string) {
+	os.Setenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT", value)
+}
+
+func shouldIgnorePhysicalResources() bool {
+	return os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
+}
+
 // NvidiaCLI is the path to the Nvidia helper binary
 const NvidiaCLI = "nvidia-container-cli"
 
@@ -138,9 +148,6 @@ func numSystemGPUs() (uint64, error) {
 
 // what resources does this compute node actually have?
 func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUsageData, error) {
-	// this is used mainly for tests to be deterministic
-	allowOverCommit := os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != ""
-
 	diskSpace, err := getFreeDiskSpace(config.GetStoragePath())
 	if err != nil {
 		return model.ResourceUsageData{}, err
@@ -161,7 +168,7 @@ func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUs
 	parsedLimitConfig := ParseResourceUsageConfig(limitConfig)
 
 	if parsedLimitConfig.CPU > 0 {
-		if parsedLimitConfig.CPU > physcialResources.CPU && !allowOverCommit {
+		if parsedLimitConfig.CPU > physcialResources.CPU && !shouldIgnorePhysicalResources() {
 			return physcialResources, fmt.Errorf(
 				"you cannot configure more CPU than you have on this node: configured %f, have %f",
 				parsedLimitConfig.CPU, physcialResources.CPU,
@@ -171,7 +178,7 @@ func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUs
 	}
 
 	if parsedLimitConfig.Memory > 0 {
-		if parsedLimitConfig.Memory > physcialResources.Memory && !allowOverCommit {
+		if parsedLimitConfig.Memory > physcialResources.Memory && !shouldIgnorePhysicalResources() {
 			return physcialResources, fmt.Errorf(
 				"you cannot configure more Memory than you have on this node: configured %d, have %d",
 				parsedLimitConfig.Memory, physcialResources.Memory,
@@ -181,7 +188,7 @@ func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUs
 	}
 
 	if parsedLimitConfig.Disk > 0 {
-		if parsedLimitConfig.Disk > physcialResources.Disk && !allowOverCommit {
+		if parsedLimitConfig.Disk > physcialResources.Disk && !shouldIgnorePhysicalResources() {
 			return physcialResources, fmt.Errorf(
 				"you cannot configure more disk than you have on this node: configured %d, have %d",
 				parsedLimitConfig.Disk, physcialResources.Disk,
@@ -191,7 +198,7 @@ func getSystemResources(limitConfig model.ResourceUsageConfig) (model.ResourceUs
 	}
 
 	if parsedLimitConfig.GPU > 0 {
-		if parsedLimitConfig.GPU > physcialResources.GPU {
+		if parsedLimitConfig.GPU > physcialResources.GPU && !shouldIgnorePhysicalResources() {
 			return physcialResources, fmt.Errorf(
 				"you cannot configure more GPU than you have on this node: configured %d, have %d",
 				parsedLimitConfig.GPU, physcialResources.GPU,
