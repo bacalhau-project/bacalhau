@@ -285,14 +285,14 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
+	jobNodeDistanceDelayMs, shouldRunJob := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
 		// if the user isn't going to bid unless there are minBids many bids,
 		// we'd better make sure there are minBids many bids!
 		ctx, 1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.
-	if jobNodeDistanceDelayMs > 1000 { //nolint:gomnd
+	if !shouldRunJob { //nolint:gomnd
 		// drop the job on the floor, :-O
 		return nil
 	}
@@ -348,7 +348,7 @@ func diff(a, b int) int {
 	return a - b
 }
 
-func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID, jobID string, concurrency int) int {
+func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID, jobID string, concurrency int) (int, bool) {
 	// Calculate how long to wait to bid on the job by using a circular hashing
 	// style approach: Invent a metric for distance between node ID and job ID.
 	// If the node and job ID happen to be close to eachother, such that we'd
@@ -378,7 +378,17 @@ func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID,
 		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
 		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
 	)
-	return delay
+	shouldRun := true
+	// if delay is too high, just exit immediately.
+	if delay > 1000 { //nolint:gomnd
+		// drop the job on the floor, :-O
+		shouldRun = false
+		log.Ctx(ctx).Warn().Msgf(
+			"dropped job: node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
+			nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
+		)
+	}
+	return delay, shouldRun
 }
 
 func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
