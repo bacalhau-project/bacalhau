@@ -416,7 +416,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
 	jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &model.RunCommandResult{}, nil
 	}
@@ -441,11 +441,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			},
 		},
 		inprocess.InProcessTransportClusterConfig{
-			GetMessageDelay: func(index int) time.Duration {
-				if index == 0 {
+			GetMessageDelay: func(fromIndex, toIndex int) time.Duration {
+				if fromIndex == toIndex {
+					// a node speaking to itself is quick
 					return time.Millisecond * 10
 				} else {
-					return time.Second * 1
+					// otherwise there is a delay
+					return time.Millisecond * 100
 				}
 			},
 		},
@@ -488,6 +490,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		})
 		require.NoError(suite.T(), err)
 		jobIds = append(jobIds, submittedJob.ID)
+		// this needs to be less than the time the job lasts
+		// so we are running jobs in parallel
 		time.Sleep(time.Millisecond * 500)
 	}
 
