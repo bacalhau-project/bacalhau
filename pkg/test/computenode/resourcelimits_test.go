@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -399,6 +400,123 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		},
 	)
 
+}
+
+// test that with 10 GPU nodes - that 10 jobs end up being allocated 1 per node
+// this is a check of the bidding & capacity manager system
+func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
+	// we need to pretend that we have GPUs on each node
+	capacitymanager.SetIgnorePhysicalResources("1")
+	nodeCount := 2
+	seenJobs := 0
+	jobIds := []string{}
+
+	ctx := context.Background()
+
+	// the job needs to hang for a period of time so the other job will
+	// run on another node
+	jobHandler := func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+		time.Sleep(time.Second * 1)
+		seenJobs++
+		return &model.RunCommandResult{}, nil
+	}
+
+	stack := testutils.NewNoopStackMultinode(
+		ctx,
+		suite.T(),
+		nodeCount,
+		computenode.ComputeNodeConfig{
+			CapacityManagerConfig: capacitymanager.Config{
+				ResourceLimitTotal: model.ResourceUsageConfig{
+					CPU:    "1",
+					Memory: "1Gb",
+					Disk:   "1Gb",
+					GPU:    "1",
+				},
+			},
+		},
+		noop_executor.ExecutorConfig{
+			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+				JobHandler: jobHandler,
+			},
+		},
+		inprocess.InProcessTransportClusterConfig{
+			GetMessageDelay: func(index int) time.Duration {
+				if index == 0 {
+					return time.Millisecond * 10
+				} else {
+					return time.Second * 1
+				}
+			},
+		},
+	)
+
+	cm := stack.CleanupManager
+	defer cm.Cleanup()
+
+	jobConfig := &model.Job{
+		Spec: model.Spec{
+			Engine:    model.EngineNoop,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherNoop,
+			Docker: model.JobSpecDocker{
+				Image:      "ubuntu",
+				Entrypoint: []string{"/bin/bash", "-c", "echo hello"},
+			},
+			Resources: model.ResourceUsageConfig{
+				GPU: "1",
+			},
+		},
+		Deal: model.Deal{
+			Concurrency: 1,
+		},
+	}
+
+	resolver := job.NewStateResolver(
+		func(ctx context.Context, id string) (*model.Job, error) {
+			return stack.Nodes[0].LocalDB.GetJob(ctx, id)
+		},
+		func(ctx context.Context, id string) (model.JobState, error) {
+			return stack.Nodes[0].LocalDB.GetJobState(ctx, id)
+		},
+	)
+
+	for i := 0; i < nodeCount; i++ {
+		submittedJob, err := stack.Nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
+			ClientID: "123",
+			Job:      jobConfig,
+		})
+		require.NoError(suite.T(), err)
+		jobIds = append(jobIds, submittedJob.ID)
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	for _, jobId := range jobIds {
+		err := resolver.WaitUntilComplete(ctx, jobId)
+		require.NoError(suite.T(), err)
+	}
+
+	require.Equal(suite.T(), nodeCount, seenJobs)
+
+	allocationMap := map[string]int{}
+
+	for i := 0; i < nodeCount; i++ {
+		jobState, err := resolver.GetJobState(ctx, jobIds[i])
+		require.NoError(suite.T(), err)
+		completedShards := job.GetCompletedShardStates(jobState)
+		require.Equal(suite.T(), 1, len(completedShards))
+		require.Equal(suite.T(), model.JobStateCompleted, completedShards[0].State)
+		allocationMap[completedShards[0].NodeID]++
+	}
+
+	// test that each node has 1 job allocated to it
+	node1Count, ok := allocationMap[stack.Nodes[0].Transport.HostID()]
+	require.True(suite.T(), ok)
+	require.Equal(suite.T(), 1, node1Count)
+
+	node2Count, ok := allocationMap[stack.Nodes[1].Transport.HostID()]
+	require.True(suite.T(), ok)
+	require.Equal(suite.T(), 1, node2Count)
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
