@@ -22,6 +22,12 @@ type InProcessTransport struct {
 	subscribeFunctions []transport.SubscribeFn
 	seenEvents         []model.JobEvent
 	mutex              sync.Mutex
+	// if a publishHandler is assigned - it will take over
+	// from the standard publish - this is used by the InProcessTransportCluster
+	// to hijack publish calls and distribute them across all the other nodes
+	// (a bit like the libp2p transport where every event is written to the
+	// event handlers of every node)
+	publishHandler func(ctx context.Context, ev model.JobEvent) error
 }
 
 /*
@@ -76,19 +82,13 @@ func (t *InProcessTransport) GetEvents() []model.JobEvent {
 */
 
 func (t *InProcessTransport) Publish(ctx context.Context, ev model.JobEvent) error {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	t.seenEvents = append(t.seenEvents, ev)
-	for _, fn := range t.subscribeFunctions {
-		fnToCall := fn
-		go func() {
-			err := fnToCall(ctx, ev)
-			if err != nil {
-				log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
-			}
-		}()
+	if t.publishHandler != nil {
+		// we have been given an external function to call with our event
+		return t.publishHandler(ctx, ev)
+	} else {
+		// we will handle our event internally
+		return t.applyEvent(ctx, ev)
 	}
-	return nil
 }
 
 func (t *InProcessTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
@@ -107,6 +107,22 @@ func (*InProcessTransport) Encrypt(ctx context.Context, data, encryptionKeyBytes
 
 func (*InProcessTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
 	return data, nil
+}
+
+func (t *InProcessTransport) applyEvent(ctx context.Context, ev model.JobEvent) error {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.seenEvents = append(t.seenEvents, ev)
+	for _, fn := range t.subscribeFunctions {
+		fnToCall := fn
+		go func() {
+			err := fnToCall(ctx, ev)
+			if err != nil {
+				log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
+			}
+		}()
+	}
+	return nil
 }
 
 // Static check to ensure that InProcessTransport implements Transport:
