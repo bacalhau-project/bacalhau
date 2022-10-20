@@ -361,6 +361,12 @@ export BACALHAU_API_PORT=%s`,
 		devStackAPIPort,
 	)
 
+	if stack.Lotus != nil {
+		summaryShellVariablesString += fmt.Sprintf(`
+export LOTUS_PATH=%s
+export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
 	log.Debug().Msg(logString)
 
 	returnString := fmt.Sprintf(`

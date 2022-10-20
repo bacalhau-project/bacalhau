@@ -6,12 +6,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -38,11 +42,37 @@ func (s *LotusNodeSuite) TestLotusNode() {
 	stack, _ := SetupTest(ctx, s.T(), 1, 0, true, computenode.NewDefaultComputeNodeConfig())
 
 	require.NotNil(s.T(), stack.Lotus)
-	assert.NotEmpty(s.T(), stack.Lotus.Dir)
-	require.NotEmpty(s.T(), stack.Lotus.Token)
-	require.NotEmpty(s.T(), stack.Lotus.Port)
+	assert.DirExists(s.T(), stack.Lotus.UploadDir)
+	require.DirExists(s.T(), stack.Lotus.PathDir)
+	require.FileExists(s.T(), filepath.Join(stack.Lotus.PathDir, "config.toml"))
+	require.FileExists(s.T(), filepath.Join(stack.Lotus.PathDir, "token"))
 
-	lotus := lotusApi(s.T(), ctx, stack.Lotus.Port, stack.Lotus.Token)
+	token, err := os.ReadFile(filepath.Join(stack.Lotus.PathDir, "token"))
+	require.NoError(s.T(), err)
+
+	configFile, err := os.ReadFile(filepath.Join(stack.Lotus.PathDir, "config.toml"))
+	require.NoError(s.T(), err)
+
+	var config struct {
+		API struct {
+			ListenAddress string
+		}
+	}
+	require.NoError(s.T(), toml.Unmarshal(configFile, &config))
+
+	multiAddr, err := multiaddr.NewMultiaddr(config.API.ListenAddress)
+	require.NoError(s.T(), err)
+
+	com, addr := multiaddr.SplitFirst(multiAddr)
+	assert.Equal(s.T(), "ip4", com.Protocol().Name)
+	assert.Equal(s.T(), "0.0.0.0", com.Value())
+	port, addr := multiaddr.SplitFirst(addr)
+	assert.Equal(s.T(), "tcp", port.Protocol().Name)
+	assert.NotEmpty(s.T(), port.Value())
+	com, addr = multiaddr.SplitFirst(addr)
+	assert.Equal(s.T(), "http", com.Protocol().Name)
+
+	lotus := lotusApi(s.T(), ctx, port.Value(), string(token))
 
 	version, err := lotus.Version(ctx)
 	require.NoError(s.T(), err)
@@ -52,7 +82,7 @@ func (s *LotusNodeSuite) TestLotusNode() {
 
 func lotusApi(t *testing.T, ctx context.Context, port string, token string) *lotusNodeCommonStruct {
 	headers := http.Header{"Authorization": []string{fmt.Sprintf("Bearer %s", token)}}
-	addr := fmt.Sprintf("ws://localhost:%s/rpc/v0", port)
+	addr := fmt.Sprintf("ws://localhost:%s/rpc/v1", port)
 
 	var lotus lotusNodeCommonStruct
 
