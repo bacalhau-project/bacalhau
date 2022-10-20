@@ -91,8 +91,8 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec,
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Msgf("Loading WASM module from remote '%s'", volume.Target)
 	programPath := filepath.Join(volume.Source, filepath.Base(programName))
+	log.Ctx(ctx).Info().Msgf("Loading WASM module from '%s'", programPath)
 	return LoadModule(ctx, e.Engine, programPath)
 }
 
@@ -231,13 +231,12 @@ func (e *Executor) RunShard(
 	log.Ctx(ctx).Info().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.ID)
 	entryFunc := instance.ExportedFunction(entryPoint)
 	exitCode := int(-1)
-	_, err = entryFunc.Call(ctx)
-	if err != nil {
-		errExit, ok := err.(*sys.ExitError)
+	_, wasmErr := entryFunc.Call(ctx)
+	if wasmErr != nil {
+		errExit, ok := wasmErr.(*sys.ExitError)
 		if ok {
 			exitCode = int(errExit.ExitCode())
-		} else {
-			return failResult(err)
+			wasmErr = nil
 		}
 	}
 
@@ -252,9 +251,13 @@ func (e *Executor) RunShard(
 		}
 	}
 
-	return &model.RunCommandResult{
+	result := &model.RunCommandResult{
 		STDOUT:   stdout.String(),
 		STDERR:   stderr.String(),
 		ExitCode: exitCode,
-	}, nil
+	}
+	if wasmErr != nil {
+		result.ErrorMsg = wasmErr.Error()
+	}
+	return result, wasmErr
 }
