@@ -76,7 +76,7 @@ func (je JobEventType) IsTerminal() bool {
 // ignore the rest of the job's lifecycle. This is the case for events caused
 // by a node's bid being rejected.
 func (je JobEventType) IsIgnorable() bool {
-	return je.IsTerminal() || je == JobEventComputeError || je == JobEventBidRejected
+	return je.IsTerminal() || je == JobEventComputeError || je == JobEventBidRejected || je == JobEventInvalidRequest
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {

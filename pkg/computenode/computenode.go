@@ -412,6 +412,8 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 			shardState.Publish(ctx)
 		case model.JobEventResultsRejected:
 			shardState.ResultsRejected(ctx)
+		case model.JobEventInvalidRequest:
+			shardState.FailSilently(ctx, "Request rejected due to: "+event.Status)
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)

@@ -132,7 +132,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateRunning
 
 	// yikes
-	case JobEventError, JobEventComputeError:
+	case JobEventError, JobEventComputeError, JobEventInvalidRequest:
 		return JobStateError
 
 	// we are complete
