@@ -266,6 +266,16 @@ func (node *RequesterNode) notifyShardError(
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
+// func (node *RequesterNode) notifyShardInvalidRequest(
+// 	ctx context.Context,
+// 	shard model.JobShard,
+// 	status string,
+// ) error {
+// 	ev := node.constructShardEvent(shard, model.JobEventInvalidRequest)
+// 	ev.Status = status
+// 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
+// }
+
 func (node *RequesterNode) constructJobEvent(jobID string, eventName model.JobEventType) model.JobEvent {
 	return model.JobEvent{
 		SourceNodeID: node.ID,

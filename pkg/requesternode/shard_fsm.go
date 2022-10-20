@@ -189,6 +189,9 @@ func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateR
 	defer func() {
 		if r := recover(); r != nil {
 			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			go func() {
+
+			}()
 		}
 	}()
 	m.req <- request

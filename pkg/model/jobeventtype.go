@@ -56,6 +56,13 @@ const (
 	// a requester node declared an error running a job
 	JobEventError
 
+	// the requester node gives a compute node permission
+	// to forget about the job and free any resources it might
+	// currently be reserving - this can happen if a compute node
+	// bids when a job has completed - if the compute node does
+	// not hear back it will be stuck in reserving the resources for the job
+	JobEventInvalidRequest
+
 	jobEventDone // must be last
 )
 
