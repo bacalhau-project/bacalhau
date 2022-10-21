@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const defaultImage = "ghcr.io/bacalhau-project/lotus-filecoin-image:v0.0.1"
+const defaultImage = "ghcr.io/bacalhau-project/lotus-filecoin-image:v0.0.2"
 
 type LotusNode struct {
 	client    *dockerclient.Client
@@ -87,11 +87,11 @@ func (l *LotusNode) start(ctx context.Context) error {
 			"1234/tcp": {{}},
 		},
 		Mounts: []mount.Mount{
-			// Mount the temp directory at the same place within the container to aviod confusion between paths outside the
-			// container, that the user sees, and paths within the container, that the ClientImport command uses.
+			// Mount the temp directory at the same place within the container to avoid confusion between paths outside the
+			// container, that the user sees, and paths within the container, that the ClientImport/ClientExport command uses.
 			{
 				Type:     mount.TypeBind,
-				ReadOnly: true,
+				ReadOnly: false,
 				Source:   l.UploadDir,
 				Target:   l.UploadDir,
 			},

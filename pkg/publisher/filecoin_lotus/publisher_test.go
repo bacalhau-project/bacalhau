@@ -2,6 +2,7 @@ package filecoinlotus
 
 import (
 	"context"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,11 +11,19 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+func init() {
+	// make sure system.GetRandomString returns strings that are different every time - stop Lotus repeatedly creating
+	// deals for the same content
+	rand.Seed(time.Now().UnixNano())
+}
 
 type FilecoinPublisherSuite struct {
 	suite.Suite
@@ -53,10 +62,10 @@ func (s *FilecoinPublisherSuite) SetupTest() {
 		},
 	)
 	driver, setupErr := NewFilecoinLotusPublisher(context.Background(), cm, resolver, PublisherConfig{
-		MinerAddress:    "t01000",
 		StorageDuration: 24 * 24 * time.Hour,
 		LotusDataDir:    s.dataDir,
 		LotusUploadDir:  s.uploadDir,
+		MaximumPing:     2 * time.Second,
 	})
 	require.NoError(s.T(), setupErr)
 
@@ -77,8 +86,10 @@ func (s *FilecoinPublisherSuite) TestPublishShardResult() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	expectedContent := system.GetRandomString(1000)
+
 	resultsDir := s.T().TempDir()
-	require.NoError(s.T(), os.WriteFile(filepath.Join(resultsDir, "file.txt"), []byte("hello"), 0644))
+	require.NoError(s.T(), os.WriteFile(filepath.Join(resultsDir, "file.txt"), []byte(expectedContent), 0644))
 
 	publishResult, err := s.driver.PublishShardResult(ctx, model.JobShard{
 		Job: &model.Job{
@@ -92,8 +103,45 @@ func (s *FilecoinPublisherSuite) TestPublishShardResult() {
 	require.Equal(s.T(), model.StorageSourceFilecoin, publishResult.StorageSource)
 	require.NotNil(s.T(), publishResult.Metadata)
 	require.Equal(s.T(), 1, len(publishResult.Metadata))
-	dealCid := publishResult.Metadata["deal_cid"]
-	assert.NotEmpty(s.T(), dealCid)
+	assert.NotEmpty(s.T(), publishResult.Metadata["deal_cid"])
 
-	// Need to re-read the file back out of Filecoin to verify it was saved successfully
+	imp := s.retrieveUploadedFile(ctx, publishResult.CID)
+
+	output, err := os.MkdirTemp(s.driver.config.LotusUploadDir, "")
+	require.NoError(s.T(), err)
+
+	output = filepath.Join(output, "download")
+
+	require.NoError(s.T(), s.driver.client.ClientExport(ctx, api.ExportRef{
+		Root:         *imp.Root,
+		FromLocalCAR: imp.CARPath,
+	}, api.FileRef{
+		Path:  output,
+		IsCAR: false,
+	}))
+
+	require.FileExists(s.T(), filepath.Join(output, "file.txt"))
+
+	actualContent, err := os.ReadFile(filepath.Join(output, "file.txt"))
+	require.NoError(s.T(), err)
+
+	assert.Equal(s.T(), expectedContent, string(actualContent))
+}
+
+func (s *FilecoinPublisherSuite) retrieveUploadedFile(ctx context.Context, contentCidStr string) api.Import {
+	contentCid, err := cid.Parse(contentCidStr)
+	require.NoError(s.T(), err)
+
+	// Would be nice to be able to do this 'properly'
+	imports, err := s.driver.client.ClientListImports(ctx)
+	require.NoError(s.T(), err)
+
+	for _, imp := range imports {
+		if imp.Root != nil && imp.Root.Equals(contentCid) {
+			return imp
+		}
+	}
+
+	require.Fail(s.T(), "can't find uploaded file", "deal %v not found within %v", contentCid, imports)
+	return api.Import{}
 }

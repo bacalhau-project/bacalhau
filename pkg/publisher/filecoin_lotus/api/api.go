@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/retrievalmarket"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -43,12 +44,15 @@ func NewClient(ctx context.Context, host string, token string) (Client, error) {
 }
 
 type Client interface {
-	ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error)
-	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
+	ClientDealPieceCID(context.Context, cid.Cid) (DataCIDSize, error)
+	ClientExport(context.Context, ExportRef, FileRef) error
+	ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
+	ClientListImports(context.Context) ([]Import, error)
 	ClientImport(context.Context, FileRef) (*ImportRes, error)
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*StorageAsk, error)
+	ClientQueryAsk(context.Context, peer.ID, address.Address) (*StorageAsk, error)
 	ClientStartDeal(context.Context, *StartDealParams) (*cid.Cid, error)
-	StateGetNetworkParams(ctx context.Context) (*NetworkParams, error)
+	StateGetNetworkParams(context.Context) (*NetworkParams, error)
+	StateListMiners(context.Context, TipSetKey) ([]address.Address, error)
 	StateMinerInfo(context.Context, address.Address, TipSetKey) (MinerInfo, error)
 	StateMinerPower(context.Context, address.Address, TipSetKey) (*MinerPower, error)
 	Version(context.Context) (APIVersion, error)
@@ -62,11 +66,14 @@ var _ Client = &api{}
 type api struct {
 	internal struct {
 		ClientDealPieceCID    func(context.Context, cid.Cid) (DataCIDSize, error)
-		ClientGetDealInfo     func(context.Context, cid.Cid) (*DealInfo, error)
+		ClientExport          func(context.Context, ExportRef, FileRef) error
+		ClientGetDealUpdates  func(ctx context.Context) (<-chan DealInfo, error)
+		ClientListImports     func(context.Context) ([]Import, error)
 		ClientImport          func(context.Context, FileRef) (*ImportRes, error)
 		ClientQueryAsk        func(context.Context, peer.ID, address.Address) (*StorageAsk, error)
 		ClientStartDeal       func(context.Context, *StartDealParams) (*cid.Cid, error)
 		StateGetNetworkParams func(context.Context) (*NetworkParams, error)
+		StateListMiners       func(context.Context, TipSetKey) ([]address.Address, error)
 		StateMinerInfo        func(context.Context, address.Address, TipSetKey) (MinerInfo, error)
 		StateMinerPower       func(context.Context, address.Address, TipSetKey) (*MinerPower, error)
 		Version               func(context.Context) (APIVersion, error)
@@ -79,8 +86,16 @@ func (a *api) ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize
 	return a.internal.ClientDealPieceCID(ctx, root)
 }
 
-func (a *api) ClientGetDealInfo(ctx context.Context, cid cid.Cid) (*DealInfo, error) {
-	return a.internal.ClientGetDealInfo(ctx, cid)
+func (a *api) ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error {
+	return a.internal.ClientExport(ctx, exportRef, fileRef)
+}
+
+func (a *api) ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error) {
+	return a.internal.ClientGetDealUpdates(ctx)
+}
+
+func (a *api) ClientListImports(ctx context.Context) ([]Import, error) {
+	return a.internal.ClientListImports(ctx)
 }
 
 func (a *api) ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) {
@@ -97,6 +112,10 @@ func (a *api) ClientStartDeal(ctx context.Context, params *StartDealParams) (*ci
 
 func (a *api) StateGetNetworkParams(ctx context.Context) (*NetworkParams, error) {
 	return a.internal.StateGetNetworkParams(ctx)
+}
+
+func (a *api) StateListMiners(ctx context.Context, key TipSetKey) ([]address.Address, error) {
+	return a.internal.StateListMiners(ctx, key)
 }
 
 func (a *api) StateMinerInfo(ctx context.Context, a2 address.Address, key TipSetKey) (MinerInfo, error) {
@@ -276,4 +295,27 @@ type MinerInfo struct {
 type NetworkParams struct {
 	NetworkName    string
 	BlockDelaySecs uint64
+}
+
+type Import struct {
+	Key      ID
+	Err      string
+	Root     *cid.Cid
+	Source   string
+	FilePath string
+	CARPath  string
+}
+
+type Selector string
+
+type DagSpec struct {
+	DataSelector      *Selector
+	ExportMerkleProof bool
+}
+
+type ExportRef struct {
+	Root         cid.Cid
+	DAGs         []DagSpec
+	FromLocalCAR string
+	DealID       retrievalmarket.DealID
 }
