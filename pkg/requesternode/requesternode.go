@@ -144,6 +144,11 @@ func (node *RequesterNode) triggerStateTransition(ctx context.Context, event mod
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		if err := node.notifyShardInvalidRequest(ctx, shard, event.SourceNodeID, "shard state not found"); err != nil {
+			log.Ctx(ctx).Warn().Msgf(
+				"Received %s for unknown shard %s, and failed to notify the source node %s",
+				event.EventName, shard, event.SourceNodeID)
+		}
 	}
 	return nil
 }
@@ -263,6 +268,18 @@ func (node *RequesterNode) notifyShardError(
 ) error {
 	ev := node.constructShardEvent(shard, model.JobEventError)
 	ev.Status = status
+	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (node *RequesterNode) notifyShardInvalidRequest(
+	ctx context.Context,
+	shard model.JobShard,
+	targetNodeID string,
+	status string,
+) error {
+	ev := node.constructShardEvent(shard, model.JobEventInvalidRequest)
+	ev.Status = status
+	ev.TargetNodeID = targetNodeID
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 

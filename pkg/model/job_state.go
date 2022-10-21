@@ -57,6 +57,10 @@ func (s JobStateType) IsComplete() bool {
 	return s == JobStateCompleted || s == JobStateError
 }
 
+func (s JobStateType) HasPassedBidAcceptedStage() bool {
+	return s == JobStateWaiting || s == JobStateRunning || s == JobStateVerifying || s == JobStateError || s == JobStateCompleted
+}
+
 func (s JobStateType) IsError() bool {
 	return s == JobStateError
 }
@@ -128,7 +132,7 @@ func GetStateFromEvent(eventType JobEventType) JobStateType {
 		return JobStateRunning
 
 	// yikes
-	case JobEventError, JobEventComputeError:
+	case JobEventError, JobEventComputeError, JobEventInvalidRequest:
 		return JobStateError
 
 	// we are complete

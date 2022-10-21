@@ -49,8 +49,9 @@ func (a shardStateAction) String() string {
 
 // request to change the state of the fsm
 type shardStateRequest struct {
-	action shardStateAction
-	reason string
+	action              shardStateAction
+	reason              string
+	skipNotifyOnFailure bool
 }
 
 // types of shard state machines
@@ -220,11 +221,11 @@ type shardStateMachine struct {
 
 	currentState  shardStateType
 	previousState shardStateType
+	latestRequest *shardStateRequest
 
-	runOutput       *model.RunCommandResult
-	resultProposal  []byte
-	cancellationMsg string
-	errorMsg        string
+	runOutput      *model.RunCommandResult
+	resultProposal []byte
+	errorMsg       string
 
 	notifyOnFailure bool
 }
@@ -284,8 +285,15 @@ func (m *shardStateMachine) Cancel(ctx context.Context, reason string) {
 	m.sendRequest(ctx, shardStateRequest{action: actionCancel, reason: reason})
 }
 
+// Move to an error state, and notify requester node if a bid was already published.
 func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
 	m.sendRequest(ctx, shardStateRequest{action: actionFail, reason: reason})
+}
+
+// Move to an error state without publishing an error to the requester node. This is used when the requester node
+// rejects an invalid request from this compute node, and we don't want to publish an error to the requester node.
+func (m *shardStateMachine) FailSilently(ctx context.Context, reason string) {
+	m.sendRequest(ctx, shardStateRequest{action: actionFail, reason: reason, skipNotifyOnFailure: true})
 }
 
 // send a request to the state machine by enquing it in the request channel.
@@ -302,6 +310,18 @@ func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateR
 		}
 	}()
 	m.req <- request
+}
+
+// Read request from the channel and return it.
+// The method also caches the latest request to enable the state machine to use the additional information it holds.
+func (m *shardStateMachine) readRequest(ctx context.Context) *shardStateRequest {
+	select {
+	case request := <-m.req:
+		m.latestRequest = &request
+	case <-ctx.Done():
+		m.latestRequest = &shardStateRequest{action: actionFail, reason: "context canceled"}
+	}
+	return m.latestRequest
 }
 
 type StateFn func(context.Context, *shardStateMachine) StateFn
@@ -326,7 +346,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardEnqueued)
 
 	for {
-		req := <-m.req
+		req := m.readRequest(ctx)
 		switch req.action {
 		case actionBid:
 			err := m.node.notifyBidJob(ctx, m.Shard)
@@ -341,7 +361,6 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 
 			return biddingState
 		case actionCancel:
-			m.cancellationMsg = req.reason
 			return cancelledState
 		case actionFail:
 			m.errorMsg = req.reason
@@ -357,7 +376,7 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardBidding)
 
 	for {
-		req := <-m.req
+		req := m.readRequest(ctx)
 		switch req.action {
 		case actionRun:
 			return runningState
@@ -432,7 +451,7 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	for {
-		req := <-m.req
+		req := m.readRequest(ctx)
 		switch req.action {
 		case actionPublish:
 			return publishingToRequesterState
@@ -481,7 +500,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	if m.notifyOnFailure {
+	if m.notifyOnFailure && !m.latestRequest.skipNotifyOnFailure {
 		// we sent a bid, so we need to publish our failure to the network
 		err := m.node.notifyShardError(
 			ctx,
@@ -498,7 +517,7 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 }
 
 func cancelledState(ctx context.Context, m *shardStateMachine) StateFn {
-	m.transitionedTo(ctx, shardCancelled, m.cancellationMsg)
+	m.transitionedTo(ctx, shardCancelled, m.latestRequest.reason)
 	// no notifications need to be sent here as you can only cancel a shard before a bid is sent.
 	return completedState
 }

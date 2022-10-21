@@ -392,26 +392,15 @@ func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.J
 		return false
 	}
 
-	bidsSeen := 0
 	acceptedBidsSeen := 0
 
 	for _, shardState := range shardStates { //nolint:gocritic
-		if shardState.State == model.JobStateBidding {
-			bidsSeen++
-		} else if shardState.State == model.JobStateWaiting {
+		if shardState.State.HasPassedBidAcceptedStage() {
 			acceptedBidsSeen++
 		}
 	}
 
-	if acceptedBidsSeen >= j.Deal.Concurrency {
-		return true
-	}
-
-	if bidsSeen >= j.Deal.Concurrency*2 {
-		return true
-	}
-
-	return false
+	return acceptedBidsSeen >= j.Deal.Concurrency
 }
 
 // group states by shard index so we can easily iterate over a whole set of them

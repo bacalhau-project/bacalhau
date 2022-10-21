@@ -22,12 +22,13 @@ func _() {
 	_ = x[JobEventResultsRejected-11]
 	_ = x[JobEventResultsPublished-12]
 	_ = x[JobEventError-13]
-	_ = x[jobEventDone-14]
+	_ = x[JobEventInvalidRequest-14]
+	_ = x[jobEventDone-15]
 }
 
-const _JobEventType_name = "jobEventUnknownCreatedDealUpdatedBidBidAcceptedBidRejectedBidCancelledRunningComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorjobEventDone"
+const _JobEventType_name = "jobEventUnknownCreatedDealUpdatedBidBidAcceptedBidRejectedBidCancelledRunningComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorInvalidRequestjobEventDone"
 
-var _JobEventType_index = [...]uint8{0, 15, 22, 33, 36, 47, 58, 70, 77, 89, 104, 119, 134, 150, 155, 167}
+var _JobEventType_index = [...]uint8{0, 15, 22, 33, 36, 47, 58, 70, 77, 89, 104, 119, 134, 150, 155, 169, 181}
 
 func (i JobEventType) String() string {
 	if i < 0 || i >= JobEventType(len(_JobEventType_index)-1) {

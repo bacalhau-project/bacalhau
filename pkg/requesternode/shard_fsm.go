@@ -188,10 +188,19 @@ func (m *shardStateMachine) resultsPublished(ctx context.Context, sourceNodeID s
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			go m.notifyInvalidRequest(ctx, request, "shard fsm is completed")
 		}
 	}()
 	m.req <- request
+}
+
+// Notify the compute node that the request is invalid.
+func (m *shardStateMachine) notifyInvalidRequest(ctx context.Context, request shardStateRequest, reason string) {
+	log.Ctx(ctx).Warn().Msgf("%s ignoring request due to `%s`: %+v", m, reason, request)
+
+	if err := m.node.notifyShardInvalidRequest(ctx, m.shard, request.sourceNodeID, reason); err != nil {
+		log.Ctx(ctx).Warn().Msgf("%s failed to notify invalid request `%s`: %+v due to %s", m, reason, request, err)
+	}
 }
 
 // ------------------------------------
@@ -224,7 +233,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) stateFn {
 				log.Ctx(ctx).Warn().Msgf("%s ignoring duplicate bid from %s", m, req.sourceNodeID)
 			}
 		default:
-			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			m.notifyInvalidRequest(ctx, req, fmt.Sprintf("invalid action %s in state %s", req.action, m.currentState))
 		}
 	}
 }
@@ -297,10 +306,10 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 			if _, ok := m.biddingNodes[req.sourceNodeID]; ok {
 				m.completedNodes[req.sourceNodeID] = struct{}{}
 			} else {
-				log.Ctx(ctx).Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
+				m.notifyInvalidRequest(ctx, req, "results received from a non-bidding node")
 			}
 		default:
-			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			m.notifyInvalidRequest(ctx, req, fmt.Sprintf("invalid action %s in state %s", req.action, m.currentState))
 		}
 	}
 }
@@ -329,10 +338,10 @@ func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 					return verifyingResultsState
 				}
 			} else {
-				log.Ctx(ctx).Warn().Msgf("%s ignoring result from %s", m, req.sourceNodeID)
+				m.notifyInvalidRequest(ctx, req, "results received from a non-bidding node")
 			}
 		default:
-			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			m.notifyInvalidRequest(ctx, req, fmt.Sprintf("invalid action %s in state %s", req.action, m.currentState))
 		}
 	}
 }
@@ -365,7 +374,7 @@ func waitingToPublishResultsState(ctx context.Context, m *shardStateMachine) sta
 			//  publish the result and not all the compute nodes.
 			return completedState
 		default:
-			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			m.notifyInvalidRequest(ctx, req, fmt.Sprintf("invalid action %s in state %s", req.action, m.currentState))
 		}
 	}
 }
