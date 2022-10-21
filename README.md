@@ -7,7 +7,7 @@ All [code examples](https://docs.bacalhau.org/examples/) live in a dedicated rep
 
 * [Bacalhau Website](https://www.bacalhau.org/)
 * [Bacalhau Core Code Repository](https://github.com/filecoin-project/bacalhau)
-* [Slack Community](https://filecoinproject.slack.com/archives/C02RLM3JHUY) open to anyone!
+* [Slack Community](https://filecoin.io/slack) go to #bacalhau channel - its open to anyone!
 * [Twitter](https://twitter.com/BacalhauProject)
 * [YouTube Channel](https://www.youtube.com/channel/UC45IQagLzNR3wdNCUn4vi0A)
 
