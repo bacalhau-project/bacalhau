@@ -400,11 +400,7 @@ func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.J
 		}
 	}
 
-	if acceptedBidsSeen >= j.Deal.Concurrency {
-		return true
-	}
-
-	return false
+	return acceptedBidsSeen >= j.Deal.Concurrency
 }
 
 // group states by shard index so we can easily iterate over a whole set of them
