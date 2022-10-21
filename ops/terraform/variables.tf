@@ -71,8 +71,9 @@ variable "ssh_access_cidrs" {
 // on the node's persistent data disk. This is useful for initialising stuff
 // like API keys that shouldn't go in the public repo.
 variable "honeycomb_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
 }
 
 // Out of a total of var.instance_count machines, how many do you want to be GPU machines?
@@ -111,8 +112,9 @@ variable "prometheus_version" {
 // https://grafana.com/docs/grafana-cloud/fundamentals/cloud-portal/
 // Note: this is not an account-wide API key, but rather a key for Prometheus
 variable "grafana_cloud_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
 }
 
 variable "grafana_cloud_api_user" {
@@ -128,6 +130,7 @@ variable "grafana_cloud_api_endpoint" {
 }
 
 variable "estuary_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
 }
