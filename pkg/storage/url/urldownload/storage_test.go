@@ -215,3 +215,92 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 		}
 	}
 }
+
+func (s *StorageSuite) TestImageDownloaderLiveRedirectURL() {
+	filetypeCases := map[string]struct {
+		URL           string
+		fileName      string
+		content       string
+		valid         bool
+		errorContains string
+		errorMsg      string
+	}{
+		"PicSum": {URL: "https://picsum.photos/200/300",
+			fileName:      "300.jpg",
+			content:       "",
+			valid:         true,
+			errorContains: "",
+			errorMsg:      "TYPE: Valid"},
+	}
+
+	for filetypeName, ftc := range filetypeCases {
+		name := fmt.Sprintf("%s-%s", filetypeName, ftc.URL)
+
+		content, err := func() (string, error) {
+			cm := system.NewCleanupManager()
+			ctx := context.Background()
+			sp, err := NewStorage(cm)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to create storage provider", name)
+			}
+
+			spec := model.StorageSpec{
+				StorageSource: model.StorageSourceURLDownload,
+				URL:           ftc.URL,
+				Path:          "/inputs",
+			}
+
+			volume, err := sp.PrepareStorage(ctx, spec)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to prepare storage: %+v", name, err)
+			}
+
+			// If we have a filename, it should exist in the spec
+			if ftc.fileName != "" {
+				require.Equalf(s.T(), filepath.Join(spec.Path, ftc.fileName), volume.Target, "%s: expected valid to be %t", name, ftc.valid)
+			} else {
+				// The spec should end with a UUID after /inputs
+				re := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`)
+				require.Regexpf(s.T(), re, volume.Target, "%s: expected target name to end with <UUID>. Actual ending: ", name, volume.Target)
+			}
+
+			file, err := os.Open(volume.Source)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to open file: %+v", name, err)
+			}
+
+			defer func() {
+				if err = file.Close(); err != nil {
+					require.Fail(s.T(), "failed to close file: %s", name)
+				}
+			}()
+
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				return "", fmt.Errorf("%s: failed to read file: %+v", name, err)
+			}
+
+			if len(content) == 0 {
+				return "", fmt.Errorf("%s: file is empty", name)
+			}
+
+			return string(content), nil
+		}()
+
+		if ftc.valid {
+			// For non-deterministic files (eg from live, changing URLs), we won't know what the content
+			// is, so we'll just skip the content check - we've gotten enough tests until now
+			if ftc.content != "" {
+				text := string(content)
+				require.Equal(s.T(), ftc.content, text, "%s: content of file does not match", name)
+			}
+		} else {
+			require.Error(s.T(), err, "%s: expected error", name)
+			require.Contains(s.T(),
+				err.Error(),
+				ftc.errorContains,
+				"%s: error does not contain expected string",
+				name)
+		}
+	}
+}

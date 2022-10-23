@@ -163,6 +163,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	} else {
 		finalFileName = filePath
 	}
+
 	fileWriteName := w.Name()
 	log.Debug().Msgf("Final file name based on URL: %s", finalFileName)
 	log.Debug().Msgf("Final written name: %s", fileWriteName)
@@ -172,6 +173,10 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		if err != nil {
 			return storage.StorageVolume{}, fmt.Errorf("failed to rename file %s to %s: %s", w.Name(), finalFileName, err)
 		}
+
+		// Need to update filePath and targetPath to accommodate the rename
+		filePath = filepath.Join(outputPath, filepath.Base(finalFileName))
+		targetPath = filepath.Join(storageSpec.Path, filepath.Base(finalFileName))
 	}
 
 	r.RawBody().Close()
