@@ -178,6 +178,10 @@ test:
 grc-test:
 	grc go test ./... -v -p 4
 
+.PHONY: grc-test-short
+grc-test:
+	grc go test ./... -test.short -v
+
 .PHONY: test-debug
 test-debug:
 	LOG_LEVEL=debug go test ./... -v -p 4

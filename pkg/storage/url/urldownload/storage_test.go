@@ -217,6 +217,14 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 }
 
 func (s *StorageSuite) TestImageDownloaderLiveRedirectURL() {
+	// This test will fail when offline - we should build a checker to see if someone
+	// is connected to the internet and skip this test if they are not.
+	// This test will also fail if the URL is not reachable.
+	// Using -test.short flag for now
+	if testing.Short() {
+		s.T().Skip("Skipping test that requires internet connection")
+	}
+
 	filetypeCases := map[string]struct {
 		URL           string
 		fileName      string
