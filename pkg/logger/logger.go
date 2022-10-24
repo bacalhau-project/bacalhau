@@ -83,7 +83,7 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 		return fmt.Sprintf("%s]", i)
 	}
 
-	zerolog.CallerMarshalFunc = func(file string, line int) string {
+	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
 		short := file
 
 		separatorCount := 2

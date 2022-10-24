@@ -48,6 +48,7 @@ var runWasmCommand = &cobra.Command{
 	Long:    languageRunLong,
 	Example: languageRunExample,
 	Args:    cobra.ExactArgs(2),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
