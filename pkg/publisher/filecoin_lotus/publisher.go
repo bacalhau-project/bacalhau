@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/go-address"
 	big2 "github.com/filecoin-project/go-state-types/big"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pelletier/go-toml/v2"
@@ -24,14 +26,14 @@ import (
 )
 
 type PublisherConfig struct {
-	// Address of the miner to upload to
-	MinerAddress string
 	// How long the deal for the data should be created for
 	StorageDuration time.Duration
 	// Location of the Lotus configuration directory - either $LOTUS_PATH or ~/.lotus
 	LotusDataDir string
 	// Directory to use when uploading content to Lotus - optional
 	LotusUploadDir string
+	// How close miner should be when selecting the cheapest
+	MaximumPing time.Duration
 }
 
 type Publisher struct {
@@ -49,14 +51,14 @@ func NewFilecoinLotusPublisher(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewFilecoinLotusPublisher")
 	defer span.End()
 
-	if config.MinerAddress == "" {
-		return nil, errors.New("MinerAddress is required")
-	}
 	if config.StorageDuration == time.Duration(0) {
 		return nil, errors.New("StorageDuration is required")
 	}
 	if config.LotusDataDir == "" {
 		return nil, errors.New("LotusDataDir is required")
+	}
+	if config.MaximumPing == time.Duration(0) {
+		return nil, errors.New("MaximumPing is required")
 	}
 
 	tokenFile := filepath.Join(config.LotusDataDir, "token")
@@ -196,54 +198,38 @@ func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string,
 		return "", err
 	}
 
-	miner, err := address.NewFromString(l.config.MinerAddress)
-	if err != nil {
-		return "", err
-	}
-
 	params, err := l.client.StateGetNetworkParams(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	minerInfo, err := l.client.StateMinerInfo(ctx, miner, api.TipSetKey{})
-	if err != nil {
-		return "", err
-	}
-
-	// Note for the future - if we want to find miners, rather than be told them, then the lotus client currently:
-	// * checks `StateMinerPower` to see if `HasMinPower` is true
-	// * plays around with the 'ping' of each node, that is how long it took for the node to respond to `ClientQueryAsk`
-	// * filters candidates based on whether their proposed amount is less than the budget
-	// * select _n_ of the remaining miners
-
-	power, err := l.client.StateMinerPower(ctx, miner, api.TipSetKey{})
-	if err != nil {
-		return "", err
-	}
-	if !power.HasMinPower {
-		return "", fmt.Errorf("doesn't have min power")
-	}
-
-	ask, err := l.client.ClientQueryAsk(ctx, *minerInfo.PeerId, miner)
-	if err != nil {
-		return "", err
-	}
-
-	if ask.Response.MinPieceSize > dataSize.PieceSize {
-		return "", fmt.Errorf("data too small")
-	}
-	if ask.Response.MaxPieceSize < dataSize.PieceSize {
-		return "", fmt.Errorf("data too big")
-	}
-
-	epochPrice := big2.Div(big2.Mul(ask.Response.Price, big2.NewIntUnsigned(uint64(dataSize.PieceSize))), big2.NewInt(oneGibibyte))
 
 	epochs := api.ChainEpoch(l.config.StorageDuration / (time.Duration(params.BlockDelaySecs) * time.Second))
 
 	wallet, err := l.client.WalletDefaultAddress(ctx)
 	if err != nil {
 		return "", err
+	}
+
+	miners, err := l.client.StateListMiners(ctx, api.TipSetKey{})
+	if err != nil {
+		return "", err
+	}
+
+	asks, errs := throttledMap(miners, func(miner address.Address) (*ask, error) {
+		return l.queryMiner(ctx, dataSize, miner)
+	}, parallelMinerQueries)
+	if len(asks) == 0 {
+		log.Ctx(ctx).
+			Err(multierror.Append(nil, errs...)).
+			Msg("Couldn't find a miner")
+		return "", fmt.Errorf("unable to find a miner")
+	}
+
+	cheapest := asks[0]
+	for _, a := range asks {
+		if a.epochPrice.LessThan(cheapest.epochPrice) {
+			cheapest = a
+		}
 	}
 
 	deal, err := l.client.ClientStartDeal(ctx, &api.StartDealParams{
@@ -254,8 +240,8 @@ func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string,
 			PieceSize:    dataSize.PieceSize.Unpadded(),
 		},
 		Wallet:            wallet,
-		Miner:             miner,
-		EpochPrice:        epochPrice,
+		Miner:             cheapest.miner,
+		EpochPrice:        cheapest.epochPrice,
 		MinBlocksDuration: uint64(epochs),
 	})
 	if err != nil {
@@ -264,27 +250,102 @@ func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string,
 
 	log.Ctx(ctx).Info().Stringer("cid", deal).Msg("Deal started")
 
-	for {
-		info, err := l.client.ClientGetDealInfo(ctx, *deal)
-		if err != nil {
-			return "", err
-		}
-		wanted := storagemarket.StorageDealCheckForAcceptance
-		if info.State == wanted {
-			return deal.String(), nil
-		}
-
-		if info.State == storagemarket.StorageDealFailing || info.State == storagemarket.StorageDealError {
-			return "", fmt.Errorf("deal not accepted: %s", info.Message)
-		}
-
-		log.Ctx(ctx).Info().
-			Stringer("cid", deal).
-			Str("current", storagemarket.DealStates[info.State]).
-			Str("expected", storagemarket.DealStates[wanted]).
-			Msg("Deal not currently in expected state")
-		time.Sleep(2 * time.Second)
+	if err := l.waitUntilDealIsReady(ctx, deal); err != nil {
+		return "", err
 	}
+
+	return deal.String(), nil
+}
+
+func (l *Publisher) waitUntilDealIsReady(ctx context.Context, deal *cid.Cid) error {
+	// The go-jsonrpc library that the `client` uses relies on the context to know when to stop writing to the info channel
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	infoChan, err := l.client.ClientGetDealUpdates(ctx)
+	if err != nil {
+		return err
+	}
+
+	t := time.NewTicker(3 * time.Second)
+	defer t.Stop()
+
+	// The documentation recommends that, at least for lite nodes, we should wait until the deal's state is `StorageDealActive`.
+	// This can take a long time, an hour or so, with the test image.
+	// Additional states after `StorageDealCheckForAcceptance` are:
+	// * `StorageDealAwaitingPreCommit` is reached once the sector available for sealing - a.k.a. no more data allowed
+	// * `StorageDealSealing` is reached after PreCommit has happened (150 epochs?)
+	// * `StorageDealActive` - sector has been sealed and everything is ready
+	var currentState storagemarket.StorageDealStatus
+	wanted := storagemarket.StorageDealCheckForAcceptance
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case info := <-infoChan:
+			if deal.Equals(info.ProposalCid) {
+				if info.State == wanted {
+					return nil
+				}
+
+				if info.State == storagemarket.StorageDealFailing || info.State == storagemarket.StorageDealError {
+					return fmt.Errorf("deal not accepted: %s", info.Message)
+				}
+				currentState = info.State
+			}
+		case <-t.C:
+			log.Ctx(ctx).Info().
+				Stringer("deal", deal).
+				Str("current", storagemarket.DealStates[currentState]).
+				Str("expected", storagemarket.DealStates[wanted]).
+				Msg("Deal not currently in expected state")
+		}
+	}
+}
+
+func (l *Publisher) queryMiner(ctx context.Context, dataSize api.DataCIDSize, miner address.Address) (*ask, error) {
+	minerInfo, err := l.client.StateMinerInfo(ctx, miner, api.TipSetKey{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get miner %s info: %w", miner, err)
+	}
+
+	power, err := l.client.StateMinerPower(ctx, miner, api.TipSetKey{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get miner %s power: %w", miner, err)
+	}
+	if !power.HasMinPower {
+		return nil, fmt.Errorf("miner %s doesn't have min power", miner)
+	}
+
+	start := time.Now()
+	query, err := l.client.ClientQueryAsk(ctx, *minerInfo.PeerId, miner)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query miner %s: %w", miner, err)
+	}
+	ping := time.Since(start)
+
+	if ping > l.config.MaximumPing {
+		return nil, fmt.Errorf("ping for miner %s (%s) is too large", miner, ping)
+	}
+
+	if query.Response.MinPieceSize > dataSize.PieceSize {
+		return nil, fmt.Errorf("data size (%v) is too small for miner %s (%v)", dataSize.PieceSize, miner, query.Response.MinPieceSize)
+	}
+	if query.Response.MaxPieceSize < dataSize.PieceSize {
+		return nil, fmt.Errorf("data size (%v) is too big for miner %s (%v)", dataSize.PieceSize, miner, query.Response.MaxPieceSize)
+	}
+
+	epochPrice := big2.Div(big2.Mul(query.Response.Price, big2.NewIntUnsigned(uint64(dataSize.PieceSize))), big2.NewInt(oneGibibyte))
+
+	return &ask{
+		miner:      miner,
+		epochPrice: epochPrice,
+	}, nil
+}
+
+type ask struct {
+	miner      address.Address
+	epochPrice big2.Int
 }
 
 func fetchHostnameFromConfig(file string) (string, error) {
@@ -335,3 +396,40 @@ func fetchHostnameFromConfig(file string) (string, error) {
 var _ publisher.Publisher = &Publisher{}
 
 const oneGibibyte = 1 << 30
+const parallelMinerQueries = 50
+
+func throttledMap[T any, V comparable](ts []T, f func(T) (V, error), concurrent int) ([]V, []error) {
+	throttle := make(chan struct{}, concurrent)
+	mu := sync.Mutex{}
+	var wg sync.WaitGroup
+
+	var errs []error
+	var vs []V
+
+	var empty V
+
+	for _, t := range ts {
+		t := t
+		wg.Add(1)
+		throttle <- struct{}{}
+		go func() {
+			defer func() {
+				<-throttle
+			}()
+			defer wg.Done()
+
+			v, err := f(t)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = append(errs, err)
+			} else if v != empty {
+				vs = append(vs, v)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	return vs, errs
+}

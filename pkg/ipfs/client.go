@@ -239,7 +239,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	return res, nil
 }
 
-// HadCID returns true if the node has the given CID locally, whether pinned or not.
+// HasCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
 	defer span.End()
