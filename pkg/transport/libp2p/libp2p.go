@@ -97,7 +97,14 @@ func NewTransportFromOptions(ctx context.Context,
 		pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
 		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
 	)
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams), pubsub.WithEventTracer(tracer))
+	ps, err := pubsub.NewGossipSub(
+		ctx,
+		h,
+		pubsub.WithFloodPublish(true),
+		pubsub.WithPeerExchange(true),
+		pubsub.WithPeerGater(pgParams),
+		pubsub.WithEventTracer(tracer),
+	)
 	if err != nil {
 		return nil, err
 	}
