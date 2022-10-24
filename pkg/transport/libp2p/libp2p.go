@@ -78,6 +78,11 @@ func NewTransportFromOptions(ctx context.Context,
 		return nil
 	})
 
+	tracer, err := pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	if err != nil {
+		return nil, err
+	}
+
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
@@ -92,7 +97,7 @@ func NewTransportFromOptions(ctx context.Context,
 		pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
 		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
 	)
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams))
+	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams), pubsub.WithEventTracer(tracer))
 	if err != nil {
 		return nil, err
 	}

@@ -103,6 +103,11 @@ func SetDownloadURLRequestRetries(count int) {
 	downloadURLRequestRetries = count
 }
 
+func GetLibp2pTracerPath() string {
+	configPath := GetConfigPath()
+	return filepath.Join(configPath, "bacalhau-libp2p-tracer.json")
+}
+
 func GetConfigPath() string {
 	suffix := "/.bacalhau"
 	env := os.Getenv("BACALHAU_PATH")
