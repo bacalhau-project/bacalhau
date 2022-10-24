@@ -55,6 +55,7 @@ var getCmd = &cobra.Command{
 	Long:    getLong,
 	Example: getExample,
 	Args:    cobra.ExactArgs(1),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()

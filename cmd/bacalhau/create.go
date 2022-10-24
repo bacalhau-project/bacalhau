@@ -71,6 +71,7 @@ var createCmd = &cobra.Command{
 	Long:    createLong,
 	Example: createExample,
 	Args:    cobra.MinimumNArgs(0),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()

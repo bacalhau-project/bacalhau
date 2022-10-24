@@ -130,6 +130,7 @@ var listCmd = &cobra.Command{
 	Short:   "List jobs on the network",
 	Long:    listLong,
 	Example: listExample,
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()

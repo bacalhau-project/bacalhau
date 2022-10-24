@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -679,4 +680,16 @@ func FakeFatalErrorHandler(msg string, code int) {
 	c := model.TestFatalErrorHandlerContents{Message: msg, Code: code}
 	b, _ := json.Marshal(c)
 	RootCmd.Println(string(b))
+}
+
+// applyPorcelainLogLevel sets the log level of loggers running on user-facing
+// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
+func applyPorcelainLogLevel(cmd *cobra.Command, args []string) {
+	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err != nil {
+		return
+	}
+
+	ctx := cmd.Context()
+	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
+	cmd.SetContext(ctx)
 }
