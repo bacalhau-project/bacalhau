@@ -195,17 +195,17 @@ func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 	require.NoError(s.T(), err, "Error walking results directory")
 
 	require.Equal(s.T(), strings.Join([]string{
-		fmt.Sprintf("/job-%s-shard-0-host-%s", jobID, hostID),
-		fmt.Sprintf("/job-%s-shard-0-host-%s/outputs", jobID, hostID),
-		"/shards",
-		fmt.Sprintf("/shards/job-%s-shard-0-host-%s", jobID, hostID),
-		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/exitCode", jobID, hostID),
-		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/stderr", jobID, hostID),
-		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/stdout", jobID, hostID),
-		"/stderr",
-		"/stdout",
-		"/volumes",
-		"/volumes/outputs",
+		fmt.Sprintf("/job-%s", jobID),
+		fmt.Sprintf("/job-%s/shards", jobID),
+		fmt.Sprintf("/job-%s/shards/0", jobID),
+		fmt.Sprintf("/job-%s/shards/0/node-%s", jobID, system.GetShortID(hostID)),
+		fmt.Sprintf("/job-%s/shards/0/node-%s/exitCode", jobID, system.GetShortID(hostID)),
+		fmt.Sprintf("/job-%s/shards/0/node-%s/stderr", jobID, system.GetShortID(hostID)),
+		fmt.Sprintf("/job-%s/shards/0/node-%s/stdout", jobID, system.GetShortID(hostID)),
+		fmt.Sprintf("/job-%s/stderr", jobID),
+		fmt.Sprintf("/job-%s/stdout", jobID),
+		fmt.Sprintf("/job-%s/volumes", jobID),
+		fmt.Sprintf("/job-%s/volumes/outputs", jobID),
 	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
 
 	fmt.Printf(" --------------------------------------\n")
