@@ -205,20 +205,15 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			*ODR = *NewDockerRunOptions()
 
-			dir := s.T().TempDir()
-
 			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 			require.NoError(s.T(), err)
-			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			ODR.DownloadFlags.OutputDir = dir
-
-			outputDir := s.T().TempDir()
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
+				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
-				"--output-dir", outputDir,
+				"--output-dir", s.T().TempDir(),
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",
