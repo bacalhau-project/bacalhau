@@ -110,4 +110,4 @@ Here are a few resources that provides a deeper dive into running jobs with Baca
 
 ## Support
 
-For help with the Bacalau client, installation, or other questions, please reach out to the [Bacalhau team via Slack](https://filecoinproject.slack.com/archives/C02RLM3JHUY).
+For help with the Bacalhau client, installation, or other questions, please reach out to the [Bacalhau team via Slack (#bacalhau channel)](https://filecoin.io/slack).
