@@ -215,6 +215,13 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
 	)
 
+	dockerRunCmd.PersistentFlags().BoolVar(
+		&ODR.RunTimeSettings.AutoDownloadResults,
+		"download",
+		ODR.RunTimeSettings.AutoDownloadResults,
+		"Should we download the results once the job is complete?",
+	)
+
 	setupDownloadFlags(dockerRunCmd, &ODR.DownloadFlags)
 	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
@@ -303,10 +310,16 @@ func CreateJob(ctx context.Context,
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
+	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
+
+	if swarmAddresses == "" {
+		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+	}
+
 	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
 		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
 		OutputDir:      odr.DownloadFlags.OutputDir,
-		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+		IPFSSwarmAddrs: swarmAddresses,
 	}
 
 	engineType, err := model.ParseEngine(odr.Engine)
