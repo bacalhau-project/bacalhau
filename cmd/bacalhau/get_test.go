@@ -149,6 +149,9 @@ func (suite *GetSuite) TestGetJob() {
 
 }
 
+// this tests that when we do docker run with no --output-dir
+// it makes it's own folder to put the results in and does not splat results
+// all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
@@ -157,12 +160,17 @@ func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(s.T(), err)
 
-	pwd, err := os.Getwd()
+	// switch wd to a temp dir so we are not writing folders to the current directory
+	// (the point of this test is to see what happens when we DONT pass --output-dir)
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
-	fmt.Printf("pwd --------------------------------------\n")
-	spew.Dump(pwd)
+	originalWd, err := os.Getwd()
+	require.NoError(s.T(), err)
+	err = os.Chdir(tempDir)
+	require.NoError(s.T(), err)
+	defer os.Chdir(originalWd)
 
-	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -173,9 +181,33 @@ func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 		"echo", "hello from docker submit wait",
 	)
 	require.NoError(s.T(), err, "Error submitting job")
-	// c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", stack.Nodes[0].APIServer.Host, stack.Nodes[0].APIServer.Port))
-	// job := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
-	// fmt.Printf("job --------------------------------------\n")
-	// spew.Dump(job.ID)
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := stack.Nodes[0].HostID
 
+	files := []string{}
+	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		addPath := strings.Replace(path, tempDir, "", 1)
+		if addPath != "" {
+			files = append(files, addPath)
+		}
+		return nil
+	})
+	require.NoError(s.T(), err, "Error walking results directory")
+
+	require.Equal(s.T(), strings.Join([]string{
+		fmt.Sprintf("/job-%s-shard-0-host-%s", jobID, hostID),
+		fmt.Sprintf("/job-%s-shard-0-host-%s/outputs", jobID, hostID),
+		"/shards",
+		fmt.Sprintf("/shards/job-%s-shard-0-host-%s", jobID, hostID),
+		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/exitCode", jobID, hostID),
+		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/stderr", jobID, hostID),
+		fmt.Sprintf("/shards/job-%s-shard-0-host-%s/stdout", jobID, hostID),
+		"/stderr",
+		"/stdout",
+		"/volumes",
+		"/volumes/outputs",
+	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
+
+	fmt.Printf(" --------------------------------------\n")
+	spew.Dump(files)
 }
