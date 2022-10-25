@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
@@ -226,7 +225,6 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 
 type RunTimeSettings struct {
 	AutoDownloadResults   bool // Automatically download the results after finishing
-	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
 	IsLocal               bool // Job should be executed locally
 	WaitForJobToFinish    bool // Wait for the job to finish before returning
 	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
@@ -237,17 +235,11 @@ func NewRunTimeSettings() *RunTimeSettings {
 		AutoDownloadResults:   false,
 		WaitForJobToFinish:    true,
 		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
-		IPFSGetTimeOut:        10,
 		IsLocal:               false,
 	}
 }
 
 func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
-	cmd.PersistentFlags().IntVarP(
-		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
-		`Timeout for getting the results of a job in --wait`,
-	)
-
 	cmd.PersistentFlags().BoolVar(
 		&settings.IsLocal, "local", settings.IsLocal,
 		`Run the job locally. Docker is required`,
@@ -396,7 +388,7 @@ To get more details about the run, execute:
 	}
 
 	if runtimeSettings.AutoDownloadResults {
-		results, err := getResults(ctx, apiClient, j)
+		results, err := apiClient.GetResults(ctx, j.ID)
 		if err != nil {
 			return errors.Wrap(err, "error getting results")
 		}
@@ -405,7 +397,14 @@ To get more details about the run, execute:
 			return fmt.Errorf("no results found")
 		}
 
-		err = downloadResults(ctx, cmd, cm, j.Spec.Outputs, results, downloadSettings)
+		err = ipfs.DownloadJob(
+			ctx,
+			cm,
+			j.Spec.Outputs,
+			results,
+			downloadSettings,
+		)
+
 		if err != nil {
 			return errors.Wrap(err, "error downloading results")
 		}
@@ -424,49 +423,6 @@ func submitJob(ctx context.Context,
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}
 	return j, err
-}
-
-func getResults(ctx context.Context, apiClient *publicapi.APIClient, j *model.Job) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "getresults")
-	defer span.End()
-
-	results, err := apiClient.GetResults(ctx, j.ID)
-	if err != nil {
-		return nil, err
-	}
-	if len(results) == 0 {
-		return nil, fmt.Errorf("no results found")
-	}
-	return results, nil
-}
-
-func downloadResults(ctx context.Context,
-	cmd *cobra.Command,
-	cm *system.CleanupManager,
-	outputs []model.StorageSpec,
-	results []model.StorageSpec,
-	downloadSettings ipfs.IPFSDownloadSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.downloadresults")
-	defer span.End()
-
-	err := ipfs.DownloadJob(
-		ctx,
-		cm,
-		outputs,
-		results,
-		downloadSettings,
-	)
-	if err != nil {
-		return err
-	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
-	if err != nil {
-		return err
-	}
-	cmd.Println()
-	cmd.Println(string(body))
-
-	return nil
 }
 
 func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error) {
