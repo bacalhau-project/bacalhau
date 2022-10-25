@@ -10,9 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -143,5 +146,36 @@ func (suite *GetSuite) TestGetJob() {
 			// fmt.Println(out)
 		}()
 	}
+
+}
+
+func (s *GetSuite) TestDockerRunWriteToJobFolder() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	require.NoError(s.T(), err)
+
+	pwd, err := os.Getwd()
+	require.NoError(s.T(), err)
+	fmt.Printf("pwd --------------------------------------\n")
+	spew.Dump(pwd)
+
+	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--wait",
+		"--download",
+		"ubuntu",
+		"--",
+		"echo", "hello from docker submit wait",
+	)
+	require.NoError(s.T(), err, "Error submitting job")
+	// c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", stack.Nodes[0].APIServer.Host, stack.Nodes[0].APIServer.Port))
+	// job := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+	// fmt.Printf("job --------------------------------------\n")
+	// spew.Dump(job.ID)
 
 }
