@@ -196,13 +196,6 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.Flags().IntVar(&ODR.DownloadFlags.TimeoutSecs, "download-timeout-secs",
-		ODR.DownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.OutputDir, "output-dir",
-		ODR.DownloadFlags.OutputDir, "Directory to write the output to.")
-	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
-		ODR.DownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
-
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
 		`Use this pattern to match files to be sharded.`,
@@ -222,6 +215,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
 	)
 
+	setupDownloadFlags(dockerRunCmd, &ODR.DownloadFlags)
 	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
 
