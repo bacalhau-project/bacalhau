@@ -11,10 +11,17 @@ variable "bacalhau_unsafe_cluster" {
   type    = bool
   default = false
 }
-# connect to a known node0 id
-# this is used for long lived clusters that have already been bootstrapped
-# and the node0 id is derived from a persisted known private key
-variable "bacalhau_connect_node0" {
+# these are used for long lived clusters that have already been bootstrapped
+# and the node0, node1 and node2 ids are derived from a persisted known private key
+variable "bacalhau_node_id_0" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_id_1" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_id_2" {
   type    = string
   default = ""
 }
