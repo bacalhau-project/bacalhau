@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -54,9 +53,6 @@ func ConstructDockerJob( //nolint:funlen
 	shardingBatchSize int,
 	doNotTrack bool,
 ) (*model.Job, error) {
-	if concurrency <= 0 {
-		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
-	}
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
@@ -165,10 +161,6 @@ func ConstructLanguageJob(
 	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-	if concurrency <= 0 {
-		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
-	}
-
 	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)

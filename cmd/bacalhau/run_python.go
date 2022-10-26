@@ -2,15 +2,14 @@ package bacalhau
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -48,9 +47,8 @@ type LanguageRunOptions struct {
 	// GPU string
 	// WorkingDir string // Working directory for docker
 
-	// WaitForJobToFinish bool // Wait for the job to execute before exiting
-	// WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	// WaitForJobTimeoutSecs int // Job time out in seconds
+	RuntimeSettings  RunTimeSettings
+	DownloadSettings ipfs.IPFSDownloadSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -71,6 +69,8 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		Command:          "",
 		RequirementsPath: "",
 		ContextPath:      ".",
+		RuntimeSettings:  *NewRunTimeSettings(),
+		DownloadSettings: *ipfs.NewIPFSDownloadSettings(),
 	}
 }
 
@@ -81,7 +81,7 @@ func init() {
 		&OLR.Deterministic, "deterministic", OLR.Deterministic,
 		`Enforce determinism: run job in a single-threaded wasm runtime with `+
 			`no sources of entropy. NB: this will make the python runtime execute`+
-			`in an environment where only some librarie are supported, see `+
+			`in an environment where only some libraries are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
@@ -130,6 +130,9 @@ func init() {
 		&OLR.Labels, "labels", "l", OLR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
+
+	runPythonCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&OLR.RuntimeSettings))
+	runPythonCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OLR.DownloadSettings))
 }
 
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
@@ -153,7 +156,11 @@ var runPythonCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		// TODO: prepare context
+		// error if determinism is false
+		if !OLR.Deterministic {
+			Fatal("Determinism=false not supported yet "+
+				"(languages only support wasm backend with forced determinism)", 1)
+		}
 
 		var programPath string
 		if len(cmdArgs) > 0 {
@@ -174,70 +181,58 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
 		}
 
-		return SubmitLanguageJob(cmd, ctx, "python", "3.10", programPath)
-	},
-}
+		language := "python"
+		version := "3.10"
 
-func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, version, programPath string) error {
-	//nolint:lll // it's ok to be long
-	// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
-	j, err := job.ConstructLanguageJob(
-		OLR.InputVolumes,
-		OLR.InputUrls,
-		OLR.OutputVolumes,
-		[]string{}, // no env vars (yet)
-		OLR.Concurrency,
-		OLR.Confidence,
-		OLR.MinBids,
-		language,
-		version,
-		OLR.Command,
-		programPath,
-		OLR.RequirementsPath,
-		OLR.ContextPath,
-		OLR.Deterministic,
-		OLR.Labels,
-		doNotTrack,
-	)
-	if err != nil {
-		return err
-	}
-
-	// error if determinism is false
-	if !OLR.Deterministic {
-		return fmt.Errorf("determinism=false not supported yet " +
-			"(languages only support wasm backend with forced determinism)")
-	}
-
-	var buf bytes.Buffer
-
-	if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
-		cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
-		OLR.ContextPath = ""
-	}
-
-	if OLR.ContextPath != "" {
-		// construct a tar file from the contextPath directory
-		// tar + gzip
-		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
-		time.Sleep(1 * time.Second)
-		err = targzip.Compress(ctx, OLR.ContextPath, &buf)
+		// TODO: #450 These two code paths make me nervous - the fact that we
+		// have ConstructLanguageJob and ConstructDockerJob as separate means
+		// manually keeping them in sync.
+		j, err := job.ConstructLanguageJob(
+			OLR.InputVolumes,
+			OLR.InputUrls,
+			OLR.OutputVolumes,
+			[]string{}, // no env vars (yet)
+			OLR.Concurrency,
+			OLR.Confidence,
+			OLR.MinBids,
+			language,
+			version,
+			OLR.Command,
+			programPath,
+			OLR.RequirementsPath,
+			OLR.ContextPath,
+			OLR.Deterministic,
+			OLR.Labels,
+			doNotTrack,
+		)
 		if err != nil {
 			return err
 		}
-	}
 
-	log.Debug().Msgf(
-		"submitting job %+v", j)
+		var buf bytes.Buffer
 
-	returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-	}
+		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
+			cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+			OLR.ContextPath = ""
+		}
 
-	err = WaitAndPrintResultsToUser(ctx, returnedJob, false)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-	}
-	return nil
+		if OLR.ContextPath != "" {
+			// construct a tar file from the contextPath directory
+			// tar + gzip
+			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
+			time.Sleep(1 * time.Second)
+			err = targzip.Compress(ctx, OLR.ContextPath, &buf)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
+		if err != nil {
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return nil
+		}
+
+		return nil
+	},
 }
