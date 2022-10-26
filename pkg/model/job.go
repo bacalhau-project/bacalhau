@@ -201,6 +201,7 @@ type Spec struct {
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty"`
 	Language JobSpecLanguage `json:"Language,omitempty"`
+	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
@@ -256,6 +257,28 @@ type JobSpecLanguage struct {
 	ProgramPath string `json:"ProgramPath,omitempty"`
 	// optional requirements.txt (or equivalent) path relative to the context dir
 	RequirementsPath string `json:"RequirementsPath,omitempty"`
+}
+
+// Describes a raw WASM job
+type JobSpecWasm struct {
+	// TODO #915: The module that contains the WASM code to start running.
+	// EntryModule StorageSpec `json:"EntryModule,omitempty"`
+
+	// The name of the function in the EntryModule to call to run the job. For
+	// WASI jobs, this will always be `_start`, but jobs can choose to call
+	// other WASM functions instead. The EntryPoint must be a zero-parameter
+	// zero-result function.
+	EntryPoint string `json:"EntryPoint,omitempty"`
+
+	// The arguments supplied to the program (i.e. as ARGV).
+	Parameters []string `json:"Parameters,omitempty"`
+
+	// TODO: THe variables available in the environment of the running program.
+	// EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+
+	// TODO #880: Other WASM modules whose exports will be available as imports
+	// to the EntryModule.
+	// ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
 // gives us a way to keep local data against a job

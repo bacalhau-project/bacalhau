@@ -185,7 +185,7 @@ func WasmHelloWorld() TestCase {
 		Name: "wasm_hello_world",
 		SetupContext: singleFileSetupStorageWithFile(
 			ctx,
-			"../../../testdata/wasm/noop",
+			"../../../testdata/wasm/noop/main.wasm",
 			"/job",
 		),
 		ResultsChecker: singleFileResultsChecker(
@@ -197,13 +197,10 @@ func WasmHelloWorld() TestCase {
 		),
 		GetJobSpec: func() model.Spec {
 			return model.Spec{
-				Engine: model.EngineLanguage,
-				Language: model.JobSpecLanguage{
-					Language:        "wasm",
-					LanguageVersion: "2.0",
-					Deterministic:   true,
-					Command:         "_start",
-					ProgramPath:     "main.wasm",
+				Engine: model.EngineWasm,
+				Wasm: model.JobSpecWasm{
+					EntryPoint: "_start",
+					Parameters: []string{},
 				},
 			}
 		},
@@ -221,7 +218,7 @@ func WasmCsvTransform() TestCase {
 		),
 		SetupContext: singleFileSetupStorageWithFile(
 			ctx,
-			"../../../testdata/wasm/csv",
+			"../../../testdata/wasm/csv/main.wasm",
 			"/job",
 		),
 		ResultsChecker: singleFileResultsChecker(
@@ -233,13 +230,13 @@ func WasmCsvTransform() TestCase {
 		),
 		GetJobSpec: func() model.Spec {
 			return model.Spec{
-				Engine: model.EngineLanguage,
-				Language: model.JobSpecLanguage{
-					Language:        "wasm",
-					LanguageVersion: "2.0",
-					Deterministic:   true,
-					Command:         "_start",
-					ProgramPath:     "main.wasm",
+				Engine: model.EngineWasm,
+				Wasm: model.JobSpecWasm{
+					EntryPoint: "_start",
+					Parameters: []string{
+						"inputs/horses.csv",
+						"outputs/parents-children.csv",
+					},
 				},
 			}
 		},

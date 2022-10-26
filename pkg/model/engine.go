@@ -12,7 +12,7 @@ const (
 	engineUnknown Engine = iota // must be first
 	EngineNoop
 	EngineDocker
-	EngineWasm       // raw wasm executor not implemented yet
+	EngineWasm
 	EngineLanguage   // wraps python_wasm
 	EnginePythonWasm // wraps docker
 	engineDone       // must be last
