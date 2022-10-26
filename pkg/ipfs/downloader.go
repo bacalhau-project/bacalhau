@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,6 +13,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
+)
+
+const (
+	DownloadVolumesFolderName = "volumes"
+	DownloadShardsFolderName  = "shards"
+	DownloadFolderPerm        = 0755
 )
 
 type IPFSDownloadSettings struct {
@@ -105,7 +112,10 @@ func loopOverResults(
 		return err
 	}
 
-	finalOutputDirAbs, err := filepath.Abs(settings.OutputDir)
+	// this is the full path to the top level folder we are writing our results
+	// we have already processed this in the case of a default
+	// (i.e. the folder named after the job has been created and assigned)
+	resultsOutputDir, err := filepath.Abs(settings.OutputDir)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("Failed to get absolute path for output dir: %s", err)
 		return err
@@ -121,8 +131,8 @@ func loopOverResults(
 	// cleanup the download folders from the results folder
 	defer func() {
 		for _, result := range publishedShardResults {
-			shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Data.Name)
-			os.RemoveAll(shardDownloadDir)
+			tempShardDownloadDir := filepath.Join(resultsOutputDir, result.Data.Name)
+			os.RemoveAll(tempShardDownloadDir)
 		}
 	}()
 
@@ -133,17 +143,18 @@ func loopOverResults(
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
 	for _, result := range publishedShardResults {
-		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Data.Name)
-		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
+		tempShardDownloadDir := filepath.Join(resultsOutputDir, result.Data.Name)
+		err := fetchResult(ctx, result, cl, tempShardDownloadDir, settings.TimeoutSecs)
 		if err != nil {
 			return err
 		}
 
-		err = moveResults(ctx, outputs, result, shardDownloadDir, finalOutputDirAbs)
+		err = moveResults(ctx, outputs, result, tempShardDownloadDir, resultsOutputDir)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -167,20 +178,20 @@ func fetchResult(
 	ctx context.Context,
 	result model.PublishedResult,
 	cl *Client,
-	shardDownloadDir string,
+	tempShardDownloadDir string,
 	timeoutSecs int,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.fetchingResult")
 	defer span.End()
 
 	err := func() error {
-		log.Ctx(ctx).Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Data.Name, result.Data.CID, shardDownloadDir)
+		log.Ctx(ctx).Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Data.Name, result.Data.CID, tempShardDownloadDir)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
 			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
 		defer cancel()
 
-		return cl.Get(innerCtx, result.Data.CID, shardDownloadDir)
+		return cl.Get(innerCtx, result.Data.CID, tempShardDownloadDir)
 	}()
 
 	if err != nil {
@@ -193,24 +204,58 @@ func fetchResult(
 	return nil
 }
 
+// this moves the results for a single shards PublishedResult, it:
+// * merges all output volumes
+// * moves stdout, stderr and exitCode to shard folder (and renames files with host id)
+// * appends stdout, stderr to global logs
 func moveResults(
 	ctx context.Context,
 	outputVolumes []model.StorageSpec,
 	result model.PublishedResult,
-	shardDownloadDir string,
-	finalOutputDirAbs string,
+	// our temp folder we've downloaded the raw shard results into
+	tempShardDownloadDir string,
+	// the top level job results folder
+	resultsOutputDir string,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
+	err := mergeOutputVolumes(ctx, outputVolumes, tempShardDownloadDir, resultsOutputDir)
+	if err != nil {
+		return err
+	}
+
+	err = appendGlobalLogs(ctx, tempShardDownloadDir, resultsOutputDir)
+	if err != nil {
+		return err
+	}
+
+	err = moveShardLogs(ctx, result, tempShardDownloadDir, resultsOutputDir)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// merge the output volumes for each shard into a global volume
+func mergeOutputVolumes(
+	ctx context.Context,
+	outputVolumes []model.StorageSpec,
+	// where the raw shard results have been downloaded
+	tempShardDownloadDir string,
+	// the top level results folder we are writing to
+	resultsOutputDir string,
+) error {
+	// merge each shards volumes into a single volume
 	for _, outputVolume := range outputVolumes {
-		volumeSourceDir := filepath.Join(shardDownloadDir, outputVolume.Name)
-		volumeOutputDir := filepath.Join(finalOutputDirAbs, "volumes", outputVolume.Name)
+		volumeSourceDir := filepath.Join(tempShardDownloadDir, outputVolume.Name)
+		volumeOutputDir := filepath.Join(resultsOutputDir, DownloadVolumesFolderName, outputVolume.Name)
 		err := os.MkdirAll(volumeOutputDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
-		log.Ctx(ctx).Info().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, finalOutputDirAbs)
+		log.Ctx(ctx).Debug().Msgf("Combining shard from output volume '%s' to final location: '%s'", outputVolume.Name, resultsOutputDir)
 
 		moveFunc := func(path string, d os.DirEntry, err error) error {
 			if err != nil {
@@ -238,30 +283,82 @@ func moveResults(
 			return err
 		}
 	}
-
-	err := catStdFiles(ctx, shardDownloadDir, finalOutputDirAbs)
-	if err != nil {
-		return err
-	}
-
-	shardOutputDir := filepath.Join(finalOutputDirAbs, "shards", result.Data.Name)
-
-	err = moveStdFiles(ctx, shardDownloadDir, shardOutputDir)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func appendFile(sourcePath, sinkPath string) error {
+// cat and append stdout & stderr to the global log files for the entire job
+func appendGlobalLogs(
+	ctx context.Context,
+	// where the raw shard results have been downloaded
+	tempShardDownloadDir string,
+	// the top level results folder we are writing to
+	resultsOutputDir string,
+) error {
+	for _, filename := range []string{
+		"stdout",
+		"stderr",
+	} {
+		err := appendFile(
+			filepath.Join(tempShardDownloadDir, filename),
+			filepath.Join(resultsOutputDir, filename),
+		)
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			// It's not a problem if one of these files isn't present
+			continue
+		} else if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// move the stdout, stderr, and exit code to the shard results dir
+func moveShardLogs(
+	ctx context.Context,
+	result model.PublishedResult,
+	// where the raw shard results have been downloaded
+	tempShardDownloadDir string,
+	// the top level results folder we are writing to
+	resultsOutputDir string,
+) error {
+	// this is the renamed folder "shards/0" that we write node_XXX_stdout, node_XXX_stderr, and node_XXX_exitCode to
+	shardOutputFolder := filepath.Join(resultsOutputDir, DownloadShardsFolderName, fmt.Sprintf("%d", result.ShardIndex))
+	err := os.MkdirAll(shardOutputFolder, DownloadFolderPerm)
+	if err != nil {
+		return err
+	}
+
+	for _, filename := range []string{
+		"stdout",
+		"stderr",
+		"exitCode",
+	} {
+		// we prepend each file with the nodeid so we can have a flat folder of all the logs for this shard
+		outputFilename := fmt.Sprintf("node_%s_%s", system.GetShortID(result.NodeID), filename)
+		err = os.Rename(
+			filepath.Join(tempShardDownloadDir, filename),
+			filepath.Join(shardOutputFolder, outputFilename),
+		)
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			// It's not a problem if one of these files isn't present
+			continue
+		} else if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// read data from sourcePath and append it to targetPath
+// the same as "cat $sourcePath >> $targetPath"
+func appendFile(sourcePath, targetPath string) error {
 	source, err := os.Open(sourcePath)
 	if err != nil {
 		return err
 	}
 	defer source.Close()
 
-	sink, err := os.OpenFile(sinkPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -272,56 +369,5 @@ func appendFile(sourcePath, sinkPath string) error {
 		return err
 	}
 
-	return nil
-}
-
-func catStdFiles(
-	ctx context.Context,
-	shardDownloadDir,
-	finalOutputDirAbs string,
-) error {
-	for _, filename := range []string{
-		"stdout",
-		"stderr",
-	} {
-		err := appendFile(
-			filepath.Join(shardDownloadDir, filename),
-			filepath.Join(finalOutputDirAbs, filename),
-		)
-		if err != nil && errors.Is(err, os.ErrNotExist) {
-			// It's not a problem if one of these files isn't present
-			continue
-		} else if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func moveStdFiles(
-	ctx context.Context,
-	shardDownloadDir, shardOutputDir string,
-) error {
-	err := os.MkdirAll(shardOutputDir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	for _, filename := range []string{
-		"stdout",
-		"stderr",
-		"exitCode",
-	} {
-		err = os.Rename(
-			filepath.Join(shardDownloadDir, filename),
-			filepath.Join(shardOutputDir, filename),
-		)
-		if err != nil && errors.Is(err, os.ErrNotExist) {
-			// It's not a problem if one of these files isn't present
-			continue
-		} else if err != nil {
-			return err
-		}
-	}
 	return nil
 }
