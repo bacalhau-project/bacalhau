@@ -17,16 +17,12 @@ func ValidateModuleAgainstJob(
 	job model.Spec,
 	importModules ...wazero.CompiledModule,
 ) error {
-	if !job.Language.Deterministic {
-		return fmt.Errorf("WASM jobs are all deterministic but Deterministic is not set to true")
-	}
-
 	err := ValidateModuleImports(module, importModules...)
 	if err != nil {
 		return err
 	}
 
-	return ValidateModuleAsEntryPoint(module, job.Language.Command)
+	return ValidateModuleAsEntryPoint(module, job.Wasm.EntryPoint)
 }
 
 // ValidateModuleImports will return an error if the passed module requires
