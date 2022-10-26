@@ -19,6 +19,7 @@ const (
 	DownloadVolumesFolderName = "volumes"
 	DownloadShardsFolderName  = "shards"
 	DownloadFolderPerm        = 0755
+	DownloadFilePerm          = 0644
 )
 
 type IPFSDownloadSettings struct {
@@ -360,7 +361,7 @@ func appendFile(sourcePath, targetPath string) error {
 	}
 	defer source.Close()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
 	if err != nil {
 		return err
 	}
