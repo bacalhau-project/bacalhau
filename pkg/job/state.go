@@ -97,7 +97,7 @@ func (resolver *StateResolver) VerifiedSummary(ctx context.Context, jobID string
 		return "", err
 	}
 	totalShards := GetJobTotalExecutionCount(j)
-	verifiedShardCount := GetVerifiedShardStates(jobState)
+	verifiedShardCount := CountVerifiedShardStates(jobState)
 
 	return fmt.Sprintf("%d/%d", verifiedShardCount, totalShards), nil
 }
@@ -118,7 +118,7 @@ func (resolver *StateResolver) ResultSummary(ctx context.Context, jobID string) 
 	if err != nil {
 		return "", err
 	}
-	completedShards := GetCompletedShardStates(jobState)
+	completedShards := GetCompletedVerifiedShardStates(jobState)
 	if len(completedShards) == 0 {
 		return "", nil
 	}
@@ -229,17 +229,12 @@ func (resolver *StateResolver) WaitUntilComplete(ctx context.Context, jobID stri
 	)
 }
 
-type ResultsShard struct {
-	ShardIndex int
-	Results    model.StorageSpec
-}
-
-func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]ResultsShard, error) {
+func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]model.PublishedResult, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/job.GetResults")
 	defer span.End()
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	results := []ResultsShard{}
+	results := []model.PublishedResult{}
 	job, err := resolver.jobLoader(ctx, jobID)
 	if err != nil {
 		return results, err
@@ -248,8 +243,11 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 	if err != nil {
 		return results, err
 	}
+
+	// how many shards do we have in the execution plan?
 	totalShards := GetJobTotalShards(job)
-	groupedShardResults := GroupShardStates(GetCompletedShardStates(jobState))
+	// group the shard states by shard index
+	groupedShardResults := GroupShardStates(GetCompletedVerifiedShardStates(jobState))
 
 	// we have already filtered down to complete results
 	// so there must be totalShards entries in the groupedShardResults
@@ -264,6 +262,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 	}
 
 	// now let's pluck the first result from each shard
+	// each shard has already been filtered down to "complete" and "verified"
 	for shardIndex, shardResults := range groupedShardResults {
 		// this is a sanity check - there should never be an empty
 		// array in the groupedShardResults but just in case
@@ -275,6 +274,7 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 			)
 		}
 
+		// we have already checked that these shard results are complete and verified
 		shardResult := shardResults[0]
 
 		// again this should never happen but just in case
@@ -287,9 +287,10 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 			)
 		}
 
-		results = append(results, ResultsShard{
+		results = append(results, model.PublishedResult{
+			NodeID:     shardResult.NodeID,
 			ShardIndex: shardIndex,
-			Results:    shardResult.PublishedResult,
+			Data:       shardResult.PublishedResult,
 		})
 	}
 	return results, nil
@@ -365,7 +366,7 @@ func GetFilteredShardStates(jobState model.JobState, filterState model.JobStateT
 	return ret
 }
 
-func GetVerifiedShardStates(jobState model.JobState) int {
+func CountVerifiedShardStates(jobState model.JobState) int {
 	count := 0
 	for _, shardState := range FlattenShardStates(jobState) { //nolint:gocritic
 		if shardState.VerificationResult.Result {
@@ -377,6 +378,17 @@ func GetVerifiedShardStates(jobState model.JobState) int {
 
 func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
 	return GetFilteredShardStates(jobState, model.JobStateCompleted)
+}
+
+// return only shard states that are both complete and verified
+func GetCompletedVerifiedShardStates(jobState model.JobState) []model.JobShardState {
+	ret := []model.JobShardState{}
+	for _, shardState := range GetFilteredShardStates(jobState, model.JobStateCompleted) { //nolint:gocritic
+		if shardState.VerificationResult.Complete && shardState.VerificationResult.Result {
+			ret = append(ret, shardState)
+		}
+	}
+	return ret
 }
 
 func HasShardReachedCapacity(ctx context.Context, j *model.Job, jobState model.JobState, shardIndex int) bool {
