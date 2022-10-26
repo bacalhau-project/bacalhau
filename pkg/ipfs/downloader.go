@@ -24,8 +24,9 @@ const DefaultIPFSTimeout time.Duration = 5 * time.Minute
 
 func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 	return &IPFSDownloadSettings{
-		TimeoutSecs:    int(DefaultIPFSTimeout.Seconds()),
-		OutputDir:      ".",
+		TimeoutSecs: int(DefaultIPFSTimeout.Seconds()),
+		// we leave this blank so the CLI will auto-create a job folder in pwd
+		OutputDir:      "",
 		IPFSSwarmAddrs: "",
 	}
 }
