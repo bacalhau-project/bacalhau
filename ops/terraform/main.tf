@@ -42,10 +42,9 @@ sudo mkdir -p /terraform_node
 
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
 export TERRAFORM_NODE_INDEX="${count.index}"
-export TERRAFORM_NODE_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
-export TERRAFORM_NODE0_IP="${var.protect_resources ? google_compute_address.ipv4_address[0].address : google_compute_address.ipv4_address_unprotected[0].address}"
-export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? (var.protect_resources ? google_compute_address.ipv4_address[1].address : google_compute_address.ipv4_address_unprotected[1].address) : ""}"
-export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? (var.protect_resources ? google_compute_address.ipv4_address[2].address : google_compute_address.ipv4_address_unprotected[2].address) : ""}"
+export TERRAFORM_NODE0_IP="${var.internal_ip_addresses[0]}"
+export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.internal_ip_addresses[1] : ""}"
+export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? var.internal_ip_addresses[2] : ""}"
 export IPFS_VERSION="${var.ipfs_version}"
 export BACALHAU_ENVIRONMENT="${terraform.workspace}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
@@ -143,6 +142,7 @@ EOF
   network_interface {
     network    = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
     subnetwork = var.auto_subnets ? "" : google_compute_subnetwork.bacalhau_subnetwork_manual[0].name
+    network_ip = var.internal_ip_addresses[count.index]
     access_config {
       nat_ip = var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address
     }

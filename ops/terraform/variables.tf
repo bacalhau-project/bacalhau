@@ -141,3 +141,8 @@ variable "estuary_api_key" {
   default   = ""
   sensitive = true
 }
+
+variable "internal_ip_addresses" {
+  type    = list(string)
+  default = []
+}
