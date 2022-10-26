@@ -148,25 +148,27 @@ func (suite *GetSuite) TestGetJob() {
 
 }
 
-func testResultsFolderStructure(t *testing.T, folder, hostID string) {
+func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	files := []string{}
-	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
-		files = append(files, path)
+	err := filepath.Walk(baseFolder, func(path string, info os.FileInfo, err error) error {
+		usePath := strings.Replace(path, baseFolder, "", 1)
+		if usePath != "" {
+			files = append(files, usePath)
+		}
 		return nil
 	})
 	require.NoError(t, err, "Error walking results directory")
 
 	require.Equal(t, strings.Join([]string{
-		fmt.Sprintf("%s", folder),
-		fmt.Sprintf("%s/shards", folder),
-		fmt.Sprintf("%s/shards/0", folder),
-		fmt.Sprintf("%s/shards/0/node-%s_exitCode", folder, system.GetShortID(hostID)),
-		fmt.Sprintf("%s/shards/0/node-%s_stderr", folder, system.GetShortID(hostID)),
-		fmt.Sprintf("%s/shards/0/node-%s_stdout", folder, system.GetShortID(hostID)),
-		fmt.Sprintf("%s/stderr", folder),
-		fmt.Sprintf("%s/stdout", folder),
-		fmt.Sprintf("%s/volumes", folder),
-		fmt.Sprintf("%s/volumes/outputs", folder),
+		fmt.Sprintf("/shards"),
+		fmt.Sprintf("/shards/0"),
+		fmt.Sprintf("/shards/0/node-%s_exitCode", system.GetShortID(hostID)),
+		fmt.Sprintf("/shards/0/node-%s_stderr", system.GetShortID(hostID)),
+		fmt.Sprintf("/shards/0/node-%s_stdout", system.GetShortID(hostID)),
+		fmt.Sprintf("/stderr"),
+		fmt.Sprintf("/stdout"),
+		fmt.Sprintf("/volumes"),
+		fmt.Sprintf("/volumes/outputs"),
 	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
 }
 
