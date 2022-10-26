@@ -137,7 +137,7 @@ func (ds *DownloaderSuite) TestNoExpectedResults() {
 		context.Background(),
 		&ds.cm,
 		[]model.StorageSpec{},
-		[]model.StorageSpec{},
+		[]model.PublishedResult{},
 		*NewIPFSDownloadSettings(),
 	)
 	require.NoError(ds.T(), err)
@@ -163,11 +163,15 @@ func (ds *DownloaderSuite) TestFullOutput() {
 				Path:          "/outputs",
 			},
 		},
-		[]model.StorageSpec{
+		[]model.PublishedResult{
 			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "shard-0",
-				CID:           cid,
+				NodeID:     "testnode",
+				ShardIndex: 0,
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "shard-0",
+					CID:           cid,
+				},
 			},
 		},
 		ds.downloadSettings,
@@ -198,11 +202,15 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 				Path:          "/outputs",
 			},
 		},
-		[]model.StorageSpec{
+		[]model.PublishedResult{
 			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "shard-0",
-				CID:           cid,
+				NodeID:     "testnode",
+				ShardIndex: 0,
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "shard-0",
+					CID:           cid,
+				},
 			},
 		},
 		ds.downloadSettings,
@@ -234,16 +242,24 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 				Path:          "/outputs",
 			},
 		},
-		[]model.StorageSpec{
+		[]model.PublishedResult{
 			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "shard-0",
-				CID:           cid0,
+				NodeID:     "testnode",
+				ShardIndex: 0,
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "shard-0",
+					CID:           cid0,
+				},
 			},
 			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "shard-1",
-				CID:           cid1,
+				NodeID:     "testnode",
+				ShardIndex: 1,
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "shard-1",
+					CID:           cid1,
+				},
 			},
 		},
 		ds.downloadSettings,
@@ -274,11 +290,15 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 				// TODO: Path is currently ignored but is set on Docker jobs?
 			},
 		},
-		[]model.StorageSpec{
+		[]model.PublishedResult{
 			{
-				StorageSource: model.StorageSourceIPFS,
-				Name:          "shard-0",
-				CID:           cid,
+				NodeID:     "testnode",
+				ShardIndex: 0,
+				Data: model.StorageSpec{
+					StorageSource: model.StorageSourceIPFS,
+					Name:          "shard-0",
+					CID:           cid,
+				},
 			},
 		},
 		ds.downloadSettings,

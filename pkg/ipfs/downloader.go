@@ -43,14 +43,18 @@ func NewIPFSDownloadSettings() *IPFSDownloadSettings {
 func DownloadJob( //nolint:funlen,gocyclo
 	ctx context.Context,
 	cm *system.CleanupManager,
+	// these are the outputs named in the job spec
+	// we need them so we know which volumes exists
 	outputs []model.StorageSpec,
-	shardResults []model.StorageSpec,
+	// these are the published results we have loaded
+	// from the api
+	publishedShardResults []model.PublishedResult,
 	settings IPFSDownloadSettings,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob")
 	defer span.End()
 
-	if len(shardResults) == 0 {
+	if len(publishedShardResults) == 0 {
 		log.Ctx(ctx).Debug().Msg("No results to download")
 		return nil
 	}
@@ -76,7 +80,7 @@ func DownloadJob( //nolint:funlen,gocyclo
 		return err
 	}
 
-	err = loopOverResults(ctx, n, shardResults, settings, outputs)
+	err = loopOverResults(ctx, n, outputs, publishedShardResults, settings)
 	if err != nil {
 		return err
 	}
@@ -84,11 +88,12 @@ func DownloadJob( //nolint:funlen,gocyclo
 	return nil
 }
 
-func loopOverResults(ctx context.Context,
+func loopOverResults(
+	ctx context.Context,
 	n *Node,
-	shardResults []model.StorageSpec,
-	settings IPFSDownloadSettings,
 	outputs []model.StorageSpec,
+	publishedShardResults []model.PublishedResult,
+	settings IPFSDownloadSettings,
 ) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.loopingOverResults")
 	defer span.End()
@@ -110,7 +115,15 @@ func loopOverResults(ctx context.Context,
 	// it's "name" and "path" is named after the shard index
 	// so we write the shard output to our scratch folder
 	// and then merge each outout volume into the global results
-	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to temporary folder.", len(shardResults))
+	log.Ctx(ctx).Info().Msgf("Found %d result shards, downloading to temporary folder.", len(publishedShardResults))
+
+	// cleanup the download folders from the results folder
+	defer func() {
+		for _, result := range publishedShardResults {
+			shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Data.Name)
+			os.RemoveAll(shardDownloadDir)
+		}
+	}()
 
 	// we move all the contents of the output volume to the global results dir
 	// for this output volume
@@ -118,14 +131,14 @@ func loopOverResults(ctx context.Context,
 	// append all stdout and stderr to a global concatenated log
 	// make a directory for the individual shard logs
 	// move the stdout, stderr, and exit code to the shard results dir
-	for _, result := range shardResults {
-		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Name)
+	for _, result := range publishedShardResults {
+		shardDownloadDir := filepath.Join(finalOutputDirAbs, result.Data.Name)
 		err := fetchResult(ctx, result, cl, shardDownloadDir, settings.TimeoutSecs)
 		if err != nil {
 			return err
 		}
 
-		err = moveResults(ctx, outputs, shardDownloadDir, finalOutputDirAbs, result)
+		err = moveResults(ctx, outputs, result, shardDownloadDir, finalOutputDirAbs)
 		if err != nil {
 			return err
 		}
@@ -133,9 +146,11 @@ func loopOverResults(ctx context.Context,
 	return nil
 }
 
-func spinUpIPFSNode(ctx context.Context,
+func spinUpIPFSNode(
+	ctx context.Context,
 	cm *system.CleanupManager,
-	ipfsSwarmAddrs string) (*Node, error) {
+	ipfsSwarmAddrs string,
+) (*Node, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.DownloadJob.SpinningUpIPFS")
 	defer span.End()
 
@@ -147,22 +162,24 @@ func spinUpIPFSNode(ctx context.Context,
 	return n, nil
 }
 
-func fetchResult(ctx context.Context,
-	result model.StorageSpec,
+func fetchResult(
+	ctx context.Context,
+	result model.PublishedResult,
 	cl *Client,
 	shardDownloadDir string,
-	timeoutSecs int) error {
+	timeoutSecs int,
+) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.fetchingResult")
 	defer span.End()
 
 	err := func() error {
-		log.Ctx(ctx).Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Name, result.CID, shardDownloadDir)
+		log.Ctx(ctx).Debug().Msgf("Downloading result CID %s '%s' to '%s'...", result.Data.Name, result.Data.CID, shardDownloadDir)
 
 		innerCtx, cancel := context.WithDeadline(ctx,
 			time.Now().Add(time.Second*time.Duration(timeoutSecs)))
 		defer cancel()
 
-		return cl.Get(innerCtx, result.CID, shardDownloadDir)
+		return cl.Get(innerCtx, result.Data.CID, shardDownloadDir)
 	}()
 
 	if err != nil {
@@ -175,11 +192,13 @@ func fetchResult(ctx context.Context,
 	return nil
 }
 
-func moveResults(ctx context.Context,
+func moveResults(
+	ctx context.Context,
 	outputVolumes []model.StorageSpec,
+	result model.PublishedResult,
 	shardDownloadDir string,
 	finalOutputDirAbs string,
-	result model.StorageSpec) error {
+) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.movingResults")
 	defer span.End()
 
@@ -224,7 +243,7 @@ func moveResults(ctx context.Context,
 		return err
 	}
 
-	shardOutputDir := filepath.Join(finalOutputDirAbs, "shards", result.Name)
+	shardOutputDir := filepath.Join(finalOutputDirAbs, "shards", result.Data.Name)
 
 	err = moveStdFiles(ctx, shardDownloadDir, shardOutputDir)
 	if err != nil {
@@ -255,8 +274,11 @@ func appendFile(sourcePath, sinkPath string) error {
 	return nil
 }
 
-func catStdFiles(ctx context.Context,
-	shardDownloadDir, finalOutputDirAbs string) error {
+func catStdFiles(
+	ctx context.Context,
+	shardDownloadDir,
+	finalOutputDirAbs string,
+) error {
 	for _, filename := range []string{
 		"stdout",
 		"stderr",
@@ -275,8 +297,10 @@ func catStdFiles(ctx context.Context,
 	return nil
 }
 
-func moveStdFiles(ctx context.Context,
-	shardDownloadDir, shardOutputDir string) error {
+func moveStdFiles(
+	ctx context.Context,
+	shardDownloadDir, shardOutputDir string,
+) error {
 	err := os.MkdirAll(shardOutputDir, os.ModePerm)
 	if err != nil {
 		return err
