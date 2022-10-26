@@ -161,11 +161,11 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	require.NoError(t, err, "Error walking results directory")
 
 	require.Equal(t, strings.Join([]string{
-		fmt.Sprintf("/%s", ipfs.DownloadVolumesFolderName),
-		fmt.Sprintf("/%s/0", ipfs.DownloadVolumesFolderName),
-		fmt.Sprintf("/%s/0/node_%s_exitCode", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
-		fmt.Sprintf("/%s/0/node_%s_stderr", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
-		fmt.Sprintf("/%s/0/node_%s_stdout", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
+		fmt.Sprintf("/%s", ipfs.DownloadShardsFolderName),
+		fmt.Sprintf("/%s/0", ipfs.DownloadShardsFolderName),
+		fmt.Sprintf("/%s/0/node_%s_exitCode", ipfs.DownloadShardsFolderName, system.GetShortID(hostID)),
+		fmt.Sprintf("/%s/0/node_%s_stderr", ipfs.DownloadShardsFolderName, system.GetShortID(hostID)),
+		fmt.Sprintf("/%s/0/node_%s_stdout", ipfs.DownloadShardsFolderName, system.GetShortID(hostID)),
 		fmt.Sprintf("/stderr"),
 		fmt.Sprintf("/stdout"),
 		fmt.Sprintf("/%s", ipfs.DownloadVolumesFolderName),
