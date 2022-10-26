@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
@@ -53,15 +52,7 @@ func (s *FilecoinPublisherSuite) SetupTest() {
 	cm := system.NewCleanupManager()
 	s.T().Cleanup(cm.Cleanup)
 
-	resolver := job.NewStateResolver(
-		func(ctx context.Context, id string) (*model.Job, error) {
-			return &model.Job{}, nil
-		},
-		func(ctx context.Context, id string) (model.JobState, error) {
-			return model.JobState{}, nil
-		},
-	)
-	driver, setupErr := NewFilecoinLotusPublisher(context.Background(), cm, resolver, PublisherConfig{
+	driver, setupErr := NewFilecoinLotusPublisher(context.Background(), cm, PublisherConfig{
 		StorageDuration: 24 * 24 * time.Hour,
 		LotusDataDir:    s.dataDir,
 		LotusUploadDir:  s.uploadDir,

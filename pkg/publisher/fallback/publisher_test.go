@@ -65,11 +65,6 @@ func TestFallbackPublisher(t *testing.T) {
 			require.Equal(t, testCase.expectPublisher.isInstalledErr == nil, err == nil)
 			require.Equal(t, testCase.expectPublisher.isInstalled, result)
 		})
-		t.Run(name+"/ComposeResultReferences", func(t *testing.T) {
-			result, err := testCase.publisher.ComposeResultReferences(context.Background(), "")
-			require.Equal(t, testCase.expectPublisher.composeResultReferencesErr == nil, err == nil)
-			require.Equal(t, testCase.expectPublisher.composeResultReferences, result)
-		})
 		t.Run(name+"/PublishShardResult", func(t *testing.T) {
 			result, err := testCase.publisher.PublishShardResult(context.Background(), model.JobShard{}, "", "")
 			require.Equal(t, testCase.expectPublisher.publishShardResultErr == nil, err == nil)

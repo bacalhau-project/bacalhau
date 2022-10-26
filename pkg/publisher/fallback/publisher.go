@@ -48,13 +48,6 @@ func fallback[T any, P any](ctx context.Context, publishers []P, method func(P) 
 	return zeroResult, anyErr
 }
 
-// ComposeResultReferences implements publisher.Publisher
-func (f *fallbackPublisher) ComposeResultReferences(ctx context.Context, jobID string) ([]model.StorageSpec, error) {
-	return fallback(ctx, f.publishers, func(p publisher.Publisher) ([]model.StorageSpec, error) {
-		return p.ComposeResultReferences(ctx, jobID)
-	})
-}
-
 // IsInstalled implements publisher.Publisher
 func (f *fallbackPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	return fallback(ctx, f.publishers, func(p publisher.Publisher) (bool, error) {
