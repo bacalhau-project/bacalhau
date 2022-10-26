@@ -46,7 +46,7 @@ func NewGetOptions() *GetOptions {
 }
 
 func init() { //nolint:gochecknoinits
-	setupDownloadFlags(getCmd, &OG.IPFSDownloadSettings)
+	getCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OG.IPFSDownloadSettings))
 }
 
 var getCmd = &cobra.Command{
