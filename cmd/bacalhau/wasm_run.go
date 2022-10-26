@@ -27,6 +27,7 @@ var downloadSettings *ipfs.IPFSDownloadSettings
 func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	wasmJob, _ = model.NewJobWithSaneProductionDefaults()
 	wasmJob.Spec.Engine = model.EngineWasm
+	wasmJob.Spec.Verifier = model.VerifierDeterministic
 	wasmJob.Spec.Wasm.EntryPoint = "_start"
 	wasmJob.Spec.Outputs = []model.StorageSpec{
 		{
@@ -154,6 +155,13 @@ var runWasmCommand = &cobra.Command{
 			}
 
 			wasmJob.Spec.Wasm.Parameters = args
+		}
+
+		// We can only use a Deterministic verifier if we have multiple nodes running the job
+		// If the user has selected a Deterministic verifier (or we are using it by default)
+		// then switch back to a Noop Verifier if the concurrency is too low.
+		if wasmJob.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
+			wasmJob.Spec.Verifier = model.VerifierNoop
 		}
 
 		return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings, &buf)
