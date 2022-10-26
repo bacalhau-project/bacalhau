@@ -71,7 +71,9 @@ func DownloadJob( //nolint:funlen,gocyclo
 	case system.EnvironmentProd:
 		settings.IPFSSwarmAddrs = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
 	case system.EnvironmentTest:
-		log.Ctx(ctx).Warn().Msg("No action (don't use BACALHAU_IPFS_SWARM_ADDRESSES")
+		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {
+			log.Ctx(ctx).Warn().Msg("No action (don't use BACALHAU_IPFS_SWARM_ADDRESSES")
+		}
 	case system.EnvironmentDev:
 		// TODO: add more dev swarm addresses?
 		if os.Getenv("BACALHAU_IPFS_SWARM_ADDRESSES") != "" {

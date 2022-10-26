@@ -180,9 +180,9 @@ func (ds *DownloaderSuite) TestFullOutput() {
 
 	requireFile(ds, stdout, "stdout")
 	requireFile(ds, stderr, "stderr")
-	requireFile(ds, exitCode, "shards", "shard-0", "exitCode")
-	requireFile(ds, stdout, "shards", "shard-0", "stdout")
-	requireFile(ds, stderr, "shards", "shard-0", "stderr")
+	requireFile(ds, exitCode, "shards", "0", "node_testnode_exitCode")
+	requireFile(ds, stdout, "shards", "0", "node_testnode_stdout")
+	requireFile(ds, stderr, "shards", "0", "node_testnode_stderr")
 	requireFile(ds, goodbye, "volumes", "outputs", "goodbye.txt")
 	requireFile(ds, hello, "volumes", "outputs", "hello.txt")
 }
@@ -268,8 +268,8 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 
 	fullStdout := append(shard0stdout, shard1stdout...)
 	requireFile(ds, fullStdout, "stdout")
-	requireFile(ds, shard0stdout, "shards", "shard-0", "stdout")
-	requireFile(ds, shard1stdout, "shards", "shard-1", "stdout")
+	requireFile(ds, shard0stdout, "shards", "0", "node_testnode_stdout")
+	requireFile(ds, shard1stdout, "shards", "1", "node_testnode_stdout")
 	requireFileExists(ds, "volumes", "outputs", "data0.csv")
 	requireFileExists(ds, "volumes", "outputs", "data1.csv")
 }
