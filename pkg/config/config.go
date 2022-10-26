@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
 
