@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
@@ -149,10 +148,47 @@ func (suite *GetSuite) TestGetJob() {
 
 }
 
+func testResultsFolderStructure(t *testing.T, folder, hostID string) {
+	files := []string{}
+	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+	require.NoError(t, err, "Error walking results directory")
+
+	require.Equal(t, strings.Join([]string{
+		fmt.Sprintf("%s", folder),
+		fmt.Sprintf("%s/shards", folder),
+		fmt.Sprintf("%s/shards/0", folder),
+		fmt.Sprintf("%s/shards/0/node-%s", folder, system.GetShortID(hostID)),
+		fmt.Sprintf("%s/shards/0/node-%s/exitCode", folder, system.GetShortID(hostID)),
+		fmt.Sprintf("%s/shards/0/node-%s/stderr", folder, system.GetShortID(hostID)),
+		fmt.Sprintf("%s/shards/0/node-%s/stdout", folder, system.GetShortID(hostID)),
+		fmt.Sprintf("%s/stderr", folder),
+		fmt.Sprintf("%s/stdout", folder),
+		fmt.Sprintf("%s/volumes", folder),
+		fmt.Sprintf("%s/volumes/outputs", folder),
+	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
+}
+
+func setupTempWorkingDir(t *testing.T) (string, func()) {
+	// switch wd to a temp dir so we are not writing folders to the current directory
+	// (the point of this test is to see what happens when we DONT pass --output-dir)
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(t, err)
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	err = os.Chdir(tempDir)
+	require.NoError(t, err)
+	return tempDir, func() {
+		os.Chdir(originalWd)
+	}
+}
+
 // this tests that when we do docker run with no --output-dir
 // it makes it's own folder to put the results in and does not splat results
 // all over the current directory
-func (s *GetSuite) TestDockerRunWriteToJobFolder() {
+func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
 	*ODR = *NewDockerRunOptions()
@@ -160,15 +196,8 @@ func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(s.T(), err)
 
-	// switch wd to a temp dir so we are not writing folders to the current directory
-	// (the point of this test is to see what happens when we DONT pass --output-dir)
-	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(s.T(), err)
-	originalWd, err := os.Getwd()
-	require.NoError(s.T(), err)
-	err = os.Chdir(tempDir)
-	require.NoError(s.T(), err)
-	defer os.Chdir(originalWd)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
 
 	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 		"--api-host", stack.Nodes[0].APIServer.Host,
@@ -184,30 +213,5 @@ func (s *GetSuite) TestDockerRunWriteToJobFolder() {
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := stack.Nodes[0].HostID
 
-	files := []string{}
-	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-		addPath := strings.Replace(path, tempDir, "", 1)
-		if addPath != "" {
-			files = append(files, addPath)
-		}
-		return nil
-	})
-	require.NoError(s.T(), err, "Error walking results directory")
-
-	require.Equal(s.T(), strings.Join([]string{
-		fmt.Sprintf("/job-%s", jobID),
-		fmt.Sprintf("/job-%s/shards", jobID),
-		fmt.Sprintf("/job-%s/shards/0", jobID),
-		fmt.Sprintf("/job-%s/shards/0/node-%s", jobID, system.GetShortID(hostID)),
-		fmt.Sprintf("/job-%s/shards/0/node-%s/exitCode", jobID, system.GetShortID(hostID)),
-		fmt.Sprintf("/job-%s/shards/0/node-%s/stderr", jobID, system.GetShortID(hostID)),
-		fmt.Sprintf("/job-%s/shards/0/node-%s/stdout", jobID, system.GetShortID(hostID)),
-		fmt.Sprintf("/job-%s/stderr", jobID),
-		fmt.Sprintf("/job-%s/stdout", jobID),
-		fmt.Sprintf("/job-%s/volumes", jobID),
-		fmt.Sprintf("/job-%s/volumes/outputs", jobID),
-	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
-
-	fmt.Printf(" --------------------------------------\n")
-	spew.Dump(files)
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
 }
