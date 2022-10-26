@@ -397,12 +397,17 @@ To get more details about the run, execute:
 			return fmt.Errorf("no results found")
 		}
 
+		processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
+		if err != nil {
+			return errors.Wrap(err, "error processing download settings")
+		}
+
 		err = ipfs.DownloadJob(
 			ctx,
 			cm,
 			j.Spec.Outputs,
 			results,
-			downloadSettings,
+			processedDownloadSettings,
 		)
 
 		if err != nil {
