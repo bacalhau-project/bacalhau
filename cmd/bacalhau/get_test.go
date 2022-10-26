@@ -217,3 +217,108 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
 }
+
+// this tests that when we do docker run with an --output-dir
+// the results layout adheres to the expected folder layout
+func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	require.NoError(s.T(), err)
+
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(s.T(), err)
+
+	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--wait",
+		"--download",
+		"--output-dir", tempDir,
+		"ubuntu",
+		"--",
+		"echo", "hello from docker submit wait",
+	)
+	require.NoError(s.T(), err, "Error submitting job")
+	hostID := stack.Nodes[0].HostID
+	testResultsFolderStructure(s.T(), tempDir, hostID)
+}
+
+// this tests that when we do get with no --output-dir
+// it makes it's own folder to put the results in and does not splat results
+// all over the current directory
+func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	require.NoError(s.T(), err)
+
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--wait",
+		"ubuntu",
+		"--",
+		"echo", "hello from docker submit wait",
+	)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := stack.Nodes[0].HostID
+
+	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		jobID,
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
+}
+
+// this tests that when we do get with an --output-dir
+// the results layout adheres to the expected folder layout
+func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	require.NoError(s.T(), err)
+
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(s.T(), err)
+
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--wait",
+		"ubuntu",
+		"--",
+		"echo", "hello from docker submit wait",
+	)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := stack.Nodes[0].HostID
+
+	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--output-dir", tempDir,
+		jobID,
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testResultsFolderStructure(s.T(), tempDir, hostID)
+}
