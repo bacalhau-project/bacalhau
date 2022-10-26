@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -160,15 +161,15 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	require.NoError(t, err, "Error walking results directory")
 
 	require.Equal(t, strings.Join([]string{
-		fmt.Sprintf("/shards"),
-		fmt.Sprintf("/shards/0"),
-		fmt.Sprintf("/shards/0/node-%s_exitCode", system.GetShortID(hostID)),
-		fmt.Sprintf("/shards/0/node-%s_stderr", system.GetShortID(hostID)),
-		fmt.Sprintf("/shards/0/node-%s_stdout", system.GetShortID(hostID)),
+		fmt.Sprintf("/%s", ipfs.DownloadVolumesFolderName),
+		fmt.Sprintf("/%s/0", ipfs.DownloadVolumesFolderName),
+		fmt.Sprintf("/%s/0/node_%s_exitCode", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
+		fmt.Sprintf("/%s/0/node_%s_stderr", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
+		fmt.Sprintf("/%s/0/node_%s_stdout", ipfs.DownloadVolumesFolderName, system.GetShortID(hostID)),
 		fmt.Sprintf("/stderr"),
 		fmt.Sprintf("/stdout"),
-		fmt.Sprintf("/volumes"),
-		fmt.Sprintf("/volumes/outputs"),
+		fmt.Sprintf("/%s", ipfs.DownloadVolumesFolderName),
+		fmt.Sprintf("/%s/outputs", ipfs.DownloadVolumesFolderName),
 	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
 }
 
