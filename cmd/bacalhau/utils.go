@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -299,8 +298,6 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings ipfs.IPFSDownloadSettings,
 	idOnly bool,
 ) error {
-	fmt.Printf("downloadSettings 1--------------------------------------\n")
-	spew.Dump(downloadSettings)
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
 	defer span.End()
@@ -437,9 +434,6 @@ To get more details about the run, execute:
 		if err != nil {
 			return errors.Wrap(err, "error processing download settings")
 		}
-
-		fmt.Printf("processedDownloadSettings --------------------------------------\n")
-		spew.Dump(processedDownloadSettings)
 
 		err = ipfs.DownloadJob(
 			ctx,
