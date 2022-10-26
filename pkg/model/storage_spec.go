@@ -29,3 +29,12 @@ type StorageSpec struct {
 	// Additional properties specific to each driver
 	Metadata map[string]string `json:"Metadata,omitempty"`
 }
+
+// PublishedStorageSpec is a wrapper for a StorageSpec that has been published
+// by a compute provider - it keeps info about the hos, job and shard that
+// lead to the given storage spec being published
+type PublishedResult struct {
+	NodeID     string      `json:"NodeID,omitempty"`
+	ShardIndex int         `json:"ShardIndex,omitempty"`
+	Data       StorageSpec `json:"Data,omitempty"`
+}
