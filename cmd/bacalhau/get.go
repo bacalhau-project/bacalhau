@@ -3,7 +3,6 @@ package bacalhau
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -35,36 +34,6 @@ var (
 
 type GetOptions struct {
 	IPFSDownloadSettings ipfs.IPFSDownloadSettings
-}
-
-func getDefaultJobFolder(jobID string) string {
-	return fmt.Sprintf("job-%s", system.GetShortID(jobID))
-}
-
-// if the user does not supply a value for "download results to here"
-// then we default to making a folder in the current directory
-func ensureDefaultDownloadLocation(jobID string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	downloadDir := filepath.Join(cwd, getDefaultJobFolder(jobID))
-	err = os.MkdirAll(downloadDir, os.ModeDir)
-	if err != nil {
-		return "", err
-	}
-	return downloadDir, nil
-}
-
-func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (ipfs.IPFSDownloadSettings, error) {
-	if settings.OutputDir == "" {
-		dir, err := ensureDefaultDownloadLocation(jobID)
-		if err != nil {
-			return settings, err
-		}
-		settings.OutputDir = dir
-	}
-	return settings, nil
 }
 
 func NewGetOptions() *GetOptions {
@@ -135,6 +104,7 @@ var getCmd = &cobra.Command{
 			Fatal(fmt.Sprintf("Error processing downoad settings for job ID (%s): %s", jobID, err), 1)
 			return err
 		}
+
 		err = ipfs.DownloadJob(
 			ctx,
 			cm,

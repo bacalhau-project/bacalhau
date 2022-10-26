@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -34,6 +36,8 @@ const (
 	YAMLFormat                         string = "yaml"
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
+	// what permissions do we give to a folder we create when downloading results
+	AutoDownloadFolderPerm = 0755
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
@@ -223,6 +227,36 @@ func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings)
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
 }
 
+func getDefaultJobFolder(jobID string) string {
+	return fmt.Sprintf("job-%s", system.GetShortID(jobID))
+}
+
+// if the user does not supply a value for "download results to here"
+// then we default to making a folder in the current directory
+func ensureDefaultDownloadLocation(jobID string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	downloadDir := filepath.Join(cwd, getDefaultJobFolder(jobID))
+	err = os.MkdirAll(downloadDir, AutoDownloadFolderPerm)
+	if err != nil {
+		return "", err
+	}
+	return downloadDir, nil
+}
+
+func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (ipfs.IPFSDownloadSettings, error) {
+	if settings.OutputDir == "" {
+		dir, err := ensureDefaultDownloadLocation(jobID)
+		if err != nil {
+			return settings, err
+		}
+		settings.OutputDir = dir
+	}
+	return settings, nil
+}
+
 type RunTimeSettings struct {
 	AutoDownloadResults   bool // Automatically download the results after finishing
 	IsLocal               bool // Job should be executed locally
@@ -265,6 +299,8 @@ func ExecuteJob(ctx context.Context,
 	downloadSettings ipfs.IPFSDownloadSettings,
 	idOnly bool,
 ) error {
+	fmt.Printf("downloadSettings 1--------------------------------------\n")
+	spew.Dump(downloadSettings)
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
 	defer span.End()
@@ -401,6 +437,9 @@ To get more details about the run, execute:
 		if err != nil {
 			return errors.Wrap(err, "error processing download settings")
 		}
+
+		fmt.Printf("processedDownloadSettings --------------------------------------\n")
+		spew.Dump(processedDownloadSettings)
 
 		err = ipfs.DownloadJob(
 			ctx,
