@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	DownloadVolumesFolderName = "combined"
+	DownloadVolumesFolderName = "combined_results"
 	DownloadShardsFolderName  = "per_shard"
 	DownloadCIDsFolderName    = "raw"
 	DownloadFilenameStdout    = "stdout"
