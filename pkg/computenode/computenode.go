@@ -2,6 +2,7 @@ package computenode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -26,6 +27,7 @@ import (
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalMillis = 100
+const ShardStateLogInterval = 5 * time.Minute
 const DelayBeforeBidMillisecondRange = 100
 const BidTimeoutSeconds = 60
 
@@ -88,6 +90,7 @@ func NewComputeNode(
 	}
 
 	go computeNode.controlLoopSetup(ctx, cm)
+	go computeNode.shardStateLogSetup(ctx, cm)
 
 	return computeNode, nil
 }
@@ -160,6 +163,30 @@ func (n *ComputeNode) controlLoopSetup(ctx context.Context, cm *system.CleanupMa
 		select {
 		case <-ticker.C:
 			n.controlLoopBidOnJobs(ctx)
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+func (n *ComputeNode) shardStateLogSetup(ctx context.Context, cm *system.CleanupManager) {
+	ticker := time.NewTicker(ShardStateLogInterval)
+	ctx, cancelFunction := context.WithCancel(ctx)
+	cm.RegisterCallback(func() error {
+		cancelFunction()
+		return nil
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			bytes, err := json.Marshal(n.GetActiveJobs(ctx))
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to marshal shard states")
+			} else {
+				log.Info().Msgf("compute active shards: %+v", string(bytes))
+			}
 		case <-ctx.Done():
 			ticker.Stop()
 			return
@@ -582,6 +609,22 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 		return err
 	}
 	return nil
+}
+
+// Return list of active jobs in this compute node. These are the jobs that are holding capacity and includes bid jobs
+// that are not yet selected.
+func (n *ComputeNode) GetActiveJobs(ctx context.Context) []ActiveJob {
+	activeJobs := make([]ActiveJob, 0)
+
+	for _, shardState := range n.shardStateManager.GetActive() {
+		activeJobs = append(activeJobs, ActiveJob{
+			ShardID:              shardState.Shard.ID(),
+			State:                shardState.currentState.String(),
+			CapacityRequirements: shardState.capacity.Requirements,
+		})
+	}
+
+	return activeJobs
 }
 
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {
