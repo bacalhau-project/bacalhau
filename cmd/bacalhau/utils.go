@@ -426,32 +426,69 @@ To get more details about the run, execute:
 	}
 
 	if runtimeSettings.AutoDownloadResults {
-		results, err := apiClient.GetResults(ctx, j.ID)
-		if err != nil {
-			return errors.Wrap(err, "error getting results")
-		}
-
-		if len(results) == 0 {
-			return fmt.Errorf("no results found")
-		}
-
-		processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
-		if err != nil {
-			return errors.Wrap(err, "error processing download settings")
-		}
-
-		err = ipfs.DownloadJob(
+		err = downloadResultsHandler(
 			ctx,
 			cm,
-			j.Spec.Outputs,
-			results,
-			processedDownloadSettings,
+			cmd,
+			j.ID,
+			downloadSettings,
 		)
-
 		if err != nil {
-			return errors.Wrap(err, "error downloading results")
+			return errors.Wrap(err, "error downloading job")
 		}
 	}
+	return nil
+}
+
+func downloadResultsHandler(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	jobID string,
+	downloadSettings ipfs.IPFSDownloadSettings,
+) error {
+	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
+	j, _, err := GetAPIClient().Get(ctx, jobID)
+
+	if err != nil {
+		if _, ok := err.(*bacerrors.JobNotFound); ok {
+			cmd.Printf("job not found.\n")
+			Fatal("", 1)
+		} else {
+			Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
+		}
+		return err
+	}
+
+	results, err := GetAPIClient().GetResults(ctx, j.ID)
+	if err != nil {
+		return errors.Wrap(err, "error getting results")
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
+
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
+	if err != nil {
+		return errors.Wrap(err, "error processing download settings")
+	}
+
+	err = ipfs.DownloadJob(
+		ctx,
+		cm,
+		j.Spec.Outputs,
+		results,
+		processedDownloadSettings,
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "error downloading results")
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "Results for job '%s' have been written to...\n", jobID)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", processedDownloadSettings.OutputDir)
+
 	return nil
 }
 

@@ -75,6 +75,13 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	}, ","), strings.Join(files, ","), "The discovered results output structure was not correct")
 }
 
+func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
+	require.True(t, strings.Contains(
+		cmdOutput,
+		fmt.Sprintf("Results for job '%s' have been written to...\n%s", jobID, outputDir),
+	), "Download location not found in output")
+}
+
 func setupTempWorkingDir(t *testing.T) (string, func()) {
 	// switch wd to a temp dir so we are not writing folders to the current directory
 	// (the point of this test is to see what happens when we DONT pass --output-dir)
@@ -103,7 +110,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -114,9 +121,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 		"echo", "hello from docker submit wait",
 	)
 	require.NoError(s.T(), err, "Error submitting job")
-	jobID := system.FindJobIDInTestOutput(out)
+	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := stack.Nodes[0].HostID
-
+	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
 }
 
@@ -133,7 +140,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
 	require.NoError(s.T(), err)
 
-	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -145,7 +152,9 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 		"echo", "hello from docker submit wait",
 	)
 	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(runOutput)
 	hostID := stack.Nodes[0].HostID
+	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID)
 }
 
@@ -177,7 +186,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := stack.Nodes[0].HostID
 
-	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -185,6 +194,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
 	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
 }
 
@@ -215,7 +225,7 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	jobID := system.FindJobIDInTestOutput(out)
 	hostID := stack.Nodes[0].HostID
 
-	_, _, err = ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
 		"--api-host", stack.Nodes[0].APIServer.Host,
 		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
 		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
@@ -223,6 +233,6 @@ func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 		jobID,
 	)
 	require.NoError(s.T(), err, "Error getting results")
-
+	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), tempDir, hostID)
 }
