@@ -287,6 +287,11 @@ func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
 		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
 	)
+
+	cmd.PersistentFlags().BoolVar(
+		&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
+		`Should we download the results once the job is complete?`,
+	)
 }
 
 //nolint:funlen,gocyclo // Refactor later

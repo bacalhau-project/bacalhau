@@ -215,13 +215,6 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
 	)
 
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.RunTimeSettings.AutoDownloadResults,
-		"download",
-		ODR.RunTimeSettings.AutoDownloadResults,
-		"Should we download the results once the job is complete?",
-	)
-
 	setupDownloadFlags(dockerRunCmd, &ODR.DownloadFlags)
 	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
 }
