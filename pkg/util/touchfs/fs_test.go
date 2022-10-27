@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,6 +32,7 @@ func (suite *touchFsSuite) SetupTest() {
 	_, err = file.WriteString("hello")
 	require.NoError(suite.T(), err)
 	file.Close()
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *touchFsSuite) TearDownTest() {

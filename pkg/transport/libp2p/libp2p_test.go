@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -32,7 +33,7 @@ func (suite *Libp2pTransportSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *Libp2pTransportSuite) SetupTest() {
-
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *Libp2pTransportSuite) TearDownTest() {

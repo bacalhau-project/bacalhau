@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -30,6 +31,7 @@ func (suite *DeterministicVerifierSuite) SetupSuite() {
 
 // Before each test
 func (suite *DeterministicVerifierSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/pbnjay/memory"
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,7 @@ func (suite *ResourceUsageUtilsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ResourceUsageUtilsSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *ResourceUsageUtilsSuite) TearDownTest() {

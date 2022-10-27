@@ -19,7 +19,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -46,6 +46,7 @@ func (suite *VersionSuite) SetupAllSuite() {
 // Before each test
 func (suite *VersionSuite) SetupTest() {
 	suite.rootCmd = RootCmd
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *VersionSuite) TearDownTest() {
@@ -69,11 +70,6 @@ func (suite *VersionSuite) Test_Version() {
 
 	require.Contains(suite.T(), string(out), "Client Version", "Client version not in output")
 	require.Contains(suite.T(), string(out), "Server Version", "Server version not in output")
-}
-
-type ThisVersions struct {
-	ClientVersion model.BuildVersionInfo `json:"clientVersion,omitempty"`
-	ServerVersion model.BuildVersionInfo `json:"serverVersion,omitempty"`
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {

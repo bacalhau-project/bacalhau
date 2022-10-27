@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,6 +30,7 @@ func (s *JobUtilSuite) SetupAllSuite() {
 
 // Before each test
 func (s *JobUtilSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 }
 
 func (s *JobUtilSuite) TearDownTest() {

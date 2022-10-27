@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
@@ -36,6 +37,7 @@ func (s *StorageSuite) SetupSuite() {
 
 // Before each test
 func (s *StorageSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 }
 

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
@@ -35,6 +36,7 @@ func (s *CreateSuite) SetupSuite() {
 
 // before each test
 func (s *CreateSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
 }

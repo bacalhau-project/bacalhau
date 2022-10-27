@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
@@ -48,6 +49,7 @@ func TestFilecoinPublisherSuite(t *testing.T) {
 }
 
 func (s *FilecoinPublisherSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 
 	cm := system.NewCleanupManager()

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -47,6 +48,7 @@ func (suite *FilecoinUnsealedSuite) SetupAllSuite() {
 // Before each test
 func (suite *FilecoinUnsealedSuite) SetupTest() {
 	var setupErr error
+	logger.ConfigureTestLogging(suite.T())
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
 	tempDir = suite.T().TempDir()

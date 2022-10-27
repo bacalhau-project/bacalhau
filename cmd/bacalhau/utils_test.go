@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ func (s *UtilsSuite) SetupAllSuite() {
 // Before each test
 func (s *UtilsSuite) SetupTest() {
 	s.rootCmd = RootCmd
+	logger.ConfigureTestLogging(s.T())
 }
 
 func (s *UtilsSuite) TearDownTest() {
