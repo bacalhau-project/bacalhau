@@ -178,8 +178,8 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, DownloadFilenameStdout)
-	requireFile(ds, stderr, "stderr")
+	requireFile(ds, stdout, DownloadVolumesFolderName, "stdout")
+	requireFile(ds, stderr, DownloadVolumesFolderName, "stderr")
 	requireFile(ds, exitCode, DownloadShardsFolderName, "0_node_testnode", "exitCode")
 	requireFile(ds, stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
 	requireFile(ds, stderr, DownloadShardsFolderName, "0_node_testnode", "stderr")
@@ -267,7 +267,7 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 	require.NoError(ds.T(), err)
 
 	fullStdout := append(shard0stdout, shard1stdout...)
-	requireFile(ds, fullStdout, DownloadFilenameStdout)
+	requireFile(ds, fullStdout, DownloadVolumesFolderName, DownloadFilenameStdout)
 	requireFile(ds, shard0stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
 	requireFile(ds, shard1stdout, DownloadShardsFolderName, "1_node_testnode", "stdout")
 	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data0.csv")
