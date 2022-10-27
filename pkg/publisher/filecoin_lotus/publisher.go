@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,13 +14,12 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
+	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/go-address"
 	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,9 +27,9 @@ type PublisherConfig struct {
 	// How long the deal for the data should be created for
 	StorageDuration time.Duration
 	// Location of the Lotus configuration directory - either $LOTUS_PATH or ~/.lotus
-	LotusDataDir string
+	PathDir string
 	// Directory to use when uploading content to Lotus - optional
-	LotusUploadDir string
+	UploadDir string
 	// How close miner should be when selecting the cheapest
 	MaximumPing time.Duration
 }
@@ -54,28 +52,14 @@ func NewFilecoinLotusPublisher(
 	if config.StorageDuration == time.Duration(0) {
 		return nil, errors.New("StorageDuration is required")
 	}
-	if config.LotusDataDir == "" {
-		return nil, errors.New("LotusDataDir is required")
+	if config.PathDir == "" {
+		return nil, errors.New("PathDir is required")
 	}
 	if config.MaximumPing == time.Duration(0) {
 		return nil, errors.New("MaximumPing is required")
 	}
 
-	tokenFile := filepath.Join(config.LotusDataDir, "token")
-	token, err := os.ReadFile(tokenFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open token file %s: %w", tokenFile, err)
-	}
-
-	configFile := filepath.Join(config.LotusDataDir, "config.toml")
-	hostname, err := fetchHostnameFromConfig(configFile)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Ctx(ctx).Debug().Str("hostname", hostname).Msg("Building Lotus client")
-
-	client, err := api.NewClient(ctx, hostname, string(token))
+	client, err := api.NewClientFromConfigDir(ctx, config.PathDir)
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +97,12 @@ func (l *Publisher) PublishShardResult(
 		Str("shardResultPath", shardResultPath).
 		Msg("Uploading results folder to filecoin lotus")
 
-	tarFile, err := l.carResultsDir(ctx, shardResultPath)
+	carFile, err := l.carResultsDir(ctx, shardResultPath)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
 
-	contentCid, err := l.importData(ctx, tarFile)
+	contentCid, err := l.importData(ctx, carFile)
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
@@ -162,17 +146,27 @@ func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (strin
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/carResultsDir")
 	defer span.End()
 
-	tempDir, err := os.MkdirTemp(l.config.LotusUploadDir, "bacalhau-filecoin-lotus-*")
+	tempFile, err := os.CreateTemp(l.config.UploadDir, "results-*.car")
 	if err != nil {
 		return "", err
 	}
-	tempFile := filepath.Join(tempDir, "results.tar")
 
-	if _, err := car.CreateCar(ctx, resultsDir, tempFile, 1); err != nil {
+	// Temporary files will have 0600 as their permissions, which could cause issues when sharing with a Lotus node
+	// running inside a container.
+	if err := tempFile.Chmod(util.OS_ALL_RW); err != nil { //nolint:govet
 		return "", err
 	}
 
-	return tempFile, nil
+	// Just need the filename
+	if err := tempFile.Close(); err != nil {
+		return "", err
+	}
+
+	if _, err := car.CreateCar(ctx, resultsDir, tempFile.Name(), 1); err != nil {
+		return "", err
+	}
+
+	return tempFile.Name(), nil
 }
 
 func (l *Publisher) importData(ctx context.Context, filePath string) (cid.Cid, error) {
@@ -214,6 +208,8 @@ func (l *Publisher) createDeal(ctx context.Context, contentCid cid.Cid) (string,
 	if err != nil {
 		return "", err
 	}
+
+	log.Ctx(ctx).Debug().Int("count", len(miners)).Msg("Initial list of miners")
 
 	asks, errs := throttledMap(miners, func(miner address.Address) (*ask, error) {
 		return l.queryMiner(ctx, dataSize, miner)
@@ -346,51 +342,6 @@ func (l *Publisher) queryMiner(ctx context.Context, dataSize api.DataCIDSize, mi
 type ask struct {
 	miner      address.Address
 	epochPrice big2.Int
-}
-
-func fetchHostnameFromConfig(file string) (string, error) {
-	unparsedConfig, err := os.ReadFile(file)
-	if err != nil {
-		return "", fmt.Errorf("unable to open config file %s: %w", file, err)
-	}
-	var config struct {
-		API struct {
-			ListenAddress string
-		}
-	}
-	if err := toml.Unmarshal(unparsedConfig, &config); err != nil { //nolint:govet
-		return "", fmt.Errorf("unable to parse config file %s: %w", file, err)
-	}
-
-	addr, err := multiaddr.NewMultiaddr(config.API.ListenAddress)
-	if err != nil {
-		return "", fmt.Errorf("unable to parse ListenAddress in config file %s: %w", file, err)
-	}
-
-	var host, port string
-	multiaddr.SplitFunc(addr, func(component multiaddr.Component) bool {
-		switch component.Protocol().Code {
-		case multiaddr.P_IP4:
-			h := component.Value()
-			if h == "0.0.0.0" {
-				h = "localhost"
-			}
-			host = h
-		case multiaddr.P_TCP:
-			port = component.Value()
-		}
-
-		return host != "" && port != ""
-	})
-
-	if host == "" {
-		return "", fmt.Errorf("unable to parse host from ListenAddress in config file %s", file)
-	}
-	if port == "" {
-		return "", fmt.Errorf("unable to parse port from ListenAddress in config file %s", file)
-	}
-
-	return fmt.Sprintf("%s:%s", host, port), nil
 }
 
 var _ publisher.Publisher = &Publisher{}

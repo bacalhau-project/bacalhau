@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -31,6 +32,7 @@ type NodeConfig struct {
 	IsBadActor           bool
 	ComputeNodeConfig    computenode.ComputeNodeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
+	LotusConfig          *filecoinlotus.PublisherConfig
 }
 
 // Lazy node dependency injector that generate instances of different

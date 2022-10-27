@@ -3,13 +3,16 @@ package devstack
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"runtime"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
@@ -105,6 +108,19 @@ func NewDevStack(
 	nodes := []*node.Node{}
 	var lotus *LotusNode
 	var err error
+
+	if options.LocalNetworkLotus {
+		lotus, err = newLotusNode(ctx) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		cm.RegisterCallback(lotus.Close)
+
+		if err := lotus.start(ctx); err != nil { //nolint:govet
+			return nil, err
+		}
+	}
 
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -222,6 +238,17 @@ func NewDevStack(
 			IsBadActor:           isBadActor,
 		}
 
+		if lotus != nil {
+			nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
+				StorageDuration: 24 * 24 * time.Hour,
+				PathDir:         lotus.PathDir,
+				UploadDir:       lotus.UploadDir,
+				// devstack will only be talking to a single node, so don't bother filtering based on ping
+				// as the ping may be quite large while it is trying to run everything
+				MaximumPing: time.Duration(math.MaxInt64),
+			}
+		}
+
 		var n *node.Node
 		n, err = node.NewNode(ctx, nodeConfig, injector)
 		if err != nil {
@@ -241,19 +268,6 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, n)
-	}
-
-	if options.LocalNetworkLotus {
-		lotus, err = newLotusNode(ctx) //nolint:govet
-		if err != nil {
-			return nil, err
-		}
-
-		cm.RegisterCallback(lotus.Close)
-
-		if err := lotus.start(ctx); err != nil { //nolint:govet
-			return nil, err
-		}
 	}
 
 	// only start profiling after we've set everything up!
