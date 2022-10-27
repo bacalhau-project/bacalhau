@@ -2,12 +2,12 @@ package eventhandler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -78,48 +78,30 @@ func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model
 
 func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) func(*error) {
 	return func(handlerError *error) {
-		// construct log event
-		logData := eventLog{
-			EventName:    event.EventName,
-			ShardID:      fmt.Sprintf("%s_%d", event.JobID, event.ShardIndex),
-			SourceNodeID: event.SourceNodeID,
-			TargetNodeID: event.TargetNodeID,
-			Duration:     time.Since(startTime).Milliseconds(),
-			ClientID:     event.ClientID,
-			Status:       event.Status,
+		var logMsg *zerolog.Event
+
+		// TODO: #829 Is checking environment every event the most efficient way
+		// to do this? Could we just shunt logs to different places?
+		switch system.GetEnvironment() {
+		case system.EnvironmentDev, system.EnvironmentTest:
+			logMsg = log.Ctx(ctx).Trace()
+		default:
+			logMsg = log.Ctx(ctx).Info()
 		}
 
+		logMsg = logMsg.
+			Str("EventName", event.EventName.String()).
+			Str("JobID", event.JobID).
+			Int("ShardIndex", event.ShardIndex).
+			Str("SourceNodeID", event.SourceNodeID).
+			Str("TargetNodeID", event.TargetNodeID).
+			Str("ClientID", event.ClientID).
+			Str("Status", event.Status).
+			Dur("HandleDuration", time.Since(startTime))
 		if *handlerError != nil {
-			logData.HandlerError = (*handlerError).Error()
+			logMsg = logMsg.AnErr("HandlerError", *handlerError)
 		}
 
-		// TODO: #828 Potential hotspot - json.Marshaling is expensive, and we do it for every event.
-		jsonBytes, err := json.Marshal(logData)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("failed to marshal event for logging purposes: %+v", event)
-		}
-
-		// log event
-		if *handlerError != nil {
-			log.Ctx(ctx).Error().Msg(string(jsonBytes))
-		} else {
-			// TODO: #829 Is checking environment every event the most efficient way to do this? Could we just shunt logs to different places?
-			if system.GetEnvironment() == system.EnvironmentTest ||
-				system.GetEnvironment() == system.EnvironmentDev {
-				return
-			}
-			log.Ctx(ctx).Info().Msg(string(jsonBytes))
-		}
+		logMsg.Msg("Handled event")
 	}
-}
-
-type eventLog struct {
-	EventName    model.JobEventType `json:"EventName"`
-	ShardID      string             `json:"ShardID"`
-	SourceNodeID string             `json:"SourceNodeID"`
-	TargetNodeID string             `json:"TargetNodeID"`
-	ClientID     string             `json:"ClientID,omitempty"`
-	Status       string             `json:"Status,omitempty"`
-	Duration     int64              `json:"Duration"`
-	HandlerError string             `json:"HandlerError,omitempty"`
 }

@@ -167,6 +167,12 @@ func NewNode(
 		storageProviders,
 	)
 
+	eventTracer, err := eventhandler.NewTracer()
+	if err != nil {
+		return nil, err
+	}
+	config.CleanupManager.RegisterCallback(eventTracer.Shutdown)
+
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.HostID)
 	localDBEventHandler := localdb.NewLocalDBEventHandler(config.LocalDB)
@@ -177,6 +183,8 @@ func NewNode(
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
 		// ends the span for the job if received a terminal event
 		tracerContextProvider,
+		// record the event in a log
+		eventTracer,
 		// update the job state in the local DB
 		localDBEventHandler,
 		// handles bid and result proposals
@@ -187,6 +195,8 @@ func NewNode(
 	jobEventPublisher.AddHandlers(
 		// publish events to the network
 		eventhandler.JobEventHandlerFunc(config.Transport.Publish),
+		// record the event in a log
+		eventTracer,
 		// add tracing metadata to the context about the published event
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandlePublishedJobEvent),
 	)
