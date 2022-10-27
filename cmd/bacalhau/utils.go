@@ -434,7 +434,7 @@ To get more details about the run, execute:
 			downloadSettings,
 		)
 		if err != nil {
-			return errors.Wrap(err, "error downloading job")
+			return err
 		}
 	}
 	return nil
@@ -452,17 +452,15 @@ func downloadResultsHandler(
 
 	if err != nil {
 		if _, ok := err.(*bacerrors.JobNotFound); ok {
-			cmd.Printf("job not found.\n")
-			Fatal("", 1)
+			return err
 		} else {
 			Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
 		}
-		return err
 	}
 
 	results, err := GetAPIClient().GetResults(ctx, j.ID)
 	if err != nil {
-		return errors.Wrap(err, "error getting results")
+		return err
 	}
 
 	if len(results) == 0 {
@@ -471,7 +469,7 @@ func downloadResultsHandler(
 
 	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
 	if err != nil {
-		return errors.Wrap(err, "error processing download settings")
+		return err
 	}
 
 	err = ipfs.DownloadJob(
@@ -483,7 +481,7 @@ func downloadResultsHandler(
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "error downloading results")
+		return err
 	}
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "Results for job '%s' have been written to...\n", jobID)
