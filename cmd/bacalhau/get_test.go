@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/spf13/cobra"
@@ -68,34 +69,34 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
 
 	expected := []string{
-		"/combined_results",
-		"/combined_results/data",
-		"/combined_results/data/apples",
-		"/combined_results/data/apples/file.txt",
-		"/combined_results/data/file.txt",
-		"/combined_results/outputs",
-		"/per_shard",
-		"/per_shard/0_node_" + shortID,
-		"/per_shard/0_node_" + shortID + "/data",
-		"/per_shard/0_node_" + shortID + "/data/apples",
-		"/per_shard/0_node_" + shortID + "/data/apples/file.txt",
-		"/per_shard/0_node_" + shortID + "/data/file.txt",
-		"/per_shard/0_node_" + shortID + "/exitCode",
-		"/per_shard/0_node_" + shortID + "/outputs",
-		"/per_shard/0_node_" + shortID + "/stderr",
-		"/per_shard/0_node_" + shortID + "/stdout",
-		"/raw",
-		"/raw/" + resultsCID,
-		"/raw/" + resultsCID + "/data",
-		"/raw/" + resultsCID + "/data/apples",
-		"/raw/" + resultsCID + "/data/apples/file.txt",
-		"/raw/" + resultsCID + "/data/file.txt",
-		"/raw/" + resultsCID + "/exitCode",
-		"/raw/" + resultsCID + "/outputs",
-		"/raw/" + resultsCID + "/stderr",
-		"/raw/" + resultsCID + "/stdout",
-		"/stderr",
-		"/stdout",
+		"/" + ipfs.DownloadVolumesFolderName,
+		"/" + ipfs.DownloadVolumesFolderName + "/data",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/apples",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/apples/file.txt",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/file.txt",
+		"/" + ipfs.DownloadVolumesFolderName + "/outputs",
+		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStderr,
+		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStdout,
+		"/" + ipfs.DownloadShardsFolderName,
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID,
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
+		"/" + ipfs.DownloadCIDsFolderName,
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID,
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
 	}
 
 	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
@@ -169,6 +170,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID)
+
 }
 
 // this tests that when we do docker run with an --output-dir

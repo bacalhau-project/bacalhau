@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	DownloadVolumesFolderName = "combined_results"
+	DownloadVolumesFolderName = "combined"
 	DownloadShardsFolderName  = "per_shard"
 	DownloadCIDsFolderName    = "raw"
 	DownloadFilenameStdout    = "stdout"
@@ -321,7 +321,7 @@ func moveShardData(
 			if shouldAppendLogs {
 				err = appendFile(
 					path,
-					filepath.Join(shardContext.rootDir, basePath),
+					globalTargetPath,
 				)
 				if err != nil {
 					return nil
