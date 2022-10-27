@@ -627,6 +627,11 @@ func (n *ComputeNode) GetActiveJobs(ctx context.Context) []ActiveJob {
 	return activeJobs
 }
 
+// Returns the available capacity this compute node has to run jobs.
+func (n *ComputeNode) GetAvailableCapacity(ctx context.Context) model.ResourceUsageData {
+	return n.capacityManager.GetFreeSpace()
+}
+
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {
 	e, err := n.executors.GetExecutor(ctx, spec.Engine)
 	if err != nil {

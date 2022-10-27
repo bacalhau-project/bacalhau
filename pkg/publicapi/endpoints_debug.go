@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
 type debugResponse struct {
-	ComputeJobs []computenode.ActiveJob `json:"ComputeJobs"`
+	AvailableComputeCapacity model.ResourceUsageData   `json:"AvailableComputeCapacity"`
+	RequesterJobs            []requesternode.ActiveJob `json:"RequesterJobs"`
+	ComputeJobs              []computenode.ActiveJob   `json:"ComputeJobs"`
 }
 
 // Returns debug information on what the current node is doing.
@@ -19,7 +24,9 @@ func (apiServer *APIServer) debug(res http.ResponseWriter, req *http.Request) {
 	defer span.End()
 
 	responseObj := debugResponse{
-		ComputeJobs: apiServer.ComputeNode.GetActiveJobs(ctx),
+		AvailableComputeCapacity: apiServer.ComputeNode.GetAvailableCapacity(ctx),
+		RequesterJobs:            apiServer.Requester.GetActiveJobs(ctx),
+		ComputeJobs:              apiServer.ComputeNode.GetActiveJobs(ctx),
 	}
 
 	res.WriteHeader(http.StatusOK)
