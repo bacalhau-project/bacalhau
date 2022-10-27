@@ -1,13 +1,4 @@
-// fallback implements a publisher.Publisher that will try multiple other
-// Publishers in order until one suceeeds.
-//
-// The Publishers are tried in the order specified in the call to
-// NewFallbackPublisher. If and only if all of the Publishers return an error
-// result, the fallback publisher will also return an error result. Otherwise,
-// it will return the result of the first Publisher to succeed and will swallow
-// any errors. Subsequent Publishers will not be attempted after one succeeds.
-
-package fallback
+package combo
 
 import (
 	"context"
@@ -22,7 +13,15 @@ type fallbackPublisher struct {
 	publishers []publisher.Publisher
 }
 
-func NewFallbackPublisher(publishers ...publisher.Publisher) *fallbackPublisher {
+// NewFallbackPublisher returns a publisher.Publisher that will try multiple other
+// Publishers in order until one succeeds.
+//
+// The Publishers are tried in the order specified in the call to
+// NewFallbackPublisher. If and only if all the Publishers return an error
+// result, the fallback publisher will also return an error result. Otherwise,
+// it will return the result of the first Publisher to succeed and will swallow
+// any errors. Subsequent Publishers will not be attempted after one succeeds.
+func NewFallbackPublisher(publishers ...publisher.Publisher) publisher.Publisher {
 	return &fallbackPublisher{
 		publishers: publishers,
 	}
@@ -73,6 +72,3 @@ func (f *fallbackPublisher) PublishShardResult(
 		return p.PublishShardResult(ctx, shard, hostID, shardResultPath)
 	})
 }
-
-// Compile-time check that Publisher implements the correct interface:
-var _ publisher.Publisher = (*fallbackPublisher)(nil)

@@ -141,6 +141,7 @@ func (f *StandardPublishersFactory) Get(
 		localdb.GetStateResolver(nodeConfig.LocalDB),
 		nodeConfig.IPFSClient.APIAddress(),
 		nodeConfig.EstuaryAPIKey,
+		nodeConfig.LotusConfig,
 	)
 }
 

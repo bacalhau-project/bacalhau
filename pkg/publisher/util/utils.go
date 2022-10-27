@@ -6,8 +6,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/combo"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/estuary"
-	"github.com/filecoin-project/bacalhau/pkg/publisher/fallback"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -19,6 +20,7 @@ func NewIPFSPublishers(
 	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 	estuaryAPIKey string,
+	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
 	if err != nil {
@@ -42,13 +44,22 @@ func NewIPFSPublishers(
 		}
 	}
 
+	var lotus publisher.Publisher = ipfsPublisher
+	if lotusConfig != nil {
+		lotus, err = filecoinlotus.NewFilecoinLotusPublisher(ctx, cm, resolver, *lotusConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
 		model.PublisherNoop: noopPublisher,
 		model.PublisherIpfs: ipfsPublisher,
-		model.PublisherEstuary: fallback.NewFallbackPublisher(
+		model.PublisherEstuary: combo.NewFallbackPublisher(
 			estuaryPublisher,
 			ipfsPublisher,
 		),
+		model.PublisherFilecoin: combo.NewPiggybackedPublisher(ipfsPublisher, lotus),
 	}), nil
 }
 
