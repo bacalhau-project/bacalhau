@@ -99,7 +99,8 @@ func NewTransportFromOptions(ctx context.Context,
 
 	pis := []peer.AddrInfo{}
 	for _, p := range peers {
-		pi, err := peer.AddrInfoFromP2pAddr(p)
+		var pi *peer.AddrInfo
+		pi, err = peer.AddrInfoFromP2pAddr(p)
 		if err != nil {
 			return nil, err
 		}
