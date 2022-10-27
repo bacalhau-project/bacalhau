@@ -27,6 +27,7 @@ const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalMillis = 100
 const DelayBeforeBidMillisecondRange = 100
+const BidTimeoutSeconds = 60
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -223,6 +224,14 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 	}
 
 	shardState.Bid(ctx)
+
+	// We timeout the bid, to avoid holding open the capacity for it indefinitely.
+	go func() {
+		time.Sleep(BidTimeoutSeconds * time.Second)
+		if shardState.currentState == shardBidding {
+			shardState.Fail(ctx, "bid timed out")
+		}
+	}()
 }
 
 /*
