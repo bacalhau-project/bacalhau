@@ -100,6 +100,7 @@ func NewTransportFromOptions(ctx context.Context,
 	ps, err := pubsub.NewGossipSub(
 		ctx,
 		h,
+		pubsub.WithDirectConnectTicks(10), //nolint:gomnd
 		pubsub.WithFloodPublish(true),
 		pubsub.WithPeerExchange(true),
 		pubsub.WithPeerGater(pgParams),
