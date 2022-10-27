@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -37,6 +37,7 @@ func (suite *ComputeNodeJobSelectionSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ComputeNodeJobSelectionSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }

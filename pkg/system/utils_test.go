@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -32,6 +33,7 @@ func (s *SystemUtilsSuite) SetupAllSuite() {
 
 // Before each test
 func (s *SystemUtilsSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), InitConfigForTesting())
 }
 

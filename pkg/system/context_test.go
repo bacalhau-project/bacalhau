@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,6 +26,7 @@ func (suite *SystemContextSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *SystemContextSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), InitConfigForTesting())
 }
 

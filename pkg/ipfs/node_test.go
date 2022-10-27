@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
-
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,6 +31,7 @@ func (suite *NodeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *NodeSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 }
 

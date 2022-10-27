@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,7 @@ type DownloaderSuite struct {
 // Before each test
 func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = *system.NewCleanupManager()
+	logger.ConfigureTestLogging(ds.T())
 	require.NoError(ds.T(), system.InitConfigForTesting())
 
 	node, err := NewLocalNode(context.Background(), &ds.cm, nil)

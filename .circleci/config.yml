@@ -116,7 +116,7 @@ jobs:
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
-                  make test-and-report
+                  LOG_LEVEL=debug make test-and-report
                 no_output_timeout: 20m
 
       - when:

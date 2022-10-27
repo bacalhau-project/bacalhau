@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -37,6 +38,7 @@ func (s *PublishOnErrorSuite) SetupSuite() {
 
 // Before each test
 func (s *PublishOnErrorSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
 }

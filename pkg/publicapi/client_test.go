@@ -4,12 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGet(t *testing.T) {
+	logger.ConfigureTestLogging(t)
+
 	c, cm := SetupRequesterNodeForTests(t)
 	defer cm.Cleanup()
 

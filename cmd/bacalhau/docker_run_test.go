@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"sigs.k8s.io/yaml"
@@ -57,6 +58,7 @@ func (s *DockerRunSuite) SetupSuite() {
 
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
 }

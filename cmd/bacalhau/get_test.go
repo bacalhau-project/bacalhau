@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -40,6 +41,7 @@ func (suite *GetSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *GetSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
 }
