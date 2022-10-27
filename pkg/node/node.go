@@ -163,6 +163,7 @@ func NewNode(
 		config.LocalDB,
 		config.Transport,
 		requesterNode,
+		computeNode,
 		publishers,
 		storageProviders,
 	)

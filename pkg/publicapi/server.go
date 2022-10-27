@@ -21,6 +21,7 @@ import (
 
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -55,6 +56,7 @@ type APIServer struct {
 	localdb          localdb.LocalDB
 	transport        transport.Transport
 	Requester        *requesternode.RequesterNode
+	ComputeNode      *computenode.ComputeNode
 	Publishers       publisher.PublisherProvider
 	StorageProviders storage.StorageProvider
 	Host             string
@@ -78,11 +80,12 @@ func NewServer(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
+	computeNode *computenode.ComputeNode,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
 ) *APIServer {
 	return NewServerWithConfig(
-		ctx, host, port, localdb, transport, requester, publishers, storageProviders, DefaultAPIServerConfig)
+		ctx, host, port, localdb, transport, requester, computeNode, publishers, storageProviders, DefaultAPIServerConfig)
 }
 
 func NewServerWithConfig(
@@ -92,6 +95,7 @@ func NewServerWithConfig(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
+	computeNode *computenode.ComputeNode,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
 	config *APIServerConfig) *APIServer {
@@ -99,6 +103,7 @@ func NewServerWithConfig(
 		localdb:          localdb,
 		transport:        transport,
 		Requester:        requester,
+		ComputeNode:      computeNode,
 		Publishers:       publishers,
 		StorageProviders: storageProviders,
 		Host:             host,
@@ -133,6 +138,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle(apiServer.chainHandlers("/varz", apiServer.varz))
 	sm.Handle(apiServer.chainHandlers("/livez", apiServer.livez))
 	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
+	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
 	sm.Handle("/metrics", promhttp.Handler())
 
 	srv := http.Server{
