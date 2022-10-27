@@ -124,22 +124,22 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 		expected    model.ResourceUsageData
 	}{
 		{
-			name:        "should return what the system has",
+			name:        "should return 80% of what the system has",
 			shouldError: false,
 			input:       c("", "", ""),
-			expected:    d(float64(runtime.NumCPU()), memory.TotalMemory(), numSystemGPUsNoError()),
+			expected:    d(float64(runtime.NumCPU())*0.8, memory.TotalMemory()*80/100, numSystemGPUsNoError()),
 		},
 		{
 			name:        "should return the configured CPU amount",
 			shouldError: false,
 			input:       c("100m", "", ""),
-			expected:    d(float64(0.1), memory.TotalMemory(), numSystemGPUsNoError()),
+			expected:    d(float64(0.1), memory.TotalMemory()*80/100, numSystemGPUsNoError()),
 		},
 		{
 			name:        "should return the configured Memory amount",
 			shouldError: false,
 			input:       c("", "100Mb", ""),
-			expected:    d(float64(runtime.NumCPU()), ConvertMemoryString("100Mb"), numSystemGPUsNoError()),
+			expected:    d(float64(runtime.NumCPU())*0.8, ConvertMemoryString("100Mb"), numSystemGPUsNoError()),
 		},
 		{
 			name:        "should error with too many CPUs asked for",
