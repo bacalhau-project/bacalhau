@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,14 +63,13 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		defer cm.Cleanup()
 
 		cid := "apples"
-		basePath, err := os.MkdirTemp("", "combo-driver-test")
-		require.NoError(suite.T(), err)
+		basePath := suite.T().TempDir()
 		filePath := filepath.Join(basePath, "file.txt")
 		if unsealedMode {
 			os.MkdirAll(filepath.Join(basePath, cid), os.ModePerm)
 			filePath = filepath.Join(basePath, cid, "file.txt")
 		}
-		err = os.WriteFile(
+		err := os.WriteFile(
 			filePath,
 			[]byte(fmt.Sprintf(exampleText)),
 			0644,
@@ -164,8 +162,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		node, err := stack.GetNode(ctx, shard.NodeID)
 		require.NoError(suite.T(), err)
 
-		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-		require.NoError(suite.T(), err)
+		outputDir := suite.T().TempDir()
 		require.NotEmpty(suite.T(), shard.PublishedResult.CID)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

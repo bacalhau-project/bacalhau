@@ -2,7 +2,6 @@ package filecoinunsealed
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,8 +49,7 @@ func (suite *FilecoinUnsealedSuite) SetupTest() {
 	var setupErr error
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
-	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-unsealed-test")
-	require.NoError(suite.T(), setupErr)
+	tempDir = suite.T().TempDir()
 	driver, setupErr = NewStorage(cm, filepath.Join(tempDir, "{{.CID}}"))
 	require.NoError(suite.T(), setupErr)
 }

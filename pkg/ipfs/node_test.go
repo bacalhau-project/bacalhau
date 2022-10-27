@@ -62,8 +62,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.NoError(suite.T(), err)
 
 	// Create a file in a temp dir to upload to the nodes:
-	dirPath, err := os.MkdirTemp("", "ipfs-client-test")
-	require.NoError(suite.T(), err)
+	dirPath := suite.T().TempDir()
 
 	filePath := filepath.Join(dirPath, "test.txt")
 	file, err := os.Create(filePath)

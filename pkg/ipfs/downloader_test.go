@@ -3,7 +3,6 @@ package ipfs
 import (
 	"context"
 	"crypto/rand"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,8 +45,7 @@ func (ds *DownloaderSuite) SetupTest() {
 	swarm, err := node.SwarmAddresses()
 	require.NoError(ds.T(), err)
 
-	testOutputDir, err := ioutil.TempDir(os.TempDir(), "bacalhau-downloader-test-outputs-*")
-	require.NoError(ds.T(), err)
+	testOutputDir := ds.T().TempDir()
 	ds.outputDir = testOutputDir
 
 	ds.downloadSettings = IPFSDownloadSettings{
@@ -90,8 +88,7 @@ func generateFile(path string) ([]byte, error) {
 // files within the directory. At the end, the entire directory is saved to
 // IPFS.
 func mockShardOutput(ds *DownloaderSuite, setup func(string)) string {
-	testDir, err := ioutil.TempDir(os.TempDir(), "bacalhau-downloader-test-inputs-*")
-	require.NoError(ds.T(), err)
+	testDir := ds.T().TempDir()
 
 	setup(testDir)
 

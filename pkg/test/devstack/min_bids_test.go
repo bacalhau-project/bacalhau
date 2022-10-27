@@ -75,7 +75,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			computenode.NewDefaultComputeNodeConfig(),
 		)
 
-		dirPath, err := prepareFolderWithFiles(testCase.shards)
+		dirPath, err := prepareFolderWithFiles(suite.T(), testCase.shards)
 		require.NoError(suite.T(), err)
 
 		directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
