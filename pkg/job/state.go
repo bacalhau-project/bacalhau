@@ -235,64 +235,20 @@ func (resolver *StateResolver) GetResults(ctx context.Context, jobID string) ([]
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	results := []model.PublishedResult{}
-	job, err := resolver.jobLoader(ctx, jobID)
-	if err != nil {
-		return results, err
-	}
 	jobState, err := resolver.stateLoader(ctx, jobID)
 	if err != nil {
 		return results, err
 	}
 
-	// how many shards do we have in the execution plan?
-	totalShards := GetJobTotalShards(job)
 	// group the shard states by shard index
-	groupedShardResults := GroupShardStates(GetCompletedVerifiedShardStates(jobState))
-
-	// we have already filtered down to complete results
-	// so there must be totalShards entries in the groupedShardResults
-	// and it means we have a complete result set
-	if len(groupedShardResults) < totalShards {
-		return results, fmt.Errorf(
-			"job (%s) has not completed yet - %d shards out of %d are complete",
-			jobID,
-			len(groupedShardResults),
-			totalShards,
-		)
-	}
-
-	// now let's pluck the first result from each shard
-	// each shard has already been filtered down to "complete" and "verified"
-	for shardIndex, shardResults := range groupedShardResults {
-		// this is a sanity check - there should never be an empty
-		// array in the groupedShardResults but just in case
-		if len(shardResults) == 0 {
-			return results, fmt.Errorf(
-				"job (%s) has an empty shard result map at shard index %d",
-				jobID,
-				shardIndex,
-			)
-		}
-
-		// we have already checked that these shard results are complete and verified
-		shardResult := shardResults[0]
-
-		// again this should never happen but just in case
-		// a shard result with an empty CID has made it through somehow
-		if shardResult.PublishedResult.CID == "" {
-			return results, fmt.Errorf(
-				"job (%s) has a missing results id at shard index %d",
-				jobID,
-				shardIndex,
-			)
-		}
-
+	for _, shardState := range GetCompletedVerifiedShardStates(jobState) {
 		results = append(results, model.PublishedResult{
-			NodeID:     shardResult.NodeID,
-			ShardIndex: shardIndex,
-			Data:       shardResult.PublishedResult,
+			NodeID:     shardState.NodeID,
+			ShardIndex: shardState.ShardIndex,
+			Data:       shardState.PublishedResult,
 		})
 	}
+
 	return results, nil
 }
 
@@ -384,7 +340,7 @@ func GetCompletedShardStates(jobState model.JobState) []model.JobShardState {
 func GetCompletedVerifiedShardStates(jobState model.JobState) []model.JobShardState {
 	ret := []model.JobShardState{}
 	for _, shardState := range GetFilteredShardStates(jobState, model.JobStateCompleted) { //nolint:gocritic
-		if shardState.VerificationResult.Complete && shardState.VerificationResult.Result {
+		if shardState.VerificationResult.Complete && shardState.VerificationResult.Result && shardState.PublishedResult.CID != "" {
 			ret = append(ret, shardState)
 		}
 	}
