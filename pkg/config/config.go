@@ -108,8 +108,13 @@ func GetLibp2pTracerPath() string {
 	return filepath.Join(configPath, "bacalhau-libp2p-tracer.json")
 }
 
+func GetEventTracerPath() string {
+	configPath := GetConfigPath()
+	return filepath.Join(configPath, "bacalhau-event-tracer.json")
+}
+
 func GetConfigPath() string {
-	suffix := "/.bacalhau"
+	suffix := ".bacalhau"
 	env := os.Getenv("BACALHAU_PATH")
 	var d string
 	if env == "" {
@@ -118,10 +123,10 @@ func GetConfigPath() string {
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		d = dirname + suffix
+		d = filepath.Join(dirname, suffix)
 	} else {
 		// e.g. /data/.bacalhau
-		d = env + suffix
+		d = filepath.Join(env, suffix)
 	}
 	// create dir if not exists
 	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {
