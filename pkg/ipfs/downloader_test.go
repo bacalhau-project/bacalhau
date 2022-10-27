@@ -147,7 +147,7 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	var exitCode, stdout, stderr, hello, goodbye []byte
 	cid := mockShardOutput(ds, func(dir string) {
 		exitCode = mockFile(ds, dir, "exitCode")
-		stdout = mockFile(ds, dir, "stdout")
+		stdout = mockFile(ds, dir, DownloadFilenameStdout)
 		stderr = mockFile(ds, dir, "stderr")
 		hello = mockFile(ds, dir, "outputs", "hello.txt")
 		goodbye = mockFile(ds, dir, "outputs", "goodbye.txt")
@@ -178,13 +178,13 @@ func (ds *DownloaderSuite) TestFullOutput() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFile(ds, stdout, "stdout")
+	requireFile(ds, stdout, DownloadFilenameStdout)
 	requireFile(ds, stderr, "stderr")
-	requireFile(ds, exitCode, "shards", "0", "node_testnode_exitCode")
-	requireFile(ds, stdout, "shards", "0", "node_testnode_stdout")
-	requireFile(ds, stderr, "shards", "0", "node_testnode_stderr")
-	requireFile(ds, goodbye, "volumes", "outputs", "goodbye.txt")
-	requireFile(ds, hello, "volumes", "outputs", "hello.txt")
+	requireFile(ds, exitCode, DownloadShardsFolderName, "0_node_testnode", "exitCode")
+	requireFile(ds, stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, stderr, DownloadShardsFolderName, "0_node_testnode", "stderr")
+	requireFile(ds, goodbye, DownloadVolumesFolderName, "outputs", "goodbye.txt")
+	requireFile(ds, hello, DownloadVolumesFolderName, "outputs", "hello.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
@@ -217,18 +217,18 @@ func (ds *DownloaderSuite) TestOutputWithNoStdFiles() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, "volumes", "outputs", "lonely.txt")
+	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "lonely.txt")
 }
 
 func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 	var shard0stdout, shard1stdout []byte
 	cid0 := mockShardOutput(ds, func(s string) {
-		shard0stdout = mockFile(ds, s, "stdout")
+		shard0stdout = mockFile(ds, s, DownloadFilenameStdout)
 		mockFile(ds, s, "outputs", "data0.csv")
 	})
 
 	cid1 := mockShardOutput(ds, func(s string) {
-		shard1stdout = mockFile(ds, s, "stdout")
+		shard1stdout = mockFile(ds, s, DownloadFilenameStdout)
 		mockFile(ds, s, "outputs", "data1.csv")
 	})
 
@@ -267,11 +267,11 @@ func (ds *DownloaderSuite) TestOutputFromMultipleShards() {
 	require.NoError(ds.T(), err)
 
 	fullStdout := append(shard0stdout, shard1stdout...)
-	requireFile(ds, fullStdout, "stdout")
-	requireFile(ds, shard0stdout, "shards", "0", "node_testnode_stdout")
-	requireFile(ds, shard1stdout, "shards", "1", "node_testnode_stdout")
-	requireFileExists(ds, "volumes", "outputs", "data0.csv")
-	requireFileExists(ds, "volumes", "outputs", "data1.csv")
+	requireFile(ds, fullStdout, DownloadFilenameStdout)
+	requireFile(ds, shard0stdout, DownloadShardsFolderName, "0_node_testnode", "stdout")
+	requireFile(ds, shard1stdout, DownloadShardsFolderName, "1_node_testnode", "stdout")
+	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data0.csv")
+	requireFileExists(ds, DownloadVolumesFolderName, "outputs", "data1.csv")
 }
 
 func (ds *DownloaderSuite) TestCustomVolumeNames() {
@@ -305,5 +305,5 @@ func (ds *DownloaderSuite) TestCustomVolumeNames() {
 	)
 	require.NoError(ds.T(), err)
 
-	requireFileExists(ds, "volumes", "secrets", "private.pem")
+	requireFileExists(ds, DownloadVolumesFolderName, "secrets", "private.pem")
 }
