@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -141,8 +140,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-cid-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
@@ -243,8 +241,7 @@ func runURLTest(
 	)
 	require.NoError(t, err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(t, err)
+	outputDir := t.TempDir()
 
 	shards, err := resolver.GetShards(ctx, submittedJob.ID)
 	require.NoError(t, err)
@@ -482,8 +479,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

@@ -5,7 +5,6 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -54,11 +53,7 @@ func (s *ComputeNodeRunJobSuite) TearDownAllSuite() {
 func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	ctx := context.Background()
 
-	tmpOutputDir, err := ioutil.TempDir("", "bacalhau-test-run-job")
-	if err != nil {
-		s.T().Fatal(err)
-	}
-	defer os.RemoveAll(tmpOutputDir)
+	tmpOutputDir := s.T().TempDir()
 
 	EXAMPLE_TEXT := "hello"
 	stack := testutils.NewDevStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())

@@ -4,7 +4,6 @@ package devstack
 
 import (
 	"context"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -112,8 +111,7 @@ func devStackDockerStorageTest(
 		node, err := stack.GetNode(ctx, shard.NodeID)
 		require.NoError(t, err)
 
-		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-		require.NoError(t, err)
+		outputDir := t.TempDir()
 		require.NotEmpty(t, shard.PublishedResult.CID)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

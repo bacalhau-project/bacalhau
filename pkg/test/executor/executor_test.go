@@ -4,7 +4,6 @@ package executor
 
 import (
 	"context"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -94,8 +93,7 @@ func runTestCase(
 		Index: 0,
 	}
 
-	resultsDirectory, err := ioutil.TempDir("", "bacalhau-executorStorageTest")
-	require.NoError(t, err)
+	resultsDirectory := t.TempDir()
 
 	runnerOutput, err := executor.RunShard(ctx, shard, resultsDirectory)
 	require.NoError(t, err)

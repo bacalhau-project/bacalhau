@@ -65,8 +65,7 @@ func (suite *GetSuite) TestGetJob() {
 	port, _ := freeport.GetFreePort()
 	submittedJobID := ""
 
-	outputDir, _ := os.MkdirTemp(os.TempDir(), "bacalhau-get-test-*")
-	defer os.RemoveAll(outputDir)
+	outputDir := suite.T().TempDir()
 	for _, n := range numOfJobsTests {
 		func() {
 			c, cm := publicapi.SetupRequesterNodeForTestWithPort(suite.T(), port)

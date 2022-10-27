@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,8 +107,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-publish-on-error-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

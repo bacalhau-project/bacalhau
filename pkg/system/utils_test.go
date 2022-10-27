@@ -45,11 +45,7 @@ func (s *SystemUtilsSuite) TearDownAllSuite() {
 func (s *SystemUtilsSuite) TestBasicCommandExecution() {
 	cmd := "bash"
 	args := []string{"-c", "echo", fmt.Sprintf("%s", uuid.New())}
-	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		require.Fail(s.T(), "Could not create temp dir", err)
-	}
+	tmpDir := s.T().TempDir()
 
 	stdoutFile := tmpDir + "/stdout"
 	stderrFile := tmpDir + "/stderr"
@@ -59,11 +55,7 @@ func (s *SystemUtilsSuite) TestBasicCommandExecution() {
 func (s *SystemUtilsSuite) TestInternalCommandExecution() {
 	cmd := "bash"
 	args := []string{"-c", "echo", fmt.Sprintf("%s", uuid.New())}
-	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		require.Fail(s.T(), "Could not create temp dir", err)
-	}
+	tmpDir := s.T().TempDir()
 
 	stdoutFile := tmpDir + "/stdout"
 	stderrFile := tmpDir + "/stderr"
@@ -147,9 +139,7 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 			expectedLength: GenericMaxLengthInBytes},
 	}
 	cmd := "bash"
-	tmpDir, err := ioutil.TempDir("", "test-bacalhau-command-execution-")
-	defer os.RemoveAll(tmpDir)
-	require.NoError(s.T(), err, "Could not create temp dir")
+	tmpDir := s.T().TempDir()
 
 	for maxSizeCaseName, maxSizeCase := range maxSizeCases {
 		for outputPipeTestName, stdOutstdErrCase := range stdOutstdErrCases {

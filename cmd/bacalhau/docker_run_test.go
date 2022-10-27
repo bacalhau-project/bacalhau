@@ -747,12 +747,10 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 
 	*ODR = *NewDockerRunOptions()
 
-	dirPath, err := os.MkdirTemp("", "sharding-test")
-	defer os.RemoveAll(dirPath)
+	dirPath := s.T().TempDir()
 
-	require.NoError(s.T(), err)
 	for _, video := range videos {
-		err = os.WriteFile(
+		err := os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
@@ -841,9 +839,6 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10,
 			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
 	}
-
-	outputDir, _ := os.MkdirTemp(os.TempDir(), "bacalhau-truncate-test-*")
-	defer os.RemoveAll(outputDir)
 
 	for name, tc := range tests {
 		s.T().Run(name, func(t *testing.T) {

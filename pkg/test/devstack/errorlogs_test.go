@@ -3,7 +3,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,8 +112,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	state := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-	require.NoError(suite.T(), err)
+	outputDir := suite.T().TempDir()
 
 	node, err := stack.GetNode(ctx, nodeIDs[0])
 	require.NoError(suite.T(), err)
