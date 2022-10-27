@@ -28,6 +28,9 @@ const config = {
           editUrl: `https://github.com/bacalhau-project/docs.bacalhau.org/blob/main/`,
           remarkPlugins: [simplePlantUML],
         },
+        gtag: {
+          trackingID: 'G-D6NP6P151C',
+        },
       },
     ],
   ],
