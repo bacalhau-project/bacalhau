@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -19,7 +20,6 @@ import (
 )
 
 var wasmJob *model.Job
-var contextPath string
 
 var runtimeSettings *RunTimeSettings
 var downloadSettings *ipfs.IPFSDownloadSettings
@@ -80,11 +80,6 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Inputs), "input-volumes", "v",
 		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
 	)
-	runWasmCommand.PersistentFlags().StringVar(
-		&contextPath, "context-path", "",
-		`Path to context (e.g. python code) to send to server (via public IPFS network
-		for execution (max 10MiB). Set to empty string to disable`,
-	)
 }
 
 var wasmCmd = &cobra.Command{
@@ -103,10 +98,11 @@ var wasmCmd = &cobra.Command{
 }
 
 var runWasmCommand = &cobra.Command{
-	Use:     "run {cid-of-wasm | --context-path <local.wasm>} [--entry-point <string>] [wasm-args ...]",
+	Use:     "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 	Short:   "Run a WASM job on the network",
 	Long:    languageRunLong,
 	Example: languageRunExample,
+	Args:    cobra.MinimumNArgs(1),
 	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm := system.NewCleanupManager()
@@ -117,44 +113,44 @@ var runWasmCommand = &cobra.Command{
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		var buf bytes.Buffer
-		if contextPath == "" {
-			if len(args) < 1 {
-				return fmt.Errorf("must supply either a CID or local WASM blob")
-			}
+		wasmCidOrPath := args[0]
+		wasmJob.Spec.Wasm.Parameters = args[1:]
 
-			wasmCid := args[0]
-			_, err := cid.Parse(wasmCid)
-			if err != nil {
-				return fmt.Errorf("%q is not a valid CID: %s", wasmCid, err.Error())
-			}
-
+		// Try interpreting this as a CID.
+		wasmCid, err := cid.Parse(wasmCidOrPath)
+		if err == nil {
+			// It is a valid CID – proceed to create IPFS context.
 			wasmJob.Spec.Contexts = append(wasmJob.Spec.Contexts, model.StorageSpec{
 				StorageSource: model.StorageSourceIPFS,
-				CID:           wasmCid,
+				CID:           wasmCid.String(),
 				Path:          "/job",
 			})
-			wasmJob.Spec.Wasm.Parameters = args[1:]
 		} else {
-			info, err := os.Stat(contextPath)
+			// Try interpreting this as a path.
+			info, err := os.Stat(wasmCidOrPath)
 			if err != nil {
-				return err
+				if os.IsNotExist(err) {
+					return fmt.Errorf("%q is not a valid CID or local file: %s", wasmCidOrPath, err.Error())
+				} else {
+					return err
+				}
 			}
 
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("%s should point to a single file", contextPath)
+				return fmt.Errorf("%s should point to a single file", wasmCidOrPath)
 			}
 
-			err = os.Chdir(filepath.Dir(contextPath))
+			err = os.Chdir(filepath.Dir(wasmCidOrPath))
 			if err != nil {
 				return err
 			}
 
-			err = targzip.Compress(ctx, filepath.Base(contextPath), &buf)
+			cmd.Printf("Uploading %q to server to execute command in context, press Ctrl+C to cancel\n", wasmCidOrPath)
+			time.Sleep(1 * time.Second)
+			err = targzip.Compress(ctx, filepath.Base(wasmCidOrPath), &buf)
 			if err != nil {
 				return err
 			}
-
-			wasmJob.Spec.Wasm.Parameters = args
 		}
 
 		// We can only use a Deterministic verifier if we have multiple nodes running the job
