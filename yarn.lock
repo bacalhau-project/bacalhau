@@ -1444,7 +1444,7 @@
     "@docusaurus/utils-validation" "2.1.0"
     "tslib" "^2.4.0"
 
-"@docusaurus/plugin-google-gtag@2.1.0":
+"@docusaurus/plugin-google-gtag@^2.1.0", "@docusaurus/plugin-google-gtag@2.1.0":
   "integrity" "sha512-/3aDlv2dMoCeiX2e+DTGvvrdTA+v3cKQV3DbmfsF4ENhvc5nKV23nth04Z3Vq0Ci1ui6Sn80TkhGk/tiCMW2AA=="
   "resolved" "https://registry.npmjs.org/@docusaurus/plugin-google-gtag/-/plugin-google-gtag-2.1.0.tgz"
   "version" "2.1.0"
@@ -11420,9 +11420,9 @@
   "version" "0.0.6"
 
 "typescript@>= 2.7":
-  "integrity" "sha512-QCh+85mCy+h0IGff8r5XWzOVSbBO+KfeYrMQh7NJ58QujwcE22u+NUSmUxqF+un70P9GXKxa2HCNiTTMJknyjQ=="
-  "resolved" "https://registry.npmjs.org/typescript/-/typescript-4.8.4.tgz"
-  "version" "4.8.4"
+  "integrity" "sha512-goMHfm00nWPa8UvR/CPSvykqf6dVV8x/dp0c5mFTMTIu0u0FlGWRioyy7Nn0PGAdHxpJZnuO/ut+PpQ8UiHAig=="
+  "resolved" "https://registry.npmjs.org/typescript/-/typescript-4.8.3.tgz"
+  "version" "4.8.3"
 
 "ua-parser-js@^0.7.30":
   "integrity" "sha1-ZJplaxkd/6tPIdXgU+J8oXy/9cY=sha512-qLK/Xe9E2uzmYI3qLeOmI0tEOt+TBBQyUIAh4aAgU05FVYzeZrKUdkAZfBNVGRaHVgV0TDkdEngJSw/SyQchkQ== sha512-qLK/Xe9E2uzmYI3qLeOmI0tEOt+TBBQyUIAh4aAgU05FVYzeZrKUdkAZfBNVGRaHVgV0TDkdEngJSw/SyQchkQ=="
