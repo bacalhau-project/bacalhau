@@ -148,6 +148,10 @@ func DownloadJob( //nolint:funlen,gocyclo
 
 	// the base folder for globally merged volumes
 	volumeDir := filepath.Join(resultsOutputDir, DownloadVolumesFolderName)
+	err = os.Mkdir(volumeDir, DownloadFolderPerm)
+	if err != nil {
+		return err
+	}
 
 	// ensure we have each of the top level merged volumes
 	for _, outputVolume := range outputVolumes {
