@@ -392,21 +392,17 @@ Insalling bacalhau
 ```
 
     Your system is linux_amd64
-    
-    BACALHAU CLI is detected:
-    Client Version: v0.2.5
-    Server Version: v0.2.5
-    Reinstalling BACALHAU CLI - /usr/local/bin/bacalhau...
+    No BACALHAU detected. Installing fresh BACALHAU CLI...
     Getting the latest BACALHAU CLI...
-    Installing v0.2.5 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.5/bacalhau_v0.2.5_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.5/bacalhau_v0.2.5_linux_amd64.tar.gz.signature.sha256 ...
+    Installing v0.3.8 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.8/bacalhau_v0.3.8_linux_amd64.tar.gz.signature.sha256 ...
     Verified OK
     Extracting tarball ...
     NOT verifying Bin
     bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.2.5
-    Server Version: v0.2.5
+    Client Version: v0.3.8
+    Server Version: v0.3.8
 
 
 
@@ -415,7 +411,7 @@ Insalling bacalhau
 !cat job_id.txt
 ```
 
-    4f758052-0543-40b5-bd86-6ab41e77389a
+    215dc3ca-e59a-4a06-9272-0be8304f1e1d
 
 
 
@@ -424,7 +420,7 @@ Insalling bacalhau
 ```
 
     [92;100m CREATED  [0m[92;100m ID       [0m[92;100m JOB                     [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED               [0m
-    [97;40m 17:33:46 [0m[97;40m 4f758052 [0m[97;40m Docker jsacex/stable... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmcQEQPg934Pow... [0m
+    [97;40m 08:04:36 [0m[97;40m d4ae780f [0m[97;40m Docker jsacex/whispe... [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/QmabtzjaAj94sG... [0m
 
 
 
@@ -436,6 +432,128 @@ To find out more information about your job, run the following command:
 ```python
 !bacalhau describe $(cat job_id.txt)
 ```
+
+    APIVersion: V1alpha1
+    ClientID: 65f7e03a4abefc46b3ebcccfc84877fb15e9912fe541146996ce0b8279e51847
+    CreatedAt: "2022-10-28T08:06:30.723682632Z"
+    Deal:
+      Concurrency: 1
+    ExecutionPlan:
+      ShardsTotal: 1
+    ID: 215dc3ca-e59a-4a06-9272-0be8304f1e1d
+    JobState:
+      Nodes:
+        QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86:
+          Shards:
+            "0":
+              NodeId: QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86
+              PublishedResults: {}
+              State: Cancelled
+              VerificationResult: {}
+        QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT:
+          Shards:
+            "0":
+              NodeId: QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT
+              PublishedResults: {}
+              State: Cancelled
+              VerificationResult: {}
+        QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG:
+          Shards:
+            "0":
+              NodeId: QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
+              PublishedResults:
+                CID: bafybeievylhpwyuwegmbbozhsnf5rgeul4uyxmretjp5dybnze5h23opzu
+                Name: job-215dc3ca-e59a-4a06-9272-0be8304f1e1d-shard-0-host-QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
+                StorageSource: Estuary
+              RunOutput:
+                exitCode: 0
+                runnerError: ""
+                stderr: "e-libopenh264 --enable-pic --enable-pthreads --enable-shared
+                  --disable-static --enable-version3 --enable-zlib --enable-libmp3lame\n
+                  \ libavutil      56. 51.100 / 56. 51.100\n  libavcodec     58. 91.100
+                  / 58. 91.100\n  libavformat    58. 45.100 / 58. 45.100\n  libavdevice
+                  \   58. 10.100 / 58. 10.100\n  libavfilter     7. 85.100 /  7. 85.100\n
+                  \ libavresample   4.  0.  0 /  4.  0.  0\n  libswscale      5.  7.100
+                  /  5.  7.100\n  libswresample   3.  7.100 /  3.  7.100\nInput #0, mov,mp4,m4a,3gp,3g2,mj2,
+                  from '/inputs/Apollo_11_moonwalk_montage_720p.mp4':\n  Metadata:\n    major_brand
+                  \    : isom\n    minor_version   : 512\n    compatible_brands: isomiso2avc1mp41\n
+                  \   encoder         : Lavf59.27.100\n  Duration: 00:02:00.17, start:
+                  0.000000, bitrate: 660 kb/s\n    Stream #0:0(und): Video: h264 (High)
+                  (avc1 / 0x31637661), yuv420p(tv, bt709), 1280x720, 523 kb/s, 30 fps,
+                  30 tbr, 15360 tbn, 60 tbc (default)\n    Metadata:\n      handler_name
+                  \   : VideoHandler\n      encoder         : Lavc59.37.100 libx264\n
+                  \     timecode        : 00:00:00:00\n    Stream #0:1(eng): Audio: aac
+                  (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)\n
+                  \   Metadata:\n      handler_name    : Apple Sound Media Handler\n    Stream
+                  #0:2(eng): Data: none (tmcd / 0x64636D74)\n    Metadata:\n      handler_name
+                  \   : TimeCodeHandler\n      timecode        : 00:00:00:00\nStream mapping:\n
+                  \ Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))\nPress [q]
+                  to stop, [?] for help\nOutput #0, wav, to 'Apollo_11_moonwalk_montage_720p.wav':\n
+                  \ Metadata:\n    major_brand     : isom\n    minor_version   : 512\n
+                  \   compatible_brands: isomiso2avc1mp41\n    ISFT            : Lavf58.45.100\n
+                  \   Stream #0:0(eng): Audio: pcm_s16le ([1][0][0][0] / 0x0001), 16000
+                  Hz, mono, s16, 256 kb/s (default)\n    Metadata:\n      handler_name
+                  \   : Apple Sound Media Handler\n      encoder         : Lavc58.91.100
+                  pcm_s16le\nsize=    3755kB time=00:02:00.17 bitrate= 256.0kbits/s speed=
+                  358x    \nvideo:0kB audio:3755kB subtitle:0kB other streams:0kB global
+                  headers:0kB muxing overhead: 0.002028%\nUsing device: cuda:0"
+                stderrtruncated: true
+                stdout: |-
+                  [00:00.000 --> 00:07.000]  As the foot of the ladder, the lamb foot beds are only depressed in the surface about one
+                  [00:14.760 --> 00:21.760]  or two inches, although the surface appears to be very, very fine grained as you get close
+                  [00:23.360 --> 00:28.360]  to it. It's almost like a powder. The ground mass is very fine.
+                  [00:28.360 --> 00:35.360]  Okay, I'm going to leave that one foot up there and both hands down about the fourth
+                  [00:47.760 --> 00:48.760]  rung up.
+                  [00:48.760 --> 00:49.760]  There you go.
+                  [00:49.760 --> 00:52.760]  Okay, now I think I'll do the same.
+                  [00:52.760 --> 00:59.760]  For those who haven't read the plaque, we'll read the plaque that's on the front landing
+                  [01:06.840 --> 01:13.840]  gear of this lamb. There's two hemispheres, one showing each of the two hemispheres of
+                  [01:13.840 --> 01:20.840]  Earth. Underneath it says, Airman from the planet Earth, first set foot upon the moon
+                  [01:25.280 --> 01:28.280]  July 1969, D.C. We came in deep.
+                  [01:28.280 --> 01:35.280]  I guess you're about the only person around that doesn't have TV coverage of the scene.
+                  [01:35.280 --> 01:42.280]  That's all right. I don't mind a bit.
+                  [01:42.280 --> 01:47.280]  How is the quality of the TV?
+                  [01:47.280 --> 01:50.280]  Oh, it's beautiful, Mike. It really is.
+                  [01:50.280 --> 01:55.280]  Oh, geez, that's great. Is the lighting halfway decent?
+                  [01:55.280 --> 02:00.280]  Yes, indeed. They've got the flag up now, and you can see the stars and stripes on the
+                stdouttruncated: false
+              State: Completed
+              Status: 'Got results proposal of length: 0'
+              VerificationResult:
+                Complete: true
+                Result: true
+    RequesterNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE=
+    Spec:
+      Docker:
+        Entrypoint:
+        - python
+        - openai-whisper.py
+        - -p
+        - inputs/Apollo_11_moonwalk_montage_720p.mp4
+        - -o
+        - outputs
+        Image: jsacex/whisper
+      Engine: Docker
+      Language:
+        JobContext: {}
+      Publisher: Estuary
+      Resources:
+        GPU: "1"
+      Sharding:
+        BatchSize: 1
+        GlobPatternBasePath: /inputs
+      Verifier: Noop
+      Wasm: {}
+      inputs:
+      - CID: bafybeielf6z4cd2nuey5arckect5bjmelhouvn5rhbjlvpvhp7erkrc4nu
+        StorageSource: IPFS
+        path: /inputs
+      outputs:
+      - Name: outputs
+        StorageSource: IPFS
+        path: /outputs
+
 
 Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
 we can download the results!
@@ -457,10 +575,7 @@ the following command:
 ! bacalhau get  $(cat job_id.txt)  --output-dir results
 ```
 
-    [90m17:38:25.343 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job '4f758052-0543-40b5-bd86-6ab41e77389a'...
-    2022/09/29 17:38:25 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
-    [90m17:38:35.851 |[0m [32mINF[0m [1mipfs/downloader.go:115[0m[36m >[0m Found 1 result shards, downloading to temporary folder.
-    [90m17:38:37.1 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/content/results'
+    Fetching results of job '215dc3ca-e59a-4a06-9272-0be8304f1e1d'...2022/10/28 08:13:02 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB). See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details.
 
 
 After the download has finished you should 
@@ -471,5 +586,76 @@ see the following contents in results directory
 ! ls results/
 ```
 
-    shards	stderr	stdout	volumes
+    job-215dc3ca-e59a-4a06-9272-0be8304f1e1d-shard-0-host-QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
+    shards
+    stderr
+    stdout
+    volumes
 
+
+## Viewing the Outputs
+
+
+```python
+!cat results/volumes/outputs/Apollo_11_moonwalk_montage_720p.vtt
+```
+
+    WEBVTT
+    
+    00:00.000 --> 00:07.000
+    As the foot of the ladder, the lamb foot beds are only depressed in the surface about one
+    
+    00:14.760 --> 00:21.760
+    or two inches, although the surface appears to be very, very fine grained as you get close
+    
+    00:23.360 --> 00:28.360
+    to it. It's almost like a powder. The ground mass is very fine.
+    
+    00:28.360 --> 00:35.360
+    Okay, I'm going to leave that one foot up there and both hands down about the fourth
+    
+    00:47.760 --> 00:48.760
+    rung up.
+    
+    00:48.760 --> 00:49.760
+    There you go.
+    
+    00:49.760 --> 00:52.760
+    Okay, now I think I'll do the same.
+    
+    00:52.760 --> 00:59.760
+    For those who haven't read the plaque, we'll read the plaque that's on the front landing
+    
+    01:06.840 --> 01:13.840
+    gear of this lamb. There's two hemispheres, one showing each of the two hemispheres of
+    
+    01:13.840 --> 01:20.840
+    Earth. Underneath it says, Airman from the planet Earth, first set foot upon the moon
+    
+    01:25.280 --> 01:28.280
+    July 1969, D.C. We came in deep.
+    
+    01:28.280 --> 01:35.280
+    I guess you're about the only person around that doesn't have TV coverage of the scene.
+    
+    01:35.280 --> 01:42.280
+    That's all right. I don't mind a bit.
+    
+    01:42.280 --> 01:47.280
+    How is the quality of the TV?
+    
+    01:47.280 --> 01:50.280
+    Oh, it's beautiful, Mike. It really is.
+    
+    01:50.280 --> 01:55.280
+    Oh, geez, that's great. Is the lighting halfway decent?
+    
+    01:55.280 --> 02:00.280
+    Yes, indeed. They've got the flag up now, and you can see the stars and stripes on the
+    
+
+
+
+```python
+
+```
