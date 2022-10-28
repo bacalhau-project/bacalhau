@@ -50,7 +50,7 @@ func SubmitAndGet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "combined_results", "stdout"))
 	if err != nil {
 		return err
 	}
