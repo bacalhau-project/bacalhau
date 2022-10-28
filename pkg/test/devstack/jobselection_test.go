@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -34,6 +35,7 @@ func (suite *DevstackJobSelectionSuite) SetupSuite() {
 
 // Before each test
 func (suite *DevstackJobSelectionSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }

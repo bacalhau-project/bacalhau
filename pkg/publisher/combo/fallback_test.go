@@ -1,4 +1,4 @@
-package fallback
+package combo
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type mockPublisher struct {
 }
 
 // ComposeResultReferences implements publisher.Publisher
-func (m *mockPublisher) ComposeResultReferences(ctx context.Context, jobID string) ([]model.StorageSpec, error) {
+func (m *mockPublisher) ComposeResultReferences(context.Context, string) ([]model.StorageSpec, error) {
 	return m.composeResultReferences, m.composeResultReferencesErr
 }
 
@@ -30,7 +30,7 @@ func (m *mockPublisher) IsInstalled(context.Context) (bool, error) {
 }
 
 // PublishShardResult implements publisher.Publisher
-func (m *mockPublisher) PublishShardResult(ctx context.Context, shard model.JobShard, hostID string, shardResultPath string) (model.StorageSpec, error) {
+func (m *mockPublisher) PublishShardResult(context.Context, model.JobShard, string, string) (model.StorageSpec, error) {
 	return m.publishShardResult, m.publishShardResultErr
 }
 
@@ -48,17 +48,17 @@ var errorPublisher = mockPublisher{
 	publishShardResultErr:      fmt.Errorf("test error"),
 }
 
-var testCases = map[string]struct {
-	publisher       fallbackPublisher
-	expectPublisher mockPublisher
-}{
-	"empty":   {*NewFallbackPublisher(), mockPublisher{}},
-	"single":  {*NewFallbackPublisher(&healthyPublisher), healthyPublisher},
-	"healthy": {*NewFallbackPublisher(&errorPublisher, &healthyPublisher), healthyPublisher},
-	"error":   {*NewFallbackPublisher(&errorPublisher, &errorPublisher), errorPublisher},
-}
-
 func TestFallbackPublisher(t *testing.T) {
+	var testCases = map[string]struct {
+		publisher       publisher.Publisher
+		expectPublisher mockPublisher
+	}{
+		"empty":   {NewFallbackPublisher(), mockPublisher{}},
+		"single":  {NewFallbackPublisher(&healthyPublisher), healthyPublisher},
+		"healthy": {NewFallbackPublisher(&errorPublisher, &healthyPublisher), healthyPublisher},
+		"error":   {NewFallbackPublisher(&errorPublisher, &errorPublisher), errorPublisher},
+	}
+
 	for name, testCase := range testCases {
 		t.Run(name+"/IsInstalled", func(t *testing.T) {
 			result, err := testCase.publisher.IsInstalled(context.Background())

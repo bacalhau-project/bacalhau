@@ -28,6 +28,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -217,13 +218,15 @@ func capture() func() (string, error) {
 	}
 }
 
-func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings) {
-	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
+func NewIPFSDownloadFlags(settings *ipfs.IPFSDownloadSettings) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
+	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
+	flags.StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")
-	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
+	flags.StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+	return flags
 }
 
 func getDefaultJobFolder(jobID string) string {
@@ -258,9 +261,11 @@ func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (
 
 type RunTimeSettings struct {
 	AutoDownloadResults   bool // Automatically download the results after finishing
+	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
 	IsLocal               bool // Job should be executed locally
 	WaitForJobToFinish    bool // Wait for the job to finish before returning
 	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
+	PrintJobIDOnly        bool // Only print the Job ID as output
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
@@ -268,30 +273,26 @@ func NewRunTimeSettings() *RunTimeSettings {
 		AutoDownloadResults:   false,
 		WaitForJobToFinish:    true,
 		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:        10,
 		IsLocal:               false,
+		PrintJobIDOnly:        false,
 	}
 }
 
-func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
-	cmd.PersistentFlags().BoolVar(
-		&settings.IsLocal, "local", settings.IsLocal,
-		`Run the job locally. Docker is required`,
-	)
+func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
+	flags.IntVarP(&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
+		`Timeout for getting the results of a job in --wait`)
+	flags.BoolVar(&settings.IsLocal, "local", settings.IsLocal,
+		`Run the job locally. Docker is required`)
+	flags.BoolVar(&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`)
+	flags.IntVar(&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
+	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
+		`Print out only the Job ID on successful submission.`)
 
-	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
-
-	cmd.PersistentFlags().IntVar(
-		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
-		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
-	)
-
-	cmd.PersistentFlags().BoolVar(
-		&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
-		`Should we download the results once the job is complete?`,
-	)
+	return flags
 }
 
 //nolint:funlen,gocyclo // Refactor later
@@ -301,7 +302,7 @@ func ExecuteJob(ctx context.Context,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
-	idOnly bool,
+	buildContext *bytes.Buffer,
 ) error {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -325,7 +326,7 @@ func ExecuteJob(ctx context.Context,
 		return err
 	}
 
-	j, err = submitJob(ctx, apiClient, j)
+	j, err = submitJob(ctx, apiClient, j, buildContext)
 	if err != nil {
 		return err
 	}
@@ -339,13 +340,13 @@ func ExecuteJob(ctx context.Context,
 	}
 
 	// if we are in --id-only mode - print the id
-	if idOnly {
+	if runtimeSettings.PrintJobIDOnly {
 		cmd.Print(j.ID + "\n")
 	}
 
 	// if we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
-	quiet := idOnly
+	quiet := runtimeSettings.PrintJobIDOnly
 
 	err = WaitAndPrintResultsToUser(ctx, j, quiet)
 	if err != nil {
@@ -492,11 +493,13 @@ func downloadResultsHandler(
 
 func submitJob(ctx context.Context,
 	apiClient *publicapi.APIClient,
-	j *model.Job) (*model.Job, error) {
+	j *model.Job,
+	buildContext *bytes.Buffer,
+) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
 	defer span.End()
 
-	j, err := apiClient.Submit(ctx, j, nil)
+	j, err := apiClient.Submit(ctx, j, buildContext)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}

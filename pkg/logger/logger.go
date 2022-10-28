@@ -27,6 +27,28 @@ var stderr = struct{ io.Writer }{os.Stderr}
 var nodeIDFieldName = "NodeID"
 
 func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
+	configureLogging()
+}
+
+type tTesting interface {
+	Log(args ...interface{})
+	Logf(format string, args ...interface{})
+	Helper()
+	Cleanup(f func())
+}
+
+// ConfigureTestLogging allows logs to be associated with individual tests
+func ConfigureTestLogging(t tTesting) {
+	oldLogger := log.Logger
+	oldContextLogger := zerolog.DefaultContextLogger
+	configureLogging(zerolog.ConsoleTestWriter(t))
+	t.Cleanup(func() {
+		log.Logger = oldLogger
+		zerolog.DefaultContextLogger = oldContextLogger
+	})
+}
+
+func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
@@ -47,41 +69,36 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 	}
 
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
-	var textWriter zerolog.ConsoleWriter
 
-	if isTerminal {
-		textWriter = zerolog.ConsoleWriter{Out: stderr,
-			TimeFormat: "15:04:05.999 |",
-			NoColor:    false,
-			PartsOrder: []string{
-				zerolog.TimestampFieldName,
-				zerolog.LevelFieldName,
-				zerolog.CallerFieldName,
-				zerolog.MessageFieldName}}
-	} else {
-		textWriter = zerolog.ConsoleWriter{Out: stderr,
-			TimeFormat: "15:04:05.999 |",
-			NoColor:    true,
-			PartsOrder: []string{
-				zerolog.TimestampFieldName,
-				zerolog.LevelFieldName,
-				zerolog.CallerFieldName,
-				zerolog.MessageFieldName}}
-	}
-
-	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
-	//  Adding the fields to the parts section didn't help as it just printed the fields twice.
-	textWriter.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("[%s:", i)
-	}
-
-	textWriter.FormatFieldValue = func(i interface{}) string {
-		// don't print nil in case field value wasn't preset. e.g. no nodeID
-		if i == nil {
-			i = ""
+	defaultLogging := func(w *zerolog.ConsoleWriter) {
+		w.Out = stderr
+		w.NoColor = !isTerminal
+		w.TimeFormat = "15:04:05.999 |"
+		w.PartsOrder = []string{
+			zerolog.TimestampFieldName,
+			zerolog.LevelFieldName,
+			zerolog.CallerFieldName,
+			zerolog.MessageFieldName,
 		}
-		return fmt.Sprintf("%s]", i)
+
+		// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
+		//  Adding the fields to the parts section didn't help as it just printed the fields twice.
+		w.FormatFieldName = func(i interface{}) string {
+			return fmt.Sprintf("[%s:", i)
+		}
+
+		w.FormatFieldValue = func(i interface{}) string {
+			// don't print nil in case field value wasn't preset. e.g. no nodeID
+			if i == nil {
+				i = ""
+			}
+			return fmt.Sprintf("%s]", i)
+		}
 	}
+
+	loggingOptions = append([]func(w *zerolog.ConsoleWriter){defaultLogging}, loggingOptions...)
+
+	textWriter := zerolog.NewConsoleWriter(loggingOptions...)
 
 	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
 		short := file

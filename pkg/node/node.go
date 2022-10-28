@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -31,6 +32,7 @@ type NodeConfig struct {
 	IsBadActor           bool
 	ComputeNodeConfig    computenode.ComputeNodeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
+	LotusConfig          *filecoinlotus.PublisherConfig
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -161,9 +163,16 @@ func NewNode(
 		config.LocalDB,
 		config.Transport,
 		requesterNode,
+		computeNode,
 		publishers,
 		storageProviders,
 	)
+
+	eventTracer, err := eventhandler.NewTracer()
+	if err != nil {
+		return nil, err
+	}
+	config.CleanupManager.RegisterCallback(eventTracer.Shutdown)
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.HostID)
@@ -175,6 +184,8 @@ func NewNode(
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
 		// ends the span for the job if received a terminal event
 		tracerContextProvider,
+		// record the event in a log
+		eventTracer,
 		// update the job state in the local DB
 		localDBEventHandler,
 		// handles bid and result proposals
@@ -185,6 +196,8 @@ func NewNode(
 	jobEventPublisher.AddHandlers(
 		// publish events to the network
 		eventhandler.JobEventHandlerFunc(config.Transport.Publish),
+		// record the event in a log
+		eventTracer,
 		// add tracing metadata to the context about the published event
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandlePublishedJobEvent),
 	)

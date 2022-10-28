@@ -3,7 +3,6 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -70,8 +69,7 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec model.Spec,
 ) string {
-	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
-	require.NoError(t, err)
+	result := t.TempDir()
 
 	j := &model.Job{
 		ID:   "test",

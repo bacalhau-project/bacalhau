@@ -5,13 +5,13 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -37,6 +37,7 @@ func (s *PublishOnErrorSuite) SetupSuite() {
 
 // Before each test
 func (s *PublishOnErrorSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
 }
@@ -108,8 +109,7 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-publish-on-error-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

@@ -93,7 +93,6 @@ func NewDockerRunOptions() *DockerRunOptions {
 		InputVolumes:       []string{},
 		OutputVolumes:      []string{},
 		Env:                []string{},
-		IDOnly:             false,
 		Concurrency:        1,
 		Confidence:         0,
 		MinBids:            0, // 0 means no minimum before bidding
@@ -211,12 +210,8 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
-	dockerRunCmd.PersistentFlags().BoolVar(
-		&ODR.IDOnly, "id-only", ODR.IDOnly, "Print out only the Job ID on successful submission.",
-	)
-
-	setupDownloadFlags(dockerRunCmd, &ODR.DownloadFlags)
-	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
+	dockerRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
 }
 
 var dockerCmd = &cobra.Command{
@@ -282,7 +277,7 @@ var dockerRunCmd = &cobra.Command{
 			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
-			ODR.IDOnly,
+			nil,
 		)
 	},
 }

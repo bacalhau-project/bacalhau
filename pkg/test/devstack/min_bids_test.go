@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -36,6 +37,7 @@ func (suite *MinBidsSuite) SetupSuite() {
 
 // Before each test
 func (suite *MinBidsSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
@@ -75,7 +77,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			computenode.NewDefaultComputeNodeConfig(),
 		)
 
-		dirPath, err := prepareFolderWithFiles(testCase.shards)
+		dirPath, err := prepareFolderWithFiles(suite.T(), testCase.shards)
 		require.NoError(suite.T(), err)
 
 		directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)

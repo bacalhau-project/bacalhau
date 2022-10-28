@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -33,6 +34,7 @@ func (suite *ServerSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *ServerSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *ServerSuite) TearDownTest() {

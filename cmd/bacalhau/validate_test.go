@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -30,6 +31,7 @@ func (s *ValidateSuite) SetupSuite() {
 
 // before each test
 func (s *ValidateSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
 }

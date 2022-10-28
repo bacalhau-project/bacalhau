@@ -1,4 +1,4 @@
-bacalhau_version       = "v0.3.6"
+bacalhau_version       = "v0.3.8"
 bacalhau_port          = "1235"
 bacalhau_node_id_0     = "QmNXczFhX8oLEeuGThGowkcJDJUnX4HqoYQ2uaYhuCNSxD"
 bacalhau_node_id_1     = "QmfRDVYnEcPassyJFGQw8Wt4t9QuA843uuKPVNEVNm4Smo"
@@ -13,4 +13,5 @@ protect_resources      = true
 auto_subnets           = false
 ingress_cidrs          = ["0.0.0.0/0"]
 ssh_access_cidrs       = ["0.0.0.0/0"]
+internal_ip_addresses  = ["192.168.0.5", "192.168.0.6"]
 num_gpu_machines       = 0

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -42,6 +43,7 @@ func (suite *ListSuite) SetupAllSuite() {
 // Before each test
 func (suite *ListSuite) SetupTest() {
 	suite.rootCmd = RootCmd
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *ListSuite) TearDownTest() {

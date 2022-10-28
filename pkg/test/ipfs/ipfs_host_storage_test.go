@@ -3,11 +3,11 @@ package ipfs
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -37,6 +37,7 @@ func (suite *IPFSHostStorageSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
@@ -141,11 +142,10 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
-	require.NoError(t, err)
+	dir := t.TempDir()
 
 	EXAMPLE_TEXT := `hello world`
-	err = os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
+	err := os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
 	require.NoError(t, err)
 
 	// add this file to the server

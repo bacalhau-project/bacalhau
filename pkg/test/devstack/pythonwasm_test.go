@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -42,6 +43,7 @@ func (s *DevstackPythonWASMSuite) SetupSuite() {
 
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
 }
@@ -77,12 +79,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(s.T(), err)
-	defer func() {
-		err := os.RemoveAll(tmpDir)
-		require.NoError(s.T(), err)
-	}()
+	tmpDir := s.T().TempDir()
 
 	oldDir, err := os.Getwd()
 	require.NoError(s.T(), err)
@@ -138,8 +135,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	shard := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-devstack-python-wasm-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
@@ -220,12 +216,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(s.T(), err)
-	defer func() {
-		err := os.RemoveAll(tmpDir)
-		require.NoError(s.T(), err)
-	}()
+	tmpDir := s.T().TempDir()
 
 	oldDir, err := os.Getwd()
 	require.NoError(s.T(), err)

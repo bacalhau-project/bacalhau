@@ -85,13 +85,34 @@ func (e *Executor) getVolume(ctx context.Context, spec model.StorageSpec) (*stor
 	return &volume, nil
 }
 
-func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec, programName string) (wazero.CompiledModule, error) {
+func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec) (wazero.CompiledModule, error) {
 	volume, err := e.getVolume(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
 
-	programPath := filepath.Join(volume.Source, filepath.Base(programName))
+	programPath := volume.Source
+	info, err := os.Stat(programPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// We expect the input to be a single WASM file. It is common however for
+	// IPFS implementations to wrap files into a directory. So we make a special
+	// case here – if the input is a single file in a directory, we will assume
+	// this is the program file and load it.
+	if info.IsDir() {
+		files, err := os.ReadDir(programPath)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(files) != 1 {
+			return nil, fmt.Errorf("should be %d file in %s but there are %d", 1, programPath, len(files))
+		}
+		programPath = filepath.Join(programPath, files[0].Name())
+	}
+
 	log.Ctx(ctx).Info().Msgf("Loading WASM module from '%s'", programPath)
 	return LoadModule(ctx, e.Engine, programPath)
 }
@@ -166,8 +187,9 @@ func (e *Executor) RunShard(
 		return failResult(err)
 	}
 
+	wasmSpec := shard.Job.Spec.Wasm
 	contextStorageSpec := shard.Job.Spec.Contexts[0]
-	module, err := e.loadRemoteModule(ctx, contextStorageSpec, shard.Job.Spec.Language.ProgramPath)
+	module, err := e.loadRemoteModule(ctx, contextStorageSpec)
 	if err != nil {
 		return failResult(err)
 	}
@@ -190,13 +212,17 @@ func (e *Executor) RunShard(
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 
+	args := []string{module.Name()}
+	args = append(args, wasmSpec.Parameters...)
+
 	namespace := e.Engine.NewNamespace(ctx)
 	config := wazero.NewModuleConfig().
 		WithStartFunctions().
 		WithStdout(stdout).
 		WithStderr(stderr).
+		WithArgs(args...).
 		WithFS(fs)
-	entryPoint := shard.Job.Spec.Language.Command
+	entryPoint := wasmSpec.EntryPoint
 
 	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)

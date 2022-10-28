@@ -17,6 +17,14 @@ func VerifyJob(ctx context.Context, j *model.Job) error {
 		return fmt.Errorf("job deal is empty")
 	}
 
+	if j.Deal.Concurrency <= 0 {
+		return fmt.Errorf("concurrency must be >= 1")
+	}
+
+	if j.Deal.Confidence < 0 {
+		return fmt.Errorf("confidence must be >= 0")
+	}
+
 	if !model.IsValidEngine(j.Spec.Engine) {
 		return fmt.Errorf("invalid executor type: %s", j.Spec.Engine.String())
 	}

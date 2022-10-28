@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
-
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -31,6 +31,7 @@ func (suite *NodeSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *NodeSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 }
 
@@ -62,8 +63,7 @@ func (suite *NodeSuite) TestFunctionality() {
 	require.NoError(suite.T(), err)
 
 	// Create a file in a temp dir to upload to the nodes:
-	dirPath, err := os.MkdirTemp("", "ipfs-client-test")
-	require.NoError(suite.T(), err)
+	dirPath := suite.T().TempDir()
 
 	filePath := filepath.Join(dirPath, "test.txt")
 	file, err := os.Create(filePath)
