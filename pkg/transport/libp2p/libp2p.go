@@ -112,6 +112,7 @@ func NewTransportFromOptions(ctx context.Context,
 		h,
 		pubsub.WithDirectPeers(pis),
 		pubsub.WithDirectConnectTicks(10), //nolint:gomnd
+		pubsub.WithFloodPublish(true),
 		pubsub.WithPeerExchange(true),
 		pubsub.WithPeerGater(pgParams),
 		pubsub.WithEventTracer(tracer),
