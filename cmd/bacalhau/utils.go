@@ -291,7 +291,8 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
 	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
 		`Print out only the Job ID on successful submission.`)
-
+	flags.BoolVar(&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
+		`Should we download the results once the job is complete?`)
 	return flags
 }
 
