@@ -171,6 +171,7 @@ export class CanaryStack extends cdk.Stack {
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeBuildReadOnlyAccess'))
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeDeployReadOnlyAccess'))
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeCommitReadOnly'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('IAMUserChangePassword'))
 
         // Create users and add them to the group
         const users = [
@@ -184,28 +185,12 @@ export class CanaryStack extends cdk.Stack {
         });
 
         users.forEach(username => {
-            const user = new iam.User(this, 'OperatorUser' + username, {
+            new iam.User(this, 'OperatorUser' + username, {
                 userName: username,
                 password: initialPassword.secretValue,
                 passwordResetRequired: true,
                 groups: [group]
             })
-
-            // Allow the users to change their own password
-            user.attachInlinePolicy(new iam.Policy(this, 'OperatorUserChangePasswordPolicy' + username, {
-                statements: [
-                    new iam.PolicyStatement({
-                        effect: iam.Effect.ALLOW,
-                        actions: ['iam:GetAccountPasswordPolicy'],
-                        resources: ['*'],
-                    }),
-                    new iam.PolicyStatement({
-                        effect: iam.Effect.ALLOW,
-                        actions: ['iam:ChangePassword'],
-                        resources: [user.userArn],
-                    })
-                ]
-            }))
         })
     }
 }
