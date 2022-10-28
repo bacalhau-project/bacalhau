@@ -55,7 +55,7 @@ func NewValidateOptions() *ValidateOptions {
 		Filename:        "",
 		OutputFormat:    "yaml",
 		OutputSchema:    false,
-		OutputDirectory: ".",
+		OutputDirectory: "",
 	}
 }
 

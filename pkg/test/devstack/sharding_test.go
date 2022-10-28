@@ -274,28 +274,30 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 
 	// check that the merged stdout is correct
-	expectedStdoutArray := []string{}
+	expectedStdoutArray := []string{""}
 	expectedResultsFiles := []string{}
 	for i := 0; i < totalFiles; i++ {
-		expectedStdoutArray = append(expectedStdoutArray, fmt.Sprintf("hello /input/%d.txt", i))
+		for j := 0; j < nodeCount; j++ {
+			expectedStdoutArray = append(expectedStdoutArray, fmt.Sprintf("hello /input/%d.txt", i))
+		}
 		expectedResultsFiles = append(expectedResultsFiles, fmt.Sprintf("%d.txt", i))
 	}
 
 	sort.Strings(expectedStdoutArray)
 	sort.Strings(expectedResultsFiles)
 
-	require.FileExists(suite.T(), filepath.Join(downloadFolder, "stdout"))
-	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, "stdout"))
+	require.FileExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
+	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
 	require.NoError(suite.T(), err)
 
 	actualStdoutArray := strings.Split(string(actualStdoutBytes), "\n")
 	sort.Strings(actualStdoutArray)
 
-	require.Equal(suite.T(), "\n"+strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
+	require.Equal(suite.T(), strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
 
 	// check that we have a "results" output volume with all the files inside
-	require.DirExists(suite.T(), filepath.Join(downloadFolder, "volumes", "results"))
-	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, "volumes", "results"))
+	require.DirExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
+	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
 	require.NoError(suite.T(), err)
 
 	actualResultsFiles := []string{}

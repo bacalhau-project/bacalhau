@@ -121,54 +121,6 @@ func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
 	}
 }
 
-func TestPiggybackedPublisher_ComposeResultReferences(t *testing.T) {
-	for _, test := range []struct {
-		name        string
-		primary     []interface{}
-		piggyback   []interface{}
-		expected    []model.StorageSpec
-		expectedErr error
-	}{
-		{
-			name:        "all_successful",
-			primary:     []interface{}{[]model.StorageSpec{{Name: "primary"}}, nil},
-			piggyback:   []interface{}{[]model.StorageSpec{{Name: "piggy"}}, nil},
-			expected:    []model.StorageSpec{{Name: "primary"}},
-			expectedErr: nil,
-		},
-		{
-			name:        "primary_error",
-			primary:     []interface{}{[]model.StorageSpec(nil), errors.New("failed")},
-			piggyback:   []interface{}{[]model.StorageSpec{{Name: "piggy"}}, nil},
-			expected:    nil,
-			expectedErr: errors.New("failed"),
-		},
-		{
-			name:        "piggyback_error",
-			primary:     []interface{}{[]model.StorageSpec{{Name: "primary"}}, nil},
-			piggyback:   []interface{}{[]model.StorageSpec(nil), errors.New("failed")},
-			expected:    nil,
-			expectedErr: errors.New("failed"),
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			primary := new(testifyPublisher)
-			piggyback := new(testifyPublisher)
-
-			subject := NewPiggybackedPublisher(primary, piggyback)
-
-			jobId := "42"
-
-			primary.On("ComposeResultReferences", mock.Anything, jobId).Return(test.primary...)
-			piggyback.On("ComposeResultReferences", mock.Anything, jobId).Return(test.piggyback...)
-
-			actual, err := subject.ComposeResultReferences(context.Background(), jobId)
-			assert.Equal(t, test.expectedErr, err)
-			assert.Equal(t, test.expected, actual)
-		})
-	}
-}
-
 type testifyPublisher struct {
 	mock.Mock
 }

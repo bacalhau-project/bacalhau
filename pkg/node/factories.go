@@ -138,7 +138,6 @@ func (f *StandardPublishersFactory) Get(
 	return publisher_util.NewIPFSPublishers(
 		ctx,
 		nodeConfig.CleanupManager,
-		localdb.GetStateResolver(nodeConfig.LocalDB),
 		nodeConfig.IPFSClient.APIAddress(),
 		nodeConfig.EstuaryAPIKey,
 		nodeConfig.LotusConfig,

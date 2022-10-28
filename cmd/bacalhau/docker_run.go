@@ -271,7 +271,7 @@ var dockerRunCmd = &cobra.Command{
 			return nil
 		}
 
-		err = ExecuteJob(ctx,
+		return ExecuteJob(ctx,
 			cm,
 			cmd,
 			j,
@@ -279,12 +279,6 @@ var dockerRunCmd = &cobra.Command{
 			ODR.DownloadFlags,
 			nil,
 		)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
-			return nil
-		}
-
-		return nil
 	},
 }
 
@@ -298,10 +292,16 @@ func CreateJob(ctx context.Context,
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
+	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
+
+	if swarmAddresses == "" {
+		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+	}
+
 	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
 		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
 		OutputDir:      odr.DownloadFlags.OutputDir,
-		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
+		IPFSSwarmAddrs: swarmAddresses,
 	}
 
 	engineType, err := model.ParseEngine(odr.Engine)
