@@ -569,6 +569,8 @@ To get more information at any time, run:
 		}
 	}
 
+	time.Sleep(1 * time.Second)
+
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
 		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
