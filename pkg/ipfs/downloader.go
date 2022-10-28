@@ -364,6 +364,18 @@ func appendFile(sourcePath, targetPath string) error {
 }
 
 func copyFile(sourcePath, targetPath string) error {
+	_, err := os.Stat(targetPath)
+	if err != nil {
+		// we got some other type of error
+		if !os.IsNotExist(err) {
+			return err
+		}
+		// file doesn't exist
+	} else {
+		// this means there was no error and so the file exists
+		return nil
+	}
+
 	return cp.CopyFile(
 		sourcePath,
 		targetPath,
