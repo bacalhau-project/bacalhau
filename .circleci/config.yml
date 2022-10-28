@@ -143,6 +143,9 @@ jobs:
                   # Credentials for project: bacalhau-cicd
                   # Account:
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+                  if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
+                    mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
+                  fi
                   mv unittests.xml "${TEST_RESULTS_FILENAME}"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
