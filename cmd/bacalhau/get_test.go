@@ -1,20 +1,21 @@
+//go:build !(unit && (windows || darwin))
+
 package bacalhau
 
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/phayes/freeport"
+	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -53,96 +54,215 @@ func (suite *GetSuite) TearDownAllSuite() {
 
 }
 
-func (suite *GetSuite) TestGetJob() {
-	const NumberOfNodes = 3
+func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
+	files := []string{}
+	err := filepath.Walk(baseFolder, func(path string, info os.FileInfo, err error) error {
+		usePath := strings.Replace(path, baseFolder, "", 1)
+		if usePath != "" {
+			files = append(files, usePath)
+		}
+		return nil
+	})
+	require.NoError(t, err, "Error walking results directory")
 
-	numOfJobsTests := []struct {
-		numOfJobs int
-	}{
-		{numOfJobs: 1},
-		{numOfJobs: 21}, // one more than the default list length
+	shortID := system.GetShortID(hostID)
+
+	// if you change the docker run command in any way we need to change this
+	resultsCID := "QmR92HM96X3seZEaRWXfRJDDFHKcprqbmQsEQ9uhbrA7MQ"
+
+	expected := []string{
+		"/" + ipfs.DownloadVolumesFolderName,
+		"/" + ipfs.DownloadVolumesFolderName + "/data",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/apples",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/apples/file.txt",
+		"/" + ipfs.DownloadVolumesFolderName + "/data/file.txt",
+		"/" + ipfs.DownloadVolumesFolderName + "/outputs",
+		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStderr,
+		"/" + ipfs.DownloadVolumesFolderName + "/" + ipfs.DownloadFilenameStdout,
+		"/" + ipfs.DownloadShardsFolderName,
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID,
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/apples/file.txt",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/data/file.txt",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/exitCode",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/outputs",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stderr",
+		"/" + ipfs.DownloadShardsFolderName + "/0_node_" + shortID + "/stdout",
+		"/" + ipfs.DownloadCIDsFolderName,
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID,
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/apples/file.txt",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/data/file.txt",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/exitCode",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/outputs",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stderr",
+		"/" + ipfs.DownloadCIDsFolderName + "/" + resultsCID + "/stdout",
 	}
 
-	host := "localhost"
-	port, _ := freeport.GetFreePort()
-	submittedJobID := ""
+	require.Equal(t, strings.Join(expected, "\n"), strings.Join(files, "\n"), "The discovered results output structure was not correct")
+}
 
-	outputDir := suite.T().TempDir()
-	for _, n := range numOfJobsTests {
-		func() {
-			c, cm := publicapi.SetupRequesterNodeForTestWithPort(suite.T(), port)
-			defer cm.Cleanup()
+func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
+	require.True(t, strings.Contains(
+		cmdOutput,
+		fmt.Sprintf("Results for job '%s' have been written to...\n%s", jobID, outputDir),
+	), "Download location not found in output")
+}
 
-			for i := 0; i < NumberOfNodes; i++ {
-				for i := 0; i < n.numOfJobs; i++ {
-					runNoopJob := true // Remove when gets are fixed in DevStack
-					if runNoopJob {
-						for i := 0; i < NumberOfNodes; i++ {
-							for i := 0; i < n.numOfJobs; i++ {
-								ctx := context.Background()
-								j := publicapi.MakeGenericJob()
-								s, err := c.Submit(ctx, j, nil)
-								require.NoError(suite.T(), err)
-								submittedJobID = s.ID // Default to the last job submitted, should be fine?
-							}
-						}
-					} else {
-						// Submit job and wait (so that we can download it later)
-						_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "docker", "run",
-							"--api-host", host,
-							"--api-port", fmt.Sprintf("%d", port),
-							"ubuntu", "echo Random -> $RANDOM",
-							"--wait",
-						)
-
-						require.NoError(suite.T(), err)
-						submittedJobID = strings.TrimSpace(out) // Default to the last job submitted, should be fine?
-					}
-				}
-			}
-
-			parsedBasedURI, _ := url.Parse(c.BaseURI)
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-
-			// No job id (should error)
-			_, _, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
-				"--api-host", host,
-				"--api-port", port,
-			)
-			require.Error(suite.T(), err, "Submitting a get request with no id should error.")
-
-			outputDirWithID := filepath.Join(outputDir, submittedJobID)
-			os.Mkdir(outputDirWithID, util.OS_ALL_RWX)
-
-			// Job Id at the end
-			_, _, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
-				"--api-host", host,
-				"--api-port", port,
-				"--output-dir", outputDirWithID,
-				submittedJobID,
-			)
-			require.NoError(suite.T(), err, "Error in getting job: %+v", err)
-
-			// Short Job ID
-			_, _, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
-				"--api-host", host,
-				"--api-port", port,
-				"--output-dir", outputDirWithID,
-				submittedJobID[0:8],
-			)
-			require.NoError(suite.T(), err, "Error in getting short job: %+v", err)
-
-			// Get stdout from job
-			// _, out, err = ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "get",
-			// 	"--api-host", host,
-			// 	"--api-port", port,
-			// 	"--output-dir", outputDirWithID,
-			// 	out)
-
-			// require.NoError(suite.T(), err, "Error in getting files from job: %+v", err)
-			// // TODO: #637 Need to do a lot more testing here, we don't do any analysis of output files
-			// fmt.Println(out)
-		}()
+func setupTempWorkingDir(t *testing.T) (string, func()) {
+	// switch wd to a temp dir so we are not writing folders to the current directory
+	// (the point of this test is to see what happens when we DONT pass --output-dir)
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(t, err)
+	originalWd, err := os.Getwd()
+	require.NoError(t, err)
+	err = os.Chdir(tempDir)
+	require.NoError(t, err)
+	return tempDir, func() {
+		os.Chdir(originalWd)
 	}
+}
 
+func getDockerRunArgs(
+	t *testing.T,
+	stack *devstack.DevStack,
+	extraArgs []string,
+) []string {
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(t, err)
+	args := []string{
+		"docker", "run",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"-o", "data:/data",
+		"--wait",
+	}
+	args = append(args, extraArgs...)
+	args = append(args,
+		"ubuntu",
+		"--",
+		"bash", "-c",
+		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",
+	)
+	return args
+}
+
+// this tests that when we do docker run with no --output-dir
+// it makes it's own folder to put the results in and does not splat results
+// all over the current directory
+func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := getDockerRunArgs(s.T(), stack, []string{
+		"--wait",
+		"--download",
+	})
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(runOutput)
+	hostID := stack.Nodes[0].HostID
+	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
+	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
+	testResultsFolderStructure(s.T(), outputFolder, hostID)
+
+}
+
+// this tests that when we do docker run with an --output-dir
+// the results layout adheres to the expected folder layout
+func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(s.T(), err)
+
+	args := getDockerRunArgs(s.T(), stack, []string{
+		"--wait",
+		"--download",
+		"--output-dir", tempDir,
+	})
+	_, runOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(runOutput)
+	hostID := stack.Nodes[0].HostID
+	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
+	testResultsFolderStructure(s.T(), tempDir, hostID)
+}
+
+// this tests that when we do get with no --output-dir
+// it makes it's own folder to put the results in and does not splat results
+// all over the current directory
+func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+	*OG = *NewGetOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(context.Background())
+	require.NoError(s.T(), err)
+	tempDir, cleanup := setupTempWorkingDir(s.T())
+	defer cleanup()
+
+	args := getDockerRunArgs(s.T(), stack, []string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := stack.Nodes[0].HostID
+
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		jobID,
+	)
+	require.NoError(s.T(), err, "Error getting results")
+
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, getDefaultJobFolder(jobID)))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, getDefaultJobFolder(jobID)), hostID)
+}
+
+// this tests that when we do get with an --output-dir
+// the results layout adheres to the expected folder layout
+func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
+	ctx := context.Background()
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	*ODR = *NewDockerRunOptions()
+	*OG = *NewGetOptions()
+
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
+	require.NoError(s.T(), err)
+
+	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
+	require.NoError(s.T(), err)
+
+	args := getDockerRunArgs(s.T(), stack, []string{
+		"--wait",
+	})
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+
+	require.NoError(s.T(), err, "Error submitting job")
+	jobID := system.FindJobIDInTestOutput(out)
+	hostID := stack.Nodes[0].HostID
+
+	_, getOutput, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "get",
+		"--api-host", stack.Nodes[0].APIServer.Host,
+		"--api-port", fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port),
+		"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
+		"--output-dir", tempDir,
+		jobID,
+	)
+	require.NoError(s.T(), err, "Error getting results")
+	testDownloadOutput(s.T(), getOutput, jobID, tempDir)
+	testResultsFolderStructure(s.T(), tempDir, hostID)
 }

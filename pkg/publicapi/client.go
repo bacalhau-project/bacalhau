@@ -195,7 +195,7 @@ func (apiClient *APIClient) GetLocalEvents(ctx context.Context, jobID string) (l
 	return res.LocalEvents, nil
 }
 
-func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []model.StorageSpec, err error) {
+func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (results []model.PublishedResult, err error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.GetResults")
 	defer span.End()
 

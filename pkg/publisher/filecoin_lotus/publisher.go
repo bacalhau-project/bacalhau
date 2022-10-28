@@ -35,15 +35,13 @@ type PublisherConfig struct {
 }
 
 type Publisher struct {
-	stateResolver *job.StateResolver
-	config        PublisherConfig
-	client        api.Client
+	config PublisherConfig
+	client api.Client
 }
 
 func NewFilecoinLotusPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	config PublisherConfig,
 ) (*Publisher, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/NewFilecoinLotusPublisher")
@@ -66,9 +64,8 @@ func NewFilecoinLotusPublisher(
 	cm.RegisterCallback(client.Close)
 
 	return &Publisher{
-		stateResolver: resolver,
-		config:        config,
-		client:        client,
+		config: config,
+		client: client,
 	}, nil
 }
 
@@ -112,34 +109,9 @@ func (l *Publisher) PublishShardResult(
 		return model.StorageSpec{}, err
 	}
 
-	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
-		StorageSource: model.StorageSourceFilecoin,
-		CID:           contentCid.String(),
-		Metadata: map[string]string{
-			"deal_cid": dealCid,
-		},
-	}, nil
-}
-
-func (l *Publisher) ComposeResultReferences(
-	ctx context.Context,
-	jobID string,
-) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/filecoin_lotus/ComposeResultReferences")
-	defer span.End()
-
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	var results []model.StorageSpec
-	shardResults, err := l.stateResolver.GetResults(ctx, jobID)
-	if err != nil {
-		return results, err
-	}
-	for _, shardResult := range shardResults {
-		results = append(results, shardResult.Results)
-	}
-	return results, nil
+	spec := job.GetPublishedStorageSpec(shard, model.StorageSourceFilecoin, hostID, contentCid.String())
+	spec.Metadata["deal_cid"] = dealCid
+	return spec, nil
 }
 
 func (l *Publisher) carResultsDir(ctx context.Context, resultsDir string) (string, error) {

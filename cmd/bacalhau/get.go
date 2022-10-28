@@ -3,10 +3,10 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -39,7 +39,7 @@ func NewGetOptions() *GetOptions {
 	return &GetOptions{
 		IPFSDownloadSettings: ipfs.IPFSDownloadSettings{
 			TimeoutSecs:    int(ipfs.DefaultIPFSTimeout.Seconds()),
-			OutputDir:      ".",
+			OutputDir:      "",
 			IPFSSwarmAddrs: "",
 		},
 	}
@@ -78,37 +78,16 @@ var getCmd = &cobra.Command{
 			jobID = string(byteResult)
 		}
 
-		cmd.Printf("Fetching results of job '%s'...", jobID)
-
-		j, _, err := GetAPIClient().Get(ctx, jobID)
-
-		if err != nil {
-			if _, ok := err.(*bacerrors.JobNotFound); ok {
-				cmd.Printf("job not found.\n")
-				Fatal("", 1)
-			} else {
-				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
-			}
-			return err
-		}
-
-		results, err := GetAPIClient().GetResults(ctx, j.ID)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error getting results for job ID (%s): %s", jobID, err), 1)
-			return err
-		}
-
-		err = ipfs.DownloadJob(
+		err = downloadResultsHandler(
 			ctx,
 			cm,
-			j.Spec.Outputs,
-			results,
+			cmd,
+			jobID,
 			OG.IPFSDownloadSettings,
 		)
 
 		if err != nil {
-			Fatal(fmt.Sprintf("Error downloading results from job ID (%s): %s", jobID, err), 1)
-			return err
+			return errors.Wrap(err, "error downloading job")
 		}
 
 		return nil

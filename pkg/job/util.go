@@ -152,8 +152,17 @@ func ComputeVerifiedSummary(j *model.Job) string {
 		verifiedSummary = ""
 	} else {
 		totalShards := GetJobTotalExecutionCount(j)
-		verifiedShardCount := GetVerifiedShardStates(j.State)
+		verifiedShardCount := CountVerifiedShardStates(j.State)
 		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
 	}
 	return verifiedSummary
+}
+
+func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
+	return model.StorageSpec{
+		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		StorageSource: storageType,
+		CID:           cid,
+		Metadata:      map[string]string{},
+	}
 }

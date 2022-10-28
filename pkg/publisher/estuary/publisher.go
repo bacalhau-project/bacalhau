@@ -26,8 +26,7 @@ type EstuaryPublisherConfig struct {
 }
 
 type EstuaryPublisher struct {
-	StateResolver *job.StateResolver
-	Config        EstuaryPublisherConfig
+	Config EstuaryPublisherConfig
 }
 
 // Partial results from the '/viewer' API endpoint
@@ -41,7 +40,6 @@ type EstuaryAPIConfig struct {
 func NewEstuaryPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	config EstuaryPublisherConfig,
 ) (*EstuaryPublisher, error) {
 	if config.APIKey == "" {
@@ -50,8 +48,7 @@ func NewEstuaryPublisher(
 
 	log.Ctx(ctx).Debug().Msgf("Estuary publisher initialized")
 	return &EstuaryPublisher{
-		StateResolver: resolver,
-		Config:        config,
+		Config: config,
 	}, nil
 }
 
@@ -109,35 +106,11 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 			log.Ctx(ctx).Error().Err(err).Msgf("Failed to upload to Estuary host '%s'", uploadURL.Host)
 			continue
 		} else {
-			return model.StorageSpec{
-				Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
-				StorageSource: model.StorageSourceEstuary,
-				CID:           cid,
-			}, nil
+			return job.GetPublishedStorageSpec(shard, model.StorageSourceEstuary, hostID, cid), nil
 		}
 	}
 
 	return model.StorageSpec{}, fmt.Errorf("failed to upload to any Estuary host")
-}
-
-func (estuaryPublisher *EstuaryPublisher) ComposeResultReferences(
-	ctx context.Context,
-	jobID string,
-) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/estuary.ComposeResultReferences")
-	defer span.End()
-
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	results := []model.StorageSpec{}
-	shardResults, err := estuaryPublisher.StateResolver.GetResults(ctx, jobID)
-	if err != nil {
-		return results, err
-	}
-	for _, shardResult := range shardResults {
-		results = append(results, shardResult.Results)
-	}
-	return results, nil
 }
 
 func (estuaryPublisher *EstuaryPublisher) doHTTPRequest(

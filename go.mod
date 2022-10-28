@@ -66,6 +66,7 @@ require (
 	github.com/lukemarsden/golang-mutex-tracer v0.0.0-20220819104156-4bfc74eba994
 	github.com/multiformats/go-multicodec v0.5.0
 	github.com/multiformats/go-multihash v0.1.0
+	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/pkg/errors v0.9.1
 	github.com/tetratelabs/wazero v1.0.0-pre.2
 	github.com/tidwall/sjson v1.2.5

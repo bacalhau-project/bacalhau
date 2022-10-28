@@ -48,16 +48,6 @@ func (c *piggybackedPublisher) PublishShardResult(
 	return results[0], nil
 }
 
-func (c *piggybackedPublisher) ComposeResultReferences(ctx context.Context, jobID string) ([]model.StorageSpec, error) {
-	specs, err := callAllPublishers(c.publishers, func(p publisher.Publisher) ([]model.StorageSpec, error) {
-		return p.ComposeResultReferences(ctx, jobID)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return specs[0], nil
-}
-
 func callAllPublishers[T any](publishers []publisher.Publisher, f func(publisher.Publisher) (T, error)) ([]T, error) {
 	var ts []T
 	for _, pub := range publishers {

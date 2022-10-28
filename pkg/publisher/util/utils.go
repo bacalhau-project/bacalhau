@@ -17,17 +17,16 @@ import (
 func NewIPFSPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 	estuaryAPIKey string,
 	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, resolver, ipfsMultiAddress)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +35,7 @@ func NewIPFSPublishers(
 	// and so let's only add the
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher, err = estuary.NewEstuaryPublisher(ctx, cm, resolver, estuary.EstuaryPublisherConfig{
+		estuaryPublisher, err = estuary.NewEstuaryPublisher(ctx, cm, estuary.EstuaryPublisherConfig{
 			APIKey: estuaryAPIKey,
 		})
 		if err != nil {
@@ -46,7 +45,7 @@ func NewIPFSPublishers(
 
 	var lotus publisher.Publisher = ipfsPublisher
 	if lotusConfig != nil {
-		lotus, err = filecoinlotus.NewFilecoinLotusPublisher(ctx, cm, resolver, *lotusConfig)
+		lotus, err = filecoinlotus.NewFilecoinLotusPublisher(ctx, cm, *lotusConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +67,7 @@ func NewNoopPublishers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm)
 	if err != nil {
 		return nil, err
 	}

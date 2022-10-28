@@ -268,6 +268,11 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, n)
+
+		// let's wait a small period to give the api server a chance to spin up
+		// meaning it's port will be in use the next time we spin around this loop
+		// and so hopefully avoid "listen tcp 0.0.0.0:43081: bind: address already in use" errors
+		time.Sleep(time.Millisecond * 100) //nolint:gomnd
 	}
 
 	// only start profiling after we've set everything up!

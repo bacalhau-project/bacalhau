@@ -365,3 +365,7 @@ func FindJobIDInTestOutput(testOutput string) string {
 	}
 	return ""
 }
+
+func GetShortID(ID string) string {
+	return ID[:8]
+}
