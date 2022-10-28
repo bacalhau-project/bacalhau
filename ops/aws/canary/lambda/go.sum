@@ -305,8 +305,10 @@ github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSw
 github.com/felixge/httpsnoop v1.0.2/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
 github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/filecoin-project/bacalhau v0.3.11 h1:pjdrzi6x9R+e3hRDRI8ImMlXbNtEkuJHhduCaN+p9xc=
-github.com/filecoin-project/bacalhau v0.3.11/go.mod h1:cztcvvXiYSvWGUOlhELjKVH1Qzr6nl/CGK7NU/OOBYQ=
+github.com/filecoin-project/bacalhau v0.3.12-0.20221028144651-80beb2770ba7 h1:5Cz9srVEnwM/UKHVMqeeqzpJ/8l5zTrxM2WadsM33cw=
+github.com/filecoin-project/bacalhau v0.3.12-0.20221028144651-80beb2770ba7/go.mod h1:cztcvvXiYSvWGUOlhELjKVH1Qzr6nl/CGK7NU/OOBYQ=
+github.com/filecoin-project/bacalhau v0.3.12-0.20221028184451-5bddc7d1dea5 h1:pYWwuRhuDMFgZ8MVa4DDiovz7mqMNo+Rbeg/2hKXp8g=
+github.com/filecoin-project/bacalhau v0.3.12-0.20221028184451-5bddc7d1dea5/go.mod h1:cztcvvXiYSvWGUOlhELjKVH1Qzr6nl/CGK7NU/OOBYQ=
 github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f/go.mod h1:+If3s2VxyjZn+KGGZIoRXBDSFQ9xL404JBJGf4WhEj0=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
