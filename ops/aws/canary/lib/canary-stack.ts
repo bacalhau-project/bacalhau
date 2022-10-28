@@ -183,13 +183,29 @@ export class CanaryStack extends cdk.Stack {
             description: 'Canary Operators Initial Password',
         });
 
-        users.forEach(user => {
-            new iam.User(this, 'OperatorUser' + user, {
-                userName: user,
+        users.forEach(username => {
+            const user = new iam.User(this, 'OperatorUser' + username, {
+                userName: username,
                 password: initialPassword.secretValue,
                 passwordResetRequired: true,
                 groups: [group]
             })
+
+            // Allow the users to change their own password
+            user.attachInlinePolicy(new iam.Policy(this, 'OperatorUserChangePasswordPolicy' + username, {
+                statements: [
+                    new iam.PolicyStatement({
+                        effect: iam.Effect.ALLOW,
+                        actions: ['iam:GetAccountPasswordPolicy'],
+                        resources: ['*'],
+                    }),
+                    new iam.PolicyStatement({
+                        effect: iam.Effect.ALLOW,
+                        actions: ['iam:ChangePassword'],
+                        resources: [user.userArn],
+                    })
+                ]
+            }))
         })
     }
 }
