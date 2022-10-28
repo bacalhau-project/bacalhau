@@ -320,7 +320,7 @@ VIEWING THE RESULTS CSV
 
 
 ```bash
-cat results/volumes/outputs/transaction_hashes.csv
+cat results/combined_results/outputs/transaction_hashes.csv
 ```
 
     0x04cbcb236043d8fb7839e07bbc7f5eed692fb2ca55d897f1101eac3e3ad4fab8

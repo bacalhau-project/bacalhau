@@ -21,7 +21,7 @@ path=!echo $PATH
 %env PATH=./:{path[0]}
 ```
 
-    env: PATH=./:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
+    env: PATH=./:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
 
 
 ### Install Rust
@@ -53,7 +53,7 @@ You can use [`rustup`](https://rustup.rs/) to install Rust and configure it to b
     
     To configure your current shell, run:
     source "$HOME/.cargo/env"
-    env: PATH=~/.cargo/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
+    env: PATH=~/.cargo/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
     [1minfo: [mcomponent 'rust-std' for target 'wasm32-wasi' is up to date
 
 
@@ -173,69 +173,53 @@ We can now build the Rust program into a WASM blob using `cargo`.
 ```
 
     [0m[0m[1m[32m    Updating[0m crates.io index
-    [K[0m[0m[1m[32m   Compiling[0m autocfg v1.1.0
+    [0m[0m[1m[32m   Compiling[0m autocfg v1.1.0
     [0m[0m[1m[32m   Compiling[0m cfg-if v1.0.0
     [0m[0m[1m[32m   Compiling[0m getrandom v0.1.16
-    [0m[0m[1m[32m   Compiling[0m bytemuck v1.12.1
     [0m[0m[1m[32m   Compiling[0m crc32fast v1.3.2
     [0m[0m[1m[32m   Compiling[0m wasi v0.9.0+wasi-snapshot-preview1
+    [0m[0m[1m[32m   Compiling[0m bytemuck v1.12.1
     [0m[0m[1m[32m   Compiling[0m adler v1.0.2
     [0m[0m[1m[32m   Compiling[0m ppv-lite86 v0.2.16
     [K[0m[0m[1m[32m   Compiling[0m typenum v1.15.0
-    [K[0m[0m[1m[32m   Compiling[0m rawpointer v0.2.1
-    [0m[0m[1m[36m    Building[0m [                            ] 2/62: crc32fast(build.rs), adle...
     [K[0m[0m[1m[32m   Compiling[0m bitflags v1.3.2
-    [0m[0m[1m[36m    Building[0m [>                           ] 3/62: crc32fast(build.rs), adle...
-    [K[0m[0m[1m[32m   Compiling[0m ttf-parser v0.6.2
-    [0m[0m[1m[36m    Building[0m [>                           ] 4/62: crc32fast(build.rs), ttf-...
     [K[0m[0m[1m[32m   Compiling[0m paste v1.0.9
-    [K[0m[0m[1m[32m   Compiling[0m either v1.8.0
-    [0m[0m[1m[36m    Building[0m [=>                          ] 6/62: crc32fast(build.rs), ttf-...
-    [K[0m[0m[1m[32m   Compiling[0m color_quant v1.1.0
+    [K[0m[0m[1m[32m   Compiling[0m rawpointer v0.2.1
+    [K[0m[0m[1m[32m   Compiling[0m ttf-parser v0.6.2
     [K[0m[0m[1m[32m   Compiling[0m byteorder v1.4.3
     [K[0m[0m[1m[32m   Compiling[0m custom_derive v0.1.7
-    [0m[0m[1m[36m    Building[0m [===>                        ] 9/62: crc32fast(build.rs), ttf-...
+    [K[0m[0m[1m[32m   Compiling[0m color_quant v1.1.0
     [K[0m[0m[1m[32m   Compiling[0m ab_glyph_rasterizer v0.1.7
-    [0m[0m[1m[36m    Building[0m [===>                       ] 10/62: ttf-parser, getrandom(bui...
+    [K[0m[0m[1m[32m   Compiling[0m either v1.8.0
     [K[0m[0m[1m[32m   Compiling[0m jpeg-decoder v0.2.6
     [K[0m[0m[1m[32m   Compiling[0m miniz_oxide v0.5.4
-    [0m[0m[1m[36m    Building[0m [====>                      ] 12/62: ttf-parser, miniz_oxide, ...
     [K[0m[0m[1m[32m   Compiling[0m safe_arch v0.6.0
     [K[0m[0m[1m[32m   Compiling[0m matrixmultiply v0.3.2
-    [0m[0m[1m[32m   Compiling[0m num-traits v0.2.15
+    [K[0m[0m[1m[32m   Compiling[0m conv v0.3.3
+    [K[0m[0m[1m[32m   Compiling[0m num-traits v0.2.15
     [K[0m[0m[1m[32m   Compiling[0m num-integer v0.1.45
-    [0m[0m[1m[36m    Building[0m [=====>                     ] 16/62: ttf-parser, miniz_oxide, ...
     [K[0m[0m[1m[32m   Compiling[0m num-bigint v0.4.3
     [K[0m[0m[1m[32m   Compiling[0m num-rational v0.4.1
     [K[0m[0m[1m[32m   Compiling[0m num-iter v0.1.43
     [K[0m[0m[1m[32m   Compiling[0m itertools v0.10.5
-    [K[0m[0m[1m[32m   Compiling[0m conv v0.3.3
     [K[0m[0m[1m[32m   Compiling[0m wide v0.7.5
     [K[0m[0m[1m[32m   Compiling[0m owned_ttf_parser v0.6.0
-    [0m[0m[1m[36m    Building[0m [==========>                ] 27/62: ttf-parser, miniz_oxide, ...
-    [0m[0m[1m[36m    Building[0m [============>              ] 31/62: ttf-parser, miniz_oxide, ...
-    [K[0m[0m[1m[32m   Compiling[0m rusttype v0.9.2
-    [0m[0m[1m[36m    Building[0m [==============>            ] 35/62: ttf-parser, typenum, getr...
-    [K[0m[0m[1m[32m   Compiling[0m flate2 v1.0.24
     [K[0m[0m[1m[32m   Compiling[0m rand_core v0.5.1
+    [K[0m[0m[1m[32m   Compiling[0m flate2 v1.0.24
+    [K[0m[0m[1m[32m   Compiling[0m rusttype v0.9.2
     [K[0m[0m[1m[32m   Compiling[0m rand_chacha v0.2.2
     [K[0m[0m[1m[32m   Compiling[0m png v0.17.6
     [K[0m[0m[1m[32m   Compiling[0m rand v0.7.3
-    [0m[0m[1m[36m    Building[0m [================>          ] 41/62: ttf-parser, rand, rusttyp...
     [K[0m[0m[1m[32m   Compiling[0m num-complex v0.4.2
     [K[0m[0m[1m[32m   Compiling[0m approx v0.5.1
     [K[0m[0m[1m[32m   Compiling[0m rand_distr v0.2.2
-    [0m[0m[1m[36m    Building[0m [===================>       ] 47/62: num-integer, rand, rand_d...
     [K[0m[0m[1m[32m   Compiling[0m simba v0.7.2
-    [0m[0m[1m[36m    Building[0m [=====================>     ] 51/62: simba, rand, rand_distr, ...
-    [0m[0m[1m[36m    Building[0m [======================>    ] 53/62: simba, png, num-bigint      
-    [0m[0m[1m[36m    Building[0m [======================>    ] 54/62: simba, num-bigint           
     [K[0m[0m[1m[32m   Compiling[0m image v0.24.4
     [0m[0m[1m[32m   Compiling[0m num v0.4.0
     [K[0m[0m[1m[32m   Compiling[0m nalgebra v0.30.1
     [K[0m[0m[1m[32m   Compiling[0m imageproc v0.23.0
     [K[0m[0m[1m[32m   Compiling[0m my-program v0.1.0 (/Users/simon/examples/workload-onboarding/rust-wasm/my-program)
-    [K[0m[0m[1m[32m    Finished[0m release [optimized] target(s) in 14.98s
+    [K[0m[0m[1m[32m    Finished[0m release [optimized] target(s) in 13.78s
 
 
 This will generate a WASM file at `"./my-program/target/wasm32-wasi/my-program.wasm"` which can now be run on Bacalhau.
@@ -253,29 +237,67 @@ For this example, we are using an image of the Statue of Liberty that has been p
     -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
 
-    Uploading ./my-program/target/wasm32-wasi/release/my-program.wasm to server to execute command in context, press Ctrl+C to cancel
-    Job successfully submitted. Job ID: 2ba45d4a-568d-46f3-b385-6cfb839475a8
+    Uploading "./my-program/target/wasm32-wasi/release/my-program.wasm" to server to execute command in context, press Ctrl+C to cancel
+    Job successfully submitted. Job ID: 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
     	       Finding node(s) for the job ... done ✅
     	             Node accepted the job ... done ✅
     	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... 
+    	      Results accepted, publishing ... Results CID: QmaxyTrc3zSb6ggUVYgXb9yxVJZ9cXv6Y6u55Czm2eqaWD
+    Job Results By Node:
+    Node QmSyJ8VU:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmVAb7r2:
+      Shard 0:
+        Status: Completed
+        Container Exit Code: -1
+        Stdout:
+          Removing seam 0
+    Removing seam 100
+    
+        Stderr: <NONE>
+    Node QmXaXu9N:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmYgxZiy:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    Node QmdZQ7Zb:
+      Shard 0:
+        Status: Cancelled
+        No RunOutput for this shard
+    
+    To download the results, execute:
+      bacalhau get 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
+    
+    To get more details about the run, execute:
+      bacalhau describe 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
+
 
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.
 
 
 ```python
-!bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:)
+!mkdir -p wasm_results
+!bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
 
-    Fetching results of job '2ba45d4a-568d-46f3-b385-6cfb839475a8'...
+    Fetching results of job '1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa'...
+    [90m18:29:54.069 |[0m [1m[31mERR[0m[0m [1mipfs/node.go:178[0m[36m >[0m ipfs node failed to serve API: failed to listen on api multiaddr: listen tcp4 127.0.0.1:5001: bind: address already in use
+    Results for job '1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa' have been written to...
+    wasm_results
+
 
 
 ```python
 import IPython.display as display
-display.Image("./volumes/outputs/original.png")
+display.Image("./wasm_results/combined_results/outputs/original.png")
 ```
 
 
@@ -289,7 +311,7 @@ display.Image("./volumes/outputs/original.png")
 
 
 ```python
-display.Image("./volumes/outputs/annotated_gradients.png")
+display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
 ```
 
 
@@ -303,7 +325,7 @@ display.Image("./volumes/outputs/annotated_gradients.png")
 
 
 ```python
-display.Image("./volumes/outputs/shrunk.png")
+display.Image("./wasm_results/combined_results/outputs/shrunk.png")
 ```
 
 

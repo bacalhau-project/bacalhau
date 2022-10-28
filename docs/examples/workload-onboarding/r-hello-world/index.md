@@ -252,7 +252,7 @@ Viewing the result
 
 
 ```bash
-cat results/stdout
+cat results/combined_results/stdout
 ```
 
     [1] "hello world"

@@ -223,30 +223,39 @@ see the following contents in pandas-results directory
 
 
 ```bash
-ls pandas-results/
+ls pandas-results/combined_results/
 ```
 
     shards	stderr	stdout	volumes
 
 
 The structure of the files and directories will look like this:
+
 ```
-├── shards
-│   └── job-940c7fd7-c15a-4d00-8170-0d138cdca7eb-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
-│       ├── exitCode
-│       ├── stderr
-│       └── stdout
-├── stderr
-├── stdout
-└── volumes
-    └── outputs
+.
+├── combined_results
+│   ├── outputs
+│   ├── stderr
+│   └── stdout
+├── per_shard
+│   └── 0_node_QmSyJ8VU
+│       ├── exitCode
+│       ├── outputs
+│       ├── stderr
+│       └── stdout
+└── raw
+    └── QmY2MEETWyX77BBYBNBpUW5bjkVAyP87EotPDVW2vjHG8K
+        ├── exitCode
+        ├── outputs
+        ├── stderr
+        └── stdout
 ```
 
-* stdout contains things printed to the console like outputs, etc.
+* `stdout` contains things printed to the console like outputs, etc.
 
-* stderr contains any errors. In this case, since there are no errors, it's will be empty
+* `stderr` contains any errors. In this case, since there are no errors, it's will be empty
 
-* Volumes folder contain the volumes you named when you started the job with the `-o` flag. In addition, you will always have a `outputs` volume, which is provided by default.
+* `outputs` folder is the volume you named when you started the job with the `-o` flag. In addition, you will always have a `outputs` volume, which is provided by default.
 
 Because your script is printed to stdout, the output will appear in the stdout file. You can read this by typing the following command:
 
@@ -255,7 +264,7 @@ Because your script is printed to stdout, the output will appear in the stdout f
 
 
 ```bash
-cat pandas-results/stdout
+cat pandas-results/combined_results/stdout
 ```
 
                                                     hash  ...  transaction_type
