@@ -196,14 +196,16 @@ jobs:
     environment:
       GOVER: 1.18.3
       GOPROXY: https://proxy.golang.org
-    working_directory: ~/repo/ops/aws/canary/lambda
+    working_directory: ~/repo
     executor: linux
     steps:
       - checkout
       
       - run:
           name: Set canary dependency
-          command: go get github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
+          command: |
+            cd ops/aws/canary/lambda
+            go get github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
           
       - run:
           name: Build canary
