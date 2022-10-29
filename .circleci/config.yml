@@ -191,6 +191,25 @@ jobs:
           paths:
             - ~/.cache/pre-commit
 
+  build_canary:
+    parallelism: 1
+    environment:
+      GOVER: 1.18.3
+      GOPROXY: https://proxy.golang.org
+    working_directory: ~/repo/ops/aws/canary/lambda
+    executor: linux
+    steps:
+      - checkout
+      
+      - run:
+          name: Set canary dependency
+          command: go get https://github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
+          
+      - run:
+          name: Build canary
+          command: |
+            for CMD in $(find cmd -type d -depth 0); do go build $CMD; done
+
   lint:
     parallelism: 1
     environment:
@@ -375,6 +394,14 @@ workflows:
           filters:
             tags:
               ignore: /.*/
+
+  check_canary:
+    jobs:
+      - build_canary:
+          name: Check canary build
+          filters:
+            tags:
+              ignore: /.*/ 
 
   dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
