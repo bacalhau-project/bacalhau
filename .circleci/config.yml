@@ -203,7 +203,7 @@ jobs:
       
       - run:
           name: Set canary dependency
-          command: go get https://github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
+          command: go get github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
           
       - run:
           name: Build canary
