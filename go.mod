@@ -68,7 +68,7 @@ require (
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/pkg/errors v0.9.1
-	github.com/tetratelabs/wazero v1.0.0-pre.2
+	github.com/tetratelabs/wazero v1.0.0-pre.3
 	github.com/tidwall/sjson v1.2.5
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
