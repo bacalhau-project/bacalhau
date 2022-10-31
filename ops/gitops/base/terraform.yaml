@@ -14,11 +14,6 @@ spec:
   disableDriftDetection: false
   fileMappings:
   - location: workspace
-    path: ./.terraform/environment
-    secretRef:
-      key: workspace
-      name: workspace
-  - location: workspace
     path: ./terraform.tfvars
     secretRef:
       key: terraform.tfvars
