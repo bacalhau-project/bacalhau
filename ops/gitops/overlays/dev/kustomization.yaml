@@ -7,9 +7,6 @@ resources:
 - ../../base
 
 secretGenerator:
-- name: workspace
-  files:
-  - workspace=workspace
 - name: override-vars
   files:
   - terraform.tfvars=env-vars.tfvars
@@ -17,3 +14,4 @@ secretGenerator:
 # Last mile patches that change regularly(E.g., versions)
 patchesStrategicMerge:
 - flux-kustomization.yaml                 # Apply the google auth
+- ./terraform.yaml

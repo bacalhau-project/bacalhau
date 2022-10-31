@@ -6,9 +6,6 @@ resources:
 namespace: bacalhau-staging
 
 secretGenerator:
-- name: workspace
-  files:
-  - workspace=workspace
 - name: override-vars
   files:
   - terraform.tfvars=env-vars.tfvars

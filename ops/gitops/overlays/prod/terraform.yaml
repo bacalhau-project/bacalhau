@@ -1,0 +1,13 @@
+apiVersion: infra.contrib.fluxcd.io/v1alpha1
+kind: Terraform
+metadata:
+  name: tf-manifest
+spec:
+  approvePlan: ""
+  alwaysCleanupRunnerPod: false
+  destroyResourcesOnDeletion: false
+  disableDriftDetection: false
+  force: false
+  interval: 3m
+  refreshBeforeApply: false
+  workspace: production

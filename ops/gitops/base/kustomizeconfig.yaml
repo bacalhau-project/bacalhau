@@ -1,6 +1,6 @@
-# This lets the k8s api know that the value mapped is a configmap and secret.  
-# This is needed so the configMapGenerator and secretGenerator can add 
-# the necessary hash to the object name
+## The kustomize secretsGenerator and configMapGenerator appends a hash
+## to the end of the secret/configMaps that it manages.  
+## These mappings let kustomize know to consider these paths too.
 nameReference:
 - kind: ConfigMap
   version: v1

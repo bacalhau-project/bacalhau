@@ -12,7 +12,7 @@ spec:
       name: tenant-sops-gpg
   sourceRef:
     kind: GitRepository
-    name: bacalhau
+    name: bacalhau-test
     namespace: flux-system
   path: ""
   prune: true
