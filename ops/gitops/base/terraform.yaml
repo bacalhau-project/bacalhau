@@ -40,7 +40,7 @@ spec:
   serviceAccountName: tf-runner
   sourceRef:
     kind: GitRepository
-    name: bacalhau-test
+    name: bacalhau
     namespace: flux-system
   storeReadablePlan: human
   workspace: default
