@@ -1,25 +1,19 @@
 package publicapi
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
-	"io/fs"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/rs/zerolog/log"
 )
 
@@ -85,7 +79,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		}
 
 		tarReader := bytes.NewReader(decoded)
-		err = decompress(tarReader, filepath.Join(tmpDir, "context"))
+		err = targzip.Decompress(tarReader, filepath.Join(tmpDir, "context"))
 		if err != nil {
 			log.Ctx(ctx).Debug().Msgf("====> Decompress error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)
@@ -139,99 +133,4 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, errorResponse, http.StatusInternalServerError)
 		return
 	}
-}
-
-const worldReadOwnerWritePermission fs.FileMode = 0755
-
-func decompress(src io.Reader, dst string) error {
-	// ensure destination directory exists
-	err := os.Mkdir(dst, worldReadOwnerWritePermission)
-	if err != nil {
-		return err
-	}
-
-	// ungzip
-	zr, err := gzip.NewReader(src)
-	if err != nil {
-		return err
-	}
-	// untar
-	tr := tar.NewReader(zr)
-
-	// uncompress each element
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break // End of archive
-		}
-		if err != nil {
-			return err
-		}
-		target := header.Name
-
-		// validate name against path traversal
-		if !validRelPath(header.Name) {
-			return fmt.Errorf("tar contained invalid name error %q", target)
-		}
-
-		// add dst + re-format slashes according to system
-		target, err = SanitizeArchivePath(dst, header.Name)
-		if err != nil {
-			return err
-		}
-		// if no join is needed, replace with ToSlash:
-		// target = filepath.ToSlash(header.Name)
-
-		// check the type
-		switch header.Typeflag {
-		// if its a dir and it doesn't exist create it (with 0755 permission)
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, worldReadOwnerWritePermission); err != nil {
-					return err
-				}
-			}
-		// if it's a file create it (with same permission)
-		case tar.TypeReg:
-			fileToWrite, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			// copy over contents (max 10MB per file!)
-			// TODO: error if files are too big, rather than silently truncating them :-O
-			if _, err := io.CopyN(fileToWrite, tr, 10*1024*1024); err != nil { //nolint:gomnd
-				log.Debug().Msgf("CopyN err is %s", err)
-				// io.EOF is expected
-				if err != io.EOF {
-					return err
-				}
-			}
-			// manually close here after each file operation; defering would cause each file close
-			// to wait until all operations have completed.
-			fileToWrite.Close()
-		}
-	}
-
-	//
-	return nil
-}
-
-// check for path traversal and correct forward slashes
-//
-//nolint:unused
-func validRelPath(p string) bool {
-	if p == "" || strings.Contains(p, `\`) || strings.HasPrefix(p, "/") || strings.Contains(p, "../") {
-		return false
-	}
-	return true
-}
-
-// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
-func SanitizeArchivePath(d, t string) (v string, err error) {
-	v = filepath.Join(d, t)
-	if strings.HasPrefix(v, filepath.Clean(d)) {
-		return v, nil
-	}
-
-	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
 }

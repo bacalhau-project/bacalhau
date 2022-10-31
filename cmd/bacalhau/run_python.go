@@ -1,22 +1,15 @@
 package bacalhau
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
-	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -32,12 +25,9 @@ var (
 	OLR = NewLanguageRunOptions()
 )
 
-const maximumContextSize datasize.ByteSize = 10 * datasize.MB
-
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
 	Deterministic bool     // Execute this job deterministically
-	Verifier      string   // Verifier - verifier.Verifier
 	Inputs        []string // Array of input CIDs
 	InputUrls     []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
@@ -57,9 +47,8 @@ type LanguageRunOptions struct {
 	// GPU string
 	// WorkingDir string // Working directory for docker
 
-	// WaitForJobToFinish bool // Wait for the job to execute before exiting
-	// WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	// WaitForJobTimeoutSecs int // Job time out in seconds
+	RuntimeSettings  RunTimeSettings
+	DownloadSettings ipfs.IPFSDownloadSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -69,7 +58,6 @@ type LanguageRunOptions struct {
 func NewLanguageRunOptions() *LanguageRunOptions {
 	return &LanguageRunOptions{
 		Deterministic:    true,
-		Verifier:         "ipfs",
 		Inputs:           []string{},
 		InputUrls:        []string{},
 		InputVolumes:     []string{},
@@ -81,6 +69,8 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		Command:          "",
 		RequirementsPath: "",
 		ContextPath:      ".",
+		RuntimeSettings:  *NewRunTimeSettings(),
+		DownloadSettings: *ipfs.NewIPFSDownloadSettings(),
 	}
 }
 
@@ -91,7 +81,7 @@ func init() {
 		&OLR.Deterministic, "deterministic", OLR.Deterministic,
 		`Enforce determinism: run job in a single-threaded wasm runtime with `+
 			`no sources of entropy. NB: this will make the python runtime execute`+
-			`in an environment where only some librarie are supported, see `+
+			`in an environment where only some libraries are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
@@ -136,15 +126,13 @@ func init() {
 		"Path to context (e.g. python code) to send to server (via public IPFS network) "+
 			"for execution (max 10MiB). Set to empty string to disable",
 	)
-	runPythonCmd.PersistentFlags().StringVar(
-		&OLR.Verifier, "verifier", OLR.Verifier,
-		`What verification engine to use to run the job`,
-	)
-
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&OLR.Labels, "labels", "l", OLR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
+
+	runPythonCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&OLR.RuntimeSettings))
+	runPythonCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OLR.DownloadSettings))
 }
 
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
@@ -168,7 +156,11 @@ var runPythonCmd = &cobra.Command{
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
-		// TODO: prepare context
+		// error if determinism is false
+		if !OLR.Deterministic {
+			Fatal("Determinism=false not supported yet "+
+				"(languages only support wasm backend with forced determinism)", 1)
+		}
 
 		var programPath string
 		if len(cmdArgs) > 0 {
@@ -189,164 +181,58 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
 		}
 
-		return SubmitLanguageJob(cmd, ctx, "python", "3.10", programPath)
-	},
-}
+		language := "python"
+		version := "3.10"
 
-func SubmitLanguageJob(cmd *cobra.Command, ctx context.Context, language, version, programPath string) error {
-	//nolint:lll // it's ok to be long
-	// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
-	j, err := job.ConstructLanguageJob(
-		model.APIVersionLatest(),
-		OLR.InputVolumes,
-		OLR.InputUrls,
-		OLR.OutputVolumes,
-		[]string{}, // no env vars (yet)
-		OLR.Concurrency,
-		OLR.Confidence,
-		OLR.MinBids,
-		language,
-		version,
-		OLR.Command,
-		programPath,
-		OLR.RequirementsPath,
-		OLR.ContextPath,
-		OLR.Deterministic,
-		OLR.Labels,
-		doNotTrack,
-	)
-	if err != nil {
-		return err
-	}
-
-	// error if determinism is false
-	if !OLR.Deterministic {
-		return fmt.Errorf("determinism=false not supported yet " +
-			"(languages only support wasm backend with forced determinism)")
-	}
-
-	var buf bytes.Buffer
-
-	if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
-		cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
-		OLR.ContextPath = ""
-	}
-
-	if OLR.ContextPath != "" {
-		// construct a tar file from the contextPath directory
-		// tar + gzip
-		cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
-		time.Sleep(1 * time.Second)
-		err = compress(ctx, OLR.ContextPath, &buf)
+		// TODO: #450 These two code paths make me nervous - the fact that we
+		// have ConstructLanguageJob and ConstructDockerJob as separate means
+		// manually keeping them in sync.
+		j, err := job.ConstructLanguageJob(
+			OLR.InputVolumes,
+			OLR.InputUrls,
+			OLR.OutputVolumes,
+			[]string{}, // no env vars (yet)
+			OLR.Concurrency,
+			OLR.Confidence,
+			OLR.MinBids,
+			language,
+			version,
+			OLR.Command,
+			programPath,
+			OLR.RequirementsPath,
+			OLR.ContextPath,
+			OLR.Deterministic,
+			OLR.Labels,
+			doNotTrack,
+		)
 		if err != nil {
 			return err
 		}
 
-		// check size of buf
-		if buf.Len() > int(maximumContextSize) {
-			Fatal(fmt.Sprintf("context tar file is too large (> %s)", maximumContextSize.HumanReadable()), 1)
+		var buf bytes.Buffer
+
+		if OLR.ContextPath == "." && OLR.RequirementsPath == "" && programPath == "" {
+			cmd.Println("no program or requirements specified, not uploading context - set --context-path to full path to force context upload")
+			OLR.ContextPath = ""
 		}
-	}
 
-	log.Debug().Msgf(
-		"submitting job %+v", j)
-
-	returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-	}
-
-	err = WaitAndPrintResultsToUser(ctx, returnedJob, false)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-	}
-	return nil
-}
-
-// from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
-
-//nolint:gocyclo
-func compress(ctx context.Context, src string, buf io.Writer) error {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/runPython.compress")
-	defer span.End()
-
-	// tar > gzip > buf
-	zr := gzip.NewWriter(buf)
-	tw := tar.NewWriter(zr)
-
-	// is file a folder?
-	fi, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	mode := fi.Mode()
-	if mode.IsRegular() {
-		// get header
-		var header *tar.Header
-		header, err = tar.FileInfoHeader(fi, src)
-		if err != nil {
-			return err
-		}
-		// write header
-		if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-			return err
-		}
-		// get content
-		var data *os.File
-		data, err = os.Open(src)
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(tw, data); err != nil {
-			return err
-		}
-	} else if mode.IsDir() { // folder
-		// walk through every file in the folder
-		err = filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
-			// generate tar header
-			var header *tar.Header
-			header, err = tar.FileInfoHeader(fi, file)
+		if OLR.ContextPath != "" {
+			// construct a tar file from the contextPath directory
+			// tar + gzip
+			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
+			time.Sleep(1 * time.Second)
+			err = targzip.Compress(ctx, OLR.ContextPath, &buf)
 			if err != nil {
 				return err
 			}
-
-			// must provide real name
-			// (see https://golang.org/src/archive/tar/common.go?#L626)
-			header.Name = filepath.ToSlash(file)
-
-			// write header
-			if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-				return err
-			}
-			// if not a dir, write file content
-			if !fi.IsDir() {
-				var data *os.File
-				data, err = os.Open(file)
-				if err != nil {
-					return err
-				}
-				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
 		}
-	} else {
-		return fmt.Errorf("error: file type not supported")
-	}
 
-	// produce tar
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	// produce gzip
-	if err := zr.Close(); err != nil {
-		return err
-	}
-	//
-	return nil
+		err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
+		if err != nil {
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return nil
+		}
+
+		return nil
+	},
 }

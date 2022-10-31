@@ -64,6 +64,7 @@ var describeCmd = &cobra.Command{
 	Long:    describeLong,
 	Example: describeExample,
 	Args:    cobra.ExactArgs(1),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()

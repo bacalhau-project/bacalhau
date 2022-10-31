@@ -26,9 +26,6 @@ temperature_sensor_data.csv.bz2
 __debug_bin
 __debug_bin.exe
 .terraform/*
-ops/terraform/*.out
-ops/terraform/.terraform.lock.hcl
-ops/terraform/.terraform/*
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl

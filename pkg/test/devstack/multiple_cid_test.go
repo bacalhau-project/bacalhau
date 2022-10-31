@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -44,6 +44,7 @@ func (s *MultipleCIDSuite) SetupSuite() {
 
 // Before each test
 func (s *MultipleCIDSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
 }
@@ -141,8 +142,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-cid-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
@@ -243,8 +243,7 @@ func runURLTest(
 	)
 	require.NoError(t, err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(t, err)
+	outputDir := t.TempDir()
 
 	shards, err := resolver.GetShards(ctx, submittedJob.ID)
 	require.NoError(t, err)
@@ -482,8 +481,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 	node, err := stack.GetNode(ctx, shard.NodeID)
 	require.NoError(s.T(), err)
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-multiple-url-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

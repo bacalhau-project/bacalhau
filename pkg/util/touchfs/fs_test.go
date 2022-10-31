@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,8 +23,7 @@ func TestTouchFSSuite(t *testing.T) {
 }
 
 func (suite *touchFsSuite) SetupTest() {
-	testDir, err := os.MkdirTemp("", "*")
-	require.NoError(suite.T(), err)
+	testDir := suite.T().TempDir()
 	suite.testDir = testDir
 
 	file, err := os.Create(filepath.Join(testDir, "test.txt"))
@@ -32,6 +32,7 @@ func (suite *touchFsSuite) SetupTest() {
 	_, err = file.WriteString("hello")
 	require.NoError(suite.T(), err)
 	file.Close()
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *touchFsSuite) TearDownTest() {

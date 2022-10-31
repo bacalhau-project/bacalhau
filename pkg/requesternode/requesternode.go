@@ -128,6 +128,24 @@ func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal mo
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
+// Return list of active jobs in this requester node.
+func (node *RequesterNode) GetActiveJobs(ctx context.Context) []ActiveJob {
+	activeJobs := make([]ActiveJob, 0)
+
+	for _, shardState := range node.shardStateManager.shardStates {
+		if shardState.currentState != shardCompleted && shardState.currentState != shardError {
+			activeJobs = append(activeJobs, ActiveJob{
+				ShardID:             shardState.shard.ID(),
+				State:               shardState.currentState.String(),
+				BiddingNodesCount:   len(shardState.biddingNodes),
+				CompletedNodesCount: len(shardState.completedNodes),
+			})
+		}
+	}
+
+	return activeJobs
+}
+
 func (node *RequesterNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
 	ctx, span := node.newSpan(ctx, event.EventName.String())
 	defer span.End()
@@ -144,6 +162,11 @@ func (node *RequesterNode) triggerStateTransition(ctx context.Context, event mod
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		if err := node.notifyShardInvalidRequest(ctx, shard, event.SourceNodeID, "shard state not found"); err != nil {
+			log.Ctx(ctx).Warn().Msgf(
+				"Received %s for unknown shard %s, and failed to notify the source node %s",
+				event.EventName, shard, event.SourceNodeID)
+		}
 	}
 	return nil
 }
@@ -263,6 +286,18 @@ func (node *RequesterNode) notifyShardError(
 ) error {
 	ev := node.constructShardEvent(shard, model.JobEventError)
 	ev.Status = status
+	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (node *RequesterNode) notifyShardInvalidRequest(
+	ctx context.Context,
+	shard model.JobShard,
+	targetNodeID string,
+	status string,
+) error {
+	ev := node.constructShardEvent(shard, model.JobEventInvalidRequest)
+	ev.Status = status
+	ev.TargetNodeID = targetNodeID
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 

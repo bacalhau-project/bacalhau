@@ -5,12 +5,12 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -38,6 +38,7 @@ func (s *ComputeNodeRunJobSuite) SetupAllSuite() {
 
 // Before each test
 func (s *ComputeNodeRunJobSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
 }
@@ -54,11 +55,7 @@ func (s *ComputeNodeRunJobSuite) TearDownAllSuite() {
 func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	ctx := context.Background()
 
-	tmpOutputDir, err := ioutil.TempDir("", "bacalhau-test-run-job")
-	if err != nil {
-		s.T().Fatal(err)
-	}
-	defer os.RemoveAll(tmpOutputDir)
+	tmpOutputDir := s.T().TempDir()
 
 	EXAMPLE_TEXT := "hello"
 	stack := testutils.NewDevStack(ctx, s.T(), computenode.NewDefaultComputeNodeConfig())

@@ -46,7 +46,6 @@ type CreateOptions struct {
 	Confidence      int                       // Minimum number of nodes that must agree on a verification result
 	RunTimeSettings RunTimeSettings           // Run time settings for execution (e.g. wait, get, etc after submission)
 	DownloadFlags   ipfs.IPFSDownloadSettings // Settings for running Download
-	IDOnly          bool                      // Only print the ID of the job and exit
 }
 
 func NewCreateOptions() *CreateOptions {
@@ -56,13 +55,12 @@ func NewCreateOptions() *CreateOptions {
 		Confidence:      0,
 		DownloadFlags:   *ipfs.NewIPFSDownloadSettings(),
 		RunTimeSettings: *NewRunTimeSettings(),
-		IDOnly:          false,
 	}
 }
 
 func init() { //nolint:gochecknoinits
-	setupDownloadFlags(createCmd, &OC.DownloadFlags)
-	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
+	createCmd.Flags().AddFlagSet(NewIPFSDownloadFlags(&OC.DownloadFlags))
+	createCmd.Flags().AddFlagSet(NewRunTimeSettingsFlags(&OC.RunTimeSettings))
 }
 
 var createCmd = &cobra.Command{
@@ -71,6 +69,7 @@ var createCmd = &cobra.Command{
 	Long:    createLong,
 	Example: createExample,
 	Args:    cobra.MinimumNArgs(0),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
@@ -225,7 +224,7 @@ var createCmd = &cobra.Command{
 			j,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
-			OC.IDOnly,
+			nil,
 		)
 
 		if err != nil {

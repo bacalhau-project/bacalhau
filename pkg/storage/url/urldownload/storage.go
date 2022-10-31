@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/go-resty/resty/v2"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -69,6 +70,8 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.Stora
 }
 
 // For the urldownload storage provider, PrepareStorage will download the file from the URL
+//
+//nolint:funlen,gocyclo // TODO: refactor this function
 func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model.StorageSpec) (storage.StorageVolume, error) {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.PrepareStorage")
 	defer span.End()
@@ -87,6 +90,9 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	sp.HTTPClient.SetOutputDirectory(outputPath)
 	sp.HTTPClient.SetDoNotParseResponse(true) // We want to stream the response to disk directly
 
+	// Trying a check for head - just trying to fail quickly if the site is clearly wrong.
+	// This MAY fail with 405 (method not allowed) if the server doesn't support HEAD which is generally
+	// OK because we will fail if the server is down - so it is a best effort.
 	req := sp.HTTPClient.R().SetContext(ctx)
 	req = req.SetContext(ctx)
 	r, err := req.Head(u.String())
@@ -95,18 +101,21 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, fmt.Errorf("failed to get headers from url (%s): %s", u.String(), err)
 	}
 
+	// Checking to see about redirect here (does not 100% work because could have rejected the HEAD request)
 	finalURL := r.RawResponse.Request.URL
 	if finalURL != u {
 		log.Debug().Msgf("URL %s redirected to %s", u.String(), finalURL.String())
 	}
-	// If url ends with a slash, we need to error out because we don't support directories
-	if strings.HasSuffix(finalURL.Path, "/") {
-		return storage.StorageVolume{},
-			fmt.Errorf("URL %s ends with a slash, which is not supported", finalURL.String())
-	}
 
 	// Create a new file based on the URL
-	fileName := filepath.Base(path.Base(finalURL.String()))
+	baseName := path.Base(finalURL.Path)
+	var fileName string
+	if baseName == "." || baseName == "/" {
+		// There is no filename in the URL, so we need to a temp one
+		fileName = uuid.UUID.String(uuid.New())
+	} else {
+		fileName = baseName
+	}
 
 	log.Trace().Msgf("Beginning get %s to %s", finalURL, outputPath)
 	r, err = req.Get(finalURL.String())
@@ -144,6 +153,32 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %s", filePath, err)
 	}
+
+	// If path.Base isn't empty, we'll see if it got redirected to a different file name
+	// and if so, we'll rename it to the original file name from the URL
+	// Otherwise, we'll just use the filename we created
+	var finalFileName string
+	if baseName != "." && baseName != "/" {
+		finalFileName = filepath.Join(outputPath, path.Base(r.RawResponse.Request.URL.Path))
+	} else {
+		finalFileName = filePath
+	}
+
+	fileWriteName := w.Name()
+	log.Debug().Msgf("Final file name based on URL: %s", finalFileName)
+	log.Debug().Msgf("Final written name: %s", fileWriteName)
+	if finalFileName != fileWriteName {
+		log.Debug().Msgf("Downloaded file has different name than final name - renaming: %s to %s", w.Name(), finalFileName)
+		err = os.Rename(w.Name(), finalFileName)
+		if err != nil {
+			return storage.StorageVolume{}, fmt.Errorf("failed to rename file %s to %s: %s", w.Name(), finalFileName, err)
+		}
+
+		// Need to update filePath and targetPath to accommodate the rename
+		filePath = filepath.Join(outputPath, filepath.Base(finalFileName))
+		targetPath = filepath.Join(storageSpec.Path, filepath.Base(finalFileName))
+	}
+
 	r.RawBody().Close()
 	w.Close()
 

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -42,6 +43,7 @@ func (suite *ShardingSuite) SetupSuite() {
 
 // Before each test
 func (suite *ShardingSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
@@ -53,14 +55,11 @@ func (suite *ShardingSuite) TearDownSuite() {
 
 }
 
-func prepareFolderWithFoldersAndFiles(folderCount, fileCount int) (string, error) {
-	basePath, err := os.MkdirTemp("", "sharding-test")
-	if err != nil {
-		return "", err
-	}
+func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) (string, error) {
+	basePath := t.TempDir()
 	for i := 0; i < folderCount; i++ {
 		subfolderPath := fmt.Sprintf("%s/folder%d", basePath, i)
-		err = os.Mkdir(subfolderPath, 0700)
+		err := os.Mkdir(subfolderPath, 0700)
 		if err != nil {
 			return "", err
 		}
@@ -78,13 +77,10 @@ func prepareFolderWithFoldersAndFiles(folderCount, fileCount int) (string, error
 	return basePath, nil
 }
 
-func prepareFolderWithFiles(fileCount int) (string, error) {
-	basePath, err := os.MkdirTemp("", "sharding-test")
-	if err != nil {
-		return "", err
-	}
+func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) {
+	basePath := t.TempDir()
 	for i := 0; i < fileCount; i++ {
-		err = os.WriteFile(
+		err := os.WriteFile(
 			fmt.Sprintf("%s/%d.txt", basePath, i),
 			[]byte(fmt.Sprintf("hello %d", i)),
 			0644,
@@ -117,7 +113,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	node := stack.IPFSClients[0]
 
 	// make 10 folders each with 10 files
-	dirPath, err := prepareFolderWithFoldersAndFiles(folderCount, fileCount)
+	dirPath, err := prepareFolderWithFoldersAndFiles(suite.T(), folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
@@ -185,7 +181,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	dirPath, err := prepareFolderWithFiles(totalFiles)
+	dirPath, err := prepareFolderWithFiles(suite.T(), totalFiles)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
@@ -257,8 +253,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 	require.True(suite.T(), len(jobResults) > 0, "there should be > 0 results")
 
-	downloadFolder, err := ioutil.TempDir("", "bacalhau-shard-test")
-	require.NoError(suite.T(), err)
+	downloadFolder := suite.T().TempDir()
 
 	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
 	require.NoError(suite.T(), err)
@@ -279,28 +274,30 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	require.NoError(suite.T(), err)
 
 	// check that the merged stdout is correct
-	expectedStdoutArray := []string{}
+	expectedStdoutArray := []string{""}
 	expectedResultsFiles := []string{}
 	for i := 0; i < totalFiles; i++ {
-		expectedStdoutArray = append(expectedStdoutArray, fmt.Sprintf("hello /input/%d.txt", i))
+		for j := 0; j < nodeCount; j++ {
+			expectedStdoutArray = append(expectedStdoutArray, fmt.Sprintf("hello /input/%d.txt", i))
+		}
 		expectedResultsFiles = append(expectedResultsFiles, fmt.Sprintf("%d.txt", i))
 	}
 
 	sort.Strings(expectedStdoutArray)
 	sort.Strings(expectedResultsFiles)
 
-	require.FileExists(suite.T(), filepath.Join(downloadFolder, "stdout"))
-	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, "stdout"))
+	require.FileExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
+	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
 	require.NoError(suite.T(), err)
 
 	actualStdoutArray := strings.Split(string(actualStdoutBytes), "\n")
 	sort.Strings(actualStdoutArray)
 
-	require.Equal(suite.T(), "\n"+strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
+	require.Equal(suite.T(), strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
 
 	// check that we have a "results" output volume with all the files inside
-	require.DirExists(suite.T(), filepath.Join(downloadFolder, "volumes", "results"))
-	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, "volumes", "results"))
+	require.DirExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
+	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
 	require.NoError(suite.T(), err)
 
 	actualResultsFiles := []string{}
@@ -333,7 +330,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	dirPath, err := prepareFolderWithFiles(0)
+	dirPath, err := prepareFolderWithFiles(suite.T(), 0)
 	require.NoError(suite.T(), err)
 
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
@@ -402,10 +399,9 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	dirPath, err := os.MkdirTemp("", "sharding-test")
-	require.NoError(suite.T(), err)
+	dirPath := suite.T().TempDir()
 	for _, video := range videos {
-		err = os.WriteFile(
+		err := os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,

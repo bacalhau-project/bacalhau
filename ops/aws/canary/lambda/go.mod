@@ -5,8 +5,8 @@ go 1.18
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/aws/aws-sdk-go v1.44.96
-	github.com/filecoin-project/bacalhau v0.3.3
-	github.com/rs/zerolog v1.26.1
+	github.com/filecoin-project/bacalhau v0.3.12-0.20221028184451-5bddc7d1dea5
+	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
 	github.com/spf13/pflag v1.0.5
 )
@@ -55,6 +55,12 @@ require (
 	github.com/elgris/jsondiff v0.0.0-20160530203242-765b5c24c302 // indirect
 	github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/filecoin-project/go-address v1.0.0 // indirect
+	github.com/filecoin-project/go-amt-ipld/v4 v4.0.0 // indirect
+	github.com/filecoin-project/go-bitfield v0.2.4 // indirect
+	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 // indirect
+	github.com/filecoin-project/go-jsonrpc v0.1.8 // indirect
+	github.com/filecoin-project/go-state-types v0.9.0 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -232,6 +238,7 @@ require (
 	github.com/multiformats/go-multihash v0.1.0 // indirect
 	github.com/multiformats/go-multistream v0.3.0 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
+	github.com/n-marshall/go-cp v0.0.0-20180115193924-61436d3b7cfa // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -270,7 +277,7 @@ require (
 	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
-	github.com/tetratelabs/wazero v1.0.0-pre.2 // indirect
+	github.com/tetratelabs/wazero v1.0.0-pre.3 // indirect
 	github.com/tidwall/gjson v1.14.2 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -313,7 +320,7 @@ require (
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect
+	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -337,7 +344,6 @@ require (
 	k8s.io/kubectl v0.24.3 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
-	mvdan.cc/sh/v3 v3.5.1 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

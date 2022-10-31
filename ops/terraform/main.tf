@@ -18,7 +18,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
   machine_type = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
-  zone         = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
+  zone         = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
 
   boot_disk {
     initialize_params {
@@ -42,14 +42,17 @@ sudo mkdir -p /terraform_node
 
 sudo tee /terraform_node/variables > /dev/null <<'EOI'
 export TERRAFORM_NODE_INDEX="${count.index}"
-export TERRAFORM_NODE_IP="${var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address}"
-export TERRAFORM_NODE0_IP="${var.protect_resources ? google_compute_address.ipv4_address[0].address : google_compute_address.ipv4_address_unprotected[0].address}"
+export TERRAFORM_NODE0_IP="${var.internal_ip_addresses[0]}"
+export TERRAFORM_NODE1_IP="${var.instance_count > 1 ? var.internal_ip_addresses[1] : ""}"
+export TERRAFORM_NODE2_IP="${var.instance_count > 2 ? var.internal_ip_addresses[2] : ""}"
 export IPFS_VERSION="${var.ipfs_version}"
 export BACALHAU_ENVIRONMENT="${terraform.workspace}"
 export BACALHAU_VERSION="${var.bacalhau_version}"
 export BACALHAU_PORT="${var.bacalhau_port}"
 export BACALHAU_UNSAFE_CLUSTER="${var.bacalhau_unsafe_cluster ? "yes" : ""}"
-export BACALHAU_CONNECT_NODE0="${var.bacalhau_connect_node0}"
+export BACALHAU_NODE_ID_0="${var.bacalhau_node_id_0}"
+export BACALHAU_NODE_ID_1="${var.instance_count > 1 ? var.bacalhau_node_id_1 : ""}"
+export BACALHAU_NODE_ID_2="${var.instance_count > 2 ? var.bacalhau_node_id_2 : ""}"
 export BACALHAU_NODE0_UNSAFE_ID="QmUqesBmpC7pSzqH86ZmZghtWkLwL6RRop3M1SrNbQN5QD"
 export GPU_NODE="${count.index >= var.instance_count - var.num_gpu_machines ? "true" : "false"}"
 export PROMETHEUS_VERSION="${var.prometheus_version}"
@@ -139,6 +142,7 @@ EOF
   network_interface {
     network    = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
     subnetwork = var.auto_subnets ? "" : google_compute_subnetwork.bacalhau_subnetwork_manual[0].name
+    network_ip = var.internal_ip_addresses[count.index]
     access_config {
       nat_ip = var.protect_resources ? google_compute_address.ipv4_address[count.index].address : google_compute_address.ipv4_address_unprotected[count.index].address
     }
@@ -165,7 +169,7 @@ EOF
 }
 
 resource "google_compute_address" "ipv4_address" {
-  region = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
+  region = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
   # keep the same ip addresses if we are production (because they are in DNS and the auto connect serve codebase)
   name  = terraform.workspace == "production" ? "bacalhau-ipv4-address-${count.index}" : "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count = var.protect_resources ? var.instance_count : 0
@@ -189,7 +193,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
@@ -202,7 +206,7 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? 0 : var.instance_count
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
 }
@@ -210,13 +214,13 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
   name  = google_compute_resource_policy.bacalhau_disk_backups[count.index].name
   disk  = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].name : google_compute_disk.bacalhau_disk_unprotected[count.index].name
-  zone  = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
+  zone  = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
   count = var.instance_count
 }
 
 resource "google_compute_resource_policy" "bacalhau_disk_backups" {
   name   = "bacalhau-disk-backups-${terraform.workspace}-${count.index}"
-  region = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
+  region = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4" : var.region
   count  = var.instance_count
   snapshot_schedule_policy {
     schedule {
@@ -243,7 +247,7 @@ resource "google_compute_attached_disk" "default" {
   disk     = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].self_link : google_compute_disk.bacalhau_disk_unprotected[count.index].self_link
   instance = google_compute_instance.bacalhau_vm[count.index].self_link
   count    = var.instance_count
-  zone     = var.num_gpu_machines > 0 && count.index == (var.instance_count - 1) ? "europe-west4-c" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {

@@ -2,6 +2,7 @@ package computenode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -26,7 +27,9 @@ import (
 const DefaultJobCPU = "100m"
 const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalMillis = 100
+const ShardStateLogInterval = 5 * time.Minute
 const DelayBeforeBidMillisecondRange = 100
+const BidTimeoutSeconds = 60
 
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
@@ -87,6 +90,7 @@ func NewComputeNode(
 	}
 
 	go computeNode.controlLoopSetup(ctx, cm)
+	go computeNode.shardStateLogSetup(ctx, cm)
 
 	return computeNode, nil
 }
@@ -166,6 +170,30 @@ func (n *ComputeNode) controlLoopSetup(ctx context.Context, cm *system.CleanupMa
 	}
 }
 
+func (n *ComputeNode) shardStateLogSetup(ctx context.Context, cm *system.CleanupManager) {
+	ticker := time.NewTicker(ShardStateLogInterval)
+	ctx, cancelFunction := context.WithCancel(ctx)
+	cm.RegisterCallback(func() error {
+		cancelFunction()
+		return nil
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			bytes, err := json.Marshal(n.GetActiveJobs(ctx))
+			if err != nil {
+				log.Ctx(ctx).Err(err).Msg("failed to marshal shard states")
+			} else {
+				log.Info().Msgf("compute active shards: %+v", string(bytes))
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
+}
+
 // each control loop we should bid on jobs in our queue
 //   - calculate "remaining resources"
 //   - this is total - running
@@ -223,6 +251,14 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 	}
 
 	shardState.Bid(ctx)
+
+	// We timeout the bid, to avoid holding open the capacity for it indefinitely.
+	go func() {
+		time.Sleep(BidTimeoutSeconds * time.Second)
+		if shardState.currentState == shardBidding {
+			shardState.Fail(ctx, "bid timed out")
+		}
+	}()
 }
 
 /*
@@ -285,14 +321,14 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 
 	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
 	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-	jobNodeDistanceDelayMs := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
+	jobNodeDistanceDelayMs, shouldRunJob := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
 		// if the user isn't going to bid unless there are minBids many bids,
 		// we'd better make sure there are minBids many bids!
 		ctx, 1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
 	)
 
 	// if delay is too high, just exit immediately.
-	if jobNodeDistanceDelayMs > 1000 { //nolint:gomnd
+	if !shouldRunJob { //nolint:gomnd
 		// drop the job on the floor, :-O
 		return nil
 	}
@@ -348,7 +384,7 @@ func diff(a, b int) int {
 	return a - b
 }
 
-func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID, jobID string, concurrency int) int {
+func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID, jobID string, concurrency int) (int, bool) {
 	// Calculate how long to wait to bid on the job by using a circular hashing
 	// style approach: Invent a metric for distance between node ID and job ID.
 	// If the node and job ID happen to be close to eachother, such that we'd
@@ -378,7 +414,17 @@ func CalculateJobNodeDistanceDelay(ctx context.Context, networkSize int, nodeID,
 		"node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
 		nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
 	)
-	return delay
+	shouldRun := true
+	// if delay is too high, just exit immediately.
+	if delay > 1000 { //nolint:gomnd
+		// drop the job on the floor, :-O
+		shouldRun = false
+		log.Ctx(ctx).Warn().Msgf(
+			"dropped job: node/job %s/%s, %d/%d, dist=%d, chunk=%d, delay=%d",
+			nodeID, jobID, nodeHash, jobHash, distance, chunk, delay,
+		)
+	}
+	return delay, shouldRun
 }
 
 func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
@@ -402,6 +448,8 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 			shardState.Publish(ctx)
 		case model.JobEventResultsRejected:
 			shardState.ResultsRejected(ctx)
+		case model.JobEventInvalidRequest:
+			shardState.FailSilently(ctx, "Request rejected due to: "+event.Status)
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
@@ -561,6 +609,27 @@ func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) er
 		return err
 	}
 	return nil
+}
+
+// Return list of active jobs in this compute node. These are the jobs that are holding capacity and includes bid jobs
+// that are not yet selected.
+func (n *ComputeNode) GetActiveJobs(ctx context.Context) []ActiveJob {
+	activeJobs := make([]ActiveJob, 0)
+
+	for _, shardState := range n.shardStateManager.GetActive() {
+		activeJobs = append(activeJobs, ActiveJob{
+			ShardID:              shardState.Shard.ID(),
+			State:                shardState.currentState.String(),
+			CapacityRequirements: shardState.capacity.Requirements,
+		})
+	}
+
+	return activeJobs
+}
+
+// Returns the available capacity this compute node has to run jobs.
+func (n *ComputeNode) GetAvailableCapacity(ctx context.Context) model.ResourceUsageData {
+	return n.capacityManager.GetFreeSpace()
 }
 
 func (n *ComputeNode) getJobDiskspaceRequirements(ctx context.Context, spec model.Spec) (uint64, error) {

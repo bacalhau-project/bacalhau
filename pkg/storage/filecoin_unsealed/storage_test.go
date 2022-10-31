@@ -2,11 +2,11 @@ package filecoinunsealed
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -48,10 +48,10 @@ func (suite *FilecoinUnsealedSuite) SetupAllSuite() {
 // Before each test
 func (suite *FilecoinUnsealedSuite) SetupTest() {
 	var setupErr error
+	logger.ConfigureTestLogging(suite.T())
 	cm = system.NewCleanupManager()
 	ctx = context.Background()
-	tempDir, setupErr = ioutil.TempDir("", "bacalhau-filecoin-unsealed-test")
-	require.NoError(suite.T(), setupErr)
+	tempDir = suite.T().TempDir()
 	driver, setupErr = NewStorage(cm, filepath.Join(tempDir, "{{.CID}}"))
 	require.NoError(suite.T(), setupErr)
 }

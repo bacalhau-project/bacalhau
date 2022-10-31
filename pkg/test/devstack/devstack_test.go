@@ -4,11 +4,11 @@ package devstack
 
 import (
 	"context"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -38,6 +38,7 @@ func (suite *DevStackSuite) SetupSuite() {
 
 // Before each test
 func (suite *DevStackSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
@@ -112,8 +113,7 @@ func devStackDockerStorageTest(
 		node, err := stack.GetNode(ctx, shard.NodeID)
 		require.NoError(t, err)
 
-		outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-		require.NoError(t, err)
+		outputDir := t.TempDir()
 		require.NotEmpty(t, shard.PublishedResult.CID)
 
 		outputPath := filepath.Join(outputDir, shard.PublishedResult.CID)

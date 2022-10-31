@@ -8,7 +8,7 @@ else
     against=${EMPTY_TREE}
 fi
 
-FILES=$(git diff --cached --name-only "${against}")
+FILES=$(git diff --cached --diff-filter=d --name-only "${against}")
 if [[ -n "${FILES}" ]]; then
     for f in ${FILES}; do
         if [[ "${f}" == *.go ]]; then

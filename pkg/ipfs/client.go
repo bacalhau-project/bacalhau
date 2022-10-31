@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -130,18 +129,8 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
-	baseDir := filepath.Dir(outputPath)
-	tmpPath := filepath.Join(baseDir, system.GetRandomString(10)) //nolint:gomnd // magic number ok for string
-	if err := files.WriteTo(node, tmpPath); err != nil {
-		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
-	}
-
-	//nolint:lll // long line ok for error message
-	// TODO: #794 Why is this necessary? Aren't we renaming the directory to the final destination? Won't this just be a no-op? Or worse an error?
-	defer os.RemoveAll(tmpPath)
-
-	if err := os.Rename(tmpPath, outputPath); err != nil {
-		return fmt.Errorf("failed to rename '%s' to '%s': %w", tmpPath, outputPath, err)
+	if err := files.WriteTo(node, outputPath); err != nil {
+		return fmt.Errorf("failed to write to '%s': %w", outputPath, err)
 	}
 
 	return nil
@@ -239,7 +228,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	return res, nil
 }
 
-// HadCID returns true if the node has the given CID locally, whether pinned or not.
+// HasCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
 	defer span.End()

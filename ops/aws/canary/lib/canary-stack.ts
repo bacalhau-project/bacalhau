@@ -171,6 +171,7 @@ export class CanaryStack extends cdk.Stack {
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeBuildReadOnlyAccess'))
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeDeployReadOnlyAccess'))
         group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeCommitReadOnly'))
+        group.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('IAMUserChangePassword'))
 
         // Create users and add them to the group
         const users = [
@@ -183,9 +184,9 @@ export class CanaryStack extends cdk.Stack {
             description: 'Canary Operators Initial Password',
         });
 
-        users.forEach(user => {
-            new iam.User(this, 'OperatorUser' + user, {
-                userName: user,
+        users.forEach(username => {
+            new iam.User(this, 'OperatorUser' + username, {
+                userName: username,
                 password: initialPassword.secretValue,
                 passwordResetRequired: true,
                 groups: [group]

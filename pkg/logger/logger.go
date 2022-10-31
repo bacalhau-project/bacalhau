@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -22,12 +21,34 @@ type JobEvent struct {
 	Job  string      `json:"job"`
 }
 
-var Stdout = struct{ io.Writer }{os.Stdout}
-var Stderr = struct{ io.Writer }{os.Stderr}
+var stdout = struct{ io.Writer }{os.Stdout}
+var stderr = struct{ io.Writer }{os.Stderr}
 
 var nodeIDFieldName = "NodeID"
 
 func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
+	configureLogging()
+}
+
+type tTesting interface {
+	Log(args ...interface{})
+	Logf(format string, args ...interface{})
+	Helper()
+	Cleanup(f func())
+}
+
+// ConfigureTestLogging allows logs to be associated with individual tests
+func ConfigureTestLogging(t tTesting) {
+	oldLogger := log.Logger
+	oldContextLogger := zerolog.DefaultContextLogger
+	configureLogging(zerolog.ConsoleTestWriter(t))
+	t.Cleanup(func() {
+		log.Logger = oldLogger
+		zerolog.DefaultContextLogger = oldContextLogger
+	})
+}
+
+func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	logTypeString := strings.ToLower(os.Getenv("LOG_TYPE"))
@@ -48,43 +69,38 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 	}
 
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
-	var textWriter zerolog.ConsoleWriter
 
-	if isTerminal {
-		textWriter = zerolog.ConsoleWriter{Out: Stderr,
-			TimeFormat: "15:04:05.999 |",
-			NoColor:    false,
-			PartsOrder: []string{
-				zerolog.TimestampFieldName,
-				zerolog.LevelFieldName,
-				zerolog.CallerFieldName,
-				zerolog.MessageFieldName}}
-	} else {
-		textWriter = zerolog.ConsoleWriter{Out: Stderr,
-			TimeFormat: "15:04:05.999 |",
-			NoColor:    true,
-			PartsOrder: []string{
-				zerolog.TimestampFieldName,
-				zerolog.LevelFieldName,
-				zerolog.CallerFieldName,
-				zerolog.MessageFieldName}}
-	}
-
-	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
-	//  Adding the fields to the parts section didn't help as it just printed the fields twice.
-	textWriter.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("[%s:", i)
-	}
-
-	textWriter.FormatFieldValue = func(i interface{}) string {
-		// don't print nil in case field value wasn't preset. e.g. no nodeID
-		if i == nil {
-			i = ""
+	defaultLogging := func(w *zerolog.ConsoleWriter) {
+		w.Out = stderr
+		w.NoColor = !isTerminal
+		w.TimeFormat = "15:04:05.999 |"
+		w.PartsOrder = []string{
+			zerolog.TimestampFieldName,
+			zerolog.LevelFieldName,
+			zerolog.CallerFieldName,
+			zerolog.MessageFieldName,
 		}
-		return fmt.Sprintf("%s]", i)
+
+		// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
+		//  Adding the fields to the parts section didn't help as it just printed the fields twice.
+		w.FormatFieldName = func(i interface{}) string {
+			return fmt.Sprintf("[%s:", i)
+		}
+
+		w.FormatFieldValue = func(i interface{}) string {
+			// don't print nil in case field value wasn't preset. e.g. no nodeID
+			if i == nil {
+				i = ""
+			}
+			return fmt.Sprintf("%s]", i)
+		}
 	}
 
-	zerolog.CallerMarshalFunc = func(file string, line int) string {
+	loggingOptions = append([]func(w *zerolog.ConsoleWriter){defaultLogging}, loggingOptions...)
+
+	textWriter := zerolog.NewConsoleWriter(loggingOptions...)
+
+	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
 		short := file
 
 		separatorCount := 2
@@ -118,25 +134,24 @@ func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
 	}
 
 	log.Logger = zerolog.New(useLogWriter).With().Timestamp().Caller().Logger()
+	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
+	// Tests will use the DefaultContextLogger instead
+	zerolog.DefaultContextLogger = &log.Logger
 }
 
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 	return log.With().Str("R", runtimeInfo).Logger()
 }
 
-func LoggerWithNodeID(nodeID string) zerolog.Logger {
+func loggerWithNodeID(nodeID string) zerolog.Logger {
 	if len(nodeID) > 8 { //nolint:gomnd // 8 is a magic number
 		nodeID = nodeID[:8]
 	}
 	return log.With().Str(nodeIDFieldName, nodeID).Logger()
 }
 
-// return a context with nodeID is added to the logging context.
+// ContextWithNodeIDLogger will return a context with nodeID is added to the logging context.
 func ContextWithNodeIDLogger(ctx context.Context, nodeID string) context.Context {
-	l := LoggerWithNodeID(nodeID)
+	l := loggerWithNodeID(nodeID)
 	return l.WithContext(ctx)
-}
-
-func LoggerTestLogger(logBuffer *bytes.Buffer) zerolog.Logger {
-	return zerolog.New(zerolog.MultiLevelWriter(io.MultiWriter(logBuffer, os.Stdout)))
 }

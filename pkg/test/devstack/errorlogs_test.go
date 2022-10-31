@@ -3,7 +3,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -36,6 +36,7 @@ func (suite *DevstackErrorLogsSuite) SetupSuite() {
 
 // Before each test
 func (suite *DevstackErrorLogsSuite) SetupTest() {
+	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
@@ -113,8 +114,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 
 	state := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
-	require.NoError(suite.T(), err)
+	outputDir := suite.T().TempDir()
 
 	node, err := stack.GetNode(ctx, nodeIDs[0])
 	require.NoError(suite.T(), err)

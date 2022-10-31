@@ -1,6 +1,8 @@
-bacalhau_version           = "v0.3.3"
+bacalhau_version           = "v0.3.11"
 bacalhau_port              = "1235"
-bacalhau_connect_node0     = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+bacalhau_node_id_0         = "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"
+bacalhau_node_id_1         = "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"
+bacalhau_node_id_2         = "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3"
 ipfs_version               = "v0.12.2"
 gcp_project                = "bacalhau-production"
 prometheus_version         = "2.37.0"
@@ -17,3 +19,4 @@ auto_subnets               = true
 ingress_cidrs              = ["0.0.0.0/0"]
 ssh_access_cidrs           = ["0.0.0.0/0"]
 num_gpu_machines           = 2
+internal_ip_addresses      = ["10.150.0.5", "10.150.0.6", "10.150.0.7", "10.150.0.8", "10.164.0.9"]

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler/mock_eventhandler"
@@ -49,6 +50,7 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 		ClientID:     "clientX",
 		Status:       "this is a test event",
 	}
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *jobEventHandlerSuite) TearDownTest() {

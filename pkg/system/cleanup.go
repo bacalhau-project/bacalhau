@@ -1,6 +1,8 @@
 package system
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path"
 	"runtime"
@@ -9,6 +11,7 @@ import (
 
 	realsync "sync"
 
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
 	"github.com/rs/zerolog/log"
@@ -65,13 +68,14 @@ func (cm *CleanupManager) Cleanup() {
 	memprofile := path.Join(os.TempDir(), "bacalhau-devstack-mem.prof")
 	f, err := os.Create(memprofile)
 	if err != nil {
-		log.Fatal().Msgf("could not create memory profile: %s", err)
-	}
-	defer f.Close() // error handling omitted for example
-	runtime.GC()    // get up-to-date statistics
-	if err := pprof.WriteHeapProfile(f); err != nil {
-		f.Close()
-		log.Fatal().Msgf("could not write memory profile: %s", err) //nolint:gocritic
+		log.Info().Err(err).Msg("could not create memory profile")
+	} else {
+		defer closer.CloseWithLogOnError("mem.prof", f) // error handling omitted for example
+
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Err(err).Msg("could not write memory profile")
+		}
 	}
 
 	cm.fnsMutex.Lock()
@@ -82,7 +86,7 @@ func (cm *CleanupManager) Cleanup() {
 			defer cm.wg.Done()
 
 			if err := fn(); err != nil {
-				if err.Error() != "context canceled" {
+				if !errors.Is(err, context.Canceled) {
 					log.Error().Msgf("Error during clean-up callback: %v", err)
 				}
 			}

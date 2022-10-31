@@ -24,7 +24,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
@@ -78,6 +77,11 @@ func NewTransportFromOptions(ctx context.Context,
 		return nil
 	})
 
+	tracer, err := pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	if err != nil {
+		return nil, err
+	}
+
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
@@ -92,7 +96,27 @@ func NewTransportFromOptions(ctx context.Context,
 		pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
 		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
 	)
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams))
+
+	pis := []peer.AddrInfo{}
+	for _, p := range peers {
+		var pi *peer.AddrInfo
+		pi, err = peer.AddrInfoFromP2pAddr(p)
+		if err != nil {
+			return nil, err
+		}
+		pis = append(pis, *pi)
+	}
+
+	ps, err := pubsub.NewGossipSub(
+		ctx,
+		h,
+		pubsub.WithDirectPeers(pis),
+		pubsub.WithDirectConnectTicks(10), //nolint:gomnd
+		pubsub.WithFloodPublish(true),
+		pubsub.WithPeerExchange(true),
+		pubsub.WithPeerGater(pgParams),
+		pubsub.WithEventTracer(tracer),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -164,11 +188,6 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 	t.cm.RegisterCallback(func() error {
 		return t.Shutdown(ctx)
 	})
-
-	err := t.connectToPeers(ctx)
-	if err != nil {
-		return err
-	}
 
 	go t.listenForEvents(ctx)
 
@@ -256,38 +275,6 @@ func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, err
 		data,
 		nil,
 	)
-}
-
-/*
-
-  libp2p
-
-*/
-
-func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
-	defer span.End()
-
-	if len(t.peers) == 0 {
-		return nil
-	}
-
-	for _, peerAddress := range t.peers {
-		// Extract the peer ID from the multiaddr.
-		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
-		if err != nil {
-			return err
-		}
-
-		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-		err = t.host.Connect(ctx, *info)
-		if err != nil {
-			return err
-		}
-		log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
-	}
-
-	return nil
 }
 
 /*
