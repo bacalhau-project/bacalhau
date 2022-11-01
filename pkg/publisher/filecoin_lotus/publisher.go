@@ -252,14 +252,20 @@ func (l *Publisher) waitUntilDealIsReady(ctx context.Context, deal *cid.Cid) err
 			return ctx.Err()
 		case info := <-infoChan:
 			if deal.Equals(info.ProposalCid) {
-				if info.State == wanted {
+				currentState = info.State
+
+				if currentState == wanted {
+					log.Ctx(ctx).Info().
+						Stringer("deal", deal).
+						Str("current", storagemarket.DealStates[currentState]).
+						Str("expected", storagemarket.DealStates[wanted]).
+						Msg("Deal in expected state")
 					return nil
 				}
 
-				if info.State == storagemarket.StorageDealFailing || info.State == storagemarket.StorageDealError {
+				if currentState == storagemarket.StorageDealFailing || currentState == storagemarket.StorageDealError {
 					return fmt.Errorf("deal not accepted: %s", info.Message)
 				}
-				currentState = info.State
 			}
 		case <-t.C:
 			log.Ctx(ctx).Info().
