@@ -4,17 +4,25 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/python-pandas/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/python-pandas/index.ipynb)
 
-## **Introduction**
+## Introduction
 
 Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with "relational" or "labeled" data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
-### **Installing and Getting Started with Pandas**
+### Installing and Getting Started with Pandas
 
 
 
 ```bash
 pip install pandas
 ```
+
+### Installing Bacalhau
+
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the hidden installation command below (which installs Bacalhau local to the notebook).
+
+### Installing IPFS
+
+If you are going to upload your data using the IPFS CLI tool then you will need to install that. There are other methods, which you can read more about in the [ingestion example](../../data-ingestion/index.md).
 
 ## **Running your pandas script Locally**
 
@@ -86,38 +94,6 @@ python3 read_csv.py
     [4 rows x 15 columns]
 
 
-Before we run the script on bacalhau we need to install bacalhau
-
-
-```bash
-curl -sL https://get.bacalhau.org/install.sh | bash
-```
-
-    Your system is linux_amd64
-    No BACALHAU detected. Installing fresh BACALHAU CLI...
-    Getting the latest BACALHAU CLI...
-    Installing v0.2.3 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_linux_amd64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into /usr/local/bin successfully.
-    Client Version: v0.2.3
-    Server Version: v0.2.3
-
-
-checking if bacalhau is installed
-
-
-```bash
-bacalhau version
-```
-
-    Client Version: v0.2.3
-    Server Version: v0.2.3
-
-
 ## **Running the script on bacalhau**
 
 To run pandas on bacalhau you must upload your datasets along with the script to IPFS this can be done by using the IPFS CLI to upload the files or using a pinning service like pinata or nft.storage
@@ -164,11 +140,6 @@ amancevice/pandas \
     e6377c99-b637-4661-a334-6ce98fcf037c
 
 
-
-```python
-%env JOB_ID={job_id}
-```
-
 Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf037c`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
 
@@ -201,11 +172,7 @@ we create a temporary directory to save our results
 mkdir pandas-results
 ```
 
-To Download the results of your job, run 
-
----
-
-the following command:
+To Download the results of your job, run the following command:
 
 
 ```bash
