@@ -41,5 +41,6 @@ unittests.xml
 output_dir
 experimental/*
 .idea/
+job-*
 coverage/
 coverage.out

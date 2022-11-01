@@ -35,7 +35,7 @@ func NewIPFSPublishers(
 	// and so let's only add the
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher, err = estuary.NewEstuaryPublisher(ctx, cm, estuary.EstuaryPublisherConfig{
+		estuaryPublisher, err = estuary.NewEstuaryPinner(ctx, ipfsPublisher, estuary.EstuaryPublisherConfig{
 			APIKey: estuaryAPIKey,
 		})
 		if err != nil {
@@ -52,12 +52,9 @@ func NewIPFSPublishers(
 	}
 
 	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop: noopPublisher,
-		model.PublisherIpfs: ipfsPublisher,
-		model.PublisherEstuary: combo.NewFallbackPublisher(
-			estuaryPublisher,
-			ipfsPublisher,
-		),
+		model.PublisherNoop:     noopPublisher,
+		model.PublisherIpfs:     ipfsPublisher,
+		model.PublisherEstuary:  estuaryPublisher,
 		model.PublisherFilecoin: combo.NewPiggybackedPublisher(ipfsPublisher, lotus),
 	}), nil
 }

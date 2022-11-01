@@ -126,7 +126,10 @@ build-dev: build-ci
 .PHONY: build-bacalhau
 build-bacalhau: ${BINARY_PATH}
 
-${BINARY_PATH}: $(shell git ls-files cmd) $(shell git ls-files pkg)
+CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd) <(git ls-files cmd --deleted)')
+PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg) <(git ls-files pkg --deleted)')
+
+${BINARY_PATH}: ${CMD_FILES} ${PKG_FILES}
 	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
