@@ -3,7 +3,7 @@ kind: Terraform
 metadata:
   name: tf-manifest
 spec:
-  alwaysCleanupRunnerPod: false
+  alwaysCleanupRunnerPod: true
   backendConfig:
     customConfiguration: |
       backend "gcs" {
