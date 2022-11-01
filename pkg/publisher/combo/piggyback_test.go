@@ -81,9 +81,9 @@ func TestPiggybackedPublisher_PublishShardResult(t *testing.T) {
 	}{
 		{
 			name:        "all_successful",
-			primary:     []interface{}{model.StorageSpec{Name: "primary"}, nil},
-			piggyback:   []interface{}{model.StorageSpec{Name: "piggy"}, nil},
-			expected:    model.StorageSpec{Name: "primary"},
+			primary:     []interface{}{model.StorageSpec{Name: "primary", StorageSource: model.StorageSourceIPFS, CID: "123"}, nil},
+			piggyback:   []interface{}{model.StorageSpec{Name: "piggy", StorageSource: model.StorageSourceFilecoin, CID: "456"}, nil},
+			expected:    model.StorageSpec{Name: "primary", StorageSource: model.StorageSourceIPFS, CID: "123", Metadata: map[string]string{"Filecoin": "456"}},
 			expectedErr: nil,
 		},
 		{

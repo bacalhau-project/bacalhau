@@ -45,7 +45,16 @@ func (c *piggybackedPublisher) PublishShardResult(
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return results[0], nil
+
+	result := results[0]
+	if result.Metadata == nil {
+		result.Metadata = map[string]string{}
+	}
+	for _, other := range results[1:] {
+		result.Metadata[other.StorageSource.String()] = other.CID
+	}
+
+	return result, nil
 }
 
 func callAllPublishers[T any](publishers []publisher.Publisher, f func(publisher.Publisher) (T, error)) ([]T, error) {
