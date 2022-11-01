@@ -14,59 +14,19 @@ Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org
 
 Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the installation command below (which installs Bacalhau local to the notebook).
 
-
-```python
-!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
-path=!echo $PATH
-%env PATH=./:{path[0]}
-```
-
-    env: PATH=./:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
-
-
 ### Install Rust
 You can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets.
-
-
-```python
-!curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
-!sh rustup.sh -y
-%env PATH=~/.cargo/bin:{path[0]}
-!rustup target install wasm32-wasi
-```
-
-    [1minfo:[0m downloading installer
-    [1minfo: [mprofile set to 'default'
-    [1minfo: [mdefault host triple is aarch64-apple-darwin
-    [33m[1mwarning: [mUpdating existing toolchain, profile choice will be ignored
-    [1minfo: [msyncing channel updates for 'stable-aarch64-apple-darwin'
-    [1minfo: [mdefault toolchain set to 'stable-aarch64-apple-darwin'
-    
-      [1mstable-aarch64-apple-darwin unchanged[m - rustc 1.64.0 (a55dd71d5 2022-09-19)
-    
-    [1m
-    Rust is installed now. Great!
-    [m
-    To get started you may need to restart your current shell.
-    This would reload your [1mPATH[m environment variable to include
-    Cargo's bin directory ($HOME/.cargo/bin).
-    
-    To configure your current shell, run:
-    source "$HOME/.cargo/env"
-    env: PATH=~/.cargo/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
-    [1minfo: [mcomponent 'rust-std' for target 'wasm32-wasi' is up to date
-
 
 ## Write a Rust program
 
 We can use `cargo` (which will have been installed by `rustup`) to start a new project and compile it. 
 
 
-```python
-!cargo init my-program
+```bash
+cargo init my-program
 ```
 
-    [0m[0m[1m[32m     Created[0m binary (application) package
+         Created binary (application) package
 
 
 We can then write a Rust program. Rust programs that run on Bacalhau can read and write files, access a simple clock and make use of psudeo-random numbers. They cannot memory-map files or run code on multiple threads.
@@ -168,8 +128,8 @@ default-features = false
 We can now build the Rust program into a WASM blob using `cargo`.
 
 
-```python
-!cd my-program && cargo build --target wasm32-wasi --release
+```bash
+cd my-program && cargo build --target wasm32-wasi --release
 ```
 
     [0m[0m[1m[32m    Updating[0m crates.io index
@@ -184,36 +144,54 @@ We can now build the Rust program into a WASM blob using `cargo`.
     [K[0m[0m[1m[32m   Compiling[0m typenum v1.15.0
     [K[0m[0m[1m[32m   Compiling[0m bitflags v1.3.2
     [K[0m[0m[1m[32m   Compiling[0m paste v1.0.9
+    [0m[0m[1m[36m    Building[0m [>                           ] 3/62: autocfg, getrandom(build....
     [K[0m[0m[1m[32m   Compiling[0m rawpointer v0.2.1
+    [0m[0m[1m[36m    Building[0m [>                           ] 4/62: autocfg, getrandom(build....
     [K[0m[0m[1m[32m   Compiling[0m ttf-parser v0.6.2
     [K[0m[0m[1m[32m   Compiling[0m byteorder v1.4.3
+    [0m[0m[1m[36m    Building[0m [=>                          ] 6/62: autocfg, getrandom(build....
     [K[0m[0m[1m[32m   Compiling[0m custom_derive v0.1.7
     [K[0m[0m[1m[32m   Compiling[0m color_quant v1.1.0
+    [0m[0m[1m[36m    Building[0m [==>                         ] 8/62: custom_derive, autocfg, t...
     [K[0m[0m[1m[32m   Compiling[0m ab_glyph_rasterizer v0.1.7
+    [0m[0m[1m[36m    Building[0m [===>                        ] 9/62: custom_derive, autocfg, a...
     [K[0m[0m[1m[32m   Compiling[0m either v1.8.0
     [K[0m[0m[1m[32m   Compiling[0m jpeg-decoder v0.2.6
     [K[0m[0m[1m[32m   Compiling[0m miniz_oxide v0.5.4
+    [0m[0m[1m[36m    Building[0m [====>                      ] 12/62: ab_glyph_rasterizer, type...
     [K[0m[0m[1m[32m   Compiling[0m safe_arch v0.6.0
+    [0m[0m[1m[36m    Building[0m [====>                      ] 13/62: ab_glyph_rasterizer, type...
     [K[0m[0m[1m[32m   Compiling[0m matrixmultiply v0.3.2
     [K[0m[0m[1m[32m   Compiling[0m conv v0.3.3
+    [0m[0m[1m[36m    Building[0m [=====>                     ] 15/62: ab_glyph_rasterizer, ttf-...
     [K[0m[0m[1m[32m   Compiling[0m num-traits v0.2.15
+    [0m[0m[1m[36m    Building[0m [======>                    ] 18/62: crc32fast(build), num-tra...
     [K[0m[0m[1m[32m   Compiling[0m num-integer v0.1.45
     [K[0m[0m[1m[32m   Compiling[0m num-bigint v0.4.3
     [K[0m[0m[1m[32m   Compiling[0m num-rational v0.4.1
+    [0m[0m[1m[36m    Building[0m [========>                  ] 21/62: num-bigint(build.rs), ttf...
     [K[0m[0m[1m[32m   Compiling[0m num-iter v0.1.43
     [K[0m[0m[1m[32m   Compiling[0m itertools v0.10.5
+    [0m[0m[1m[36m    Building[0m [=========>                 ] 24/62: itertools, num-bigint(bui...
     [K[0m[0m[1m[32m   Compiling[0m wide v0.7.5
+    [0m[0m[1m[36m    Building[0m [=========>                 ] 25/62: itertools, wide, num-iter...
     [K[0m[0m[1m[32m   Compiling[0m owned_ttf_parser v0.6.0
+    [0m[0m[1m[36m    Building[0m [=============>             ] 33/62: wide, jpeg-decoder, itert...
     [K[0m[0m[1m[32m   Compiling[0m rand_core v0.5.1
     [K[0m[0m[1m[32m   Compiling[0m flate2 v1.0.24
+    [0m[0m[1m[36m    Building[0m [==============>            ] 36/62: wide, rand_core, flate2, ...
     [K[0m[0m[1m[32m   Compiling[0m rusttype v0.9.2
     [K[0m[0m[1m[32m   Compiling[0m rand_chacha v0.2.2
+    [0m[0m[1m[36m    Building[0m [===============>           ] 39/62: wide, flate2, typenum, ru...
     [K[0m[0m[1m[32m   Compiling[0m png v0.17.6
     [K[0m[0m[1m[32m   Compiling[0m rand v0.7.3
     [K[0m[0m[1m[32m   Compiling[0m num-complex v0.4.2
     [K[0m[0m[1m[32m   Compiling[0m approx v0.5.1
+    [0m[0m[1m[36m    Building[0m [===================>       ] 46/62: wide, rand, num-complex, ...
     [K[0m[0m[1m[32m   Compiling[0m rand_distr v0.2.2
     [K[0m[0m[1m[32m   Compiling[0m simba v0.7.2
+    [0m[0m[1m[36m    Building[0m [====================>      ] 50/62: num-bigint, rand, num-com...
+    [0m[0m[1m[36m    Building[0m [======================>    ] 53/62: num-bigint, rand, simba     
     [K[0m[0m[1m[32m   Compiling[0m image v0.24.4
     [0m[0m[1m[32m   Compiling[0m num v0.4.0
     [K[0m[0m[1m[32m   Compiling[0m nalgebra v0.30.1
@@ -232,8 +210,8 @@ The -v switch allows specifying an IPFS CID to mount as a named volume in the jo
 For this example, we are using an image of the Statue of Liberty that has been pinned to a storage facility.
 
 
-```python
-!bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
+```bash
+bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
     -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
 
@@ -283,9 +261,9 @@ For this example, we are using an image of the Statue of Liberty that has been p
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.
 
 
-```python
-!mkdir -p wasm_results
-!bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
+```bash
+mkdir -p wasm_results
+bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
 
     Fetching results of job '1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa'...
@@ -295,44 +273,28 @@ We can now get the results. When we view the files, we can see the original imag
 
 
 
-```python
-import IPython.display as display
-display.Image("./wasm_results/combined_results/outputs/original.png")
-```
+
+
+    
+![png](index_files/index_17_0.png)
+    
+
+
+
+
+
+
+    
+![png](index_files/index_18_0.png)
+    
+
+
 
 
 
 
     
 ![png](index_files/index_19_0.png)
-    
-
-
-
-
-```python
-display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
-```
-
-
-
-
-    
-![png](index_files/index_20_0.png)
-    
-
-
-
-
-```python
-display.Image("./wasm_results/combined_results/outputs/shrunk.png")
-```
-
-
-
-
-    
-![png](index_files/index_21_0.png)
     
 
 
