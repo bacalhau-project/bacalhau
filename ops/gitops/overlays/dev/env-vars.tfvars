@@ -13,4 +13,4 @@ auto_subnets           = false
 ingress_cidrs          = ["0.0.0.0/0"]
 ssh_access_cidrs       = ["0.0.0.0/0"]
 num_gpu_machines       = 0
-internal_ip_addresses  = ["0.0.0.0/0","0.0.0.0/0","0.0.0.0/0"]
+internal_ip_addresses  = ["0.0.0.0","0.0.0.0","0.0.0.0"]
