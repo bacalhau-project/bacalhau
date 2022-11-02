@@ -175,7 +175,7 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 	}
 
 	if err = serveAPI(cm, node, repoPath); err != nil {
-		log.Error().Msgf("ipfs node failed to serve API: %s", err)
+		return nil, fmt.Errorf("failed to serve API: %w", err)
 	}
 
 	// Fetch useful info from the newly initialized node:
@@ -441,6 +441,12 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 		return err
 	}
 
+	var apiPort int
+	apiPort, err = freeport.GetFreePort()
+	if err != nil {
+		return fmt.Errorf("could not create port for api: %w", err)
+	}
+
 	// If we're in local mode, then we need to manually change the config to
 	// serve an IPFS swarm client on some local port:
 	if mode == ModeLocal {
@@ -448,12 +454,6 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 		gatewayPort, err = freeport.GetFreePort()
 		if err != nil {
 			return fmt.Errorf("could not create port for gateway: %w", err)
-		}
-
-		var apiPort int
-		apiPort, err = freeport.GetFreePort()
-		if err != nil {
-			return fmt.Errorf("could not create port for api: %w", err)
 		}
 
 		var swarmPort int
@@ -480,6 +480,10 @@ func createRepo(path string, mode NodeMode, keypairSize int) error {
 		}
 		cfg.Addresses.Swarm = []string{
 			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarmPort),
+		}
+	} else {
+		cfg.Addresses.API = []string{
+			fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", apiPort),
 		}
 	}
 
