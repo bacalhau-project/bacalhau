@@ -11,7 +11,7 @@ hide_title: true
 
 # The Bacalhau Project
 
-Bacalahau is a network of open compute resources made available to serve any data processing workload. The architecture we use is also referred to as Compute Over Data (or CoD). Why the name? *[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate)* is the Portuguese word for **Cod**!
+Bacalhau is a network of open compute resources made available to serve any data processing workload. The architecture we use is also referred to as Compute Over Data (or CoD). Why the name? *[Bacalhau](https://translate.google.com/?sl=pt&tl=en&text=bacalhau&op=translate)* is the Portuguese word for **Cod**!
 
 In this documentation you will find:
 
