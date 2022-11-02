@@ -51,3 +51,7 @@ func (results *Results) CheckShardStates(
 	}
 	return hasExecutedCount >= concurrency, nil
 }
+
+func (results *Results) Close() error {
+	return os.RemoveAll(results.ResultsDir)
+}

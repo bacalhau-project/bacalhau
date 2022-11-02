@@ -38,6 +38,13 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 		return nil, err
 	}
 
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to clean up IPFS storage directory: %w", err)
+		}
+		return nil
+	})
+
 	storageHandler := &StorageProvider{
 		IPFSClient: cl,
 		LocalDir:   dir,
@@ -98,7 +105,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 }
 
 //nolint:lll // Exception to the long rule
-func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+func (dockerIPFS *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.StorageSpec, _ storage.StorageVolume) error {
 	return os.RemoveAll(filepath.Join(dockerIPFS.LocalDir, storageSpec.CID))
 }
 

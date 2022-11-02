@@ -2,8 +2,10 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -76,10 +78,6 @@ const (
 
 // Config contains configuration for the IPFS node.
 type Config struct {
-	// RepoPath is the path to the node's IPFS repository. If nil, then a
-	// random temporary directory is initialized as the node's repository.
-	RepoPath *string
-
 	// PeerAddrs is a list of additional IPFS node multiaddrs to use as
 	// peers. By default, the IPFS node will connect to whatever nodes are
 	// specified by its mode.
@@ -99,19 +97,6 @@ func (cfg *Config) getKeypairSize() int {
 	}
 
 	return *cfg.KeypairSize
-}
-
-func (cfg *Config) getRepoPath() (string, error) {
-	if cfg.RepoPath == nil {
-		path, err := os.MkdirTemp("", "ipfs-tmp")
-		if err != nil {
-			return "", fmt.Errorf("failed to create temp dir: %w", err)
-		}
-
-		return path, nil
-	}
-
-	return *cfg.RepoPath, nil
 }
 
 func (cfg *Config) getMode() NodeMode {
@@ -165,7 +150,7 @@ func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Confi
 		return nil
 	})
 
-	api, node, repoPath, err := createNode(ctx, cfg)
+	api, node, repoPath, err := createNode(ctx, cm, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfs node: %w", err)
 	}
@@ -290,11 +275,18 @@ func (n *Node) Client() (*Client, error) {
 }
 
 // createNode spawns a new IPFS node using a temporary repo path.
-func createNode(ctx context.Context, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
-	repoPath, err := cfg.getRepoPath()
+func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (icore.CoreAPI, *core.IpfsNode, string, error) {
+	repoPath, err := os.MkdirTemp("", "ipfs-tmp")
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
+
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
+			return fmt.Errorf("failed to clean up repo directory: %w", err)
+		}
+		return nil
+	})
 
 	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
@@ -362,12 +354,19 @@ func serveAPI(cm *system.CleanupManager, node *core.IpfsNode, repoPath string) e
 
 	for _, listener := range listeners {
 		go func(listener manet.Listener) {
-			cm.RegisterCallback(func() (err error) {
-				err = listener.Close()
-				if err != nil {
-					err = fmt.Errorf("problem when shutting down IPFS listener: %s", err.Error())
+			cm.RegisterCallback(func() error {
+				if err := listener.Close(); err != nil {
+					if !errors.Is(err, net.ErrClosed) {
+						return fmt.Errorf("problem when shutting down IPFS listener: %w", err)
+					}
+
+					// I'm fairly sure this error occurs because the listener is getting closed twice
+					// once in this callback and again when `corehttp.Serve` returns (it has a defer statement).
+					// `corehttp.Serve` looks like it'll return when the context passed into the node on creation gets
+					// closed.
+					log.Debug().Err(err).Msg("Error occurred when trying to shut down listener")
 				}
-				return
+				return nil
 			})
 
 			// NOTE: this is not critical, but we should log for debugging
