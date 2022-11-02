@@ -177,7 +177,6 @@ test:
 .PHONY: grc-test
 grc-test:
 	grc go test ./... -v -p 4
-
 .PHONY: grc-test-short
 grc-test-short:
 	grc go test ./... -test.short -v
