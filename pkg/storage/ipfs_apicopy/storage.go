@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +33,7 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 	}
 
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-ipfs")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}

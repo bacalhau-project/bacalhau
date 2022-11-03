@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,7 +33,7 @@ type StorageProvider struct {
 
 func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-url")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-url")
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,7 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 		return storage.StorageVolume{}, err
 	}
 
-	outputPath, err := ioutil.TempDir(sp.LocalDir, "*")
+	outputPath, err := os.MkdirTemp(sp.LocalDir, "*")
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}

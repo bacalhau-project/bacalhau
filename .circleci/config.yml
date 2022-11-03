@@ -23,7 +23,7 @@ jobs:
   build:
     parallelism: 1
     environment:
-      GOVER: 1.18.3
+      GOVER: 1.19.3
       IPFS_VERSION: v0.12.2
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
@@ -62,12 +62,20 @@ jobs:
           steps:
             - run:
                 name: Install golang
-                environment:
-                  HOMEBREW_NO_AUTO_UPDATE: 1
                 command: |
                   export BREW_GO_VERSION=$(echo $GOVER | grep -Eo '^\d\.\d+')
-                  brew install go@$BREW_GO_VERSION
-                  echo "export PATH='/usr/local/opt/go@$BREW_GO_VERSION/bin:$PATH'" >> ~/.bash_profile
+                  brew install go
+                  echo "export PATH='/usr/local/opt/go/bin:$PATH'" >> ~/.bash_profile
+
+      - when:
+          condition:
+            equal: ["linux", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install golang
+                command: |
+                  sudo rm -fr /usr/local/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
 
       - run:
           name: Install IPFS
@@ -84,6 +92,8 @@ jobs:
           name: Init tools
           command: |
             make init
+            go version
+            which go
 
       - run:
           name: Install Pre-commit
@@ -175,13 +185,21 @@ jobs:
   lint:
     parallelism: 1
     environment:
-      GOVER: 1.18.3
+      GOVER: 1.19.3
       GOLANGCILINT: v1.49.0
       GOPROXY: https://proxy.golang.org
     working_directory: ~/repo
     executor: linux
     steps:
       - checkout
+
+      - run:
+          name: Install golang
+          command: |
+            sudo rm -fr /usr/local/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            go version
+            which go
 
       - run:
           name: Install golangci-lint

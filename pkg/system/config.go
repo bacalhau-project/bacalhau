@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -76,7 +75,7 @@ func InitConfig() error {
 // for testing config-related stuff and user ID message signing.
 // NOTE: this will overwrite the global config cache if called twice.
 func InitConfigForTesting() error {
-	configDir, err := ioutil.TempDir("", "bacalhau-test")
+	configDir, err := os.MkdirTemp("", "bacalhau-test")
 	if err != nil {
 		return err
 	}
