@@ -38,6 +38,13 @@ func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 		return nil, err
 	}
 
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to remove storage folder: %w", err)
+		}
+		return nil
+	})
+
 	client := resty.New()
 	// Setting output directory path, If directory not exists then resty creates one
 	client.SetOutputDirectory(dir)
@@ -55,16 +62,16 @@ func NewStorage(cm *system.CleanupManager) (*StorageProvider, error) {
 	return storageHandler, nil
 }
 
-func (sp *StorageProvider) IsInstalled(ctx context.Context) (bool, error) {
+func (sp *StorageProvider) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
-func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.StorageSpec) (bool, error) {
+func (sp *StorageProvider) HasStorageLocally(context.Context, model.StorageSpec) (bool, error) {
 	return false, nil
 }
 
 // Could do a HEAD request and check Content-Length, but in some cases that's not guaranteed to be the real end file size
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(context.Context, model.StorageSpec) (uint64, error) {
 	return 0, nil
 }
 
@@ -190,10 +197,9 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context, storageSpec model
 	return volume, nil
 }
 
-// func (sp *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
 func (sp *StorageProvider) CleanupStorage(
 	ctx context.Context,
-	storageSpec model.StorageSpec,
+	_ model.StorageSpec,
 	volume storage.StorageVolume,
 ) error {
 	_, span := system.GetTracer().Start(ctx, "pkg/storage/url/urldownload.CleanupStorage")
@@ -213,13 +219,13 @@ func (sp *StorageProvider) CleanupStorage(
 }
 
 // we don't "upload" anything to a URL
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
 // for the url download - explode will always result in a single item
 // mounted at the path specified in the spec
-func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+func (sp *StorageProvider) Explode(_ context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{
 		{
 			Name:          spec.Name,
