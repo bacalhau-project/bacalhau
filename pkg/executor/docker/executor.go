@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -57,7 +56,7 @@ func NewExecutor(
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir("", "bacalhau-docker-executor")
+	dir, err := os.MkdirTemp("", "bacalhau-docker-executor")
 	if err != nil {
 		return nil, err
 	}

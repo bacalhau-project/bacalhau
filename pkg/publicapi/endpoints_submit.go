@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
@@ -70,7 +70,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		tmpDir, err := ioutil.TempDir("", "bacalhau-pin-context-")
+		tmpDir, err := os.MkdirTemp("", "bacalhau-pin-context-")
 		if err != nil {
 			log.Ctx(ctx).Debug().Msgf("====> Create tmp dir error: %s", err)
 			errorResponse := bacerrors.ErrorToErrorResponse(err)

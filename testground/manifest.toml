@@ -10,7 +10,7 @@ runner = "local:exec"
 
 [builders."docker:go"]
 enabled                = true
-build_base_image       = "golang:1.18-buster"
+build_base_image       = "golang:1.19-buster"
 
 [builders."docker:generic".build_args]
 build_image = "golang:alpine"

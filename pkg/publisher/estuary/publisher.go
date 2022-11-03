@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -72,7 +71,7 @@ func (estuaryPublisher *EstuaryPublisher) PublishShardResult(
 	defer span.End()
 
 	log.Ctx(ctx).Info().Msgf("Publishing shard %v results to Estuary", shard)
-	tempDir, err := ioutil.TempDir("", "bacalhau-estuary-publisher")
+	tempDir, err := os.MkdirTemp("", "bacalhau-estuary-publisher")
 	if err != nil {
 		return model.StorageSpec{}, err
 	}

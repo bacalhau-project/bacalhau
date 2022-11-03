@@ -1,6 +1,6 @@
 module github.com/filecoin-project/bacalhau
 
-go 1.18
+go 1.19
 
 require (
 	github.com/BTBurke/k8sresource v1.2.0

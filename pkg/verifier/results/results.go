@@ -2,7 +2,6 @@ package results
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -16,7 +15,7 @@ type Results struct {
 }
 
 func NewResults() (*Results, error) {
-	dir, err := ioutil.TempDir("", "bacalhau-results")
+	dir, err := os.MkdirTemp("", "bacalhau-results")
 	if err != nil {
 		return nil, err
 	}
