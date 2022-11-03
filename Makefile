@@ -14,11 +14,11 @@ GOPATH ?= $(shell go env GOPATH)
 GOFLAGS ?= $(GOFLAGS:)
 
 ifeq ($(GOOS),)
-GOOS = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f1 | tr "[:upper:]" "[:lower:]")
+GOOS = $(shell $(GO) env GOOS)
 endif
 
 ifeq ($(GOARCH),)
-GOARCH = $(shell $(GO) version | cut -c 14- | cut -d' ' -f2 | cut -d'/' -f2 | tr "[:upper:]" "[:lower:]")
+GOARCH = $(shell $(GO) env GOARCH)
 endif
 
 # Env Variables
@@ -50,11 +50,7 @@ PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
 
 define BUILD_FLAGS
--X github.com/filecoin-project/bacalhau/pkg/version.GITVERSION=$(TAG) \
--X github.com/filecoin-project/bacalhau/pkg/version.GITCOMMIT=$(COMMIT) \
--X github.com/filecoin-project/bacalhau/pkg/version.BUILDDATE=$(BUILDDATE) \
--X github.com/filecoin-project/bacalhau/pkg/version.GOOS=$(GOOS) \
--X github.com/filecoin-project/bacalhau/pkg/version.GOARCH=$(GOARCH)
+-X github.com/filecoin-project/bacalhau/pkg/version.GITVERSION=$(TAG)
 endef
 
 all: build
@@ -130,7 +126,7 @@ build-dev: build-ci
 build-bacalhau: ${BINARY_PATH}
 
 ${BINARY_PATH}: $(shell git ls-files cmd) $(shell git ls-files pkg)
-	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -o ${BINARY_PATH} main.go
+	${GO} build -gcflags '-N -l' -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 ################################################################################
 # Target: build-docker-images
