@@ -222,6 +222,9 @@ func (e *Executor) RunShard(
 		WithStderr(stderr).
 		WithArgs(args...).
 		WithFS(fs)
+	for key, value := range wasmSpec.EnvironmentVariables {
+		config = config.WithEnv(key, value)
+	}
 	entryPoint := wasmSpec.EntryPoint
 
 	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
