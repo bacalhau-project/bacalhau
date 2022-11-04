@@ -273,8 +273,8 @@ type JobSpecWasm struct {
 	// The arguments supplied to the program (i.e. as ARGV).
 	Parameters []string `json:"Parameters,omitempty"`
 
-	// TODO: THe variables available in the environment of the running program.
-	// EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+	// The variables available in the environment of the running program.
+	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
 
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.

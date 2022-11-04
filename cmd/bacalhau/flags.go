@@ -12,8 +12,16 @@ import (
 // A Parser is a function that can convert a string into a native object.
 type Parser[T any] func(string) (T, error)
 
+// A KeyValueParser is like a Parser except that it returns two values
+// representing a key and a value.
+type KeyValueParser[K comparable, V any] func(string) (K, V, error)
+
 // A Stringer is a function that can convert a native object into a string.
 type Stringer[T any] func(*T) string
+
+// A KeyValueStringer is like a Stringer except that it converts native objects
+// representing a key and a value into a string.
+type KeyValueStringer[K comparable, V any] func(*K, *V) string
 
 // A ValueFlag is a pflag.Value that knows how to take a command line value
 // represented as a string and set it as a native object into a struct.
@@ -95,16 +103,66 @@ func (s *ArrayValueFlag[T]) Type() string {
 
 var _ pflag.Value = (*ArrayValueFlag[int])(nil)
 
-func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
-	slices := strings.Split(input, ":")
-	if len(slices) != 2 {
-		return model.StorageSpec{}, fmt.Errorf("invalid input volume: %s", input)
+// A MapValueFlag is like a ValueFlag except it will add the command line
+// value into a map of values, and hence can be used for flags that are meant
+// to appear multiple times and represent a key-value structure.
+type MapValueFlag[K comparable, V any] struct {
+	// A pointer to a variable that will be set by this flag.
+	// This will be a pointer to some struct value we want to set.
+	value *map[K]V
+
+	// A Parser to turn the command line string into a native value.
+	parser KeyValueParser[K, V]
+
+	// A Stringer to turn the default value for the flag back into a native
+	// string, to be printed as help.
+	stringer KeyValueStringer[K, V]
+
+	// How the value should be described in the help string. (e.g. string, int)
+	typeStr string
+}
+
+// Set implements pflag.Value
+func (s *MapValueFlag[K, V]) Set(input string) error {
+	key, value, err := s.parser(input)
+	(*s.value)[key] = value
+	return err
+}
+
+// String implements pflag.Value
+func (s *MapValueFlag[K, V]) String() string {
+	strs := make([]string, len(*s.value))
+	for key, value := range *s.value {
+		key, value := key, value
+		strs = append(strs, s.stringer(&key, &value))
 	}
+	return strings.Join(strs, ", ")
+}
+
+// Type implements pflag.Value
+func (s *MapValueFlag[K, V]) Type() string {
+	return s.typeStr
+}
+
+var _ pflag.Value = (*MapValueFlag[int, int])(nil)
+
+func separatorParser(sep string) KeyValueParser[string, string] {
+	return func(input string) (string, string, error) {
+		slices := strings.Split(input, sep)
+		if len(slices) != 2 {
+			return "", "", fmt.Errorf("%q should contain exactly one %s", input, sep)
+		}
+		return slices[0], slices[1], nil
+	}
+}
+
+func parseIPFSStorageSpec(input string) (model.StorageSpec, error) {
+	cid, path, err := separatorParser(":")(input)
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceIPFS,
-		CID:           slices[0],
-		Path:          slices[1],
-	}, nil
+		CID:           cid,
+		Path:          path,
+	}, err
 }
 
 func storageSpecToIPFSMount(input *model.StorageSpec) string {
@@ -174,5 +232,14 @@ func PublisherFlag(value *model.Publisher) *ValueFlag[model.Publisher] {
 		parser:   model.ParsePublisher,
 		stringer: func(p *model.Publisher) string { return p.String() },
 		typeStr:  "publisher",
+	}
+}
+
+func EnvVarMapFlag(value *map[string]string) *MapValueFlag[string, string] {
+	return &MapValueFlag[string, string]{
+		value:    value,
+		parser:   separatorParser("="),
+		stringer: func(k *string, v *string) string { return fmt.Sprintf("%s=%s", *k, *v) },
+		typeStr:  "key=value",
 	}
 }
