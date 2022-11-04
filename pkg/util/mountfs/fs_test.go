@@ -3,6 +3,7 @@ package mountfs
 import (
 	"embed"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,6 +25,8 @@ var testFs embed.FS
 //go:embed dir.go
 var fileFs embed.FS
 
+const root string = string(os.PathSeparator) + "root"
+
 func getStandardMount() *MountDir {
 	mount := New()
 	mount.Mount("test", testFs)
@@ -36,6 +39,8 @@ func getStandardMount() *MountDir {
 	subMount.Mount("stuff", fileFs)
 	mount.Mount("sub", subMount)
 
+	mount.Mount(root, fileFs)
+
 	mount.Mount("unmounted", testFs)
 	mount.Unmount("unmounted")
 
@@ -44,6 +49,7 @@ func getStandardMount() *MountDir {
 
 func (suite *mountFsSuite) TestMount() {
 	mount := New()
+	require.NoError(suite.T(), mount.Mount("normal", testFs))
 
 	testCases := []struct {
 		name  string
@@ -54,13 +60,15 @@ func (suite *mountFsSuite) TestMount() {
 		{"different mount", "more", false},
 		{"same mount", "test", true},
 		{"sub mount", filepath.Join("test", "more"), true},
-		{"deep mount", filepath.Join("more", "test"), true},
+		{"deep mount", filepath.Join("virtual", "test"), false},
+		{"under normal mount", filepath.Join("normal", "sub"), true},
+		{"root mount", root, false},
 	}
 
 	for _, testCase := range testCases {
 		suite.T().Run(testCase.name, func(t *testing.T) {
 			err := mount.Mount(testCase.mount, testFs)
-			require.True(t, (err != nil) == testCase.err)
+			require.True(t, (err != nil) == testCase.err, "Got %v", err)
 		})
 	}
 }
@@ -77,6 +85,8 @@ func (suite *mountFsSuite) TestUnmount() {
 		{"different unmount", "more", false},
 		{"same unmount", "test", true},
 		{"random unmount", "booga", true},
+		{"root mount", root, true},
+		{"no-slash root mount", "root", false},
 		{"sub unmount", filepath.Join("sub", "stuff"), true},
 		{"unmounted unmount", "unmounted", true},
 	}
@@ -96,11 +106,12 @@ func (suite *mountFsSuite) TestEntries() {
 		input    string
 		expected []string
 	}{
-		{".", []string{"test", "more", "empty", "sub"}},
+		{".", []string{"test", "more", "empty", "sub", "root"}},
 		{"test", []string{"dir.go", "direntry.go", "fs_test.go", "fs.go"}},
 		{"more", []string{"dir.go"}},
 		{"empty", []string{}},
 		{"sub", []string{"stuff"}},
+		{"root", []string{"dir.go"}},
 		{filepath.Join("sub", "stuff"), []string{"dir.go"}},
 	}
 

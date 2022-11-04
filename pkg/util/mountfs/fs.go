@@ -52,14 +52,50 @@ func (m *MountDir) Open(name string) (fs.File, error) {
 }
 
 // Mount makes the files available in filesystem available under the "/prefix"
-func (m *MountDir) Mount(prefix string, filesystem fs.FS) error {
-	if strings.ContainsRune(prefix, os.PathSeparator) {
-		return fmt.Errorf("cannot deep mount '%s' – chain multiple mountfs instead", prefix)
+func (m *MountDir) Mount(path string, filesystem fs.FS) error {
+	var prefix, rest string
+	for {
+		components := strings.SplitN(filepath.Clean(path), string(os.PathSeparator), 2)
+		if len(components) <= 1 {
+			prefix = components[0]
+			rest = ""
+			break
+		}
+
+		prefix = components[0]
+		rest = components[1]
+		if prefix != "" {
+			break
+		}
+
+		path = rest
 	}
 
-	_, exists := m.mounts[prefix]
-	if exists {
-		return fmt.Errorf("a filesystem with prefix '%s' is already mounted", prefix)
+	if rest != "" {
+		// There were path seperators in the prefix, so make a new MountFS or
+		// get the existing one and pass the rest of the path onto it
+		existingLayer, exists := m.mounts[prefix]
+		if !exists {
+			existingLayer = New()
+		}
+
+		fsLayer, ok := (existingLayer).(*MountDir)
+		if !ok {
+			// This is not a MountFS...
+			return fmt.Errorf("cannot mount: %q (%T) is not an FS that supportrs mounting", prefix, existingLayer)
+		}
+
+		err := fsLayer.Mount(rest, filesystem)
+		if err != nil {
+			return err
+		}
+		filesystem = fsLayer
+	} else {
+		// No path separators in the prefix, so just mount directly
+		_, exists := m.mounts[prefix]
+		if exists {
+			return fmt.Errorf("a filesystem with prefix %q is already mounted", prefix)
+		}
 	}
 
 	m.mounts[prefix] = filesystem

@@ -214,7 +214,7 @@ func WasmCsvTransform() TestCase {
 		SetupStorage: singleFileSetupStorageWithFile(
 			ctx,
 			"../../../testdata/wasm/csv/inputs",
-			"inputs",
+			"/inputs",
 		),
 		SetupContext: singleFileSetupStorageWithFile(
 			ctx,
