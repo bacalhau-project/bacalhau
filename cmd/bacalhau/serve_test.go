@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/phayes/freeport"
@@ -117,7 +117,7 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 		if livezText == "OK" {
 			healthzText, _ := curlEndpoint(fmt.Sprintf("http://localhost:%d/healthz", port))
 			healthzJSON := &types.HealthInfo{}
-			err := json.Unmarshal([]byte(healthzText), healthzJSON)
+			err := model.JSONUnmarshalWithMax([]byte(healthzText), healthzJSON)
 			require.NoError(suite.T(), err, "Error unmarshalling healthz JSON.")
 			require.Greater(suite.T(), int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
 			wg.Done()

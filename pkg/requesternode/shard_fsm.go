@@ -152,7 +152,7 @@ func newShardStateMachine(ctx context.Context, shard model.JobShard, node *Reque
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:8], m.shard, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:model.ShortIDLength], m.shard, m.currentState)
 }
 
 // run the state machine until it is completed.

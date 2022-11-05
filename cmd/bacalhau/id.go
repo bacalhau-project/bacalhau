@@ -22,7 +22,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 var idCmd = &cobra.Command{
 	Use:   "id",
 	Short: "Show bacalhau node id info",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
 		cm.RegisterCallback(system.CleanupTraceProvider)

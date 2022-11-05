@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -145,7 +146,7 @@ func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
 
 func loggerWithNodeID(nodeID string) zerolog.Logger {
 	if len(nodeID) > 8 { //nolint:gomnd // 8 is a magic number
-		nodeID = nodeID[:8]
+		nodeID = nodeID[:model.ShortIDLength]
 	}
 	return log.With().Str(nodeIDFieldName, nodeID).Logger()
 }

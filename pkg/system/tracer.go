@@ -233,7 +233,7 @@ func jsonLogger() io.Writer {
 				continue
 			}
 
-			bs, err := json.Marshal(data)
+			bs, err := model.JSONMarshalWithMax(data)
 			if err != nil {
 				log.Trace().Msgf("error marshaling json span: %v", err)
 				continue

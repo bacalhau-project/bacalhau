@@ -1,10 +1,10 @@
 package bacalhau
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
@@ -130,7 +130,7 @@ var describeCmd = &cobra.Command{
 			ColumnID        ColumnEnum = "id"
 			ColumnCreatedAt ColumnEnum = "created_at"
 		)
-		b, err := json.Marshal(jobDesc)
+		b, err := model.JSONMarshalWithMax(jobDesc)
 		if err != nil {
 			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
 		}

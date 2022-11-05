@@ -2,7 +2,6 @@ package eventhandler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -60,9 +59,9 @@ func trace[Event any](log zerolog.Logger, event Event) {
 	log.Log().
 		Str("Type", fmt.Sprintf("%T", event)).
 		Func(func(e *zerolog.Event) {
-			// TODO: #828 Potential hotspot - json.Marshaling is expensive, and
+			// TODO: #828 Potential hotspot - marshaling is expensive, and
 			// we do it for every event.
-			eventJSON, err := json.Marshal(event)
+			eventJSON, err := model.JSONMarshalWithMax(event)
 			if err == nil {
 				e.RawJSON("Event", eventJSON)
 			} else {

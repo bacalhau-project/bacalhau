@@ -56,7 +56,7 @@ func (suite *GetSuite) TearDownAllSuite() {
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 	files := []string{}
-	err := filepath.Walk(baseFolder, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(baseFolder, func(path string, _ os.FileInfo, _ error) error {
 		usePath := strings.Replace(path, baseFolder, "", 1)
 		if usePath != "" {
 			files = append(files, usePath)

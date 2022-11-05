@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
-	"sigs.k8s.io/yaml"
 
 	"strings"
 	"testing"
@@ -134,7 +133,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			yaml.Unmarshal([]byte(out), &j)
+			model.YAMLUnmarshalWithMax([]byte(out), &j)
 			require.NotNil(s.T(), j, "Failed to unmarshal job from dry run output")
 			require.Equal(s.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
@@ -838,7 +837,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	}
 
 	for name, tc := range tests {
-		s.T().Run(name, func(t *testing.T) {
+		//nolint:unusedparams // idomatic
+		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()

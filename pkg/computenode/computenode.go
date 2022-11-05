@@ -2,7 +2,6 @@ package computenode
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -181,7 +180,7 @@ func (n *ComputeNode) shardStateLogSetup(ctx context.Context, cm *system.Cleanup
 	for {
 		select {
 		case <-ticker.C:
-			bytes, err := json.Marshal(n.GetActiveJobs(ctx))
+			bytes, err := model.JSONMarshalWithMax(n.GetActiveJobs(ctx))
 			if err != nil {
 				log.Ctx(ctx).Err(err).Msg("failed to marshal shard states")
 			} else {

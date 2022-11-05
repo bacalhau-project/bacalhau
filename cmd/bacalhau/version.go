@@ -18,7 +18,6 @@ package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -60,7 +59,7 @@ func NewVersionOptions() *VersionOptions {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:unparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
@@ -130,7 +129,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		}
 		cmd.Println(string(marshaled))
 	case JSONFormat:
-		marshaled, err := json.MarshalIndent(versions, "", "  ")
+		marshaled, err := model.JSONMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}

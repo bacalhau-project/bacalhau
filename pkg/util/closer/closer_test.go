@@ -2,13 +2,13 @@ package closer
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,7 @@ func TestCloseWithLogOnError_logsErrors(t *testing.T) {
 	CloseWithLogOnError(t.Name(), closer{fmt.Errorf("error message")})
 
 	var content map[string]string
-	require.NoError(t, json.Unmarshal(b.Bytes(), &content))
+	require.NoError(t, model.JSONUnmarshalWithMax(b.Bytes(), &content))
 
 	assert.Equal(t, "bar", content["foo"])
 	assert.NotEmpty(t, content["message"])

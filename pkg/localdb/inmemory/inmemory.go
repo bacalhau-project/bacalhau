@@ -104,7 +104,7 @@ func (d *InMemoryDatastore) GetJobs(ctx context.Context, query localdb.JobQuery)
 	result := []*model.Job{}
 
 	if query.ID != "" {
-		log.Ctx(ctx).Debug().Msgf("querying for single job %s", query.ID)
+		log.Ctx(ctx).Trace().Msgf("querying for single job %s", query.ID)
 		j, err := d.getJob(query.ID)
 		if err != nil {
 			return nil, err
@@ -336,6 +336,10 @@ func (d *InMemoryDatastore) UpdateShardState(
 // It is important that we don't attempt to acquire a lock inside this method to avoid deadlocks since
 // the callers are expected to be holding a lock, and golang doesn't support reentrant locks.
 func (d *InMemoryDatastore) getJob(id string) (*model.Job, error) {
+	if len(id) < model.ShortIDLength {
+		return nil, bacerrors.NewJobNotFound(id)
+	}
+
 	// support for short job IDs
 	if jobutils.ShortID(id) == id {
 		// passed in a short id, need to resolve the long id first

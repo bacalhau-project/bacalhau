@@ -2,8 +2,8 @@ package handlerwrapper
 
 import (
 	"context"
-	"encoding/json"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -16,7 +16,7 @@ func NewJSONLogHandler() *JSONLogHandler {
 }
 
 func (h *JSONLogHandler) Handle(ctx context.Context, ri *HTTPRequestInfo) {
-	jsonBytes, err := json.Marshal(ri)
+	jsonBytes, err := model.JSONMarshalWithMax(ri)
 	if err != nil {
 		log.Ctx(ctx).Info().Err(err).Msgf("failed to marshal request info %+v", ri)
 	}

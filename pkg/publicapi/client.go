@@ -234,7 +234,7 @@ func (apiClient *APIClient) Submit(
 		data.Context = base64.StdEncoding.EncodeToString(buildContext.Bytes())
 	}
 
-	jsonData, err := json.Marshal(data)
+	jsonData, err := model.JSONMarshalWithMax(data)
 	if err != nil {
 		return &model.Job{}, err
 	}
@@ -321,7 +321,7 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 		}
 
 		var serverError *bacerrors.ErrorResponse
-		if err = json.Unmarshal(responseBody, &serverError); err != nil {
+		if err = model.JSONUnmarshalWithMax(responseBody, &serverError); err != nil {
 			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v",
 				string(responseBody)))
 		}

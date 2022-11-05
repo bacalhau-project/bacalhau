@@ -2,14 +2,15 @@ package publicapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 
@@ -29,6 +30,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
+
+// MaxBytesToReadInBody is used by safeHandlerFuncWrapper as the max size of body
+// It's a variable to make this to make overrideble during testing.
+var MaxBytesToReadInBody = 10 * datasize.MB
 
 type APIServerConfig struct {
 	// These are TCP connection deadlines and not HTTP timeouts. They don't control the time it takes for our handlers
@@ -85,11 +90,20 @@ func NewServer(
 	storageProviders storage.StorageProvider,
 ) *APIServer {
 	return NewServerWithConfig(
-		ctx, host, port, localdb, transport, requester, computeNode, publishers, storageProviders, DefaultAPIServerConfig)
+		ctx,
+		host,
+		port,
+		localdb,
+		transport,
+		requester,
+		computeNode,
+		publishers,
+		storageProviders,
+		DefaultAPIServerConfig)
 }
 
 func NewServerWithConfig(
-	ctx context.Context,
+	_ context.Context,
 	host string,
 	port int,
 	localdb localdb.LocalDB,
@@ -193,7 +207,7 @@ func verifySubmitRequest(req *submitRequest) error {
 	}
 
 	// Check that the signature is valid:
-	jsonData, err := json.Marshal(req.Data)
+	jsonData, err := model.JSONMarshalWithMax(req.Data)
 	if err != nil {
 		return fmt.Errorf("error marshaling job data: %w", err)
 	}
@@ -228,6 +242,8 @@ func (apiServer *APIServer) chainHandlers(uri string, handlerFunc http.HandlerFu
 		}
 	}
 	handler = http.TimeoutHandler(handler, handlerTimeout, "Server Timeout!")
+
+	handler = http.MaxBytesHandler(handler, int64(MaxBytesToReadInBody))
 
 	// logging handler. Should be last in the chain.
 	handler = handlerwrapper.NewHTTPHandlerWrapper(apiServer.Requester.ID, handler, handlerwrapper.NewJSONLogHandler())

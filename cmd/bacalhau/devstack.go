@@ -72,12 +72,13 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	setupCapacityManagerCLIFlags(devstackCmd)
 }
 
+//nolint:unusedparams // incorrect lint that is not used
 var devstackCmd = &cobra.Command{
 	Use:     "devstack",
 	Short:   "Start a cluster of bacalhau nodes for testing and development",
 	Long:    devStackLong,
 	Example: devstackExample,
-	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()

@@ -245,7 +245,7 @@ func (m *shardStateMachineManager) newStateMachine(
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:8], m.Shard, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:model.ShortIDLength], m.Shard, m.currentState)
 }
 
 // run the state machineuntil it is completed.

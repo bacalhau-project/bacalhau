@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -106,7 +105,10 @@ func shortID(outputWide bool, id string) string {
 	if outputWide {
 		return id
 	}
-	return id[:8]
+	if len(id) < model.ShortIDLength {
+		return id
+	}
+	return id[:model.ShortIDLength]
 }
 
 func GetAPIClient() *publicapi.APIClient {
@@ -114,7 +116,7 @@ func GetAPIClient() *publicapi.APIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func ensureValidVersion(_ context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
 	if clientVersion == nil {
 		log.Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
@@ -385,7 +387,7 @@ func ExecuteJob(ctx context.Context,
 	resultsCID := ""
 	for i := range nodeIndexes {
 		n := js.Nodes[nodeIndexes[i]]
-		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
+		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:model.ShortIDLength])
 		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
 			printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
 			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
@@ -507,7 +509,7 @@ func submitJob(ctx context.Context,
 	return j, err
 }
 
-func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error) {
+func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 	if len(args) == 0 {
 		r := bufio.NewReader(RootCmd.InOrStdin())
 		var bytesResult []byte
@@ -718,13 +720,13 @@ func FatalErrorHandler(msg string, code int) {
 // Returned as text JSON to wherever RootCmd is printing.
 func FakeFatalErrorHandler(msg string, code int) {
 	c := model.TestFatalErrorHandlerContents{Message: msg, Code: code}
-	b, _ := json.Marshal(c)
+	b, _ := model.JSONMarshalWithMax(c)
 	RootCmd.Println(string(b))
 }
 
 // applyPorcelainLogLevel sets the log level of loggers running on user-facing
 // "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
-func applyPorcelainLogLevel(cmd *cobra.Command, args []string) {
+func applyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
 	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err != nil {
 		return
 	}

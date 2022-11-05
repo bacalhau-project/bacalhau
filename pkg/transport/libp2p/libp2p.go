@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -298,7 +297,7 @@ func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEven
 	traceData := propagation.MapCarrier{}
 	otel.GetTextMapPropagator().Inject(ctx, &traceData)
 
-	bs, err := json.Marshal(jobEventEnvelope{
+	bs, err := model.JSONMarshalWithMax(jobEventEnvelope{
 		JobEvent:  event,
 		TraceData: traceData,
 		SentTime:  time.Now(),
@@ -316,7 +315,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
 	payload := jobEventEnvelope{}
-	err := json.Unmarshal(msg.Data, &payload)
+	err := model.JSONUnmarshalWithMax(msg.Data, &payload)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
@@ -329,22 +328,22 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	if latencyMilli > 500 { //nolint:gomnd
 		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] VERY High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else if latencyMilli > 50 { //nolint:gomnd
 		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
 		log.Ctx(ctx).Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	}

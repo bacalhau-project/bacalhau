@@ -1,9 +1,9 @@
 package publicapi
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -80,7 +80,7 @@ func (apiServer *APIServer) healthz(res http.ResponseWriter, req *http.Request) 
 	// CPU usage
 
 	healthInfo := GenerateHealthData()
-	healthJSONBlob, _ := json.Marshal(healthInfo)
+	healthJSONBlob, _ := model.JSONMarshalWithMax(healthInfo)
 
 	_, err := res.Write(healthJSONBlob)
 	if err != nil {

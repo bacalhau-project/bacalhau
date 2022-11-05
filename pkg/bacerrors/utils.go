@@ -1,8 +1,7 @@
 package bacerrors
 
 import (
-	"encoding/json"
-
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -60,7 +59,7 @@ func ErrorToErrorResponseObject(err error) *ErrorResponse {
 }
 
 func ConvertErrorToText(err *ErrorResponse) string {
-	str, marshalError := json.Marshal(err)
+	str, marshalError := model.JSONMarshalWithMax(err)
 	if marshalError != nil {
 		msg := "error converting BacalhauError to JSON"
 		log.Error().Err(marshalError).Msg(msg)
