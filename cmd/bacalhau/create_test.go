@@ -248,5 +248,5 @@ func (s *CreateSuite) TestCreateDontPanicOnEmptyFile() {
 	}
 
 	require.Contains(s.T(), errorOutputMap["Message"], "The job provided is invalid", "Output message should error properly.")
-	require.Equal(s.T(), int(errorOutputMap["Code"].(float64)), 1, "Expected no error when no input is provided")
+	require.Equal(s.T(), errorOutputMap["Code"], 1, "Expected no error when no input is provided")
 }

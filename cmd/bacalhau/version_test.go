@@ -96,8 +96,9 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
-	var yamlDoc Versions
-	_ = model.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+	yamlDoc := &Versions{}
+	err = model.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+	require.NoError(suite.T(), err, "Could not unmarshall the output into yaml - %+v", err)
 	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
 
 }

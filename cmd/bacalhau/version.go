@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/yaml"
 )
 
 var oV = &VersionOptions{}
@@ -123,7 +122,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
 		}
 	case YAMLFormat:
-		marshaled, err := yaml.Marshal(versions)
+		marshaled, err := model.YAMLMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}

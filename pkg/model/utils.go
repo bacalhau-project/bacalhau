@@ -9,7 +9,7 @@ import (
 
 	"github.com/c2h5oh/datasize"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type KeyString string
@@ -98,11 +98,11 @@ func genericMarshalWithMax[T any](t T, marshalType int, indentSpaces int) ([]byt
 }
 
 func JSONUnmarshalWithMax[T any](b []byte, t *T) error {
-	return genericUnmarshalWithMax(b, t, jsonUnmarshal)
+	return genericUnmarshalWithMax(b, &t, jsonUnmarshal)
 }
 
 func YAMLUnmarshalWithMax[T any](b []byte, t *T) error {
-	return genericUnmarshalWithMax(b, t, yamlUnmarshal)
+	return genericUnmarshalWithMax(b, &t, yamlUnmarshal)
 }
 
 func genericUnmarshalWithMax[T any](b []byte, t *T, unmarshalType int) error {
@@ -113,7 +113,8 @@ func genericUnmarshalWithMax[T any](b []byte, t *T, unmarshalType int) error {
 	}
 	if unmarshalType == jsonUnmarshal {
 		return json.Unmarshal(b, &t)
-	} else if unmarshalType == yamlMarshal {
+	} else if unmarshalType == yamlUnmarshal {
+		// Our format requires that we use the yaml.v3 library
 		return yaml.Unmarshal(b, &t)
 	}
 	return fmt.Errorf("unknown unmarshal type")

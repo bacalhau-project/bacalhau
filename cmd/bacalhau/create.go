@@ -138,6 +138,11 @@ var createCmd = &cobra.Command{
 			}
 		}
 
+		if len(byteResult) == 0 {
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
+		}
+
 		// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 		// so we can just use that
 		err = model.YAMLUnmarshalWithMax(byteResult, &j)
