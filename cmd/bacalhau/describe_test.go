@@ -83,7 +83,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				var returnedJob = model.NewJob()
+				returnedJob := &model.Job{}
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
@@ -100,7 +100,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 				)
 				require.NoError(suite.T(), err, "Error in describing job: %+v", err)
 
-				err = model.YAMLUnmarshalWithMax([]byte(out), &returnedJob)
+				err = model.YAMLUnmarshalWithMax([]byte(out), returnedJob)
 				require.NoError(suite.T(), err, "Error in unmarshalling description: %+v", err)
 				require.Equal(suite.T(), submittedJob.ID, returnedJob.ID, "IDs do not match.")
 				require.Equal(suite.T(),
