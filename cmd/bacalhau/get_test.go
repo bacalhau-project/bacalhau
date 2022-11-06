@@ -107,8 +107,13 @@ func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
 func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
 	require.True(t, strings.Contains(
 		cmdOutput,
-		fmt.Sprintf("Results for job '%s' have been written to...\n%s", jobID, outputDir),
+		fmt.Sprintf("Results for job '%s'", jobID),
+	), "Job ID not found in output")
+	require.True(t, strings.Contains(
+		cmdOutput,
+		fmt.Sprintf("%s", outputDir),
 	), "Download location not found in output")
+
 }
 
 func setupTempWorkingDir(t *testing.T) (string, func()) {
