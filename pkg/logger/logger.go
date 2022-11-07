@@ -24,10 +24,7 @@ type JobEvent struct {
 	Job  string      `json:"job"`
 }
 
-var (
-	stdout = struct{ io.Writer }{os.Stdout}
-	stderr = struct{ io.Writer }{os.Stderr}
-)
+var stderr = struct{ io.Writer }{os.Stderr}
 
 var nodeIDFieldName = "NodeID"
 
@@ -171,7 +168,7 @@ type zerologWriteSyncer struct {
 var _ zapcore.WriteSyncer = (*zerologWriteSyncer)(nil)
 
 func (z *zerologWriteSyncer) Write(b []byte) (int, error) {
-	z.l.Log().CallerSkipFrame(5).Msg(string(b))
+	z.l.Log().CallerSkipFrame(5).Msg(string(b)) //nolint:gomnd
 	return len(b), nil
 }
 
