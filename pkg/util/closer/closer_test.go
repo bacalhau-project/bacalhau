@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -42,18 +43,23 @@ func TestCloseWithLogOnError_logsErrors(t *testing.T) {
 	assert.Equal(t, "bar", content["foo"])
 	assert.NotEmpty(t, content["message"])
 	assert.NotEmpty(t, content["caller"])
-	assert.True(t, strings.HasSuffix(content["caller"], "closer/closer_test.go:37"), "%s should end point to this function", content["caller"])
+	assert.True(t, strings.HasSuffix(content["caller"], "closer/closer_test.go:38"), "%s should point to the function call", content["caller"])
 }
 
 func TestCloseWithLogOnError_ignoresAlreadyClosed(t *testing.T) {
-	old := log.Logger
-	t.Cleanup(func() {
-		log.Logger = old
-	})
+	tests := []error{os.ErrClosed, net.ErrClosed}
+	for _, test := range tests {
+		t.Run(test.Error(), func(t *testing.T) {
+			old := log.Logger
+			t.Cleanup(func() {
+				log.Logger = old
+			})
 
-	var sb strings.Builder
-	CloseWithLogOnError(t.Name(), closer{os.ErrClosed})
-	assert.Equal(t, "", sb.String())
+			var sb strings.Builder
+			CloseWithLogOnError(t.Name(), closer{test})
+			assert.Equal(t, "", sb.String())
+		})
+	}
 }
 
 var _ io.Closer = closer{}
