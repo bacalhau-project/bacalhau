@@ -19,8 +19,8 @@ import (
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 
-	"github.com/didip/tollbooth"
-	"github.com/didip/tollbooth/limiter"
+	"github.com/didip/tollbooth/v7"
+	"github.com/didip/tollbooth/v7/limiter"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -89,7 +89,7 @@ func NewServer(
 }
 
 func NewServerWithConfig(
-	ctx context.Context,
+	_ context.Context,
 	host string,
 	port int,
 	localdb localdb.LocalDB,
