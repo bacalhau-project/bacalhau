@@ -28,7 +28,7 @@ func TestResourceUsageUtilsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ResourceUsageUtilsSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -40,8 +40,8 @@ func (suite *ResourceUsageUtilsSuite) TearDownTest() {
 }
 
 func (suite *ResourceUsageUtilsSuite) TearDownAllSuite() {
-
 }
+
 func c(cpu, mem, gpu string) model.ResourceUsageConfig {
 	return model.ResourceUsageConfig{
 		CPU:    cpu,
@@ -59,7 +59,6 @@ func d(cpu float64, mem uint64, gpu uint64) model.ResourceUsageData {
 }
 
 func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
-
 	tests := []struct {
 		name     string
 		input    model.ResourceUsageConfig
@@ -103,20 +102,16 @@ func (suite *ResourceUsageUtilsSuite) TestParseResourceUsageConfig() {
 	}
 
 	for _, test := range tests {
-
 		suite.Run(test.name, func() {
 			converted := ParseResourceUsageConfig(test.input)
 			require.Equal(suite.T(), converted.CPU, test.expected.CPU, "cpu is incorrect")
 			require.Equal(suite.T(), converted.Memory, test.expected.Memory, "memory is incorrect")
 			require.Equal(suite.T(), converted.GPU, test.expected.GPU, "gpu is incorrect")
 		})
-
 	}
-
 }
 
 func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
-
 	tests := []struct {
 		name        string
 		shouldError bool
@@ -159,7 +154,6 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 	}
 
 	for _, test := range tests {
-
 		suite.Run(test.name, func() {
 			resources, err := getSystemResources(test.input)
 
@@ -172,7 +166,6 @@ func (suite *ResourceUsageUtilsSuite) TestSystemResources() {
 				require.Equal(suite.T(), test.expected.GPU, resources.GPU, "GPU is incorrect")
 			}
 		})
-
 	}
 }
 

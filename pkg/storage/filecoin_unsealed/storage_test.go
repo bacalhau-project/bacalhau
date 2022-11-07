@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var ctx context.Context
-var tempDir string
-var driver *StorageProvider
-var cm *system.CleanupManager
+var (
+	ctx     context.Context
+	tempDir string
+	driver  *StorageProvider
+	cm      *system.CleanupManager
+)
 
 type FilecoinUnsealedSuite struct {
 	suite.Suite
@@ -42,7 +44,7 @@ func TestFilecoinUnsealedSuite(t *testing.T) {
 
 // Before all suite
 func (suite *FilecoinUnsealedSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -60,7 +62,6 @@ func (suite *FilecoinUnsealedSuite) TearDownTest() {
 }
 
 func (suite *FilecoinUnsealedSuite) TearDownAllSuite() {
-
 }
 
 func (suite *FilecoinUnsealedSuite) TestIsInstalled() {
@@ -86,7 +87,7 @@ func (suite *FilecoinUnsealedSuite) TestGetVolumeSize() {
 	fileContents := "hello world"
 	spec := suite.prepareCid(cid)
 	filePath := filepath.Join(spec.Path, "file")
-	err := os.WriteFile(filePath, []byte(fileContents), 0644)
+	err := os.WriteFile(filePath, []byte(fileContents), 0o644)
 	require.NoError(suite.T(), err)
 	volumeSize, err := driver.GetVolumeSize(ctx, spec)
 	require.NoError(suite.T(), err)

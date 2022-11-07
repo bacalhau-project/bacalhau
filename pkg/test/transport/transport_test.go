@@ -34,7 +34,7 @@ func TestTransportSuite(t *testing.T) {
 
 // Before all suite
 func (suite *TransportSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -48,7 +48,6 @@ func (suite *TransportSuite) TearDownTest() {
 }
 
 func (suite *TransportSuite) TearDownAllSuite() {
-
 }
 
 func setupTest(t *testing.T) *node.Node {

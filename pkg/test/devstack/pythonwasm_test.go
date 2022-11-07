@@ -38,7 +38,7 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before all suite
 func (s *DevstackPythonWASMSuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -52,7 +52,6 @@ func (s *DevstackPythonWASMSuite) TearDownTest() {
 }
 
 func (s *DevstackPythonWASMSuite) TearDownSuite() {
-
 }
 
 // full end-to-end test of python/wasm:
@@ -103,7 +102,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, outputPath, outputPath, inputPath))
 
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = ioutil.WriteFile("main.py", mainPy, 0o644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
@@ -166,6 +165,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	require.Equal(s.T(), fileContents, strings.TrimSpace(string(outputData)))
 }
+
 func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
@@ -200,7 +200,6 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	require.NoError(s.T(), err)
 	err = resolver.WaitUntilComplete(ctx, jobId)
 	require.NoError(s.T(), err)
-
 }
 
 // TODO: test that > 10MB context is rejected
@@ -229,7 +228,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	// write bytes to main.py
 	mainPy := []byte("print(1+1)")
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = ioutil.WriteFile("main.py", mainPy, 0o644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,

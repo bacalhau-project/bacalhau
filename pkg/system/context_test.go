@@ -21,7 +21,7 @@ func TestSystemContextSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemContextSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -34,7 +34,6 @@ func (suite *SystemContextSuite) TearDownTest() {
 }
 
 func (suite *SystemContextSuite) TearDownAllSuite() {
-
 }
 
 func TestOnCancel(t *testing.T) {

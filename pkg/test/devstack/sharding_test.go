@@ -38,7 +38,7 @@ func TestShardingSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ShardingSuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -52,14 +52,13 @@ func (suite *ShardingSuite) TearDownTest() {
 }
 
 func (suite *ShardingSuite) TearDownSuite() {
-
 }
 
 func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) (string, error) {
 	basePath := t.TempDir()
 	for i := 0; i < folderCount; i++ {
 		subfolderPath := fmt.Sprintf("%s/folder%d", basePath, i)
-		err := os.Mkdir(subfolderPath, 0700)
+		err := os.Mkdir(subfolderPath, 0o700)
 		if err != nil {
 			return "", err
 		}
@@ -67,7 +66,7 @@ func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) 
 			err = os.WriteFile(
 				fmt.Sprintf("%s/%d.txt", subfolderPath, j),
 				[]byte(fmt.Sprintf("hello %d %d", i, j)),
-				0644,
+				0o644,
 			)
 			if err != nil {
 				return "", err
@@ -83,7 +82,7 @@ func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) {
 		err := os.WriteFile(
 			fmt.Sprintf("%s/%d.txt", basePath, i),
 			[]byte(fmt.Sprintf("hello %d", i)),
-			0644,
+			0o644,
 		)
 		if err != nil {
 			return "", err
@@ -404,7 +403,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		err := os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
-			0644,
+			0o644,
 		)
 		require.NoError(suite.T(), err)
 	}

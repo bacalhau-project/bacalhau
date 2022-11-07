@@ -39,7 +39,7 @@ func TestMultipleCIDSuite(t *testing.T) {
 
 // Before all suite
 func (s *MultipleCIDSuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -53,7 +53,6 @@ func (suite *MultipleCIDSuite) TearDownTest() {
 }
 
 func (s *MultipleCIDSuite) TearDownSuite() {
-
 }
 
 func (s *MultipleCIDSuite) TestMultipleCIDs() {
@@ -329,7 +328,6 @@ func (s *MultipleCIDSuite) TestURLsInParallel() {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(content))
 		}
-
 	}
 	runURLTest(s.T(), handler, testCase)
 
@@ -377,7 +375,6 @@ func (s *MultipleCIDSuite) TestFlakyURLs() {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(content))
 		}
-
 	}
 	runURLTest(s.T(), handler, testCase)
 }

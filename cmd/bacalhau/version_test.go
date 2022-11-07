@@ -40,7 +40,7 @@ type VersionSuite struct {
 
 // Before all suite
 func (suite *VersionSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -53,7 +53,6 @@ func (suite *VersionSuite) TearDownTest() {
 }
 
 func (suite *VersionSuite) TearDownAllSuite() {
-
 }
 
 func (suite *VersionSuite) Test_Version() {
@@ -100,5 +99,4 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	var yamlDoc Versions
 	_ = yaml.Unmarshal([]byte(out), &yamlDoc)
 	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
-
 }

@@ -5,12 +5,10 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
-	"github.com/stretchr/testify/require"
-
-	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -26,7 +24,7 @@ func TestDeterministicVerifierSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DeterministicVerifierSuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -40,7 +38,6 @@ func (suite *DeterministicVerifierSuite) TearDownTest() {
 }
 
 func (suite *DeterministicVerifierSuite) TearDownSuite() {
-
 }
 
 // test that the combo driver gives preference to the filecoin unsealed driver
@@ -89,5 +86,4 @@ func (suite *DeterministicVerifierSuite) TestDeterministicVerifier() {
 	}
 
 	RunDeterministicVerifierTests(ctx, suite.T(), apiSubmitJob)
-
 }

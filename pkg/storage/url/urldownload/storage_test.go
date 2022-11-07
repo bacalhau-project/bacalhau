@@ -45,7 +45,6 @@ func (s *StorageSuite) TearDownTest() {
 }
 
 func (s *StorageSuite) TearDownSuite() {
-
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {
@@ -112,21 +111,27 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 		errorContains string
 		errorMsg      string
 	}{
-		"Test-Valid": {fileName: fileName,
+		"Test-Valid": {
+			fileName:      fileName,
 			content:       testString,
 			valid:         true,
 			errorContains: "",
-			errorMsg:      "TYPE: Valid"},
-		"Test-No Filename": {fileName: "",
+			errorMsg:      "TYPE: Valid",
+		},
+		"Test-No Filename": {
+			fileName:      "",
 			content:       testString,
 			valid:         true,
 			errorContains: "",
-			errorMsg:      "TYPE: Valid (create file with random name)"},
-		"Test-No Content": {fileName: fileName,
+			errorMsg:      "TYPE: Valid (create file with random name)",
+		},
+		"Test-No Content": {
+			fileName:      fileName,
 			content:       "",
 			valid:         false,
 			errorContains: "no bytes written",
-			errorMsg:      "TYPE: Invalid (no content)"},
+			errorMsg:      "TYPE: Invalid (no content)",
+		},
 	}
 
 	for redirectName, rc := range redirectCases {
@@ -235,12 +240,14 @@ func (s *StorageSuite) TestImageDownloaderLiveRedirectURL() {
 		errorContains string
 		errorMsg      string
 	}{
-		"PicSum": {URL: "https://picsum.photos/200/300",
+		"PicSum": {
+			URL:           "https://picsum.photos/200/300",
 			fileName:      "300.jpg",
 			content:       "",
 			valid:         true,
 			errorContains: "",
-			errorMsg:      "TYPE: Valid"},
+			errorMsg:      "TYPE: Valid",
+		},
 	}
 
 	for filetypeName, ftc := range filetypeCases {

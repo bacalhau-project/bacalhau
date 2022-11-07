@@ -30,7 +30,7 @@ type DescribeSuite struct {
 
 // Before all suite
 func (suite *DescribeSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -44,7 +44,6 @@ func (suite *DescribeSuite) TearDownTest() {
 }
 
 func (suite *DescribeSuite) TearDownAllSuite() {
-
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {
@@ -85,7 +84,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				var returnedJob = model.NewJob()
+				returnedJob := model.NewJob()
 
 				// No job id (should error)
 				_, out, err := ExecuteTestCobraCommand(suite.T(), suite.rootCmd, "describe",
@@ -141,11 +140,9 @@ func (suite *DescribeSuite) TestDescribeJob() {
 					submittedJob.Spec.Docker.Entrypoint[0],
 					returnedJob.Spec.Docker.Entrypoint[0],
 					fmt.Sprintf("Submitted job entrypoints not the same as the description. %d - %d - %s - %d", tc.numberOfAcceptNodes, tc.numberOfRejectNodes, tc.jobState, n.numOfJobs))
-
 			}()
 		}
 	}
-
 }
 
 func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
@@ -170,7 +167,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			var returnedJob = &model.Job{}
+			returnedJob := &model.Job{}
 
 			var args []string
 
@@ -192,10 +189,8 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 
 			// require.True(suite.T(), localEventsWereIncluded == tc.includeEvents,
 			// 	fmt.Sprintf("Events included: %v\nExpected: %v", localEventsWereIncluded, tc.includeEvents))
-
 		}()
 	}
-
 }
 
 func (s *DescribeSuite) TestDescribeJobEdgeCases() {
@@ -233,7 +228,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				var returnedJob = model.NewJob()
+				returnedJob := model.NewJob()
 				var err error
 				var out string
 				var jobID string
@@ -266,11 +261,9 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 					e := bacerrors.NewJobNotFound(tc.describeIDEdgecase)
 					require.Contains(s.T(), c.Message, e.GetMessage(), "Job not found error string not found.", err)
 				}
-
 			}()
 		}
 	}
-
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -29,7 +29,7 @@ func TestServerSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ServerSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -41,7 +41,6 @@ func (suite *ServerSuite) TearDownTest() {
 }
 
 func (suite *ServerSuite) TearDownAllSuite() {
-
 }
 
 func (suite *ServerSuite) TestList() {
@@ -99,7 +98,6 @@ func (suite *ServerSuite) TestVarz() {
 	var varZ types.VarZ
 	err := json.Unmarshal(rawVarZBody, &varZ)
 	require.NoError(suite.T(), err, "Error unmarshalling /varz data.")
-
 }
 
 func (suite *ServerSuite) TestTimeout() {

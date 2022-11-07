@@ -30,7 +30,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackJobSelectionSuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -41,17 +41,14 @@ func (suite *DevstackJobSelectionSuite) SetupTest() {
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownTest() {
-
 }
 
 func (suite *DevstackJobSelectionSuite) TearDownSuite() {
-
 }
 
 // Re-use the docker executor tests but full end to end with libp2p transport
 // and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
-
 	suite.T().Skip("https://github.com/filecoin-project/bacalhau/issues/361")
 
 	type TestCase struct {
@@ -115,7 +112,6 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	for _, testCase := range []TestCase{
-
 		{
 			name:            "all nodes added files, all nodes ran job",
 			policy:          computenode.NewDefaultJobSelectionPolicy(),

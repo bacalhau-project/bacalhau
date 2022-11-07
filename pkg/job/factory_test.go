@@ -25,7 +25,7 @@ type JobFactorySuite struct {
 
 // Before all suite
 func (suite *JobFactorySuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -37,7 +37,6 @@ func (suite *JobFactorySuite) TearDownTest() {
 }
 
 func (suite *JobFactorySuite) TearDownAllSuite() {
-
 }
 
 func (suite *JobFactorySuite) TestRun_Outputs() {

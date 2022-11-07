@@ -14,16 +14,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 	"sigs.k8s.io/yaml"
-
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -54,6 +53,7 @@ func TestDockerRunSuite(t *testing.T) {
 
 // Before all suite
 func (s *DockerRunSuite) SetupSuite() {
+	logger.Suppress()
 }
 
 // Before each test
@@ -67,7 +67,6 @@ func (s *DockerRunSuite) TearDownTest() {
 }
 
 func (s *DockerRunSuite) TearDownSuite() {
-
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
@@ -153,8 +152,8 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 
 	for i, tc := range tests {
 		func() {
-			var logBuf = new(bytes.Buffer)
-			var Stdout = struct{ io.Writer }{os.Stdout}
+			logBuf := new(bytes.Buffer)
+			Stdout := struct{ io.Writer }{os.Stdout}
 			originalLogger := log.Logger
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
 			defer func() {
@@ -251,12 +250,15 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 			{inputVolumes: []InputVolume{{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHA", path: "", flag: "-i"}}, err: nil}, // Fake CID, but well structured
 			{inputVolumes: []InputVolume{
 				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHB", path: "", flag: "-i"},
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHC", path: "", flag: "-i"}}, err: nil}, // 2x Fake CID, but well structured
+				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHC", path: "", flag: "-i"},
+			}, err: nil}, // 2x Fake CID, but well structured
 			{inputVolumes: []InputVolume{
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHD", path: "/CUSTOM_INPUT_PATH_1", flag: "-v"}}, err: nil}, // Fake CID, but well structured
+				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHD", path: "/CUSTOM_INPUT_PATH_1", flag: "-v"},
+			}, err: nil}, // Fake CID, but well structured
 			{inputVolumes: []InputVolume{
 				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHE", path: "", flag: "-i"},
-				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHF", path: "/CUSTOM_INPUT_PATH_2", flag: "-v"}}, err: nil}, // 2x Fake CID, but well structured
+				{cid: "QmZUCdf9ZdpbHdr9pU8XjdUMKutKa1aVSrLZZWC4uY4pHF", path: "/CUSTOM_INPUT_PATH_2", flag: "-v"},
+			}, err: nil}, // 2x Fake CID, but well structured
 
 		}
 
@@ -270,9 +272,11 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				flagsArray := []string{"docker", "run",
+				flagsArray := []string{
+					"docker", "run",
 					"--api-host", host,
-					"--api-port", port}
+					"--api-port", port,
+				}
 				for _, iv := range tcids.inputVolumes {
 					ivString := iv.cid
 					if iv.path != "" {
@@ -351,9 +355,11 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				flagsArray := []string{"docker", "run",
+				flagsArray := []string{
+					"docker", "run",
 					"--api-host", host,
-					"--api-port", port}
+					"--api-port", port,
+				}
 
 				for _, iurl := range turls.inputURLs {
 					iurlString := iurl.url
@@ -425,9 +431,11 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 
 				parsedBasedURI, _ := url.Parse(c.BaseURI)
 				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-				flagsArray := []string{"docker", "run",
+				flagsArray := []string{
+					"docker", "run",
 					"--api-host", host,
-					"--api-port", port}
+					"--api-port", port,
+				}
 				ovString := ""
 				for _, ov := range tcids.outputVolumes {
 					if ov.name != "" {
@@ -526,7 +534,6 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			oldStartTime, _ := time.Parse(time.RFC3339, "2021-01-01T01:01:01+00:00")
 			require.GreaterOrEqual(s.T(), j.CreatedAt, oldStartTime, "Created at time is not greater or equal to 2022-01-01.")
 		}()
-
 	}
 }
 
@@ -631,8 +638,8 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 
 	for i, tc := range tests {
 		func() {
-			var logBuf = new(bytes.Buffer)
-			var Stdout = struct{ io.Writer }{os.Stdout}
+			logBuf := new(bytes.Buffer)
+			Stdout := struct{ io.Writer }{os.Stdout}
 			originalLogger := log.Logger
 			log.Logger = log.With().Logger().Output(io.MultiWriter(Stdout, logBuf))
 			defer func() {
@@ -696,9 +703,11 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			flagsArray := []string{"docker", "run",
+			flagsArray := []string{
+				"docker", "run",
 				"--api-host", host,
-				"--api-port", port}
+				"--api-port", port,
+			}
 			flagsArray = append(flagsArray, "-w", tc.workdir)
 			flagsArray = append(flagsArray, "ubuntu pwd")
 
@@ -750,7 +759,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		err := os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
-			0644,
+			0o644,
 		)
 		require.NoError(s.T(), err)
 	}
@@ -784,7 +793,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		apiClient *publicapi.APIClient,
 		args devstack_tests.DeterministicVerifierTestArgs,
 	) (string, error) {
-
 		parsedBasedURI, _ := url.Parse(apiClient.BaseURI)
 		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
 
@@ -803,7 +811,6 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 			"--sharding-batch-size", "1",
 			"ubuntu", "echo", "hello",
 		)
-
 		if err != nil {
 			return "", err
 		}
@@ -824,17 +831,25 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	}{
 		// "zero length": {inputLength: 0, truncated: false, expectedLength: 0},
 		// "one length":  {inputLength: 1, truncated: false, expectedLength: 1},
-		"maxLength - 1": {inputLength: system.MaxStdoutReturnLengthInBytes - 1,
+		"maxLength - 1": {
+			inputLength:    system.MaxStdoutReturnLengthInBytes - 1,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes - 1},
-		"maxLength": {inputLength: system.MaxStdoutReturnLengthInBytes,
+			expectedLength: system.MaxStdoutReturnLengthInBytes - 1,
+		},
+		"maxLength": {
+			inputLength:    system.MaxStdoutReturnLengthInBytes,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 1": {inputLength: system.MaxStdoutReturnLengthInBytes + 1,
+			expectedLength: system.MaxStdoutReturnLengthInBytes,
+		},
+		"maxLength + 1": {
+			inputLength:    system.MaxStdoutReturnLengthInBytes + 1,
 			truncated:      true,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10,
-			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
+			expectedLength: system.MaxStdoutReturnLengthInBytes,
+		},
+		"maxLength + 10000": {
+			inputLength: system.MaxStdoutReturnLengthInBytes * 10,
+			truncated:   true, expectedLength: system.MaxStdoutReturnLengthInBytes,
+		},
 	}
 
 	for name, tc := range tests {
@@ -847,9 +862,11 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
 			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-			flagsArray := []string{"docker", "run",
+			flagsArray := []string{
+				"docker", "run",
 				"--api-host", host,
-				"--api-port", port}
+				"--api-port", port,
+			}
 
 			flagsArray = append(flagsArray, fmt.Sprintf(`ubuntu perl -e "print \"=\" x %d"`, tc.inputLength))
 
@@ -861,13 +878,11 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
 
 			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
-
 		})
 	}
 }
 
 func (s *DockerRunSuite) TestRun_MutlipleURLs() {
-
 	tests := []struct {
 		expectedVolumes int
 		inputFlags      []string

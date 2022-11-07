@@ -37,7 +37,7 @@ type GetSuite struct {
 
 // Before all suite
 func (suite *GetSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -51,7 +51,6 @@ func (suite *GetSuite) TearDownTest() {
 }
 
 func (suite *GetSuite) TearDownAllSuite() {
-
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -172,7 +171,6 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	outputFolder := filepath.Join(tempDir, getDefaultJobFolder(jobID))
 	testDownloadOutput(s.T(), runOutput, jobID, tempDir)
 	testResultsFolderStructure(s.T(), outputFolder, hostID)
-
 }
 
 // this tests that when we do docker run with an --output-dir

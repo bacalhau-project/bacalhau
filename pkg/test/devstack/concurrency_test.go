@@ -33,7 +33,7 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackConcurrencySuite) SetupSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -44,11 +44,9 @@ func (suite *DevstackConcurrencySuite) SetupTest() {
 }
 
 func (suite *DevstackConcurrencySuite) TearDownTest() {
-
 }
 
 func (suite *DevstackConcurrencySuite) TearDownSuite() {
-
 }
 
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {

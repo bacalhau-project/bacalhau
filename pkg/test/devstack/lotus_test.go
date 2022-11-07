@@ -32,6 +32,10 @@ func TestLotusNodeSuite(t *testing.T) {
 	suite.Run(t, new(lotusNodeSuite))
 }
 
+func (suite *lotusNodeSuite) SetupSuite() {
+	logger.Suppress()
+}
+
 func (s *lotusNodeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())

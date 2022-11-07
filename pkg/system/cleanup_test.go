@@ -20,7 +20,7 @@ func TestSystemCleanupSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemCleanupSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -33,7 +33,6 @@ func (suite *SystemCleanupSuite) TearDownTest() {
 }
 
 func (suite *SystemCleanupSuite) TearDownAllSuite() {
-
 }
 
 func (suite *SystemCleanupSuite) TestCleanupManager() {

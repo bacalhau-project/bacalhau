@@ -26,7 +26,7 @@ type JobShardingSuite struct {
 
 // Before all suite
 func (suite *JobShardingSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -38,7 +38,6 @@ func (suite *JobShardingSuite) TearDownTest() {
 }
 
 func (suite *JobShardingSuite) TearDownAllSuite() {
-
 }
 
 func explodeStringArray(arr []string) []model.StorageSpec {
@@ -61,7 +60,6 @@ func joinStringArray(arr []model.StorageSpec) []string {
 }
 
 func (suite *JobShardingSuite) TestApplyGlobPattern() {
-
 	simpleFileList := []string{
 		"/a",
 		"/a/file1.txt",
@@ -174,5 +172,4 @@ func (suite *JobShardingSuite) TestApplyGlobPattern() {
 			fmt.Sprintf("%s: %s did not result in correct answer", testCase.name, testCase.pattern),
 		)
 	}
-
 }

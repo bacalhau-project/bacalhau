@@ -36,6 +36,7 @@ func TestServeSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ServeSuite) SetupSuite() {
+	logger.Suppress()
 }
 
 // Before each test
@@ -49,7 +50,6 @@ func (suite *ServeSuite) TearDownTest() {
 }
 
 func (suite *ServeSuite) TearDownSuite() {
-
 }
 
 func writeToServeChannel(c chan string, t *testing.T, rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
@@ -95,7 +95,6 @@ func curlEndpoint(URL string) (string, error) {
 }
 
 func (suite *ServeSuite) TestRun_GenericServe() {
-
 	*OS = *NewServeOptions()
 
 	port, err := freeport.GetFreePort()
@@ -130,5 +129,4 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 			break
 		}
 	}
-
 }

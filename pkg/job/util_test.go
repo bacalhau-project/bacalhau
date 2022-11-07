@@ -25,7 +25,7 @@ type JobUtilSuite struct {
 
 // Before all suite
 func (s *JobUtilSuite) SetupAllSuite() {
-
+	logger.Suppress()
 }
 
 // Before each test
@@ -37,7 +37,6 @@ func (s *JobUtilSuite) TearDownTest() {
 }
 
 func (s *JobUtilSuite) TearDownAllSuite() {
-
 }
 
 func (s *JobUtilSuite) TestRun_URLs() {
@@ -54,33 +53,51 @@ func (s *JobUtilSuite) TestRun_URLs() {
 			valid        bool
 			errorMsg     string
 		}{
-			{submittedURL: "http://example.com",
-				valid:    false,
-				errorMsg: "TYPE: Invalid (no file)"},
-			{submittedURL: "http://example.com/file.txt",
-				valid:    true,
-				errorMsg: "TYPE: Valid"},
-			{submittedURL: "ttps://example.com",
-				valid:    false,
-				errorMsg: "TYPE: Bad scheme"},
-			{submittedURL: "example.com",
-				valid:    false,
-				errorMsg: "TYPE: Mising scheme"},
-			{submittedURL: "http://example.com:8080/file.txt",
-				valid:    true,
-				errorMsg: "TYPE: With Ports"},
-			{submittedURL: `https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD`,
-				valid:    true,
-				errorMsg: "TYPE: With query string"},
-			{submittedURL: `https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar`,
-				valid:    true,
-				errorMsg: "TYPE: With query string with ampersand"},
-			{submittedURL: `"https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar"`,
-				valid:    true,
-				errorMsg: "TYPE: With Double quotes"},
-			{submittedURL: `'https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar'`,
-				valid:    true,
-				errorMsg: "TYPE: With single quotes"},
+			{
+				submittedURL: "http://example.com",
+				valid:        false,
+				errorMsg:     "TYPE: Invalid (no file)",
+			},
+			{
+				submittedURL: "http://example.com/file.txt",
+				valid:        true,
+				errorMsg:     "TYPE: Valid",
+			},
+			{
+				submittedURL: "ttps://example.com",
+				valid:        false,
+				errorMsg:     "TYPE: Bad scheme",
+			},
+			{
+				submittedURL: "example.com",
+				valid:        false,
+				errorMsg:     "TYPE: Mising scheme",
+			},
+			{
+				submittedURL: "http://example.com:8080/file.txt",
+				valid:        true,
+				errorMsg:     "TYPE: With Ports",
+			},
+			{
+				submittedURL: `https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD`,
+				valid:        true,
+				errorMsg:     "TYPE: With query string",
+			},
+			{
+				submittedURL: `https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar`,
+				valid:        true,
+				errorMsg:     "TYPE: With query string with ampersand",
+			},
+			{
+				submittedURL: `"https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar"`,
+				valid:        true,
+				errorMsg:     "TYPE: With Double quotes",
+			},
+			{
+				submittedURL: `'https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD&foo=bar'`,
+				valid:        true,
+				errorMsg:     "TYPE: With single quotes",
+			},
 		}
 
 		for _, testURL := range testURLs {

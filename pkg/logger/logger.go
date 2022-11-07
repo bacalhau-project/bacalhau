@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	ipfslog1 "github.com/ipfs/go-log"
+	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -21,8 +23,10 @@ type JobEvent struct {
 	Job  string      `json:"job"`
 }
 
-var stdout = struct{ io.Writer }{os.Stdout}
-var stderr = struct{ io.Writer }{os.Stderr}
+var (
+	stdout = struct{ io.Writer }{os.Stdout}
+	stderr = struct{ io.Writer }{os.Stderr}
+)
 
 var nodeIDFieldName = "NodeID"
 
@@ -154,4 +158,14 @@ func loggerWithNodeID(nodeID string) zerolog.Logger {
 func ContextWithNodeIDLogger(ctx context.Context, nodeID string) context.Context {
 	l := loggerWithNodeID(nodeID)
 	return l.WithContext(ctx)
+}
+
+// Suppress suppresses log output unless the BACALHAU_UNSUPPRESS_LOGS environment variable is set.
+func Suppress() {
+	if os.Getenv("BACALHAU_UNSUPPRESS_LOGS") != "" {
+		return
+	}
+	ipfslog1.SetAllLoggers(ipfslog1.LevelFatal)
+	ipfslog2.SetAllLoggers(ipfslog2.LevelFatal)
+	zerolog.SetGlobalLevel(zerolog.FatalLevel)
 }
