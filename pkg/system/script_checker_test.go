@@ -21,7 +21,6 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemScriptCheckerSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

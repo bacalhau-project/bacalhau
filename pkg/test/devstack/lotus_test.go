@@ -33,7 +33,6 @@ func TestLotusNodeSuite(t *testing.T) {
 }
 
 func (suite *lotusNodeSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 func (s *lotusNodeSuite) SetupTest() {

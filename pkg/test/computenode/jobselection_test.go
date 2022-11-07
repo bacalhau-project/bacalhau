@@ -32,7 +32,6 @@ func TestComputeNodeJobSelectionSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComputeNodeJobSelectionSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

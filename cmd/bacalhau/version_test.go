@@ -40,7 +40,6 @@ type VersionSuite struct {
 
 // Before all suite
 func (suite *VersionSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

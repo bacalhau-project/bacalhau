@@ -27,7 +27,6 @@ type UtilsSuite struct {
 
 // Before all suite
 func (s *UtilsSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

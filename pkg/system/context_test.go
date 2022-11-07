@@ -21,7 +21,6 @@ func TestSystemContextSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemContextSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

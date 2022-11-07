@@ -34,7 +34,6 @@ func TestComboDriverSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComboDriverSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

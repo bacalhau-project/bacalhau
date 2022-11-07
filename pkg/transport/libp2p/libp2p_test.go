@@ -28,7 +28,6 @@ func TestLibp2pTransportSuite(t *testing.T) {
 
 // Before all suite
 func (suite *Libp2pTransportSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

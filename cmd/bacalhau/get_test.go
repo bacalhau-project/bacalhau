@@ -37,7 +37,6 @@ type GetSuite struct {
 
 // Before all suite
 func (suite *GetSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

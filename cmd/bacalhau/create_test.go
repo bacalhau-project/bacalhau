@@ -31,7 +31,6 @@ func TestCreateSuite(t *testing.T) {
 
 // before all the s
 func (s *CreateSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // before each test

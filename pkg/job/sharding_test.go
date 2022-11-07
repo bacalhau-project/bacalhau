@@ -26,7 +26,6 @@ type JobShardingSuite struct {
 
 // Before all suite
 func (suite *JobShardingSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

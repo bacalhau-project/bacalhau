@@ -28,7 +28,6 @@ func TestResourceUsageUtilsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ResourceUsageUtilsSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

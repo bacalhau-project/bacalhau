@@ -44,7 +44,6 @@ func TestFilecoinUnsealedSuite(t *testing.T) {
 
 // Before all suite
 func (suite *FilecoinUnsealedSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

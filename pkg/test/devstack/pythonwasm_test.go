@@ -38,7 +38,6 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before all suite
 func (s *DevstackPythonWASMSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

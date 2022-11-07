@@ -32,7 +32,6 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 
 // Before all suite
 func (suite *IPFSHostStorageSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

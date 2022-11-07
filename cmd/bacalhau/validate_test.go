@@ -26,7 +26,6 @@ func TestValidateSuite(t *testing.T) {
 
 // before all the suite
 func (s *ValidateSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // before each test

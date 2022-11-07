@@ -38,7 +38,6 @@ func TestShardingSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ShardingSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

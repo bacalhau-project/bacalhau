@@ -32,7 +32,6 @@ func TestMinBidsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *MinBidsSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

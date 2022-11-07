@@ -34,7 +34,6 @@ func TestTransportSuite(t *testing.T) {
 
 // Before all suite
 func (suite *TransportSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

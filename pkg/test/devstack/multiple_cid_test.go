@@ -39,7 +39,6 @@ func TestMultipleCIDSuite(t *testing.T) {
 
 // Before all suite
 func (s *MultipleCIDSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

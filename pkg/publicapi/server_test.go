@@ -29,7 +29,6 @@ func TestServerSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ServerSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

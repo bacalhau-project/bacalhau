@@ -40,7 +40,6 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

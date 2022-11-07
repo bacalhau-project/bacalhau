@@ -30,7 +30,6 @@ type DescribeSuite struct {
 
 // Before all suite
 func (suite *DescribeSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

@@ -24,7 +24,6 @@ func TestDeterministicVerifierSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DeterministicVerifierSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

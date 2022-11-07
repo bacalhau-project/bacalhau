@@ -20,7 +20,6 @@ func TestSystemConfigSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemConfigSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

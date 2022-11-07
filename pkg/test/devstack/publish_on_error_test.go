@@ -32,7 +32,6 @@ func TestPublishOnErrorSuite(t *testing.T) {
 
 // Before all suite
 func (s *PublishOnErrorSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

@@ -9,11 +9,12 @@ import (
 	"strings"
 	"time"
 
-	ipfslog1 "github.com/ipfs/go-log"
 	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type JobEvent struct {
@@ -49,6 +50,7 @@ func ConfigureTestLogging(t tTesting) {
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
+		configureIpfsLogging(log.Logger)
 	})
 }
 
@@ -141,6 +143,8 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
 	// Tests will use the DefaultContextLogger instead
 	zerolog.DefaultContextLogger = &log.Logger
+
+	configureIpfsLogging(log.Logger)
 }
 
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
@@ -160,12 +164,30 @@ func ContextWithNodeIDLogger(ctx context.Context, nodeID string) context.Context
 	return l.WithContext(ctx)
 }
 
-// Suppress suppresses log output unless the BACALHAU_UNSUPPRESS_LOGS environment variable is set.
-func Suppress() {
-	if os.Getenv("BACALHAU_UNSUPPRESS_LOGS") != "" {
-		return
-	}
-	ipfslog1.SetAllLoggers(ipfslog1.LevelFatal)
-	ipfslog2.SetAllLoggers(ipfslog2.LevelFatal)
-	zerolog.SetGlobalLevel(zerolog.FatalLevel)
+type zerologWriteSyncer struct {
+	l zerolog.Logger
+}
+
+var _ zapcore.WriteSyncer = (*zerologWriteSyncer)(nil)
+
+func (z *zerologWriteSyncer) Write(b []byte) (int, error) {
+	z.l.Log().CallerSkipFrame(5).Msg(string(b))
+	return len(b), nil
+}
+
+func (z *zerologWriteSyncer) Sync() error {
+	return nil
+}
+
+func configureIpfsLogging(l zerolog.Logger) {
+	encCfg := zap.NewProductionEncoderConfig()
+	encCfg.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {}
+	encCfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	encCfg.EncodeCaller = func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {}
+	encCfg.ConsoleSeparator = " "
+	encoder := zapcore.NewConsoleEncoder(encCfg)
+
+	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
+
+	ipfslog2.SetPrimaryCore(core)
 }

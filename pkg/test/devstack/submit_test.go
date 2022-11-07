@@ -26,7 +26,6 @@ func TestDevstackSubmitSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackSubmitSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

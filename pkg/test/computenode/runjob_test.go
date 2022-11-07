@@ -33,7 +33,6 @@ func TestComputeNodeRunJobSuite(t *testing.T) {
 
 // Before all suite
 func (s *ComputeNodeRunJobSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

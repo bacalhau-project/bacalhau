@@ -25,7 +25,6 @@ type JobUtilSuite struct {
 
 // Before all suite
 func (s *JobUtilSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

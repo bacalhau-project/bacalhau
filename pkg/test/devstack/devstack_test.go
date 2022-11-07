@@ -33,7 +33,6 @@ func TestDevStackSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevStackSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

@@ -26,7 +26,6 @@ type NodeSuite struct {
 
 // Before all suite
 func (suite *NodeSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

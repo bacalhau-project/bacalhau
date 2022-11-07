@@ -28,7 +28,6 @@ func TestSystemUtilsSuite(t *testing.T) {
 
 // Before all suite
 func (s *SystemUtilsSuite) SetupAllSuite() {
-	logger.Suppress()
 }
 
 // Before each test

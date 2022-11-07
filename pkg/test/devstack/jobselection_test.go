@@ -30,7 +30,6 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackJobSelectionSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

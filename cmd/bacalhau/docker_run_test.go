@@ -53,7 +53,6 @@ func TestDockerRunSuite(t *testing.T) {
 
 // Before all suite
 func (s *DockerRunSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test

@@ -31,7 +31,6 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackErrorLogsSuite) SetupSuite() {
-	logger.Suppress()
 }
 
 // Before each test
