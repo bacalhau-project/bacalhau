@@ -21,6 +21,7 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemScriptCheckerSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -33,6 +34,7 @@ func (suite *SystemScriptCheckerSuite) TearDownTest() {
 }
 
 func (suite *SystemScriptCheckerSuite) TearDownAllSuite() {
+
 }
 
 func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {

@@ -32,6 +32,7 @@ func TestMinBidsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *MinBidsSuite) SetupSuite() {
+
 }
 
 // Before each test
@@ -45,6 +46,7 @@ func (suite *MinBidsSuite) TearDownTest() {
 }
 
 func (suite *MinBidsSuite) TearDownSuite() {
+
 }
 
 type minBidsTestCase struct {
@@ -57,6 +59,7 @@ type minBidsTestCase struct {
 }
 
 func (suite *MinBidsSuite) TestMinBids() {
+
 	runTest := func(
 		testCase minBidsTestCase,
 	) {
@@ -114,6 +117,7 @@ func (suite *MinBidsSuite) TestMinBids() {
 			job.WaitForJobStates(testCase.expectedResult),
 		)
 		require.NoError(suite.T(), err)
+
 	}
 
 	// sanity test that with min bids at zero and 1 node we get the job through
@@ -168,4 +172,5 @@ func (suite *MinBidsSuite) TestMinBids() {
 			},
 		})
 	})
+
 }

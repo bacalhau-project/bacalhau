@@ -33,6 +33,7 @@ func TestComputeNodeRunJobSuite(t *testing.T) {
 
 // Before all suite
 func (s *ComputeNodeRunJobSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -43,9 +44,11 @@ func (s *ComputeNodeRunJobSuite) SetupTest() {
 }
 
 func (s *ComputeNodeRunJobSuite) TearDownTest() {
+
 }
 
 func (s *ComputeNodeRunJobSuite) TearDownAllSuite() {
+
 }
 
 // a simple sanity test of the RunJob with docker executor
@@ -80,6 +83,7 @@ func (s *ComputeNodeRunJobSuite) TestRunJob() {
 	dat, err := os.ReadFile(stdoutPath)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), EXAMPLE_TEXT, string(dat), "The stdout file contained the correct result from the job")
+
 }
 
 func (s *ComputeNodeRunJobSuite) TestEmptySpec() {

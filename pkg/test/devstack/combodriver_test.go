@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -34,6 +35,7 @@ func TestComboDriverSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComboDriverSuite) SetupSuite() {
+
 }
 
 // Before each test
@@ -47,6 +49,7 @@ func (suite *ComboDriverSuite) TearDownTest() {
 }
 
 func (suite *ComboDriverSuite) TearDownSuite() {
+
 }
 
 // Test that the combo driver gives preference to the filecoin unsealed driver
@@ -71,7 +74,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 		err := os.WriteFile(
 			filePath,
 			[]byte(fmt.Sprintf(exampleText)),
-			0o644,
+			0644,
 		)
 		require.NoError(suite.T(), err)
 

@@ -28,6 +28,7 @@ func TestLibp2pTransportSuite(t *testing.T) {
 
 // Before all suite
 func (suite *Libp2pTransportSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -39,6 +40,7 @@ func (suite *Libp2pTransportSuite) TearDownTest() {
 }
 
 func (suite *Libp2pTransportSuite) TearDownAllSuite() {
+
 }
 
 func (suite *Libp2pTransportSuite) TestEncryption() {

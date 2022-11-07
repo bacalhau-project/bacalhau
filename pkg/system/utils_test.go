@@ -28,6 +28,7 @@ func TestSystemUtilsSuite(t *testing.T) {
 
 // Before all suite
 func (s *SystemUtilsSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -40,6 +41,7 @@ func (s *SystemUtilsSuite) TearDownTest() {
 }
 
 func (s *SystemUtilsSuite) TearDownAllSuite() {
+
 }
 
 func (s *SystemUtilsSuite) TestBasicCommandExecution() {
@@ -129,22 +131,14 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 	}{
 		"zeroLength": {inputLength: 0, expectedLength: 0},
 		"oneLength":  {inputLength: 1, expectedLength: 1},
-		"maxLengthMinus1": {
-			inputLength:    GenericMaxLengthInBytes - 1,
-			expectedLength: GenericMaxLengthInBytes - 1,
-		},
-		"maxLength": {
-			inputLength:    GenericMaxLengthInBytes,
-			expectedLength: GenericMaxLengthInBytes,
-		},
-		"maxLengthPlus1": {
-			inputLength:    GenericMaxLengthInBytes + 1,
-			expectedLength: GenericMaxLengthInBytes,
-		},
-		"maxLengthTimes10": {
-			inputLength:    GenericMaxLengthInBytes * 10,
-			expectedLength: GenericMaxLengthInBytes,
-		},
+		"maxLengthMinus1": {inputLength: GenericMaxLengthInBytes - 1,
+			expectedLength: GenericMaxLengthInBytes - 1},
+		"maxLength": {inputLength: GenericMaxLengthInBytes,
+			expectedLength: GenericMaxLengthInBytes},
+		"maxLengthPlus1": {inputLength: GenericMaxLengthInBytes + 1,
+			expectedLength: GenericMaxLengthInBytes},
+		"maxLengthTimes10": {inputLength: GenericMaxLengthInBytes * 10,
+			expectedLength: GenericMaxLengthInBytes},
 	}
 	cmd := "bash"
 	tmpDir := s.T().TempDir()
@@ -159,7 +153,7 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 					}
 
 					tmpDirForTC := filepath.Join(tmpDir, sizeTestName)
-					err := os.Mkdir(tmpDirForTC, 0o755)
+					err := os.Mkdir(tmpDirForTC, 0755)
 					require.NoError(s.T(), err, "Could not create temp dir")
 					defer os.RemoveAll(tmpDirForTC)
 
@@ -203,22 +197,14 @@ func (s *SystemUtilsSuite) TestInternalCommandExecutionStdoutTooBigForReturn() {
 						contents       string
 						expectedLength int
 					}{
-						"stdoutFile": {
-							contents:       stdoutFileContents,
-							expectedLength: stdOutFileExpectedLength,
-						},
-						"stderrFile": {
-							contents:       stderrFileContents,
-							expectedLength: stdErrFileExpectedLength,
-						},
-						"stdoutReturn": {
-							contents:       runResult.STDOUT,
-							expectedLength: stdOutReturnExpectedLength,
-						},
-						"stderrReturn": {
-							contents:       runResult.STDERR,
-							expectedLength: stdErrReturnExpectedLength,
-						},
+						"stdoutFile": {contents: stdoutFileContents,
+							expectedLength: stdOutFileExpectedLength},
+						"stderrFile": {contents: stderrFileContents,
+							expectedLength: stdErrFileExpectedLength},
+						"stdoutReturn": {contents: runResult.STDOUT,
+							expectedLength: stdOutReturnExpectedLength},
+						"stderrReturn": {contents: runResult.STDERR,
+							expectedLength: stdErrReturnExpectedLength},
 					}
 					for fileStructName, fileStructCase := range fileStruct {
 						if fileStructCase.expectedLength != len(fileStructCase.contents) {

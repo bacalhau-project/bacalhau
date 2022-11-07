@@ -31,6 +31,7 @@ func TestCreateSuite(t *testing.T) {
 
 // before all the s
 func (s *CreateSuite) SetupSuite() {
+
 }
 
 // before each test
@@ -41,9 +42,11 @@ func (s *CreateSuite) SetupTest() {
 }
 
 func (s *CreateSuite) TearDownTest() {
+
 }
 
 func (s *CreateSuite) TearDownSuite() {
+
 }
 
 func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
@@ -167,10 +170,8 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	// Cat the file and pipe it to stdin
 	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
-		"echo", []string{
-			out,
-			"|", "../../bin/bacalhau create",
-		},
+		"echo", []string{out,
+			"|", "../../bin/bacalhau create"},
 	)
 	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
 }

@@ -32,6 +32,7 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 
 // Before all suite
 func (suite *IPFSHostStorageSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -42,9 +43,11 @@ func (suite *IPFSHostStorageSuite) SetupTest() {
 }
 
 func (suite *IPFSHostStorageSuite) TearDownTest() {
+
 }
 
 func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
+
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
@@ -55,8 +58,8 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 		suite.T(),
 		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api string) (
-			storage.Storage, error,
-		) {
+			storage.Storage, error) {
+
 			return apicopy.NewStorage(cm, api)
 		},
 	)
@@ -67,8 +70,8 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		suite.T(),
 		model.StorageSourceIPFS,
 		func(ctx context.Context, cm *system.CleanupManager, api string) (
-			storage.Storage, error,
-		) {
+			storage.Storage, error) {
+
 			return apicopy.NewStorage(cm, api)
 		},
 	)
@@ -142,7 +145,7 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	dir := t.TempDir()
 
 	EXAMPLE_TEXT := `hello world`
-	err := os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0o644)
+	err := os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
 	require.NoError(t, err)
 
 	// add this file to the server

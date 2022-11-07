@@ -26,6 +26,7 @@ type NodeSuite struct {
 
 // Before all suite
 func (suite *NodeSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -38,6 +39,7 @@ func (suite *NodeSuite) TearDownTest() {
 }
 
 func (suite *NodeSuite) TearDownAllSuite() {
+
 }
 
 // TestFunctionality tests the in-process IPFS node/client as follows:

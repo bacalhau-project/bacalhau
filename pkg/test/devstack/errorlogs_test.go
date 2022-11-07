@@ -31,6 +31,7 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevstackErrorLogsSuite) SetupSuite() {
+
 }
 
 // Before each test
@@ -41,11 +42,12 @@ func (suite *DevstackErrorLogsSuite) SetupTest() {
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownTest() {
+
 }
 
 func (suite *DevstackErrorLogsSuite) TearDownSuite() {
-}
 
+}
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 	suite.T().Skip("REMOVE_WHEN_OUTPUTDIRECTORY_QUESTION_ANSWERED https://github.com/filecoin-project/bacalhau/issues/388")
 

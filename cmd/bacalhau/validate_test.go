@@ -26,6 +26,7 @@ func TestValidateSuite(t *testing.T) {
 
 // before all the suite
 func (s *ValidateSuite) SetupSuite() {
+
 }
 
 // before each test
@@ -36,12 +37,15 @@ func (s *ValidateSuite) SetupTest() {
 }
 
 func (s *ValidateSuite) TearDownTest() {
+
 }
 
 func (s *ValidateSuite) TearDownAllSuite() {
+
 }
 
 func (s *ValidateSuite) TestValidate() {
+
 	tests := map[string]struct {
 		testFile string
 		valid    bool
@@ -80,5 +84,6 @@ func (s *ValidateSuite) TestValidate() {
 				require.Contains(s.T(), fatalError.Message, "APIVersion is required", fmt.Sprintf("%s: Jobspec Invalid returning valid", name))
 			}
 		}()
+
 	}
 }

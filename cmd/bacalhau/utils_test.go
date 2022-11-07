@@ -27,6 +27,7 @@ type UtilsSuite struct {
 
 // Before all suite
 func (s *UtilsSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -39,6 +40,7 @@ func (s *UtilsSuite) TearDownTest() {
 }
 
 func (s *UtilsSuite) TearDownAllSuite() {
+
 }
 
 func (s *UtilsSuite) TestSafeRegex() {

@@ -37,6 +37,7 @@ func TestListSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ListSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -49,6 +50,7 @@ func (suite *ListSuite) TearDownTest() {
 }
 
 func (suite *ListSuite) TearDownAllSuite() {
+
 }
 
 type listResponse struct {
@@ -168,8 +170,8 @@ func (suite *ListSuite) TestList_IdFilter() {
 }
 
 func (suite *ListSuite) TestList_SortFlags() {
-	badSortFlag := "BADSORTFLAG"
-	createdAtSortFlag := "created_at"
+	var badSortFlag = "BADSORTFLAG"
+	var createdAtSortFlag = "created_at"
 
 	combinationOfJobSizes := []struct {
 		numberOfJobs       int

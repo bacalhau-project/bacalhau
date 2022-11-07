@@ -40,6 +40,7 @@ func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -53,6 +54,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
+
 }
 
 // Simple job resource limits tests
@@ -144,6 +146,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 		getResources("100m", "100Mb", ""),
 		false,
 	)
+
 }
 
 type SeenJobRecord struct {
@@ -168,6 +171,7 @@ type TotalResourceTestCase struct {
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
+
 	// for this test we use the transport so the compute_node is calling
 	// the executor in a go-routine and we can test what jobs
 	// look like over time - this test leave each job running for X seconds
@@ -238,6 +242,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			},
 
 			noop_executor.ExecutorConfig{
+
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
@@ -395,6 +400,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			},
 		},
 	)
+
 }
 
 // test that with 10 GPU nodes - that 10 jobs end up being allocated 1 per node
@@ -646,6 +652,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 
 	runTest("hello from 1b test", "1b", false)
 	runTest("hello from 1k test", "1k", true)
+
 }
 
 // how many bytes more does ipfs report the file than the actual content?

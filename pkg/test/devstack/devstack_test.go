@@ -33,6 +33,7 @@ func TestDevStackSuite(t *testing.T) {
 
 // Before all suite
 func (suite *DevStackSuite) SetupSuite() {
+
 }
 
 // Before each test
@@ -43,9 +44,11 @@ func (suite *DevStackSuite) SetupTest() {
 }
 
 func (suite *DevStackSuite) TearDownTest() {
+
 }
 
 func (suite *DevStackSuite) TearDownSuite() {
+
 }
 
 // re-use the docker executor tests but full end to end with libp2p transport

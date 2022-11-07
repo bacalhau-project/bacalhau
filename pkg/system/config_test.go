@@ -20,6 +20,7 @@ func TestSystemConfigSuite(t *testing.T) {
 
 // Before all suite
 func (suite *SystemConfigSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -32,6 +33,7 @@ func (suite *SystemConfigSuite) TearDownTest() {
 }
 
 func (suite *SystemConfigSuite) TearDownAllSuite() {
+
 }
 
 func (suite *SystemConfigSuite) TestMessageSigning() {

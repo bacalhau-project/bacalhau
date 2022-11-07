@@ -32,6 +32,7 @@ func TestComputeNodeJobSelectionSuite(t *testing.T) {
 
 // Before all suite
 func (suite *ComputeNodeJobSelectionSuite) SetupAllSuite() {
+
 }
 
 // Before each test
@@ -45,6 +46,7 @@ func (suite *ComputeNodeJobSelectionSuite) TearDownTest() {
 }
 
 func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
+
 }
 
 // TestJobSelectionNoVolumes tests that when we have RejectStatelessJobs
@@ -88,6 +90,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	require.NoError(suite.T(), err)
 
 	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
+
 		stack := testutils.NewDevStack(ctx, suite.T(), computenode.ComputeNodeConfig{
 			JobSelectionPolicy: computenode.JobSelectionPolicy{
 				Locality: locality,
@@ -133,6 +136,7 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("200 - Everything is good!"))
 			}
+
 		}))
 		defer svr.Close()
 
