@@ -41,7 +41,6 @@ const TEST_NODE_COUNT = 1
 func runTestCase(
 	t *testing.T,
 	testCase scenario.TestCase,
-	getStorageDriver scenario.IGetStorageDriver,
 ) {
 	ctx := context.Background()
 	spec := testCase.GetJobSpec()
@@ -110,7 +109,7 @@ func (suite *ExecutorTestSuite) TestScenarios() {
 		for _, storageDriverFactory := range scenario.StorageDriverFactories {
 			suite.Run(
 				strings.Join([]string{testCase.Name, storageDriverFactory.Name}, "-"),
-				func() { runTestCase(suite.T(), testCase, storageDriverFactory.DriverFactory) },
+				func() { runTestCase(suite.T(), testCase) },
 			)
 		}
 	}

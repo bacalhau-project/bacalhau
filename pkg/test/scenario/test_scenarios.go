@@ -219,7 +219,7 @@ func WasmEnvVars() TestCase {
 		ResultsChecker: singleFileResultsChecker(
 			ctx,
 			"stdout",
-			"TEST=yes\nAWESOME=definitely\n",
+			"AWESOME=definitely\nTEST=yes\n",
 			ExpectedModeEquals,
 			3, //nolint:gomnd // magic number appropriate for test
 		),
