@@ -175,7 +175,7 @@ func WaitForContainerLogs(ctx context.Context,
 			return strings.Contains(stdout, findString) || strings.Contains(stderr, findString), nil
 		},
 	}
-	err := waiter.Wait()
+	err := waiter.Wait(ctx)
 	return lastLogs, err
 }
 

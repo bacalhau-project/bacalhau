@@ -32,29 +32,14 @@ type ComputeNodeResourceLimitsSuite struct {
 	suite.Suite
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestComputeNodeResourceLimitsSuite(t *testing.T) {
 	suite.Run(t, new(ComputeNodeResourceLimitsSuite))
 }
 
-// Before all suite
-func (suite *ComputeNodeResourceLimitsSuite) SetupAllSuite() {
-
-}
-
-// Before each test
 func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *ComputeNodeResourceLimitsSuite) TearDownTest() {
-}
-
-func (suite *ComputeNodeResourceLimitsSuite) TearDownAllSuite() {
-
 }
 
 // Simple job resource limits tests
@@ -306,7 +291,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			},
 		}
 
-		err := waiter.Wait()
+		err := waiter.Wait(ctx)
 		require.NoError(suite.T(), err, fmt.Sprintf("there was an error in the wait function: %s", testCase.wait.name))
 
 		if err != nil {
