@@ -232,7 +232,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 					},
 				}
 
-				err = fileWaiter.Wait()
+				err = fileWaiter.Wait(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -241,7 +241,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 			},
 		}
 
-		err = sidecarWaiter.Wait()
+		err = sidecarWaiter.Wait(ctx)
 
 		if err != nil {
 			return err
