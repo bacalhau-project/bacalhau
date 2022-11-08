@@ -51,6 +51,21 @@ func SetupTest(
 	return stack, cm
 }
 
+func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) { //nolint:unused
+	basePath := t.TempDir()
+	for i := 0; i < fileCount; i++ {
+		err := os.WriteFile(
+			fmt.Sprintf("%s/%d.txt", basePath, i),
+			[]byte(fmt.Sprintf("hello %d", i)),
+			os.ModePerm,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+	return basePath, nil
+}
+
 type DeterministicVerifierTestArgs struct {
 	NodeCount      int
 	ShardCount     int

@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -15,7 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
+	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -70,8 +68,12 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 	apiUri := stack.Nodes[0].APIServer.GetURI()
 	apiClient := publicapi.NewAPIClient(apiUri)
 
+	scn := scenario.WasmHelloWorld()
 	j := &model.Job{}
-	j.Spec = testutils.DockerRunJob()
+	j.Spec = scn.GetJobSpec()
+	j.Spec.Verifier = model.VerifierNoop
+	j.Spec.Publisher = model.PublisherIpfs
+	j.Spec.Contexts, err = scn.SetupContext(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
 	j.Spec.Inputs = []model.StorageSpec{
 		{
 			StorageSource: model.StorageSourceIPFS,
