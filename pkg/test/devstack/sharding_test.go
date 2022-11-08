@@ -77,21 +77,6 @@ func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) 
 	return basePath, nil
 }
 
-func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) {
-	basePath := t.TempDir()
-	for i := 0; i < fileCount; i++ {
-		err := os.WriteFile(
-			fmt.Sprintf("%s/%d.txt", basePath, i),
-			[]byte(fmt.Sprintf("hello %d", i)),
-			0644,
-		)
-		if err != nil {
-			return "", err
-		}
-	}
-	return basePath, nil
-}
-
 func (suite *ShardingSuite) TestExplodeCid() {
 	const nodeCount = 1
 	const folderCount = 10

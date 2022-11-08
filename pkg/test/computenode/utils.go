@@ -24,16 +24,9 @@ func GetJobSpec(cid string) model.Spec {
 		}
 	}
 	return model.Spec{
-		Engine:   model.EngineDocker,
+		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"cat",
-				"/test_file.txt",
-			},
-		},
-		Inputs: inputs,
+		Inputs:   inputs,
 	}
 }
 

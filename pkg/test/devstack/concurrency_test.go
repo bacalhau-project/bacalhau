@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -31,24 +29,11 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 	suite.Run(t, new(DevstackConcurrencySuite))
 }
 
-// Before all suite
-func (suite *DevstackConcurrencySuite) SetupSuite() {
-
-}
-
 // Before each test
 func (suite *DevstackConcurrencySuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *DevstackConcurrencySuite) TearDownTest() {
-
-}
-
-func (suite *DevstackConcurrencySuite) TearDownSuite() {
-
 }
 
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
@@ -70,8 +55,8 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		computenode.NewDefaultComputeNodeConfig(),
 	)
 
-	testCase := scenario.CatFileToVolume()
-	inputStorageList, err := testCase.SetupStorage(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
+	testCase := scenario.WasmHelloWorld()
+	contexts, err := testCase.SetupContext(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:3])...)
 	require.NoError(suite.T(), err)
 
 	// create a job
@@ -79,7 +64,7 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	j.Spec = testCase.GetJobSpec()
 	j.Spec.Verifier = model.VerifierNoop
 	j.Spec.Publisher = model.PublisherNoop
-	j.Spec.Inputs = inputStorageList
+	j.Spec.Contexts = contexts
 	j.Spec.Outputs = testCase.Outputs
 	j.Deal = model.Deal{
 		Concurrency: 2,
