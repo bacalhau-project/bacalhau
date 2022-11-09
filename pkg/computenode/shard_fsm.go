@@ -13,6 +13,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// How long we keep the state machine in memory after it is completed
+const stateEvictionTimeout = 5 * time.Minute
+
 // types of actions that can be performed on a shard state machine
 type shardStateAction int
 
@@ -299,7 +302,7 @@ func (m *shardStateMachineManager) newStateMachine(
 		capacity:     capacitymanager.CapacityManagerItem{Shard: shard, Requirements: requirements},
 		req:          make(chan shardStateRequest),
 		currentState: shardInitialState,
-		timeoutAt:    time.Now().Add(m.timeoutConfig.StateTransitionTimeout),
+		timeoutAt:    time.Now().Add(m.timeoutConfig.JobNegotiationTimeout),
 	}
 
 	return stateMachine
@@ -409,12 +412,6 @@ func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardSt
 	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s%s", m, m.currentState, newState, reason)
 	m.previousState = m.currentState
 	m.currentState = newState
-
-	if newState == shardRunning {
-		m.timeoutAt = time.Now().Add(m.Shard.Job.Spec.GetTimeout())
-	} else {
-		m.timeoutAt = time.Now().Add(m.manager.timeoutConfig.StateTransitionTimeout)
-	}
 }
 
 // ------------------------------------
@@ -455,6 +452,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 // the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
 func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardBidding)
+	m.timeoutAt = time.Now().Add(m.manager.timeoutConfig.JobNegotiationTimeout)
 
 	for {
 		req := m.readRequest(ctx)
@@ -477,6 +475,7 @@ func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
 func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	// TODO: #558 Should we create a new span every time there's a state transition?
 	m.transitionedTo(ctx, shardRunning)
+	m.timeoutAt = time.Now().Add(m.Shard.Job.Spec.GetTimeout())
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.runningState")
 	defer span.End()
@@ -614,5 +613,6 @@ func cancelledState(ctx context.Context, m *shardStateMachine) StateFn {
 // we always reach this state, whether the job completed successfully or due to a failure.
 func completedState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardCompleted)
+	m.timeoutAt = time.Now().Add(stateEvictionTimeout)
 	return nil
 }

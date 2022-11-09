@@ -14,6 +14,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// How long we keep the state machine in memory after it is completed
+const stateEvictionTimeout = 5 * time.Minute
+
 // types of actions that can be performed on a shard state machine
 type shardStateAction int
 
@@ -213,7 +216,7 @@ func (m *shardStateMachineManager) newShardStateMachine(ctx context.Context, sha
 		currentState:   shardInitialState,
 		biddingNodes:   make(map[string]struct{}),
 		completedNodes: make(map[string]struct{}),
-		timeoutAt:      time.Now().Add(m.timeoutConfig.StateTransitionTimeout),
+		timeoutAt:      time.Now().Add(m.timeoutConfig.JobNegotiationTimeout),
 	}
 }
 
@@ -286,12 +289,6 @@ func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardSt
 	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
 	m.previousState = m.currentState
 	m.currentState = newState
-
-	if newState == shardWaitingForResults {
-		m.timeoutAt = time.Now().Add(m.shard.Job.Spec.GetTimeout())
-	} else {
-		m.timeoutAt = time.Now().Add(m.manager.timeoutConfig.StateTransitionTimeout)
-	}
 }
 
 // Shard is enqueuing bids waiting Min bids before start accepting/rejecting bids.
@@ -421,6 +418,7 @@ func acceptingBidsState(ctx context.Context, m *shardStateMachine) stateFn {
 // Shard is waiting for the results from the selected nodes, and reject any more incoming bids.
 func waitingForResultsState(ctx context.Context, m *shardStateMachine) stateFn {
 	m.transitionedTo(ctx, shardWaitingForResults)
+	m.timeoutAt = time.Now().Add(m.shard.Job.Spec.GetTimeout())
 
 	for {
 		req := <-m.req
@@ -525,5 +523,6 @@ func errorState(ctx context.Context, m *shardStateMachine) stateFn {
 // we always reach this state, whether the job completed successfully or due to a failure.
 func completedState(ctx context.Context, m *shardStateMachine) stateFn {
 	m.transitionedTo(ctx, shardCompleted)
+	m.timeoutAt = time.Now().Add(stateEvictionTimeout)
 	return nil
 }

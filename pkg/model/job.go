@@ -207,7 +207,7 @@ type Spec struct {
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
 	// How long a job can run in seconds before it is killed.
-	// This doesn't include the time required to auction the job, find nodes or verify the result.
+	// This includes the time required to run, verify and publish results
 	Timeout float64 `json:"Timeout,omitempty"`
 
 	// the data volumes we will read in the job

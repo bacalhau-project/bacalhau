@@ -4,11 +4,15 @@ import (
 	"time"
 )
 
-// DefaultStateTransitionTimeout default timeout value for each shard state, except running state
-const DefaultStateTransitionTimeout = 1 * time.Minute
+// DefaultJobNegotiationTimeout default timeout value to wait for enough bids to be submitted
+const DefaultJobNegotiationTimeout = 1 * time.Minute
 
-// DefaultJobExecutionTimeout default timeout value for running a job, if the user didn't define one in the spec
-const DefaultJobExecutionTimeout = 5 * time.Minute
+// DefaultJobExecutionTimeout default timeout value for running, verifying and publishing job results.
+const DefaultJobExecutionTimeout = 30 * time.Minute
+
+// DefaultMinJobNegotiationTimeout requester node will replace any job negotiation timeout that is less than
+// this value with DefaultJobNegotiationTimeout.
+const DefaultMinJobNegotiationTimeout = 0 * time.Second
 
 // DefaultMinJobExecutionTimeout requester node will replace any job execution timeout that is less than
 // this value with DefaultJobExecutionTimeout.
@@ -18,11 +22,15 @@ const DefaultMinJobExecutionTimeout = 0 * time.Second
 const DefaultStateManagerTaskInterval = 30 * time.Second
 
 type RequesterTimeoutConfig struct {
-	// Timeout value for each shard state, except running state
-	StateTransitionTimeout time.Duration
+	// Timeout value waiting for enough bids to be submitted for a job
+	JobNegotiationTimeout time.Duration
 
-	// Timeout value for running a job, if the user didn't define one in the spec
+	// Timeout value for running, verifying and publishing job results, if the user didn't define one in the spec
 	DefaultJobExecutionTimeout time.Duration
+
+	// Requester node will replace any job negotiation timeout that is less than this
+	// value with DefaultJobNegotiationTimeout.
+	MinJobNegotiationTimeout time.Duration
 
 	// Requester node will replace any job execution timeout that is less than this
 	// value with DefaultJobExecutionTimeout.
@@ -31,8 +39,9 @@ type RequesterTimeoutConfig struct {
 
 func NewDefaultRequesterTimeoutConfig() RequesterTimeoutConfig {
 	return RequesterTimeoutConfig{
-		StateTransitionTimeout:     DefaultStateTransitionTimeout,
+		JobNegotiationTimeout:      DefaultJobNegotiationTimeout,
 		DefaultJobExecutionTimeout: DefaultJobExecutionTimeout,
+		MinJobNegotiationTimeout:   DefaultMinJobNegotiationTimeout,
 		MinJobExecutionTimeout:     DefaultMinJobExecutionTimeout,
 	}
 }
@@ -55,8 +64,8 @@ func NewDefaultRequesterNodeConfig() RequesterNodeConfig {
 func populateDefaultConfigs(other RequesterNodeConfig) RequesterNodeConfig {
 	config := other
 
-	if config.TimeoutConfig.StateTransitionTimeout == 0 {
-		config.TimeoutConfig.StateTransitionTimeout = DefaultStateTransitionTimeout
+	if config.TimeoutConfig.JobNegotiationTimeout == 0 {
+		config.TimeoutConfig.JobNegotiationTimeout = DefaultJobNegotiationTimeout
 	}
 	if config.TimeoutConfig.DefaultJobExecutionTimeout == 0 {
 		config.TimeoutConfig.DefaultJobExecutionTimeout = DefaultJobExecutionTimeout

@@ -6,8 +6,8 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 )
 
-// DefaultStateTransitionTimeout default timeout value for each shard state, except running state
-const DefaultStateTransitionTimeout = 1 * time.Minute
+// DefaultJobNegotiationTimeout default timeout value to hold a bid for a job
+const DefaultJobNegotiationTimeout = 2 * time.Minute
 
 // DefaultMinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
 // lower timeout requirements will not be bid on.
@@ -21,8 +21,8 @@ const DefaultMaxJobExecutionTimeout = 60 * time.Minute
 const DefaultStateManagerTaskInterval = 30 * time.Second
 
 type ComputeTimeoutConfig struct {
-	// Timeout value for each shard state, except running state
-	StateTransitionTimeout time.Duration
+	// Timeout value for holding a bid before it is accepted or rejected.
+	JobNegotiationTimeout time.Duration
 
 	// Minimum timeout value for running a job. Jobs with lower timeout requirements will not be bid on.
 	MinJobExecutionTimeout time.Duration
@@ -33,7 +33,7 @@ type ComputeTimeoutConfig struct {
 
 func NewDefaultComputeTimeoutConfig() ComputeTimeoutConfig {
 	return ComputeTimeoutConfig{
-		StateTransitionTimeout: DefaultStateTransitionTimeout,
+		JobNegotiationTimeout:  DefaultJobNegotiationTimeout,
 		MinJobExecutionTimeout: DefaultMinJobExecutionTimeout,
 		MaxJobExecutionTimeout: DefaultMaxJobExecutionTimeout,
 	}
@@ -66,8 +66,8 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 func populateDefaultConfigs(other ComputeNodeConfig) ComputeNodeConfig {
 	config := other
 
-	if config.TimeoutConfig.StateTransitionTimeout == 0 {
-		config.TimeoutConfig.StateTransitionTimeout = DefaultStateTransitionTimeout
+	if config.TimeoutConfig.JobNegotiationTimeout == 0 {
+		config.TimeoutConfig.JobNegotiationTimeout = DefaultJobNegotiationTimeout
 	}
 	if config.StateManagerBackgroundTaskInterval == 0 {
 		config.StateManagerBackgroundTaskInterval = DefaultStateManagerTaskInterval
