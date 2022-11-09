@@ -30,6 +30,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/theckman/yacspin"
 )
 
 const (
@@ -38,8 +39,9 @@ const (
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm               = 0755
-	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
+	AutoDownloadFolderPerm                    = 0755
+	DefaultTimeout              time.Duration = requesternode.DefaultJobExecutionTimeout
+	HowFrequentlyToUpdateTicker               = 50 * time.Millisecond
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
@@ -552,6 +554,12 @@ func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
 
+// Need these as global so that multiple routines can access
+var fullLineMessage = ""
+var currentLineMessage = ""
+var stopMessage = ""
+var width = 6
+
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
 func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
 	if j == nil || j.ID == "" {
@@ -575,7 +583,11 @@ To get more information at any time, run:
 		}
 	}
 
-	time.Sleep(1 * time.Second)
+	// Create a spinner var that will span all printouts
+	spin, err := createSpinner()
+	if err != nil {
+		return errors.Wrap(err, "Could not create progressive output.")
+	}
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
@@ -595,7 +607,31 @@ To get more information at any time, run:
 	var returnError error
 	returnError = nil
 
+	ticker := time.NewTicker(HowFrequentlyToUpdateTicker)
+	tickerDone := make(chan bool)
+
+	// Below holds the full line message for printing when we move to next line
+	spinnerWidth := 6
+	stopMessage = strings.Repeat(" ", spinnerWidth)
+
 	go func() {
+		for {
+			log.Debug().Msgf("Ticker goreturn")
+
+			select {
+			case <-tickerDone:
+				return
+			case t := <-ticker.C:
+				timerMessage := fmt.Sprintf(" ... %s", spinnerFmtDuration(t.Sub(j.CreatedAt)))
+				spin.Message(timerMessage)
+				fullLineMessage = fmt.Sprintf("%s%s%s", currentLineMessage, stopMessage, timerMessage)
+			}
+		}
+	}()
+
+	go func() {
+		log.Debug().Msgf("Ticker goreturn")
+
 		select {
 		case s := <-signalChan: // first signal, cancel context
 			log.Debug().Msgf("Captured %v. Exiting...", s)
@@ -638,8 +674,17 @@ To get more information at any time, run:
 			}
 
 			if !quiet {
+				if spin.Status().String() == "stopped" {
+					spin.Prefix(formatMessage("Communicating with network"))
+					err = spin.Start()
+				}
+
+				if err != nil {
+					return errors.Wrap(err, "Could not start spinner")
+				}
+
 				for i := range jobEvents {
-					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName, spin)
 				}
 			}
 
@@ -649,12 +694,17 @@ To get more information at any time, run:
 				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
 					// Send a signal to the goroutine that is waiting for Ctrl+C
 					finishedRunning = true
+
+					_ = spin.Stop()
+					ticker.Stop()
 					signalChan <- syscall.SIGINT
 					break
 				}
 			}
 
 			if condition := ctx.Err(); condition != nil {
+				_ = spin.Stop()
+				ticker.Stop()
 				signalChan <- syscall.SIGINT
 				break
 			} else {
@@ -662,6 +712,9 @@ To get more information at any time, run:
 				if err != nil {
 					if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 						// We're done, the user canceled the job
+						_ = spin.Stop()
+						ticker.Stop()
+						signalChan <- syscall.SIGINT
 						break
 					} else {
 						return errors.Wrap(err, "Error getting job events")
@@ -676,34 +729,22 @@ To get more information at any time, run:
 	return returnError
 }
 
-func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
-	maxLength := 0
-	for _, v := range eventsWorthPrinting {
-		if len(v.Message) > maxLength {
-			maxLength = len(v.Message)
-		}
-	}
-
+func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents,
+	jet model.JobEventType,
+	spin *yacspin.Spinner) {
 	// If it hasn't been printed yet, we'll print this event.
 	// We'll also skip lines where there's no message to print.
 	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
-		// Only print " done" after the first line.
-		firstLine := true
-		for v := range pe {
-			firstLine = firstLine && !pe[v].printed
-		}
-		if !firstLine {
-			RootCmd.Println("done ✅")
-		}
+		_ = spin.Pause()
 
-		RootCmd.Printf("\t%s%s",
-			strings.Repeat(" ", maxLength-len(eventsWorthPrinting[jet].Message)+2),
-			eventsWorthPrinting[jet].Message)
-		if !eventsWorthPrinting[jet].IsTerminal {
-			RootCmd.Print(" ... ")
-		} else {
-			RootCmd.Println()
-		}
+		currentLineMessage := formatMessage(eventsWorthPrinting[jet].Message)
+
+		RootCmd.Printf("\b%s\n", fullLineMessage)
+		spin.Prefix(currentLineMessage)
+
+		// start animating the spinner
+		_ = spin.Unpause()
+
 		pe[jet].printed = true
 	}
 }
@@ -738,4 +779,73 @@ func applyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
 	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
 	cmd.SetContext(ctx)
+}
+
+var spinnerEmoji = []string{"🐟", "🐠", "🐡"}
+
+func createSpinner() (*yacspin.Spinner, error) {
+	var spinnerCharSet []string
+	for _, emoji := range spinnerEmoji {
+		for i := 0; i < width; i++ {
+			spinnerCharSet = append(spinnerCharSet, fmt.Sprintf("%s%s%s",
+				strings.Repeat(" ", width-i),
+				emoji,
+				strings.Repeat(" ", i)))
+		}
+	}
+
+	cfg := yacspin.Config{
+		Frequency: 100 * time.Millisecond,
+		CharSet:   spinnerCharSet,
+		Suffix:    " ",
+		Writer:    RootCmd.OutOrStdout(),
+	}
+
+	s, err := yacspin.New(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate spinner from methods: %v", err)
+	}
+
+	if err := s.CharSet(spinnerCharSet); err != nil {
+		return nil, fmt.Errorf("failed to set charset: %v", err)
+	}
+
+	stopMessage = strings.Repeat(" ", width)
+	s.StopMessage(stopMessage)
+
+	return s, nil
+}
+
+func spinnerFmtDuration(d time.Duration) string {
+	d = d.Round(time.Millisecond)
+
+	min := (d % time.Hour) / time.Minute
+	sec := (d % time.Minute) / time.Second
+	ms := (d % time.Second) / time.Millisecond / 100
+
+	minString, secString, msString := "", "", ""
+	if min > 0 {
+		minString = fmt.Sprintf("%02dm", min)
+		secString = fmt.Sprintf("%02d", sec)
+		msString = fmt.Sprintf(".%01ds", ms)
+	} else if sec > 0 {
+		secString = fmt.Sprintf("%01d", sec)
+		msString = fmt.Sprintf(".%01ds", ms)
+	} else {
+		msString = fmt.Sprintf("0.%01ds", ms)
+	}
+	// If hour string exists, set it
+	return fmt.Sprintf("%s%s%s", minString, secString, msString)
+}
+
+func formatMessage(msg string) string {
+	maxLength := 0
+	for _, v := range eventsWorthPrinting {
+		if len(v.Message) > maxLength {
+			maxLength = len(v.Message)
+		}
+	}
+
+	return fmt.Sprintf("\t%s%s ... ",
+		strings.Repeat(" ", maxLength-len(msg)+2), msg)
 }
