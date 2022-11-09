@@ -38,8 +38,8 @@ var env Environment
 func init() { //nolint:gochecknoinits
 	env = Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
 	if !env.IsKnown() {
-		// Log as debug since we don't want to spam CLI users:
-		log.Debug().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
+		// Log as trace since we don't want to spam CLI users:
+		log.Trace().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
 
 		// This usually happens in the case of a short-lived test cluster, in
 		// which case we should default to development. However, we want to

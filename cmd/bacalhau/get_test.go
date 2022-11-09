@@ -120,7 +120,11 @@ func setupTempWorkingDir(t *testing.T) (string, func()) {
 	require.NoError(t, err)
 	err = os.Chdir(tempDir)
 	require.NoError(t, err)
-	return tempDir, func() {
+	// Below looks redundant but it is necessary on Darwin which does some
+	// freaky symlinking of root dirs: https://unix.stackexchange.com/a/63565
+	newTempDir, err := os.Getwd()
+	require.NoError(t, err)
+	return newTempDir, func() {
 		os.Chdir(originalWd)
 	}
 }

@@ -57,8 +57,8 @@ func NewTraceProvider() (*sdktrace.TracerProvider, error) {
 	tp, cleanup, err := hcTraceProvider()
 	if err != nil {
 		// don't error here because for CLI users they get a red message
-		log.Debug().Msgf("error initializing http tracer: %v", err)
-		log.Debug().Msg("failed to initialize http tracer, falling back to debug tracer")
+		log.Trace().Msgf("error initializing http tracer: %v", err)
+		log.Trace().Msg("failed to initialize http tracer, falling back to debug tracer")
 
 		tp, cleanup, err = loggerTraceProvider()
 		if err != nil {

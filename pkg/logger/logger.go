@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	ipfslog2 "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type JobEvent struct {
@@ -21,7 +24,6 @@ type JobEvent struct {
 	Job  string      `json:"job"`
 }
 
-var stdout = struct{ io.Writer }{os.Stdout}
 var stderr = struct{ io.Writer }{os.Stderr}
 
 var nodeIDFieldName = "NodeID"
@@ -45,6 +47,7 @@ func ConfigureTestLogging(t tTesting) {
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
+		configureIpfsLogging(log.Logger)
 	})
 }
 
@@ -137,6 +140,8 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	// While the normal flow will use ContextWithNodeIDLogger, this won't be so for tests.
 	// Tests will use the DefaultContextLogger instead
 	zerolog.DefaultContextLogger = &log.Logger
+
+	configureIpfsLogging(log.Logger)
 }
 
 func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
@@ -154,4 +159,32 @@ func loggerWithNodeID(nodeID string) zerolog.Logger {
 func ContextWithNodeIDLogger(ctx context.Context, nodeID string) context.Context {
 	l := loggerWithNodeID(nodeID)
 	return l.WithContext(ctx)
+}
+
+type zerologWriteSyncer struct {
+	l zerolog.Logger
+}
+
+var _ zapcore.WriteSyncer = (*zerologWriteSyncer)(nil)
+
+func (z *zerologWriteSyncer) Write(b []byte) (int, error) {
+	z.l.Log().CallerSkipFrame(5).Msg(string(b)) //nolint:gomnd
+	return len(b), nil
+}
+
+func (z *zerologWriteSyncer) Sync() error {
+	return nil
+}
+
+func configureIpfsLogging(l zerolog.Logger) {
+	encCfg := zap.NewProductionEncoderConfig()
+	encCfg.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {}
+	encCfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	encCfg.EncodeCaller = func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {}
+	encCfg.ConsoleSeparator = " "
+	encoder := zapcore.NewConsoleEncoder(encCfg)
+
+	core := zapcore.NewCore(encoder, &zerologWriteSyncer{l: l}, zap.NewAtomicLevelAt(zapcore.DebugLevel))
+
+	ipfslog2.SetPrimaryCore(core)
 }

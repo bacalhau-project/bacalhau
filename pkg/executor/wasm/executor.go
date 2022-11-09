@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -41,7 +42,7 @@ func NewExecutor(
 	return executor, nil
 }
 
-func (e *Executor) IsInstalled(ctx context.Context) (bool, error) {
+func (e *Executor) IsInstalled(context.Context) (bool, error) {
 	// WASM executor runs natively in Go and so is always available
 	return true, nil
 }
@@ -222,6 +223,10 @@ func (e *Executor) RunShard(
 		WithStderr(stderr).
 		WithArgs(args...).
 		WithFS(fs)
+	for _, key := range keys(wasmSpec.EnvironmentVariables) {
+		// Make sure we add the environment variables in a consistent order
+		config = config.WithEnv(key, wasmSpec.EnvironmentVariables[key])
+	}
 	entryPoint := wasmSpec.EntryPoint
 
 	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
@@ -286,4 +291,13 @@ func (e *Executor) RunShard(
 		result.ErrorMsg = wasmErr.Error()
 	}
 	return result, wasmErr
+}
+
+func keys(m map[string]string) []string {
+	var ks []string
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	return ks
 }

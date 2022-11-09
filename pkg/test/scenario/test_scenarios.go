@@ -207,6 +207,37 @@ func WasmHelloWorld() TestCase {
 	}
 }
 
+func WasmEnvVars() TestCase {
+	ctx := context.Background()
+	return TestCase{
+		Name: "wasm_env_vars",
+		SetupContext: singleFileSetupStorageWithFile(
+			ctx,
+			"../../../testdata/wasm/env/main.wasm",
+			"/job",
+		),
+		ResultsChecker: singleFileResultsChecker(
+			ctx,
+			"stdout",
+			"AWESOME=definitely\nTEST=yes\n",
+			ExpectedModeEquals,
+			3, //nolint:gomnd // magic number appropriate for test
+		),
+		GetJobSpec: func() model.Spec {
+			return model.Spec{
+				Engine: model.EngineWasm,
+				Wasm: model.JobSpecWasm{
+					EntryPoint: "_start",
+					EnvironmentVariables: map[string]string{
+						"TEST":    "yes",
+						"AWESOME": "definitely",
+					},
+				},
+			}
+		},
+	}
+}
+
 func WasmCsvTransform() TestCase {
 	ctx := context.Background()
 	return TestCase{
@@ -214,7 +245,7 @@ func WasmCsvTransform() TestCase {
 		SetupStorage: singleFileSetupStorageWithFile(
 			ctx,
 			"../../../testdata/wasm/csv/inputs",
-			"inputs",
+			"/inputs",
 		),
 		SetupContext: singleFileSetupStorageWithFile(
 			ctx,
@@ -257,6 +288,7 @@ func GetAllScenarios() []TestCase {
 		SedFile(),
 		AwkFile(),
 		WasmHelloWorld(),
+		WasmEnvVars(),
 		WasmCsvTransform(),
 	}
 }
