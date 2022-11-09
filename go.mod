@@ -15,7 +15,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.3
 	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-jsonrpc v0.1.9
-	github.com/filecoin-project/go-state-types v0.9.8
+	github.com/filecoin-project/go-state-types v0.9.9
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
