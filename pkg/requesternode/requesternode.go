@@ -43,6 +43,7 @@ func NewRequesterNode(
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
+	useConfig := populateDefaultConfigs(config)
 	requesterNode := &RequesterNode{
 		ID:                 nodeID,
 		localDB:            localDB,
@@ -50,8 +51,8 @@ func NewRequesterNode(
 		jobEventPublisher:  jobEventPublisher,
 		verifiers:          verifiers,
 		storageProviders:   storageProviders,
-		config:             config,
-		shardStateManager:  newShardStateMachineManager(ctx, cm, config),
+		config:             useConfig,
+		shardStateManager:  newShardStateMachineManager(ctx, cm, useConfig),
 	}
 	return requesterNode, nil
 }

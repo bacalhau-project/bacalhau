@@ -63,8 +63,9 @@ func NewComputeNode(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.NewComputeNode")
 	defer span.End()
 
+	useConfig := populateDefaultConfigs(config)
 	computeNode, err := constructComputeNode(
-		ctx, cm, nodeID, localDB, localEventConsumer, jobEventPublisher, executors, verifiers, publishers, config)
+		ctx, cm, nodeID, localDB, localEventConsumer, jobEventPublisher, executors, verifiers, publishers, useConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +450,7 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	requirements := model.ResourceUsageData{}
 
 	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
-	if data.Spec.GetTimeout() > n.config.TimeoutConfig.MaxJobExecutionTimeout {
+	if n.config.TimeoutConfig.MaxJobExecutionTimeout > 0 && data.Spec.GetTimeout() > n.config.TimeoutConfig.MaxJobExecutionTimeout {
 		log.Ctx(ctx).Debug().Msgf("Compute node skipped bidding on job %s because job timeout %s exceeds maximum allowed %s",
 			data.JobID, data.Spec.GetTimeout(), n.config.TimeoutConfig.MaxJobExecutionTimeout)
 		return false, requirements, nil

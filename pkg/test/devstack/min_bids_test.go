@@ -2,8 +2,9 @@ package devstack
 
 import (
 	"context"
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"testing"
+
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"

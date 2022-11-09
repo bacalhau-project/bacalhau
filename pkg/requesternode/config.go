@@ -51,3 +51,19 @@ func NewDefaultRequesterNodeConfig() RequesterNodeConfig {
 		StateManagerBackgroundTaskInterval: DefaultStateManagerTaskInterval,
 	}
 }
+
+func populateDefaultConfigs(other RequesterNodeConfig) RequesterNodeConfig {
+	config := other
+
+	if config.TimeoutConfig.StateTransitionTimeout == 0 {
+		config.TimeoutConfig.StateTransitionTimeout = DefaultStateTransitionTimeout
+	}
+	if config.TimeoutConfig.DefaultJobExecutionTimeout == 0 {
+		config.TimeoutConfig.DefaultJobExecutionTimeout = DefaultJobExecutionTimeout
+	}
+	if config.StateManagerBackgroundTaskInterval == 0 {
+		config.StateManagerBackgroundTaskInterval = DefaultStateManagerTaskInterval
+	}
+
+	return config
+}

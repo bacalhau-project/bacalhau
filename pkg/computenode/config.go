@@ -62,3 +62,16 @@ func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 		StateManagerBackgroundTaskInterval: DefaultStateManagerTaskInterval,
 	}
 }
+
+func populateDefaultConfigs(other ComputeNodeConfig) ComputeNodeConfig {
+	config := other
+
+	if config.TimeoutConfig.StateTransitionTimeout == 0 {
+		config.TimeoutConfig.StateTransitionTimeout = DefaultStateTransitionTimeout
+	}
+	if config.StateManagerBackgroundTaskInterval == 0 {
+		config.StateManagerBackgroundTaskInterval = DefaultStateManagerTaskInterval
+	}
+
+	return config
+}
