@@ -10,7 +10,10 @@ type JobEventType int
 const (
 	jobEventUnknown JobEventType = iota // must be first
 
-	// the job was created by a client
+	// Job has been created by client and is communicating with requestor node
+	JobEventInitialSubmission
+
+	// Job has been created on the requestor node
 	JobEventCreated
 
 	// the concurrency or other mutable properties of the job were
