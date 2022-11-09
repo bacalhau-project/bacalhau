@@ -318,7 +318,7 @@ var serveCmd = &cobra.Command{
 				JobSelectionPolicy:    getJobSelectionConfig(),
 				CapacityManagerConfig: getCapacityManagerConfig(),
 			},
-			RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 		}
 
 		if OS.LotusFilecoinStorageDuration != time.Duration(0) &&

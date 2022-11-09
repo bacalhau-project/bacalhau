@@ -101,13 +101,14 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
+		cm,
 		inprocessTransport.HostID(),
 		inmemoryDatastore,
 		localEventConsumer,
 		jobEventPublisher,
 		noopVerifiers,
 		noopStorageProviders,
-		requesternode.RequesterNodeConfig{},
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	require.NoError(t, err)
 

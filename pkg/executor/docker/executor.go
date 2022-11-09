@@ -364,6 +364,10 @@ func (e *Executor) RunShard(
 	return runResult, err
 }
 
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	return docker.StopContainer(ctx, e.Client, e.jobContainerName(shard))
+}
+
 func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {
 	log.Debug().Msgf("Returning error %s", msg)
 	log.Debug().Msgf("Returning error %s", err.Error())

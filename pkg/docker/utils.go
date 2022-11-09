@@ -121,6 +121,23 @@ func GetLogs(ctx context.Context, dockerClient *dockerclient.Client, nameOrID st
 	return stdoutBuffer.String(), stderrBuffer.String(), nil
 }
 
+func StopContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
+	container, err := GetContainer(ctx, dockerClient, nameOrID)
+	if err != nil {
+		return err
+	}
+	if container == nil {
+		return nil
+	}
+	log.Ctx(ctx).Debug().Msgf("Container requested to stop: %s", container.ID)
+	timeout := time.Millisecond * 100
+	err = dockerClient.ContainerStop(ctx, container.ID, &timeout)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func RemoveContainer(ctx context.Context, dockerClient *dockerclient.Client, nameOrID string) error {
 	container, err := GetContainer(ctx, dockerClient, nameOrID)
 	if err != nil {

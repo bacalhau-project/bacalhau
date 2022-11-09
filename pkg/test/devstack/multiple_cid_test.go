@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -72,6 +74,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	t := system.GetTracer()
@@ -183,6 +186,7 @@ func runURLTest(
 				Locality: computenode.Anywhere,
 			},
 		},
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "pkg/test/devstack/multiple_cid_test/testmultipleurls")
@@ -404,6 +408,7 @@ func (s *MultipleCIDSuite) TestIPFSURLCombo() {
 				Locality: computenode.Anywhere,
 			},
 		},
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	t := system.GetTracer()

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -124,9 +126,9 @@ var devstackCmd = &cobra.Command{
 		var stack *devstack.DevStack
 		var stackErr error
 		if IsNoop {
-			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		} else {
-			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		}
 		if stackErr != nil {
 			return stackErr

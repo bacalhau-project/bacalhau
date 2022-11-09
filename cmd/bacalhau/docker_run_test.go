@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -203,7 +205,10 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 
 			*ODR = *NewDockerRunOptions()
 
@@ -740,6 +745,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	*ODR = *NewDockerRunOptions()
@@ -962,7 +968,10 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 	for name, tc := range tests {
 		s.Run(name, func() {
-			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())

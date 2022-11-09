@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -64,6 +66,7 @@ func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	nodeIDs, err := stack.GetNodeIds()
