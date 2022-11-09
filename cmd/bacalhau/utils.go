@@ -554,8 +554,17 @@ var currentLineMessage = ""
 var stopMessage = ""
 var width = 6
 
+var ticker *time.Ticker
+var tickerDone = make(chan bool)
+
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
 func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
+	defer func() {
+		if ticker != nil {
+			ticker.Stop()
+		}
+	}()
+
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
@@ -582,6 +591,7 @@ To get more information at any time, run:
 	if err != nil {
 		return errors.Wrap(err, "Could not create progressive output.")
 	}
+	ticker = time.NewTicker(HowFrequentlyToUpdateTicker)
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
@@ -601,9 +611,6 @@ To get more information at any time, run:
 	var returnError error
 	returnError = nil
 
-	ticker := time.NewTicker(HowFrequentlyToUpdateTicker)
-	tickerDone := make(chan bool)
-
 	// Below holds the full line message for printing when we move to next line
 	spinnerWidth := 6
 	stopMessage = strings.Repeat(" ", spinnerWidth)
@@ -616,7 +623,7 @@ To get more information at any time, run:
 			case <-tickerDone:
 				return
 			case t := <-ticker.C:
-				timerMessage := fmt.Sprintf(" ... %s", spinnerFmtDuration(t.Sub(j.CreatedAt)))
+				timerMessage := fmt.Sprintf(" ... %s\n", spinnerFmtDuration(t.Sub(j.CreatedAt)))
 				spin.Message(timerMessage)
 				fullLineMessage = fmt.Sprintf("%s%s%s", currentLineMessage, stopMessage, timerMessage)
 			}
@@ -669,7 +676,8 @@ To get more information at any time, run:
 
 			if !quiet {
 				if spin.Status().String() == "stopped" {
-					spin.Prefix(formatMessage("Communicating with network"))
+					currentLineMessage = formatMessage("Communicating with network")
+					spin.Prefix(currentLineMessage)
 					err = spin.Start()
 				}
 
@@ -731,9 +739,10 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents,
 	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
 		_ = spin.Pause()
 
-		currentLineMessage := formatMessage(eventsWorthPrinting[jet].Message)
-
+		RootCmd.Printf("\r\033[K\r")
 		RootCmd.Printf("\b%s\n", fullLineMessage)
+
+		currentLineMessage = formatMessage(eventsWorthPrinting[jet].Message)
 		spin.Prefix(currentLineMessage)
 
 		// start animating the spinner
@@ -791,7 +800,6 @@ func createSpinner() (*yacspin.Spinner, error) {
 	cfg := yacspin.Config{
 		Frequency: 100 * time.Millisecond,
 		CharSet:   spinnerCharSet,
-		Suffix:    " ",
 		Writer:    RootCmd.OutOrStdout(),
 	}
 
@@ -804,7 +812,8 @@ func createSpinner() (*yacspin.Spinner, error) {
 		return nil, fmt.Errorf("failed to set charset: %v", err)
 	}
 
-	stopMessage = strings.Repeat(" ", width)
+	// Need to add 4 to have everything line up.
+	stopMessage = strings.Repeat(".", width+4) //nolint:gomnd // extra spacing
 	s.StopMessage(stopMessage)
 
 	return s, nil
