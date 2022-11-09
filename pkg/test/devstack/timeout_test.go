@@ -20,37 +20,37 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type DevstackComputeTimeoutSuite struct {
+type DevstackTimeoutSuite struct {
 	suite.Suite
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDevstackComputeTimeoutSuite(t *testing.T) {
-	suite.Run(t, new(DevstackComputeTimeoutSuite))
+	suite.Run(t, new(DevstackTimeoutSuite))
 }
 
 // Before all suite
-func (suite *DevstackComputeTimeoutSuite) SetupSuite() {
+func (suite *DevstackTimeoutSuite) SetupSuite() {
 
 }
 
 // Before each test
-func (suite *DevstackComputeTimeoutSuite) SetupTest() {
+func (suite *DevstackTimeoutSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
 }
 
-func (suite *DevstackComputeTimeoutSuite) TearDownTest() {
+func (suite *DevstackTimeoutSuite) TearDownTest() {
 
 }
 
-func (suite *DevstackComputeTimeoutSuite) TearDownSuite() {
+func (suite *DevstackTimeoutSuite) TearDownSuite() {
 
 }
 
-func (suite *DevstackComputeTimeoutSuite) TestRunningTimeout() {
+func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 
 	type TestCase struct {
 		name                   string
