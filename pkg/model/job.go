@@ -287,7 +287,7 @@ type JobSpecWasm struct {
 
 	// TODO #880: Other WASM modules whose exports will be available as imports
 	// to the EntryModule.
-	// ImportModules []StorageSpec `json:"ImportModules,omitempty"`
+	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
 }
 
 // gives us a way to keep local data against a job
