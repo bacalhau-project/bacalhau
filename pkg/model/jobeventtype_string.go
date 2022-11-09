@@ -9,26 +9,27 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[jobEventUnknown-0]
-	_ = x[JobEventCreated-1]
-	_ = x[JobEventDealUpdated-2]
-	_ = x[JobEventBid-3]
-	_ = x[JobEventBidAccepted-4]
-	_ = x[JobEventBidRejected-5]
-	_ = x[JobEventBidCancelled-6]
-	_ = x[JobEventRunning-7]
-	_ = x[JobEventComputeError-8]
-	_ = x[JobEventResultsProposed-9]
-	_ = x[JobEventResultsAccepted-10]
-	_ = x[JobEventResultsRejected-11]
-	_ = x[JobEventResultsPublished-12]
-	_ = x[JobEventError-13]
-	_ = x[JobEventInvalidRequest-14]
-	_ = x[jobEventDone-15]
+	_ = x[JobEventInitialSubmission-1]
+	_ = x[JobEventCreated-2]
+	_ = x[JobEventDealUpdated-3]
+	_ = x[JobEventBid-4]
+	_ = x[JobEventBidAccepted-5]
+	_ = x[JobEventBidRejected-6]
+	_ = x[JobEventBidCancelled-7]
+	_ = x[JobEventRunning-8]
+	_ = x[JobEventComputeError-9]
+	_ = x[JobEventResultsProposed-10]
+	_ = x[JobEventResultsAccepted-11]
+	_ = x[JobEventResultsRejected-12]
+	_ = x[JobEventResultsPublished-13]
+	_ = x[JobEventError-14]
+	_ = x[JobEventInvalidRequest-15]
+	_ = x[jobEventDone-16]
 }
 
-const _JobEventType_name = "jobEventUnknownCreatedDealUpdatedBidBidAcceptedBidRejectedBidCancelledRunningComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorInvalidRequestjobEventDone"
+const _JobEventType_name = "jobEventUnknownInitialSubmissionCreatedDealUpdatedBidBidAcceptedBidRejectedBidCancelledRunningComputeErrorResultsProposedResultsAcceptedResultsRejectedResultsPublishedErrorInvalidRequestjobEventDone"
 
-var _JobEventType_index = [...]uint8{0, 15, 22, 33, 36, 47, 58, 70, 77, 89, 104, 119, 134, 150, 155, 169, 181}
+var _JobEventType_index = [...]uint8{0, 15, 32, 39, 50, 53, 64, 75, 87, 94, 106, 121, 136, 151, 167, 172, 186, 198}
 
 func (i JobEventType) String() string {
 	if i < 0 || i >= JobEventType(len(_JobEventType_index)-1) {
