@@ -85,7 +85,7 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 var wasmCmd = &cobra.Command{
 	Use:   "wasm",
 	Short: "Run and prepare WASM jobs on the network",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {

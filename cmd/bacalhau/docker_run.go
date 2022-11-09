@@ -217,7 +217,7 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
 	Short: "Run a docker job on the network (see run subcommand)",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {

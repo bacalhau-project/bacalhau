@@ -838,7 +838,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	}
 
 	for name, tc := range tests {
-		s.T().Run(name, func(t *testing.T) {
+		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()

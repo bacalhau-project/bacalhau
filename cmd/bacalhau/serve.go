@@ -255,7 +255,7 @@ var serveCmd = &cobra.Command{
 	Short:   "Start the bacalhau compute node",
 	Long:    serveLong,
 	Example: serveExample,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
 		cm.RegisterCallback(system.CleanupTraceProvider)

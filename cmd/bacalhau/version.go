@@ -60,7 +60,7 @@ func NewVersionOptions() *VersionOptions {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:unparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()

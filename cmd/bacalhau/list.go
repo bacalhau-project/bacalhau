@@ -131,7 +131,7 @@ var listCmd = &cobra.Command{
 	Long:    listLong,
 	Example: listExample,
 	PreRun:  applyPorcelainLogLevel,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
