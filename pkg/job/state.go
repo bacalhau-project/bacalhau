@@ -201,7 +201,7 @@ func (resolver *StateResolver) WaitWithOptions(
 		},
 	}
 
-	return waiter.Wait()
+	return waiter.Wait(ctx)
 }
 
 // this is an auto wait where we auto calculate how many shard

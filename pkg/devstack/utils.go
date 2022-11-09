@@ -3,7 +3,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -39,7 +38,7 @@ func AddFileToNodes(ctx context.Context, filePath string, clients ...*ipfs.Clien
 }
 
 func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...*ipfs.Client) (string, error) {
-	testDir, err := ioutil.TempDir("", "bacalhau-test")
+	testDir, err := os.MkdirTemp("", "bacalhau-test")
 	if err != nil {
 		return "", err
 	}

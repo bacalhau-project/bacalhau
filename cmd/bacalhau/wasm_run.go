@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/wasm"
@@ -19,6 +20,8 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
+const null rune = 0
+
 var wasmJob *model.Job
 
 var runtimeSettings *RunTimeSettings
@@ -29,6 +32,7 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	wasmJob.Spec.Engine = model.EngineWasm
 	wasmJob.Spec.Verifier = model.VerifierDeterministic
 	wasmJob.Spec.Wasm.EntryPoint = "_start"
+	wasmJob.Spec.Wasm.EnvironmentVariables = map[string]string{}
 	wasmJob.Spec.Outputs = []model.StorageSpec{
 		{
 			Name: "outputs",
@@ -79,6 +83,10 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 	runWasmCommand.PersistentFlags().VarP(
 		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Inputs), "input-volumes", "v",
 		`CID:path of the input data volumes, if you need to set the path of the mounted data.`,
+	)
+	runWasmCommand.PersistentFlags().VarP(
+		EnvVarMapFlag(&wasmJob.Spec.Wasm.EnvironmentVariables), "env", "e",
+		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
 }
 
@@ -158,6 +166,15 @@ var runWasmCommand = &cobra.Command{
 		// then switch back to a Noop Verifier if the concurrency is too low.
 		if wasmJob.Deal.Concurrency <= 1 && wasmJob.Spec.Verifier == model.VerifierDeterministic {
 			wasmJob.Spec.Verifier = model.VerifierNoop
+		}
+
+		// See wazero.ModuleConfig.WithEnv
+		for key, value := range wasmJob.Spec.Wasm.EnvironmentVariables {
+			for _, str := range []string{key, value} {
+				if str == "" || strings.ContainsRune(str, null) {
+					return fmt.Errorf("invalid environment variable %s=%s", key, value)
+				}
+			}
 		}
 
 		return ExecuteJob(ctx, cm, cmd, wasmJob, *runtimeSettings, *downloadSettings, &buf)

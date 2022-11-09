@@ -16,9 +16,8 @@ package templates
 import (
 	"strings"
 
-	"github.com/MakeNowJust/heredoc"
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/russross/blackfriday"
-	"github.com/spf13/cobra"
 )
 
 const Indentation = `  `
@@ -37,28 +36,6 @@ func Examples(s string) string {
 		return s
 	}
 	return normalizer{s}.trim().indent().string
-}
-
-// Normalize perform all required normalizations on a given command.
-func Normalize(cmd *cobra.Command) *cobra.Command {
-	if len(cmd.Long) > 0 {
-		cmd.Long = LongDesc(cmd.Long)
-	}
-	if len(cmd.Example) > 0 {
-		cmd.Example = Examples(cmd.Example)
-	}
-	return cmd
-}
-
-// NormalizeAll perform all required normalizations in the entire command tree.
-func NormalizeAll(cmd *cobra.Command) *cobra.Command {
-	if cmd.HasSubCommands() {
-		for _, subCmd := range cmd.Commands() {
-			NormalizeAll(subCmd)
-		}
-	}
-	Normalize(cmd)
-	return cmd
 }
 
 type normalizer struct {
@@ -83,7 +60,7 @@ func (s normalizer) trim() normalizer {
 }
 
 func (s normalizer) indent() normalizer {
-	indentedLines := []string{}
+	var indentedLines []string
 	for _, line := range strings.Split(s.string, "\n") {
 		trimmed := strings.TrimSpace(line)
 		indented := Indentation + trimmed

@@ -3,7 +3,6 @@ package fusedocker
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -233,7 +232,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 					},
 				}
 
-				err = fileWaiter.Wait()
+				err = fileWaiter.Wait(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -242,7 +241,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 			},
 		}
 
-		err = sidecarWaiter.Wait()
+		err = sidecarWaiter.Wait(ctx)
 
 		if err != nil {
 			return err
@@ -424,7 +423,7 @@ func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) 
 
 func createMountDir() (string, error) {
 	// create a temporary directory to mount the ipfs volume with fuse
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	dir, err := os.MkdirTemp("", "bacalhau-ipfs")
 	if err != nil {
 		return "", err
 	}

@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -36,9 +35,6 @@ type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
 
-	// where do we copy the results from jobs temporarily?
-	ResultsDir string
-
 	// the storage providers we can implement for a job
 	StorageProvider storage.StorageProvider
 
@@ -56,14 +52,8 @@ func NewExecutor(
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir("", "bacalhau-docker-executor")
-	if err != nil {
-		return nil, err
-	}
-
 	de := &Executor{
 		ID:              id,
-		ResultsDir:      dir,
 		StorageProvider: storageProvider,
 		Client:          dockerClient,
 	}

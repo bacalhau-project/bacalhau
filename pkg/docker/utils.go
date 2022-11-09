@@ -14,9 +14,9 @@ import (
 	"github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/closer"
-	"github.com/moby/moby/pkg/stdcopy"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -175,7 +175,7 @@ func WaitForContainerLogs(ctx context.Context,
 			return strings.Contains(stdout, findString) || strings.Contains(stderr, findString), nil
 		},
 	}
-	err := waiter.Wait()
+	err := waiter.Wait(ctx)
 	return lastLogs, err
 }
 

@@ -1,47 +1,23 @@
-//go:build !(unit && (windows || darwin))
-
 package executor
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
-type ExecutorTestSuite struct {
-	suite.Suite
-}
+const testNodeCount = 1
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
-func TestExecutorTestSuite(t *testing.T) {
-	suite.Run(t, new(ExecutorTestSuite))
-}
-
-// Before each test
-func (suite *ExecutorTestSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
-}
-
-const TEST_NODE_COUNT = 1
-
-func runTestCase(
+func RunTestCase(
 	t *testing.T,
 	testCase scenario.TestCase,
-	getStorageDriver scenario.IGetStorageDriver,
 ) {
 	ctx := context.Background()
 	spec := testCase.GetJobSpec()
@@ -61,14 +37,14 @@ func runTestCase(
 			return []model.StorageSpec{}
 		}
 
-		storageList, err := getStorage(ctx,
-			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:TEST_NODE_COUNT]...)
-		require.NoError(t, err)
+		storageList, stErr := getStorage(ctx,
+			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:testNodeCount]...)
+		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {
-			hasStorage, err := executor.HasStorageLocally(
+			hasStorage, stErr := executor.HasStorageLocally(
 				ctx, storageSpec)
-			require.NoError(t, err)
+			require.NoError(t, stErr)
 			require.True(t, hasStorage)
 		}
 
@@ -85,7 +61,7 @@ func runTestCase(
 		ClientID:        "test-client",
 		Spec:            spec,
 		Deal: model.Deal{
-			Concurrency: TEST_NODE_COUNT,
+			Concurrency: testNodeCount,
 		},
 		CreatedAt: time.Now(),
 	}
@@ -103,15 +79,4 @@ func runTestCase(
 
 	err = testCase.ResultsChecker(resultsDirectory)
 	require.NoError(t, err)
-}
-
-func (suite *ExecutorTestSuite) TestScenarios() {
-	for _, testCase := range scenario.GetAllScenarios() {
-		for _, storageDriverFactory := range scenario.StorageDriverFactories {
-			suite.Run(
-				strings.Join([]string{testCase.Name, storageDriverFactory.Name}, "-"),
-				func() { runTestCase(suite.T(), testCase, storageDriverFactory.DriverFactory) },
-			)
-		}
-	}
 }

@@ -8,7 +8,7 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
 
  * x86_64 of ARM64 architecture
     * Ubuntu 20.0+ has most often been used for development and testing
- * Go >= 1.18
+ * Go >= 1.19
  * [Docker Engine](https://docs.docker.com/get-docker/)
  * (Optional) A build of the [latest Bacalhau release](https://github.com/filecoin-project/bacalhau/releases/)
 
@@ -26,7 +26,7 @@ go build
 ## Start the cluster
 
 ```bash
-./bin/<YOUR_ARCHITECTURE>/bacalhau devstack
+./bacalhau devstack
 ```
 
 This will start a 3 node Bacalhau cluster connected with libp2p.
@@ -70,7 +70,7 @@ You are now ready to submit a job to your local devstack.
 This will submit a simple job to a single node:
 
 ```bash
-go run . docker run ubuntu echo "hello devstack test"
+./bacalhau docker run ubuntu echo "hello devstack test"
 ```
 
 This should output something like the following:
@@ -82,14 +82,14 @@ d7d4d23d-08ff-46f4-a695-f37647da67cc
 After a short while - the job should be in `complete` state.
 
 ```bash
-go run . list --wide
+./bacalhau list --wide
  CREATION_TIME      ID                                    JOB                             STATE      RESULT
  22-08-29-15:01:00  d7d4d23d-08ff-46f4-a695-f37647da67cc  Docker ubuntu echo hello world  Published  /ipfs/QmW7TdjNEMzqmWxm5WPK1p6QCkeChxMLpvhLxyUW2wpjCf
 ```
 
 Download the results to the current directory:
 ```bash
-go run . get d7d4d23d-08ff-46f4-a695-f37647da67cc # Works with partial IDs - just the first 8 characters
+./bacalhau get d7d4d23d-08ff-46f4-a695-f37647da67cc # Works with partial IDs - just the first 8 characters
 ```
 
 You should now have the following files and directories:

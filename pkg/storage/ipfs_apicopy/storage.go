@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,10 +33,17 @@ func NewStorage(cm *system.CleanupManager, ipfsAPIAddress string) (*StorageProvi
 	}
 
 	// TODO: consolidate the various config inputs into one package otherwise they are scattered across the codebase
-	dir, err := ioutil.TempDir(config.GetStoragePath(), "bacalhau-ipfs")
+	dir, err := os.MkdirTemp(config.GetStoragePath(), "bacalhau-ipfs")
 	if err != nil {
 		return nil, err
 	}
+
+	cm.RegisterCallback(func() error {
+		if err := os.RemoveAll(dir); err != nil {
+			return fmt.Errorf("unable to clean up IPFS storage directory: %w", err)
+		}
+		return nil
+	})
 
 	storageHandler := &StorageProvider{
 		IPFSClient: cl,
@@ -99,7 +105,7 @@ func (dockerIPFS *StorageProvider) PrepareStorage(ctx context.Context, storageSp
 }
 
 //nolint:lll // Exception to the long rule
-func (dockerIPFS *StorageProvider) CleanupStorage(ctx context.Context, storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+func (dockerIPFS *StorageProvider) CleanupStorage(_ context.Context, storageSpec model.StorageSpec, _ storage.StorageVolume) error {
 	return os.RemoveAll(filepath.Join(dockerIPFS.LocalDir, storageSpec.CID))
 }
 
