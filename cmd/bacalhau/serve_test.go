@@ -34,22 +34,11 @@ func TestServeSuite(t *testing.T) {
 	suite.Run(t, new(ServeSuite))
 }
 
-// Before all suite
-func (suite *ServeSuite) SetupSuite() {
-}
-
 // Before each test
 func (suite *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
-}
-
-func (suite *ServeSuite) TearDownTest() {
-}
-
-func (suite *ServeSuite) TearDownSuite() {
-
 }
 
 func writeToServeChannel(c chan string, t *testing.T, rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {

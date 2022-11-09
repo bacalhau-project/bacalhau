@@ -1,40 +1,26 @@
 package devstack
 
 import (
-	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type MinBidsSuite struct {
-	suite.Suite
+	scenario.ScenarioRunner
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestMinBidsSuite(t *testing.T) {
 	suite.Run(t, new(MinBidsSuite))
-}
-
-// Before each test
-func (s *MinBidsSuite) SetupTest() {
-	logger.ConfigureTestLogging(s.T())
-	err := system.InitConfigForTesting()
-	require.NoError(s.T(), err)
 }
 
 type minBidsTestCase struct {
@@ -47,66 +33,33 @@ type minBidsTestCase struct {
 }
 
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
-	ctx := context.Background()
-	t := system.GetTracer()
-	ctx, span := system.NewRootSpan(ctx, t, "pkg/test/devstack/min_bids_test")
-	defer span.End()
-
-	stack, _ := SetupTest(
-		ctx,
-		s.T(),
-		testCase.nodes,
-		0,
-		false,
-		computenode.NewDefaultComputeNodeConfig(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
 	dirPath, err := prepareFolderWithFiles(s.T(), testCase.shards)
 	require.NoError(s.T(), err)
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
-	require.NoError(s.T(), err)
-
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
-
-	scn := scenario.WasmHelloWorld()
-	j := &model.Job{}
-	j.Spec = scn.GetJobSpec()
-	j.Spec.Verifier = model.VerifierNoop
-	j.Spec.Publisher = model.PublisherIpfs
-	j.Spec.Contexts, err = scn.SetupContext(ctx, model.StorageSourceIPFS, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
-	j.Spec.Inputs = []model.StorageSpec{
-		{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           directoryCid,
-			Path:          "/input",
-		},
-	}
-	j.Spec.Sharding = model.JobShardingConfig{
+	spec := scenario.WasmHelloWorld.Spec
+	spec.Sharding = model.JobShardingConfig{
 		GlobPattern: "/input/*",
 		BatchSize:   1,
 	}
 
-	j.Deal = model.Deal{
-		Concurrency: testCase.concurrency,
-		MinBids:     testCase.minBids,
+	testScenario := scenario.Scenario{
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
+		},
+		Inputs:   scenario.StoredFile(dirPath, "/input"),
+		Contexts: scenario.WasmHelloWorld.Contexts,
+		Spec:     spec,
+		Deal: model.Deal{
+			Concurrency: testCase.concurrency,
+			MinBids:     testCase.minBids,
+		},
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitThrowErrors(testCase.errorStates),
+			job.WaitForJobStates(testCase.expectedResult),
+		},
 	}
 
-	createdJob, err := apiClient.Submit(ctx, j, nil)
-	require.NoError(s.T(), err)
-	resolver := apiClient.GetJobStateResolver()
-
-	err = resolver.Wait(
-		ctx,
-		createdJob.ID,
-		3,
-		job.WaitThrowErrors(testCase.errorStates),
-		job.WaitForJobStates(testCase.expectedResult),
-	)
-	require.NoError(s.T(), err)
-
+	s.RunScenario(testScenario)
 }
 
 func (s *MinBidsSuite) TestMinBids_0and1Node() {

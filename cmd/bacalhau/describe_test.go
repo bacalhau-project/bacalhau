@@ -26,23 +26,11 @@ type DescribeSuite struct {
 	rootCmd *cobra.Command
 }
 
-// Before all suite
-func (suite *DescribeSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
-}
-
-func (suite *DescribeSuite) TearDownTest() {
-}
-
-func (suite *DescribeSuite) TearDownAllSuite() {
-
 }
 
 func (suite *DescribeSuite) TestDescribeJob() {

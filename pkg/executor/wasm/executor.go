@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/filefs"
 	"github.com/filecoin-project/bacalhau/pkg/util/mountfs"
 	"github.com/filecoin-project/bacalhau/pkg/util/touchfs"
 	"github.com/rs/zerolog/log"
@@ -73,7 +74,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volume model.StorageSpec) 
 }
 
 func (e *Executor) getVolume(ctx context.Context, spec model.StorageSpec) (*storage.StorageVolume, error) {
-	log.Ctx(ctx).Info().Msgf("Getting object %v", spec)
+	log.Ctx(ctx).Debug().Msgf("Getting object %v", spec)
 
 	storage, err := e.StorageProvider.GetStorage(ctx, spec.StorageSource)
 	if err != nil {
@@ -116,7 +117,7 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec)
 		programPath = filepath.Join(programPath, files[0].Name())
 	}
 
-	log.Ctx(ctx).Info().Msgf("Loading WASM module from '%s'", programPath)
+	log.Ctx(ctx).Debug().Msgf("Loading WASM module from '%s'", programPath)
 	return LoadModule(ctx, e.Engine, programPath)
 }
 
@@ -128,18 +129,30 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec)
 //     at the name specified by Name
 func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
 	var err error
-	fs := mountfs.New()
+	rootFs := mountfs.New()
 
-	for _, input := range inputs {
-		var volume *storage.StorageVolume
-		volume, err = e.getVolume(ctx, input)
+	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	for input, volume := range volumes {
+		log.Ctx(ctx).Debug().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+
+		var stat os.FileInfo
+		stat, err = os.Stat(volume.Source)
 		if err != nil {
 			return nil, err
 		}
 
-		log.Ctx(ctx).Info().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+		var inputFs fs.FS
+		if stat.IsDir() {
+			inputFs = os.DirFS(volume.Source)
+		} else {
+			inputFs = filefs.New(volume.Source)
+		}
 
-		err = fs.Mount(input.Path, os.DirFS(volume.Source))
+		err = rootFs.Mount(input.Path, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -155,20 +168,20 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 		}
 
 		srcd := filepath.Join(jobResultsDir, output.Name)
-		log.Ctx(ctx).Info().Msgf("Collecting output '%s' at '%s'", output.Name, srcd)
+		log.Ctx(ctx).Debug().Msgf("Collecting output '%s' at '%s'", output.Name, srcd)
 
 		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return nil, err
 		}
 
-		err = fs.Mount(output.Name, touchfs.New(srcd))
+		err = rootFs.Mount(output.Name, touchfs.New(srcd))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return fs, nil
+	return rootFs, nil
 }
 
 func failResult(err error) (*model.RunCommandResult, error) {
@@ -231,21 +244,21 @@ func (e *Executor) RunShard(
 	}
 	entryPoint := wasmSpec.EntryPoint
 
-	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
 	if err != nil {
 		return failResult(err)
 	}
 	defer wasi.Close(ctx)
 
-	log.Ctx(ctx).Info().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Instantiating WASI runtime for job '%s'", shard.Job.ID)
 	_, err = namespace.InstantiateModule(ctx, wasi, config)
 	if err != nil {
 		return failResult(err)
 	}
 
 	// Now instantiate the module and run the entry point.
-	log.Ctx(ctx).Info().Msgf("Instantiation of module for job '%s'", shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Instantiation of module for job '%s'", shard.Job.ID)
 	instance, err := namespace.InstantiateModule(ctx, module, config)
 	if err != nil {
 		return failResult(err)
@@ -261,7 +274,7 @@ func (e *Executor) RunShard(
 	// the exit code for inclusion in the job output, and ignore the return code
 	// from the function (most WASI compilers will not give one). Some compilers
 	// though do not set an exit code, so we use a default of -1.
-	log.Ctx(ctx).Info().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.ID)
+	log.Ctx(ctx).Debug().Msgf("Running WASM '%s' from job '%s'", entryPoint, shard.Job.ID)
 	entryFunc := instance.ExportedFunction(entryPoint)
 	exitCode := int(-1)
 	_, wasmErr := entryFunc.Call(ctx)

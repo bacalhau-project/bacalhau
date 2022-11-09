@@ -26,22 +26,10 @@ func TestSystemUtilsSuite(t *testing.T) {
 	suite.Run(t, new(SystemUtilsSuite))
 }
 
-// Before all suite
-func (s *SystemUtilsSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (s *SystemUtilsSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), InitConfigForTesting())
-}
-
-func (s *SystemUtilsSuite) TearDownTest() {
-}
-
-func (s *SystemUtilsSuite) TearDownAllSuite() {
-
 }
 
 func (s *SystemUtilsSuite) TestBasicCommandExecution() {

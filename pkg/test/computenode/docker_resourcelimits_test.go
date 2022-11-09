@@ -1,4 +1,4 @@
-//go:build !windows && !(unit && darwin)
+//go:build !windows
 
 package computenode
 
@@ -16,6 +16,8 @@ import (
 )
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
+	testutils.MustHaveDocker(suite.T())
+
 	ctx := context.Background()
 	CPU_LIMIT := "100m"
 
@@ -61,6 +63,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsCPU() {
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
+	testutils.MustHaveDocker(suite.T())
+
 	ctx := context.Background()
 	MEMORY_LIMIT := "100mb"
 
@@ -91,6 +95,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsMemory() {
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
+	testutils.MustHaveDocker(suite.T())
+
 	ctx := context.Background()
 
 	runTest := func(text, diskSize string, expected bool) {

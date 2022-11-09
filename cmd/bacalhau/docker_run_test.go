@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package bacalhau
 
 import (
@@ -53,22 +51,13 @@ func TestDockerRunSuite(t *testing.T) {
 	suite.Run(t, new(DockerRunSuite))
 }
 
-// Before all suite
-func (s *DockerRunSuite) SetupSuite() {
-}
-
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
-}
-
-func (s *DockerRunSuite) TearDownTest() {
-}
-
-func (s *DockerRunSuite) TearDownSuite() {
-
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
@@ -844,7 +833,6 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 	}
 
 	for name, tc := range tests {
-		//nolint:unusedparams // idomatic
 		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
 			c, cm := publicapi.SetupRequesterNodeForTests(s.T())

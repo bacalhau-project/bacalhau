@@ -80,7 +80,7 @@ var devstackCmd = &cobra.Command{
 	Short:   "Start a cluster of bacalhau nodes for testing and development",
 	Long:    devStackLong,
 	Example: devstackExample,
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()

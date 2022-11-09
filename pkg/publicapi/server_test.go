@@ -28,21 +28,9 @@ func TestServerSuite(t *testing.T) {
 	suite.Run(t, new(ServerSuite))
 }
 
-// Before all suite
-func (s *ServerSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (s *ServerSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-}
-
-func (s *ServerSuite) TearDownTest() {
-}
-
-func (s *ServerSuite) TearDownAllSuite() {
-
 }
 
 func (s *ServerSuite) TestList() {

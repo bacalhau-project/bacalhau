@@ -37,22 +37,10 @@ type VersionSuite struct {
 	rootCmd *cobra.Command
 }
 
-// Before all suite
-func (suite *VersionSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *VersionSuite) SetupTest() {
 	suite.rootCmd = RootCmd
 	logger.ConfigureTestLogging(suite.T())
-}
-
-func (suite *VersionSuite) TearDownTest() {
-}
-
-func (suite *VersionSuite) TearDownAllSuite() {
-
 }
 
 func (suite *VersionSuite) Test_Version() {

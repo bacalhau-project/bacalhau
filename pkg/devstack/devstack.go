@@ -288,11 +288,11 @@ func NewDevStack(
 	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
 	f, err := os.Create(cpuprofile)
 	if err != nil {
-		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
+		log.Debug().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
 	}
 	defer closer.CloseWithLogOnError("cpuprofile", f)
 	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
+		log.Debug().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}
 
 	return &DevStack{
@@ -407,6 +407,13 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 	}
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
+}
+func (stack *DevStack) IPFSClients() []*ipfs.Client {
+	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
+	for _, node := range stack.Nodes {
+		clients = append(clients, node.IPFSClient)
+	}
+	return clients
 }
 
 func (stack *DevStack) GetNodeIds() ([]string, error) {

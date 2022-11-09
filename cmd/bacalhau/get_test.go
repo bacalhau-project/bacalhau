@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package bacalhau
 
 import (
@@ -18,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -37,23 +36,13 @@ type GetSuite struct {
 	rootCmd *cobra.Command
 }
 
-// Before all suite
-func (suite *GetSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *GetSuite) SetupTest() {
+	testutils.MustHaveDocker(suite.T())
+
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
-}
-
-func (suite *GetSuite) TearDownTest() {
-}
-
-func (suite *GetSuite) TearDownAllSuite() {
-
 }
 
 func testResultsFolderStructure(t *testing.T, baseFolder, hostID string) {
@@ -121,8 +110,7 @@ func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
 func setupTempWorkingDir(t *testing.T) (string, func()) {
 	// switch wd to a temp dir so we are not writing folders to the current directory
 	// (the point of this test is to see what happens when we DONT pass --output-dir)
-	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(t, err)
+	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
 	err = os.Chdir(tempDir)

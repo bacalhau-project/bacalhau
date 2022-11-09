@@ -38,32 +38,33 @@ const (
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm               = 0755
-	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
+	AutoDownloadFolderPerm = 0755
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
 	// In Rough execution order
-	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false},
+	model.JobEventInitialSubmission: {Message: "Communicating with the network", IsTerminal: false, PrintDownload: true},
+
+	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false, PrintDownload: true},
 
 	// Job is on Requester
-	model.JobEventBid:         {Message: "Finding node(s) for the job", IsTerminal: false},
-	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false},
+	model.JobEventBid:         {Message: "Finding node(s) for the job", IsTerminal: false, PrintDownload: true},
+	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false, PrintDownload: true},
 
 	// Job is on ComputeNode
-	model.JobEventRunning: {Message: "Node started running the job", IsTerminal: false},
+	model.JobEventRunning: {Message: "Node started running the job", IsTerminal: false, PrintDownload: true},
 
 	// Need to add a carriage return to the end of the line, but only this one
-	model.JobEventComputeError: {Message: "Error while executing the job.\n", IsTerminal: true},
+	model.JobEventComputeError: {Message: "Error while executing the job.", IsTerminal: true, PrintDownload: true},
 
 	// Job is on StorageNode
-	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false},
-	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true},
-	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false},
-	model.JobEventResultsPublished: {Message: "", IsTerminal: true},
+	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false, PrintDownload: true},
+	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true, PrintDownload: false},
+	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false, PrintDownload: true},
+	model.JobEventResultsPublished: {Message: "", IsTerminal: true, PrintDownload: true},
 
 	// General Error?
-	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
+	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true, PrintDownload: false},
 
 	// Should we print at all? Empty events get skipped
 	model.JobEventBidCancelled: {},
@@ -78,8 +79,9 @@ type printedEvents struct {
 }
 
 type eventStruct struct {
-	Message    string
-	IsTerminal bool
+	Message       string
+	IsTerminal    bool
+	PrintDownload bool
 }
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
@@ -354,7 +356,7 @@ func ExecuteJob(ctx context.Context,
 	// i.e. don't print
 	quiet := runtimeSettings.PrintJobIDOnly
 
-	err = WaitAndPrintResultsToUser(ctx, j, quiet)
+	printDownload, err := WaitAndPrintResultsToUser(ctx, j, quiet)
 	if err != nil {
 		if err.Error() == PrintoutCanceledButRunningNormally {
 			Fatal("", 0)
@@ -417,13 +419,17 @@ func ExecuteJob(ctx context.Context,
 		}
 	}
 
-	printOut += fmt.Sprintf(`
+	if printDownload {
+		printOut += fmt.Sprintf(`
 To download the results, execute:
 %sbacalhau get %s
+`, indentOne, j.ID)
+	}
 
+	printOut += fmt.Sprintf(`
 To get more details about the run, execute:
 %sbacalhau describe %s
-`, indentOne, j.ID, indentOne, j.ID)
+`, indentOne, j.ID)
 
 	// Have to do a final Sprintf so we can inject the resultsCID into the right place
 	if resultsCID != "" {
@@ -553,9 +559,15 @@ func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 }
 
 //nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
-func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
+func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) (bool, error) {
+	defer func() {
+		if ticker != nil {
+			ticker.Stop()
+		}
+	}()
+
 	if j == nil || j.ID == "" {
-		return errors.New("No job returned from the server.")
+		return false, errors.New("No job returned from the server.")
 	}
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
@@ -575,7 +587,12 @@ To get more information at any time, run:
 		}
 	}
 
-	time.Sleep(1 * time.Second)
+	// Create a spinner var that will span all printouts
+	spin, err := createSpinner()
+	if err != nil {
+		return false, errors.Wrap(err, "Could not create progressive output.")
+	}
+	ticker = time.NewTicker(HowFrequentlyToUpdateTicker)
 
 	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
 	if err != nil {
@@ -594,6 +611,8 @@ To get more information at any time, run:
 	finishedRunning := false
 	var returnError error
 	returnError = nil
+
+	printDownloadFlag := true
 
 	go func() {
 		select {
@@ -618,6 +637,16 @@ To get more information at any time, run:
 		}
 	}()
 
+	if !quiet {
+		if spin.Status().String() == "stopped" {
+			printingUpdateForEvent(printedEventsTracker, model.JobEventInitialSubmission, spin)
+			err = spin.Start()
+			if err != nil {
+				return false, errors.Wrap(err, "Could not start spinner")
+			}
+		}
+	}
+
 	if len(jobEvents) != 0 {
 		for {
 			log.Debug().Msgf("Job Events:")
@@ -639,7 +668,8 @@ To get more information at any time, run:
 
 			if !quiet {
 				for i := range jobEvents {
-					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+					// Will get overridden by the last event
+					printDownloadFlag = printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName, spin)
 				}
 			}
 
@@ -650,7 +680,7 @@ To get more information at any time, run:
 					// Send a signal to the goroutine that is waiting for Ctrl+C
 					finishedRunning = true
 					signalChan <- syscall.SIGINT
-					break
+					return printDownloadFlag, err
 				}
 			}
 
@@ -664,7 +694,7 @@ To get more information at any time, run:
 						// We're done, the user canceled the job
 						break
 					} else {
-						return errors.Wrap(err, "Error getting job events")
+						return false, errors.Wrap(err, "Error getting job events")
 					}
 				}
 			}
@@ -673,17 +703,12 @@ To get more information at any time, run:
 		} // end for
 	}
 
-	return returnError
+	return printDownloadFlag, returnError
 }
 
-func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
-	maxLength := 0
-	for _, v := range eventsWorthPrinting {
-		if len(v.Message) > maxLength {
-			maxLength = len(v.Message)
-		}
-	}
-
+func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents,
+	jet model.JobEventType,
+	spin *yacspin.Spinner) bool {
 	// If it hasn't been printed yet, we'll print this event.
 	// We'll also skip lines where there's no message to print.
 	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
@@ -691,9 +716,6 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 		firstLine := true
 		for v := range pe {
 			firstLine = firstLine && !pe[v].printed
-		}
-		if !firstLine {
-			RootCmd.Println("done ✅")
 		}
 
 		RootCmd.Printf("\t%s%s",
@@ -706,6 +728,8 @@ func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.
 		}
 		pe[jet].printed = true
 	}
+
+	return eventsWorthPrinting[jet].PrintDownload
 }
 func FatalErrorHandler(msg string, code int) {
 	if len(msg) > 0 {

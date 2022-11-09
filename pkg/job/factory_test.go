@@ -23,21 +23,9 @@ type JobFactorySuite struct {
 	suite.Suite
 }
 
-// Before all suite
-func (suite *JobFactorySuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *JobFactorySuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-}
-
-func (suite *JobFactorySuite) TearDownTest() {
-}
-
-func (suite *JobFactorySuite) TearDownAllSuite() {
-
 }
 
 func (suite *JobFactorySuite) TestRun_Outputs() {

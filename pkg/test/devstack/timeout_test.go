@@ -3,41 +3,30 @@
 package devstack
 
 import (
-	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type DevstackTimeoutSuite struct {
-	suite.Suite
+	scenario.ScenarioRunner
 }
 
 func TestDevstackTimeoutSuite(t *testing.T) {
 	suite.Run(t, new(DevstackTimeoutSuite))
 }
 
-func (suite *DevstackTimeoutSuite) SetupTest() {
-	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
-}
-
 func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
-
 	type TestCase struct {
 		name                   string
 		nodeCount              int
@@ -52,51 +41,44 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		ctx := context.Background()
-
-		cm := system.NewCleanupManager()
-		defer cm.Cleanup()
-
-		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, false,
-			computenode.ComputeNodeConfig{
-				TimeoutConfig:                      testCase.computeTimeoutConfig,
-				StateManagerBackgroundTaskInterval: 1 * time.Second,
+		testScenario := scenario.Scenario{
+			Stack: &scenario.StackConfig{
+				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				ComputeNodeConfig: &computenode.ComputeNodeConfig{
+					TimeoutConfig:                      testCase.computeTimeoutConfig,
+					StateManagerBackgroundTaskInterval: 1 * time.Second,
+				},
+				RequesterNodeConfig: &requesternode.RequesterNodeConfig{
+					TimeoutConfig:                      testCase.requesterTimeoutConfig,
+					StateManagerBackgroundTaskInterval: 1 * time.Second,
+				},
 			},
-			requesternode.RequesterNodeConfig{
-				TimeoutConfig:                      testCase.requesterTimeoutConfig,
-				StateManagerBackgroundTaskInterval: 1 * time.Second,
-			})
-
-		testScenario := scenario.Sleep(testCase.sleepSeconds)
-
-		j := &model.Job{}
-		j.Spec = testScenario.GetJobSpec()
-		j.Spec.Verifier = model.VerifierNoop
-		j.Spec.Publisher = model.PublisherNoop
-		j.Spec.Timeout = testCase.jobTimeout
-		j.Deal = model.Deal{
-			Concurrency: testCase.concurrency,
-			MinBids:     testCase.minBids,
+			Spec: model.Spec{
+				Engine:    model.EngineDocker,
+				Verifier:  model.VerifierNoop,
+				Publisher: model.PublisherNoop,
+				Timeout:   testCase.jobTimeout,
+				Docker: model.JobSpecDocker{
+					Image: "ubuntu:latest",
+					Entrypoint: []string{
+						"sleep",
+						fmt.Sprintf("%.3f", testCase.sleepSeconds),
+					},
+				},
+			},
+			Deal: model.Deal{
+				Concurrency: testCase.concurrency,
+				MinBids:     testCase.minBids,
+			},
+			JobCheckers: []job.CheckStatesFunction{
+				job.WaitForJobStates(map[model.JobStateType]int{
+					model.JobStateCompleted: testCase.completedCount,
+					model.JobStateError:     testCase.errorCount,
+				}),
+			},
 		}
 
-		apiUri := stack.Nodes[0].APIServer.GetURI()
-		apiClient := publicapi.NewAPIClient(apiUri)
-
-		submittedJob, err := apiClient.Submit(ctx, j, nil)
-		require.NoError(suite.T(), err)
-
-		resolver := apiClient.GetJobStateResolver()
-
-		err = resolver.Wait(
-			ctx,
-			submittedJob.ID,
-			testCase.nodeCount,
-			job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: testCase.completedCount,
-				model.JobStateError:     testCase.errorCount,
-			}),
-		)
-		require.NoError(suite.T(), err)
+		suite.RunScenario(testScenario)
 	}
 
 	for _, testCase := range []TestCase{

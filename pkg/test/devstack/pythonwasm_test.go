@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -16,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -38,23 +37,13 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 	suite.Run(t, new(DevstackPythonWASMSuite))
 }
 
-// Before all suite
-func (s *DevstackPythonWASMSuite) SetupSuite() {
-
-}
-
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
-}
-
-func (s *DevstackPythonWASMSuite) TearDownTest() {
-}
-
-func (s *DevstackPythonWASMSuite) TearDownSuite() {
-
 }
 
 // full end-to-end test of python/wasm:
