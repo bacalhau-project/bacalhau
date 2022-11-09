@@ -243,6 +243,23 @@ func (e *Executor) RunShard(
 		config = config.WithEnv(key, wasmSpec.EnvironmentVariables[key])
 	}
 	entryPoint := wasmSpec.EntryPoint
+	importedModules := []wazero.CompiledModule{}
+
+	// Load and instantiate imported modules
+	for _, wasmSpec := range wasmSpec.ImportModules {
+		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.ID)
+		importedWasi, importErr := e.loadRemoteModule(ctx, wasmSpec)
+		if importErr != nil {
+			return failResult(importErr)
+		}
+		importedModules = append(importedModules, importedWasi)
+
+		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.ID)
+		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
+		if instantiateErr != nil {
+			return failResult(instantiateErr)
+		}
+	}
 
 	log.Ctx(ctx).Debug().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
@@ -264,8 +281,9 @@ func (e *Executor) RunShard(
 		return failResult(err)
 	}
 
-	// Check that it conforms to our requirements.
-	err = ValidateModuleAgainstJob(module, shard.Job.Spec, wasi)
+	// Check that all WASI modules conform to our requirements.
+	importedModules = append(importedModules, wasi)
+	err = ValidateModuleAgainstJob(module, shard.Job.Spec, importedModules...)
 	if err != nil {
 		return failResult(err)
 	}
