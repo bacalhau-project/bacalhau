@@ -6,7 +6,7 @@ require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/Masterminds/semver v1.5.0
-	github.com/bmatcuk/doublestar/v4 v4.3.2
+	github.com/bmatcuk/doublestar/v4 v4.4.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/didip/tollbooth/v7 v7.0.1
