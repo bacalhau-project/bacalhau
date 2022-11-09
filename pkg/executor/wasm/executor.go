@@ -230,6 +230,27 @@ func (e *Executor) RunShard(
 		config = config.WithEnv(key, wasmSpec.EnvironmentVariables[key])
 	}
 	entryPoint := wasmSpec.EntryPoint
+	importedModules := []wazero.CompiledModule{}
+
+	// Load imported modules
+	for _, value := range wasmSpec.ImportModules {
+
+		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", value.Name, shard.Job.ID)
+		importedWasi, err := e.loadRemoteModule(ctx, value)
+		if err != nil {
+			return failResult(err)
+		}
+		importedModules = append(importedModules, importedWasi)
+	}
+
+	// Instantiate imported modules and add to namespace
+	for _, value := range importedModules {
+		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", value.Name, shard.Job.ID)
+		_, err = namespace.InstantiateModule(ctx, value, config)
+		if err != nil {
+			return failResult(err)
+		}
+	}
 
 	log.Ctx(ctx).Info().Msgf("Compilation of WASI runtime for job '%s'", shard.Job.ID)
 	wasi, err := wasi_snapshot_preview1.NewBuilder(e.Engine).Compile(ctx)
