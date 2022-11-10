@@ -5,7 +5,7 @@ import (
 )
 
 // DefaultJobNegotiationTimeout default timeout value to wait for enough bids to be submitted
-const DefaultJobNegotiationTimeout = 1 * time.Minute
+const DefaultJobNegotiationTimeout = 2 * time.Minute
 
 // DefaultJobExecutionTimeout default timeout value for running, verifying and publishing job results.
 const DefaultJobExecutionTimeout = 30 * time.Minute

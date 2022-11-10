@@ -7,7 +7,7 @@ import (
 )
 
 // DefaultJobNegotiationTimeout default timeout value to hold a bid for a job
-const DefaultJobNegotiationTimeout = 2 * time.Minute
+const DefaultJobNegotiationTimeout = 3 * time.Minute
 
 // DefaultMinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
 // lower timeout requirements will not be bid on.
