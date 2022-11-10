@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/filefs"
 	"github.com/filecoin-project/bacalhau/pkg/util/mountfs"
 	"github.com/filecoin-project/bacalhau/pkg/util/touchfs"
 	"github.com/rs/zerolog/log"
@@ -128,7 +129,7 @@ func (e *Executor) loadRemoteModule(ctx context.Context, spec model.StorageSpec)
 //     at the name specified by Name
 func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, inputs, outputs []model.StorageSpec) (fs.FS, error) {
 	var err error
-	fs := mountfs.New()
+	rootFs := mountfs.New()
 
 	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
 	if err != nil {
@@ -144,9 +145,14 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 			return nil, err
 		}
 
-		log.Ctx(ctx).Info().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+		var inputFs fs.FS
+		if stat.IsDir() {
+			inputFs = os.DirFS(volume.Source)
+		} else {
+			inputFs = filefs.New(volume.Source)
+		}
 
-		err = fs.Mount(input.Path, os.DirFS(volume.Source))
+		err = rootFs.Mount(input.Path, inputFs)
 		if err != nil {
 			return nil, err
 		}
@@ -169,13 +175,13 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 			return nil, err
 		}
 
-		err = fs.Mount(output.Name, touchfs.New(srcd))
+		err = rootFs.Mount(output.Name, touchfs.New(srcd))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return fs, nil
+	return rootFs, nil
 }
 
 func failResult(err error) (*model.RunCommandResult, error) {
