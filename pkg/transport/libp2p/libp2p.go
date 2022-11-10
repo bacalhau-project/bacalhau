@@ -210,8 +210,24 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *LibP2PTransport) Publish(ctx context.Context, ev model.JobEvent) error {
-	return t.writeJobEvent(ctx, ev)
+func (t *LibP2PTransport) Publish(ctx context.Context, event model.JobEvent) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Publish")
+	defer span.End()
+
+	traceData := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &traceData)
+
+	bs, err := model.JSONMarshalWithMax(jobEventEnvelope{
+		JobEvent:  event,
+		TraceData: traceData,
+		SentTime:  time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	return t.jobEventTopic.Publish(ctx, bs)
 }
 
 func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
@@ -288,26 +304,6 @@ type jobEventEnvelope struct {
 	SentTime  time.Time              `json:"sent_time"`
 	JobEvent  model.JobEvent         `json:"job_event"`
 	TraceData propagation.MapCarrier `json:"trace_data"`
-}
-
-func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.writeJobEvent")
-	defer span.End()
-
-	traceData := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, &traceData)
-
-	bs, err := model.JSONMarshalWithMax(jobEventEnvelope{
-		JobEvent:  event,
-		TraceData: traceData,
-		SentTime:  time.Now(),
-	})
-	if err != nil {
-		return err
-	}
-
-	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
-	return t.jobEventTopic.Publish(ctx, bs)
 }
 
 func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {

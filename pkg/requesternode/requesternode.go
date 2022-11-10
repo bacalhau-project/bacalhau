@@ -86,7 +86,8 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	jobCtx, _ := node.newRootSpanForJob(ctx, jobID)
+	jobCtx, span := node.newRootSpanForJob(ctx, jobID)
+	defer span.End()
 
 	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
 	// Specifically tracking them all in ctrl.jobContexts

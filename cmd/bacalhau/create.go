@@ -75,8 +75,7 @@ var createCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/create")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/create")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 

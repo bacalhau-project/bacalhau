@@ -267,8 +267,7 @@ var serveCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/serve")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 

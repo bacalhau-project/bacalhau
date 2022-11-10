@@ -74,10 +74,6 @@ func GetDownloadCidRequestTimeout() time.Duration {
 	return time.Duration(downloadCidRequestTimeoutSeconds) * time.Second
 }
 
-func SetDownloadCidRequestTimeout(seconds int64) {
-	downloadCidRequestTimeoutSeconds = seconds
-}
-
 // by default we wait 5 minutes for a URL to download
 // tests will override this using config.SetDownloadURLRequestTimeoutSeconds(2)
 var downloadURLRequestTimeoutSeconds int64 = 300
@@ -87,12 +83,8 @@ func GetDownloadURLRequestTimeout() time.Duration {
 	return time.Duration(downloadURLRequestTimeoutSeconds) * time.Second
 }
 
-func SetDownloadURLRequestTimeoutSeconds(seconds int64) {
-	downloadURLRequestTimeoutSeconds = seconds
-}
-
 // how many times do we try to download a URL
-var downloadURLRequestRetries int = 3
+var downloadURLRequestRetries = 3
 
 // how long do we wait for a URL to download
 func GetDownloadURLRequestRetries() int {

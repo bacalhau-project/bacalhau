@@ -162,8 +162,7 @@ var runPythonCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 

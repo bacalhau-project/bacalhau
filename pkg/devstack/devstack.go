@@ -327,9 +327,7 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
-func (stack *DevStack) PrintNodeInfo() (string, error) {
-	ctx := context.Background()
-
+func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -345,7 +343,7 @@ func (stack *DevStack) PrintNodeInfo() (string, error) {
 `
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
-		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
+		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
 		if err != nil {
 			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
 		} else {

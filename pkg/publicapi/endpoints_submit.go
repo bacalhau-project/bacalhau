@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type submitRequest struct {
@@ -39,8 +40,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 	var submitReq submitRequest
 	if err := json.NewDecoder(req.Body).Decode(&submitReq); err != nil {
 		log.Ctx(ctx).Debug().Msgf("====> Decode submitReq error: %s", err)
-		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusBadRequest)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusBadRequest)
 		return
 	}
 	res.Header().Set(handlerwrapper.HTTPHeaderClientID, submitReq.Data.ClientID)
@@ -118,6 +118,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		submitReq.Data,
 	)
 	res.Header().Set(handlerwrapper.HTTPHeaderJobID, j.ID)
+	span.SetAttributes(attribute.String(model.TracerAttributeNameJobID, j.ID))
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -129,8 +130,7 @@ func (apiServer *APIServer) submit(res http.ResponseWriter, req *http.Request) {
 		Job: j,
 	})
 	if err != nil {
-		errorResponse := bacerrors.ErrorToErrorResponse(err)
-		http.Error(res, errorResponse, http.StatusInternalServerError)
+		http.Error(res, bacerrors.ErrorToErrorResponse(err), http.StatusInternalServerError)
 		return
 	}
 }
