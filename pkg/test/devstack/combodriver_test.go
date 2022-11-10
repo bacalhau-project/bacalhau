@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -78,7 +80,7 @@ func (suite *ComboDriverSuite) TestComboDriver() {
 			FilecoinUnsealedPath: unsealedPath,
 		}
 
-		stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig())
+		stack, err := devstack.NewStandardDevStack(ctx, cm, options, computenode.NewDefaultComputeNodeConfig(), requesternode.NewDefaultRequesterNodeConfig())
 		require.NoError(suite.T(), err)
 
 		if !unsealedMode {

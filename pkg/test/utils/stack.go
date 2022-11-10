@@ -67,7 +67,7 @@ func NewDevStackMultiNode(
 		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computeNodeConfig,
-		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
 	injector := node.NewStandardNodeDependencyInjector()
@@ -124,7 +124,7 @@ func NewNoopStack(
 		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computeNodeconfig,
-		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
 	injector := devstack.NewNoopNodeDependencyInjector()
@@ -168,7 +168,7 @@ func NewNoopStackMultinode(
 			LocalDB:             datastore,
 			Transport:           transport,
 			ComputeNodeConfig:   computeNodeconfig,
-			RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 		}
 
 		injector := devstack.NewNoopNodeDependencyInjector()

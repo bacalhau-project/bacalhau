@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -159,6 +161,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	t := system.GetTracer()
@@ -308,6 +311,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	t := system.GetTracer()
@@ -371,6 +375,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	t := system.GetTracer()

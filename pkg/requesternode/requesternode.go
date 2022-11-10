@@ -19,8 +19,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type RequesterNodeConfig struct{}
-
 type RequesterNode struct {
 	ID                 string
 	localDB            localdb.LocalDB
@@ -35,6 +33,7 @@ type RequesterNode struct {
 
 func NewRequesterNode(
 	ctx context.Context,
+	cm *system.CleanupManager,
 	nodeID string,
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
@@ -44,6 +43,7 @@ func NewRequesterNode(
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
+	useConfig := populateDefaultConfigs(config)
 	requesterNode := &RequesterNode{
 		ID:                 nodeID,
 		localDB:            localDB,
@@ -51,8 +51,8 @@ func NewRequesterNode(
 		jobEventPublisher:  jobEventPublisher,
 		verifiers:          verifiers,
 		storageProviders:   storageProviders,
-		config:             config,
-		shardStateManager:  newShardStateMachineManager(),
+		config:             useConfig,
+		shardStateManager:  newShardStateMachineManager(ctx, cm, useConfig),
 	}
 	return requesterNode, nil
 }
@@ -106,6 +106,11 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
 
+	// set a default timeout value if one is not passed or below an acceptable value
+	if ev.Spec.GetTimeout() <= node.config.TimeoutConfig.MinJobExecutionTimeout {
+		ev.Spec.Timeout = node.config.TimeoutConfig.DefaultJobExecutionTimeout.Seconds()
+	}
+
 	job := jobutils.ConstructJobFromEvent(ev)
 	err = node.localDB.AddJob(ctx, job)
 	if err != nil {
@@ -154,11 +159,12 @@ func (node *RequesterNode) triggerStateTransition(ctx context.Context, event mod
 		switch event.EventName {
 		case model.JobEventBid:
 			shardState.bid(ctx, event.SourceNodeID)
-		case model.JobEventResultsProposed, model.JobEventComputeError:
-			// will trigger verifying the results when all shards are complete, gracefully or ungracefully.
+		case model.JobEventResultsProposed:
 			shardState.verifyResult(ctx, event.SourceNodeID)
 		case model.JobEventResultsPublished:
 			shardState.resultsPublished(ctx, event.SourceNodeID)
+		case model.JobEventComputeError:
+			shardState.computeError(ctx, event.SourceNodeID)
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)

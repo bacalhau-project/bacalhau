@@ -24,22 +24,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const DefaultJobCPU = "100m"
-const DefaultJobMemory = "100Mb"
 const ControlLoopIntervalMillis = 100
 const ShardStateLogInterval = 5 * time.Minute
-const DelayBeforeBidMillisecondRange = 100
-const BidTimeoutSeconds = 60
-
-type ComputeNodeConfig struct {
-	// this contains things like data locality and per
-	// job resource limits
-	JobSelectionPolicy JobSelectionPolicy
-
-	// configure the resource capacity we are allowing for
-	// this compute node
-	CapacityManagerConfig capacitymanager.Config
-}
 
 type ComputeNode struct {
 	// The ID of this compute node in its configured transport.
@@ -61,12 +47,6 @@ type ComputeNode struct {
 	bidMu             sync.Mutex
 }
 
-func NewDefaultComputeNodeConfig() ComputeNodeConfig {
-	return ComputeNodeConfig{
-		JobSelectionPolicy: NewDefaultJobSelectionPolicy(),
-	}
-}
-
 func NewComputeNode(
 	ctx context.Context,
 	cm *system.CleanupManager,
@@ -83,8 +63,9 @@ func NewComputeNode(
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode.NewComputeNode")
 	defer span.End()
 
+	useConfig := populateDefaultConfigs(config)
 	computeNode, err := constructComputeNode(
-		ctx, nodeID, localDB, localEventConsumer, jobEventPublisher, executors, verifiers, publishers, config)
+		ctx, cm, nodeID, localDB, localEventConsumer, jobEventPublisher, executors, verifiers, publishers, useConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +79,7 @@ func NewComputeNode(
 // process the arguments and return a valid compoute node
 func constructComputeNode(
 	ctx context.Context,
+	cm *system.CleanupManager,
 	nodeID string,
 	localDB localdb.LocalDB,
 	localEventHandler eventhandler.LocalEventHandler,
@@ -107,7 +89,7 @@ func constructComputeNode(
 	publishers publisher.PublisherProvider,
 	config ComputeNodeConfig,
 ) (*ComputeNode, error) {
-	shardStateManager, err := NewShardComputeStateMachineManager()
+	shardStateManager, err := NewShardComputeStateMachineManager(ctx, cm, config)
 	if err != nil {
 		return nil, err
 	}
@@ -251,14 +233,6 @@ func processBidJob(ctx context.Context, bidShards []model.JobShard, i int, n *Co
 	}
 
 	shardState.Bid(ctx)
-
-	// We timeout the bid, to avoid holding open the capacity for it indefinitely.
-	go func() {
-		time.Sleep(BidTimeoutSeconds * time.Second)
-		if shardState.currentState == shardBidding {
-			shardState.Fail(ctx, "bid timed out")
-		}
-	}()
 }
 
 /*
@@ -278,16 +252,19 @@ func (n *ComputeNode) HandleJobEvent(ctx context.Context, event model.JobEvent) 
 		log.Ctx(ctx).Debug().Msgf("[%s] job created: %s", n.ID, job.ID)
 		return n.subscriptionEventCreated(ctx, event, job)
 	} else {
-		// we only care if the event is related to us
-		if event.TargetNodeID != n.ID {
-			return nil
-		}
 		shard := model.JobShard{
 			Job:   job,
 			Index: event.ShardIndex,
 		}
+
+		// we only care if the event is direct to us, or a global event related to a shard we are processing
+		if (event.TargetNodeID == "" && !n.shardStateManager.Has(shard.ID())) || event.TargetNodeID != n.ID {
+			return nil
+		}
+
 		switch event.EventName {
-		case model.JobEventBidAccepted, model.JobEventBidRejected, model.JobEventResultsAccepted, model.JobEventResultsRejected:
+		case model.JobEventBidAccepted, model.JobEventBidRejected, model.JobEventResultsAccepted,
+			model.JobEventResultsRejected, model.JobEventError:
 			return n.triggerStateTransition(ctx, event, shard)
 		}
 	}
@@ -450,6 +427,8 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 			shardState.ResultsRejected(ctx)
 		case model.JobEventInvalidRequest:
 			shardState.FailSilently(ctx, "Request rejected due to: "+event.Status)
+		case model.JobEventError:
+			shardState.FailSilently(ctx, "Requester triggered failure due to: "+event.Status)
 		}
 	} else {
 		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
@@ -469,6 +448,18 @@ func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProb
 	defer span.End()
 
 	requirements := model.ResourceUsageData{}
+
+	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
+	if n.config.TimeoutConfig.MaxJobExecutionTimeout > 0 && data.Spec.GetTimeout() > n.config.TimeoutConfig.MaxJobExecutionTimeout {
+		log.Ctx(ctx).Debug().Msgf("Compute node skipped bidding on job %s because job timeout %s exceeds maximum allowed %s",
+			data.JobID, data.Spec.GetTimeout(), n.config.TimeoutConfig.MaxJobExecutionTimeout)
+		return false, requirements, nil
+	}
+	if data.Spec.GetTimeout() < n.config.TimeoutConfig.MinJobExecutionTimeout {
+		log.Ctx(ctx).Debug().Msgf("Compute node skipped bidding on job %s because job timeout %s below minimum allowed %s",
+			data.JobID, data.Spec.GetTimeout(), n.config.TimeoutConfig.MinJobExecutionTimeout)
+		return false, requirements, nil
+	}
 
 	// check that we have the executor and it's installed
 	e, err := n.executors.GetExecutor(ctx, data.Spec.Engine)
@@ -585,6 +576,16 @@ func (n *ComputeNode) RunShard(ctx context.Context, shard model.JobShard) ([]byt
 	}
 
 	return shardProposal, runOutput, err
+}
+
+// Cancels the execution of a running shard.
+func (n *ComputeNode) CancelShard(ctx context.Context, shard model.JobShard) error {
+	// check that we have the executor to run this job
+	e, err := n.executors.GetExecutor(ctx, shard.Job.Spec.Engine)
+	if err != nil {
+		return err
+	}
+	return e.CancelShard(ctx, shard)
 }
 
 func (n *ComputeNode) PublishShard(ctx context.Context, shard model.JobShard) error {
