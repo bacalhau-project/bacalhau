@@ -23,18 +23,45 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type TestCase struct {
-	Name           string
-	Stack          *StackConfig
-	Inputs         ISetupStorage
-	Contexts       ISetupStorage
-	Outputs        []model.StorageSpec
-	Spec           model.Spec
-	Deal           model.Deal
+// A Scenario represents a repeatable test case of submitting a job against a
+// Bacalhau network.
+//
+// The Scenario defines:
+//
+// * the topology and configuration of network that is required
+// * the job that will be submitted
+// * the conditions for the job to be considered successful or not
+type Scenario struct {
+	Name string
+
+	// An optional set of configuration options that define the network of nodes
+	// that the job will be run against
+	Stack *StackConfig
+
+	// Setup routines which define data available to the job, potentially sharded
+	Inputs ISetupStorage
+
+	// Setup routines which define data available to the job, for every shard
+	Contexts ISetupStorage
+
+	// Output volumes that must be available to the job
+	Outputs []model.StorageSpec
+
+	// The job specification
+	Spec model.Spec
+
+	// The job deal
+	Deal model.Deal
+
+	// A function that will decide whether or not the job was successful
 	ResultsChecker ICheckResults
-	JobCheckers    []job.CheckStatesFunction
+
+	// A set of checkers that will decide when the job has completed, and maybe
+	// whether it was successful or not
+	JobCheckers []job.CheckStatesFunction
 }
 
+// All the information that is needed to uniquely define a devstack.
 type StackConfig struct {
 	*devstack.DevStackOptions
 	*computenode.ComputeNodeConfig

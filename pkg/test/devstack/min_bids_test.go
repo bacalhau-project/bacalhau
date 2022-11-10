@@ -42,7 +42,7 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 		BatchSize:   1,
 	}
 
-	testScenario := scenario.TestCase{
+	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
 		},

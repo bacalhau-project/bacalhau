@@ -44,7 +44,7 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	testScenario := scenario.TestCase{
+	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeNodeConfig: &computenode.ComputeNodeConfig{
 				JobSelectionPolicy: computenode.JobSelectionPolicy{
@@ -214,7 +214,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	}))
 	defer svr.Close()
 
-	testScenario := scenario.TestCase{
+	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeNodeConfig: &computenode.ComputeNodeConfig{
 				JobSelectionPolicy: computenode.JobSelectionPolicy{

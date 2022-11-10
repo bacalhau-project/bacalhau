@@ -24,7 +24,7 @@ func TestPublishOnErrorSuite(t *testing.T) {
 func (s *PublishOnErrorSuite) TestPublishOnError() {
 	stdoutText := "I am a miserable failure\n"
 
-	testcase := scenario.TestCase{
+	testcase := scenario.Scenario{
 		Inputs:   scenario.StoredText(stdoutText, "data/hello.txt"),
 		Contexts: scenario.CatFileToStdout.Contexts,
 		Spec: model.Spec{

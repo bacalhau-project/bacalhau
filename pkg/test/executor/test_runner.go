@@ -17,7 +17,7 @@ const testNodeCount = 1
 
 func RunTestCase(
 	t *testing.T,
-	testCase scenario.TestCase,
+	testCase scenario.Scenario,
 ) {
 	ctx := context.Background()
 	spec := testCase.Spec

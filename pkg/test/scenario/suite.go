@@ -24,6 +24,13 @@ type ScenarioTestSuite interface {
 	suite.TestingSuite
 }
 
+// The ScenarioRunner is an object that can run a Scenario.
+//
+// It will spin up an appropriate Devstack for the Scenario, submit and wait for
+// the job to complete, and then make assertions against the results of the job.
+//
+// ScenarioRunner implements a number of testify/suite interfaces making it
+// appropriate as the basis for a test suite.
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx  context.Context
@@ -59,6 +66,8 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage ISe
 	return storageList
 }
 
+// Set up the test devstack according to the passed options. By default, the
+// devstack will have 1 node with local only data and no timeouts.
 func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
 	cm := system.NewCleanupManager()
 
@@ -92,7 +101,11 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	return stack, cm
 }
 
-func (s *ScenarioRunner) RunScenario(scenario TestCase) (resultsDir string) {
+// Run the Scenario.
+//
+// Spin up a devstack, execute the job, check the results, and tear down the
+// devstack.
+func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	spec := scenario.Spec
 	testutils.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
 

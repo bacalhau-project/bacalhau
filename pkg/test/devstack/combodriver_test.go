@@ -30,7 +30,7 @@ func TestComboDriverSuite(t *testing.T) {
 
 const exampleText = "hello world"
 
-var testcase scenario.TestCase = scenario.TestCase{
+var testcase scenario.Scenario = scenario.Scenario{
 	ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, exampleText),
 	Contexts:       scenario.CatFileToStdout.Contexts,
 	Spec: model.Spec{
