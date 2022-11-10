@@ -1,3 +1,5 @@
+//go:build !(unit && (windows || darwin))
+
 package devstack
 
 import (
@@ -24,30 +26,14 @@ type DevstackTimeoutSuite struct {
 	suite.Suite
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
 func TestDevstackTimeoutSuite(t *testing.T) {
 	suite.Run(t, new(DevstackTimeoutSuite))
 }
 
-// Before all suite
-func (suite *DevstackTimeoutSuite) SetupSuite() {
-
-}
-
-// Before each test
 func (suite *DevstackTimeoutSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *DevstackTimeoutSuite) TearDownTest() {
-
-}
-
-func (suite *DevstackTimeoutSuite) TearDownSuite() {
-
 }
 
 func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
