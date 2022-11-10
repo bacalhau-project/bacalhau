@@ -10,12 +10,13 @@ func _() {
 	var x [1]struct{}
 	_ = x[unknown-0]
 	_ = x[V1alpha1-1]
-	_ = x[done-2]
+	_ = x[V1beta1-2]
+	_ = x[done-3]
 }
 
-const _APIVersion_name = "unknownV1alpha1done"
+const _APIVersion_name = "unknownV1alpha1V1beta1done"
 
-var _APIVersion_index = [...]uint8{0, 7, 15, 19}
+var _APIVersion_index = [...]uint8{0, 7, 15, 22, 26}
 
 func (i APIVersion) String() string {
 	if i < 0 || i >= APIVersion(len(_APIVersion_index)-1) {
