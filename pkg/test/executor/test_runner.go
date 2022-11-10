@@ -20,7 +20,7 @@ func RunTestCase(
 	testCase scenario.TestCase,
 ) {
 	ctx := context.Background()
-	spec := testCase.GetJobSpec()
+	spec := testCase.Spec
 
 	stack := testutils.NewDevStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
 	defer stack.Node.CleanupManager.Cleanup()
@@ -51,8 +51,8 @@ func RunTestCase(
 		return storageList
 	}
 
-	spec.Inputs = prepareStorage(testCase.SetupStorage)
-	spec.Contexts = prepareStorage(testCase.SetupContext)
+	spec.Inputs = prepareStorage(testCase.Inputs)
+	spec.Contexts = prepareStorage(testCase.Contexts)
 	spec.Outputs = testCase.Outputs
 
 	job := &model.Job{

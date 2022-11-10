@@ -406,6 +406,13 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
+func (stack *DevStack) IPFSClients() []*ipfs.Client {
+	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
+	for _, node := range stack.Nodes {
+		clients = append(clients, node.IPFSClient)
+	}
+	return clients
+}
 
 func (stack *DevStack) GetNodeIds() ([]string, error) {
 	var ids []string

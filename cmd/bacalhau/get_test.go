@@ -121,8 +121,7 @@ func testDownloadOutput(t *testing.T, cmdOutput, jobID, outputDir string) {
 func setupTempWorkingDir(t *testing.T) (string, func()) {
 	// switch wd to a temp dir so we are not writing folders to the current directory
 	// (the point of this test is to see what happens when we DONT pass --output-dir)
-	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
-	require.NoError(t, err)
+	tempDir := t.TempDir()
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
 	err = os.Chdir(tempDir)

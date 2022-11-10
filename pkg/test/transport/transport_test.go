@@ -89,11 +89,6 @@ func (suite *TransportSuite) TestTransportEvents() {
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
-		Docker: model.JobSpecDocker{
-			Image:                "image",
-			Entrypoint:           []string{"entrypoint"},
-			EnvironmentVariables: []string{"env"},
-		},
 		Inputs: []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
