@@ -30,24 +30,11 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 	suite.Run(t, new(IPFSHostStorageSuite))
 }
 
-// Before all suite
-func (suite *IPFSHostStorageSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *IPFSHostStorageSuite) TearDownTest() {
-
-}
-
-func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
-
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (

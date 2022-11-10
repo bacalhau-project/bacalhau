@@ -19,22 +19,10 @@ func TestSystemContextSuite(t *testing.T) {
 	suite.Run(t, new(SystemContextSuite))
 }
 
-// Before all suite
-func (suite *SystemContextSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemContextSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemContextSuite) TearDownTest() {
-}
-
-func (suite *SystemContextSuite) TearDownAllSuite() {
-
 }
 
 func TestOnCancel(t *testing.T) {

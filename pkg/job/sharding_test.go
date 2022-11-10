@@ -24,21 +24,9 @@ type JobShardingSuite struct {
 	suite.Suite
 }
 
-// Before all suite
-func (suite *JobShardingSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *JobShardingSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-}
-
-func (suite *JobShardingSuite) TearDownTest() {
-}
-
-func (suite *JobShardingSuite) TearDownAllSuite() {
-
 }
 
 func explodeStringArray(arr []string) []model.StorageSpec {

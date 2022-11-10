@@ -18,22 +18,10 @@ func TestSystemConfigSuite(t *testing.T) {
 	suite.Run(t, new(SystemConfigSuite))
 }
 
-// Before all suite
-func (suite *SystemConfigSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemConfigSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemConfigSuite) TearDownTest() {
-}
-
-func (suite *SystemConfigSuite) TearDownAllSuite() {
-
 }
 
 func (suite *SystemConfigSuite) TestMessageSigning() {

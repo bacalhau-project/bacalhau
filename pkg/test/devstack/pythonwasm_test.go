@@ -38,23 +38,11 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 	suite.Run(t, new(DevstackPythonWASMSuite))
 }
 
-// Before all suite
-func (s *DevstackPythonWASMSuite) SetupSuite() {
-
-}
-
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)
-}
-
-func (s *DevstackPythonWASMSuite) TearDownTest() {
-}
-
-func (s *DevstackPythonWASMSuite) TearDownSuite() {
-
 }
 
 // full end-to-end test of python/wasm:

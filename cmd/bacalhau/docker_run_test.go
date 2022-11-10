@@ -53,22 +53,11 @@ func TestDockerRunSuite(t *testing.T) {
 	suite.Run(t, new(DockerRunSuite))
 }
 
-// Before all suite
-func (s *DockerRunSuite) SetupSuite() {
-}
-
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
-}
-
-func (s *DockerRunSuite) TearDownTest() {
-}
-
-func (s *DockerRunSuite) TearDownSuite() {
-
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
