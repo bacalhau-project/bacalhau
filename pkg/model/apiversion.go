@@ -6,6 +6,7 @@ type APIVersion int
 const (
 	unknown APIVersion = iota // must be first
 	V1alpha1
+	V1beta1
 	done // must be last
 )
 
