@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package bacalhau
 
 import (
@@ -18,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -39,6 +38,8 @@ type GetSuite struct {
 
 // Before each test
 func (suite *GetSuite) SetupTest() {
+	testutils.MustHaveDocker(suite.T())
+
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), system.InitConfigForTesting())
 	suite.rootCmd = RootCmd
