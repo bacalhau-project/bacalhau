@@ -41,7 +41,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		testScenario := scenario.TestCase{
+		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
 				ComputeNodeConfig: &computenode.ComputeNodeConfig{

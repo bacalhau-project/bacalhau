@@ -39,7 +39,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 			suite.T().Skip("https://github.com/filecoin-project/bacalhau/issues/361")
 		}
 
-		testScenario := scenario.TestCase{
+		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions:   &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
 				ComputeNodeConfig: &computenode.ComputeNodeConfig{JobSelectionPolicy: testCase.policy},

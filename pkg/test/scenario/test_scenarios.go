@@ -12,7 +12,7 @@ const SimpleOutputPath = "/output_data/output_file.txt"
 const stdoutString = ipfs.DownloadFilenameStdout
 const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
 
-var CatFileToStdout = TestCase{
+var CatFileToStdout = Scenario{
 	Name: "cat_file_to_stdout",
 	Inputs: StoredText(
 		HelloWorld,
@@ -35,7 +35,7 @@ var CatFileToStdout = TestCase{
 	},
 }
 
-var CatFileToVolume = TestCase{
+var CatFileToVolume = Scenario{
 	Name: "cat_file_to_volume",
 	Inputs: StoredText(
 		CatProgram,
@@ -63,7 +63,7 @@ var CatFileToVolume = TestCase{
 	},
 }
 
-var GrepFile = TestCase{
+var GrepFile = Scenario{
 	Name: "grep_file",
 	Inputs: StoredFile(
 		"../../../testdata/grep_file.txt",
@@ -87,7 +87,7 @@ var GrepFile = TestCase{
 	},
 }
 
-var SedFile = TestCase{
+var SedFile = Scenario{
 	Name: "sed_file",
 	Inputs: StoredFile(
 		"../../../testdata/sed_file.txt",
@@ -112,7 +112,7 @@ var SedFile = TestCase{
 	},
 }
 
-var AwkFile = TestCase{
+var AwkFile = Scenario{
 	Name: "awk_file",
 	Inputs: StoredFile(
 		"../../../testdata/awk_file.txt",
@@ -137,7 +137,7 @@ var AwkFile = TestCase{
 	},
 }
 
-var WasmHelloWorld = TestCase{
+var WasmHelloWorld = Scenario{
 	Name: "wasm_hello_world",
 	Contexts: StoredFile(
 		"../../../testdata/wasm/noop/main.wasm",
@@ -156,7 +156,7 @@ var WasmHelloWorld = TestCase{
 	},
 }
 
-var WasmEnvVars = TestCase{
+var WasmEnvVars = Scenario{
 	Name: "wasm_env_vars",
 	Contexts: StoredFile(
 		"../../../testdata/wasm/env/main.wasm",
@@ -179,7 +179,7 @@ var WasmEnvVars = TestCase{
 	},
 }
 
-var WasmCsvTransform = TestCase{
+var WasmCsvTransform = Scenario{
 	Name: "wasm_csv_transform",
 	Inputs: StoredFile(
 		"../../../testdata/wasm/csv/inputs",
@@ -212,8 +212,8 @@ var WasmCsvTransform = TestCase{
 	},
 }
 
-func GetAllScenarios() []TestCase {
-	return []TestCase{
+func GetAllScenarios() []Scenario {
+	return []Scenario{
 		CatFileToStdout,
 		CatFileToVolume,
 		GrepFile,

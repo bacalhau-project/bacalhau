@@ -29,7 +29,7 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 	fileName1 := "hello-cid-1.txt"
 	fileName2 := "hello-cid-2.txt"
 
-	testCase := scenario.TestCase{
+	testCase := scenario.Scenario{
 		Inputs: scenario.ManyStores(
 			scenario.StoredText("file1\n", filepath.Join(dirCID1, fileName1)),
 			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),

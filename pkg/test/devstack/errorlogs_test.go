@@ -22,7 +22,7 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 	suite.Run(t, new(DevstackErrorLogsSuite))
 }
 
-var errorLogsTestCase = scenario.TestCase{
+var errorLogsTestCase = scenario.Scenario{
 	ResultsChecker: scenario.ManyChecks(
 		scenario.FileEquals(ipfs.DownloadFilenameStdout, "apples\n"),
 		scenario.FileEquals(ipfs.DownloadFilenameStderr, "oranges\n"),
