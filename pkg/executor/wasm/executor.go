@@ -130,9 +130,16 @@ func (e *Executor) makeFsFromStorage(ctx context.Context, jobResultsDir string, 
 	var err error
 	fs := mountfs.New()
 
-	for _, input := range inputs {
-		var volume *storage.StorageVolume
-		volume, err = e.getVolume(ctx, input)
+	volumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	for input, volume := range volumes {
+		log.Ctx(ctx).Info().Msgf("Using input '%s' at '%s'", input.Path, volume.Source)
+
+		var stat os.FileInfo
+		stat, err = os.Stat(volume.Source)
 		if err != nil {
 			return nil, err
 		}

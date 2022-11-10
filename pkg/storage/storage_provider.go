@@ -71,3 +71,11 @@ func (m *genericSyncMap[K, V]) Get(key K) (V, bool) {
 func (m *genericSyncMap[K, V]) Put(key K, value V) {
 	m.Store(key, value)
 }
+
+func (m *genericSyncMap[K, V]) Iter(ranger func(key K, value V) bool) {
+	m.Range(func(key, value any) bool {
+		k := key.(K)
+		v := value.(V)
+		return ranger(k, v)
+	})
+}
