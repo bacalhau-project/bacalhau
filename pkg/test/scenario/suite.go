@@ -10,7 +10,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel/trace"
@@ -24,69 +26,81 @@ type ScenarioTestSuite interface {
 
 type ScenarioRunner struct {
 	suite.Suite
-	Cm    *system.CleanupManager
-	Ctx   context.Context
-	Span  trace.Span
-	Stack *devstack.DevStack
+	Ctx  context.Context
+	Span trace.Span
 }
 
 func (s *ScenarioRunner) SetupTest() {
 	require.NoError(s.T(), system.InitConfigForTesting())
-	s.Cm = system.NewCleanupManager()
-	s.T().Cleanup(s.Cm.Cleanup)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(context.Background(), t, s.T().Name())
 	s.Ctx = ctx
 	s.Span = rootSpan
 
-	s.Cm.RegisterCallback(system.CleanupTraceProvider)
+	s.T().Cleanup(func() { _ = system.CleanupTraceProvider() })
 }
 
 func (s *ScenarioRunner) TearDownTest() {
-	s.Stack = nil
 	s.Span.End()
 }
 
-func (s *ScenarioRunner) prepareStorage(getStorage ISetupStorage) []model.StorageSpec {
+func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage ISetupStorage) []model.StorageSpec {
 	if getStorage == nil {
 		return []model.StorageSpec{}
 	}
 
-	clients := s.Stack.IPFSClients()
+	clients := stack.IPFSClients()
 	require.GreaterOrEqual(s.T(), len(clients), 1, "No IPFS clients to upload to?")
 
-	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, s.Stack.IPFSClients()[:1]...)
+	storageList, stErr := getStorage(s.Ctx, model.StorageSourceIPFS, stack.IPFSClients()...)
 	require.NoError(s.T(), stErr)
 
 	return storageList
 }
 
-func (s *ScenarioRunner) SetupStack(opts *devstack.DevStackOptions, cnconf computenode.ComputeNodeConfig) *devstack.DevStack {
+func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
+	cm := system.NewCleanupManager()
+
+	if config == nil {
+		config = &StackConfig{}
+	}
+
+	if config.DevStackOptions == nil {
+		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
+	}
+
+	if config.ComputeNodeConfig == nil {
+		conf := computenode.NewDefaultComputeNodeConfig()
+		config.ComputeNodeConfig = &conf
+	}
+
+	if config.RequesterNodeConfig == nil {
+		conf := requesternode.NewDefaultRequesterNodeConfig()
+		config.RequesterNodeConfig = &conf
+	}
+
 	stack, err := devstack.NewStandardDevStack(
 		s.Ctx,
-		s.Cm,
-		*opts,
-		cnconf,
+		cm,
+		*config.DevStackOptions,
+		*config.ComputeNodeConfig,
+		*config.RequesterNodeConfig,
 	)
 	require.NoError(s.T(), err)
 
-	s.Stack = stack
-	return s.Stack
+	return stack, cm
 }
 
 func (s *ScenarioRunner) RunScenario(scenario TestCase) (resultsDir string) {
 	spec := scenario.Spec
+	testutils.MaybeNeedDocker(s.T(), spec.Engine == model.EngineDocker)
 
-	if s.Stack == nil {
-		s.SetupStack(&devstack.DevStackOptions{
-			NumberOfNodes:     1,
-			NumberOfBadActors: 0,
-		}, computenode.NewDefaultComputeNodeConfig())
-	}
+	stack, cm := s.setupStack(scenario.Stack)
+	defer cm.Cleanup()
 
 	// Check that the stack has the appropriate executor installed
-	for _, node := range s.Stack.Nodes {
+	for _, node := range stack.Nodes {
 		executor, err := node.Executors.GetExecutor(s.Ctx, spec.Engine)
 		require.NoError(s.T(), err)
 
@@ -98,8 +112,8 @@ func (s *ScenarioRunner) RunScenario(scenario TestCase) (resultsDir string) {
 	// TODO: assert network connectivity
 
 	// Setup storage
-	spec.Inputs = s.prepareStorage(scenario.Inputs)
-	spec.Contexts = s.prepareStorage(scenario.Contexts)
+	spec.Inputs = s.prepareStorage(stack, scenario.Inputs)
+	spec.Contexts = s.prepareStorage(stack, scenario.Contexts)
 	spec.Outputs = scenario.Outputs
 	if spec.Outputs == nil {
 		spec.Outputs = []model.StorageSpec{}
@@ -123,7 +137,7 @@ func (s *ScenarioRunner) RunScenario(scenario TestCase) (resultsDir string) {
 		j.Deal.Concurrency = 1
 	}
 
-	apiClient := publicapi.NewAPIClient(s.Stack.Nodes[0].APIServer.GetURI())
+	apiClient := publicapi.NewAPIClient(stack.Nodes[0].APIServer.GetURI())
 	submittedJob, err := apiClient.Submit(s.Ctx, j, nil)
 	require.NoError(s.T(), err)
 
@@ -138,10 +152,10 @@ func (s *ScenarioRunner) RunScenario(scenario TestCase) (resultsDir string) {
 	require.NoError(s.T(), err)
 
 	resultsDir = s.T().TempDir()
-	swarmAddresses, err := s.Stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
+	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(s.Ctx)
 	require.NoError(s.T(), err)
 
-	err = ipfs.DownloadJob(s.Ctx, s.Cm, spec.Outputs, results, ipfs.IPFSDownloadSettings{
+	err = ipfs.DownloadJob(s.Ctx, cm, spec.Outputs, results, ipfs.IPFSDownloadSettings{
 		TimeoutSecs:    5,
 		OutputDir:      resultsDir,
 		IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),

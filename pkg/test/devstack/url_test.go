@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -45,16 +44,14 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	suite.SetupStack(
-		&devstack.DevStackOptions{NumberOfNodes: 1},
-		computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
-				Locality: computenode.Anywhere,
+	testScenario := scenario.TestCase{
+		Stack: &scenario.StackConfig{
+			ComputeNodeConfig: &computenode.ComputeNodeConfig{
+				JobSelectionPolicy: computenode.JobSelectionPolicy{
+					Locality: computenode.Anywhere,
+				},
 			},
 		},
-	)
-
-	testScenario := scenario.TestCase{
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
@@ -211,15 +208,6 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	URLContent := "Common sense is like deodorant. The people who need it most never use it.\n"
 	IPFSContent := "Truth hurts. Maybe not as much as jumping on a bicycle with a seat missing, but it hurts.\n"
 
-	s.SetupStack(
-		&devstack.DevStackOptions{NumberOfNodes: 1},
-		computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
-				Locality: computenode.Anywhere,
-			},
-		},
-	)
-
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(URLContent))
@@ -227,6 +215,13 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	defer svr.Close()
 
 	testScenario := scenario.TestCase{
+		Stack: &scenario.StackConfig{
+			ComputeNodeConfig: &computenode.ComputeNodeConfig{
+				JobSelectionPolicy: computenode.JobSelectionPolicy{
+					Locality: computenode.Anywhere,
+				},
+			},
+		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
