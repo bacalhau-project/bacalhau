@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -37,15 +35,15 @@ const exampleText = "hello world"
 
 var testcase scenario.TestCase = scenario.TestCase{
 	ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, exampleText),
+	Contexts:       scenario.CatFileToStdout.Contexts,
 	Spec: model.Spec{
-		Engine:    model.EngineDocker,
+		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"bash", "-c",
-				`cat /inputs/file.txt`,
+		Wasm: model.JobSpecWasm{
+			EntryPoint: "_start",
+			Parameters: []string{
+				`/inputs/file.txt`,
 			},
 		},
 	},

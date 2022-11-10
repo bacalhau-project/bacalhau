@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -61,7 +59,11 @@ func runURLTest(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
 		),
-		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, allContent),
+		Contexts: scenario.CatFileToStdout.Contexts,
+		ResultsChecker: scenario.ManyChecks(
+			scenario.FileEquals(ipfs.DownloadFilenameStderr, ""),
+			scenario.FileEquals(ipfs.DownloadFilenameStdout, allContent),
+		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{
 				model.JobStateError,
@@ -71,20 +73,17 @@ func runURLTest(
 			}),
 		},
 		Spec: model.Spec{
-			Engine:    model.EngineDocker,
+			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
-			Docker: model.JobSpecDocker{
-				Image: "ubuntu",
-				Entrypoint: []string{
-					"bash", "-c",
-					fmt.Sprintf("cat %s/%s && cat %s/%s",
-						testCase.mount1, testCase.file1,
-						testCase.mount2, testCase.file2),
+			Wasm: model.JobSpecWasm{
+				EntryPoint: "_start",
+				Parameters: []string{
+					testCase.mount1,
+					testCase.mount2,
 				},
 			},
 		},
-		Outputs: []model.StorageSpec{},
 	}
 
 	suite.RunScenario(testScenario)

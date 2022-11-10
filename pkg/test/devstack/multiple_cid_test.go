@@ -1,9 +1,6 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -34,26 +31,24 @@ func (s *MultipleCIDSuite) TestMultipleCIDs() {
 
 	testCase := scenario.TestCase{
 		Inputs: scenario.ManyStores(
-			scenario.StoredText("file1", filepath.Join(dirCID1, fileName1)),
-			scenario.StoredText("file2", filepath.Join(dirCID2, fileName2)),
+			scenario.StoredText("file1\n", filepath.Join(dirCID1, fileName1)),
+			scenario.StoredText("file2\n", filepath.Join(dirCID2, fileName2)),
 		),
-		Outputs: []model.StorageSpec{},
+		Contexts: scenario.CatFileToStdout.Contexts,
 		Spec: model.Spec{
-			Engine:    model.EngineDocker,
+			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
-			Docker: model.JobSpecDocker{
-				Image: "ubuntu",
-				Entrypoint: []string{
-					"bash",
-					"-c",
-					fmt.Sprintf("ls && ls %s && ls %s", dirCID1, dirCID2),
+			Wasm: model.JobSpecWasm{
+				EntryPoint: "_start",
+				Parameters: []string{
+					filepath.Join(dirCID1, fileName1),
+					filepath.Join(dirCID2, fileName2),
 				},
 			},
 		},
 		ResultsChecker: scenario.ManyChecks(
-			scenario.FileContains(ipfs.DownloadFilenameStdout, fileName1, 23),
-			scenario.FileContains(ipfs.DownloadFilenameStdout, fileName2, 23),
+			scenario.FileEquals(ipfs.DownloadFilenameStdout, "file1\nfile2\n"),
 		),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitThrowErrors([]model.JobStateType{
