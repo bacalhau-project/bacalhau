@@ -29,24 +29,11 @@ func TestCreateSuite(t *testing.T) {
 	suite.Run(t, new(CreateSuite))
 }
 
-// before all the s
-func (s *CreateSuite) SetupSuite() {
-
-}
-
 // before each test
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
-}
-
-func (s *CreateSuite) TearDownTest() {
-
-}
-
-func (s *CreateSuite) TearDownSuite() {
-
 }
 
 func (s *CreateSuite) TestCreateJSON_GenericSubmit() {

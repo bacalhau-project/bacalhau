@@ -24,24 +24,11 @@ func TestValidateSuite(t *testing.T) {
 	suite.Run(t, new(ValidateSuite))
 }
 
-// before all the suite
-func (s *ValidateSuite) SetupSuite() {
-
-}
-
 // before each test
 func (s *ValidateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
-}
-
-func (s *ValidateSuite) TearDownTest() {
-
-}
-
-func (s *ValidateSuite) TearDownAllSuite() {
-
 }
 
 func (s *ValidateSuite) TestValidate() {

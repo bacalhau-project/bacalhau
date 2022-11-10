@@ -34,22 +34,10 @@ func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
 }
 
-// Before all suite
-func (suite *ListSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *ListSuite) SetupTest() {
 	suite.rootCmd = RootCmd
 	logger.ConfigureTestLogging(suite.T())
-}
-
-func (suite *ListSuite) TearDownTest() {
-}
-
-func (suite *ListSuite) TearDownAllSuite() {
-
 }
 
 type listResponse struct {

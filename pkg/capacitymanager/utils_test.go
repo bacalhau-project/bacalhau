@@ -26,22 +26,11 @@ func TestResourceUsageUtilsSuite(t *testing.T) {
 	suite.Run(t, new(ResourceUsageUtilsSuite))
 }
 
-// Before all suite
-func (suite *ResourceUsageUtilsSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *ResourceUsageUtilsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 }
 
-func (suite *ResourceUsageUtilsSuite) TearDownTest() {
-}
-
-func (suite *ResourceUsageUtilsSuite) TearDownAllSuite() {
-
-}
 func c(cpu, mem, gpu string) model.ResourceUsageConfig {
 	return model.ResourceUsageConfig{
 		CPU:    cpu,

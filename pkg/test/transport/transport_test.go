@@ -32,23 +32,11 @@ func TestTransportSuite(t *testing.T) {
 	suite.Run(t, new(TransportSuite))
 }
 
-// Before all suite
-func (suite *TransportSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *TransportSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *TransportSuite) TearDownTest() {
-}
-
-func (suite *TransportSuite) TearDownAllSuite() {
-
 }
 
 func setupTest(t *testing.T) *node.Node {

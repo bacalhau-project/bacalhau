@@ -38,23 +38,11 @@ func TestShardingSuite(t *testing.T) {
 	suite.Run(t, new(ShardingSuite))
 }
 
-// Before all suite
-func (suite *ShardingSuite) SetupSuite() {
-
-}
-
 // Before each test
 func (suite *ShardingSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)
-}
-
-func (suite *ShardingSuite) TearDownTest() {
-}
-
-func (suite *ShardingSuite) TearDownSuite() {
-
 }
 
 func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) (string, error) {

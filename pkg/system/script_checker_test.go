@@ -19,22 +19,10 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 	suite.Run(t, new(SystemScriptCheckerSuite))
 }
 
-// Before all suite
-func (suite *SystemScriptCheckerSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemScriptCheckerSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemScriptCheckerSuite) TearDownTest() {
-}
-
-func (suite *SystemScriptCheckerSuite) TearDownAllSuite() {
-
 }
 
 func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {
