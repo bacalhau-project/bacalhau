@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -23,6 +21,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -40,6 +39,8 @@ func TestShardingSuite(t *testing.T) {
 
 // Before each test
 func (suite *ShardingSuite) SetupTest() {
+	testutils.MustHaveDocker(suite.T())
+
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting()
 	require.NoError(suite.T(), err)

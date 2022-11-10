@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -16,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -40,6 +39,8 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+
 	logger.ConfigureTestLogging(s.T())
 	err := system.InitConfigForTesting()
 	require.NoError(s.T(), err)

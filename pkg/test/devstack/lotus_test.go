@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
@@ -21,6 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -35,6 +34,8 @@ func TestLotusNodeSuite(t *testing.T) {
 }
 
 func (s *lotusNodeSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 }

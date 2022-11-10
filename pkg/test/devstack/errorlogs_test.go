@@ -8,6 +8,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,5 +51,6 @@ var errorLogsTestCase = scenario.TestCase{
 }
 
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
+	testutils.MustHaveDocker(suite.T())
 	suite.RunScenario(errorLogsTestCase)
 }

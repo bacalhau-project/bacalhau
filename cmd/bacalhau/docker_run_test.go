@@ -1,5 +1,3 @@
-//go:build !(unit && (windows || darwin))
-
 package bacalhau
 
 import (
@@ -55,6 +53,8 @@ func TestDockerRunSuite(t *testing.T) {
 
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
+	testutils.MustHaveDocker(s.T())
+
 	logger.ConfigureTestLogging(s.T())
 	require.NoError(s.T(), system.InitConfigForTesting())
 	s.rootCmd = RootCmd
