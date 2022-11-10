@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
@@ -11,7 +12,7 @@ import (
 const HelloWorld = "hello world"
 const SimpleMountPath = "/data/file.txt"
 const SimpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = "stdout"
+const stdoutString = ipfs.DownloadFilenameStdout
 const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
 
 func Sleep(sleepSeconds float32) TestCase {
@@ -40,18 +41,19 @@ var CatFileToStdout = TestCase{
 		HelloWorld,
 		SimpleMountPath,
 	),
-	ResultsChecker: FileEquals(
-		stdoutString,
-		HelloWorld,
+	Contexts: StoredFile(
+		"../../../testdata/wasm/cat/main.wasm",
+		"/job",
+	),
+	ResultsChecker: ManyChecks(
+		FileEquals(ipfs.DownloadFilenameStderr, ""),
+		FileEquals(ipfs.DownloadFilenameStdout, HelloWorld),
 	),
 	Spec: model.Spec{
-		Engine: model.EngineDocker,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"cat",
-				SimpleMountPath,
-			},
+		Engine: model.EngineWasm,
+		Wasm: model.JobSpecWasm{
+			EntryPoint: "_start",
+			Parameters: []string{SimpleMountPath},
 		},
 	},
 }
