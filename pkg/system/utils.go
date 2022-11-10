@@ -313,15 +313,6 @@ func createReaderAndWriter(filePipe io.ReadCloser, filename string) (*bufio.Read
 	return fileReader, fileWriter, outputFile, nil
 }
 
-// TODO: #634 Pretty high priority to allow this to be configurable to a different directory than $HOME/.bacalhau
-func GetSystemDirectory(path string) (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s/.bacalhau/%s", homeDir, path), nil
-}
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func GetRandomString(n int) string {
