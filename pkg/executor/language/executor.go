@@ -59,6 +59,22 @@ func (e *Executor) RunShard(
 	shard model.JobShard,
 	jobResultsDir string,
 ) (*model.RunCommandResult, error) {
+	executor, err := e.getDelegateExecutor(ctx, shard)
+	if err != nil {
+		return nil, err
+	}
+	return executor.RunShard(ctx, shard, jobResultsDir)
+}
+
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	executor, err := e.getDelegateExecutor(ctx, shard)
+	if err != nil {
+		return err
+	}
+	return executor.CancelShard(ctx, shard)
+}
+
+func (e *Executor) getDelegateExecutor(ctx context.Context, shard model.JobShard) (executor.Executor, error) {
 	requiredLang := LanguageSpec{
 		Language: shard.Job.Spec.Language.Language,
 		Version:  shard.Job.Spec.Language.LanguageVersion,
@@ -67,7 +83,7 @@ func (e *Executor) RunShard(
 	engineKey, exists := supportedVersions[requiredLang]
 	if !exists {
 		err := fmt.Errorf("%v is not supported", requiredLang)
-		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+		return nil, err
 	}
 
 	if shard.Job.Spec.Language.Deterministic {
@@ -78,11 +94,11 @@ func (e *Executor) RunShard(
 		if err != nil {
 			return nil, err
 		}
-		return executor.RunShard(ctx, shard, jobResultsDir)
+		return executor, nil
 	} else {
 		err := fmt.Errorf("non-deterministic %v not supported yet", requiredLang)
 		// TODO: Instantiate a docker with python:3.10 image
-		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+		return nil, err
 	}
 }
 

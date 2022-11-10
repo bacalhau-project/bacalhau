@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/Masterminds/semver"
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -36,7 +38,8 @@ const (
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm = 0755
+	AutoDownloadFolderPerm               = 0755
+	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
@@ -390,7 +393,8 @@ func ExecuteJob(ctx context.Context,
 		printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:model.ShortIDLength])
 		for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
 			printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
-			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
+			printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
+			printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.Status)
 			if s.RunOutput == nil {
 				printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
 			} else {

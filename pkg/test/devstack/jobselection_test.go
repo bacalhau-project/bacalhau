@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 
@@ -76,7 +78,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		scenario := scenario.CatFileToStdout()
 		stack, cm := SetupTest(ctx, suite.T(), testCase.nodeCount, 0, false, computenode.ComputeNodeConfig{
 			JobSelectionPolicy: testCase.policy,
-		})
+		}, requesternode.NewDefaultRequesterNodeConfig())
 
 		nodeIDs, err := stack.GetNodeIds()
 		require.NoError(suite.T(), err)

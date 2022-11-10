@@ -206,6 +206,10 @@ type Spec struct {
 	// the compute (cpy, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
 
+	// How long a job can run in seconds before it is killed.
+	// This includes the time required to run, verify and publish results
+	Timeout float64 `json:"Timeout,omitempty"`
+
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
 	// TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
@@ -229,6 +233,11 @@ type Spec struct {
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty"`
+}
+
+// Return timeout duration
+func (s *Spec) GetTimeout() time.Duration {
+	return time.Duration(s.Timeout * float64(time.Second))
 }
 
 // for VM style executors

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -28,7 +30,8 @@ func SetupTest(
 	nodes int, badActors int,
 	lotusNode bool,
 	//nolint:gocritic
-	config computenode.ComputeNodeConfig,
+	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	require.NoError(t, system.InitConfigForTesting())
 
@@ -40,7 +43,7 @@ func SetupTest(
 		LocalNetworkLotus: lotusNode,
 	}
 
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, config)
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig)
 	require.NoError(t, err)
 
 	t.Cleanup(cm.Cleanup)
@@ -209,6 +212,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 		cm,
 		options,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 		injector,
 	)
 	require.NoError(t, err)

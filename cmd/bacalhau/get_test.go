@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -164,7 +166,10 @@ func getDockerRunArgs(
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
 	*ODR = *NewDockerRunOptions()
 
 	tempDir, cleanup := setupTempWorkingDir(s.T())
@@ -188,7 +193,10 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
 	*ODR = *NewDockerRunOptions()
 
 	tempDir, err := os.MkdirTemp("", "docker-run-download-test")
@@ -212,7 +220,10 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
 	*ODR = *NewDockerRunOptions()
 	*OG = *NewGetOptions()
 
@@ -245,7 +256,10 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
 	*ODR = *NewDockerRunOptions()
 	*OG = *NewGetOptions()
 

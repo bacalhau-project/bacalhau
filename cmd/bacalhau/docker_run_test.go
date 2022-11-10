@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -202,7 +204,10 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 
 			*ODR = *NewDockerRunOptions()
 
@@ -739,6 +744,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		0,
 		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
 	*ODR = *NewDockerRunOptions()
@@ -962,7 +968,10 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 	for name, tc := range tests {
 		s.Run(name, func() {
-			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false, computenode.ComputeNodeConfig{})
+			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 			*ODR = *NewDockerRunOptions()
 
 			parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
@@ -986,4 +995,50 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			}
 		})
 	}
+}
+
+func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
+	*ODR = *NewDockerRunOptions()
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job without defining a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+}
+
+func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
+	*ODR = *NewDockerRunOptions()
+	var expectedTimeout float64 = 999
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job with a defined a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, expectedTimeout)
 }

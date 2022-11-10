@@ -36,6 +36,7 @@ type LanguageRunOptions struct {
 	Concurrency   int      // Number of concurrent jobs to run
 	Confidence    int      // Minimum number of nodes that must agree on a verification result
 	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
+	Timeout       float64  // Job execution timeout in seconds
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
@@ -65,6 +66,8 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		Env:              []string{},
 		Concurrency:      1,
 		Confidence:       0,
+		MinBids:          0, // 0 means no minimum before bidding
+		Timeout:          DefaultTimeout.Seconds(),
 		Labels:           []string{},
 		Command:          "",
 		RequirementsPath: "",
@@ -110,6 +113,14 @@ func init() {
 	runPythonCmd.PersistentFlags().IntVar(
 		&OLR.Confidence, "confidence", OLR.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
+	)
+	runPythonCmd.PersistentFlags().IntVar(
+		&OLR.MinBids, "min-bids", OLR.MinBids,
+		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
+	)
+	runPythonCmd.PersistentFlags().Float64Var(
+		&OLR.Timeout, "timeout", OLR.Timeout,
+		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
 	)
 	runPythonCmd.PersistentFlags().StringVarP(
 		&OLR.Command, "command", "c", OLR.Command,
@@ -195,6 +206,7 @@ var runPythonCmd = &cobra.Command{
 			OLR.Concurrency,
 			OLR.Confidence,
 			OLR.MinBids,
+			OLR.Timeout,
 			language,
 			version,
 			OLR.Command,
