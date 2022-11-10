@@ -996,3 +996,49 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		})
 	}
 }
+
+func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
+	*ODR = *NewDockerRunOptions()
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job without defining a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+}
+
+func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
+	*ODR = *NewDockerRunOptions()
+	var expectedTimeout float64 = 999
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job with a defined a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, expectedTimeout)
+}

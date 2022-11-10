@@ -46,6 +46,7 @@ func ConstructDockerJob( //nolint:funlen
 	concurrency int,
 	confidence int,
 	minBids int,
+	timeout float64,
 	annotations []string,
 	workingDir string,
 	shardingGlobPattern string,
@@ -117,7 +118,7 @@ func ConstructDockerJob( //nolint:funlen
 			Entrypoint:           entrypoint,
 			EnvironmentVariables: env,
 		},
-
+		Timeout:     timeout,
 		Resources:   jobResources,
 		Inputs:      jobInputs,
 		Contexts:    jobContexts,
@@ -149,6 +150,7 @@ func ConstructLanguageJob(
 	concurrency int,
 	confidence int,
 	minBids int,
+	timeout float64,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,
@@ -203,6 +205,7 @@ func ConstructLanguageJob(
 		ProgramPath:      programPath,
 		RequirementsPath: requirementsPath,
 	}
+	j.Spec.Timeout = timeout
 	j.Spec.Inputs = jobInputs
 	j.Spec.Contexts = jobContexts
 	j.Spec.Outputs = jobOutputs
@@ -212,6 +215,7 @@ func ConstructLanguageJob(
 	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
+		MinBids:     minBids,
 	}
 
 	return j, err
