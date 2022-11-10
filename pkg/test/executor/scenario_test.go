@@ -10,7 +10,7 @@ import (
 
 func TestNonDockerScenarios(t *testing.T) {
 	for _, testCase := range scenario.GetAllScenarios() {
-		if testCase.GetJobSpec().Engine == model.EngineDocker {
+		if testCase.Spec.Engine == model.EngineDocker {
 			continue
 		}
 

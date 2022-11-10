@@ -3,11 +3,14 @@ package scenario
 import (
 	"context"
 	"fmt"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -20,11 +23,13 @@ import (
 
 type TestCase struct {
 	Name           string
-	SetupStorage   ISetupStorage
-	SetupContext   ISetupStorage
-	ResultsChecker ICheckResults
-	GetJobSpec     IGetJobSpec
+	Inputs         ISetupStorage
+	Contexts       ISetupStorage
 	Outputs        []model.StorageSpec
+	Spec           model.Spec
+	Deal           model.Deal
+	ResultsChecker ICheckResults
+	JobCheckers    []job.CheckStatesFunction
 }
 
 type StorageDriverFactory struct {
@@ -32,19 +37,11 @@ type StorageDriverFactory struct {
 	DriverFactory IGetStorageDriver
 }
 
-type IExpectedMode int
-
-const (
-	ExpectedModeEquals IExpectedMode = iota
-	ExpectedModeContains
-)
-
 type IGetStorageDriver func(ctx context.Context, stack *devstack.DevStackIPFS) (storage.Storage, error)
 
 //nolint:lll
 type ISetupStorage func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error)
 type ICheckResults func(resultsDir string) error
-type IGetJobSpec func() model.Spec
 
 /*
 Storage Drivers
@@ -88,8 +85,7 @@ var StorageDriverFactoriesAPICopy = []StorageDriverFactory{
 
 */
 
-func singleFileSetupStorageWithData(
-	ctx context.Context,
+func StoredText(
 	fileContents string,
 	mountPath string,
 ) ISetupStorage {
@@ -111,8 +107,7 @@ func singleFileSetupStorageWithData(
 	}
 }
 
-func singleFileSetupStorageWithFile(
-	ctx context.Context,
+func StoredFile(
 	filePath string,
 	mountPath string,
 ) ISetupStorage {
@@ -133,17 +128,52 @@ func singleFileSetupStorageWithFile(
 	}
 }
 
+func URLDownload(
+	server *httptest.Server,
+	urlPath string,
+	mountPath string,
+) ISetupStorage {
+	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+		finalURL, err := url.JoinPath(server.URL, urlPath)
+		return []model.StorageSpec{
+			{
+				StorageSource: model.StorageSourceURLDownload,
+				URL:           finalURL,
+				Path:          mountPath,
+			},
+		}, err
+	}
+}
+
+func PartialAdd(numberOfNodes int, store ISetupStorage) ISetupStorage {
+	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+		return store(ctx, driverName, ipfsClients[:numberOfNodes]...)
+	}
+}
+
+func ManyStores(stores ...ISetupStorage) ISetupStorage {
+	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
+		specs := []model.StorageSpec{}
+		for _, store := range stores {
+			spec, err := store(ctx, driverName, ipfsClients...)
+			if err != nil {
+				return specs, err
+			}
+			specs = append(specs, spec...)
+		}
+		return specs, nil
+	}
+}
+
 /*
 
 	Results checkers
 
 */
 
-func singleFileResultsChecker(
-	ctx context.Context,
+func FileContains(
 	outputFilePath string,
 	expectedString string,
-	expectedMode IExpectedMode,
 	expectedLines int,
 ) ICheckResults {
 	return func(resultsDir string) error {
@@ -153,24 +183,56 @@ func singleFileResultsChecker(
 			return err
 		}
 
-		log.Debug().Msgf("test checking: %s/%s resultsContent: %s", resultsDir, outputFilePath, resultsContent)
-
 		actualLineCount := len(strings.Split(string(resultsContent), "\n"))
 		if actualLineCount != expectedLines {
 			return fmt.Errorf("%s: count mismatch:\nExpected: %d\nActual: %d", outputFile, expectedLines, actualLineCount)
 		}
 
-		if expectedMode == ExpectedModeEquals {
-			if string(resultsContent) != expectedString {
-				return fmt.Errorf("%s: content mismatch:\nExpected: %s\nActual: %s", outputFile, expectedString, resultsContent)
-			}
-		} else if expectedMode == ExpectedModeContains {
-			if !strings.Contains(string(resultsContent), expectedString) {
-				return fmt.Errorf("%s: content mismatch:\nExpected Contains: %s\nActual: %s", outputFile, expectedString, resultsContent)
-			}
-		} else {
-			return fmt.Errorf("unknown expected mode: %d", expectedMode)
+		if !strings.Contains(string(resultsContent), expectedString) {
+			return fmt.Errorf("%s: content mismatch:\nExpected Contains: %s\nActual: %s", outputFile, expectedString, resultsContent)
+		}
+
+		return nil
+	}
+}
+
+func FileEquals(
+	outputFilePath string,
+	expectedString string,
+) ICheckResults {
+	return func(resultsDir string) error {
+		outputFile := filepath.Join(resultsDir, outputFilePath)
+		resultsContent, err := os.ReadFile(outputFile)
+		if err != nil {
+			return err
+		}
+
+		if string(resultsContent) != expectedString {
+			return fmt.Errorf("%s: content mismatch:\nExpected: %s\nActual: %s", outputFile, expectedString, resultsContent)
 		}
 		return nil
+	}
+}
+
+func ManyChecks(checks ...ICheckResults) ICheckResults {
+	return func(resultsDir string) error {
+		for _, check := range checks {
+			err := check(resultsDir)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func WaitUntilComplete(nodes int) []job.CheckStatesFunction {
+	return []job.CheckStatesFunction{
+		job.WaitThrowErrors([]model.JobStateType{
+			model.JobStateError,
+		}),
+		job.WaitForJobStates(map[model.JobStateType]int{
+			model.JobStateCompleted: nodes,
+		}),
 	}
 }
