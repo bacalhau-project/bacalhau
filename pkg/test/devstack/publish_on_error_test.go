@@ -1,9 +1,6 @@
-//go:build !(unit && (windows || darwin))
-
 package devstack
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -25,28 +22,29 @@ func TestPublishOnErrorSuite(t *testing.T) {
 }
 
 func (s *PublishOnErrorSuite) TestPublishOnError() {
-	stdoutText := "I am a miserable failure"
+	stdoutText := "I am a miserable failure\n"
 
 	testcase := scenario.TestCase{
+		Inputs:   scenario.StoredText(stdoutText, "data/hello.txt"),
+		Contexts: scenario.CatFileToStdout.Contexts,
 		Spec: model.Spec{
-			Engine:    model.EngineDocker,
+			Engine:    model.EngineWasm,
 			Verifier:  model.VerifierNoop,
 			Publisher: model.PublisherIpfs,
-			Docker: model.JobSpecDocker{
-				Image: "ubuntu",
-				Entrypoint: []string{
-					"bash", "-c",
-					fmt.Sprintf("echo %s && exit 1", stdoutText),
+			Wasm: model.JobSpecWasm{
+				EntryPoint: "_start",
+				Parameters: []string{
+					"data/hello.txt",
+					"does/not/exist.txt",
 				},
 			},
 		},
-		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, stdoutText+"\n"),
+		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, stdoutText),
 		JobCheckers: []job.CheckStatesFunction{
 			job.WaitForJobStates(map[model.JobStateType]int{
 				model.JobStateCompleted: 1,
 			}),
 		},
-		Outputs: []model.StorageSpec{},
 	}
 
 	s.RunScenario(testcase)
