@@ -3,11 +3,8 @@ package devstack
 import (
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -36,12 +33,6 @@ type minBidsTestCase struct {
 }
 
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
-	s.SetupStack(
-		&devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
-		computenode.NewDefaultComputeNodeConfig(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
 	dirPath, err := prepareFolderWithFiles(s.T(), testCase.shards)
 	require.NoError(s.T(), err)
 
@@ -52,6 +43,9 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 	}
 
 	testScenario := scenario.TestCase{
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
+		},
 		Inputs:   scenario.StoredFile(dirPath, "/input"),
 		Contexts: scenario.WasmHelloWorld.Contexts,
 		Spec:     spec,

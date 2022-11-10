@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -23,6 +25,7 @@ import (
 
 type TestCase struct {
 	Name           string
+	Stack          *StackConfig
 	Inputs         ISetupStorage
 	Contexts       ISetupStorage
 	Outputs        []model.StorageSpec
@@ -30,6 +33,12 @@ type TestCase struct {
 	Deal           model.Deal
 	ResultsChecker ICheckResults
 	JobCheckers    []job.CheckStatesFunction
+}
+
+type StackConfig struct {
+	*devstack.DevStackOptions
+	*computenode.ComputeNodeConfig
+	*requesternode.RequesterNodeConfig
 }
 
 type StorageDriverFactory struct {

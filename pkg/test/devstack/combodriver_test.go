@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/requesternode"
-
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -80,11 +77,13 @@ func (suite *ComboDriverSuite) TestComboDriverUnsealed() {
 	err = os.WriteFile(filePath, []byte(fmt.Sprintf(exampleText)), 0644)
 	require.NoError(suite.T(), err)
 
-	suite.SetupStack(&devstack.DevStackOptions{
-		NumberOfNodes:        1,
-		PublicIPFSMode:       true,
-		FilecoinUnsealedPath: fmt.Sprintf("%s/{{.CID}}", basePath),
-	}, computenode.NewDefaultComputeNodeConfig())
+	testcase.Stack = &scenario.StackConfig{
+		DevStackOptions: &devstack.DevStackOptions{
+			NumberOfNodes:        1,
+			PublicIPFSMode:       true,
+			FilecoinUnsealedPath: fmt.Sprintf("%s/{{.CID}}", basePath),
+		},
+	}
 
 	suite.RunScenario(testcase)
 }

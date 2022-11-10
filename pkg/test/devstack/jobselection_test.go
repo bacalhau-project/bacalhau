@@ -35,12 +35,15 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	runTest := func(testCase TestCase) {
-		suite.SetupStack(
-			&devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
-			computenode.ComputeNodeConfig{JobSelectionPolicy: testCase.policy},
-		)
+		if testCase.nodeCount != testCase.addFilesCount {
+			suite.T().Skip("https://github.com/filecoin-project/bacalhau/issues/361")
+		}
 
 		testScenario := scenario.TestCase{
+			Stack: &scenario.StackConfig{
+				DevStackOptions:   &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
+				ComputeNodeConfig: &computenode.ComputeNodeConfig{JobSelectionPolicy: testCase.policy},
+			},
 			Inputs:   scenario.PartialAdd(testCase.addFilesCount, scenario.WasmCsvTransform.Inputs),
 			Contexts: scenario.WasmCsvTransform.Contexts,
 			Outputs:  scenario.WasmCsvTransform.Outputs,

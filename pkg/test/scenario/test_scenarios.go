@@ -1,9 +1,6 @@
 package scenario
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -14,26 +11,6 @@ const SimpleMountPath = "/data/file.txt"
 const SimpleOutputPath = "/output_data/output_file.txt"
 const stdoutString = ipfs.DownloadFilenameStdout
 const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
-
-func Sleep(sleepSeconds float32) TestCase {
-	sleepSecondsStr := fmt.Sprintf("%.3f", sleepSeconds)
-
-	return TestCase{
-		Name: "sleep_" + sleepSecondsStr + "_seconds",
-		GetJobSpec: func() model.Spec {
-			return model.Spec{
-				Engine: model.EngineDocker,
-				Docker: model.JobSpecDocker{
-					Image: "ubuntu:latest",
-					Entrypoint: []string{
-						"sleep",
-						sleepSecondsStr,
-					},
-				},
-			}
-		},
-	}
-}
 
 var CatFileToStdout = TestCase{
 	Name: "cat_file_to_stdout",
