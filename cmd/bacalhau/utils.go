@@ -271,6 +271,7 @@ type RunTimeSettings struct {
 	WaitForJobToFinish    bool // Wait for the job to finish before returning
 	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
 	PrintJobIDOnly        bool // Only print the Job ID as output
+	PrintNodeDetails      bool // Print the node details as output
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
@@ -281,6 +282,7 @@ func NewRunTimeSettings() *RunTimeSettings {
 		IPFSGetTimeOut:        10,
 		IsLocal:               false,
 		PrintJobIDOnly:        false,
+		PrintNodeDetails:      false,
 	}
 }
 
@@ -296,6 +298,8 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
 	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
 		`Print out only the Job ID on successful submission.`)
+	flags.BoolVar(&settings.PrintNodeDetails, "node-details", settings.PrintNodeDetails,
+		`Print out full node details on job completion.`)
 	flags.BoolVar(&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
 		`Should we download the results once the job is complete?`)
 	return flags
