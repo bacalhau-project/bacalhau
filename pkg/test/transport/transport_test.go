@@ -66,7 +66,7 @@ func setupTest(t *testing.T) *node.Node {
 		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
-		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
 	node, err := devstack.NewNoopNode(ctx, nodeConfig)

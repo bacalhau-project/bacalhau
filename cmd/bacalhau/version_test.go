@@ -14,17 +14,16 @@ limitations under the License.
 package bacalhau
 
 import (
-	"encoding/json"
 	"net"
 	"net/url"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"sigs.k8s.io/yaml"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -86,7 +85,7 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
 	jsonDoc := &Versions{}
-	err = json.Unmarshal([]byte(out), &jsonDoc)
+	err = model.JSONUnmarshalWithMax([]byte(out), &jsonDoc)
 	require.NoError(suite.T(), err, "Could not unmarshall the output into json - %+v", err)
 	require.Equal(suite.T(), jsonDoc.ClientVersion.GitCommit, jsonDoc.ServerVersion.GitCommit, "Client and Server do not match in json.")
 
@@ -97,8 +96,9 @@ func (suite *VersionSuite) Test_VersionOutputs() {
 	)
 	require.NoError(suite.T(), err, "Could not request version with json output.")
 
-	var yamlDoc Versions
-	_ = yaml.Unmarshal([]byte(out), &yamlDoc)
+	yamlDoc := &Versions{}
+	err = model.YAMLUnmarshalWithMax([]byte(out), &yamlDoc)
+	require.NoError(suite.T(), err, "Could not unmarshall the output into yaml - %+v", err)
 	require.Equal(suite.T(), yamlDoc.ClientVersion.GitCommit, yamlDoc.ServerVersion.GitCommit, "Client and Server do not match in yaml.")
 
 }

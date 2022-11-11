@@ -1,4 +1,4 @@
-APIVersion: v1alpha1
+APIVersion: v1beta1
 Spec:
   Engine: Docker
   Verifier: Noop

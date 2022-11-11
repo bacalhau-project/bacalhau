@@ -129,6 +129,7 @@ func NewNode(
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
+		config.CleanupManager,
 		config.HostID,
 		config.LocalDB,
 		localEventConsumer,

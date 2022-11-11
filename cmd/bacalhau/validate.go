@@ -1,7 +1,6 @@
 package bacalhau
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -120,7 +119,7 @@ var validateCmd = &cobra.Command{
 
 			if fileextension == ".json" || fileextension == ".yaml" || fileextension == ".yml" {
 				// Yaml can parse json
-				err = yaml.Unmarshal(byteResult, &j)
+				err = model.YAMLUnmarshalWithMax(byteResult, &j)
 				if err != nil {
 					Fatal(fmt.Sprintf("Error unmarshaling yaml from file (%s): %s", OV.Filename, err), 1)
 				}
@@ -163,7 +162,7 @@ func GenerateJobJSONSchema() ([]byte, error) {
 	// Find key in a json document in Golang
 	// https://stackoverflow.com/questions/52953282/how-to-find-a-key-in-a-json-document
 
-	jsonSchemaData, err := json.MarshalIndent(s, "", "  ")
+	jsonSchemaData, err := model.JSONMarshalIndentWithMax(s, 2)
 	if err != nil {
 		return nil, fmt.Errorf("error indenting %s", err)
 	}

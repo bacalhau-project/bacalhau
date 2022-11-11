@@ -1,5 +1,5 @@
 # jobspec for the bacalhau command bacalhau docker run ubuntu -- /bin/bash -c 'echo "simple job output"'
-APIVersion: v1alpha1
+APIVersion: v1beta1
 Engine: Docker
 Verifier: Noop
 Publisher: Estuary

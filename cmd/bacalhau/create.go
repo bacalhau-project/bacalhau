@@ -75,8 +75,7 @@ var createCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/create")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/create")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -118,7 +117,7 @@ var createCmd = &cobra.Command{
 		}
 
 		// Do a first pass for parsing to see if it's a Job or JobWithInfo
-		err = yaml.Unmarshal(byteResult, &rawMap)
+		err = model.YAMLUnmarshalWithMax(byteResult, &rawMap)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error parsing file: %s", err), 1)
 			return err
@@ -126,21 +125,26 @@ var createCmd = &cobra.Command{
 
 		// If it's a JobWithInfo, we need to convert it to a Job
 		if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
-			err = yaml.Unmarshal(byteResult, &jwi)
+			err = model.YAMLUnmarshalWithMax(byteResult, &jwi)
 			if err != nil {
 				Fatal(userstrings.JobSpecBad, 1)
 				return err
 			}
-			byteResult, err = yaml.Marshal(jwi.Job)
+			byteResult, err = model.YAMLMarshalWithMax(jwi.Job)
 			if err != nil {
 				Fatal(userstrings.JobSpecBad, 1)
 				return err
 			}
 		}
 
+		if len(byteResult) == 0 {
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
+		}
+
 		// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 		// so we can just use that
-		err = yaml.Unmarshal(byteResult, &j)
+		err = model.YAMLUnmarshalWithMax(byteResult, &j)
 		if err != nil {
 			Fatal(userstrings.JobSpecBad, 1)
 			return err

@@ -52,6 +52,8 @@ func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig)
 
 // TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
 // and only keep simple unit tests here.
+//
+//nolint:funlen
 func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting()
@@ -101,13 +103,14 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
+		cm,
 		inprocessTransport.HostID(),
 		inmemoryDatastore,
 		localEventConsumer,
 		jobEventPublisher,
 		noopVerifiers,
 		noopStorageProviders,
-		requesternode.RequesterNodeConfig{},
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	require.NoError(t, err)
 

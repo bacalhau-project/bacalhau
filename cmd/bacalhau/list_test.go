@@ -2,7 +2,6 @@ package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
@@ -155,7 +154,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	// parse response
 	response := listResponse{}
-	err = json.Unmarshal([]byte(out), &response.Jobs)
+	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem *model.Job
 	for _, v := range response.Jobs {

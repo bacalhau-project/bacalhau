@@ -3,7 +3,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/retrievalmarket"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus/api/storagemarket"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -244,10 +244,10 @@ type TipSetKey struct {
 }
 
 func (k TipSetKey) MarshalJSON() ([]byte, error) {
-	return json.Marshal(k.Cids())
+	return model.JSONMarshalWithMax(k.CIDs())
 }
 
-func (k TipSetKey) Cids() []cid.Cid {
+func (k TipSetKey) CIDs() []cid.Cid {
 	cids, err := decodeKey([]byte(k.value))
 	if err != nil {
 		panic("invalid tipset key: " + err.Error())

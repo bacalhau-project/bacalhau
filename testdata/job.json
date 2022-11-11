@@ -1,5 +1,5 @@
 {
-    "APIVersion": "v1alpha1",
+    "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "docker",
         "Verifier": "noop",

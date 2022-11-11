@@ -73,6 +73,7 @@ func NewDevStackForRunLocal(
 		cm,
 		options,
 		computeNodeConfig,
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 }
 
@@ -81,8 +82,9 @@ func NewStandardDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
@@ -90,8 +92,9 @@ func NewNoopDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -100,6 +103,7 @@ func NewDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
@@ -234,7 +238,7 @@ func NewDevStack(
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeNodeConfig:    computeNodeConfig,
-			RequesterNodeConfig:  requesternode.RequesterNodeConfig{},
+			RequesterNodeConfig:  requesterNodeConfig,
 			IsBadActor:           isBadActor,
 		}
 
@@ -323,9 +327,7 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
-func (stack *DevStack) PrintNodeInfo() (string, error) {
-	ctx := context.Background()
-
+func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -341,7 +343,7 @@ func (stack *DevStack) PrintNodeInfo() (string, error) {
 `
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
-		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
+		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
 		if err != nil {
 			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
 		} else {

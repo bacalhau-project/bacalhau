@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -211,8 +210,24 @@ func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *LibP2PTransport) Publish(ctx context.Context, ev model.JobEvent) error {
-	return t.writeJobEvent(ctx, ev)
+func (t *LibP2PTransport) Publish(ctx context.Context, event model.JobEvent) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Publish")
+	defer span.End()
+
+	traceData := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &traceData)
+
+	bs, err := model.JSONMarshalWithMax(jobEventEnvelope{
+		JobEvent:  event,
+		TraceData: traceData,
+		SentTime:  time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	return t.jobEventTopic.Publish(ctx, bs)
 }
 
 func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
@@ -291,32 +306,12 @@ type jobEventEnvelope struct {
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.writeJobEvent")
-	defer span.End()
-
-	traceData := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, &traceData)
-
-	bs, err := json.Marshal(jobEventEnvelope{
-		JobEvent:  event,
-		TraceData: traceData,
-		SentTime:  time.Now(),
-	})
-	if err != nil {
-		return err
-	}
-
-	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
-	return t.jobEventTopic.Publish(ctx, bs)
-}
-
 func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
 	ctx := logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
 	payload := jobEventEnvelope{}
-	err := json.Unmarshal(msg.Data, &payload)
+	err := model.JSONUnmarshalWithMax(msg.Data, &payload)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
@@ -329,22 +324,22 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	if latencyMilli > 500 { //nolint:gomnd
 		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] VERY High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else if latencyMilli > 50 { //nolint:gomnd
 		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
 		log.Ctx(ctx).Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	}

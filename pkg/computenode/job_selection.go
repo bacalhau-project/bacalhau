@@ -3,7 +3,6 @@ package computenode
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -56,7 +55,7 @@ func applyJobSelectionPolicyExecProbe(
 ) (bool, error) {
 	// TODO: Use context to trace exec call
 
-	jsonData, err := json.Marshal(data)
+	jsonData, err := model.JSONMarshalWithMax(data)
 
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())
@@ -78,7 +77,7 @@ func applyJobSelectionPolicyExecProbe(
 }
 
 func applyJobSelectionPolicyHTTPProbe(ctx context.Context, url string, data JobSelectionPolicyProbeData) (bool, error) {
-	jsonData, err := json.Marshal(data)
+	jsonData, err := model.JSONMarshalWithMax(data)
 
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error marshaling job selection policy probe data: %s", err.Error())

@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -223,7 +222,7 @@ func (e *Executor) RunShard(
 	// TODO: check if this will overwrite a user supplied version of this value
 	// (which is what we actually want to happen)
 	log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
-	jsonJobSpec, err := json.Marshal(shard.Job.Spec)
+	jsonJobSpec, err := model.JSONMarshalWithMax(shard.Job.Spec)
 	if err != nil {
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
@@ -362,6 +361,10 @@ func (e *Executor) RunShard(
 	log.Ctx(ctx).Debug().Msgf("Returning RunOutput %+v", runResult)
 
 	return runResult, err
+}
+
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	return docker.StopContainer(ctx, e.Client, e.jobContainerName(shard))
 }
 
 func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {

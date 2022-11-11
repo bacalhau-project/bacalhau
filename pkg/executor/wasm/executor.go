@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/storage"
@@ -293,6 +295,11 @@ func (e *Executor) RunShard(
 	return result, wasmErr
 }
 
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	// TODO: Implement CancelShard for WASM executor #1060
+	return nil
+}
+
 func keys(m map[string]string) []string {
 	var ks []string
 	for k := range m {
@@ -301,3 +308,6 @@ func keys(m map[string]string) []string {
 	sort.Strings(ks)
 	return ks
 }
+
+// Compile-time check that Executor implements the Executor interface.
+var _ executor.Executor = (*Executor)(nil)

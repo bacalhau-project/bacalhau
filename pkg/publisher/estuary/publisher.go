@@ -2,7 +2,6 @@ package estuary
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -162,7 +161,7 @@ func (estuaryPublisher *EstuaryPublisher) getWriteAPIURLs(ctx context.Context, p
 	}
 
 	var config EstuaryAPIConfig
-	err = json.Unmarshal(estuaryConfig, &config)
+	err = model.JSONUnmarshalWithMax(estuaryConfig, &config)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing Estuary config: %s", err.Error())
 	}

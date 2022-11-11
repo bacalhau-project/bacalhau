@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -72,12 +74,13 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	setupCapacityManagerCLIFlags(devstackCmd)
 }
 
+//nolint:unusedparams // incorrect lint that is not used
 var devstackCmd = &cobra.Command{
 	Use:     "devstack",
 	Short:   "Start a cluster of bacalhau nodes for testing and development",
 	Long:    devStackLong,
 	Example: devstackExample,
-	RunE: func(cmd *cobra.Command, _ []string) error { // nolintunparam // incorrect lint that is not used
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
@@ -124,15 +127,15 @@ var devstackCmd = &cobra.Command{
 		var stack *devstack.DevStack
 		var stackErr error
 		if IsNoop {
-			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		} else {
-			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		}
 		if stackErr != nil {
 			return stackErr
 		}
 
-		nodeInfoOutput, err := stack.PrintNodeInfo()
+		nodeInfoOutput, err := stack.PrintNodeInfo(ctx)
 		if err != nil {
 			Fatal(fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
 		}
