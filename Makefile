@@ -168,7 +168,13 @@ clean:
 ################################################################################
 .PHONY: test
 test:
-	go test ./... -v -p 4
+# unittests parallelize well (default go test behavior is to parallelize)
+	go test ./... -v
+
+.PHONY: integration-test
+integration-test:
+# integration tests parallelize less well (hence -p 1)
+	go test ./... -v --tags=integration -p 1
 
 .PHONY: grc-test
 grc-test:
