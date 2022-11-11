@@ -30,18 +30,39 @@ func New() *MountDir {
 	}
 }
 
+// getPathPrefix returns the first path component separate from the other
+// components. Any leading os.PathSeparators in the path are ignored.
+func getPathPrefix(path string) (prefix, rest string) {
+	for {
+		components := strings.SplitN(filepath.Clean(path), string(os.PathSeparator), 2)
+		if len(components) <= 1 {
+			prefix = components[0]
+			rest = ""
+			return
+		}
+
+		prefix = components[0]
+		rest = components[1]
+		if prefix != "" {
+			return
+		}
+
+		path = rest
+	}
+}
+
 func (m *MountDir) Open(name string) (fs.File, error) {
 	path := filepath.Clean(name)
 	if path == "." {
 		return m, nil
 	}
 
-	pathComponents := strings.Split(path, string(os.PathSeparator))
-	pathPrefix, restOfPath := pathComponents[0], pathComponents[1:]
+	prefix, rest := getPathPrefix(name)
+	restOfPath := strings.Split(rest, string(os.PathSeparator))
 
 	// Find the mounted file system to delegate to. If the prefix is not in the
 	// map, that is effectively the same as the directory not existing.
-	mountedFs, exists := m.mounts[pathPrefix]
+	mountedFs, exists := m.mounts[prefix]
 	if !exists {
 		return nil, os.ErrNotExist
 	}
@@ -53,23 +74,7 @@ func (m *MountDir) Open(name string) (fs.File, error) {
 
 // Mount makes the files available in filesystem available under the "/prefix"
 func (m *MountDir) Mount(path string, filesystem fs.FS) error {
-	var prefix, rest string
-	for {
-		components := strings.SplitN(filepath.Clean(path), string(os.PathSeparator), 2)
-		if len(components) <= 1 {
-			prefix = components[0]
-			rest = ""
-			break
-		}
-
-		prefix = components[0]
-		rest = components[1]
-		if prefix != "" {
-			break
-		}
-
-		path = rest
-	}
+	prefix, rest := getPathPrefix(path)
 
 	if rest != "" {
 		// There were path seperators in the prefix, so make a new MountFS or
@@ -82,7 +87,7 @@ func (m *MountDir) Mount(path string, filesystem fs.FS) error {
 		fsLayer, ok := (existingLayer).(*MountDir)
 		if !ok {
 			// This is not a MountFS...
-			return fmt.Errorf("cannot mount: %q (%T) is not an FS that supportrs mounting", prefix, existingLayer)
+			return fmt.Errorf("cannot mount: %q (%T) is not an FS that supports mounting", prefix, existingLayer)
 		}
 
 		err := fsLayer.Mount(rest, filesystem)

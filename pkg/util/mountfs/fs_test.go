@@ -129,3 +129,29 @@ func (suite *mountFsSuite) TestEntries() {
 	}
 
 }
+
+func (suite *mountFsSuite) TestOpen() {
+	mount := getStandardMount()
+
+	testCases := []struct {
+		path string
+		dir  bool
+		err  bool
+	}{
+		{filepath.Join("more", "dir.go"), false, false},
+		{filepath.Join("/", "more", "dir.go"), false, false},
+		{filepath.Join("more"), true, false},
+		{filepath.Join("/", "more"), true, false},
+		{filepath.Join("more", "fake.go"), false, true},
+	}
+
+	for _, testCase := range testCases {
+		suite.Run(testCase.path, func() {
+			stat, err := fs.Stat(mount, testCase.path)
+			require.Equal(suite.T(), testCase.err, err != nil)
+			if err == nil {
+				require.Equal(suite.T(), testCase.dir, stat.IsDir())
+			}
+		})
+	}
+}
