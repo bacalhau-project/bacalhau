@@ -135,7 +135,7 @@ var devstackCmd = &cobra.Command{
 			return stackErr
 		}
 
-		nodeInfoOutput, err := stack.PrintNodeInfo()
+		nodeInfoOutput, err := stack.PrintNodeInfo(ctx)
 		if err != nil {
 			Fatal(fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
 		}

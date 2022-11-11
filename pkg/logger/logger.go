@@ -18,15 +18,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type JobEvent struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
-	Node string      `json:"node"`
-	Job  string      `json:"job"`
-}
-
-var stderr = struct{ io.Writer }{os.Stderr}
-
 var nodeIDFieldName = "NodeID"
 
 func init() { //nolint:gochecknoinits // init with zerolog is idiomatic
@@ -75,7 +66,7 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
 
 	defaultLogging := func(w *zerolog.ConsoleWriter) {
-		w.Out = stderr
+		w.Out = os.Stderr
 		w.NoColor = !isTerminal
 		w.TimeFormat = "15:04:05.999 |"
 		w.PartsOrder = []string{
@@ -143,10 +134,6 @@ func configureLogging(loggingOptions ...func(w *zerolog.ConsoleWriter)) {
 	zerolog.DefaultContextLogger = &log.Logger
 
 	configureIpfsLogging(log.Logger)
-}
-
-func LoggerWithRuntimeInfo(runtimeInfo string) zerolog.Logger {
-	return log.With().Str("R", runtimeInfo).Logger()
 }
 
 func loggerWithNodeID(nodeID string) zerolog.Logger {

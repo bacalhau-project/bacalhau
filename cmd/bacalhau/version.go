@@ -63,8 +63,7 @@ var versionCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/version")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
