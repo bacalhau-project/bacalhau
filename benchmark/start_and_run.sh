@@ -19,7 +19,7 @@ function cleanup {
 	echo "Done. Exiting normally."
 	if [[ -f "/tmp/bacalhau-devstack.pid" ]]; then
 		BACALHAU_PID=$(cat /tmp/bacalhau-devstack.pid)
-		kill -2 "${BACALHAU_PID}"
+		kill -2 "${BACALHAU_PID}" || true
 	fi
 	rm -f /tmp/bacalhau-devstack.p*
 	exit 0 

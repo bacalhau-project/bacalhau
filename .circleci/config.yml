@@ -38,6 +38,8 @@ jobs:
         type: string
       run_tests:
         type: boolean
+      build_tags:
+        type: string
     steps:
       - checkout
 
@@ -64,7 +66,7 @@ jobs:
                 name: Install golang
                 command: |
                   export BREW_GO_VERSION=$(echo $GOVER | grep -Eo '^\d\.\d+')
-                  brew install go
+                  brew install go@${BREW_GO_VERSION}
                   echo "export PATH='/usr/local/opt/go/bin:$PATH'" >> ~/.bash_profile
 
       - when:
@@ -126,7 +128,15 @@ jobs:
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
-                  LOG_LEVEL=debug make test-and-report
+                  export LOG_LEVEL=debug
+                  gotestsum \
+                      --jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+                      --junitfile unittests.xml \
+                      --format standard-quiet \
+                      -- \
+                          -p 1 \
+                          ./pkg/... ./cmd/... \
+                          $COVERAGE_OPTS --tags=<< parameters.build_tags >>
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
@@ -372,16 +382,22 @@ workflows:
   dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
             &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
@@ -393,13 +409,13 @@ workflows:
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
       #     name: deploy-development-cluster
       #     requires:
-      #       - build-linux-amd64
+      #       - build-linux-amd64-unit
       #     rollout_stage: development
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
       #     filters:
@@ -408,16 +424,22 @@ workflows:
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
@@ -427,13 +449,13 @@ workflows:
       - update_metadata:
           name: Update metadata for main test runs
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       # - deploy:
       #     name: deploy-staging-cluster
       #     requires:
-      #       - build-linux-amd64
+      #       - build-linux-amd64-unit
       #     rollout_stage: staging
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
       #     filters:
@@ -445,16 +467,22 @@ workflows:
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [false]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: false
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: false
+                build_tags: "integration"
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -477,13 +505,14 @@ workflows:
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
+              build_tags: ["unit"]
       - performance_job:
           name: Running Performance
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
