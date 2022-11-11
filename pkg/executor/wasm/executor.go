@@ -234,7 +234,6 @@ func (e *Executor) RunShard(
 
 	// Load imported modules
 	for _, value := range wasmSpec.ImportModules {
-
 		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", value.Name, shard.Job.ID)
 		importedWasi, err := e.loadRemoteModule(ctx, value)
 		if err != nil {
@@ -272,8 +271,9 @@ func (e *Executor) RunShard(
 		return failResult(err)
 	}
 
-	// Check that it conforms to our requirements.
-	err = ValidateModuleAgainstJob(module, shard.Job.Spec, wasi)
+	// Check that all WASI modules conform to our requirements.
+	importedModules = append(importedModules, wasi)
+	err = ValidateModuleAgainstJob(module, shard.Job.Spec, importedModules...)
 	if err != nil {
 		return failResult(err)
 	}
