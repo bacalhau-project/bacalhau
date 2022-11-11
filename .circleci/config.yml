@@ -410,7 +410,7 @@ workflows:
       # - deploy:
       #     name: deploy-development-cluster
       #     requires:
-      #       - build-linux-amd64
+      #       - build-linux-amd64-unit
       #     rollout_stage: development
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
       #     filters:
@@ -419,7 +419,7 @@ workflows:
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
@@ -439,13 +439,13 @@ workflows:
       - update_metadata:
           name: Update metadata for main test runs
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
       # - deploy:
       #     name: deploy-staging-cluster
       #     requires:
-      #       - build-linux-amd64
+      #       - build-linux-amd64-unit
       #     rollout_stage: staging
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
       #     filters:
@@ -457,7 +457,7 @@ workflows:
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
@@ -490,7 +490,7 @@ workflows:
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux"]
@@ -500,4 +500,4 @@ workflows:
       - performance_job:
           name: Running Performance
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
