@@ -1,3 +1,7 @@
+---
+sidebar_label: "R - Hello World"
+sidebar_position: 50
+---
 # Running a simple R script
 
 

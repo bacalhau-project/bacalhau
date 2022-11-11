@@ -1,3 +1,7 @@
+---
+sidebar_label: "Python - Pandas"
+sidebar_position: 2
+---
 # Running Pandas on Bacalhau
 
 

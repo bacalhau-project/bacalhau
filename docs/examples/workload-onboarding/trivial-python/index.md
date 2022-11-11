@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Python Hello World"
+sidebar_label: "Python - Hello World"
 sidebar_position: 1
 ---
 # Python Hello World
