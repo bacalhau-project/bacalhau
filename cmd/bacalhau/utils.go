@@ -767,7 +767,7 @@ To get more information at any time, run:
 		} // end for
 	}
 
-	return returnError, printDownloadFlag
+	return printDownloadFlag, returnError
 }
 
 func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents,
