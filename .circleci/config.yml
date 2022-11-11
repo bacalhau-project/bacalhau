@@ -65,7 +65,8 @@ jobs:
             - run:
                 name: Install golang
                 command: |
-                  brew install go@1.19
+                  export BREW_GO_VERSION=$(echo $GOVER | grep -Eo '^\d\.\d+')
+                  brew install go@${BREW_GO_VERSION}
                   echo "export PATH='/usr/local/opt/go/bin:$PATH'" >> ~/.bash_profile
 
       - when:
