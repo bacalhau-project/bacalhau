@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -170,14 +169,15 @@ func URLDownload(
 	mountPath string,
 ) ISetupStorage {
 	return func(ctx context.Context, driverName model.StorageSourceType, ipfsClients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		finalURL, err := url.JoinPath(server.URL, urlPath)
+		// TODO: switch back to url.JoinPath when we are using go 1.19 everywhere
+		finalURL := server.URL + "/" + urlPath
 		return []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceURLDownload,
 				URL:           finalURL,
 				Path:          mountPath,
 			},
-		}, err
+		}, nil
 	}
 }
 
