@@ -178,18 +178,18 @@ integration-test:
 
 .PHONY: grc-test
 grc-test:
-	grc go test ./... -v -p 4
+	grc go test ./... -v
 .PHONY: grc-test-short
 grc-test-short:
 	grc go test ./... -test.short -v
 
 .PHONY: test-debug
 test-debug:
-	LOG_LEVEL=debug go test ./... -v -p 4
+	LOG_LEVEL=debug go test ./... -v
 
 .PHONY: grc-test-debug
 grc-test-debug:
-	LOG_LEVEL=debug grc go test ./... -v -p 4
+	LOG_LEVEL=debug grc go test ./... -v
 
 .PHONY: test-one
 test-one:
