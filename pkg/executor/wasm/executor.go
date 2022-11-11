@@ -232,22 +232,19 @@ func (e *Executor) RunShard(
 	entryPoint := wasmSpec.EntryPoint
 	importedModules := []wazero.CompiledModule{}
 
-	// Load imported modules
-	for _, value := range wasmSpec.ImportModules {
-		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", value.Name, shard.Job.ID)
-		importedWasi, err := e.loadRemoteModule(ctx, value)
-		if err != nil {
-			return failResult(err)
+	// Load and instantiate imported modules
+	for _, wasmSpec := range wasmSpec.ImportModules {
+		log.Ctx(ctx).Info().Msgf("Load imported module '%s' for job '%s'", wasmSpec.Name, shard.Job.ID)
+		importedWasi, importErr := e.loadRemoteModule(ctx, wasmSpec)
+		if importErr != nil {
+			return failResult(importErr)
 		}
 		importedModules = append(importedModules, importedWasi)
-	}
 
-	// Instantiate imported modules and add to namespace
-	for _, value := range importedModules {
-		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", value.Name, shard.Job.ID)
-		_, err = namespace.InstantiateModule(ctx, value, config)
-		if err != nil {
-			return failResult(err)
+		log.Ctx(ctx).Info().Msgf("Add imported module '%s' to WASM namespace for job '%s'", importedWasi.Name(), shard.Job.ID)
+		_, instantiateErr := namespace.InstantiateModule(ctx, importedWasi, config)
+		if instantiateErr != nil {
+			return failResult(instantiateErr)
 		}
 	}
 
