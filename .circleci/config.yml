@@ -392,6 +392,11 @@ workflows:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
             &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
@@ -429,6 +434,11 @@ workflows:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
@@ -467,6 +477,11 @@ workflows:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: false
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: false
+                build_tags: "integration"
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
