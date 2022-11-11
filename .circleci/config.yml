@@ -134,7 +134,6 @@ jobs:
                       --junitfile unittests.xml \
                       --format standard-quiet \
                       -- \
-                          -p 1 \
                           ./pkg/... ./cmd/... \
                           $COVERAGE_OPTS --tags=<< parameters.build_tags >>
                 no_output_timeout: 20m
