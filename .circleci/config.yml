@@ -38,6 +38,8 @@ jobs:
         type: string
       run_tests:
         type: boolean
+      build_tags:
+        type: string
     steps:
       - checkout
 
@@ -126,7 +128,15 @@ jobs:
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
-                  LOG_LEVEL=debug make test-and-report
+                  export LOG_LEVEL=debug
+                  gotestsum \
+                      --jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+                      --junitfile unittests.xml \
+                      --format standard-quiet \
+                      -- \
+                          -p 1 \
+                          ./pkg/... ./cmd/... \
+                          $COVERAGE_OPTS --tags=<< parameters.build_tags >>
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
@@ -378,6 +388,7 @@ workflows:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
@@ -414,6 +425,7 @@ workflows:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"

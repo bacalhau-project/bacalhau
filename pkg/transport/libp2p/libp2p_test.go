@@ -1,3 +1,5 @@
+//go:build !integration
+
 package libp2p
 
 import (
