@@ -463,6 +463,7 @@ workflows:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [false]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
@@ -495,6 +496,7 @@ workflows:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
+              build_tags: ["unit"]
       - performance_job:
           name: Running Performance
           requires:
