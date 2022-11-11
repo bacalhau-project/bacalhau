@@ -39,9 +39,9 @@ const (
 	DefaultDockerRunWaitSeconds               = 600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
-	AutoDownloadFolderPerm      = 0755
-	HowFrequentlyToUpdateTicker = 50 * time.Millisecond
-	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
+	AutoDownloadFolderPerm                    = 0755
+	HowFrequentlyToUpdateTicker               = 50 * time.Millisecond
+	DefaultTimeout              time.Duration = requesternode.DefaultJobExecutionTimeout
 )
 
 var eventsWorthPrinting = map[model.JobEventType]eventStruct{
@@ -404,7 +404,7 @@ func ExecuteJob(ctx context.Context,
 			printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
 			for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
 				printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
-        printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
+				printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
 				printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
 				if s.RunOutput == nil {
 					printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
