@@ -939,19 +939,19 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "badimage", // Bad image
 			executable:        "ls",       // Good executable
 			isValid:           false,
-			errStringContains: "Could not pull image",
+			errStringContains: "Error while executing the job",
 		},
 		"good-image-bad-executable": {
 			imageName:         "ubuntu",        // Good image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Executable file not found",
+			errStringContains: "Error while executing the job",
 		},
 		"bad-image-bad-executable": {
 			imageName:         "badimage",      // Bad image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Could not pull image",
+			errStringContains: "Error while executing the job",
 		},
 	}
 
