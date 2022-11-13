@@ -1,4 +1,4 @@
-//go:build !(unit && (windows || darwin))
+//go:build integration
 
 package devstack
 
@@ -15,6 +15,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -41,6 +42,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
+		testutils.MustHaveDocker(suite.T())
+
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
 				DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodeCount},
