@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -68,6 +69,9 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 // WriteJobResult produces files and a model.RunCommandResult in the standard
 // format, including truncating the contents of both where necessary to fit
 // within system-defined limits.
+//
+// It will consume only the bytes from the passed io.Readers that it needs to
+// correctly form job outputs. Once the command returns, the readers can close.
 func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, err error) (*model.RunCommandResult, error) {
 	result := model.NewRunCommandResult()
 
@@ -101,8 +105,23 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		},
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(len(outputs))
+
+	errChan := make(chan error, len(outputs))
+	makeResult := func(output outputResult) {
+		errChan <- writeOutputResult(resultsDir, output)
+		wg.Done()
+	}
+
 	for _, output := range outputs {
-		err = multierr.Append(err, writeOutputResult(resultsDir, output))
+		go makeResult(output)
+	}
+	wg.Wait()
+	close(errChan)
+
+	for outuptErr := range errChan {
+		err = multierr.Append(err, outuptErr)
 	}
 
 	result.ExitCode = exitcode

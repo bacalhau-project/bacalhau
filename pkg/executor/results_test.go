@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/stretchr/testify/require"
 )
 
-func TestContents(t *testing.T) {
+func TestWriteResultContents(t *testing.T) {
 	testCases := []string{"test", "", string([]byte{0x00, 0x01})}
 	for _, testCase := range testCases {
 		t.Run(testCase, func(t *testing.T) {
@@ -41,7 +42,7 @@ func TestContents(t *testing.T) {
 	}
 }
 
-func TestLimitsEnforced(t *testing.T) {
+func TestWriteResultLimitsEnforced(t *testing.T) {
 	for _, testCase := range []struct {
 		fileLimit, summaryLimit   int
 		expectFile, expectSummary string
@@ -79,7 +80,7 @@ func TestLimitsEnforced(t *testing.T) {
 	}
 }
 
-func TestHandlesNilPointers(t *testing.T) {
+func TestWriteResultHandlesNilPointers(t *testing.T) {
 	spec := outputResult{
 		contents:     strings.NewReader("hello world"),
 		filename:     "whatever",
@@ -92,4 +93,33 @@ func TestHandlesNilPointers(t *testing.T) {
 	resultsDir := t.TempDir()
 	err := writeOutputResult(resultsDir, spec)
 	require.NoError(t, err)
+}
+
+func TestJobResult(t *testing.T) {
+	tempDir := t.TempDir()
+	result, err := WriteJobResults(
+		tempDir,
+		strings.NewReader("standard output"),
+		strings.NewReader("standard error"),
+		123,
+		nil,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, "standard output", result.STDOUT)
+	require.Equal(t, false, result.StdoutTruncated)
+	require.Equal(t, "standard error", result.STDERR)
+	require.Equal(t, false, result.StderrTruncated)
+	require.Equal(t, 123, result.ExitCode)
+	require.Equal(t, "", result.ErrorMsg)
+
+	for filename, expectedContents := range map[string]string{
+		ipfs.DownloadFilenameStdout:   "standard output",
+		ipfs.DownloadFilenameStderr:   "standard error",
+		ipfs.DownloadFilenameExitCode: "123",
+	} {
+		actualContents, err := os.ReadFile(filepath.Join(tempDir, filename))
+		require.NoError(t, err)
+		require.Equal(t, expectedContents, string(actualContents))
+	}
 }
