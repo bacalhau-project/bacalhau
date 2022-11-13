@@ -163,12 +163,19 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 	return nil
 }
 
-func ExecuteTestCobraCommand(_ *testing.T, root *cobra.Command, args ...string) (
+func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (
+	c *cobra.Command, output string, err error,
+) {
+	return ExecuteTestCobraCommandWithStdin(t, root, nil, args...)
+}
+
+func ExecuteTestCobraCommandWithStdin(_ *testing.T, root *cobra.Command, stdin io.Reader, args ...string) (
 	c *cobra.Command, output string, err error,
 ) { //nolint:unparam // use of t is valuable here
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(buf)
+	root.SetIn(stdin)
 	root.SetArgs([]string{})
 	root.SetArgs(args)
 

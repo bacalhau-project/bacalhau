@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -281,53 +283,32 @@ func (e *Executor) RunShard(
 	}
 
 	log.Ctx(ctx).Debug().Msgf("Capturing stdout/stderr for container %s", jobContainer.ID)
-	stdoutFilename := fmt.Sprintf("%s/stdout", jobResultsDir)
-	stderrFilename := fmt.Sprintf("%s/stderr", jobResultsDir)
+	cmd := exec.CommandContext(ctx, "docker", "logs", "-f", jobContainer.ID) //nolint:gosec // not user input
+	stdoutPipe, stdoutErr := cmd.StdoutPipe()
+	stderrPipe, stderrErr := cmd.StderrPipe()
+	startErr := cmd.Start()
 
-	log.Ctx(ctx).Debug().Msgf("Capturing stdout to %s", stdoutFilename)
-	log.Ctx(ctx).Debug().Msgf("Capturing stderr to %s", stderrFilename)
-
-	runResult, err := system.RunCommandResultsToDisk(
-		"docker",
-		[]string{
-			"logs",
-			"-f",
-			jobContainer.ID,
-		},
-		stdoutFilename,
-		stderrFilename,
-	)
-	if err != nil {
-		err = fmt.Errorf("failed to get logs: %w", err)
-		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-	}
-
-	runResult.ExitCode = int(containerExitStatusCode)
-	if containerError != nil {
-		runResult.ErrorMsg = containerError.Error()
-	}
-	if runResult.ExitCode != 0 {
-		if runResult.ErrorMsg == "" {
-			runResult.ErrorMsg = fmt.Sprintf("exit code was not zero: %d", containerExitStatusCode)
+	defer func() {
+		// Wait will get called once WriteJobResults has consumed all that it
+		// wants to (i.e. it has returned), at which point it will close pipes
+		err := cmd.Wait()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("logs process failed")
 		}
-		log.Ctx(ctx).Info().Msgf("container error %s", runResult.ErrorMsg)
+	}()
+
+	var exitCodeErr error
+	if containerExitStatusCode != 0 {
+		exitCodeErr = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
 	}
 
-	log.Ctx(ctx).Trace().Msgf("Writing exit code for container %s", jobContainer.ID)
-	err = os.WriteFile(
-		fmt.Sprintf("%s/exitCode", jobResultsDir),
-		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),
-		util.OS_ALL_R|util.OS_USER_RW,
+	return executor.WriteJobResults(
+		jobResultsDir,
+		stdoutPipe,
+		stderrPipe,
+		int(containerExitStatusCode),
+		multierr.Combine(containerError, startErr, stdoutErr, stderrErr, exitCodeErr),
 	)
-	if err != nil {
-		runResult.ErrorMsg = errors.Wrap(err, "could not write results to exitCode: ").Error()
-		log.Ctx(ctx).Error().Msg(runResult.ErrorMsg)
-		return runResult, err
-	}
-	log.Ctx(ctx).Debug().Msgf("Wrote exit code %d to %s/exitCode", containerExitStatusCode, jobResultsDir)
-	log.Ctx(ctx).Debug().Msgf("Returning RunOutput %+v", runResult)
-
-	return runResult, err
 }
 
 func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
