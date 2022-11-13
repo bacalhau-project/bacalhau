@@ -7,8 +7,11 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -66,6 +69,34 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage ISe
 	return storageList
 }
 
+type mixedExecutorFactory struct {
+	*node.StandardExecutorsFactory
+	*devstack.NoopExecutorsFactory
+}
+
+// Get implements node.ExecutorsFactory
+func (m *mixedExecutorFactory) Get(ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
+	stdProvider, err := m.StandardExecutorsFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	noopProvider, err := m.NoopExecutorsFactory.Get(ctx, nodeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	noopExecutor, err := noopProvider.GetExecutor(ctx, model.EngineNoop)
+	if err != nil {
+		return nil, err
+	}
+
+	err = stdProvider.AddExecutor(ctx, model.EngineNoop, noopExecutor)
+	return stdProvider, err
+}
+
+var _ node.ExecutorsFactory = (*mixedExecutorFactory)(nil)
+
 // Set up the test devstack according to the passed options. By default, the
 // devstack will have 1 node with local only data and no timeouts.
 func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
@@ -89,12 +120,31 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.RequesterNodeConfig = &conf
 	}
 
-	stack, err := devstack.NewStandardDevStack(
+	var executorFactory node.ExecutorsFactory
+	if config.ExecutorConfig != nil {
+		// We will take the standard executors and add in the noop executor
+		executorFactory = &mixedExecutorFactory{
+			StandardExecutorsFactory: node.NewStandardExecutorsFactory(),
+			NoopExecutorsFactory:     devstack.NewNoopExecutorsFactoryWithConfig(*config.ExecutorConfig),
+		}
+	} else {
+		executorFactory = node.NewStandardExecutorsFactory()
+	}
+
+	injector := node.NodeDependencyInjector{
+		StorageProvidersFactory: node.NewStandardStorageProvidersFactory(),
+		ExecutorsFactory:        executorFactory,
+		VerifiersFactory:        node.NewStandardVerifiersFactory(),
+		PublishersFactory:       node.NewStandardPublishersFactory(),
+	}
+
+	stack, err := devstack.NewDevStack(
 		s.Ctx,
 		cm,
 		*config.DevStackOptions,
 		*config.ComputeNodeConfig,
 		*config.RequesterNodeConfig,
+		injector,
 	)
 	require.NoError(s.T(), err)
 
@@ -157,7 +207,8 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) (resultsDir string) {
 	// Wait for job to complete
 	resolver := apiClient.GetJobStateResolver()
 	checkers := scenario.JobCheckers
-	err = resolver.Wait(s.Ctx, submittedJob.ID, 1, checkers...) // TODO shards
+	shards := job.GetJobTotalExecutionCount(submittedJob)
+	err = resolver.Wait(s.Ctx, submittedJob.ID, shards, checkers...)
 	require.NoError(s.T(), err)
 
 	// Check outputs

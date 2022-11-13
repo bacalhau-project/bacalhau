@@ -13,7 +13,7 @@ type MappedExecutorProvider struct {
 	executorsInstalledCache map[model.Engine]bool
 }
 
-func NewTypeExecutorProvider(executors map[model.Engine]Executor) *MappedExecutorProvider {
+func NewTypeExecutorProvider(executors map[model.Engine]Executor) ExecutorProvider {
 	return &MappedExecutorProvider{
 		executors:               executors,
 		executorsInstalledCache: map[model.Engine]bool{},
