@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -66,6 +67,7 @@ type StackConfig struct {
 	*devstack.DevStackOptions
 	*computenode.ComputeNodeConfig
 	*requesternode.RequesterNodeConfig
+	*noop.ExecutorConfig
 }
 
 type StorageDriverFactory struct {
@@ -225,7 +227,7 @@ func FileContains(
 		}
 
 		if !strings.Contains(string(resultsContent), expectedString) {
-			return fmt.Errorf("%s: content mismatch:\nExpected Contains: %s\nActual: %s", outputFile, expectedString, resultsContent)
+			return fmt.Errorf("%s: content mismatch:\nExpected Contains: %q\nActual: %q", outputFile, expectedString, resultsContent)
 		}
 
 		return nil
@@ -244,7 +246,7 @@ func FileEquals(
 		}
 
 		if string(resultsContent) != expectedString {
-			return fmt.Errorf("%s: content mismatch:\nExpected: %s\nActual: %s", outputFile, expectedString, resultsContent)
+			return fmt.Errorf("%s: content mismatch:\nExpected: %q\nActual: %q", outputFile, expectedString, resultsContent)
 		}
 		return nil
 	}

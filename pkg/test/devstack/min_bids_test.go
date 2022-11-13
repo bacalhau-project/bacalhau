@@ -11,7 +11,6 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -35,9 +34,6 @@ type minBidsTestCase struct {
 }
 
 func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
-	dirPath, err := prepareFolderWithFiles(s.T(), testCase.shards)
-	require.NoError(s.T(), err)
-
 	spec := scenario.WasmHelloWorld.Spec
 	spec.Sharding = model.JobShardingConfig{
 		GlobPattern: "/input/*",
@@ -48,7 +44,10 @@ func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
 		Stack: &scenario.StackConfig{
 			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
 		},
-		Inputs:   scenario.StoredFile(dirPath, "/input"),
+		Inputs: scenario.StoredFile(
+			prepareFolderWithFiles(s.T(), testCase.shards),
+			"/input",
+		),
 		Contexts: scenario.WasmHelloWorld.Contexts,
 		Spec:     spec,
 		Deal: model.Deal{

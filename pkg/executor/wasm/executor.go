@@ -286,26 +286,7 @@ func (e *Executor) RunShard(
 		}
 	}
 
-	for filename, contents := range map[string][]byte{
-		"stdout":   stdout.Bytes(),
-		"stderr":   stderr.Bytes(),
-		"exitCode": []byte(fmt.Sprint(exitCode)),
-	} {
-		err = os.WriteFile(filepath.Join(jobResultsDir, filename), contents, os.ModePerm)
-		if err != nil {
-			return failResult(err)
-		}
-	}
-
-	result := &model.RunCommandResult{
-		STDOUT:   stdout.String(),
-		STDERR:   stderr.String(),
-		ExitCode: exitCode,
-	}
-	if wasmErr != nil {
-		result.ErrorMsg = wasmErr.Error()
-	}
-	return result, wasmErr
+	return executor.WriteJobResults(jobResultsDir, stdout, stderr, exitCode, wasmErr)
 }
 
 func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {

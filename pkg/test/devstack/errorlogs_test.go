@@ -3,14 +3,17 @@
 package devstack
 
 import (
+	"context"
+	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,9 +28,18 @@ func TestDevstackErrorLogsSuite(t *testing.T) {
 }
 
 var errorLogsTestCase = scenario.Scenario{
+	Stack: &scenario.StackConfig{
+		ExecutorConfig: &noop.ExecutorConfig{
+			ExternalHooks: noop.ExecutorConfigExternalHooks{
+				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+					return executor.WriteJobResults(resultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil)
+				},
+			},
+		},
+	},
 	ResultsChecker: scenario.ManyChecks(
-		scenario.FileEquals(ipfs.DownloadFilenameStdout, "apples\n"),
-		scenario.FileEquals(ipfs.DownloadFilenameStderr, "oranges\n"),
+		scenario.FileEquals(ipfs.DownloadFilenameStdout, "apples"),
+		scenario.FileEquals(ipfs.DownloadFilenameStderr, "oranges"),
 	),
 	JobCheckers: []job.CheckStatesFunction{
 		job.WaitThrowErrors([]model.JobStateType{
@@ -38,21 +50,12 @@ var errorLogsTestCase = scenario.Scenario{
 		}),
 	},
 	Spec: model.Spec{
-		Engine:    model.EngineDocker,
+		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherIpfs,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"bash",
-				"-c",
-				"echo apples && echo oranges >&2 && exit 19",
-			},
-		},
 	},
 }
 
 func (suite *DevstackErrorLogsSuite) TestErrorContainer() {
-	testutils.MustHaveDocker(suite.T())
 	suite.RunScenario(errorLogsTestCase)
 }
