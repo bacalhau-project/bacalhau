@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +23,9 @@ func TestWriteResultContents(t *testing.T) {
 			spec := outputResult{
 				contents:     strings.NewReader(testCase),
 				filename:     "hello",
-				fileLimit:    len(testCase),
+				fileLimit:    datasize.ByteSize(len(testCase)),
 				summary:      &summary,
-				summaryLimit: len(testCase),
+				summaryLimit: datasize.ByteSize(len(testCase)),
 				truncated:    &truncated,
 			}
 
@@ -44,7 +45,7 @@ func TestWriteResultContents(t *testing.T) {
 
 func TestWriteResultLimitsEnforced(t *testing.T) {
 	for _, testCase := range []struct {
-		fileLimit, summaryLimit   int
+		fileLimit, summaryLimit   datasize.ByteSize
 		expectFile, expectSummary string
 		expectSummaryTruncated    bool
 	}{

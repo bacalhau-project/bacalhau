@@ -14,21 +14,19 @@ import (
 
 // Making these variable to allow for testing
 
-// MaxStdoutFileLengthInBytes sets the max size for stdout file during container execution (needed to prevent DoS)
-var MaxStdoutFileLengthInBytes = int(1 * datasize.GB)
+// MaxStdoutFileLength sets the max size for stdout file during container execution (needed to prevent DoS)
+var MaxStdoutFileLength = 1 * datasize.GB
 
-// MaxStderrFileLengthInBytes sets the max size for stderr file during container execution (needed to prevent DoS)
-var MaxStderrFileLengthInBytes = int(1 * datasize.GB)
+// MaxStderrFileLength sets the max size for stderr file during container execution (needed to prevent DoS)
+var MaxStderrFileLength = 1 * datasize.GB
 
-// MaxStdoutReturnLengthInBytes sets the max size for stdout string return into RunOutput (with trunctation)
+// MaxStdoutReturnLength sets the max size for stdout string return into RunOutput (with trunctation)
 // from container execution (needed to prevent DoS)
-var MaxStdoutReturnLengthInBytes = 2048
+var MaxStdoutReturnLength = 2 * datasize.KB
 
-// MaxStderrReturnLengthInBytes sets the max size for stderr string return into RunOutput (with trunctation)
+// MaxStderrReturnLength sets the max size for stderr string return into RunOutput (with trunctation)
 // from container execution (needed to prevent DoS)
-var MaxStderrReturnLengthInBytes = 2048
-
-const ReadChunkSizeInBytes = 1024
+var MaxStderrReturnLength = 2 * datasize.KB
 
 // TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
