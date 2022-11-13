@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -105,16 +106,9 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
-	// TODO @enricorotundo #493: make sure sudo is not needed here
-	// result, err := system.RunCommandGetResults("sudo", []string{
-	// 	"cat",
-	// 	volume.Source,
-	// })
-	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
-		volume.Source,
-	})
+	r, err := os.ReadFile(volume.Source)
 	require.NoError(t, err)
-	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
+	require.Equal(t, string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)
@@ -165,18 +159,9 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// we should now be able to read our file content
 	// from the file on the host via fuse
 
-	// TODO @enricorotundo #493: make sure sudo is not needed here
-	// result, err := system.RunCommandGetResults("sudo", []string{
-	// 	"cat",
-	// 	fmt.Sprintf("%s/file.txt", volume.Source),
-	// })
-	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
-		fmt.Sprintf("%s/file.txt", volume.Source),
-	})
+	r, err := os.ReadFile(filepath.Join(volume.Source, "file.txt"))
 	require.NoError(t, err)
-	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
-
-	fmt.Printf("HERE IS RESULTS: %s\n", r.STDOUT)
+	require.Equal(t, string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)

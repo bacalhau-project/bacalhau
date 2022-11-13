@@ -158,11 +158,8 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	require.NoError(s.T(), err, "Error describing job.")
 
 	// Cat the file and pipe it to stdin
-	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
-		"echo", []string{out,
-			"|", "../../bin/bacalhau create"},
-	)
-	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
+	_, out, err = ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, strings.NewReader(out), "create")
+	require.NoError(s.T(), err)
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnNoInput() {
