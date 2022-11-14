@@ -38,7 +38,7 @@ type ScenarioRunner struct {
 }
 
 func (s *ScenarioRunner) SetupTest() {
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(context.Background(), t, s.T().Name())

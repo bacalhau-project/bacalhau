@@ -58,7 +58,7 @@ func (s *DockerRunSuite) SetupTest() {
 	testutils.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 	s.rootCmd = RootCmd
 }
 

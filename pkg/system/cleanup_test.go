@@ -23,7 +23,7 @@ func TestSystemCleanupSuite(t *testing.T) {
 // Before each test
 func (suite *SystemCleanupSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func (suite *SystemCleanupSuite) TestCleanupManager() {

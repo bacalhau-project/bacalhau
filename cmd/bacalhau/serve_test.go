@@ -39,7 +39,7 @@ func TestServeSuite(t *testing.T) {
 // Before each test
 func (suite *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting())
+	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
 	suite.rootCmd = RootCmd
 }
 

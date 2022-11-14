@@ -14,10 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func IsDebug() bool {
-	return os.Getenv("LOG_LEVEL") == "debug"
-}
-
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
 }
@@ -61,10 +57,6 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 	return time.Duration(getVolumeSizeRequestTimeoutSeconds) * time.Second
 }
 
-func SetVolumeSizeRequestTimeout(seconds int64) {
-	getVolumeSizeRequestTimeoutSeconds = seconds
-}
-
 // by default we wait 5 minutes for the IPFS network to download a CID
 // tests will override this using config.SetVolumeSizeRequestTimeout(2)
 var downloadCidRequestTimeoutSeconds int64 = 300
@@ -89,10 +81,6 @@ var downloadURLRequestRetries = 3
 // how long do we wait for a URL to download
 func GetDownloadURLRequestRetries() int {
 	return downloadURLRequestRetries
-}
-
-func SetDownloadURLRequestRetries(count int) {
-	downloadURLRequestRetries = count
 }
 
 func GetLibp2pTracerPath() string {
