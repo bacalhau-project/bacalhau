@@ -31,7 +31,7 @@ func TestSystemUtilsSuite(t *testing.T) {
 // Before each test
 func (s *SystemUtilsSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), InitConfigForTesting())
+	require.NoError(s.T(), InitConfigForTesting(s.T()))
 }
 
 func (s *SystemUtilsSuite) TestBasicCommandExecution() {

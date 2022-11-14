@@ -5,7 +5,6 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +43,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 	testutils.MustHaveDocker(s.T())
 
 	logger.ConfigureTestLogging(s.T())
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(s.T())
 	require.NoError(s.T(), err)
 }
 
@@ -98,7 +97,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, outputPath, outputPath, inputPath))
 
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
@@ -145,7 +144,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		})
 	require.NoError(s.T(), err)
 
-	stdoutContents, err := ioutil.ReadFile(filepath.Join(finalOutputPath, "stdout"))
+	stdoutContents, err := os.ReadFile(filepath.Join(finalOutputPath, "stdout"))
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), stdoutContents)
 
@@ -228,7 +227,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	// write bytes to main.py
 	mainPy := []byte("print(1+1)")
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,

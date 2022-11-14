@@ -56,7 +56,7 @@ func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig)
 //nolint:funlen
 func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	// Setup the system
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(t)
 	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()

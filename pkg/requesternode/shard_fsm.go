@@ -257,7 +257,7 @@ func (m *shardStateMachine) fail(ctx context.Context, reason string) {
 
 // send a request to the state machine by enqueuing it in the request channel.
 // it is possible due to race condition or duplicate network events that a
-// request is sent after the fsm is completed and no longer a goroutin is
+// request is sent after the fsm is completed and no longer a goroutine is
 // consuming from the channel, which will lead to a deadlock in the
 // requesternode when trying to send the request.
 // To mitigate this, we close the channel when the fsm is completed, and handle
