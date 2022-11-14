@@ -532,8 +532,7 @@ func submitJob(ctx context.Context,
 func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 	if len(args) == 0 {
 		r := bufio.NewReader(RootCmd.InOrStdin())
-		var bytesResult []byte
-		scanner := bufio.NewScanner(r)
+		reader := bufio.NewReader(r)
 
 		// buffered channel of dataStream
 		dataStream := make(chan []byte, 1)
@@ -541,17 +540,26 @@ func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 		// Run scanner.Bytes() function in it's own goroutine and pass back it's
 		// response into dataStream channel.
 		go func() {
-			for scanner.Scan() {
-				dataStream <- scanner.Bytes()
+			for {
+				res, err := reader.ReadBytes("\n"[0])
+				if err != nil {
+					break
+				}
+				dataStream <- res
 			}
 			close(dataStream)
 		}()
 
 		// Listen on dataStream channel AND a timeout channel - which ever happens first.
+		var err error
+		var bytesResult bytes.Buffer
 		timedOut := false
 		select {
 		case res := <-dataStream:
-			bytesResult = append(bytesResult, res...)
+			_, err = bytesResult.Write(res)
+			if err != nil {
+				return nil, err
+			}
 		case <-time.After(time.Duration(10) * time.Millisecond): //nolint:gomnd // 10ms timeout
 			timedOut = true
 		}
@@ -559,11 +567,12 @@ func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 		if timedOut {
 			RootCmd.Println("No input provided, waiting ... (Ctrl+D to complete)")
 		}
-		for scanner.Scan() {
-			bytesResult = append(bytesResult, scanner.Bytes()...)
+
+		for read := range dataStream {
+			_, err = bytesResult.Write(read)
 		}
 
-		return bytesResult, nil
+		return bytesResult.Bytes(), err
 	}
 	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
