@@ -34,7 +34,7 @@ func TestCreateSuite(t *testing.T) {
 // before each test
 func (s *CreateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 	s.rootCmd = RootCmd
 }
 

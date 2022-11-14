@@ -33,7 +33,7 @@ func SetupTest(
 	computeNodeConfig computenode.ComputeNodeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
-	require.NoError(t, system.InitConfigForTesting())
+	require.NoError(t, system.InitConfigForTesting(t))
 
 	cm := system.NewCleanupManager()
 

@@ -44,7 +44,7 @@ func (suite *ShardingSuite) SetupTest() {
 	testutils.MustHaveDocker(suite.T())
 
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
 }
 
@@ -77,7 +77,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
 
 	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
