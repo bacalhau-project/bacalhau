@@ -124,22 +124,14 @@ jobs:
           steps:
             - run:
                 name: Test
+                environment:
+                  LOG_LEVEL: debug
+                  TEST_BUILD_TAGS: << parameters.build_tags >>
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
                   go install gotest.tools/gotestsum@latest
-                  mkdir coverage
-                  export LOG_LEVEL=debug
-                  export COVERAGE_OPTS="-coverpkg=./... -coverprofile=coverage.out"
-                  gotestsum \
-                      --jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
-                      --junitfile unittests.xml \
-                      --format standard-quiet \
-                      -- \
-                          -p 1 \
-                          ./pkg/... ./cmd/... \
-                          $COVERAGE_OPTS --tags=<< parameters.build_tags >>
-                  go tool cover -html=coverage.out -o coverage/coverage.html
+                  make test-and-report
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
