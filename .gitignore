@@ -9,7 +9,6 @@ lib
 .DS_Store
 dist/*.sha256
 dist/*.tar.gz
-.cache
 env.*
 .env
 *.swp
@@ -42,3 +41,5 @@ unittests.xml
 output_dir
 experimental/*
 .idea/
+coverage/
+coverage.out
