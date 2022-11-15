@@ -346,8 +346,9 @@ github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre
 github.com/go-openapi/jsonpointer v0.19.5 h1:gZr+CIYByUqjcgeLXnQu2gHYQC9o73G2XUeOFYEICuY=
 github.com/go-openapi/jsonreference v0.19.5 h1:1WJP/wi4OjB4iV8KVbH73rQaoialJrqv8gitZLxGLtM=
 github.com/go-openapi/swag v0.19.14 h1:gm3vOOXfiuw5i9p5N9xJvfjvuofpyvLA9Wr6QfK5Fng=
-github.com/go-pkgz/expirable-cache v0.1.0 h1:3bw0m8vlTK8qlwz5KXuygNBTkiKRTPrAGXU0Ej2AC1g=
 github.com/go-pkgz/expirable-cache v0.1.0/go.mod h1:GTrEl0X+q0mPNqN6dtcQXksACnzCBQ5k/k1SwXJsZKs=
+github.com/go-pkgz/expirable-cache v1.0.0 h1:ns5+1hjY8hntGv8bPaQd9Gr7Jyo+Uw5SLyII40aQdtA=
+github.com/go-pkgz/expirable-cache v1.0.0/go.mod h1:GTrEl0X+q0mPNqN6dtcQXksACnzCBQ5k/k1SwXJsZKs=
 github.com/go-resty/resty/v2 v2.7.0 h1:me+K9p3uhSmXtrBZ4k9jcEAfJmuC8IivWHwaLZwPrFY=
 github.com/go-resty/resty/v2 v2.7.0/go.mod h1:9PWDzw47qPphMRFfhsyk0NnSgvluHcljSMVIq3w7q0I=
 github.com/go-sql-driver/mysql v1.4.0/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
