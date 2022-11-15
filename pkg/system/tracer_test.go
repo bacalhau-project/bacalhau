@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel"
@@ -14,15 +14,17 @@ import (
 )
 
 func TestTracer(t *testing.T) {
-	defer system.CleanupTraceProvider()
+	t.Cleanup(func() {
+		assert.NoError(t, CleanupTraceProvider())
+	})
 
 	var sr SpanRecorder
 	tp := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	tp.RegisterSpanProcessor(&sr)
 
 	ctx := context.Background()
-	ctx, span1 := system.Span(ctx, "service", "span1")
-	ctx, span2 := system.Span(ctx, "service", "span2") //lint:ignore SA4006 ok to have extra assignment
+	ctx, span1 := Span(ctx, "service", "span1")
+	ctx, span2 := Span(ctx, "service", "span2") //lint:ignore SA4006 ok to have extra assignment
 	span2.End()
 	span1.End()
 
@@ -39,8 +41,8 @@ type SpanRecorder struct {
 
 func (sr *SpanRecorder) Shutdown(context.Context) error   { return nil }
 func (sr *SpanRecorder) ForceFlush(context.Context) error { return nil }
-func (sr *SpanRecorder) OnEnd(s sdktrace.ReadOnlySpan)    {}
-func (sr *SpanRecorder) OnStart(ctx context.Context,
+func (sr *SpanRecorder) OnEnd(sdktrace.ReadOnlySpan)      {}
+func (sr *SpanRecorder) OnStart(_ context.Context,
 	span sdktrace.ReadWriteSpan) {
 
 	sr.traces = append(sr.traces, span)
