@@ -97,15 +97,11 @@ python3 read_csv.py
     
     [4 rows x 15 columns]
 
+## Adding the scripts and datasets to IPFS
 
-## **Running the script on bacalhau**
+To run Pandas on Bacalhau, you'll need to upload your datasets along with the script to IPFS. You can do that by using the [IPFS CLI](https://docs.ipfs.tech/install/command-line/#official-distributions) to add your files.
 
-To run pandas on bacalhau you must upload your datasets along with the script to IPFS this can be done by using the IPFS CLI to upload the files or using a pinning service like pinata or nft.storage
-
-Adding the Scripts and Datasets to IPFS
-since we already uploaded these scripts to IPFS there is no need for you to add them
-
-```
+```bash
 $ ipfs add -r .
 added QmPqx4BaWzAmZm4AuBqGtG6dkX7bGSVgjfgpkv2g7mi3uz pandas/read_csv.py
 added QmYErPqtdpNTxpKot9pXR5QbhGSyaGdMFxfUwGHm4rzXzH pandas/transactions.csv
@@ -113,23 +109,14 @@ added QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz pandas
  1.59 KiB / 1.59 KiB [===================================================================================]
 ```
 
+Alternatively, you can use a pinning service like [pinata](https://knowledge.pinata.cloud/en/articles/5509412-how-to-upload-a-large-folder-by-running-a-local-ipfs-node) or [nft.storage](https://nft.storage/docs/how-to/nftup/).
 
-For running pandas in bacalhau you need choose a container which has python and pandas Installed
 
-Structure of the bacalhau command
+## Running the script on Bacalhau
 
-`bacalhau docker run ` similar to docker run
+For running Pandas in Bacalhau you need choose a container which has Python and Pandas installed. 
 
--v mount the CID to the container this is the 
-
-CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED> `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
-
--w is used to set the working directory
-
--- /bin/bash -c 'python hello.py' (Run the script)
-
-### Command:
-
+Command:
 
 ```bash
  bacalhau  docker run \
@@ -141,8 +128,25 @@ amancevice/pandas \
 -- python read_csv.py
 ```
 
-    e6377c99-b637-4661-a334-6ce98fcf037c
 
+The structure of the Bacalhau command
+
+- `bacalhau docker run`: similar to docker run
+
+- `-v`: mount the CID to the container this is the 
+
+- `CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED>`: `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
+
+- `-w`: is used to set the working directory
+
+- `-- /bin/bash -c 'python hello.py'`:  Run the script
+
+
+Output
+
+
+    e6377c99-b637-4661-a334-6ce98fcf037c
+    
 
 Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf037c`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
@@ -176,7 +180,7 @@ we create a temporary directory to save our results
 mkdir pandas-results
 ```
 
-To Download the results of your job, run the following command:
+To download the results of your job, run the following command:
 
 
 ```bash
