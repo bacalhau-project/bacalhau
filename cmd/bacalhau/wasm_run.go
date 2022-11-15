@@ -97,6 +97,15 @@ func init() { //nolint:gochecknoinits // idiomatic for cobra commands
 		EnvVarMapFlag(&wasmJob.Spec.Wasm.EnvironmentVariables), "env", "e",
 		`The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)`,
 	)
+	runWasmCommand.PersistentFlags().VarP(
+		NewURLStorageSpecArrayFlag(&wasmJob.Spec.Wasm.ImportModules), "import-module-urls", "U",
+		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
+			`the 'wget' command, and supports both HTTP and HTTPS.`,
+	)
+	runWasmCommand.PersistentFlags().VarP(
+		NewIPFSStorageSpecArrayFlag(&wasmJob.Spec.Wasm.ImportModules), "import-module-volumes", "I",
+		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
+	)
 }
 
 var wasmCmd = &cobra.Command{

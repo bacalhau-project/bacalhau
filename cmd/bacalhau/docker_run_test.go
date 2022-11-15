@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -812,26 +813,35 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {
-	system.MaxStderrReturnLengthInBytes = 10 // Make it artificially small for this run
+	system.MaxStderrReturnLength = 10 // Make it artificially small for this run
 
 	tests := map[string]struct {
-		inputLength    int
-		expectedLength int
+		inputLength    datasize.ByteSize
+		expectedLength datasize.ByteSize
 		truncated      bool
 	}{
 		// "zero length": {inputLength: 0, truncated: false, expectedLength: 0},
 		// "one length":  {inputLength: 1, truncated: false, expectedLength: 1},
-		"maxLength - 1": {inputLength: system.MaxStdoutReturnLengthInBytes - 1,
+		"maxLength - 1": {
+			inputLength:    system.MaxStdoutReturnLength - 1,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes - 1},
-		"maxLength": {inputLength: system.MaxStdoutReturnLengthInBytes,
+			expectedLength: system.MaxStdoutReturnLength - 1,
+		},
+		"maxLength": {
+			inputLength:    system.MaxStdoutReturnLength,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 1": {inputLength: system.MaxStdoutReturnLengthInBytes + 1,
+			expectedLength: system.MaxStdoutReturnLength,
+		},
+		"maxLength + 1": {
+			inputLength:    system.MaxStdoutReturnLength + 1,
 			truncated:      true,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10,
-			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
+			expectedLength: system.MaxStdoutReturnLength,
+		},
+		"maxLength + 10000": {
+			inputLength:    system.MaxStdoutReturnLength * 10,
+			truncated:      true,
+			expectedLength: system.MaxStdoutReturnLength,
+		},
 	}
 
 	for name, tc := range tests {
@@ -857,6 +867,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+			// TODO: test is not finished! test cases are not used!
 
 			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
 

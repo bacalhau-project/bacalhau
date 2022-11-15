@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package bacalhau
 
@@ -123,7 +123,7 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 }
 
 func (s *CreateSuite) TestCreateFromStdin() {
-	testFile := "../../testdata/job-url.yaml"
+	testFile := "../../testdata/job.yaml"
 
 	Fatal = FakeFatalErrorHandler
 
@@ -135,11 +135,13 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	parsedBasedURI, err := url.Parse(c.BaseURI)
 	require.NoError(s.T(), err)
 
+	testSpec, err := os.Open(testFile)
+	require.NoError(s.T(), err)
+
 	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
-	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
+	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
-		testFile,
 	)
 
 	require.NoError(s.T(), err, "Error submitting job.")
@@ -156,13 +158,6 @@ func (s *CreateSuite) TestCreateFromStdin() {
 	)
 
 	require.NoError(s.T(), err, "Error describing job.")
-
-	// Cat the file and pipe it to stdin
-	r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
-		"echo", []string{out,
-			"|", "../../bin/bacalhau create"},
-	)
-	require.Equal(s.T(), 0, r.ExitCode, "Error piping to stdin")
 }
 
 func (s *CreateSuite) TestCreateDontPanicOnNoInput() {

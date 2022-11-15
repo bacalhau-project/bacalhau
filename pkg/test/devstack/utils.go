@@ -54,7 +54,7 @@ func SetupTest(
 	return stack, cm
 }
 
-func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) { //nolint:unused
+func prepareFolderWithFiles(t *testing.T, fileCount int) string { //nolint:unused
 	basePath := t.TempDir()
 	for i := 0; i < fileCount; i++ {
 		err := os.WriteFile(
@@ -62,11 +62,9 @@ func prepareFolderWithFiles(t *testing.T, fileCount int) (string, error) { //nol
 			[]byte(fmt.Sprintf("hello %d", i)),
 			os.ModePerm,
 		)
-		if err != nil {
-			return "", err
-		}
+		require.NoError(t, err)
 	}
-	return basePath, nil
+	return basePath
 }
 
 type DeterministicVerifierTestArgs struct {

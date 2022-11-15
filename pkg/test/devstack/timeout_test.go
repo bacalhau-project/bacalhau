@@ -1,13 +1,16 @@
-//go:build !(unit && (windows || darwin))
+//go:build integration
 
 package devstack
 
 import (
-	"fmt"
+	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/executor"
+	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -34,8 +37,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		concurrency            int
 		computeTimeoutConfig   computenode.ComputeTimeoutConfig
 		requesterTimeoutConfig requesternode.RequesterTimeoutConfig
-		jobTimeout             float64
-		sleepSeconds           float32
+		jobTimeout             time.Duration
+		sleepTime              time.Duration
 		completedCount         int
 		errorCount             int
 	}
@@ -52,19 +55,20 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					TimeoutConfig:                      testCase.requesterTimeoutConfig,
 					StateManagerBackgroundTaskInterval: 1 * time.Second,
 				},
-			},
-			Spec: model.Spec{
-				Engine:    model.EngineDocker,
-				Verifier:  model.VerifierNoop,
-				Publisher: model.PublisherNoop,
-				Timeout:   testCase.jobTimeout,
-				Docker: model.JobSpecDocker{
-					Image: "ubuntu:latest",
-					Entrypoint: []string{
-						"sleep",
-						fmt.Sprintf("%.3f", testCase.sleepSeconds),
+				ExecutorConfig: &noop.ExecutorConfig{
+					ExternalHooks: noop.ExecutorConfigExternalHooks{
+						JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
+							time.Sleep(testCase.sleepTime)
+							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil)
+						},
 					},
 				},
+			},
+			Spec: model.Spec{
+				Engine:    model.EngineNoop,
+				Verifier:  model.VerifierNoop,
+				Publisher: model.PublisherNoop,
+				Timeout:   testCase.jobTimeout.Seconds(),
 			},
 			Deal: model.Deal{
 				Concurrency: testCase.concurrency,
@@ -95,7 +99,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			nodeCount:      1,
 			minBids:        1,
 			concurrency:    1,
-			sleepSeconds:   0.1,
+			sleepTime:      100 * time.Millisecond,
 			completedCount: 1,
 		},
 		{
@@ -111,8 +115,8 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			nodeCount:      1,
 			minBids:        1,
 			concurrency:    1,
-			jobTimeout:     10,
-			sleepSeconds:   0.1,
+			jobTimeout:     10 * time.Second,
+			sleepTime:      100 * time.Millisecond,
 			completedCount: 1,
 		},
 		{
@@ -125,11 +129,11 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 1 * time.Millisecond,
 				MinJobExecutionTimeout:     1 * time.Nanosecond},
-			nodeCount:    1,
-			minBids:      1,
-			concurrency:  1,
-			sleepSeconds: 20,
-			errorCount:   1,
+			nodeCount:   1,
+			minBids:     1,
+			concurrency: 1,
+			sleepTime:   20 * time.Second,
+			errorCount:  1,
 		},
 		{
 			name: "sleep_longer_than_defined_running_timeout",
@@ -141,12 +145,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 40 * time.Second,
 				MinJobExecutionTimeout:     1 * time.Nanosecond},
-			nodeCount:    1,
-			minBids:      1,
-			concurrency:  1,
-			sleepSeconds: 20,
-			jobTimeout:   0.001, // 1 millisecond
-			errorCount:   1,
+			nodeCount:   1,
+			minBids:     1,
+			concurrency: 1,
+			sleepTime:   20 * time.Second,
+			jobTimeout:  1 * time.Millisecond,
+			errorCount:  1,
 		},
 		{
 			// no bid will be submitted, so the requester node should timeout
@@ -159,12 +163,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      500 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,
 				MinJobExecutionTimeout:     0 * time.Nanosecond},
-			nodeCount:    1,
-			minBids:      1,
-			concurrency:  1,
-			sleepSeconds: 20,
-			jobTimeout:   120, // 2 minutes
-			errorCount:   1,
+			nodeCount:   1,
+			minBids:     1,
+			concurrency: 1,
+			sleepTime:   20 * time.Second,
+			jobTimeout:  2 * time.Minute,
+			errorCount:  1,
 		},
 		{
 			// no bid will be submitted, so the requester node should timeout
@@ -177,12 +181,12 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      500 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,
 				MinJobExecutionTimeout:     0 * time.Nanosecond},
-			nodeCount:    1,
-			minBids:      1,
-			concurrency:  1,
-			sleepSeconds: 20,
-			jobTimeout:   120, // 2 minutes
-			errorCount:   1,
+			nodeCount:   1,
+			minBids:     1,
+			concurrency: 1,
+			sleepTime:   20 * time.Second,
+			jobTimeout:  2 * time.Minute,
+			errorCount:  1,
 		},
 		{
 			name: "bid_timeout",
@@ -194,11 +198,11 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      10 * time.Second,
 				DefaultJobExecutionTimeout: 40 * time.Second,
 				MinJobExecutionTimeout:     0 * time.Nanosecond},
-			nodeCount:    1, // only one node is available
-			minBids:      2, // but we need two bids, so compute node should timeout while waiting for its bid to be accepted
-			concurrency:  1,
-			sleepSeconds: 0.1,
-			errorCount:   1,
+			nodeCount:   1, // only one node is available
+			minBids:     2, // but we need two bids, so compute node should timeout while waiting for its bid to be accepted
+			concurrency: 1,
+			sleepTime:   100 * time.Millisecond,
+			errorCount:  1,
 		},
 		{
 			name: "verification_timeout",
@@ -210,11 +214,11 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				JobNegotiationTimeout:      200 * time.Millisecond,
 				DefaultJobExecutionTimeout: 40 * time.Second,
 				MinJobExecutionTimeout:     0 * time.Nanosecond},
-			nodeCount:    1, // only one node available
-			minBids:      1,
-			concurrency:  2, // but concurrency is 2, so requester should timeout on verification
-			sleepSeconds: 0.1,
-			errorCount:   1,
+			nodeCount:   1, // only one node available
+			minBids:     1,
+			concurrency: 2, // but concurrency is 2, so requester should timeout on verification
+			sleepTime:   100 * time.Millisecond,
+			errorCount:  1,
 		},
 	} {
 		suite.Run(testCase.name, func() {

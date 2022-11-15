@@ -153,15 +153,17 @@ func NewDevStack(
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
 		}
 
-		//////////////////////////////////////
-		// libp2p
-		//////////////////////////////////////
-		var libp2pPort int
-		libp2pPort, err = freeport.GetFreePort()
+		// Assign all the ports up front, so that they can't collide
+		var ports []int
+		ports, err = freeport.GetFreePorts(3)
 		if err != nil {
 			return nil, err
 		}
 
+		//////////////////////////////////////
+		// libp2p
+		//////////////////////////////////////
+		libp2pPort, ports := ports[0], ports[1:]
 		libp2pPeer := []multiaddr.Multiaddr{}
 
 		if i == 0 {
@@ -197,20 +199,14 @@ func NewDevStack(
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			apiPort = 20000 + i
 		} else {
-			apiPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
-			}
+			apiPort, ports = ports[0], ports[1:]
 		}
 
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
 		var metricsPort int
-		metricsPort, err = freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
+		metricsPort, _ = ports[0], ports[1:]
 
 		//////////////////////////////////////
 		// in-memory datastore
