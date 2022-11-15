@@ -69,6 +69,8 @@ func InitConfig() error {
 		return fmt.Errorf("failed to load client ID: %w", err)
 	}
 
+	newTraceProvider()
+
 	return nil
 }
 
