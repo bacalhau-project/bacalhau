@@ -5,18 +5,20 @@ package bacalhau
 import (
 	"context"
 	"errors"
-	"net"
-	"net/url"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -51,15 +53,15 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
-			defer cm.Cleanup()
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 
 			*OC = *NewCreateOptions()
 
-			parsedBasedURI, err := url.Parse(c.BaseURI)
-			require.NoError(s.T(), err)
-
-			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+			host := devstack.Nodes[0].APIServer.Host
+			port := fmt.Sprint(devstack.Nodes[0].APIServer.Port)
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
 				"--api-host", host,
 				"--api-port", port,
@@ -70,6 +72,8 @@ func (s *CreateSuite) TestCreateJSON_GenericSubmit() {
 			jobID := system.FindJobIDInTestOutput(out)
 			uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 			require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
+
+			c := publicapi.NewAPIClient(devstack.Nodes[0].APIServer.GetURI())
 			job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
 			require.NoError(s.T(), err)
 			require.NotNil(s.T(), job, "Failed to get job with ID: %s", jobID)
@@ -94,15 +98,15 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 		for _, testFile := range testFiles {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
-				defer cm.Cleanup()
+				devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+					computenode.NewDefaultComputeNodeConfig(),
+					requesternode.NewDefaultRequesterNodeConfig(),
+				)
 
 				*OC = *NewCreateOptions()
 
-				parsedBasedURI, err := url.Parse(c.BaseURI)
-				require.NoError(s.T(), err)
-
-				host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+				host := devstack.Nodes[0].APIServer.Host
+				port := fmt.Sprint(devstack.Nodes[0].APIServer.Port)
 				_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "create",
 					"--api-host", host,
 					"--api-port", port,
@@ -114,6 +118,8 @@ func (s *CreateSuite) TestCreateYAML_GenericSubmit() {
 				jobID := system.FindJobIDInTestOutput(out)
 				uuidRegex := regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
 				require.Regexp(s.T(), uuidRegex, jobID, "Job ID should be a UUID")
+
+				c := publicapi.NewAPIClient(devstack.Nodes[0].APIServer.GetURI())
 				job, _, err := c.Get(ctx, strings.TrimSpace(jobID))
 				require.NoError(s.T(), err)
 				require.NotNil(s.T(), job, "Failed to get job with ID: %s\nOutput: %s", out)
@@ -127,18 +133,18 @@ func (s *CreateSuite) TestCreateFromStdin() {
 
 	Fatal = FakeFatalErrorHandler
 
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
-	defer cm.Cleanup()
+	devstack, _ := devstack_tests.SetupTest(context.Background(), s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
 
 	*OC = *NewCreateOptions()
-
-	parsedBasedURI, err := url.Parse(c.BaseURI)
-	require.NoError(s.T(), err)
 
 	testSpec, err := os.Open(testFile)
 	require.NoError(s.T(), err)
 
-	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	host := devstack.Nodes[0].APIServer.Host
+	port := fmt.Sprint(devstack.Nodes[0].APIServer.Port)
 	_, out, err := ExecuteTestCobraCommandWithStdin(s.T(), s.rootCmd, testSpec, "create",
 		"--api-host", host,
 		"--api-port", port,
