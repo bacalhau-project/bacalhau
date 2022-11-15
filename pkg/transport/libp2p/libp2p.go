@@ -32,6 +32,7 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
+const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
@@ -45,6 +46,7 @@ type LibP2PTransport struct {
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
 	privateKey           crypto.PrivKey
+	shutdownChan         chan bool
 }
 
 func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []multiaddr.Multiaddr) (*LibP2PTransport, error) {
@@ -194,6 +196,24 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		return err
 	}
 
+	// reconnect to peers every 10 seconds, forever.
+	go func() {
+		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
+		defer ticker.Stop()
+		select {
+		case <-ticker.C:
+			log.Ctx(ctx).Info().Msgf("(Re-)connecting to peers on tick")
+			err := t.connectToPeers(ctx)
+			log.Ctx(ctx).Info().Msgf("(Re-)connecting done")
+			if err != nil {
+				log.Ctx(ctx).Debug().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+			}
+		case <-t.shutdownChan:
+			log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
+			return
+		}
+	}()
+
 	go t.listenForEvents(ctx)
 
 	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
@@ -204,6 +224,11 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
+
+	// stop ticker
+	log.Ctx(ctx).Debug().Msgf("Sending shutdown signal to reconnect loop")
+	t.shutdownChan <- true
+	log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
 
 	closeErr := t.host.Close()
 
