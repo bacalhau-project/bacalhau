@@ -24,6 +24,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -31,6 +32,7 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
+const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
@@ -44,6 +46,7 @@ type LibP2PTransport struct {
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
 	privateKey           crypto.PrivKey
+	shutdownChan         chan bool
 }
 
 func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []multiaddr.Multiaddr) (*LibP2PTransport, error) {
@@ -96,21 +99,21 @@ func NewTransportFromOptions(ctx context.Context,
 		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
 	)
 
-	pis := []peer.AddrInfo{}
-	for _, p := range peers {
-		var pi *peer.AddrInfo
-		pi, err = peer.AddrInfoFromP2pAddr(p)
-		if err != nil {
-			return nil, err
-		}
-		pis = append(pis, *pi)
-	}
+	// pis := []peer.AddrInfo{}
+	// for _, p := range peers {
+	// 	var pi *peer.AddrInfo
+	// 	pi, err = peer.AddrInfoFromP2pAddr(p)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	pis = append(pis, *pi)
+	// }
 
 	ps, err := pubsub.NewGossipSub(
 		ctx,
 		h,
-		pubsub.WithDirectPeers(pis),
-		pubsub.WithDirectConnectTicks(10), //nolint:gomnd
+		// pubsub.WithDirectPeers(pis),
+		// pubsub.WithDirectConnectTicks(10), //nolint:gomnd
 		pubsub.WithFloodPublish(true),
 		pubsub.WithPeerExchange(true),
 		pubsub.WithPeerGater(pgParams),
@@ -139,6 +142,7 @@ func NewTransportFromOptions(ctx context.Context,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
+		shutdownChan:         make(chan bool),
 	}
 
 	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
@@ -163,8 +167,7 @@ func (t *LibP2PTransport) HostAddrs() ([]multiaddr.Multiaddr, error) {
 }
 
 func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
 	defer span.End()
 
 	response := map[string][]peer.ID{}
@@ -188,6 +191,31 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		return t.Shutdown(ctx)
 	})
 
+	err := t.connectToPeers(ctx)
+	if err != nil {
+		return err
+	}
+
+	// reconnect to peers every 10 seconds, forever.
+	go func() {
+		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting to peers on tick")
+				err := t.connectToPeers(ctx)
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting done")
+				if err != nil {
+					log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+				}
+			case <-t.shutdownChan:
+				log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
+				return
+			}
+		}
+	}()
+
 	go t.listenForEvents(ctx)
 
 	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
@@ -198,6 +226,11 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
+
+	// stop ticker
+	log.Ctx(ctx).Debug().Msgf("Sending shutdown signal to reconnect loop")
+	t.shutdownChan <- true
+	log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
 
 	closeErr := t.host.Close()
 
@@ -231,8 +264,7 @@ func (t *LibP2PTransport) Publish(ctx context.Context, event model.JobEvent) err
 }
 
 func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
 	defer span.End()
 
 	t.mutex.Lock()
@@ -242,7 +274,7 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 
 func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
 	defer span.End()
 
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
@@ -271,8 +303,7 @@ func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []by
 }
 
 func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
 	defer span.End()
 
 	privateKeyBytes, err := t.privateKey.Raw()
@@ -290,6 +321,43 @@ func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, err
 		data,
 		nil,
 	)
+}
+
+/*
+  libp2p
+*/
+
+func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
+	defer span.End()
+
+	if len(t.peers) == 0 {
+		return nil
+	}
+
+	errors := []error{}
+	for _, peerAddress := range t.peers {
+		// Extract the peer ID from the multiaddr.
+		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
+		if err != nil {
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error parsing peer address: %s", err)
+			continue
+		}
+		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+		err = t.host.Connect(ctx, *info)
+		if err != nil {
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error connecting to peer %s: %s, continuing...", info.ID, err)
+		} else {
+			log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
+		}
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("libp2p transport had errors connecting to peers: %s", errors)
+	}
+
+	return nil
 }
 
 /*
