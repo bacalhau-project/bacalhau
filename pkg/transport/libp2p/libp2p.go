@@ -191,13 +191,12 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		return t.Shutdown(ctx)
 	})
 
-	err := t.connectToPeers(ctx)
-	if err != nil {
-		return err
-	}
-
 	// reconnect to peers every 10 seconds, forever.
 	go func() {
+		err := t.connectToPeers(ctx)
+		if err != nil {
+			log.Ctx(ctx).Info().Msgf("Error initially connecting to peers: %s, retrying again in 10 seconds", err)
+		}
 		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
 		defer ticker.Stop()
 		for {
