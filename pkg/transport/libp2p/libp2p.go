@@ -264,8 +264,7 @@ func (t *LibP2PTransport) Publish(ctx context.Context, event model.JobEvent) err
 }
 
 func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
 	defer span.End()
 
 	t.mutex.Lock()
@@ -275,7 +274,7 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 
 func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
 	defer span.End()
 
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
@@ -304,8 +303,7 @@ func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []by
 }
 
 func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
 	defer span.End()
 
 	privateKeyBytes, err := t.privateKey.Raw()
@@ -337,19 +335,26 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 		return nil
 	}
 
+	errors := []error{}
 	for _, peerAddress := range t.peers {
 		// Extract the peer ID from the multiaddr.
 		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
 		if err != nil {
-			return err
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error parsing peer address: %s", err)
+			continue
 		}
-
 		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 		err = t.host.Connect(ctx, *info)
 		if err != nil {
-			return err
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error connecting to peer %s: %s, continuing...", info.ID, err)
+		} else {
+			log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
 		}
-		log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("libp2p transport had errors connecting to peers: %s", errors)
 	}
 
 	return nil
