@@ -194,8 +194,9 @@ jobs:
   build_canary:
     parallelism: 1
     environment:
-      GOVER: 1.18.3
+      GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     executor: linux
     steps:
@@ -203,14 +204,13 @@ jobs:
       
       - run:
           name: Set canary dependency
-          command: |
-            cd ops/aws/canary/lambda
-            go get github.com/filecoin-project/bacalhau@$(git rev-parse HEAD)
+          working_directory: ops/aws/canary/lambda
+          command: make update
           
       - run:
           name: Build canary
-          command: |
-            for CMD in $(find cmd -type d -depth 0); do go build $CMD; done
+          working_directory: ops/aws/canary/lambda
+          command: make build -j
 
   lint:
     parallelism: 1
