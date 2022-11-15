@@ -142,6 +142,7 @@ func NewTransportFromOptions(ctx context.Context,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
+		shutdownChan:         make(chan bool),
 	}
 
 	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
@@ -166,8 +167,7 @@ func (t *LibP2PTransport) HostAddrs() ([]multiaddr.Multiaddr, error) {
 }
 
 func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
 	defer span.End()
 
 	response := map[string][]peer.ID{}
@@ -200,17 +200,19 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 	go func() {
 		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
 		defer ticker.Stop()
-		select {
-		case <-ticker.C:
-			log.Ctx(ctx).Info().Msgf("(Re-)connecting to peers on tick")
-			err := t.connectToPeers(ctx)
-			log.Ctx(ctx).Info().Msgf("(Re-)connecting done")
-			if err != nil {
-				log.Ctx(ctx).Debug().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+		for {
+			select {
+			case <-ticker.C:
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting to peers on tick")
+				err := t.connectToPeers(ctx)
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting done")
+				if err != nil {
+					log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+				}
+			case <-t.shutdownChan:
+				log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
+				return
 			}
-		case <-t.shutdownChan:
-			log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
-			return
 		}
 	}()
 

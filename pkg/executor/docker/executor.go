@@ -355,6 +355,7 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 			log.Ctx(ctx).Err(err).Msgf("Non-critical error cleaning up container")
 		}
 	}
+	log.Ctx(ctx).Debug().Msgf("Finished cleaning up all bacalhau containers for executor %s", e.ID)
 }
 
 func (e *Executor) jobContainerName(shard model.JobShard) string {
