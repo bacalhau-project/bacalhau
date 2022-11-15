@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 /*
 Copyright 2020 The Kubernetes Authors.

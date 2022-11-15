@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package urldownload
 
@@ -36,7 +36,7 @@ func TestStorageSuite(t *testing.T) {
 // Before each test
 func (s *StorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 }
 
 func (s *StorageSuite) TestNewStorageProvider() {

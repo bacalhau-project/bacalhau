@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package bacalhau
 
@@ -54,7 +54,7 @@ func (s *UtilsSuite) TestSafeRegex() {
 }
 
 func (s *UtilsSuite) TestVersionCheck() {
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 
 	// OK: Normal operation
 	err := ensureValidVersion(context.TODO(), &model.BuildVersionInfo{

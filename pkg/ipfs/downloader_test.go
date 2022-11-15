@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package ipfs
 
@@ -37,7 +37,7 @@ type DownloaderSuite struct {
 func (ds *DownloaderSuite) SetupTest() {
 	ds.cm = *system.NewCleanupManager()
 	logger.ConfigureTestLogging(ds.T())
-	require.NoError(ds.T(), system.InitConfigForTesting())
+	require.NoError(ds.T(), system.InitConfigForTesting(ds.T()))
 
 	node, err := NewLocalNode(context.Background(), &ds.cm, nil)
 	require.NoError(ds.T(), err)

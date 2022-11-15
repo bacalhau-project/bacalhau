@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package system
 
@@ -24,7 +24,7 @@ func TestSystemContextSuite(t *testing.T) {
 // Before each test
 func (suite *SystemContextSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func TestOnCancel(t *testing.T) {

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"go.uber.org/multierr"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -384,10 +387,7 @@ func (sp *StorageProvider) canSeeFuseMount(ctx context.Context, cid string) bool
 	if err != nil {
 		return false
 	}
-	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"timeout", "1s", "ls", "-la",
-		testMountPath,
-	})
+	err = exec.Command("sudo", "timeout", "1s", "ls", "-la", testMountPath).Run()
 	return err == nil
 }
 
@@ -439,21 +439,11 @@ func createMountDir() (string, error) {
 }
 
 func cleanupMountDir(mountDir string) error {
-	_, err := system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"umount",
-		fmt.Sprintf("%s/data", mountDir),
-	})
-	if err != nil {
-		return err
-	}
-	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"umount",
-		fmt.Sprintf("%s/ipns", mountDir),
-	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return multierr.Combine(
+		// mountDir is only generated from os.MkdirTemp in createMountDir, so not user input
+		exec.Command("sudo", "umount", filepath.Join(mountDir, "data")).Run(), //nolint:gosec
+		exec.Command("sudo", "umount", filepath.Join(mountDir, "ipns")).Run(), //nolint:gosec
+	)
 }
 
 func getMountDirFromContainer(c *dockertypes.Container) string {

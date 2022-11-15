@@ -5,47 +5,37 @@ package devstack
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
-	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	apicopy "github.com/filecoin-project/bacalhau/pkg/storage/ipfs_apicopy"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type ShardingSuite struct {
-	suite.Suite
+	scenario.ScenarioRunner
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestShardingSuite(t *testing.T) {
 	suite.Run(t, new(ShardingSuite))
-}
-
-// Before each test
-func (suite *ShardingSuite) SetupTest() {
-	testutils.MustHaveDocker(suite.T())
-
-	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
 }
 
 func prepareFolderWithFoldersAndFiles(t *testing.T, folderCount, fileCount int) (string, error) {
@@ -77,7 +67,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	ctx := context.Background()
 	cm := system.NewCleanupManager()
 
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
 
 	stack, err := devstack.NewDevStackIPFS(ctx, cm, nodeCount)
@@ -130,63 +120,43 @@ func (suite *ShardingSuite) TestExplodeCid() {
 }
 
 func (suite *ShardingSuite) TestEndToEnd() {
-	shouldRun, err := shouldRunShardingTest()
-	require.NoError(suite.T(), err)
-
-	if !shouldRun {
-		suite.T().Skip("Skipping sharding end to end test because the ulimit value is too low.")
-	}
+	testutils.MustHaveDocker(suite.T())
 
 	const totalFiles = 100
 	const batchSize = 10
 	const batchCount = totalFiles / batchSize
 	const nodeCount = 3
 
-	ctx := context.Background()
+	var assertShardCounts job.CheckStatesFunction = func(js model.JobState) (bool, error) {
+		for _, node := range js.Nodes {
+			if len(node.Shards) != batchCount {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
 
-	stack, cm := SetupTest(
-		ctx,
-		suite.T(),
+	// check that the merged stdout is correct
+	checks := []scenario.ICheckResults{}
+	for i := 0; i < totalFiles; i++ {
+		for j := 0; j < nodeCount; j++ {
+			content := fmt.Sprintf("hello /input/%d.txt", i)
+			filename := filepath.Join("results", fmt.Sprintf("%d.txt", i))
+			checks = append(checks,
+				scenario.FileEquals(filename, content+"\n"),
+				scenario.FileContains(ipfs.DownloadFilenameStdout, content, totalFiles*3+1),
+			)
+		}
+	}
 
-		nodeCount,
-		0,
-		false,
-		computenode.NewDefaultComputeNodeConfig(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/shardingtest/testendtoend")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-
-	dirPath, err := prepareFolderWithFiles(suite.T(), totalFiles)
-	require.NoError(suite.T(), err)
-
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
-	require.NoError(suite.T(), err)
-
-	j := &model.Job{}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherIpfs,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"bash", "-c",
-				// loop over each input file and write the filename to an output file named the same
-				// thing in the results folder
-				`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//'); echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
-			},
+	testScenario := scenario.Scenario{
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: nodeCount},
 		},
-		Inputs: []model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           directoryCid,
-				Path:          "/input",
-			},
-		},
+		Inputs: scenario.StoredFile(
+			prepareFolderWithFiles(suite.T(), totalFiles),
+			"/input",
+		),
 		Outputs: []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -194,100 +164,39 @@ func (suite *ShardingSuite) TestEndToEnd() {
 				Path:          "/output",
 			},
 		},
-		Sharding: model.JobShardingConfig{
-			GlobPattern: "/input/*",
-			BatchSize:   batchSize,
+		Spec: model.Spec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherIpfs,
+			Docker: model.JobSpecDocker{
+				Image: "ubuntu:latest",
+				Entrypoint: []string{
+					"bash", "-c",
+					// loop over each input file and write the filename to an
+					// output file named the same thing in the results folder
+					`for f in /input/*; do export filename=$(echo $f | sed 's/\/input//');` +
+						`echo "hello $f" && echo "hello $f" >> /output/$filename; done`,
+				},
+			},
+			Sharding: model.JobShardingConfig{
+				GlobPattern: "/input/*",
+				BatchSize:   batchSize,
+			},
 		},
-	}
-
-	j.Deal = model.Deal{
-		Concurrency: nodeCount,
-	}
-
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
-	submittedJob, err := apiClient.Submit(ctx, j, nil)
-	require.NoError(suite.T(), err)
-	require.Equal(suite.T(), batchCount, submittedJob.ExecutionPlan.TotalShards)
-
-	resolver := apiClient.GetJobStateResolver()
-	err = resolver.WaitUntilComplete(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-
-	jobState, err := apiClient.GetJobState(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-
-	// each node should have run 10 shards because we have 3 nodes
-	// and concurrency is 3
-	nodeIDs, err := stack.GetNodeIds()
-	require.NoError(suite.T(), err)
-
-	for _, nodeID := range nodeIDs {
-		nodeState, ok := jobState.Nodes[nodeID]
-		require.True(suite.T(), ok)
-		require.Equal(suite.T(), batchCount, len(nodeState.Shards))
-	}
-
-	jobResults, err := apiClient.GetResults(ctx, submittedJob.ID)
-	require.NoError(suite.T(), err)
-	require.True(suite.T(), len(jobResults) > 0, "there should be > 0 results")
-
-	downloadFolder := suite.T().TempDir()
-
-	swarmAddresses, err := stack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
-	require.NoError(suite.T(), err)
-
-	log.Info().Msgf("Downloading results to %s", downloadFolder)
-
-	err = ipfs.DownloadJob(
-		ctx,
-		cm,
-		submittedJob.Spec.Outputs,
-		jobResults,
-		ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    10,
-			OutputDir:      downloadFolder,
-			IPFSSwarmAddrs: strings.Join(swarmAddresses, ","),
+		Deal: model.Deal{Concurrency: 3},
+		JobCheckers: []job.CheckStatesFunction{
+			assertShardCounts,
+			job.WaitThrowErrors([]model.JobStateType{
+				model.JobStateError,
+			}),
+			job.WaitForJobStates(map[model.JobStateType]int{
+				model.JobStateCompleted: nodeCount * batchCount,
+			}),
 		},
-	)
-	require.NoError(suite.T(), err)
-
-	// check that the merged stdout is correct
-	expectedStdoutArray := []string{""}
-	expectedResultsFiles := []string{}
-	for i := 0; i < totalFiles; i++ {
-		for j := 0; j < nodeCount; j++ {
-			expectedStdoutArray = append(expectedStdoutArray, fmt.Sprintf("hello /input/%d.txt", i))
-		}
-		expectedResultsFiles = append(expectedResultsFiles, fmt.Sprintf("%d.txt", i))
+		ResultsChecker: scenario.ManyChecks(checks...),
 	}
 
-	sort.Strings(expectedStdoutArray)
-	sort.Strings(expectedResultsFiles)
-
-	require.FileExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
-	actualStdoutBytes, err := os.ReadFile(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "stdout"))
-	require.NoError(suite.T(), err)
-
-	actualStdoutArray := strings.Split(string(actualStdoutBytes), "\n")
-	sort.Strings(actualStdoutArray)
-
-	require.Equal(suite.T(), strings.Join(expectedStdoutArray, "\n"), strings.Join(actualStdoutArray, "\n"), "the merged stdout is not correct")
-
-	// check that we have a "results" output volume with all the files inside
-	require.DirExists(suite.T(), filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
-	files, err := ioutil.ReadDir(filepath.Join(downloadFolder, ipfs.DownloadVolumesFolderName, "results"))
-	require.NoError(suite.T(), err)
-
-	actualResultsFiles := []string{}
-
-	for _, foundFile := range files {
-		actualResultsFiles = append(actualResultsFiles, foundFile.Name())
-	}
-
-	sort.Strings(actualResultsFiles)
-
-	require.Equal(suite.T(), strings.Join(expectedResultsFiles, "\n"), strings.Join(actualResultsFiles, "\n"), "the merged list of files is not correct")
+	suite.RunScenario(testScenario)
 }
 
 func (suite *ShardingSuite) TestNoShards() {
@@ -310,24 +219,16 @@ func (suite *ShardingSuite) TestNoShards() {
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	dirPath, err := prepareFolderWithFiles(suite.T(), 0)
-	require.NoError(suite.T(), err)
-
+	dirPath := prepareFolderWithFiles(suite.T(), 0)
 	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}
 	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
+		Engine:    model.EngineWasm,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"bash", "-c",
-				`echo "where did all the files go?"`,
-			},
-		},
+		Wasm:      scenario.WasmHelloWorld.Spec.Wasm,
 		Inputs: []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -353,27 +254,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	require.True(suite.T(), strings.Contains(err.Error(), "no sharding atoms found for glob pattern"))
 }
 
-// "publicapi: error unmarshaling error response: invalid character 'e' looking for beginning of value"
-
 func (suite *ShardingSuite) TestExplodeVideos() {
-	const nodeCount = 1
-	ctx := context.Background()
-	stack, cm := SetupTest(
-		ctx,
-		suite.T(),
-
-		nodeCount,
-		0,
-		false,
-		computenode.NewDefaultComputeNodeConfig(),
-		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-
-	t := system.GetTracer()
-	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/devstack/shardingtest/testexplodevideos")
-	defer rootSpan.End()
-	cm.RegisterCallback(system.CleanupTraceProvider)
-
 	videos := []string{
 		"Bird flying over the lake.mp4",
 		"Calm waves on a rocky sea gulf.mp4",
@@ -390,42 +271,24 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 		require.NoError(suite.T(), err)
 	}
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
-	require.NoError(suite.T(), err)
-
-	j := &model.Job{}
-	j.Spec = model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherNoop,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{
-				"bash", "-c",
-				`ls -la /inputs`,
+	testScenario := scenario.Scenario{
+		Stack: &scenario.StackConfig{
+			ExecutorConfig: &noop.ExecutorConfig{},
+		},
+		Inputs:   scenario.StoredFile(dirPath, "/inputs"),
+		Contexts: scenario.WasmHelloWorld.Contexts,
+		Spec: model.Spec{
+			Engine:    model.EngineNoop,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherNoop,
+			Sharding: model.JobShardingConfig{
+				BasePath:    "/inputs",
+				GlobPattern: "*.mp4",
+				BatchSize:   1,
 			},
 		},
-		Inputs: []model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           directoryCid,
-				Path:          "/inputs",
-			},
-		},
-		Outputs: []model.StorageSpec{},
-		Sharding: model.JobShardingConfig{
-			BasePath:    "/inputs",
-			GlobPattern: "*.mp4",
-			BatchSize:   1,
-		},
+		JobCheckers: scenario.WaitUntilComplete(len(videos)),
 	}
 
-	j.Deal = model.Deal{
-		Concurrency: nodeCount,
-	}
-
-	apiUri := stack.Nodes[0].APIServer.GetURI()
-	apiClient := publicapi.NewAPIClient(apiUri)
-	_, err = apiClient.Submit(ctx, j, nil)
-	require.NoError(suite.T(), err)
+	suite.RunScenario(testScenario)
 }

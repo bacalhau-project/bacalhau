@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package bacalhau
 
@@ -31,7 +31,7 @@ type DescribeSuite struct {
 // Before each test
 func (suite *DescribeSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), system.InitConfigForTesting())
+	require.NoError(suite.T(), system.InitConfigForTesting(suite.T()))
 	suite.rootCmd = RootCmd
 }
 

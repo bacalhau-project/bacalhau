@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package system
 
@@ -23,7 +23,7 @@ func TestSystemConfigSuite(t *testing.T) {
 // Before each test
 func (suite *SystemConfigSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func (suite *SystemConfigSuite) TestMessageSigning() {
@@ -33,7 +33,7 @@ func (suite *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
@@ -55,11 +55,11 @@ func (suite *SystemConfigSuite) TestGetClientID() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 	id := GetClientID()
 	require.NotEmpty(suite.T(), id)
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 	id2 := GetClientID()
 	require.NotEmpty(suite.T(), id2)
 
@@ -74,7 +74,7 @@ func (suite *SystemConfigSuite) TestPublicKeyMatchesID() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()

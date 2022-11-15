@@ -45,6 +45,7 @@ BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2
 BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDDATE)
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
+TEST_BUILD_TAGS ?= unit,integration
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -283,15 +284,24 @@ check-diff:
 # Target: test-test-and-report
 ################################################################################
 .PHONY: test-and-report
-test-and-report: ${BINARY_PATH}
-		gotestsum \
-			--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
-			--junitfile unittests.xml \
-			--format standard-quiet \
-			-- \
-				-p 1 \
-				./pkg/... ./cmd/... \
-				$(COVERAGE_OPTS) --tags=unit
+test-and-report: unittests.xml coverage/coverage.html
+
+coverage.out unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
+	gotestsum \
+		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
+		--junitfile unittests.xml \
+		--format standard-quiet \
+		-- \
+			-p 1 \
+			./pkg/... ./cmd/... \
+			-coverpkg=./... -coverprofile=coverage.out \
+			--tags=${TEST_BUILD_TAGS}
+
+coverage/coverage.html: coverage.out coverage/ 
+	go tool cover -html=$< -o $@
+
+coverage/:
+	mkdir -p $@
 
 .PHONY: generate
 generate:

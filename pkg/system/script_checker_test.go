@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package system
 
@@ -24,7 +24,7 @@ func TestSystemScriptCheckerSuite(t *testing.T) {
 // Before each test
 func (suite *SystemScriptCheckerSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func (suite *SystemScriptCheckerSuite) TestValidateWorkingDir() {

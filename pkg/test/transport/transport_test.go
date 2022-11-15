@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package transport_test
 
@@ -37,7 +37,7 @@ func TestTransportSuite(t *testing.T) {
 // Before each test
 func (suite *TransportSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
 }
 

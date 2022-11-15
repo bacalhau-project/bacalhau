@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -71,15 +72,16 @@ func InitConfig() error {
 	return nil
 }
 
+type testingT interface {
+	TempDir() string
+}
+
 // InitConfigForTesting creates a fresh config setup in a temporary directory
 // for testing config-related stuff and user ID message signing.
 // NOTE: this will overwrite the global config cache if called twice.
-func InitConfigForTesting() error {
-	configDir, err := os.MkdirTemp("", "bacalhau-test")
-	if err != nil {
-		return err
-	}
-	err = os.Setenv("BACALHAU_DIR", configDir)
+func InitConfigForTesting(t testingT) error {
+	configDir := t.TempDir()
+	err := os.Setenv("BACALHAU_DIR", configDir)
 	if err != nil {
 		return err
 	}
@@ -160,7 +162,7 @@ func GetClientID() string {
 	return globalClientID
 }
 
-// GetPublicKey returns a base64-encoding of the user's public ID key:
+// GetClientPublicKey returns a base64-encoding of the user's public ID key:
 // NOTE: must be called after InitConfig() or system will panic.
 func GetClientPublicKey() string {
 	if globalUserIDKey == nil {
@@ -284,7 +286,7 @@ func loadUserIDKey() (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open user ID key file: %w", err)
 	}
-	defer file.Close()
+	defer closer.CloseWithLogOnError("user ID key file", file)
 
 	keyBytes, err := io.ReadAll(file)
 	if err != nil {

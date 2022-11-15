@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build unit || !integration
 
 package bacalhau
 
@@ -29,7 +29,7 @@ func TestValidateSuite(t *testing.T) {
 // before each test
 func (s *ValidateSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	require.NoError(s.T(), system.InitConfigForTesting())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 	s.rootCmd = RootCmd
 }
 
