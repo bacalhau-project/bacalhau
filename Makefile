@@ -286,10 +286,13 @@ check-diff:
 ################################################################################
 # Target: test-test-and-report
 ################################################################################
-.PHONY: test-and-report
-test-and-report: unittests.xml coverage/coverage.html
+COMMA = ,
+COVER_FILE := coverage/${PACKAGE}_$(subst ${COMMA},_,${TEST_BUILD_TAGS}).coverage
 
-coverage.out unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
+.PHONY: test-and-report
+test-and-report: unittests.xml ${COVER_FILE}
+
+${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH} $(dir ${COVER_FILE})
 	gotestsum \
 		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
@@ -297,10 +300,19 @@ coverage.out unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
 		-- \
 			-p 1 \
 			./pkg/... ./cmd/... \
-			-coverpkg=./... -coverprofile=coverage.out \
+			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}
 
-coverage/coverage.html: coverage.out coverage/ 
+################################################################################
+# Target: coverage-report
+################################################################################
+.PHONY:
+coverage-report: coverage/coverage.html
+
+coverage/coverage.out: $(wildcard coverage/*.coverage)
+	gocovmerge $^ > $@
+
+coverage/coverage.html: coverage/coverage.out coverage/ 
 	go tool cover -html=$< -o $@
 
 coverage/:
