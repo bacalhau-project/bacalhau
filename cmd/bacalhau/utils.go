@@ -312,6 +312,10 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 	return flags
 }
 
+func getCommandLineExecutable() string {
+	return os.Args[0]
+}
+
 //nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
@@ -435,11 +439,11 @@ func ExecuteJob(ctx context.Context,
 
 	printOut += fmt.Sprintf(`
 To download the results, execute:
-%sbacalhau get %s
+%s%s get %s
 
 To get more details about the run, execute:
-%sbacalhau describe %s
-`, indentOne, j.ID, indentOne, j.ID)
+%s%s describe %s
+`, indentOne, getCommandLineExecutable(), j.ID, indentOne, getCommandLineExecutable(), j.ID)
 
 	// Have to do a final Sprintf so we can inject the resultsCID into the right place
 	if resultsCID != "" {
