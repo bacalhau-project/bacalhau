@@ -53,10 +53,10 @@ jobs:
                   choco install -y make
                 shell: powershell.exe
             - run:
-                name: Downgrade Golang
+                name: Install Go
                 command: |
-                  choco install golang -y --allow-downgrade --version $Env:GOVER
-                shell: powershell.exe
+                  rm -rf /c/Program\ Files/Go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
 
       - when:
           condition:
@@ -65,7 +65,7 @@ jobs:
               - equal: ["darwin", << parameters.target_os >>]
           steps:
             - run:
-                name: Install golang
+                name: Install Go
                 command: |
                   sudo rm -fr /usr/local/go /usr/local/bin/go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local

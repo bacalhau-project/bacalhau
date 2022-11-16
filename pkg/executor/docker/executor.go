@@ -183,7 +183,7 @@ func (e *Executor) RunShard(
 			//nolint:stylecheck // Error message for user
 			err = fmt.Errorf(`Could not pull image - could be due to repo/image not existing,
  or registry needing authorization. %s: %s`, shard.Job.Spec.Docker.Image, err)
-			return returnStdErrWithErr(err.Error(), err), err
+			return returnStdErrWithErr(ctx, err.Error(), err), err
 		}
 	}
 
@@ -241,7 +241,7 @@ func (e *Executor) RunShard(
 		e.jobContainerName(shard),
 	)
 	if err != nil {
-		return returnStdErrWithErr("failed to create container: ", err), err
+		return returnStdErrWithErr(ctx, "failed to create container: ", err), err
 	}
 
 	containerStartError := e.Client.ContainerStart(
@@ -249,6 +249,7 @@ func (e *Executor) RunShard(
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
+	log.Ctx(ctx).Err(err).Msg("Failed to start container")
 	if containerStartError != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container: "
@@ -256,7 +257,7 @@ func (e *Executor) RunShard(
 			internalContainerStartErrorMsg = "Executable file not found: " + containerStartError.Error()
 		}
 		internalContainerStartError := fmt.Errorf(internalContainerStartErrorMsg)
-		return returnStdErrWithErr(internalContainerStartError.Error(),
+		return returnStdErrWithErr(ctx, internalContainerStartError.Error(),
 				internalContainerStartError),
 			internalContainerStartError
 	}
@@ -315,9 +316,8 @@ func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error 
 	return docker.StopContainer(ctx, e.Client, e.jobContainerName(shard))
 }
 
-func returnStdErrWithErr(msg string, err error) *model.RunCommandResult {
-	log.Debug().Msgf("Returning error %s", msg)
-	log.Debug().Msgf("Returning error %s", err.Error())
+func returnStdErrWithErr(ctx context.Context, msg string, err error) *model.RunCommandResult {
+	log.Ctx(ctx).Debug().Str("msg", msg).Err(err).Msg("Returning error")
 	return &model.RunCommandResult{
 		STDERR:   err.Error(),
 		ErrorMsg: errors.Wrap(err, msg).Error(),
