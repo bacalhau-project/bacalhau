@@ -12,25 +12,26 @@ sidebar_position: 2
 
 Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with "relational" or "labeled" data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
-### Installing and Getting Started with Pandas
+## Prerequisite
 
-
+### Install Pandas
 
 ```bash
 pip install pandas
 ```
 
-### Installing Bacalhau
+### Install Bacalhau
 
-Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the hidden installation command below (which installs Bacalhau local to the notebook).
+Install the the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
 
-### Installing IPFS
+### Install IPFS
 
-If you are going to upload your data using the IPFS CLI tool then you will need to install that. There are other methods, which you can read more about in the [ingestion example](../../data-ingestion/index.md).
+If you are going to upload your data using the IPFS CLI tool then you will need to [install it](https://docs.ipfs.tech/install/command-line/). There are other methods, which you can read about in the [ingestion example](../../data-ingestion/index.md). 
 
-## **Running your pandas script Locally**
 
-#### **Importing data from CSV to DataFrame**
+## Running your pandas script locally
+
+#### Importing data from CSV to DataFrame
 We can also create a DataFrame by importing a CSV file. A CSV file is a text file with one record of data per line. The values within the record are separated using the “comma” character. Pandas provides a useful method, named `read_csv()` to read the contents of the CSV file into a DataFrame. For example, we can create a file named ’`transactions.csv`’ containing details of Transactions. The CSV file is stored in the same directory that contains Python script.
 
 
@@ -97,15 +98,11 @@ python3 read_csv.py
     
     [4 rows x 15 columns]
 
+## Adding the scripts and datasets to IPFS
 
-## **Running the script on bacalhau**
+To run Pandas on Bacalhau, you'll need to upload your datasets along with the script to IPFS. You can do that by using the [IPFS CLI](https://docs.ipfs.tech/install/command-line/#official-distributions) to add your files.
 
-To run pandas on bacalhau you must upload your datasets along with the script to IPFS this can be done by using the IPFS CLI to upload the files or using a pinning service like pinata or nft.storage
-
-Adding the Scripts and Datasets to IPFS
-since we already uploaded these scripts to IPFS there is no need for you to add them
-
-```
+```bash
 $ ipfs add -r .
 added QmPqx4BaWzAmZm4AuBqGtG6dkX7bGSVgjfgpkv2g7mi3uz pandas/read_csv.py
 added QmYErPqtdpNTxpKot9pXR5QbhGSyaGdMFxfUwGHm4rzXzH pandas/transactions.csv
@@ -113,23 +110,14 @@ added QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz pandas
  1.59 KiB / 1.59 KiB [===================================================================================]
 ```
 
+Alternatively, you can use a pinning service like [pinata](https://knowledge.pinata.cloud/en/articles/5509412-how-to-upload-a-large-folder-by-running-a-local-ipfs-node) or [nft.storage](https://nft.storage/docs/how-to/nftup/).
 
-For running pandas in bacalhau you need choose a container which has python and pandas Installed
 
-Structure of the bacalhau command
+## Running the script on Bacalhau
 
-`bacalhau docker run ` similar to docker run
+For running Pandas in Bacalhau you'll need choose a container which has Python and Pandas installed. 
 
--v mount the CID to the container this is the 
-
-CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED> `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
-
--w is used to set the working directory
-
--- /bin/bash -c 'python hello.py' (Run the script)
-
-### Command:
-
+Command:
 
 ```bash
  bacalhau  docker run \
@@ -141,8 +129,25 @@ amancevice/pandas \
 -- python read_csv.py
 ```
 
-    e6377c99-b637-4661-a334-6ce98fcf037c
 
+The structure of the Bacalhau command
+
+- `bacalhau docker run`: similar to docker run
+
+- `-v`: mount the CID to the container this is the 
+
+- `CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED>`: `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
+
+- `-w`: is used to set the working directory
+
+- `-- /bin/bash -c 'python hello.py'`:  Run the script
+
+
+Output
+
+
+    e6377c99-b637-4661-a334-6ce98fcf037c
+    
 
 Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf037c`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
@@ -176,7 +181,7 @@ we create a temporary directory to save our results
 mkdir pandas-results
 ```
 
-To Download the results of your job, run the following command:
+To download the results of your job, run the following command:
 
 
 ```bash
