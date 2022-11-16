@@ -422,7 +422,6 @@ workflows:
                 run_tests: true
                 build_tags: "integration"
           filters:
-            &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
               ignore: main
             tags:
@@ -496,16 +495,12 @@ workflows:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [false]
-              build_tags: ["unit", "integration"]
+              build_tags: [""]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: false
-                build_tags: "unit"
-              - target_os: "windows"
-                target_arch: "arm64"
-                run_tests: false
-                build_tags: "integration"
+                build_tags: ""
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
