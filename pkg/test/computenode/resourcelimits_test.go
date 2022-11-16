@@ -59,7 +59,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
 			time.Sleep(time.Millisecond * 10)
 			cm.Cleanup()
 		}()
-		job := GetProbeData("")
+		job := GetJob("")
 		job.Spec.Resources = jobResources
 
 		result, _, err := computeNode.SelectJob(ctx, job)

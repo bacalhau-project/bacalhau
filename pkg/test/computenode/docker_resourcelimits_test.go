@@ -113,35 +113,35 @@ func (suite *ComputeNodeResourceLimitsSuite) TestDockerResourceLimitsDisk() {
 
 		cid, _ := devstack.AddTextToNodes(ctx, []byte(text), ipfsStack.IPFSClients[0])
 
-		result, _, err := computeNode.SelectJob(ctx, computenode.JobSelectionPolicyProbeData{
-			NodeID: "test",
-			JobID:  "test",
-			Spec: model.Spec{
-				Engine:   model.EngineDocker,
-				Verifier: model.VerifierNoop,
-				Resources: model.ResourceUsageConfig{
-					CPU:    "100m",
-					Memory: "100mb",
-					// we simulate having calculated the disk size here
-					Disk: "6b",
-				},
-				Inputs: []model.StorageSpec{
-					{
-						StorageSource: model.StorageSourceIPFS,
-						CID:           cid,
-						Path:          "/data/file.txt",
+		result, _, err := computeNode.SelectJob(ctx,
+			&model.Job{
+				ID: "test",
+				Spec: model.Spec{
+					Engine:   model.EngineDocker,
+					Verifier: model.VerifierNoop,
+					Resources: model.ResourceUsageConfig{
+						CPU:    "100m",
+						Memory: "100mb",
+						// we simulate having calculated the disk size here
+						Disk: "6b",
+					},
+					Inputs: []model.StorageSpec{
+						{
+							StorageSource: model.StorageSourceIPFS,
+							CID:           cid,
+							Path:          "/data/file.txt",
+						},
+					},
+					Docker: model.JobSpecDocker{
+						Image: "ubuntu",
+						Entrypoint: []string{
+							"bash",
+							"-c",
+							"/data/file.txt",
+						},
 					},
 				},
-				Docker: model.JobSpecDocker{
-					Image: "ubuntu",
-					Entrypoint: []string{
-						"bash",
-						"-c",
-						"/data/file.txt",
-					},
-				},
-			},
-		})
+			})
 
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), expected, result)
