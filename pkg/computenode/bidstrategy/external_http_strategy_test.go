@@ -54,8 +54,8 @@ func TestJobSelectionHttp(t *testing.T) {
 			}))
 			defer svr.Close()
 
-			params := ExternalHttpStrategyParams{Url: svr.URL}
-			strategy := NewExternalHttpStrategy(params)
+			params := ExternalHTTPStrategyParams{URL: svr.URL}
+			strategy := NewExternalHTTPStrategy(params)
 			request := getBidStrategyRequest()
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)

@@ -114,8 +114,8 @@ func constructComputeNode(
 			Verifiers: verifiers}),
 		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
 			Command: config.JobSelectionPolicy.ProbeExec}),
-		bidstrategy.NewExternalHttpStrategy(bidstrategy.ExternalHttpStrategyParams{
-			Url: config.JobSelectionPolicy.ProbeHTTP}),
+		bidstrategy.NewExternalHTTPStrategy(bidstrategy.ExternalHTTPStrategyParams{
+			URL: config.JobSelectionPolicy.ProbeHTTP}),
 		bidstrategy.NewInputLocalityStrategy(bidstrategy.InputLocalityStrategyParams{
 			Locality: config.JobSelectionPolicy.Locality, Executors: executors}),
 		bidstrategy.NewStatelessJobStrategy(bidstrategy.StatelessJobStrategyParams{

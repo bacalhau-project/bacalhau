@@ -10,21 +10,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type ExternalHttpStrategyParams struct {
-	Url string
+type ExternalHTTPStrategyParams struct {
+	URL string
 }
 
-type ExternalHttpStrategy struct {
+type ExternalHTTPStrategy struct {
 	url string
 }
 
-func NewExternalHttpStrategy(params ExternalHttpStrategyParams) *ExternalHttpStrategy {
-	return &ExternalHttpStrategy{
-		url: params.Url,
+func NewExternalHTTPStrategy(params ExternalHTTPStrategyParams) *ExternalHTTPStrategy {
+	return &ExternalHTTPStrategy{
+		url: params.URL,
 	}
 }
 
-func (s *ExternalHttpStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
+func (s *ExternalHTTPStrategy) ShouldBid(ctx context.Context, request BidStrategyRequest) (BidStrategyResponse, error) {
 	if s.url == "" {
 		return newShouldBidResponse(), nil
 	}
@@ -33,7 +33,7 @@ func (s *ExternalHttpStrategy) ShouldBid(ctx context.Context, request BidStrateg
 	jsonData, err := model.JSONMarshalWithMax(data)
 
 	if err != nil {
-		return BidStrategyResponse{}, fmt.Errorf("ExternalHttpStrategy: error marshaling job selection policy probe data: %w", err)
+		return BidStrategyResponse{}, fmt.Errorf("ExternalHTTPStrategy: error marshaling job selection policy probe data: %w", err)
 	}
 
 	body := bytes.NewBuffer(jsonData)
@@ -47,7 +47,7 @@ func (s *ExternalHttpStrategy) ShouldBid(ctx context.Context, request BidStrateg
 
 	if err != nil {
 		return BidStrategyResponse{},
-			fmt.Errorf("ExternalHttpStrategy: error http POST job selection policy probe data: %s %w", s.url, err)
+			fmt.Errorf("ExternalHTTPStrategy: error http POST job selection policy probe data: %s %w", s.url, err)
 	}
 
 	if resp.StatusCode == http.StatusOK {
