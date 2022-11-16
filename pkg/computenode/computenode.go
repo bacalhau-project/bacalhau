@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/computenode/bidstrategy"
+
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"go.opentelemetry.io/otel/trace"
@@ -31,7 +33,8 @@ type ComputeNode struct {
 	ID string
 
 	// The configuration used to create this compute node.
-	config ComputeNodeConfig
+	config          ComputeNodeConfig
+	biddingStrategy bidstrategy.BidStrategy
 
 	localEventConsumer eventhandler.LocalEventHandler
 	jobEventPublisher  eventhandler.JobEventHandler
@@ -98,6 +101,30 @@ func constructComputeNode(
 		return nil, err
 	}
 
+	// TODO: inject the bidding strategy once we move to a DI framework
+	biddingStrategy := bidstrategy.NewChainedBidStrategy(
+		bidstrategy.NewAvailableCapacityStrategy(bidstrategy.AvailableCapacityStrategyParams{
+			CapacityManager: *capacityManager}),
+		// TODO XXX: don't hardcode networkSize, calculate this dynamically from
+		//  libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
+		bidstrategy.NewDistanceDelayStrategy(bidstrategy.DistanceDelayStrategyParams{
+			NetworkSize: 1}),
+		bidstrategy.NewEnginesInstalledStrategy(bidstrategy.EnginesInstalledStrategyParams{
+			Executors: executors,
+			Verifiers: verifiers}),
+		bidstrategy.NewExternalCommandStrategy(bidstrategy.ExternalCommandStrategyParams{
+			Command: config.JobSelectionPolicy.ProbeExec}),
+		bidstrategy.NewExternalHTTPStrategy(bidstrategy.ExternalHTTPStrategyParams{
+			URL: config.JobSelectionPolicy.ProbeHTTP}),
+		bidstrategy.NewInputLocalityStrategy(bidstrategy.InputLocalityStrategyParams{
+			Locality: config.JobSelectionPolicy.Locality, Executors: executors}),
+		bidstrategy.NewStatelessJobStrategy(bidstrategy.StatelessJobStrategyParams{
+			RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs}),
+		bidstrategy.NewTimeoutStrategy(bidstrategy.TimeoutStrategyParams{
+			MaxJobExecutionTimeout: config.TimeoutConfig.MaxJobExecutionTimeout,
+			MinJobExecutionTimeout: config.TimeoutConfig.MinJobExecutionTimeout}),
+	)
+
 	computeNode := &ComputeNode{
 		ID:                 nodeID,
 		config:             config,
@@ -108,6 +135,7 @@ func constructComputeNode(
 		executors:          executors,
 		verifiers:          verifiers,
 		publishers:         publishers,
+		biddingStrategy:    biddingStrategy,
 		capacityManager:    capacityManager,
 	}
 
@@ -284,43 +312,8 @@ func (n *ComputeNode) subscriptionEventCreated(ctx context.Context, jobEvent mod
 		"client_id": j.ClientID,
 	}).Inc()
 
-	Max := func(x, y int) int {
-		if x < y {
-			return y
-		}
-		return x
-	}
-
-	// Decide whether we should even consider bidding on the job, early exit if
-	// we're not in the active set for this job, given the hash distances.
-	// (This is an optimization to avoid all nodes bidding on a job in large networks).
-
-	// TODO XXX: don't hardcode networkSize, calculate this dynamically from
-	// libp2p instead somehow. https://github.com/filecoin-project/bacalhau/issues/512
-	jobNodeDistanceDelayMs, shouldRunJob := CalculateJobNodeDistanceDelay( //nolint:gomnd //nolint:gomnd
-		// if the user isn't going to bid unless there are minBids many bids,
-		// we'd better make sure there are minBids many bids!
-		ctx, 1, n.ID, jobEvent.JobID, Max(jobEvent.Deal.Concurrency, jobEvent.Deal.MinBids),
-	)
-
-	// if delay is too high, just exit immediately.
-	if !shouldRunJob { //nolint:gomnd
-		// drop the job on the floor, :-O
-		return nil
-	}
-	if jobNodeDistanceDelayMs > 0 {
-		log.Ctx(ctx).Debug().Msgf("Waiting %d ms before selecting job %s", jobNodeDistanceDelayMs, jobEvent.JobID)
-	}
-
-	time.Sleep(time.Millisecond * time.Duration(jobNodeDistanceDelayMs)) //nolint:gosec
-
 	// A new job has arrived - decide if we want to bid on it:
-	selected, processedRequirements, err := n.SelectJob(ctx, JobSelectionPolicyProbeData{
-		NodeID:        n.ID,
-		JobID:         jobEvent.JobID,
-		Spec:          jobEvent.Spec,
-		ExecutionPlan: jobEvent.JobExecutionPlan,
-	})
+	selected, processedRequirements, err := n.SelectJob(ctx, j)
 	if err != nil {
 		return fmt.Errorf("error checking job policy: %w", err)
 	}
@@ -442,84 +435,47 @@ func (n *ComputeNode) triggerStateTransition(ctx context.Context, event model.Jo
 */
 // ask the job selection policy if we would consider running this job
 // we return the processed resourceusage.ResourceUsageData for the job
-func (n *ComputeNode) SelectJob(ctx context.Context, data JobSelectionPolicyProbeData) (bool, model.ResourceUsageData, error) {
+func (n *ComputeNode) SelectJob(ctx context.Context, job *model.Job) (bool, model.ResourceUsageData, error) {
 	ctx, span := n.newSpan(ctx, "SelectJob")
 	defer span.End()
 
-	requirements := model.ResourceUsageData{}
-
-	// skip bidding if the job spec defined a timeout value higher or lower than what we are willing to accept
-	if n.config.TimeoutConfig.MaxJobExecutionTimeout > 0 && data.Spec.GetTimeout() > n.config.TimeoutConfig.MaxJobExecutionTimeout {
-		log.Ctx(ctx).Debug().Msgf("Compute node skipped bidding on job %s because job timeout %s exceeds maximum allowed %s",
-			data.JobID, data.Spec.GetTimeout(), n.config.TimeoutConfig.MaxJobExecutionTimeout)
-		return false, requirements, nil
-	}
-	if data.Spec.GetTimeout() < n.config.TimeoutConfig.MinJobExecutionTimeout {
-		log.Ctx(ctx).Debug().Msgf("Compute node skipped bidding on job %s because job timeout %s below minimum allowed %s",
-			data.JobID, data.Spec.GetTimeout(), n.config.TimeoutConfig.MinJobExecutionTimeout)
-		return false, requirements, nil
-	}
-
-	// check that we have the executor and it's installed
-	e, err := n.executors.GetExecutor(ctx, data.Spec.Engine)
+	requirements, err := n.calculateJobRequirements(ctx, job)
 	if err != nil {
-		return false, requirements, fmt.Errorf("getExecutor: %v", err)
+		return false, requirements, err
 	}
 
-	// check that we have the verifier and it's installed
-	_, err = n.verifiers.GetVerifier(ctx, data.Spec.Verifier)
+	bidStrategyResponse, err := n.biddingStrategy.ShouldBid(ctx, bidstrategy.BidStrategyRequest{
+		NodeID:                    n.ID,
+		Job:                       *job,
+		ResourceUsageRequirements: requirements,
+	})
 	if err != nil {
-		return false, requirements, fmt.Errorf("getVerifier: %v", err)
+		return false, requirements, err
 	}
 
-	// caculate resource requirements for this job
-	// this is just parsing strings to ints
-	requirements = capacitymanager.ParseResourceUsageConfig(data.Spec.Resources)
+	return bidStrategyResponse.ShouldBid, requirements, nil
+}
+
+func (n *ComputeNode) calculateJobRequirements(ctx context.Context, job *model.Job) (model.ResourceUsageData, error) {
+	// calculate resource requirements for this job, and populate with default values if not specified
+	requirements := n.capacityManager.ExtractRequirements(job.Spec.Resources)
 
 	// calculate the disk space we would require if we ran this job
 	// this is asking the executor for GetVolumeSize
-	diskSpace, err := n.getJobDiskspaceRequirements(ctx, data.Spec)
+	diskSpace, err := n.getJobDiskspaceRequirements(ctx, job.Spec)
 	if err != nil {
-		return false, requirements, fmt.Errorf("error getting job disk space requirements: %v", err)
+		return requirements, fmt.Errorf("error getting job disk space requirements: %w", err)
 	}
 
 	// TODO: think about the fact that each shard might be different sizes
 	// this is probably good enough for now
-	totalShards := data.ExecutionPlan.TotalShards
+	totalShards := job.ExecutionPlan.TotalShards
 	if totalShards == 0 {
 		totalShards = 1
 	}
 	// update the job requirements disk space with what we calculated
 	requirements.Disk = diskSpace / uint64(totalShards)
-
-	withinCapacityLimits, processedRequirements := n.capacityManager.FilterRequirements(requirements)
-
-	if !withinCapacityLimits {
-		log.Ctx(ctx).Debug().Msgf("Compute node %s skipped bidding on job because resource requirements were too much: %+v",
-			n.ID, data.Spec)
-		return false, processedRequirements, nil
-	}
-
-	// decide if we want to take on the job based on
-	// our selection policy
-	acceptedByPolicy, err := ApplyJobSelectionPolicy(
-		ctx,
-		n.config.JobSelectionPolicy,
-		e,
-		data,
-	)
-
-	if err != nil {
-		return false, processedRequirements, fmt.Errorf("error selecting job by policy: %v", err)
-	}
-
-	if !acceptedByPolicy {
-		log.Ctx(ctx).Debug().Msgf("Compute node %s skipped bidding on job because policy did not pass: %s",
-			n.ID, data.JobID)
-		return false, processedRequirements, nil
-	}
-
-	return true, processedRequirements, nil
+	return requirements, nil
 }
 
 /*

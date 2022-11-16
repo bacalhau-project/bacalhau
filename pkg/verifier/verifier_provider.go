@@ -45,3 +45,9 @@ func (p *MappedVerifierProvider) GetVerifier(ctx context.Context, verifierType m
 
 	return verifier, nil
 }
+
+// Check if a verifier is available or not
+func (p *MappedVerifierProvider) HasVerifier(ctx context.Context, verifierType model.Verifier) bool {
+	_, err := p.GetVerifier(ctx, verifierType)
+	return err == nil
+}

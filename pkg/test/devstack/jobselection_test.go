@@ -30,7 +30,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	type TestCase struct {
 		name            string
-		policy          computenode.JobSelectionPolicy
+		policy          model.JobSelectionPolicy
 		nodeCount       int
 		addFilesCount   int
 		expectedAccepts int
@@ -69,7 +69,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		{
 			name:            "all nodes added files, all nodes ran job",
-			policy:          computenode.NewDefaultJobSelectionPolicy(),
+			policy:          model.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
 			addFilesCount:   3,
 			expectedAccepts: 3,
@@ -78,7 +78,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		// check we get only 2 when we've only added data to 2
 		{
 			name:            "only nodes we added data to ran the job",
-			policy:          computenode.NewDefaultJobSelectionPolicy(),
+			policy:          model.NewDefaultJobSelectionPolicy(),
 			nodeCount:       3,
 			addFilesCount:   2,
 			expectedAccepts: 2,
@@ -87,8 +87,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		// check we run on all 3 nodes even though we only added data to 1
 		{
 			name: "only added files to 1 node but all 3 run it",
-			policy: computenode.JobSelectionPolicy{
-				Locality: computenode.Anywhere,
+			policy: model.JobSelectionPolicy{
+				Locality: model.Anywhere,
 			},
 			nodeCount:       3,
 			addFilesCount:   1,
