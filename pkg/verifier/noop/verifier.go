@@ -22,8 +22,8 @@ func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
 	}
 }
 
-func (s *NoopVerifierProvider) GetVerifier(context.Context, model.Verifier) (verifier.Verifier, error) {
-	return s.noopVerifier, nil
+func (p *NoopVerifierProvider) GetVerifier(context.Context, model.Verifier) (verifier.Verifier, error) {
+	return p.noopVerifier, nil
 }
 
 // Check if a verifier is available or not

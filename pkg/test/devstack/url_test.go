@@ -49,8 +49,8 @@ func runURLTest(
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeNodeConfig: &computenode.ComputeNodeConfig{
-				JobSelectionPolicy: computenode.JobSelectionPolicy{
-					Locality: computenode.Anywhere,
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
 				},
 			},
 		},
@@ -219,8 +219,8 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
 			ComputeNodeConfig: &computenode.ComputeNodeConfig{
-				JobSelectionPolicy: computenode.JobSelectionPolicy{
-					Locality: computenode.Anywhere,
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
 				},
 			},
 		},
