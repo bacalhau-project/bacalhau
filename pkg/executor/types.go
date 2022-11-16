@@ -10,6 +10,7 @@ import (
 type ExecutorProvider interface {
 	AddExecutor(ctx context.Context, engineType model.Engine, executor Executor) error
 	GetExecutor(ctx context.Context, engineType model.Engine) (Executor, error)
+	HasExecutor(ctx context.Context, engineType model.Engine) bool
 }
 
 // Executor represents an execution provider, which can execute jobs on some

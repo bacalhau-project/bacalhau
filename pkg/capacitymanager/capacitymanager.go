@@ -181,11 +181,11 @@ func NewCapacityManager( //nolint:funlen,gocyclo
 	}, nil
 }
 
-// tells you if the given requirements are too much for this capacity manager
-// we fill in defaults along the way and return the "processed version"
-// to ever run - this is based on the "resourceLimitsJob" not the total
-// because we might be busy now but could run the job later
-func (manager *CapacityManager) FilterRequirements(requirements model.ResourceUsageData) (bool, model.ResourceUsageData) {
+// Parses job resource usage config and returns a ResourceUsageData struct, along with populating
+// with default values if not specified.
+func (manager *CapacityManager) ExtractRequirements(config model.ResourceUsageConfig) model.ResourceUsageData {
+	requirements := ParseResourceUsageConfig(config)
+
 	if requirements.CPU <= 0 {
 		requirements.CPU = manager.resourceRequirementsJobDefault.CPU
 	}
@@ -198,8 +198,16 @@ func (manager *CapacityManager) FilterRequirements(requirements model.ResourceUs
 	if requirements.GPU <= 0 {
 		requirements.GPU = manager.resourceRequirementsJobDefault.GPU
 	}
-	isOk := checkResourceUsage(requirements, manager.resourceLimitsJob)
-	return isOk, requirements
+
+	return requirements
+}
+
+// tells you if the given requirements are too much for this capacity manager
+// we fill in defaults along the way and return the "processed version"
+// to ever run - this is based on the "resourceLimitsJob" not the total
+// because we might be busy now but could run the job later
+func (manager *CapacityManager) FilterRequirements(requirements model.ResourceUsageData) bool {
+	return checkResourceUsage(requirements, manager.resourceLimitsJob)
 }
 
 func (manager *CapacityManager) GetFreeSpace() model.ResourceUsageData {

@@ -43,6 +43,11 @@ func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model
 	return p.noopExecutor, nil
 }
 
+func (p *NoopExecutorProvider) HasExecutor(ctx context.Context, engineType model.Engine) bool {
+	_, err := p.GetExecutor(ctx, engineType)
+	return err == nil
+}
+
 type NoopExecutor struct {
 	Jobs   []model.Job
 	Config ExecutorConfig
