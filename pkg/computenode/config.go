@@ -3,6 +3,8 @@ package computenode
 import (
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
+
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
 )
 
@@ -42,7 +44,7 @@ func NewDefaultComputeTimeoutConfig() ComputeTimeoutConfig {
 type ComputeNodeConfig struct {
 	// this contains things like data locality and per
 	// job resource limits
-	JobSelectionPolicy JobSelectionPolicy
+	JobSelectionPolicy model.JobSelectionPolicy
 
 	// configure the resource capacity we are allowing for
 	// this compute node
@@ -57,7 +59,7 @@ type ComputeNodeConfig struct {
 
 func NewDefaultComputeNodeConfig() ComputeNodeConfig {
 	return ComputeNodeConfig{
-		JobSelectionPolicy:                 NewDefaultJobSelectionPolicy(),
+		JobSelectionPolicy:                 model.NewDefaultJobSelectionPolicy(),
 		TimeoutConfig:                      NewDefaultComputeTimeoutConfig(),
 		StateManagerBackgroundTaskInterval: DefaultStateManagerTaskInterval,
 	}

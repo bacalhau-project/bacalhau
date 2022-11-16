@@ -19,6 +19,7 @@ type VerifierResult struct {
 // Returns a verifier that can be used to verify a job.
 type VerifierProvider interface {
 	GetVerifier(ctx context.Context, job model.Verifier) (Verifier, error)
+	HasVerifier(ctx context.Context, job model.Verifier) bool
 }
 
 // Verifier is an interface representing something that can verify the results

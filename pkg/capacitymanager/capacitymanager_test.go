@@ -255,11 +255,12 @@ func TestFilter(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedResult := ParseResourceUsageConfig(tc.expectedResult)
-			ok, result := mgr.FilterRequirements(ParseResourceUsageConfig(tc.value))
+			extractRequirements := mgr.ExtractRequirements(tc.value)
+			ok := mgr.FilterRequirements(extractRequirements)
 			require.Equal(t, tc.expectedOk, ok)
-			require.Equal(t, expectedResult.CPU, result.CPU)
-			require.Equal(t, expectedResult.Memory, result.Memory)
-			require.Equal(t, expectedResult.Disk, result.Disk)
+			require.Equal(t, expectedResult.CPU, extractRequirements.CPU)
+			require.Equal(t, expectedResult.Memory, extractRequirements.Memory)
+			require.Equal(t, expectedResult.Disk, extractRequirements.Disk)
 		})
 	}
 
@@ -543,6 +544,39 @@ func TestNewCapacityManager(t *testing.T) {
 	}
 }
 
+func TestExtractRequirements(t *testing.T) {
+	capacityTracker := &MockCapacityTracker{}
+
+	m, err := NewCapacityManager(capacityTracker, Config{
+		ResourceLimitTotal: model.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
+		},
+		ResourceRequirementsDefault: model.ResourceUsageConfig{
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := m.ExtractRequirements(
+		model.ResourceUsageConfig{},
+	)
+
+	if req.CPU != 1 {
+		t.Errorf("CPU should be 1, but got %f", req.CPU)
+	}
+	if req.Memory != 1073741824 {
+		t.Errorf("Memory should be 1073741824, but got %d", req.Memory)
+	}
+	if req.GPU != 0 {
+		t.Errorf("GPU should be 0, but got %d", req.GPU)
+	}
+}
+
 func TestFilterRequirements(t *testing.T) {
 	capacityTracker := &MockCapacityTracker{}
 
@@ -561,20 +595,10 @@ func TestFilterRequirements(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, req := m.FilterRequirements(
-		model.ResourceUsageData{},
-	)
+	req := m.ExtractRequirements(model.ResourceUsageConfig{})
+	ok := m.FilterRequirements(req)
 	if !ok {
 		t.Error("Should be ok, but is not")
-	}
-	if req.CPU != 1 {
-		t.Errorf("CPU should be 1, but got %f", req.CPU)
-	}
-	if req.Memory != 1073741824 {
-		t.Errorf("Memory should be 1073741824, but got %d", req.Memory)
-	}
-	if req.GPU != 0 {
-		t.Errorf("GPU should be 0, but got %d", req.GPU)
 	}
 }
 

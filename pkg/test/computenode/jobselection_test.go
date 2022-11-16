@@ -43,13 +43,13 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	ctx := context.Background()
 	runTest := func(rejectSetting, expectedResult bool) {
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer stack.Node.CleanupManager.Cleanup()
 
-		result, _, err := stack.Node.ComputeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := stack.Node.ComputeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -62,10 +62,10 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 // when selecting a job
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	ctx := context.Background()
-	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
+	runTest := func(locality model.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
 		stack := testutils.NewNoopStack(ctx, suite.T(),
 			computenode.ComputeNodeConfig{
-				JobSelectionPolicy: computenode.JobSelectionPolicy{
+				JobSelectionPolicy: model.JobSelectionPolicy{
 					Locality: locality,
 				},
 			},
@@ -79,22 +79,22 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData("abc"))
+		result, _, err := computeNode.SelectJob(ctx, GetJob("abc"))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
 	// we are local - we do have the file - we should accept
-	suite.Run("local with file", func() { runTest(computenode.Local, true, true) })
+	suite.Run("local with file", func() { runTest(model.Local, true, true) })
 
 	// we are local - we don't have the file - we should reject
-	suite.Run("local without file", func() { runTest(computenode.Local, false, false) })
+	suite.Run("local without file", func() { runTest(model.Local, false, false) })
 
 	// // we are anywhere - we do have the file - we should accept
-	suite.Run("anywhere with file", func() { runTest(computenode.Anywhere, true, true) })
+	suite.Run("anywhere with file", func() { runTest(model.Anywhere, true, true) })
 
 	// // we are anywhere - we don't have the file - we should accept
-	suite.Run("anywhere without file", func() { runTest(computenode.Anywhere, false, true) })
+	suite.Run("anywhere without file", func() { runTest(model.Anywhere, false, true) })
 }
 
 // TestJobSelectionHttp tests that we can select a job based on
@@ -116,14 +116,14 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		defer svr.Close()
 
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
 		}, noop_executor.ExecutorConfig{})
 		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
@@ -146,14 +146,14 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 			command = "exit 1"
 		}
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				ProbeExec: command,
 			},
 		}, noop_executor.ExecutorConfig{})
 		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}

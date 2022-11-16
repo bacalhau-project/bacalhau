@@ -172,15 +172,15 @@ func getPeers() []multiaddr.Multiaddr {
 	return peers
 }
 
-func getJobSelectionConfig() computenode.JobSelectionPolicy {
+func getJobSelectionConfig() model.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
-	typedJobSelectionDataLocality := computenode.Anywhere
+	typedJobSelectionDataLocality := model.Anywhere
 
 	if OS.JobSelectionDataLocality == "anywhere" {
-		typedJobSelectionDataLocality = computenode.Anywhere
+		typedJobSelectionDataLocality = model.Anywhere
 	}
 
-	jobSelectionPolicy := computenode.JobSelectionPolicy{
+	jobSelectionPolicy := model.JobSelectionPolicy{
 		Locality:            typedJobSelectionDataLocality,
 		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
 		ProbeHTTP:           OS.JobSelectionProbeHTTP,

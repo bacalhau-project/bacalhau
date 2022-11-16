@@ -12,6 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func GetJob(cid string) *model.Job {
+	return &model.Job{
+		ID:   "test",
+		Spec: GetJobSpec(cid),
+	}
+}
+
 func GetJobSpec(cid string) model.Spec {
 	inputs := []model.StorageSpec{}
 	if cid != "" {
@@ -27,14 +34,6 @@ func GetJobSpec(cid string) model.Spec {
 		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
 		Inputs:   inputs,
-	}
-}
-
-func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
-	return computenode.JobSelectionPolicyProbeData{
-		NodeID: "test",
-		JobID:  "test",
-		Spec:   GetJobSpec(cid),
 	}
 }
 
