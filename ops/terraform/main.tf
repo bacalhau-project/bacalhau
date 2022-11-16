@@ -18,7 +18,7 @@ resource "google_compute_instance" "bacalhau_vm" {
   name         = "bacalhau-vm-${terraform.workspace}-${count.index}"
   count        = var.instance_count
   machine_type = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_machine_type : var.machine_type
-  zone         = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
+  zone         = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
 
   boot_disk {
     initialize_params {
@@ -193,7 +193,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? var.instance_count : 0
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
@@ -206,7 +206,7 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
   name     = terraform.workspace == "production" ? "bacalhau-disk-${count.index}" : "bacalhau-disk-${terraform.workspace}-${count.index}"
   count    = var.protect_resources ? 0 : var.instance_count
   type     = "pd-ssd"
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
 }
@@ -214,7 +214,7 @@ resource "google_compute_disk" "bacalhau_disk_unprotected" {
 resource "google_compute_disk_resource_policy_attachment" "attachment" {
   name  = google_compute_resource_policy.bacalhau_disk_backups[count.index].name
   disk  = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].name : google_compute_disk.bacalhau_disk_unprotected[count.index].name
-  zone  = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
+  zone  = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
   count = var.instance_count
 }
 
@@ -247,7 +247,7 @@ resource "google_compute_attached_disk" "default" {
   disk     = var.protect_resources ? google_compute_disk.bacalhau_disk[count.index].self_link : google_compute_disk.bacalhau_disk_unprotected[count.index].self_link
   instance = google_compute_instance.bacalhau_vm[count.index].self_link
   count    = var.instance_count
-  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-b" : var.zone
+  zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
 }
 
 resource "google_compute_firewall" "bacalhau_firewall" {
