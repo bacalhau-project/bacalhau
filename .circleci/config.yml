@@ -124,8 +124,10 @@ jobs:
                 no_output_timeout: 20m
             - store_test_results:
                 path: .
-            - store_artifacts:
-                path: coverage/
+            - persist_to_workspace:
+                root: coverage/
+                paths:
+                  - "*.coverage"
 
       - when:
           condition:
@@ -166,11 +168,16 @@ jobs:
             rm dist/.keep           # Need to remove this file so it's not persisted to github
             make build-bacalhau-tgz
 
-      - persist_to_workspace:
-          root: dist/
-          paths:
-            - "*.tar.gz"
-            - "*.sha256"
+      - when:
+          condition:
+            not:
+              equal: ["integration", << parameters.build_tags >>]
+          steps:
+            - persist_to_workspace:
+                root: dist/
+                paths:
+                  - "*.tar.gz"
+                  - "*.sha256"
 
       - store_artifacts:
           path: dist/
@@ -208,6 +215,28 @@ jobs:
           name: Build canary
           working_directory: ops/aws/canary/lambda
           command: make build -j
+
+  coverage:
+    executor: linux
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: coverage/
+
+      - run:
+          name: Install gocovmerge
+          command: go install github.com/wadey/gocovmerge@latest
+
+      - run:
+          name: Build coverage report
+          command: make coverage-report
+
+      - store_artifacts:
+          path: coverage/coverage.html
 
   lint:
     parallelism: 1
@@ -432,6 +461,10 @@ workflows:
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
             - build-linux-amd64-unit
+      - coverage:
+          name: Build coverage report
+          requires:
+            - build
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
@@ -474,6 +507,10 @@ workflows:
             - build-linux-amd64-unit
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+      - coverage:
+          name: Build coverage report
+          requires:
+            - build
       # - deploy:
       #     name: deploy-staging-cluster
       #     requires:
