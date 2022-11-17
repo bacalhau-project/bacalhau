@@ -3,15 +3,24 @@
 version: 2.1
 
 executors:
-  linux:
+  linux-amd64:
     machine:
       image: ubuntu-2204:2022.07.1
       resource_class: xlarge
-  darwin:
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:2022.07.1
+      resource_class: arm.xlarge
+  darwin-amd64:
     macos:
       xcode: 13.4.1
     resource_class: large
-  windows:
+  darwin-arm64:
+    # Note - not an actual ARM macOS machine (https://circleci.canny.io/cloud-feature-requests/p/support-new-m1-arm-based-macs)
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+  windows-amd64:
     machine:
       image: windows-server-2022-gui:current
       resource_class: windows.xlarge
@@ -30,7 +39,7 @@ jobs:
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
-    executor: << parameters.target_os >>
+    executor: << parameters.target_os >>-<< parameters.target_arch >>
     parameters:
       target_arch:
         type: string
@@ -56,16 +65,28 @@ jobs:
                 name: Install Go
                 command: |
                   rm -rf /c/Program\ Files/Go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
 
       - when:
           condition:
             or:
               - equal: ["linux", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install Go
+                command: |
+                  sudo rm -fr /usr/local/go /usr/local/bin/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+
+      - when:
+          condition:
+            or:
               - equal: ["darwin", << parameters.target_os >>]
           steps:
             - run:
                 name: Install Go
+                # Currently don't have a _real_ arm64 macOS box, so always download amd64 version of Go
                 command: |
                   sudo rm -fr /usr/local/go /usr/local/bin/go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
@@ -74,6 +95,10 @@ jobs:
       - run:
           name: Set GOCACHE
           command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
 
       - run:
           name: Init tools
@@ -202,7 +227,7 @@ jobs:
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       
@@ -217,7 +242,7 @@ jobs:
           command: make build -j
 
   coverage:
-    executor: linux
+    executor: linux-amd64
     environment:
       GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
@@ -245,7 +270,7 @@ jobs:
       GOLANGCILINT: v1.49.0
       GOPROXY: https://proxy.golang.org
     working_directory: ~/repo
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
 
@@ -358,7 +383,7 @@ jobs:
             heroku run build --app bacalhau-dashboards
 
   release:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       - attach_workspace:
@@ -378,7 +403,7 @@ jobs:
             gh release upload $TAG dist/*
 
   update_ops:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       - run:
@@ -392,7 +417,7 @@ jobs:
             updatecli apply --config .circleci/dependency-ops.yaml
 
   update_metadata:
-    executor: linux
+    executor: linux-amd64
     parameters:
       METADATA_BUCKET:
         type: string
