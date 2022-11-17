@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/docker"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -51,5 +52,15 @@ func MaybeNeedDocker(t *testing.T, needDocker bool) {
 	_, isCI := os.LookupEnv("CI")
 	if needDocker && isCI && (runtime.GOOS == "windows" || runtime.GOOS == "darwin") {
 		t.Skip("Cannot run this test in a", runtime.GOOS, "runtime on a CI environment because it requires Docker")
+	}
+
+	if needDocker {
+		client, err := docker.NewDockerClient()
+		require.NoError(t, err)
+
+		installed := docker.IsInstalled(context.Background(), client)
+		if !installed {
+			t.Fatalf("Docker is not running")
+		}
 	}
 }
