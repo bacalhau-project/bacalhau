@@ -237,9 +237,22 @@ jobs:
           command: make update
           
       - run:
-          name: Build canary
+          name: Build
           working_directory: ops/aws/canary/lambda
           command: make build -j
+
+      - run:
+          name: Run tests
+          working_directory: ops/aws/canary/lambda
+          command: |
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install gotest.tools/gotestsum@v1.8.2
+            make test
+
+      - store_test_results:
+          path: ops/aws/canary/lambda/unittests.xml
+
 
   coverage:
     executor: linux-amd64
