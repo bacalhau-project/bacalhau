@@ -4,11 +4,11 @@ import (
 	"fmt"
 )
 
-//go:generate stringer -type=PublisherType --trimprefix=Publisher
-type PublisherType int
+//go:generate stringer -type=Publisher --trimprefix=Publisher
+type Publisher int
 
 const (
-	publisherUnknown PublisherType = iota // must be first
+	publisherUnknown Publisher = iota // must be first
 	PublisherNoop
 	PublisherIpfs
 	PublisherFilecoin
@@ -16,7 +16,7 @@ const (
 	publisherDone // must be last
 )
 
-func ParsePublisherType(str string) (PublisherType, error) {
+func ParsePublisher(str string) (Publisher, error) {
 	for typ := publisherUnknown + 1; typ < publisherDone; typ++ {
 		if equal(typ.String(), str) {
 			return typ, nil
@@ -26,22 +26,40 @@ func ParsePublisherType(str string) (PublisherType, error) {
 	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
-func EnsurePublisherType(typ PublisherType, str string) (PublisherType, error) {
-	if IsValidPublisherType(typ) {
+func EnsurePublisher(typ Publisher, str string) (Publisher, error) {
+	if IsValidPublisher(typ) {
 		return typ, nil
 	}
-	return ParsePublisherType(str)
+	return ParsePublisher(str)
 }
 
-func IsValidPublisherType(publisherType PublisherType) bool {
+func IsValidPublisher(publisherType Publisher) bool {
 	return publisherType > publisherUnknown && publisherType < publisherDone
 }
 
-func PublisherTypes() []PublisherType {
-	var res []PublisherType
+func PublisherTypes() []Publisher {
+	var res []Publisher
 	for typ := publisherUnknown + 1; typ < publisherDone; typ++ {
 		res = append(res, typ)
 	}
 
 	return res
+}
+
+func PublisherNames() []string {
+	var names []string
+	for _, typ := range PublisherTypes() {
+		names = append(names, typ.String())
+	}
+	return names
+}
+
+func (p Publisher) MarshalText() ([]byte, error) {
+	return []byte(p.String()), nil
+}
+
+func (p *Publisher) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*p, err = ParsePublisher(name)
+	return
 }

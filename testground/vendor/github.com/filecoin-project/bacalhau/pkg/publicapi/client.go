@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"reflect"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -65,48 +65,48 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 }
 
 // List returns the list of jobs in the node's transport.
-// TODO: #454 implement pagination
-func (apiClient *APIClient) List(ctx context.Context) (map[string]model.Job, error) {
+func (apiClient *APIClient) List(ctx context.Context, idFilter string, maxJobs int, returnAll bool, sortBy string, sortReverse bool) (
+	[]*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.List")
 	defer span.End()
 
 	req := listRequest{
-		ClientID: system.GetClientID(),
+		ClientID:    system.GetClientID(),
+		MaxJobs:     maxJobs,
+		JobID:       idFilter,
+		ReturnAll:   returnAll,
+		SortBy:      sortBy,
+		SortReverse: sortReverse,
 	}
 
 	var res listResponse
 	if err := apiClient.post(ctx, "list", req, &res); err != nil {
-		return nil, err
+		e := err
+		return nil, e
 	}
 
 	return res.Jobs, nil
 }
 
 // Get returns job data for a particular job ID. If no match is found, Get returns false with a nil error.
-// TODO(optimisation): #452 implement with separate API call, don't filter list
-func (apiClient *APIClient) Get(ctx context.Context, jobID string) (job model.Job, foundJob bool, err error) {
+func (apiClient *APIClient) Get(ctx context.Context, jobID string) (*model.Job, bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Get")
 	defer span.End()
 
 	if jobID == "" {
-		return model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
+		return &model.Job{}, false, fmt.Errorf("jobID must be non-empty in a Get call")
 	}
 
-	jobs, err := apiClient.List(ctx)
+	jobsList, err := apiClient.List(ctx, jobID, 1, false, "created_at", true)
 	if err != nil {
-		return model.Job{}, false, err
+		return &model.Job{}, false, err
 	}
 
-	// TODO: #453 make this deterministic, return the first match alphabetically
-	for _, job = range jobs { //nolint:gocritic
-		strippedAndLoweredJobID := strings.ReplaceAll(strings.ToLower(job.ID), "-", "")
-		strippedAndLoweredSearchID := strings.ReplaceAll(strings.ToLower(jobID), "-", "")
-		if strings.HasPrefix(strippedAndLoweredJobID, strippedAndLoweredSearchID) {
-			return job, true, nil
-		}
+	if len(jobsList) > 0 {
+		return jobsList[0], true, nil
+	} else {
+		return &model.Job{}, false, bacerrors.NewJobNotFound(jobID)
 	}
-
-	return model.Job{}, false, nil
 }
 
 func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (states model.JobState, err error) {
@@ -131,12 +131,12 @@ func (apiClient *APIClient) GetJobState(ctx context.Context, jobID string) (stat
 }
 
 func (apiClient *APIClient) GetJobStateResolver() *job.StateResolver {
-	jobLoader := func(ctx context.Context, jobID string) (model.Job, error) {
-		job, ok, err := apiClient.Get(ctx, jobID)
-		if !ok {
-			return model.Job{}, fmt.Errorf("no job found with id %s", jobID)
+	jobLoader := func(ctx context.Context, jobID string) (*model.Job, error) {
+		j, _, err := apiClient.Get(ctx, jobID)
+		if err != nil {
+			return &model.Job{}, fmt.Errorf("failed to load job %s: %w", jobID, err)
 		}
-		return job, err
+		return j, err
 	}
 	stateLoader := func(ctx context.Context, jobID string) (model.JobState, error) {
 		return apiClient.GetJobState(ctx, jobID)
@@ -210,17 +210,15 @@ func (apiClient *APIClient) GetResults(ctx context.Context, jobID string) (resul
 // Submit submits a new job to the node's transport.
 func (apiClient *APIClient) Submit(
 	ctx context.Context,
-	spec model.JobSpec,
-	deal model.JobDeal,
+	j *model.Job,
 	buildContext *bytes.Buffer,
-) (model.Job, error) {
+) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Submit")
 	defer span.End()
 
 	data := model.JobCreatePayload{
 		ClientID: system.GetClientID(),
-		Spec:     spec,
-		Deal:     deal,
+		Job:      j,
 	}
 
 	if buildContext != nil {
@@ -229,12 +227,12 @@ func (apiClient *APIClient) Submit(
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return model.Job{}, err
+		return &model.Job{}, err
 	}
 
 	signature, err := system.SignForClient(jsonData)
 	if err != nil {
-		return model.Job{}, err
+		return &model.Job{}, err
 	}
 
 	var res submitResponse
@@ -244,15 +242,16 @@ func (apiClient *APIClient) Submit(
 		ClientPublicKey: system.GetClientPublicKey(),
 	}
 
-	if err := apiClient.post(ctx, "submit", req, &res); err != nil {
-		return model.Job{}, err
+	err = apiClient.post(ctx, "submit", req, &res)
+	if err != nil {
+		return &model.Job{}, err
 	}
 
 	return res.Job, nil
 }
 
 // Submit submits a new job to the node's transport.
-func (apiClient *APIClient) Version(ctx context.Context) (*model.VersionInfo, error) {
+func (apiClient *APIClient) Version(ctx context.Context) (*model.BuildVersionInfo, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/publicapi.Version")
 	defer span.End()
 
@@ -273,48 +272,60 @@ func (apiClient *APIClient) post(ctx context.Context, api string, reqData, resDa
 	defer span.End()
 
 	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(reqData); err != nil {
-		return fmt.Errorf("publicapi: error encoding request body: %v", err)
+	var err error
+	if err = json.NewEncoder(&body).Encode(reqData); err != nil {
+		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error encoding request body: %v", err))
 	}
 
 	addr := fmt.Sprintf("%s/%s", apiClient.BaseURI, api)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr, &body)
 	if err != nil {
-		return fmt.Errorf("publicapi: error creating post request: %v", err)
+		return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error creating post request: %v", err))
 	}
 	req.Header.Set("Content-type", "application/json")
 	req.Close = true // don't keep connections lying around
 
-	res, err := apiClient.client.Do(req)
+	var res *http.Response
+	res, err = apiClient.client.Do(req)
 	if err != nil {
-		return err
-	}
-
-	defer res.Body.Close()
-
-	if err != nil {
-		return fmt.Errorf("publicapi: error sending post request: %v", err)
+		if errorResponse, ok := err.(*bacerrors.ErrorResponse); ok {
+			return errorResponse
+		} else {
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v", err))
+		}
 	}
 
 	defer func() {
-		if err := res.Body.Close(); err != nil {
-			log.Error().Msgf("error closing response body: %v", err)
+		if err = res.Body.Close(); err != nil {
+			err = fmt.Errorf("error closing response body: %v", err)
 		}
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(res.Body)
-		if err == nil { // not critical if this fails
-			log.Error().Msgf(
-				"publicapi: %d body returned from API server: %s", res.StatusCode, string(body))
+		var responseBody []byte
+		responseBody, err = io.ReadAll(res.Body)
+		if err != nil {
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error reading response body: %v", err))
 		}
 
-		return fmt.Errorf(
-			"publicapi: received non-200 status: %d %s", res.StatusCode, string(body))
+		var serverError *bacerrors.ErrorResponse
+		if err = json.Unmarshal(responseBody, &serverError); err != nil {
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: after posting request: %v",
+				string(responseBody)))
+		}
+
+		if !reflect.DeepEqual(serverError, bacerrors.BacalhauErrorInterface(nil)) {
+			return serverError
+		}
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(resData); err != nil {
-		return fmt.Errorf("publicapi: error decoding response body: %v", err)
+	err = json.NewDecoder(res.Body).Decode(resData)
+	if err != nil {
+		if err == io.EOF {
+			return nil // No error, just no data
+		} else {
+			return bacerrors.NewResponseUnknownError(fmt.Errorf("publicapi: error decoding response body: %v", err))
+		}
 	}
 
 	return nil

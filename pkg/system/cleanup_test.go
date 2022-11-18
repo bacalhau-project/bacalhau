@@ -1,8 +1,11 @@
+//go:build unit || !integration
+
 package system
 
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,21 +20,10 @@ func TestSystemCleanupSuite(t *testing.T) {
 	suite.Run(t, new(SystemCleanupSuite))
 }
 
-// Before all suite
-func (suite *SystemCleanupSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemCleanupSuite) SetupTest() {
-	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemCleanupSuite) TearDownTest() {
-}
-
-func (suite *SystemCleanupSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func (suite *SystemCleanupSuite) TestCleanupManager() {

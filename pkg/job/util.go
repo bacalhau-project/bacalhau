@@ -46,20 +46,17 @@ func NewNoopStateLoader() StateLoader {
 func buildJobInputs(inputVolumes, inputUrls []string) ([]model.StorageSpec, error) {
 	jobInputs := []model.StorageSpec{}
 
+	// We expect the input URLs to be of the form `url:pathToMountInTheContainer` or `url`
 	for _, inputURL := range inputUrls {
-		// split using LastIndex to support port numbers in URL
-		lastInd := strings.LastIndex(inputURL, ":")
-		rawURL := inputURL[:lastInd]
-		path := inputURL[lastInd+1:]
 		// should loop through all available storage providers?
-		_, err := urldownload.IsURLSupported(rawURL)
+		u, err := urldownload.IsURLSupported(inputURL)
 		if err != nil {
 			return []model.StorageSpec{}, err
 		}
 		jobInputs = append(jobInputs, model.StorageSpec{
 			StorageSource: model.StorageSourceURLDownload,
-			URL:           rawURL,
-			Path:          path,
+			URL:           u.String(),
+			Path:          "/inputs",
 		})
 	}
 
@@ -119,5 +116,56 @@ func buildJobOutputs(outputVolumes []string) ([]model.StorageSpec, error) {
 
 // Shortens a Job ID e.g. `c42603b4-b418-4827-a9ca-d5a43338f2fe` to `c42603b4`
 func ShortID(id string) string {
-	return id[:8]
+	if len(id) < model.ShortIDLength {
+		return id
+	}
+	return id[:model.ShortIDLength]
+}
+
+func ComputeStateSummary(j *model.Job) string {
+	var currentJobState model.JobStateType
+	jobShardStates := FlattenShardStates(j.State)
+	for i := range jobShardStates {
+		if jobShardStates[i].State > currentJobState {
+			currentJobState = jobShardStates[i].State
+		}
+	}
+	stateSummary := currentJobState.String()
+	return stateSummary
+}
+
+func ComputeResultsSummary(j *model.Job) string {
+	var resultSummary string
+	if GetJobTotalShards(j) > 1 {
+		resultSummary = ""
+	} else {
+		completedShards := GetCompletedShardStates(j.State)
+		if len(completedShards) == 0 {
+			resultSummary = ""
+		} else {
+			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
+		}
+	}
+	return resultSummary
+}
+
+func ComputeVerifiedSummary(j *model.Job) string {
+	var verifiedSummary string
+	if j.Spec.Verifier == model.VerifierNoop {
+		verifiedSummary = ""
+	} else {
+		totalShards := GetJobTotalExecutionCount(j)
+		verifiedShardCount := CountVerifiedShardStates(j.State)
+		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
+	}
+	return verifiedSummary
+}
+
+func GetPublishedStorageSpec(shard model.JobShard, storageType model.StorageSourceType, hostID, cid string) model.StorageSpec {
+	return model.StorageSpec{
+		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
+		StorageSource: storageType,
+		CID:           cid,
+		Metadata:      map[string]string{},
+	}
 }

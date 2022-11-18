@@ -3,6 +3,7 @@ package computenode
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
@@ -11,6 +12,9 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/rs/zerolog/log"
 )
+
+// How long we keep the state machine in memory after it is completed
+const stateEvictionTimeout = 5 * time.Minute
 
 // types of actions that can be performed on a shard state machine
 type shardStateAction int
@@ -21,6 +25,11 @@ const (
 
 	// bid was rejected, and do cancel the bid
 	actionBidRejected
+
+	// cancel the job mainly due to requester node already accepted other bids.
+	// Can only cancel a shard before a bid is sent. After that the action will be ignored and you can
+	// only fail the shard.
+	actionCancel
 
 	// job has failed for some reason outside of the fsm
 	actionFail
@@ -36,13 +45,16 @@ const (
 )
 
 func (a shardStateAction) String() string {
-	return [...]string{"ActionBid", "ActionBidRejected", "ActionFail", "ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
+	return [...]string{
+		"ActionBid", "ActionBidRejected", "ActionCancel", "ActionFail",
+		"ActionRun", "ActionResultsRejected", "ActionPublish"}[a]
 }
 
 // request to change the state of the fsm
 type shardStateRequest struct {
-	action        shardStateAction
-	failureReason string
+	action              shardStateAction
+	reason              string
+	skipNotifyOnFailure bool
 }
 
 // types of shard state machines
@@ -71,6 +83,9 @@ const (
 	// The results of the job has been verified, and publishing the results to the requester.
 	shardPublishingToRequester
 
+	// The job has been canceled, mainly due to other bids already accepted.
+	shardCancelled
+
 	// The job has failed due to an error.
 	shardError
 
@@ -81,7 +96,7 @@ const (
 func (s shardStateType) String() string {
 	return [...]string{
 		"InitialState", "Enqueued", "Bidding", "Running", "PublishingToVerifier",
-		"VerifyingResults", "PublishingToRequester", "Error", "Completed"}[s]
+		"VerifyingResults", "PublishingToRequester", "Canceled", "Error", "Completed"}[s]
 }
 
 type shardStateMachineManager struct {
@@ -93,13 +108,20 @@ type shardStateMachineManager struct {
 	// according the priority defined by the capacity manager
 	shardStatesList []*shardStateMachine
 
+	// configure the timeout for each shard state
+	timeoutConfig ComputeTimeoutConfig
+
 	mu sync.Mutex
 }
 
-func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
+func NewShardComputeStateMachineManager(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	config ComputeNodeConfig) (*shardStateMachineManager, error) {
 	stateManager := &shardStateMachineManager{
 		shardStates:     make(map[string]*shardStateMachine),
 		shardStatesList: []*shardStateMachine{},
+		timeoutConfig:   config.TimeoutConfig,
 	}
 
 	stateManager.mu.EnableTracerWithOpts(sync.Opts{
@@ -107,13 +129,36 @@ func NewShardComputeStateMachineManager() (*shardStateMachineManager, error) {
 		Id:        "ComputeNode.ShardStateMachineManagerMu",
 	})
 
+	go stateManager.backgroundTaskSetup(ctx, cm, config)
 	return stateManager, nil
+}
+
+func (m *shardStateMachineManager) backgroundTaskSetup(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	config ComputeNodeConfig) {
+	ticker := time.NewTicker(config.StateManagerBackgroundTaskInterval)
+	ctx, cancelFunction := context.WithCancel(ctx)
+	cm.RegisterCallback(func() error {
+		cancelFunction()
+		return nil
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			m.backgroundTask()
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
 }
 
 // Start a new shard state machine, if it does not already exist,
 // and run the fsm in a separate goroutine.
-func (m *shardStateMachineManager) StartShardStateIfNecessery(
-	shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
+func (m *shardStateMachineManager) StartShardStateIfNecessary(
+	ctx context.Context, shard model.JobShard, n *ComputeNode, requirements model.ResourceUsageData) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -121,7 +166,7 @@ func (m *shardStateMachineManager) StartShardStateIfNecessery(
 		shardState := m.newStateMachine(shard, n, requirements)
 
 		// ANCHOR: Start of the shard state machine span
-		ctx, span := system.GetTracer().Start(context.Background(), "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessery")
+		ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardStateMachineManager.StartShardStateIfNecessary") //nolint:govet
 		defer span.End()
 		ctx = system.AddNodeIDToBaggage(ctx, n.ID)
 		system.AddNodeIDFromBaggageToSpan(ctx, span)
@@ -151,7 +196,6 @@ func (m *shardStateMachineManager) ActiveIterator(handler func(item capacitymana
 func (m *shardStateMachineManager) GetEnqueued() []*shardStateMachine {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.cleanupCompleted()
 	enqueud := []*shardStateMachine{}
 	for _, i := range m.shardStatesList {
 		if i.currentState == shardEnqueued {
@@ -164,7 +208,6 @@ func (m *shardStateMachineManager) GetEnqueued() []*shardStateMachine {
 func (m *shardStateMachineManager) GetActive() []*shardStateMachine {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.cleanupCompleted()
 	active := []*shardStateMachine{}
 	for _, i := range m.shardStatesList {
 		if i.currentState == shardBidding || i.currentState == shardRunning {
@@ -181,22 +224,52 @@ func (m *shardStateMachineManager) Get(flatID string) (*shardStateMachine, bool)
 	return fsm, ok
 }
 
-// Since we want to keep the list of shard state machines ordered by their creation time,
-// and since shards can complete at any time, we need to remove completed shards
-// from the list without impacting the order of the remaining shards, and without
-// having to copy things around.
-// This method only removes completed shards from the beginning of the list, and is
-// called inside GetEnqueued and GetActive.
-func (m *shardStateMachineManager) cleanupCompleted() {
-	firstActive := len(m.shardStatesList)
-	for index, item := range m.shardStatesList {
-		if item.currentState != shardCompleted {
-			firstActive = index
-			break
+func (m *shardStateMachineManager) Has(flatID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, ok := m.shardStates[flatID]
+	return ok
+}
+
+// Background task that iterate over all the shard state machines and does the following:
+// 1. Remove the shard state machine if it is in a terminal state for more than a defined threshold
+// 2. Timeout and fail tasks that are in a non-terminal state for more than a defined threshold
+func (m *shardStateMachineManager) backgroundTask() {
+	ctx := context.Background()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Since we want to keep the list of shard state machines ordered by their creation time,
+	// and since shards can complete at any time, we need to remove completed shards
+	// from the list without impacting the order of the remaining shards, and without
+	// having to copy things around.
+	remainingShardStates := make([]*shardStateMachine, 0, len(m.shardStatesList))
+
+	var timeoutShardStates []*shardStateMachine
+
+	// current time
+	now := time.Now()
+
+	for _, item := range m.shardStatesList {
+		toRemove := false
+		if item.timeoutAt.Before(now) {
+			if item.currentState == shardCompleted {
+				toRemove = true
+			} else {
+				timeoutShardStates = append(timeoutShardStates, item)
+			}
 		}
-		delete(m.shardStates, item.Shard.ID())
+		if toRemove {
+			delete(m.shardStates, item.Shard.ID())
+		} else {
+			remainingShardStates = append(remainingShardStates, item)
+		}
 	}
-	m.shardStatesList = m.shardStatesList[firstActive:]
+	m.shardStatesList = remainingShardStates
+
+	for _, item := range timeoutShardStates {
+		go item.Fail(ctx, fmt.Sprintf("shard timed out while in state %s", item.currentState))
+	}
 }
 
 type shardStateMachine struct {
@@ -205,11 +278,13 @@ type shardStateMachine struct {
 
 	manager *shardStateMachineManager
 	node    *ComputeNode
-	mu      sync.Mutex
 	req     chan shardStateRequest
 
-	currentState  shardStateType
-	previousState shardStateType
+	currentState       shardStateType
+	previousState      shardStateType
+	timeoutAt          time.Time
+	executionCancelled bool
+	latestRequest      *shardStateRequest
 
 	runOutput      *model.RunCommandResult
 	resultProposal []byte
@@ -227,18 +302,14 @@ func (m *shardStateMachineManager) newStateMachine(
 		capacity:     capacitymanager.CapacityManagerItem{Shard: shard, Requirements: requirements},
 		req:          make(chan shardStateRequest),
 		currentState: shardInitialState,
+		timeoutAt:    time.Now().Add(m.timeoutConfig.JobNegotiationTimeout),
 	}
-
-	stateMachine.mu.EnableTracerWithOpts(sync.Opts{
-		Threshold: 10 * time.Millisecond,
-		Id:        "ComputeNode.ShardStateMachinerMu",
-	})
 
 	return stateMachine
 }
 
 func (m *shardStateMachine) String() string {
-	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:8], m.Shard, m.currentState)
+	return fmt.Sprintf("[%s] shard: %s at state: %s", m.node.ID[:model.ShortIDLength], m.Shard, m.currentState)
 }
 
 // run the state machineuntil it is completed.
@@ -272,8 +343,35 @@ func (m *shardStateMachine) Publish(ctx context.Context) {
 	m.sendRequest(ctx, shardStateRequest{action: actionPublish})
 }
 
+// Can only cancel a shard before a bid is sent. After that the action will be ignored and you can
+// only fail the shard.
+func (m *shardStateMachine) Cancel(ctx context.Context, reason string) {
+	m.sendRequest(ctx, shardStateRequest{action: actionCancel, reason: reason})
+}
+
+// Move to an error state, and notify requester node if a bid was already published.
 func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
-	m.sendRequest(ctx, shardStateRequest{action: actionFail, failureReason: reason})
+	m.cancelExecutionIfNecessary(ctx)
+	m.sendRequest(ctx, shardStateRequest{action: actionFail, reason: reason})
+}
+
+// Move to an error state without publishing an error to the requester node. This is used when the requester node
+// rejects an invalid request from this compute node, and we don't want to publish an error to the requester node.
+func (m *shardStateMachine) FailSilently(ctx context.Context, reason string) {
+	m.cancelExecutionIfNecessary(ctx)
+	m.sendRequest(ctx, shardStateRequest{action: actionFail, reason: reason, skipNotifyOnFailure: true})
+}
+
+// Stops the execution of a running shard, if in shardRunning state
+func (m *shardStateMachine) cancelExecutionIfNecessary(ctx context.Context) {
+	if m.currentState == shardRunning {
+		err := m.node.CancelShard(ctx, m.Shard)
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to cancel a running shard. Resource leak possible.")
+		} else {
+			m.executionCancelled = true
+		}
+	}
 }
 
 // send a request to the state machine by enquing it in the request channel.
@@ -286,40 +384,34 @@ func (m *shardStateMachine) Fail(ctx context.Context, reason string) {
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring action after channel closed: %s", m, request.action)
 		}
 	}()
 	m.req <- request
 }
 
-type StateFn func(context.Context, *shardStateMachine) StateFn
-
-func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	log.Debug().Msgf("%s transitioning from %s -> %s", m, m.currentState, newState)
-	m.previousState = m.currentState
-	m.currentState = newState
+// Read request from the channel and return it.
+// The method also caches the latest request to enable the state machine to use the additional information it holds.
+func (m *shardStateMachine) readRequest(ctx context.Context) *shardStateRequest {
+	select {
+	case request := <-m.req:
+		m.latestRequest = &request
+	case <-ctx.Done():
+		m.latestRequest = &shardStateRequest{action: actionFail, reason: "context canceled"}
+	}
+	return m.latestRequest
 }
 
-// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
-func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
-	m.transitionedTo(ctx, shardBidding)
+type StateFn func(context.Context, *shardStateMachine) StateFn
 
-	for {
-		req := <-m.req
-		switch req.action {
-		case actionRun:
-			return runningState
-		case actionBidRejected:
-			return completedState
-		case actionFail:
-			m.errorMsg = req.failureReason
-			return errorState
-		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
-		}
+func (m *shardStateMachine) transitionedTo(ctx context.Context, newState shardStateType, reasons ...string) {
+	reason := ""
+	if reasons != nil {
+		reason = " due to " + strings.Join(reasons, ", ")
 	}
+	log.Ctx(ctx).Debug().Msgf("%s transitioning from %s -> %s%s", m, m.currentState, newState, reason)
+	m.previousState = m.currentState
+	m.currentState = newState
 }
 
 // ------------------------------------
@@ -332,7 +424,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardEnqueued)
 
 	for {
-		req := <-m.req
+		req := m.readRequest(ctx)
 		switch req.action {
 		case actionBid:
 			err := m.node.notifyBidJob(ctx, m.Shard)
@@ -346,11 +438,35 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.notifyOnFailure = true
 
 			return biddingState
+		case actionCancel:
+			return cancelledState
 		case actionFail:
-			m.errorMsg = req.failureReason
+			m.errorMsg = req.reason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+		}
+	}
+}
+
+// the computeNode has sent a bid and is waiting for the bid to be accepted or rejected.
+func biddingState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardBidding)
+	m.timeoutAt = time.Now().Add(m.manager.timeoutConfig.JobNegotiationTimeout)
+
+	for {
+		req := m.readRequest(ctx)
+		switch req.action {
+		case actionRun:
+			return runningState
+		case actionBidRejected:
+			return completedState
+		case actionFail:
+			m.errorMsg = req.reason
+			return errorState
+		default:
+			// TODO: #832 Get a lot of these, should we care? 'Bidding ignoring unknown action: ActionBid [NodeID:QmUhzQME]'
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -359,6 +475,7 @@ func enqueuedState(ctx context.Context, m *shardStateMachine) StateFn {
 func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	// TODO: #558 Should we create a new span every time there's a state transition?
 	m.transitionedTo(ctx, shardRunning)
+	m.timeoutAt = time.Now().Add(m.Shard.Job.Spec.GetTimeout())
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.runningState")
 	defer span.End()
@@ -371,8 +488,16 @@ func runningState(ctx context.Context, m *shardStateMachine) StateFn {
 	proposal, runOutput, err := m.node.RunShard(ctx, m.Shard)
 	m.runOutput = runOutput
 	if err == nil {
-		m.resultProposal = proposal
-		return publishingToVerifierState
+		// if the run was stopped, due to a timeout or cancellation, we don't want to send the results.
+		// we first consume the cancellation request to fetch the reason, and then we send the error
+		if m.executionCancelled {
+			req := m.readRequest(ctx)
+			m.errorMsg = req.reason
+			return errorState
+		} else {
+			m.resultProposal = proposal
+			return publishingToVerifierState
+		}
 	} else {
 		m.errorMsg = err.Error()
 		return errorState
@@ -414,7 +539,7 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
 	for {
-		req := <-m.req
+		req := m.readRequest(ctx)
 		switch req.action {
 		case actionPublish:
 			return publishingToRequesterState
@@ -424,10 +549,10 @@ func verifyingResultsState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.notifyOnFailure = false
 			return completedState
 		case actionFail:
-			m.errorMsg = req.failureReason
+			m.errorMsg = req.reason
 			return errorState
 		default:
-			log.Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
+			log.Ctx(ctx).Warn().Msgf("%s ignoring unknown action: %s", m, req.action)
 		}
 	}
 }
@@ -452,15 +577,18 @@ func publishingToRequesterState(ctx context.Context, m *shardStateMachine) State
 
 func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardError)
-	errMessage := fmt.Sprintf("%s error completing job due to %s", m, m.errorMsg)
-	log.Error().Msgf(errMessage)
+
+	//nolint:lll
+	// TODO: #833 We throw an error into our logs for every user error, we should split things into User Errors and System Errors. If they have a bad binary, that's their fault, not ours.
+	errMessage := fmt.Sprintf("errorState: error completing job due to: %s", m.errorMsg)
+	log.Ctx(ctx).Error().Msgf(errMessage)
 
 	ctx, span := system.GetTracer().Start(ctx, "pkg/computenode/ShardFSM.errorState")
 	defer span.End()
 	ctx = system.AddJobIDToBaggage(ctx, m.Shard.Job.ID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	if m.notifyOnFailure {
+	if m.notifyOnFailure && !m.latestRequest.skipNotifyOnFailure {
 		// we sent a bid, so we need to publish our failure to the network
 		err := m.node.notifyShardError(
 			ctx,
@@ -469,16 +597,22 @@ func errorState(ctx context.Context, m *shardStateMachine) StateFn {
 			m.runOutput,
 		)
 		if err != nil {
-			log.Error().Msgf("%s failed to report error of job due to %s",
-				m, err.Error())
+			log.Ctx(ctx).Error().Msgf("errorState: failed to report error of job due to %s", err.Error())
 		}
 	}
 
 	return completedState
 }
 
+func cancelledState(ctx context.Context, m *shardStateMachine) StateFn {
+	m.transitionedTo(ctx, shardCancelled, m.latestRequest.reason)
+	// no notifications need to be sent here as you can only cancel a shard before a bid is sent.
+	return completedState
+}
+
 // we always reach this state, whether the job completed successfully or due to a failure.
 func completedState(ctx context.Context, m *shardStateMachine) StateFn {
 	m.transitionedTo(ctx, shardCompleted)
+	m.timeoutAt = time.Now().Add(stateEvictionTimeout)
 	return nil
 }

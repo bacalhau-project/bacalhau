@@ -1,12 +1,11 @@
 package bacalhau
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -65,6 +64,7 @@ var describeCmd = &cobra.Command{
 	Long:    describeLong,
 	Example: describeExample,
 	Args:    cobra.ExactArgs(1),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
@@ -79,12 +79,9 @@ var describeCmd = &cobra.Command{
 		if inputJobID == "" {
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-				return nil
-			} else if err != nil {
-				// Error not related to fields being empty
+			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
+			if err != nil {
+				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 				return err
 			}
 			inputJobID = string(byteResult)
@@ -133,7 +130,7 @@ var describeCmd = &cobra.Command{
 			ColumnID        ColumnEnum = "id"
 			ColumnCreatedAt ColumnEnum = "created_at"
 		)
-		b, err := json.Marshal(jobDesc)
+		b, err := model.JSONMarshalWithMax(jobDesc)
 		if err != nil {
 			Fatal(fmt.Sprintf("Failure marshaling job description '%s': %s\n", j.ID, err), 1)
 		}

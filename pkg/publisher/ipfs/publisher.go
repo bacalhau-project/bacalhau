@@ -2,7 +2,6 @@ package ipfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
@@ -13,14 +12,12 @@ import (
 )
 
 type IPFSPublisher struct {
-	IPFSClient    *ipfs.Client
-	StateResolver *job.StateResolver
+	IPFSClient *ipfs.Client
 }
 
 func NewIPFSPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	ipfsAPIAddr string,
 ) (*IPFSPublisher, error) {
 	cl, err := ipfs.NewClient(ipfsAPIAddr)
@@ -28,10 +25,9 @@ func NewIPFSPublisher(
 		return nil, err
 	}
 
-	log.Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
+	log.Ctx(ctx).Debug().Msgf("IPFS publisher initialized for node: %s", ipfsAPIAddr)
 	return &IPFSPublisher{
-		IPFSClient:    cl,
-		StateResolver: resolver,
+		IPFSClient: cl,
 	}, nil
 }
 
@@ -52,31 +48,7 @@ func (publisher *IPFSPublisher) PublishShardResult(
 	if err != nil {
 		return model.StorageSpec{}, err
 	}
-	return model.StorageSpec{
-		Name:          fmt.Sprintf("job-%s-shard-%d-host-%s", shard.Job.ID, shard.Index, hostID),
-		StorageSource: model.StorageSourceIPFS,
-		CID:           cid,
-	}, nil
-}
-
-func (publisher *IPFSPublisher) ComposeResultReferences(
-	ctx context.Context,
-	jobID string,
-) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/ipfs.ComposeResultReferences")
-	defer span.End()
-
-	system.AddJobIDFromBaggageToSpan(ctx, span)
-
-	results := []model.StorageSpec{}
-	shardResults, err := publisher.StateResolver.GetResults(ctx, jobID)
-	if err != nil {
-		return results, err
-	}
-	for _, shardResult := range shardResults {
-		results = append(results, shardResult.Results)
-	}
-	return results, nil
+	return job.GetPublishedStorageSpec(shard, model.StorageSourceIPFS, hostID, cid), nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

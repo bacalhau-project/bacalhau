@@ -1,10 +1,10 @@
 {
-    "APIVersion": "v1alpha1",
+    "APIVersion": "v1beta1",
     "Spec": {
         "Engine": "docker",
         "Verifier": "noop",
         "Publisher": "ipfs",
-        "JobSpecDocker": {
+        "Docker": {
             "Image": "gromacs/gromacs",
             "Entrypoint": [
                 "/bin/bash",

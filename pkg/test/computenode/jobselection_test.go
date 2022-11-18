@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package computenode
 
 import (
@@ -6,12 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/devstack"
-
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	"github.com/filecoin-project/bacalhau/pkg/config"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -28,22 +29,11 @@ func TestComputeNodeJobSelectionSuite(t *testing.T) {
 	suite.Run(t, new(ComputeNodeJobSelectionSuite))
 }
 
-// Before all suite
-func (suite *ComputeNodeJobSelectionSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *ComputeNodeJobSelectionSuite) SetupTest() {
-	err := system.InitConfigForTesting()
+	logger.ConfigureTestLogging(suite.T())
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
-}
-
-func (suite *ComputeNodeJobSelectionSuite) TearDownTest() {
-}
-
-func (suite *ComputeNodeJobSelectionSuite) TearDownAllSuite() {
-
 }
 
 // TestJobSelectionNoVolumes tests that when we have RejectStatelessJobs
@@ -53,70 +43,58 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionNoVolumes() {
 	ctx := context.Background()
 	runTest := func(rejectSetting, expectedResult bool) {
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				RejectStatelessJobs: rejectSetting,
 			},
 		}, noop_executor.ExecutorConfig{})
 		defer stack.Node.CleanupManager.Cleanup()
 
-		result, _, err := stack.Node.ComputeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := stack.Node.ComputeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
-	runTest(true, false)
-	runTest(false, true)
+	suite.Run("reject", func() { runTest(true, false) })
+	suite.Run("accept", func() { runTest(false, true) })
 }
 
 // JobSelectionLocality tests that data locality is respected
 // when selecting a job
 func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionLocality() {
 	ctx := context.Background()
-
-	// get the CID so we can use it in the tests below but without it actually being
-	// added to the server (so we can test locality anywhere)
-	EXAMPLE_TEXT := "hello from job selection locality"
-	config.SetVolumeSizeRequestTimeout(2)
-	cid, err := func() (string, error) {
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-		ipfsStack, cm := stack.IpfsStack, stack.Node.CleanupManager
-
-		defer cm.Cleanup()
-		return devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
-	}()
-	require.NoError(suite.T(), err)
-
-	runTest := func(locality computenode.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
-
-		stack := testutils.NewDockerIpfsStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
-				Locality: locality,
+	runTest := func(locality model.JobSelectionDataLocality, shouldAddData, expectedResult bool) {
+		stack := testutils.NewNoopStack(ctx, suite.T(),
+			computenode.ComputeNodeConfig{
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: locality,
+				},
 			},
-		})
-		computeNode, ipfsStack, cm := stack.Node.ComputeNode, stack.IpfsStack, stack.Node.CleanupManager
+			noop_executor.ExecutorConfig{
+				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
+					HasStorageLocally: func(context.Context, model.StorageSpec) (bool, error) { return shouldAddData, nil },
+				},
+			},
+		)
+
+		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		if shouldAddData {
-			_, err := devstack.AddTextToNodes(ctx, []byte(EXAMPLE_TEXT), ipfsStack.IPFSClients[0])
-			require.NoError(suite.T(), err)
-		}
-
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(cid))
+		result, _, err := computeNode.SelectJob(ctx, GetJob("abc"))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
 	// we are local - we do have the file - we should accept
-	runTest(computenode.Local, true, true)
+	suite.Run("local with file", func() { runTest(model.Local, true, true) })
 
 	// we are local - we don't have the file - we should reject
-	runTest(computenode.Local, false, false)
+	suite.Run("local without file", func() { runTest(model.Local, false, false) })
 
 	// // we are anywhere - we do have the file - we should accept
-	runTest(computenode.Anywhere, true, true)
+	suite.Run("anywhere with file", func() { runTest(model.Anywhere, true, true) })
 
 	// // we are anywhere - we don't have the file - we should accept
-	runTest(computenode.Anywhere, false, true)
+	suite.Run("anywhere without file", func() { runTest(model.Anywhere, false, true) })
 }
 
 // TestJobSelectionHttp tests that we can select a job based on
@@ -138,22 +116,24 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionHttp() {
 		defer svr.Close()
 
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				ProbeHTTP: svr.URL,
 			},
 		}, noop_executor.ExecutorConfig{})
 		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
-	// hook says no - we don't accept
-	runTest(true, false)
-	// hook says yes - we accept
-	runTest(false, true)
+	suite.Run("hook says no - we don't accept", func() {
+		runTest(true, false)
+	})
+	suite.Run("hook says yes - we accept", func() {
+		runTest(false, true)
+	})
 }
 
 // TestJobSelectionExec tests that we can select a job based on
@@ -166,20 +146,22 @@ func (suite *ComputeNodeJobSelectionSuite) TestJobSelectionExec() {
 			command = "exit 1"
 		}
 		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			JobSelectionPolicy: computenode.JobSelectionPolicy{
+			JobSelectionPolicy: model.JobSelectionPolicy{
 				ProbeExec: command,
 			},
 		}, noop_executor.ExecutorConfig{})
 		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
 		defer cm.Cleanup()
 
-		result, _, err := computeNode.SelectJob(ctx, GetProbeData(""))
+		result, _, err := computeNode.SelectJob(ctx, GetJob(""))
 		require.NoError(suite.T(), err)
 		require.Equal(suite.T(), result, expectedResult)
 	}
 
-	// hook says no - we don't accept
-	runTest(true, false)
-	// hook says yes - we accept
-	runTest(false, true)
+	suite.Run("hook says no - we don't accept", func() {
+		runTest(true, false)
+	})
+	suite.Run("hook says yes - we accept", func() {
+		runTest(false, true)
+	})
 }

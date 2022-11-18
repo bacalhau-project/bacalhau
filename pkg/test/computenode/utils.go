@@ -3,7 +3,6 @@ package computenode
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -12,6 +11,13 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 )
+
+func GetJob(cid string) *model.Job {
+	return &model.Job{
+		ID:   "test",
+		Spec: GetJobSpec(cid),
+	}
+}
 
 func GetJobSpec(cid string) model.Spec {
 	inputs := []model.StorageSpec{}
@@ -25,24 +31,9 @@ func GetJobSpec(cid string) model.Spec {
 		}
 	}
 	return model.Spec{
-		Engine:   model.EngineDocker,
+		Engine:   model.EngineNoop,
 		Verifier: model.VerifierNoop,
-		Docker: model.JobSpecDocker{
-			Image: "ubuntu",
-			Entrypoint: []string{
-				"cat",
-				"/test_file.txt",
-			},
-		},
-		Inputs: inputs,
-	}
-}
-
-func GetProbeData(cid string) computenode.JobSelectionPolicyProbeData {
-	return computenode.JobSelectionPolicyProbeData{
-		NodeID: "test",
-		JobID:  "test",
-		Spec:   GetJobSpec(cid),
+		Inputs:   inputs,
 	}
 }
 
@@ -70,8 +61,7 @@ func RunJobGetStdout(
 	computeNode *computenode.ComputeNode,
 	spec model.Spec,
 ) string {
-	result, err := ioutil.TempDir("", "bacalhau-RunJobGetStdout")
-	require.NoError(t, err)
+	result := t.TempDir()
 
 	j := &model.Job{
 		ID:   "test",

@@ -10,7 +10,10 @@ type JobEventType int
 const (
 	jobEventUnknown JobEventType = iota // must be first
 
-	// the job was created by a client
+	// Job has been created by client and is communicating with requestor node
+	JobEventInitialSubmission
+
+	// Job has been created on the requestor node
 	JobEventCreated
 
 	// the concurrency or other mutable properties of the job were
@@ -43,10 +46,10 @@ const (
 	// a compute node completed running a job
 	JobEventResultsProposed
 
-	// a requestor node accepted the results from a node for a job
+	// a Requester node accepted the results from a node for a job
 	JobEventResultsAccepted
 
-	// a requestor node rejected the results from a node for a job
+	// a Requester node rejected the results from a node for a job
 	JobEventResultsRejected
 
 	// once the results have been accepted or rejected
@@ -55,6 +58,13 @@ const (
 
 	// a requester node declared an error running a job
 	JobEventError
+
+	// the requester node gives a compute node permission
+	// to forget about the job and free any resources it might
+	// currently be reserving - this can happen if a compute node
+	// bids when a job has completed - if the compute node does
+	// not hear back it will be stuck in reserving the resources for the job
+	JobEventInvalidRequest
 
 	jobEventDone // must be last
 )
@@ -69,7 +79,7 @@ func (je JobEventType) IsTerminal() bool {
 // ignore the rest of the job's lifecycle. This is the case for events caused
 // by a node's bid being rejected.
 func (je JobEventType) IsIgnorable() bool {
-	return je.IsTerminal() || je == JobEventComputeError || je == JobEventBidRejected
+	return je.IsTerminal() || je == JobEventComputeError || je == JobEventBidRejected || je == JobEventInvalidRequest
 }
 
 func ParseJobEventType(str string) (JobEventType, error) {

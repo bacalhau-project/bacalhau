@@ -24,13 +24,6 @@ func ParseVerifier(str string) (Verifier, error) {
 	return verifierUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
-func EnsureVerifier(typ Verifier, str string) (Verifier, error) {
-	if IsValidVerifier(typ) {
-		return typ, nil
-	}
-	return ParseVerifier(str)
-}
-
 func IsValidVerifier(verifierType Verifier) bool {
 	return verifierType > verifierUnknown && verifierType < verifierDone
 }

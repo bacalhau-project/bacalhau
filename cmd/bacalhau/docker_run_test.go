@@ -1,4 +1,4 @@
-//go:build !(windows && unit)
+//go:build integration
 
 package bacalhau
 
@@ -8,7 +8,6 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/url"
@@ -16,10 +15,13 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
-	"sigs.k8s.io/yaml"
 
 	"strings"
 	"testing"
@@ -48,24 +50,17 @@ type DockerRunSuite struct {
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestDockerRunSuite(t *testing.T) {
+	Fatal = FakeFatalErrorHandler
 	suite.Run(t, new(DockerRunSuite))
-}
-
-// Before all suite
-func (s *DockerRunSuite) SetupSuite() {
 }
 
 // Before each test
 func (s *DockerRunSuite) SetupTest() {
-	require.NoError(s.T(), system.InitConfigForTesting())
+	testutils.MustHaveDocker(s.T())
+
+	logger.ConfigureTestLogging(s.T())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 	s.rootCmd = RootCmd
-}
-
-func (s *DockerRunSuite) TearDownTest() {
-}
-
-func (s *DockerRunSuite) TearDownSuite() {
-
 }
 
 // TODO: #471 Refactor all of these tests to use common functionality; they're all very similar
@@ -80,7 +75,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -109,7 +104,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 
 	for i, tc := range tests {
 		func() {
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -132,7 +127,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			yaml.Unmarshal([]byte(out), &j)
+			model.YAMLUnmarshalWithMax([]byte(out), &j)
 			require.NotNil(s.T(), j, "Failed to unmarshal job from dry run output")
 			require.Equal(s.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
@@ -160,7 +155,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -199,29 +194,24 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	}
 
 	for i, tc := range tests {
-		func() {
+		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, cm := devstack_tests.SetupTest(ctx, s.T(), 1, 0, computenode.ComputeNodeConfig{})
-			defer cm.Cleanup()
+			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
 
 			*ODR = *NewDockerRunOptions()
 
-			dir, err := ioutil.TempDir("", "bacalhau-TestRun_GenericSubmitWait")
-			require.NoError(s.T(), err)
-
 			swarmAddresses, err := devstack.Nodes[0].IPFSClient.SwarmAddresses(ctx)
-			require.NoError(s.T(), err)
-			ODR.DownloadFlags.IPFSSwarmAddrs = strings.Join(swarmAddresses, ",")
-			ODR.DownloadFlags.OutputDir = dir
-
-			outputDir, err := ioutil.TempDir("", "bacalhau-ipfs-devstack-test")
 			require.NoError(s.T(), err)
 
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", devstack.Nodes[0].APIServer.Host,
 				"--api-port", fmt.Sprintf("%d", devstack.Nodes[0].APIServer.Port),
+				"--ipfs-swarm-addrs", strings.Join(swarmAddresses, ","),
 				"--wait",
-				"--output-dir", outputDir,
+				"--output-dir", s.T().TempDir(),
 				"ubuntu",
 				"--",
 				"echo", "hello from docker submit wait",
@@ -230,7 +220,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 			c := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", devstack.Nodes[0].APIServer.Host, devstack.Nodes[0].APIServer.Port))
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
-		}()
+		})
 	}
 }
 
@@ -269,7 +259,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -325,28 +315,32 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		{numberOfJobs: 1},
 	}
 
+	Fatal = FakeFatalErrorHandler
+
 	for i, tc := range tests {
 		type (
 			InputURL struct {
-				url  string
-				path string
-				flag string
+				url             string
+				pathInContainer string
+				flag            string
 			}
 		)
 
+		// For URLs, the input should be a file, the output a directory
+		// Internally the URL storage provider appends the filename to the directory path
 		testURLs := []struct {
 			inputURLs []InputURL
 			err       error
 		}{
-			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", path: "/app/data.tar.gz", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", path: "/app/sam.zip", flag: "-u"}}, err: nil},
-			{inputURLs: []InputURL{{url: "https://ifps.io/CID", path: "/app/file.csv", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "http://foo.com/bar.tar.gz", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://qaz.edu/sam.zip", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
+			{inputURLs: []InputURL{{url: "https://ifps.io/CID", pathInContainer: "/inputs", flag: "-u"}}, err: nil},
 		}
 
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -359,9 +353,6 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 
 				for _, iurl := range turls.inputURLs {
 					iurlString := iurl.url
-					if iurl.path != "" {
-						iurlString += fmt.Sprintf(":%s", iurl.path)
-					}
 					flagsArray = append(flagsArray, iurl.flag, iurlString)
 				}
 				flagsArray = append(flagsArray, "ubuntu cat /app/foo_data.txt")
@@ -379,17 +370,12 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 				for _, turlIU := range turls.inputURLs {
 					testURLinJobInputs := false
 					for _, jobInput := range j.Spec.Inputs {
-						if turlIU.url == jobInput.URL {
+						if turlIU.url == jobInput.URL && turlIU.pathInContainer == jobInput.Path {
 							testURLinJobInputs = true
-							testPath := "/app2"
-							if turlIU.path != "" {
-								testPath = turlIU.path
-							}
-							require.Equal(s.T(), testPath, jobInput.Path, "Test Path not equal to Path from job.")
-							break
 						}
 					}
-					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs.")
+					require.True(s.T(), testURLinJobInputs, "Test URL not in job inputs: %s", turlIU.url)
+
 				}
 			}()
 		}
@@ -428,7 +414,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				Fatal = FakeFatalErrorHandler
 
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -516,7 +502,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			*ODR = *NewDockerRunOptions()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -524,7 +510,8 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
 				"--api-host", host,
 				"--api-port", port,
-				"ubuntu echo 'hello world'",
+				"ubuntu",
+				"echo 'hello world'",
 			)
 			assert.NoError(s.T(), err, "Error submitting job. Run - Number of Jobs: %d. Job number: %d", tc.numberOfJobs, i)
 
@@ -578,7 +565,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
@@ -649,7 +636,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -698,7 +685,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			Fatal = FakeFatalErrorHandler
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -733,7 +720,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 }
 
 func (s *DockerRunSuite) TestRun_ExplodeVideos() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	const nodeCount = 1
 
 	videos := []string{
@@ -742,21 +729,22 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	stack, cm := devstack_tests.SetupTest(
+	stack, _ := devstack_tests.SetupTest(
 		ctx,
 		s.T(),
 		nodeCount,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	defer cm.Cleanup()
 
 	*ODR = *NewDockerRunOptions()
 
-	dirPath, err := os.MkdirTemp("", "sharding-test")
-	require.NoError(s.T(), err)
+	dirPath := s.T().TempDir()
+
 	for _, video := range videos {
-		err = os.WriteFile(
+		err := os.WriteFile(
 			filepath.Join(dirPath, video),
 			[]byte(fmt.Sprintf("hello %s", video)),
 			0644,
@@ -786,15 +774,8 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 	require.NoError(s.T(), submitErr)
 }
 
-type deterministicVerifierTestArgs struct {
-	nodeCount      int
-	badActors      int
-	confidence     int
-	expectedPassed int
-	expectedFailed int
-}
-
 func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
+	s.T().Skip("Skipped as it takes too long to run - see https://github.com/filecoin-project/bacalhau/issues/1045")
 	ctx := context.Background()
 
 	apiSubmitJob := func(
@@ -832,35 +813,42 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {
-	system.MaxStderrReturnLengthInBytes = 10 // Make it artificially small for this run
+	system.MaxStderrReturnLength = 10 // Make it artificially small for this run
 
 	tests := map[string]struct {
-		inputLength    int
-		expectedLength int
+		inputLength    datasize.ByteSize
+		expectedLength datasize.ByteSize
 		truncated      bool
 	}{
 		// "zero length": {inputLength: 0, truncated: false, expectedLength: 0},
 		// "one length":  {inputLength: 1, truncated: false, expectedLength: 1},
-		"maxLength - 1": {inputLength: system.MaxStdoutReturnLengthInBytes - 1,
+		"maxLength - 1": {
+			inputLength:    system.MaxStdoutReturnLength - 1,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes - 1},
-		"maxLength": {inputLength: system.MaxStdoutReturnLengthInBytes,
+			expectedLength: system.MaxStdoutReturnLength - 1,
+		},
+		"maxLength": {
+			inputLength:    system.MaxStdoutReturnLength,
 			truncated:      false,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 1": {inputLength: system.MaxStdoutReturnLengthInBytes + 1,
+			expectedLength: system.MaxStdoutReturnLength,
+		},
+		"maxLength + 1": {
+			inputLength:    system.MaxStdoutReturnLength + 1,
 			truncated:      true,
-			expectedLength: system.MaxStdoutReturnLengthInBytes},
-		"maxLength + 10000": {inputLength: system.MaxStdoutReturnLengthInBytes * 10,
-			truncated: true, expectedLength: system.MaxStdoutReturnLengthInBytes},
+			expectedLength: system.MaxStdoutReturnLength,
+		},
+		"maxLength + 10000": {
+			inputLength:    system.MaxStdoutReturnLength * 10,
+			truncated:      true,
+			expectedLength: system.MaxStdoutReturnLength,
+		},
 	}
 
-	outputDir, _ := os.MkdirTemp(os.TempDir(), "bacalhau-truncate-test-*")
-	defer os.RemoveAll(outputDir)
-
 	for name, tc := range tests {
-		s.T().Run(name, func(t *testing.T) {
+		//nolint:unusedparams // idomatic
+		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -879,9 +867,180 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			require.NoError(s.T(), err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 
 			_ = testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+			// TODO: test is not finished! test cases are not used!
 
 			// require.Equal(suite.T(), len(turls.inputURLs), len(job.Spec.Inputs), "Number of job urls != # of test urls.")
 
 		})
 	}
+}
+
+func (s *DockerRunSuite) TestRun_MutlipleURLs() {
+
+	tests := []struct {
+		expectedVolumes int
+		inputFlags      []string
+	}{
+		{
+			0,
+			[]string{},
+		},
+		{
+			1,
+			[]string{"-u", "http://127.0.0.1:/inputs/url1.txt"},
+		},
+		{
+			2,
+			[]string{
+				"-u", "http://127.0.0.1:/inputs/url1.txt",
+				"-u", "http://127.0.0.1:/inputs/url2.txt",
+			},
+		},
+		{
+			2,
+			[]string{
+				"-u", "http://127.0.0.1:/inputs/url1.txt,http://127.0.0.1:/inputs/url2.txt",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		ctx := context.Background()
+		c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+		defer cm.Cleanup()
+
+		*ODR = *NewDockerRunOptions()
+
+		parsedBasedURI, _ := url.Parse(c.BaseURI)
+		host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+		args := []string{}
+
+		args = append(args, "docker", "run",
+			"--api-host", host,
+			"--api-port", port,
+		)
+		args = append(args, tc.inputFlags...)
+		args = append(args, "ubuntu", "--", "ls", "/input")
+
+		_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+		require.NoError(s.T(), err, "Error submitting job")
+
+		j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+		require.Equal(s.T(), tc.expectedVolumes, len(j.Spec.Inputs))
+	}
+}
+
+// Test bad images and bad binaries
+func (s *DockerRunSuite) TestRun_BadExecutables() {
+	tests := map[string]struct {
+		imageName         string
+		executable        string
+		isValid           bool
+		errStringContains string
+	}{
+		"good-image-good-executable": {
+			imageName:         "ubuntu", // Good image
+			executable:        "ls",     // Good executable
+			isValid:           true,
+			errStringContains: "",
+		},
+		"bad-image-good-executable": {
+			imageName:         "badimage", // Bad image
+			executable:        "ls",       // Good executable
+			isValid:           false,
+			errStringContains: "Error while executing the job",
+		},
+		"good-image-bad-executable": {
+			imageName:         "ubuntu",        // Good image
+			executable:        "BADEXECUTABLE", // Bad executable
+			isValid:           false,
+			errStringContains: "Error while executing the job",
+		},
+		"bad-image-bad-executable": {
+			imageName:         "badimage",      // Bad image
+			executable:        "BADEXECUTABLE", // Bad executable
+			isValid:           false,
+			errStringContains: "Error while executing the job",
+		},
+	}
+
+	ctx := context.TODO()
+
+	for name, tc := range tests {
+		s.Run(name, func() {
+			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+				computenode.NewDefaultComputeNodeConfig(),
+				requesternode.NewDefaultRequesterNodeConfig(),
+			)
+			*ODR = *NewDockerRunOptions()
+
+			parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
+			host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+
+			args := []string{}
+
+			args = append(args, "docker", "run",
+				"--api-host", host,
+				"--api-port", port,
+			)
+			args = append(args, tc.imageName, "--", tc.executable)
+
+			_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, args...)
+			require.NoError(s.T(), err, "Error submitting job")
+
+			if !tc.isValid {
+				require.Contains(s.T(), out, tc.errStringContains, "Error string does not contain expected string")
+			} else {
+				require.NotContains(s.T(), out, "Error", name+":"+"Error detected in output")
+			}
+		})
+	}
+}
+
+func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
+	*ODR = *NewDockerRunOptions()
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job without defining a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, DefaultTimeout.Seconds(), "Did not fall back to default timeout value")
+}
+
+func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
+	*ODR = *NewDockerRunOptions()
+	var expectedTimeout float64 = 999
+
+	ctx := context.Background()
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	defer cm.Cleanup()
+
+	parsedBasedURI, _ := url.Parse(c.BaseURI)
+	host, port, _ := net.SplitHostPort(parsedBasedURI.Host)
+	_, out, err := ExecuteTestCobraCommand(s.T(), s.rootCmd, "docker", "run",
+		"--api-host", host,
+		"--api-port", port,
+		"--timeout", fmt.Sprintf("%f", expectedTimeout),
+		"ubuntu",
+		"echo 'hello world'",
+	)
+	assert.NoError(s.T(), err, "Error submitting job with a defined a timeout value")
+
+	j := testutils.GetJobFromTestOutput(ctx, s.T(), c, out)
+
+	require.Equal(s.T(), j.Spec.Timeout, expectedTimeout)
 }

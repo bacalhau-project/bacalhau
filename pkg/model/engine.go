@@ -12,7 +12,7 @@ const (
 	engineUnknown Engine = iota // must be first
 	EngineNoop
 	EngineDocker
-	EngineWasm       // raw wasm executor not implemented yet
+	EngineWasm
 	EngineLanguage   // wraps python_wasm
 	EnginePythonWasm // wraps docker
 	engineDone       // must be last
@@ -31,13 +31,6 @@ func ParseEngine(str string) (Engine, error) {
 
 	return engineUnknown, fmt.Errorf(
 		"executor: unknown engine type '%s'", str)
-}
-
-func EnsureEngine(typ Engine, str string) (Engine, error) {
-	if IsValidEngine(typ) {
-		return typ, nil
-	}
-	return ParseEngine(str)
 }
 
 func EngineTypes() []Engine {

@@ -20,8 +20,7 @@ type DeterministicVerifier struct {
 }
 
 func NewDeterministicVerifier(
-	ctx context.Context, cm *system.CleanupManager,
-
+	_ context.Context, cm *system.CleanupManager,
 	resolver *job.StateResolver,
 	encrypter verifier.EncrypterFunction,
 	decrypter verifier.DecrypterFunction,
@@ -30,6 +29,13 @@ func NewDeterministicVerifier(
 	if err != nil {
 		return nil, err
 	}
+
+	cm.RegisterCallback(func() error {
+		if err := results.Close(); err != nil {
+			return fmt.Errorf("unable to remove results folder: %w", err)
+		}
+		return nil
+	})
 	return &DeterministicVerifier{
 		stateResolver: resolver,
 		results:       results,
@@ -38,12 +44,12 @@ func NewDeterministicVerifier(
 	}, nil
 }
 
-func (deterministicVerifier *DeterministicVerifier) IsInstalled(ctx context.Context) (bool, error) {
+func (deterministicVerifier *DeterministicVerifier) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
 func (deterministicVerifier *DeterministicVerifier) GetShardResultPath(
-	ctx context.Context,
+	_ context.Context,
 	shard model.JobShard,
 ) (string, error) {
 	return deterministicVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)

@@ -3,7 +3,6 @@ package noop
 import (
 	"context"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -24,18 +23,13 @@ func (s *NoopPublisherProvider) GetPublisher(ctx context.Context, publisherType 
 	return s.noopPublisher, nil
 }
 
-type NoopPublisher struct {
-	StateResolver *job.StateResolver
-}
+type NoopPublisher struct{}
 
 func NewNoopPublisher(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 ) (*NoopPublisher, error) {
-	return &NoopPublisher{
-		StateResolver: resolver,
-	}, nil
+	return &NoopPublisher{}, nil
 }
 
 func (publisher *NoopPublisher) IsInstalled(ctx context.Context) (bool, error) {
@@ -53,17 +47,6 @@ func (publisher *NoopPublisher) PublishShardResult(
 	defer span.End()
 
 	return model.StorageSpec{}, nil
-}
-
-func (publisher *NoopPublisher) ComposeResultReferences(
-	ctx context.Context,
-	jobID string,
-) ([]model.StorageSpec, error) {
-	//nolint:staticcheck,ineffassign
-	ctx, span := system.GetTracer().Start(ctx, "pkg/publisher/noop.ComposeResultReferences")
-	defer span.End()
-
-	return []model.StorageSpec{}, nil
 }
 
 // Compile-time check that Verifier implements the correct interface:

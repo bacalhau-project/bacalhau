@@ -19,8 +19,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type RequesterNodeConfig struct{}
-
 type RequesterNode struct {
 	ID                 string
 	localDB            localdb.LocalDB
@@ -35,6 +33,7 @@ type RequesterNode struct {
 
 func NewRequesterNode(
 	ctx context.Context,
+	cm *system.CleanupManager,
 	nodeID string,
 	localDB localdb.LocalDB,
 	localEventConsumer eventhandler.LocalEventHandler,
@@ -44,6 +43,7 @@ func NewRequesterNode(
 	config RequesterNodeConfig, //nolint:gocritic
 ) (*RequesterNode, error) {
 	// TODO: instrument with trace
+	useConfig := populateDefaultConfigs(config)
 	requesterNode := &RequesterNode{
 		ID:                 nodeID,
 		localDB:            localDB,
@@ -51,8 +51,8 @@ func NewRequesterNode(
 		jobEventPublisher:  jobEventPublisher,
 		verifiers:          verifiers,
 		storageProviders:   storageProviders,
-		config:             config,
-		shardStateManager:  newShardStateMachineManager(),
+		config:             useConfig,
+		shardStateManager:  newShardStateMachineManager(ctx, cm, useConfig),
 	}
 	return requesterNode, nil
 }
@@ -86,7 +86,8 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	// Creates a new root context to track a job's lifecycle for tracing. This
 	// should be fine as only one node will call SubmitJob(...) - the other
 	// nodes will hear about the job via events on the transport.
-	jobCtx, _ := node.newRootSpanForJob(ctx, jobID)
+	jobCtx, span := node.newRootSpanForJob(ctx, jobID)
+	defer span.End()
 
 	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
 	// Specifically tracking them all in ctrl.jobContexts
@@ -105,6 +106,11 @@ func (node *RequesterNode) SubmitJob(ctx context.Context, data model.JobCreatePa
 	ev.Spec = data.Job.Spec
 	ev.Deal = data.Job.Deal
 	ev.JobExecutionPlan = executionPlan
+
+	// set a default timeout value if one is not passed or below an acceptable value
+	if ev.Spec.GetTimeout() <= node.config.TimeoutConfig.MinJobExecutionTimeout {
+		ev.Spec.Timeout = node.config.TimeoutConfig.DefaultJobExecutionTimeout.Seconds()
+	}
 
 	job := jobutils.ConstructJobFromEvent(ev)
 	err = node.localDB.AddJob(ctx, job)
@@ -128,6 +134,24 @@ func (node *RequesterNode) UpdateDeal(ctx context.Context, jobID string, deal mo
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 
+// Return list of active jobs in this requester node.
+func (node *RequesterNode) GetActiveJobs(ctx context.Context) []ActiveJob {
+	activeJobs := make([]ActiveJob, 0)
+
+	for _, shardState := range node.shardStateManager.shardStates {
+		if shardState.currentState != shardCompleted && shardState.currentState != shardError {
+			activeJobs = append(activeJobs, ActiveJob{
+				ShardID:             shardState.shard.ID(),
+				State:               shardState.currentState.String(),
+				BiddingNodesCount:   len(shardState.biddingNodes),
+				CompletedNodesCount: len(shardState.completedNodes),
+			})
+		}
+	}
+
+	return activeJobs
+}
+
 func (node *RequesterNode) triggerStateTransition(ctx context.Context, event model.JobEvent, shard model.JobShard) error {
 	ctx, span := node.newSpan(ctx, event.EventName.String())
 	defer span.End()
@@ -136,14 +160,20 @@ func (node *RequesterNode) triggerStateTransition(ctx context.Context, event mod
 		switch event.EventName {
 		case model.JobEventBid:
 			shardState.bid(ctx, event.SourceNodeID)
-		case model.JobEventResultsProposed, model.JobEventComputeError:
-			// will trigger verifying the results when all shards are complete, gracefully or ungracefully.
+		case model.JobEventResultsProposed:
 			shardState.verifyResult(ctx, event.SourceNodeID)
 		case model.JobEventResultsPublished:
 			shardState.resultsPublished(ctx, event.SourceNodeID)
+		case model.JobEventComputeError:
+			shardState.computeError(ctx, event.SourceNodeID)
 		}
 	} else {
-		log.Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		log.Ctx(ctx).Debug().Msgf("Received %s for unknown shard %s", event.EventName, shard)
+		if err := node.notifyShardInvalidRequest(ctx, shard, event.SourceNodeID, "shard state not found"); err != nil {
+			log.Ctx(ctx).Warn().Msgf(
+				"Received %s for unknown shard %s, and failed to notify the source node %s",
+				event.EventName, shard, event.SourceNodeID)
+		}
 	}
 	return nil
 }
@@ -207,7 +237,7 @@ func (node *RequesterNode) notifyBidDecision(ctx context.Context, shard model.Jo
 		jobEventName = model.JobEventBidRejected
 		localEventName = model.JobLocalEventBidRejected
 	}
-	log.Debug().Msgf("Requester node %s responding with %s for bid: %s", node.ID, jobEventName, shard)
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with %s for bid: %s", node.ID, jobEventName, shard)
 
 	// publish a local event
 	localEvent := model.JobLocalEvent{
@@ -234,7 +264,7 @@ func (node *RequesterNode) notifyVerificationResult(ctx context.Context, result 
 	if !result.Verified {
 		jobEventName = model.JobEventResultsRejected
 	}
-	log.Debug().Msgf("Requester node %s responding with %s results: job=%s node=%s shard=%d",
+	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with %s results: job=%s node=%s shard=%d",
 		node.ID, jobEventName, result.JobID, result.NodeID, result.ShardIndex,
 	)
 
@@ -263,6 +293,18 @@ func (node *RequesterNode) notifyShardError(
 ) error {
 	ev := node.constructShardEvent(shard, model.JobEventError)
 	ev.Status = status
+	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
+}
+
+func (node *RequesterNode) notifyShardInvalidRequest(
+	ctx context.Context,
+	shard model.JobShard,
+	targetNodeID string,
+	status string,
+) error {
+	ev := node.constructShardEvent(shard, model.JobEventInvalidRequest)
+	ev.Status = status
+	ev.TargetNodeID = targetNodeID
 	return node.jobEventPublisher.HandleJobEvent(ctx, ev)
 }
 

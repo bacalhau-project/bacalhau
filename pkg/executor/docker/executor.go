@@ -2,14 +2,15 @@ package docker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -34,9 +35,6 @@ type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
 
-	// where do we copy the results from jobs temporarily?
-	ResultsDir string
-
 	// the storage providers we can implement for a job
 	StorageProvider storage.StorageProvider
 
@@ -54,14 +52,8 @@ func NewExecutor(
 		return nil, err
 	}
 
-	dir, err := ioutil.TempDir("", "bacalhau-docker-executor")
-	if err != nil {
-		return nil, err
-	}
-
 	de := &Executor{
 		ID:              id,
-		ResultsDir:      dir,
 		StorageProvider: storageProvider,
 		Client:          dockerClient,
 	}
@@ -116,59 +108,35 @@ func (e *Executor) RunShard(
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 	system.AddNodeIDFromBaggageToSpan(ctx, span)
 
-	// the actual mounts we will give to the container
-	// these are paths for both input and output data
-	mounts := []mount.Mount{}
-
-	var err error
-
 	shardStorageSpec, err := jobutils.GetShardStorageSpec(ctx, shard, e.StorageProvider)
 	if err != nil {
 		return &model.RunCommandResult{}, err
 	}
 
-	// reusable between the input shards and the input context
-	addInputStorageHandler := func(spec model.StorageSpec) error {
-		var storageProvider storage.Storage
-		var volumeMount storage.StorageVolume
-		storageProvider, err = e.getStorage(ctx, spec.StorageSource)
-		if err != nil {
-			return err
-		}
+	inputStorageSpecs := []model.StorageSpec{}
+	inputStorageSpecs = append(inputStorageSpecs, shard.Job.Spec.Contexts...)
+	inputStorageSpecs = append(inputStorageSpecs, shardStorageSpec...)
 
-		volumeMount, err = storageProvider.PrepareStorage(ctx, spec)
-		if err != nil {
-			return err
-		}
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, e.StorageProvider, inputStorageSpecs)
+	if err != nil {
+		return &model.RunCommandResult{}, err
+	}
 
+	// the actual mounts we will give to the container
+	// these are paths for both input and output data
+	mounts := []mount.Mount{}
+	for spec, volumeMount := range inputVolumes {
 		if volumeMount.Type == storage.StorageVolumeConnectorBind {
-			log.Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
+			log.Ctx(ctx).Trace().Msgf("Input Volume: %+v %+v", spec, volumeMount)
 			mounts = append(mounts, mount.Mount{
-				Type: "bind",
+				Type: mount.TypeBind,
 				// this is an input volume so is read only
 				ReadOnly: true,
 				Source:   volumeMount.Source,
 				Target:   volumeMount.Target,
 			})
 		} else {
-			return fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
-		}
-		return nil
-	}
-
-	// loop over the job contexts and prepare them
-	for _, contextStorage := range shard.Job.Spec.Contexts {
-		err = addInputStorageHandler(contextStorage)
-		if err != nil {
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-		}
-	}
-
-	// loop over the job storage inputs and prepare them
-	for _, inputStorage := range shardStorageSpec {
-		err = addInputStorageHandler(inputStorage)
-		if err != nil {
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+			return &model.RunCommandResult{}, fmt.Errorf("unknown storage volume type: %s", volumeMount.Type)
 		}
 	}
 
@@ -193,12 +161,12 @@ func (e *Executor) RunShard(
 			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 		}
 
-		log.Trace().Msgf("Output Volume: %+v", output)
+		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
 
 		// create a mount so the output data does not need to be copied back to the host
 		mounts = append(mounts, mount.Mount{
 
-			Type: "bind",
+			Type: mount.TypeBind,
 			// this is an output volume so can be written to
 			ReadOnly: false,
 
@@ -211,37 +179,23 @@ func (e *Executor) RunShard(
 	}
 
 	if os.Getenv("SKIP_IMAGE_PULL") == "" {
-		// TODO: #283 work out why this does not work in github actions
-		// err = docker.PullImage(e.Client, job.Spec.Vm.Image)
-		var im dockertypes.ImageInspect
-		im, _, err = e.Client.ImageInspectWithRaw(ctx, shard.Job.Spec.Docker.Image)
-		if err == nil {
-			log.Debug().Msgf("Not pulling image %s, already have %s", shard.Job.Spec.Docker.Image, im.ID)
-		} else if dockerclient.IsErrNotFound(err) {
-			r, err := system.UnsafeForUserCodeRunCommand( //nolint:govet // shadowing ok
-				"docker",
-				[]string{"pull", shard.Job.Spec.Docker.Image},
-			)
-			if err != nil {
-				err = fmt.Errorf("error pulling %s: %s, %s", shard.Job.Spec.Docker.Image, err, r.STDOUT)
-				return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-			}
-			log.Trace().Msgf("Pull image output: %s\n%s", shard.Job.Spec.Docker.Image, r.STDOUT)
-		} else {
-			err = fmt.Errorf("error checking if we have %s locally: %s", shard.Job.Spec.Docker.Image, err)
-			return &model.RunCommandResult{ErrorMsg: err.Error()}, err
+		if err := docker.PullImage(ctx, e.Client, shard.Job.Spec.Docker.Image); err != nil { //nolint:govet // ignore err shadowing
+			//nolint:stylecheck // Error message for user
+			err = fmt.Errorf(`Could not pull image - could be due to repo/image not existing,
+ or registry needing authorization. %s: %s`, shard.Job.Spec.Docker.Image, err)
+			return returnStdErrWithErr(ctx, err.Error(), err), err
 		}
 	}
 
 	// json the job spec and pass it into all containers
 	// TODO: check if this will overwrite a user supplied version of this value
 	// (which is what we actually want to happen)
-	log.Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
-	jsonJobSpec, err := json.Marshal(shard.Job.Spec)
+	log.Ctx(ctx).Debug().Msgf("Job Spec: %+v", shard.Job.Spec)
+	jsonJobSpec, err := model.JSONMarshalWithMax(shard.Job.Spec)
 	if err != nil {
 		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
 	}
-	log.Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
+	log.Ctx(ctx).Debug().Msgf("Job Spec JSON: %s", jsonJobSpec)
 
 	useEnv := append(shard.Job.Spec.Docker.EnvironmentVariables, fmt.Sprintf("BACALHAU_JOB_SPEC=%s", string(jsonJobSpec))) //nolint:gocritic
 
@@ -255,7 +209,7 @@ func (e *Executor) RunShard(
 		WorkingDir:      shard.Job.Spec.Docker.WorkingDirectory,
 	}
 
-	log.Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
+	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 
 	resourceRequirements := capacitymanager.ParseResourceUsageConfig(shard.Job.Spec.Resources)
 
@@ -268,7 +222,7 @@ func (e *Executor) RunShard(
 				Capabilities: [][]string{{"gpu"}},
 			},
 		)
-		log.Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
+		log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", resourceRequirements.GPU)
 	}
 
 	jobContainer, err := e.Client.ContainerCreate(
@@ -287,16 +241,25 @@ func (e *Executor) RunShard(
 		e.jobContainerName(shard),
 	)
 	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to create container: " + err.Error()}, err
+		return returnStdErrWithErr(ctx, "failed to create container: ", err), err
 	}
 
-	err = e.Client.ContainerStart(
+	containerStartError := e.Client.ContainerStart(
 		ctx,
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
-	if err != nil {
-		return &model.RunCommandResult{ErrorMsg: "failed to start container: " + err.Error()}, err
+	log.Ctx(ctx).Err(err).Msg("Failed to start container")
+	if containerStartError != nil {
+		// Special error to alert people about bad executable
+		internalContainerStartErrorMsg := "failed to start container: "
+		if strings.Contains(containerStartError.Error(), "executable file not found") {
+			internalContainerStartErrorMsg = "Executable file not found: " + containerStartError.Error()
+		}
+		internalContainerStartError := fmt.Errorf(internalContainerStartErrorMsg)
+		return returnStdErrWithErr(ctx, internalContainerStartError.Error(),
+				internalContainerStartError),
+			internalContainerStartError
 	}
 
 	defer e.cleanupJob(ctx, shard)
@@ -320,56 +283,46 @@ func (e *Executor) RunShard(
 		}
 	}
 
-	log.Debug().Msgf("Capturing stdout/stderr for container %s", jobContainer.ID)
-	stdoutFilename := fmt.Sprintf("%s/stdout", jobResultsDir)
-	stderrFilename := fmt.Sprintf("%s/stderr", jobResultsDir)
+	log.Ctx(ctx).Debug().Msgf("Capturing stdout/stderr for container %s", jobContainer.ID)
+	cmd := exec.CommandContext(ctx, "docker", "logs", "-f", jobContainer.ID) //nolint:gosec // not user input
+	stdoutPipe, stdoutErr := cmd.StdoutPipe()
+	stderrPipe, stderrErr := cmd.StderrPipe()
+	startErr := cmd.Start()
 
-	log.Debug().Msgf("Capturing stdout to %s", stdoutFilename)
-	log.Debug().Msgf("Capturing stderr to %s", stderrFilename)
-
-	runResult, err := system.RunCommandResultsToDisk(
-		"docker",
-		[]string{
-			"logs",
-			"-f",
-			jobContainer.ID,
-		},
-		stdoutFilename,
-		stderrFilename,
-	)
-	if err != nil {
-		err = fmt.Errorf("failed to get logs: %w", err)
-		return &model.RunCommandResult{ErrorMsg: err.Error()}, err
-	}
-
-	runResult.ExitCode = int(containerExitStatusCode)
-	if containerError != nil {
-		runResult.ErrorMsg = containerError.Error()
-	}
-	if runResult.ExitCode != 0 {
-		if runResult.ErrorMsg == "" {
-			runResult.ErrorMsg = fmt.Sprintf("exit code was not zero: %d", containerExitStatusCode)
+	defer func() {
+		// Wait will get called once WriteJobResults has consumed all that it
+		// wants to (i.e. it has returned), at which point it will close pipes
+		err := cmd.Wait()
+		if err != nil {
+			log.Ctx(ctx).Err(err).Msg("logs process failed")
 		}
-		log.Info().Msgf("container error %s", runResult.ErrorMsg)
+	}()
+
+	var exitCodeErr error
+	if containerExitStatusCode != 0 {
+		exitCodeErr = fmt.Errorf("exit code was not zero: %d", containerExitStatusCode)
 	}
 
-	log.Trace().Msgf("Writing exit code for container %s", jobContainer.ID)
-	err = os.WriteFile(
-		fmt.Sprintf("%s/exitCode", jobResultsDir),
-		[]byte(fmt.Sprintf("%d", containerExitStatusCode)),
-		util.OS_ALL_R|util.OS_USER_RW,
+	return executor.WriteJobResults(
+		jobResultsDir,
+		stdoutPipe,
+		stderrPipe,
+		int(containerExitStatusCode),
+		multierr.Combine(containerError, startErr, stdoutErr, stderrErr, exitCodeErr),
 	)
-	if err != nil {
-		runResult.ErrorMsg = errors.Wrap(err, "could not write results to exitCode: ").Error()
-		log.Error().Msg(runResult.ErrorMsg)
-		return runResult, err
-	}
-	log.Debug().Msgf("Wrote exit code %d to %s/exitCode", containerExitStatusCode, jobResultsDir)
-	log.Debug().Msgf("Returning RunOutput %+v", runResult)
-
-	return runResult, err
 }
 
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	return docker.StopContainer(ctx, e.Client, e.jobContainerName(shard))
+}
+
+func returnStdErrWithErr(ctx context.Context, msg string, err error) *model.RunCommandResult {
+	log.Ctx(ctx).Debug().Str("msg", msg).Err(err).Msg("Returning error")
+	return &model.RunCommandResult{
+		STDERR:   err.Error(),
+		ErrorMsg: errors.Wrap(err, msg).Error(),
+	}
+}
 func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 	if config.ShouldKeepStack() {
 		return
@@ -377,7 +330,7 @@ func (e *Executor) cleanupJob(ctx context.Context, shard model.JobShard) {
 
 	err := docker.RemoveContainer(ctx, e.Client, e.jobContainerName(shard))
 	if err != nil {
-		log.Error().Msgf("Docker remove container error: %s", err.Error())
+		log.Ctx(ctx).Error().Msgf("Docker remove container error: %s", err.Error())
 		debug.PrintStack()
 	}
 }
@@ -387,20 +340,22 @@ func (e *Executor) cleanupAll(ctx context.Context) {
 		return
 	}
 
-	log.Debug().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
-	containersWithLabel, err := docker.GetContainersWithLabel(ctx, e.Client, "bacalhau-executor", e.ID)
+	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// canceled and so would prevent us from performing any cleanup work.
+	safeCtx := context.Background()
+
+	log.Ctx(ctx).Debug().Msgf("Cleaning up all bacalhau containers for executor %s...", e.ID)
+	containersWithLabel, err := docker.GetContainersWithLabel(safeCtx, e.Client, "bacalhau-executor", e.ID)
 	if err != nil {
-		log.Error().Msgf("Docker executor stop error: %s", err.Error())
+		log.Ctx(ctx).Error().Msgf("Docker executor stop error: %s", err.Error())
 		return
 	}
-	// TODO: #287 Fix if when we care about optimization of memory (224 bytes copied per loop)
-	//nolint:gocritic // will fix when we care
 	for _, container := range containersWithLabel {
-		err = docker.RemoveContainer(ctx, e.Client, container.ID)
-		if err != nil {
-			log.Error().Msgf("Non-critical error cleaning up container: %s", err.Error())
+		if err := docker.RemoveContainer(safeCtx, e.Client, container.ID); err != nil { //nolint:govet // ignore err shadowing
+			log.Ctx(ctx).Err(err).Msgf("Non-critical error cleaning up container")
 		}
 	}
+	log.Ctx(ctx).Debug().Msgf("Finished cleaning up all bacalhau containers for executor %s", e.ID)
 }
 
 func (e *Executor) jobContainerName(shard model.JobShard) string {

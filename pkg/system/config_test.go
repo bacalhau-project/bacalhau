@@ -1,8 +1,11 @@
+//go:build unit || !integration
+
 package system
 
 import (
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,21 +20,10 @@ func TestSystemConfigSuite(t *testing.T) {
 	suite.Run(t, new(SystemConfigSuite))
 }
 
-// Before all suite
-func (suite *SystemConfigSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemConfigSuite) SetupTest() {
-	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemConfigSuite) TearDownTest() {
-}
-
-func (suite *SystemConfigSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func (suite *SystemConfigSuite) TestMessageSigning() {
@@ -41,7 +33,7 @@ func (suite *SystemConfigSuite) TestMessageSigning() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 
 	msg := []byte("Hello, world!")
 	sig, err := SignForClient(msg)
@@ -63,11 +55,11 @@ func (suite *SystemConfigSuite) TestGetClientID() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 	id := GetClientID()
 	require.NotEmpty(suite.T(), id)
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 	id2 := GetClientID()
 	require.NotEmpty(suite.T(), id2)
 
@@ -82,7 +74,7 @@ func (suite *SystemConfigSuite) TestPublicKeyMatchesID() {
 		}
 	}()
 
-	require.NoError(suite.T(), InitConfigForTesting())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 
 	id := GetClientID()
 	publicKey := GetClientPublicKey()

@@ -1,7 +1,10 @@
 package system
 
 import (
+	"flag"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -13,6 +16,7 @@ const (
 	EnvironmentStaging Environment = "staging"
 	EnvironmentProd    Environment = "production"
 	EnvironmentDev     Environment = "development"
+	EnvironmentTest    Environment = "test"
 )
 
 func (e Environment) String() string {
@@ -34,17 +38,37 @@ var env Environment
 func init() { //nolint:gochecknoinits
 	env = Environment(os.Getenv("BACALHAU_ENVIRONMENT"))
 	if !env.IsKnown() {
-		// Log as debug since we don't want to spam CLI users:
-		log.Debug().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
+		// Log as trace since we don't want to spam CLI users:
+		log.Trace().Msgf("BACALHAU_ENVIRONMENT is not set to a known value: %s", env)
 
 		// This usually happens in the case of a short-lived test cluster, in
-		// which case we should default to development:
-		env = EnvironmentDev
+		// which case we should default to development. However, we want to
+		// avoid using any environment-specific settings for IPFS swarms
+		// (which are only configured for production and staging)
+		if strings.Contains(os.Args[0], "/_test/") ||
+			strings.HasSuffix(os.Args[0], ".test") ||
+			flag.Lookup("test.v") != nil ||
+			flag.Lookup("test.run") != nil {
+			env = EnvironmentTest
+		} else {
+			flags := []string{}
+			fn := func(f *flag.Flag) {
+				flags = append(flags, fmt.Sprintf("%s - %s\n", f.Name, f.Value))
+			}
+			flag.VisitAll(fn)
+			log.Debug().Msgf("Defaulting to development environment: \n os.Args: %v\nflags: %v", os.Args, flags)
+
+			env = EnvironmentDev
+		}
 	}
 }
 
 func GetEnvironment() Environment {
 	return env
+}
+
+func IsTest() bool {
+	return env == EnvironmentTest
 }
 
 func IsStaging() bool {

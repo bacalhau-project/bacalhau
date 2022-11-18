@@ -6,9 +6,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	realsync "sync"
 
@@ -19,11 +20,11 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -31,6 +32,7 @@ import (
 )
 
 const JobEventChannel = "bacalhau-job-event"
+const ContinuouslyConnectPeersLoopDelaySeconds = 10
 
 type LibP2PTransport struct {
 	// Cleanup manager for resource teardown on exit:
@@ -44,6 +46,7 @@ type LibP2PTransport struct {
 	jobEventTopic        *pubsub.Topic
 	jobEventSubscription *pubsub.Subscription
 	privateKey           crypto.PrivKey
+	shutdownChan         chan bool
 }
 
 func NewTransport(ctx context.Context, cm *system.CleanupManager, port int, peers []multiaddr.Multiaddr) (*LibP2PTransport, error) {
@@ -76,6 +79,11 @@ func NewTransportFromOptions(ctx context.Context,
 		return nil
 	})
 
+	tracer, err := pubsub.NewJSONTracer(config.GetLibp2pTracerPath())
+	if err != nil {
+		return nil, err
+	}
+
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
@@ -90,7 +98,27 @@ func NewTransportFromOptions(ctx context.Context,
 		pubsub.ScoreParameterDecay(2*time.Minute),  //nolint:gomnd
 		pubsub.ScoreParameterDecay(10*time.Minute), //nolint:gomnd
 	)
-	ps, err := pubsub.NewGossipSub(ctx, h, pubsub.WithPeerExchange(true), pubsub.WithPeerGater(pgParams))
+
+	// pis := []peer.AddrInfo{}
+	// for _, p := range peers {
+	// 	var pi *peer.AddrInfo
+	// 	pi, err = peer.AddrInfoFromP2pAddr(p)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	pis = append(pis, *pi)
+	// }
+
+	ps, err := pubsub.NewGossipSub(
+		ctx,
+		h,
+		// pubsub.WithDirectPeers(pis),
+		// pubsub.WithDirectConnectTicks(10), //nolint:gomnd
+		pubsub.WithFloodPublish(true),
+		pubsub.WithPeerExchange(true),
+		pubsub.WithPeerGater(pgParams),
+		pubsub.WithEventTracer(tracer),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +142,7 @@ func NewTransportFromOptions(ctx context.Context,
 		pubSub:               ps,
 		jobEventTopic:        jobEventTopic,
 		jobEventSubscription: jobEventSubscription,
+		shutdownChan:         make(chan bool),
 	}
 
 	libp2pTransport.mutex.EnableTracerWithOpts(sync.Opts{
@@ -138,8 +167,7 @@ func (t *LibP2PTransport) HostAddrs() ([]multiaddr.Multiaddr, error) {
 }
 
 func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.GetPeers")
 	defer span.End()
 
 	response := map[string][]peer.ID{}
@@ -152,6 +180,7 @@ func (t *LibP2PTransport) GetPeers(ctx context.Context) (map[string][]peer.ID, e
 
 func (t *LibP2PTransport) Start(ctx context.Context) error {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Start")
+	ctx = logger.ContextWithNodeIDLogger(ctx, t.HostID())
 	defer span.End()
 
 	if len(t.subscribeFunctions) == 0 {
@@ -162,41 +191,79 @@ func (t *LibP2PTransport) Start(ctx context.Context) error {
 		return t.Shutdown(ctx)
 	})
 
-	err := t.connectToPeers(ctx)
-	if err != nil {
-		return err
-	}
+	// reconnect to peers every 10 seconds, forever.
+	go func() {
+		err := t.connectToPeers(ctx)
+		if err != nil {
+			log.Ctx(ctx).Info().Msgf("Error initially connecting to peers: %s, retrying again in 10 seconds", err)
+		}
+		ticker := time.NewTicker(ContinuouslyConnectPeersLoopDelaySeconds * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting to peers on tick")
+				err := t.connectToPeers(ctx)
+				log.Ctx(ctx).Debug().Msgf("(Re-)connecting done")
+				if err != nil {
+					log.Ctx(ctx).Info().Msgf("Error connecting to peers: %s, retrying again in 10 seconds", err)
+				}
+			case <-t.shutdownChan:
+				log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
+				return
+			}
+		}
+	}()
 
 	go t.listenForEvents(ctx)
 
-	log.Trace().Msg("Libp2p transport has started")
+	log.Ctx(ctx).Trace().Msg("Libp2p transport has started")
 
 	return nil
 }
 
 func (t *LibP2PTransport) Shutdown(ctx context.Context) error {
-	//nolint:ineffassign,staticcheck
 	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Shutdown")
 	defer span.End()
+
+	// stop ticker
+	log.Ctx(ctx).Debug().Msgf("Sending shutdown signal to reconnect loop")
+	t.shutdownChan <- true
+	log.Ctx(ctx).Debug().Msgf("Reconnect loop stopped")
 
 	closeErr := t.host.Close()
 
 	if closeErr != nil {
-		log.Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
+		log.Ctx(ctx).Error().Msgf("Libp2p transport had error stopping: %s", closeErr.Error())
 	} else {
-		log.Debug().Msg("Libp2p transport has stopped")
+		log.Ctx(ctx).Debug().Msg("Libp2p transport has stopped")
 	}
 
 	return nil
 }
 
-func (t *LibP2PTransport) Publish(ctx context.Context, ev model.JobEvent) error {
-	return t.writeJobEvent(ctx, ev)
+func (t *LibP2PTransport) Publish(ctx context.Context, event model.JobEvent) error {
+	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Publish")
+	defer span.End()
+
+	traceData := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &traceData)
+
+	bs, err := model.JSONMarshalWithMax(jobEventEnvelope{
+		JobEvent:  event,
+		TraceData: traceData,
+		SentTime:  time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Ctx(ctx).Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
+	return t.jobEventTopic.Publish(ctx, bs)
 }
 
 func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Subscribe")
 	defer span.End()
 
 	t.mutex.Lock()
@@ -206,7 +273,7 @@ func (t *LibP2PTransport) Subscribe(ctx context.Context, fn transport.SubscribeF
 
 func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []byte) ([]byte, error) {
 	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Encrypt")
 	defer span.End()
 
 	unmarshalledPublicKey, err := crypto.UnmarshalPublicKey(libp2pKeyBytes)
@@ -235,8 +302,7 @@ func (t *LibP2PTransport) Encrypt(ctx context.Context, data, libp2pKeyBytes []by
 }
 
 func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, error) {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
+	_, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.Decrypt")
 	defer span.End()
 
 	privateKeyBytes, err := t.privateKey.Raw()
@@ -257,9 +323,7 @@ func (t *LibP2PTransport) Decrypt(ctx context.Context, data []byte) ([]byte, err
 }
 
 /*
-
   libp2p
-
 */
 
 func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
@@ -270,19 +334,26 @@ func (t *LibP2PTransport) connectToPeers(ctx context.Context) error {
 		return nil
 	}
 
+	errors := []error{}
 	for _, peerAddress := range t.peers {
 		// Extract the peer ID from the multiaddr.
 		info, err := peer.AddrInfoFromP2pAddr(peerAddress)
 		if err != nil {
-			return err
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error parsing peer address: %s", err)
+			continue
 		}
-
 		t.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 		err = t.host.Connect(ctx, *info)
 		if err != nil {
-			return err
+			errors = append(errors, err)
+			log.Ctx(ctx).Warn().Msgf("Error connecting to peer %s: %s, continuing...", info.ID, err)
+		} else {
+			log.Ctx(ctx).Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
 		}
-		log.Trace().Msgf("Libp2p transport connected to: %s", peerAddress)
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("libp2p transport had errors connecting to peers: %s", errors)
 	}
 
 	return nil
@@ -302,36 +373,14 @@ type jobEventEnvelope struct {
 	TraceData propagation.MapCarrier `json:"trace_data"`
 }
 
-func (t *LibP2PTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
-	ctx, span := system.GetTracer().Start(ctx, "pkg/transport/libp2p.writeJobEvent")
-	defer span.End()
-
-	traceData := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, &traceData)
-
-	bs, err := json.Marshal(jobEventEnvelope{
-		JobEvent:  event,
-		TraceData: traceData,
-		SentTime:  time.Now(),
-	})
-	if err != nil {
-		return err
-	}
-
-	log.Trace().Msgf("Sending event %s: %s", event.EventName.String(), string(bs))
-	return t.jobEventTopic.Publish(ctx, bs)
-}
-
 func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	// TODO: we would enforce the claims to SourceNodeID here
 	// i.e. msg.ReceivedFrom() should match msg.Data.JobEvent.SourceNodeID
+	ctx := logger.ContextWithNodeIDLogger(context.Background(), t.HostID())
 	payload := jobEventEnvelope{}
-
-	fmt.Printf("ABOUT TO UNMARSHALL --------------------------------------\n")
-
-	err := json.Unmarshal(msg.Data, &payload)
+	err := model.JSONUnmarshalWithMax(msg.Data, &payload)
 	if err != nil {
-		log.Error().Msgf("error unmarshalling libp2p event: %v", err)
+		log.Ctx(ctx).Error().Msgf("error unmarshalling libp2p event: %v", err)
 		return
 	}
 
@@ -340,32 +389,32 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 	latency := now.Sub(then)
 	latencyMilli := int64(latency / time.Millisecond)
 	if latencyMilli > 500 { //nolint:gomnd
-		log.Warn().Msgf(
+		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] VERY High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else if latencyMilli > 50 { //nolint:gomnd
-		log.Warn().Msgf(
+		log.Ctx(ctx).Warn().Msgf(
 			"[%s=>%s] High message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	} else {
-		log.Trace().Msgf(
+		log.Ctx(ctx).Trace().Msgf(
 			"[%s=>%s] Message latency: %d ms (%s)",
-			payload.JobEvent.SourceNodeID[:8],
-			t.host.ID().String()[:8],
+			payload.JobEvent.SourceNodeID[:model.ShortIDLength],
+			t.host.ID().String()[:model.ShortIDLength],
 			latencyMilli, payload.JobEvent.EventName.String(),
 		)
 	}
 
-	log.Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
+	log.Ctx(ctx).Trace().Msgf("Received event %s: %+v", payload.JobEvent.EventName.String(), payload)
 
 	// Notify all the listeners in this process of the event:
-	jobCtx := otel.GetTextMapPropagator().Extract(context.Background(), payload.TraceData)
+	jobCtx := otel.GetTextMapPropagator().Extract(ctx, payload.TraceData)
 
 	ev := payload.JobEvent
 	// NOTE: Do not use msg.ReceivedFrom as the original sender, it's not. It's
@@ -384,7 +433,7 @@ func (t *LibP2PTransport) readMessage(msg *pubsub.Message) {
 				defer wg.Done()
 				err := f(jobCtx, ev)
 				if err != nil {
-					log.Error().Msgf("error in handle event: %s\n%+v", err, ev)
+					log.Ctx(jobCtx).Error().Msgf("error in handle event: %s\n%+v", err, ev)
 				}
 			}(fn)
 		}
@@ -397,9 +446,9 @@ func (t *LibP2PTransport) listenForEvents(ctx context.Context) {
 		msg, err := t.jobEventSubscription.Next(ctx)
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
-				log.Trace().Msgf("libp2p transport shutting down: %v", err)
+				log.Ctx(ctx).Trace().Msgf("libp2p transport shutting down: %v", err)
 			} else {
-				log.Error().Msgf(
+				log.Ctx(ctx).Error().Msgf(
 					"libp2p encountered an unexpected error, shutting down: %v", err)
 			}
 			return

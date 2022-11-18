@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package eventhandler
 
 import (
@@ -5,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler/mock_eventhandler"
@@ -40,7 +43,16 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 	suite.contextProvider = mock_eventhandler.NewMockContextProvider(suite.ctrl)
 	suite.chainedHandler = NewChainedJobEventHandler(suite.contextProvider)
 	suite.context = context.WithValue(context.Background(), "test", "test")
-	suite.event = model.JobEvent{JobID: uuid.NewString()}
+	suite.event = model.JobEvent{
+		EventName:    model.JobEventCreated,
+		JobID:        uuid.NewString(),
+		ShardIndex:   1,
+		SourceNodeID: "nodeA",
+		TargetNodeID: "nodeB",
+		ClientID:     "clientX",
+		Status:       "this is a test event",
+	}
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *jobEventHandlerSuite) TearDownTest() {

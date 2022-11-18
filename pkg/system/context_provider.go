@@ -54,7 +54,7 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	defer t.contextMutex.Unlock()
 
 	jobCtx, _ := Span(ctx, "tracer",
-		"JobLifecycle-"+t.nodeID[:8],
+		"JobLifecycle-"+t.nodeID[:model.ShortIDLength],
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
 			attribute.String(model.TracerAttributeNameNodeID, t.nodeID),

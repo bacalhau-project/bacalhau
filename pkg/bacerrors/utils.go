@@ -1,9 +1,7 @@
 package bacerrors
 
 import (
-	"encoding/json"
-
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog/log"
 )
 
@@ -40,7 +38,7 @@ func ErrorToErrorResponseObject(err error) *ErrorResponse {
 		return e
 	}
 
-	if system.CheckIfObjectImplementsType(BacalhauErrorInterface(nil), err) {
+	if CheckIfObjectImplementsType(BacalhauErrorInterface(nil), err) {
 		bacErr := err.(BacalhauErrorInterface)
 		// Convert to ErrorResponse
 		e = &ErrorResponse{
@@ -61,11 +59,18 @@ func ErrorToErrorResponseObject(err error) *ErrorResponse {
 }
 
 func ConvertErrorToText(err *ErrorResponse) string {
-	str, marshalError := json.Marshal(err)
+	str, marshalError := model.JSONMarshalWithMax(err)
 	if marshalError != nil {
 		msg := "error converting BacalhauError to JSON"
 		log.Error().Err(marshalError).Msg(msg)
 		str = append(str, []byte("\n"+msg)...)
 	}
 	return string(str)
+}
+
+// Checks to see if an object implements an interface
+// First parameter is the interface, second is the object
+func CheckIfObjectImplementsType[T any](_ T, n interface{}) bool {
+	_, ok := n.(T)
+	return ok
 }

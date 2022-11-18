@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package transport_test
 
 import (
@@ -9,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
@@ -31,22 +34,11 @@ func TestTransportSuite(t *testing.T) {
 	suite.Run(t, new(TransportSuite))
 }
 
-// Before all suite
-func (suite *TransportSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *TransportSuite) SetupTest() {
-	err := system.InitConfigForTesting()
+	logger.ConfigureTestLogging(suite.T())
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
-}
-
-func (suite *TransportSuite) TearDownTest() {
-}
-
-func (suite *TransportSuite) TearDownAllSuite() {
-
 }
 
 func setupTest(t *testing.T) *node.Node {
@@ -64,7 +56,7 @@ func setupTest(t *testing.T) *node.Node {
 		LocalDB:             datastore,
 		Transport:           transport,
 		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
-		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
 	node, err := devstack.NewNoopNode(ctx, nodeConfig)
@@ -87,11 +79,6 @@ func (suite *TransportSuite) TestTransportEvents() {
 		Engine:    model.EngineNoop,
 		Verifier:  model.VerifierNoop,
 		Publisher: model.PublisherNoop,
-		Docker: model.JobSpecDocker{
-			Image:                "image",
-			Entrypoint:           []string{"entrypoint"},
-			EnvironmentVariables: []string{"env"},
-		},
 		Inputs: []model.StorageSpec{
 			{
 				StorageSource: model.StorageSourceIPFS,
@@ -108,7 +95,7 @@ func (suite *TransportSuite) TestTransportEvents() {
 		Job:      j,
 	}
 
-	_, err := node.RequestorNode.SubmitJob(ctx, payload)
+	_, err := node.RequesterNode.SubmitJob(ctx, payload)
 	require.NoError(suite.T(), err)
 	time.Sleep(time.Second * 1)
 

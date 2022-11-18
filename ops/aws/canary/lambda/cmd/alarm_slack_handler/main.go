@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/filecoin-project/bacalhau/ops/aws/canary/pkg/logger"
-	"net/http"
-	"os"
 )
 
 // variable to store the slack webhooks to retrieve them once and reuse them across recent invocations

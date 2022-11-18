@@ -26,6 +26,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(dockerCmd)
+	RootCmd.AddCommand(wasmCmd)
 
 	// Porcelain commands (language specific easy to use commands)
 	RootCmd.AddCommand(runCmd)
@@ -51,8 +52,6 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	RootCmd.AddCommand(simulatorCmd)
 	RootCmd.AddCommand(idCmd)
 	RootCmd.AddCommand(devstackCmd)
-
-	// TODO: RootCmd.AddCommand(wasmCmd)
 
 	defaultAPIHost := system.Envs[system.Production].APIHost
 	defaultAPIPort := system.Envs[system.Production].APIPort
@@ -81,7 +80,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "bacalhau",
+	Use:   getCommandLineExecutable(),
 	Short: "Compute over data",
 	Long:  `Compute over data`,
 }

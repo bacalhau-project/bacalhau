@@ -10,13 +10,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/storage/util"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/rs/zerolog/log"
 )
-
-func IsDebug() bool {
-	return os.Getenv("LOG_LEVEL") == "debug"
-}
 
 func DevstackGetShouldPrintInfo() bool {
 	return os.Getenv("DEVSTACK_PRINT_INFO") != ""
@@ -61,10 +57,6 @@ func GetVolumeSizeRequestTimeout() time.Duration {
 	return time.Duration(getVolumeSizeRequestTimeoutSeconds) * time.Second
 }
 
-func SetVolumeSizeRequestTimeout(seconds int64) {
-	getVolumeSizeRequestTimeoutSeconds = seconds
-}
-
 // by default we wait 5 minutes for the IPFS network to download a CID
 // tests will override this using config.SetVolumeSizeRequestTimeout(2)
 var downloadCidRequestTimeoutSeconds int64 = 300
@@ -72,10 +64,6 @@ var downloadCidRequestTimeoutSeconds int64 = 300
 // how long do we wait for a cid to download
 func GetDownloadCidRequestTimeout() time.Duration {
 	return time.Duration(downloadCidRequestTimeoutSeconds) * time.Second
-}
-
-func SetDownloadCidRequestTimeout(seconds int64) {
-	downloadCidRequestTimeoutSeconds = seconds
 }
 
 // by default we wait 5 minutes for a URL to download
@@ -87,12 +75,26 @@ func GetDownloadURLRequestTimeout() time.Duration {
 	return time.Duration(downloadURLRequestTimeoutSeconds) * time.Second
 }
 
-func SetDownloadURLRequestTimeoutSeconds(seconds int64) {
-	downloadURLRequestTimeoutSeconds = seconds
+// how many times do we try to download a URL
+var downloadURLRequestRetries = 3
+
+// how long do we wait for a URL to download
+func GetDownloadURLRequestRetries() int {
+	return downloadURLRequestRetries
+}
+
+func GetLibp2pTracerPath() string {
+	configPath := GetConfigPath()
+	return filepath.Join(configPath, "bacalhau-libp2p-tracer.json")
+}
+
+func GetEventTracerPath() string {
+	configPath := GetConfigPath()
+	return filepath.Join(configPath, "bacalhau-event-tracer.json")
 }
 
 func GetConfigPath() string {
-	suffix := "/.bacalhau"
+	suffix := ".bacalhau"
 	env := os.Getenv("BACALHAU_PATH")
 	var d string
 	if env == "" {
@@ -101,10 +103,10 @@ func GetConfigPath() string {
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		d = dirname + suffix
+		d = filepath.Join(dirname, suffix)
 	} else {
 		// e.g. /data/.bacalhau
-		d = env + suffix
+		d = filepath.Join(env, suffix)
 	}
 	// create dir if not exists
 	if err := os.MkdirAll(d, util.OS_USER_RWX); err != nil {

@@ -1,7 +1,7 @@
 package pythonwasm
 
 /*
-The python_wasm executor wraps the docker executor. The requestor will have
+The python_wasm executor wraps the docker executor. The Requester will have
 automatically uploaded the execution context (python files, requirements.txt) to
 ipfs so that it can be mounted into the wasm runtime container.
 */
@@ -48,7 +48,7 @@ func (e *Executor) GetVolumeSize(ctx context.Context, volumes model.StorageSpec)
 
 func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDir string) (
 	*model.RunCommandResult, error) {
-	log.Debug().Msgf("in python_wasm executor!")
+	log.Ctx(ctx).Debug().Msgf("in python_wasm executor!")
 	// translate language jobspec into a docker run command
 	shard.Job.Spec.Docker.Image = "quay.io/bacalhau/pyodide:e4b0eb7c1d81f320f5b43fc838b0f2a5b9003c9a"
 	if shard.Job.Spec.Language.Command != "" {
@@ -80,6 +80,14 @@ func (e *Executor) RunShard(ctx context.Context, shard model.JobShard, resultsDi
 		return nil, err
 	}
 	return dockerExecutor.RunShard(ctx, shard, resultsDir)
+}
+
+func (e *Executor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	dockerExecutor, err := e.executors.GetExecutor(ctx, model.EngineDocker)
+	if err != nil {
+		return err
+	}
+	return dockerExecutor.CancelShard(ctx, shard)
 }
 
 // Compile-time check that Executor implements the Executor interface.

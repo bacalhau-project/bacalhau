@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/userstrings"
@@ -57,8 +59,8 @@ func NewCreateOptions() *CreateOptions {
 }
 
 func init() { //nolint:gochecknoinits
-	setupDownloadFlags(createCmd, &OC.DownloadFlags)
-	setupRunTimeFlags(createCmd, &OC.RunTimeSettings)
+	createCmd.Flags().AddFlagSet(NewIPFSDownloadFlags(&OC.DownloadFlags))
+	createCmd.Flags().AddFlagSet(NewRunTimeSettingsFlags(&OC.RunTimeSettings))
 }
 
 var createCmd = &cobra.Command{
@@ -67,13 +69,13 @@ var createCmd = &cobra.Command{
 	Long:    createLong,
 	Example: createExample,
 	Args:    cobra.MinimumNArgs(0),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { //nolint:unparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/create")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/create")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -90,54 +92,68 @@ var createCmd = &cobra.Command{
 			return err
 		}
 
-		OC.Filename = cmdArgs[0]
-
-		if OC.Filename == "" {
+		if len(cmdArgs) == 0 {
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-			} else if err != nil {
-				// Error not related to fields being empty
-				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
+			if err != nil {
+				Fatal(fmt.Sprintf("Unknown error reading from file or stdin: %s\n", err), 1)
+				return err
 			}
 		} else {
+			OC.Filename = cmdArgs[0]
+
 			var fileContent *os.File
 			fileContent, err = os.Open(OC.Filename)
 
 			if err != nil {
 				Fatal(fmt.Sprintf("Error opening file: %s", err), 1)
+				return err
 			}
 
 			byteResult, err = io.ReadAll(fileContent)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error reading file: %s", err), 1)
+				return err
 			}
 		}
 
 		// Do a first pass for parsing to see if it's a Job or JobWithInfo
-		err = yaml.Unmarshal(byteResult, &rawMap)
+		err = model.YAMLUnmarshalWithMax(byteResult, &rawMap)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error parsing file: %s", err), 1)
+			return err
 		}
 
 		// If it's a JobWithInfo, we need to convert it to a Job
 		if _, isJobWithInfo := rawMap["Job"]; isJobWithInfo {
-			err = yaml.Unmarshal(byteResult, &jwi)
+			err = model.YAMLUnmarshalWithMax(byteResult, &jwi)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error parsing file as JobWithInfo: %s", err), 1)
+				Fatal(userstrings.JobSpecBad, 1)
+				return err
 			}
-			byteResult, err = yaml.Marshal(jwi.Job)
+			byteResult, err = model.YAMLMarshalWithMax(jwi.Job)
 			if err != nil {
-				Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
+				Fatal(userstrings.JobSpecBad, 1)
+				return err
 			}
+		}
+
+		if len(byteResult) == 0 {
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
 		}
 
 		// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
 		// so we can just use that
-		err = yaml.Unmarshal(byteResult, &j)
+		err = model.YAMLUnmarshalWithMax(byteResult, &j)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error parsing file as Job: %s", err), 1)
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
+		}
+
+		// See if the job spec is empty
+		if j == nil || reflect.DeepEqual(j.Spec, &model.Job{}) {
+			Fatal(userstrings.JobSpecBad, 1)
+			return err
 		}
 
 		// Warn on fields with data that will be ignored
@@ -184,16 +200,40 @@ var createCmd = &cobra.Command{
 			cmd.Printf("WARNING: The following fields have data in them and will be ignored on creation: %s\n", strings.Join(unusedFieldList, ", "))
 		}
 
+		err = jobutils.VerifyJob(ctx, j)
+		if err != nil {
+			if _, ok := err.(*bacerrors.ImageNotFound); ok {
+				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+				return err
+			} else {
+				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+				return err
+			}
+		}
+		if ODR.DryRun {
+			// Converting job to yaml
+			var yamlBytes []byte
+			yamlBytes, err = yaml.Marshal(j)
+			if err != nil {
+				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
+				return err
+			}
+			cmd.Print(string(yamlBytes))
+			return nil
+		}
+
 		err = ExecuteJob(ctx,
 			cm,
 			cmd,
 			j,
 			OC.RunTimeSettings,
 			OC.DownloadFlags,
+			nil,
 		)
 
 		if err != nil {
 			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return err
 		}
 
 		return nil

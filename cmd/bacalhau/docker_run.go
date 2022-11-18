@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -56,9 +57,11 @@ type DockerRunOptions struct {
 	InputVolumes     []string // Array of input volumes in 'CID:mount point' form
 	OutputVolumes    []string // Array of output volumes in 'name:mount point' form
 	Env              []string // Array of environment variables
+	IDOnly           bool     // Only print the job ID
 	Concurrency      int      // Number of concurrent jobs to run
 	Confidence       int      // Minimum number of nodes that must agree on a verification result
 	MinBids          int      // Minimum number of bids before they will be accepted (at random)
+	Timeout          float64  // Job execution timeout in seconds
 	CPU              string
 	Memory           string
 	GPU              string
@@ -94,6 +97,7 @@ func NewDockerRunOptions() *DockerRunOptions {
 		Concurrency:        1,
 		Confidence:         0,
 		MinBids:            0, // 0 means no minimum before bidding
+		Timeout:            DefaultTimeout.Seconds(),
 		CPU:                "",
 		Memory:             "",
 		GPU:                "",
@@ -133,9 +137,9 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	//nolint:lll // Documentation, ok if long.
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputUrls, "input-urls", "u", ODR.InputUrls,
-		`URL:path of the input data volumes downloaded from a URL source. Mounts data at 'path' (e.g. '-u http://foo.com/bar.tar.gz:/app/bar.tar.gz'
-		mounts 'http://foo.com/bar.tar.gz' at '/app/bar.tar.gz'). URL can specify a port number (e.g. 'https://foo.com:443/bar.tar.gz:/app/bar.tar.gz')
-		and supports HTTP and HTTPS.`,
+		`URL of the input data volumes downloaded from a URL source. Mounts data at '/inputs' (e.g. '-u http://foo.com/bar.tar.gz'
+		mounts 'bar.tar.gz' at '/inputs/bar.tar.gz'). URL accept any valid URL supported by the 'wget' command,
+		and supports both HTTP and HTTPS.`,
 	)
 	dockerRunCmd.PersistentFlags().StringSliceVarP(
 		&ODR.InputVolumes, "input-volumes", "v", ODR.InputVolumes,
@@ -160,6 +164,10 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 	dockerRunCmd.PersistentFlags().IntVar(
 		&ODR.MinBids, "min-bids", ODR.MinBids,
 		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
+	)
+	dockerRunCmd.PersistentFlags().Float64Var(
+		&ODR.Timeout, "timeout", ODR.Timeout,
+		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
 	)
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.CPU, "cpu", ODR.CPU,
@@ -193,13 +201,6 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
 
-	dockerRunCmd.Flags().IntVar(&ODR.DownloadFlags.TimeoutSecs, "download-timeout-secs",
-		ODR.DownloadFlags.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.OutputDir, "output-dir",
-		ODR.DownloadFlags.OutputDir, "Directory to write the output to.")
-	dockerRunCmd.Flags().StringVar(&ODR.DownloadFlags.IPFSSwarmAddrs, "ipfs-swarm-addrs",
-		ODR.DownloadFlags.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
-
 	dockerRunCmd.PersistentFlags().StringVar(
 		&ODR.ShardingGlobPattern, "sharding-glob-pattern", ODR.ShardingGlobPattern,
 		`Use this pattern to match files to be sharded.`,
@@ -215,13 +216,14 @@ func init() { //nolint:gochecknoinits,funlen // Using init in cobra command is i
 		`Place results of the sharding glob pattern into groups of this size.`,
 	)
 
-	setupRunTimeFlags(dockerRunCmd, &ODR.RunTimeSettings)
+	dockerRunCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&ODR.RunTimeSettings))
+	dockerRunCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&ODR.DownloadFlags))
 }
 
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
 	Short: "Run a docker job on the network (see run subcommand)",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Check that the server version is compatible with the client version
 		serverVersion, _ := GetAPIClient().Version(cmd.Context()) // Ok if this fails, version validation will skip
 		if err := ensureValidVersion(cmd.Context(), version.Get(), serverVersion); err != nil {
@@ -238,7 +240,7 @@ var dockerRunCmd = &cobra.Command{
 	Long:    dockerRunLong,
 	Example: dockerRunExample,
 	Args:    cobra.MinimumNArgs(1),
-	PostRun: func(cmd *cobra.Command, args []string) {},
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error { // nolintunparam // incorrect that cmd is unused.
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
@@ -251,10 +253,17 @@ var dockerRunCmd = &cobra.Command{
 		j, err := CreateJob(ctx, cmdArgs, ODR)
 		if err != nil {
 			Fatal(fmt.Sprintf("Error creating job: %s", err), 1)
+			return nil
 		}
-		err = jobutils.VerifyJob(j)
+		err = jobutils.VerifyJob(ctx, j)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+			if _, ok := err.(*bacerrors.ImageNotFound); ok {
+				Fatal(fmt.Sprintf("Docker image '%s' not found in the registry, or needs authorization.", j.Spec.Docker.Image), 1)
+				return nil
+			} else {
+				Fatal(fmt.Sprintf("Error verifying job: %s", err), 1)
+				return nil
+			}
 		}
 		if ODR.DryRun {
 			// Converting job to yaml
@@ -262,24 +271,20 @@ var dockerRunCmd = &cobra.Command{
 			yamlBytes, err = yaml.Marshal(j)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error converting job to yaml: %s", err), 1)
+				return nil
 			}
 			cmd.Print(string(yamlBytes))
 			return nil
 		}
 
-		err = ExecuteJob(ctx,
+		return ExecuteJob(ctx,
 			cm,
 			cmd,
 			j,
 			ODR.RunTimeSettings,
 			ODR.DownloadFlags,
+			nil,
 		)
-
-		if err != nil {
-			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
-		}
-
-		return nil
 	},
 }
 
@@ -293,14 +298,16 @@ func CreateJob(ctx context.Context,
 	odr.Image = cmdArgs[0]
 	odr.Entrypoint = cmdArgs[1:]
 
+	swarmAddresses := odr.DownloadFlags.IPFSSwarmAddrs
+
+	if swarmAddresses == "" {
+		swarmAddresses = strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ",")
+	}
+
 	odr.DownloadFlags = ipfs.IPFSDownloadSettings{
 		TimeoutSecs:    odr.DownloadFlags.TimeoutSecs,
 		OutputDir:      odr.DownloadFlags.OutputDir,
-		IPFSSwarmAddrs: strings.Join(system.Envs[system.Production].IPFSSwarmAddresses, ","),
-	}
-
-	if odr.RunTimeSettings.WaitForJobToFinishAndPrintOutput {
-		odr.RunTimeSettings.WaitForJobToFinish = true
+		IPFSSwarmAddrs: swarmAddresses,
 	}
 
 	engineType, err := model.ParseEngine(odr.Engine)
@@ -347,6 +354,7 @@ func CreateJob(ctx context.Context,
 		odr.Concurrency,
 		odr.Confidence,
 		odr.MinBids,
+		odr.Timeout,
 		odr.Labels,
 		odr.WorkingDirectory,
 		odr.ShardingGlobPattern,

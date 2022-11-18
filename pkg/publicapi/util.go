@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
 
+	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	publisher_utils "github.com/filecoin-project/bacalhau/pkg/publisher/util"
@@ -31,18 +33,30 @@ import (
 const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
-// SetupTests sets up a client for a requester node's API server, for testing.
-func SetupTests(t *testing.T) (*APIClient, *system.CleanupManager) {
+// SetupRequesterNodeForTests sets up a client for a requester node's API server, for testing.
+func SetupRequesterNodeForTests(t *testing.T) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
-	return SetupTestsWithPort(t, port)
+	return SetupRequesterNodeForTestWithPort(t, port)
+}
+
+func SetupRequesterNodeForTestWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
+}
+
+func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, config)
 }
 
 // TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
 // and only keep simple unit tests here.
-func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
+//
+//nolint:funlen
+func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
 	// Setup the system
-	err := system.InitConfigForTesting()
+	err := system.InitConfigForTesting(t)
 	require.NoError(t, err)
 
 	cm := system.NewCleanupManager()
@@ -73,6 +87,11 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 	)
 	require.NoError(t, err)
 
+	noopExecutor, err := noop_executor.NewNoopExecutor()
+	require.NoError(t, err)
+
+	noopExecutorProvider := noop_executor.NewNoopExecutorProvider(noopExecutor)
+
 	// prepare event handlers
 	tracerContextProvider := system.NewTracerContextProvider(inprocessTransport.HostID())
 	noopContextProvider := system.NewNoopContextProvider()
@@ -84,13 +103,28 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
+		cm,
 		inprocessTransport.HostID(),
 		inmemoryDatastore,
 		localEventConsumer,
 		jobEventPublisher,
 		noopVerifiers,
 		noopStorageProviders,
-		requesternode.RequesterNodeConfig{},
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
+	require.NoError(t, err)
+
+	computeNode, err := computenode.NewComputeNode(
+		ctx,
+		cm,
+		inprocessTransport.HostID(),
+		inmemoryDatastore,
+		localEventConsumer,
+		jobEventPublisher,
+		noopExecutorProvider,
+		noopVerifiers,
+		noopPublishers,
+		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
 
@@ -113,15 +147,15 @@ func SetupTestsWithPort(t *testing.T, port int) (*APIClient, *system.CleanupMana
 
 	host := "0.0.0.0"
 
-	s := NewServer(ctx, host, port, inmemoryDatastore, inprocessTransport,
-		requesterNode, noopPublishers, noopStorageProviders)
+	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
+		requesterNode, computeNode, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
 	require.NoError(t, waitForHealthy(ctx, cl))
 
-	return NewAPIClient(s.GetURI()), cm
+	return cl, cm
 }
 
 func waitForHealthy(ctx context.Context, c *APIClient) error {

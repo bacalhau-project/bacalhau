@@ -24,13 +24,15 @@ func ListenAndServeMetrics(ctx context.Context, cm *CleanupManager, port int) er
 	}
 
 	cm.RegisterCallback(func() error {
-		return srv.Shutdown(ctx)
+		// We have to use a separate context, rather than the one passed in, as it may have already been
+		// canceled and so would prevent us from performing any cleanup work.
+		return srv.Shutdown(context.Background())
 	})
 
-	log.Debug().Msgf("Starting metrics server on port %d...", port)
+	log.Ctx(ctx).Debug().Msgf("Starting metrics server on port %d...", port)
 	if err := srv.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
-			log.Debug().Msg("Metrics server stopped.")
+			log.Ctx(ctx).Debug().Msg("Metrics server stopped.")
 		} else {
 			return fmt.Errorf("metrics server failed to ListenAndServe: %w", err)
 		}

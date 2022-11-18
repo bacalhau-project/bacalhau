@@ -13,7 +13,7 @@ type MappedExecutorProvider struct {
 	executorsInstalledCache map[model.Engine]bool
 }
 
-func NewTypeExecutorProvider(executors map[model.Engine]Executor) *MappedExecutorProvider {
+func NewTypeExecutorProvider(executors map[model.Engine]Executor) ExecutorProvider {
 	return &MappedExecutorProvider{
 		executors:               executors,
 		executorsInstalledCache: map[model.Engine]bool{},
@@ -53,4 +53,10 @@ func (p *MappedExecutorProvider) GetExecutor(ctx context.Context, engineType mod
 	}
 
 	return executor, nil
+}
+
+// Check if an executor is available or not
+func (p *MappedExecutorProvider) HasExecutor(ctx context.Context, engineType model.Engine) bool {
+	_, err := p.GetExecutor(ctx, engineType)
+	return err == nil
 }

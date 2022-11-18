@@ -18,7 +18,7 @@ type Job struct {
 	// The ID of the requester node that owns this job.
 	RequesterNodeID string `json:"RequesterNodeID,omitempty"`
 
-	// The public key of the requestor node that created this job
+	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
 
@@ -61,7 +61,7 @@ func NewJob() *Job {
 func NewJobWithSaneProductionDefaults() (*Job, error) {
 	j := NewJob()
 	err := mergo.Merge(j, &Job{
-		APIVersion: V1alpha1.String(),
+		APIVersion: APIVersionLatest().String(),
 		Spec: Spec{
 			Engine:    EngineDocker,
 			Verifier:  VerifierNoop,
@@ -179,9 +179,9 @@ type Deal struct {
 	// deterministic verifier requires the winning group size
 	// to be at least this size
 	Confidence int `json:"Confidence,omitempty"`
-	// The minimum number of bids that must be received before the requestor
+	// The minimum number of bids that must be received before the Requester
 	// node will randomly accept concurrency-many of them. This allows the
-	// requestor node to get some level of guarantee that the execution of the
+	// Requester node to get some level of guarantee that the execution of the
 	// jobs will be spread evenly across the network (assuming that this value
 	// is some large proportion of the size of the network).
 	MinBids int `json:"MinBids,omitempty"`
@@ -190,26 +190,25 @@ type Deal struct {
 // Spec is a complete specification of a job that can be run on some
 // execution provider.
 type Spec struct {
-	// TODO: #643 #642 Merge EngineType & Engine, VerifierType & VerifierName, Publisher & PublisherName - this seems like an issue
 	// e.g. docker or language
 	Engine Engine `json:"Engine,omitempty"`
-	// allow the engine to be provided as a string for JSON job specs
-	EngineName string `json:"EngineName,omitempty"`
 
 	Verifier Verifier `json:"Verifier,omitempty"`
-	// allow the verifier to be provided as a string for JSON job specs
-	VerifierName string `json:"VerifierName,omitempty"`
 
 	// there can be multiple publishers for the job
-	Publisher     Publisher `json:"Publisher,omitempty"`
-	PublisherName string    `json:"PublisherName,omitempty"`
+	Publisher Publisher `json:"Publisher,omitempty"`
 
 	// executor specific data
 	Docker   JobSpecDocker   `json:"Docker,omitempty"`
 	Language JobSpecLanguage `json:"Language,omitempty"`
+	Wasm     JobSpecWasm     `json:"Wasm,omitempty"`
 
 	// the compute (cpy, ram) resources this job requires
 	Resources ResourceUsageConfig `json:"Resources,omitempty"`
+
+	// How long a job can run in seconds before it is killed.
+	// This includes the time required to run, verify and publish results
+	Timeout float64 `json:"Timeout,omitempty"`
 
 	// the data volumes we will read in the job
 	// for example "read this ipfs cid"
@@ -234,6 +233,11 @@ type Spec struct {
 
 	// Do not track specified by the client
 	DoNotTrack bool `json:"DoNotTrack,omitempty"`
+}
+
+// Return timeout duration
+func (s *Spec) GetTimeout() time.Duration {
+	return time.Duration(s.Timeout * float64(time.Second))
 }
 
 // for VM style executors
@@ -264,6 +268,28 @@ type JobSpecLanguage struct {
 	RequirementsPath string `json:"RequirementsPath,omitempty"`
 }
 
+// Describes a raw WASM job
+type JobSpecWasm struct {
+	// TODO #915: The module that contains the WASM code to start running.
+	// EntryModule StorageSpec `json:"EntryModule,omitempty"`
+
+	// The name of the function in the EntryModule to call to run the job. For
+	// WASI jobs, this will always be `_start`, but jobs can choose to call
+	// other WASM functions instead. The EntryPoint must be a zero-parameter
+	// zero-result function.
+	EntryPoint string `json:"EntryPoint,omitempty"`
+
+	// The arguments supplied to the program (i.e. as ARGV).
+	Parameters []string `json:"Parameters,omitempty"`
+
+	// The variables available in the environment of the running program.
+	EnvironmentVariables map[string]string `json:"EnvironmentVariables,omitempty"`
+
+	// TODO #880: Other WASM modules whose exports will be available as imports
+	// to the EntryModule.
+	ImportModules []StorageSpec `json:"ImportModules,omitempty"`
+}
+
 // gives us a way to keep local data against a job
 // so our compute node and requester node control loops
 // can keep state against a job without broadcasting it
@@ -289,7 +315,7 @@ type JobEvent struct {
 	// the node that emitted this event
 	SourceNodeID string `json:"SourceNodeID,omitempty"`
 	// the node that this event is for
-	// e.g. "AcceptJobBid" was emitted by requestor but it targeting compute node
+	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
 	TargetNodeID string       `json:"TargetNodeID,omitempty"`
 	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events

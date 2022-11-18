@@ -26,13 +26,6 @@ func ParsePublisher(str string) (Publisher, error) {
 	return publisherUnknown, fmt.Errorf("verifier: unknown type '%s'", str)
 }
 
-func EnsurePublisher(typ Publisher, str string) (Publisher, error) {
-	if IsValidPublisher(typ) {
-		return typ, nil
-	}
-	return ParsePublisher(str)
-}
-
 func IsValidPublisher(publisherType Publisher) bool {
 	return publisherType > publisherUnknown && publisherType < publisherDone
 }

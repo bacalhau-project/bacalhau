@@ -3,7 +3,12 @@ This is a canary that continuously call several Bacalhau APIs and alarm whenever
 
 The canary is serverless using AWS Lambda. Infrastructure is defined using AWS CDK, and automatically deployed using AWS CodePipeline.
 
-The monitoring dashboard is publicly accessible at [link](https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=).
+## Quick LInks
+- [Public Dashboard](https://cloudwatch.amazonaws.com/dashboard.html?dashboard=BacalhauCanaryProd&context=eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTI4NDMwNTcxNzgzNSIsIlUiOiJ1cy1lYXN0LTFfUTlPMEVrM3llIiwiQyI6IjExc3NlYW1tZmVmaGdtYTFzMDk1c29jaDltIiwiSSI6InVzLWVhc3QtMTpmNGE5MGFiMi0yZWYwLTRlYTEtOWZkNS1jMmQ3MDkxYTA5OTQiLCJNIjoiUHVibGljIn0=)
+- [AWS Account Sign-in](https://284305717835.signin.aws.amazon.com/console/?region=eu-west-1)
+- [Canary Prod Logs](https://eu-west-1.console.aws.amazon.com/cloudwatch/home?region=eu-west-1#logsV2:log-groups)
+- [Canary Lambda Functions](https://eu-west-1.console.aws.amazon.com/lambda/home?region=eu-west-1#/functions?fo=and&o0=%3A&v0=BacalhauCanary)
+- [Deployment Pipeline](https://console.aws.amazon.com/codesuite/codepipeline/pipelines/BacalhauCanaryPipeline-PipelineC660917D-I0DZJY6IFHTO/view?region=eu-west-1)
 
 ## Canary Scenarios
 The canary is composed of several scenarios, each is executed periodically on its own lambda function. The scenarios are defined in the `lambda/pkg/scenarios` directory, and include:
@@ -19,6 +24,16 @@ You can run the scenarios locally before deploying to lambda by using the follow
 # Assuming you are in the ops/aws/canary directory
 go run ./lambda/cmd/scenario_local_runner --action list # or any other scenario
 ```
+
+## Releasing a New Version
+Follow these steps when a new version of Bacalhau is released and deployed to prod so that the canary client is also updated to a compatible version and deployed:
+1. Update the `go.mod` in the [ops/aws/canary/lambda directory](ops/aws/canary/lambda/go.mod) to point to the new version of Bacalhau.
+2. Run `go mod tidy` to update the `go.sum` file by running `(cd ops/aws/canary/lambda && go mod tidy)`
+3. Update any breaking changes in Bacalhau client API.
+4. Verify the canary is compiling locally by running `(cd ops/aws/canary/lambda &&  go build -o /dev/null ./cmd/scenario_lambda_runner)`
+5. Push the changes to main, and the canary pipeline will automatically deploy the new version.
+
+This is a [sample commit](https://github.com/filecoin-project/bacalhau/commit/958630dbe4ad9ba35b0715be2f82c66c60797ba4) updating the canary to Bacalhau v0.2.6
 
 ## Infrastructure Stacks
 There are two types of stacks in this project:

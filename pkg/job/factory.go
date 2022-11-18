@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,9 +10,6 @@ import (
 )
 
 func ConstructJobFromEvent(ev model.JobEvent) *model.Job {
-	log.Debug().Msgf("Constructing job from event: %+v", ev.JobID)
-	log.Trace().Msgf("Full job event: %+v", ev)
-
 	publicKey := ev.SenderPublicKey
 	if publicKey == nil {
 		publicKey = []byte{}
@@ -50,6 +46,7 @@ func ConstructDockerJob( //nolint:funlen
 	concurrency int,
 	confidence int,
 	minBids int,
+	timeout float64,
 	annotations []string,
 	workingDir string,
 	shardingGlobPattern string,
@@ -57,9 +54,6 @@ func ConstructDockerJob( //nolint:funlen
 	shardingBatchSize int,
 	doNotTrack bool,
 ) (*model.Job, error) {
-	if concurrency <= 0 {
-		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
-	}
 	jobResources := model.ResourceUsageConfig{
 		CPU:    cpu,
 		Memory: memory,
@@ -124,7 +118,7 @@ func ConstructDockerJob( //nolint:funlen
 			Entrypoint:           entrypoint,
 			EnvironmentVariables: env,
 		},
-
+		Timeout:     timeout,
 		Resources:   jobResources,
 		Inputs:      jobInputs,
 		Contexts:    jobContexts,
@@ -149,7 +143,6 @@ func ConstructDockerJob( //nolint:funlen
 }
 
 func ConstructLanguageJob(
-	a model.APIVersion,
 	inputVolumes []string,
 	inputUrls []string,
 	outputVolumes []string,
@@ -157,22 +150,19 @@ func ConstructLanguageJob(
 	concurrency int,
 	confidence int,
 	minBids int,
+	timeout float64,
 	// See JobSpecLanguage
 	language string,
 	languageVersion string,
 	command string,
 	programPath string,
 	requirementsPath string,
-	contextPath string, // we have to tar this up and POST it to the requestor node
+	contextPath string, // we have to tar this up and POST it to the Requester node
 	deterministic bool,
 	annotations []string,
 	doNotTrack bool,
 ) (*model.Job, error) {
 	// TODO refactor this wrt ConstructDockerJob
-	if concurrency <= 0 {
-		return &model.Job{}, fmt.Errorf("concurrency must be >= 1")
-	}
-
 	jobContexts := []model.StorageSpec{}
 
 	jobInputs, err := buildJobInputs(inputVolumes, inputUrls)
@@ -204,32 +194,28 @@ func ConstructLanguageJob(
 	if err != nil {
 		return &model.Job{}, err
 	}
-	j.APIVersion = a.String()
 
-	j.Spec = model.Spec{
-		Engine:   model.EngineLanguage,
-		Verifier: model.VerifierNoop,
-		// TODO: should this always be ipfs?
-		Publisher: model.PublisherIpfs,
-		Language: model.JobSpecLanguage{
-			Language:         language,
-			LanguageVersion:  languageVersion,
-			Deterministic:    deterministic,
-			Context:          model.StorageSpec{},
-			Command:          command,
-			ProgramPath:      programPath,
-			RequirementsPath: requirementsPath,
-		},
-		Inputs:      jobInputs,
-		Contexts:    jobContexts,
-		Outputs:     jobOutputs,
-		Annotations: jobAnnotations,
-		DoNotTrack:  doNotTrack,
+	j.Spec.Engine = model.EngineLanguage
+	j.Spec.Language = model.JobSpecLanguage{
+		Language:         language,
+		LanguageVersion:  languageVersion,
+		Deterministic:    deterministic,
+		Context:          model.StorageSpec{},
+		Command:          command,
+		ProgramPath:      programPath,
+		RequirementsPath: requirementsPath,
 	}
+	j.Spec.Timeout = timeout
+	j.Spec.Inputs = jobInputs
+	j.Spec.Contexts = jobContexts
+	j.Spec.Outputs = jobOutputs
+	j.Spec.Annotations = jobAnnotations
+	j.Spec.DoNotTrack = doNotTrack
 
 	j.Deal = model.Deal{
 		Concurrency: concurrency,
 		Confidence:  confidence,
+		MinBids:     minBids,
 	}
 
 	return j, err

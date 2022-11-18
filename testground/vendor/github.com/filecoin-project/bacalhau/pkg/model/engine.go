@@ -2,13 +2,14 @@ package model
 
 import (
 	"fmt"
+	"strings"
 )
 
-//go:generate stringer -type=EngineType --trimprefix=Engine
-type EngineType int
+//go:generate stringer -type=Engine --trimprefix=Engine
+type Engine int
 
 const (
-	engineUnknown EngineType = iota // must be first
+	engineUnknown Engine = iota // must be first
 	EngineNoop
 	EngineDocker
 	EngineWasm       // raw wasm executor not implemented yet
@@ -17,13 +18,13 @@ const (
 	engineDone       // must be last
 )
 
-func IsValidEngineType(engineType EngineType) bool {
-	return engineType > engineUnknown && engineType < engineDone
+func IsValidEngine(e Engine) bool {
+	return e > engineUnknown && e < engineDone
 }
 
-func ParseEngineType(str string) (EngineType, error) {
+func ParseEngine(str string) (Engine, error) {
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
-		if equal(typ.String(), str) {
+		if strings.EqualFold(typ.String(), str) {
 			return typ, nil
 		}
 	}
@@ -32,18 +33,36 @@ func ParseEngineType(str string) (EngineType, error) {
 		"executor: unknown engine type '%s'", str)
 }
 
-func EnsureEngineType(typ EngineType, str string) (EngineType, error) {
-	if IsValidEngineType(typ) {
+func EnsureEngine(typ Engine, str string) (Engine, error) {
+	if IsValidEngine(typ) {
 		return typ, nil
 	}
-	return ParseEngineType(str)
+	return ParseEngine(str)
 }
 
-func EngineTypes() []EngineType {
-	var res []EngineType
+func EngineTypes() []Engine {
+	var res []Engine
 	for typ := engineUnknown + 1; typ < engineDone; typ++ {
 		res = append(res, typ)
 	}
 
 	return res
+}
+
+func EngineNames() []string {
+	var names []string
+	for _, typ := range EngineTypes() {
+		names = append(names, typ.String())
+	}
+	return names
+}
+
+func (e Engine) MarshalText() ([]byte, error) {
+	return []byte(e.String()), nil
+}
+
+func (e *Engine) UnmarshalText(text []byte) (err error) {
+	name := string(text)
+	*e, err = ParseEngine(name)
+	return
 }

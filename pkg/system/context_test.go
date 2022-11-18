@@ -1,9 +1,12 @@
+//go:build unit || !integration
+
 package system
 
 import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,21 +21,10 @@ func TestSystemContextSuite(t *testing.T) {
 	suite.Run(t, new(SystemContextSuite))
 }
 
-// Before all suite
-func (suite *SystemContextSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *SystemContextSuite) SetupTest() {
-	require.NoError(suite.T(), InitConfigForTesting())
-}
-
-func (suite *SystemContextSuite) TearDownTest() {
-}
-
-func (suite *SystemContextSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
+	require.NoError(suite.T(), InitConfigForTesting(suite.T()))
 }
 
 func TestOnCancel(t *testing.T) {

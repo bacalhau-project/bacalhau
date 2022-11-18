@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package job
 
 import (
@@ -5,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -23,20 +26,9 @@ type JobShardingSuite struct {
 	suite.Suite
 }
 
-// Before all suite
-func (suite *JobShardingSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *JobShardingSuite) SetupTest() {
-}
-
-func (suite *JobShardingSuite) TearDownTest() {
-}
-
-func (suite *JobShardingSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func explodeStringArray(arr []string) []model.StorageSpec {

@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package capacitymanager
 
 import (
@@ -253,11 +255,12 @@ func TestFilter(t *testing.T) {
 			require.NoError(t, err)
 
 			expectedResult := ParseResourceUsageConfig(tc.expectedResult)
-			ok, result := mgr.FilterRequirements(ParseResourceUsageConfig(tc.value))
+			extractRequirements := mgr.ExtractRequirements(tc.value)
+			ok := mgr.FilterRequirements(extractRequirements)
 			require.Equal(t, tc.expectedOk, ok)
-			require.Equal(t, expectedResult.CPU, result.CPU)
-			require.Equal(t, expectedResult.Memory, result.Memory)
-			require.Equal(t, expectedResult.Disk, result.Disk)
+			require.Equal(t, expectedResult.CPU, extractRequirements.CPU)
+			require.Equal(t, expectedResult.Memory, extractRequirements.Memory)
+			require.Equal(t, expectedResult.Disk, extractRequirements.Disk)
 		})
 	}
 
@@ -519,19 +522,58 @@ func TestNewCapacityManager(t *testing.T) {
 	}
 
 	// Test that the default job limits are always greater than the job limit set here
-	_, err = NewCapacityManager(capacityTracker, Config{
-		ResourceLimitJob: model.ResourceUsageConfig{
-			GPU: "0",
-		},
+
+	gpus, _ := numSystemGPUs()
+	if gpus == 0 {
+		// This test only works when the CI runner has no GPUs. Don't run it if
+		// we have GPUs. TODO: figure out why.
+		_, err = NewCapacityManager(capacityTracker, Config{
+			ResourceLimitJob: model.ResourceUsageConfig{
+				GPU: "0",
+			},
+			ResourceLimitTotal: model.ResourceUsageConfig{
+				GPU: "0", // Setting this to 0 makes the `GetSystemResources` call ok
+			},
+			ResourceRequirementsDefault: model.ResourceUsageConfig{
+				GPU: "1",
+			},
+		})
+		if err == nil {
+			t.Fatal("job GPU limit should fail when less than the default limit")
+		}
+	}
+}
+
+func TestExtractRequirements(t *testing.T) {
+	capacityTracker := &MockCapacityTracker{}
+
+	m, err := NewCapacityManager(capacityTracker, Config{
 		ResourceLimitTotal: model.ResourceUsageConfig{
-			GPU: "0", // Setting this to 0 makes the `GetSystemResources` call ok
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0", // TODO:  Can't test GPUs because we can't mock
 		},
 		ResourceRequirementsDefault: model.ResourceUsageConfig{
-			GPU: "1",
+			CPU:    "1",
+			Memory: "1Gi",
+			GPU:    "0",
 		},
 	})
-	if err == nil {
-		t.Fatal("job GPU limit should fail when less than the default limit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := m.ExtractRequirements(
+		model.ResourceUsageConfig{},
+	)
+
+	if req.CPU != 1 {
+		t.Errorf("CPU should be 1, but got %f", req.CPU)
+	}
+	if req.Memory != 1073741824 {
+		t.Errorf("Memory should be 1073741824, but got %d", req.Memory)
+	}
+	if req.GPU != 0 {
+		t.Errorf("GPU should be 0, but got %d", req.GPU)
 	}
 }
 
@@ -553,20 +595,10 @@ func TestFilterRequirements(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, req := m.FilterRequirements(
-		model.ResourceUsageData{},
-	)
+	req := m.ExtractRequirements(model.ResourceUsageConfig{})
+	ok := m.FilterRequirements(req)
 	if !ok {
 		t.Error("Should be ok, but is not")
-	}
-	if req.CPU != 1 {
-		t.Errorf("CPU should be 1, but got %f", req.CPU)
-	}
-	if req.Memory != 1073741824 {
-		t.Errorf("Memory should be 1073741824, but got %d", req.Memory)
-	}
-	if req.GPU != 0 {
-		t.Errorf("GPU should be 0, but got %d", req.GPU)
 	}
 }
 
@@ -606,7 +638,8 @@ func TestGetFreeSpace(t *testing.T) {
 	if res.Memory != 0 {
 		t.Errorf("Should be using all Memory, but got %d", res.Memory)
 	}
-	if res.GPU != 0 {
+	gpus, _ := numSystemGPUs()
+	if res.GPU != gpus {
 		t.Errorf("Should be using all GPU, but got %d", res.GPU)
 	}
 }

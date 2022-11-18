@@ -18,7 +18,6 @@ package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -28,12 +27,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/yaml"
 )
 
-var oV = &VersionOptions{
-	Output: "yaml",
-}
+var oV = &VersionOptions{}
 
 // Versions is a struct for version information
 type Versions struct {
@@ -62,13 +58,12 @@ func NewVersionOptions() *VersionOptions {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get the client and server version.",
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:unparam // incorrectly suggesting unused
+	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:unparam // incorrectly suggesting unused
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/version")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/version")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -126,13 +121,13 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 			cmd.Printf("Server Version: %s\n", versions.ServerVersion.GitVersion)
 		}
 	case YAMLFormat:
-		marshaled, err := yaml.Marshal(versions)
+		marshaled, err := model.YAMLMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}
 		cmd.Println(string(marshaled))
 	case JSONFormat:
-		marshaled, err := json.MarshalIndent(versions, "", "  ")
+		marshaled, err := model.JSONMarshalWithMax(versions)
 		if err != nil {
 			return err
 		}

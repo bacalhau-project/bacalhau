@@ -3,12 +3,24 @@
 version: 2.1
 
 executors:
-  linux: &linux
+  linux-amd64:
     machine:
       image: ubuntu-2204:2022.07.1
       resource_class: xlarge
-  darwin: *linux
-  windows:
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:2022.07.1
+      resource_class: arm.xlarge
+  darwin-amd64:
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+  darwin-arm64:
+    # Note - not an actual ARM macOS machine (https://circleci.canny.io/cloud-feature-requests/p/support-new-m1-arm-based-macs)
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+  windows-amd64:
     machine:
       image: windows-server-2022-gui:current
       resource_class: windows.xlarge
@@ -20,16 +32,14 @@ jobs:
   build:
     parallelism: 1
     environment:
-      GOVER: 1.18.3
+      GOVER: 1.19.3
       IPFS_VERSION: v0.12.2
-      GOLANGCILINT: v1.49.0
       GOPROXY: https://proxy.golang.org
       GOOS: << parameters.target_os >>
       GOARCH: << parameters.target_arch >>
-      CGO: 0
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
-    executor: << parameters.target_os >>
+    executor: << parameters.target_os >>-<< parameters.target_arch >>
     parameters:
       target_arch:
         type: string
@@ -37,6 +47,8 @@ jobs:
         type: string
       run_tests:
         type: boolean
+      build_tags:
+        type: string
     steps:
       - checkout
 
@@ -50,76 +62,97 @@ jobs:
                   choco install -y make
                 shell: powershell.exe
             - run:
-                name: Downgrade Golang
+                name: Install Go
                 command: |
-                  choco install golang -y --allow-downgrade --version $Env:GOVER
-                shell: powershell.exe
+                  rm -rf /c/Program\ Files/Go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
+
+      - when:
+          condition:
+            or:
+              - equal: ["linux", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install Go
+                command: |
+                  sudo rm -fr /usr/local/go /usr/local/bin/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+
+      - when:
+          condition:
+            or:
+              - equal: ["darwin", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install Go
+                # Currently don't have a _real_ arm64 macOS box, so always download amd64 version of Go
+                command: |
+                  sudo rm -fr /usr/local/go /usr/local/bin/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 
       - run:
-          name: Install IPFS
+          name: Set GOCACHE
+          command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
+
+      - run:
+          name: Init tools
           command: |
-            echo "Installing IPFS_VERSION: $IPFS_VERSION"
-            export IPFS_BUILD="$GOOS-$GOARCH"
-            if [ "${GOOS}" = "windows" ]; then export IPFS_EXT=zip; fi
-            if [ "${GOOS}" = "windows" ]; then export EXEC=bash; fi
-            curl -s -L -O "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.${IPFS_EXT:-tar.gz}"
-            tar -xvzf "go-ipfs_${IPFS_VERSION}_${IPFS_BUILD}.${IPFS_EXT:-tar.gz}"
-            ${EXEC:-sudo bash} ./go-ipfs/install.sh
+            make init
+            go version
+            which go
 
-      - when:
-          condition:
-            and:
-              - equal: ["linux", << parameters.target_os >>]
-              - equal: ["amd64", << parameters.target_arch >>]
-          steps:
-            - run:
-                name: Install golangci-lint
-                command: |
-                  echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
-                  # binary will be /usr/local/go/bin/bin/golangci-lint
-                  # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
-                  # This breaks normal pathing. So just installing in ./bin/
-                  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
-                  golangci-lint version
+      - run:
+          name: Install Pre-commit
+          command: |
+            make install-pre-commit
 
-            - run:
-                name: Run linter
-                command: |
-                  make lint
+      - run:
+          name: Cache Precommit
+          command: |
+            cp .pre-commit-config.yaml pre-commit-cache-key.txt
+            poetry run python --version --version >> pre-commit-cache-key.txt
 
-      - when:
-          condition:
-            and:
-              - equal: ["linux", << parameters.target_os >>]
-              - equal: ["amd64", << parameters.target_arch >>]
-          steps:
-            - run:
-                name: Run go mod tidy check diff
-                command: make modtidy check-diff
+      - restore_cache:
+          name: Restoring pre-commit cache
+          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
+
+      - restore_cache:
+          name: Restoring Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+
       - run:
           name: Build
-          command: GO111MODULE=on make build
+          command: make build-ci
 
       - when:
           condition:
             and:
-              - or:
-                  - equal: ["linux", << parameters.target_os >>]
-                  - equal: ["windows", << parameters.target_os >>]
               - equal: ["amd64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
                 name: Test
+                environment:
+                  LOG_LEVEL: debug
+                  TEST_BUILD_TAGS: << parameters.build_tags >>
                 command: |
-                  echo "---------------------------------------"
-                  docker version
-                  echo "---------------------------------------"
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
-                  go install gotest.tools/gotestsum@latest
+                  go install gotest.tools/gotestsum@v1.8.2
                   make test-and-report
                 no_output_timeout: 20m
+            - store_test_results:
+                path: .
+            - persist_to_workspace:
+                root: coverage/
+                paths:
+                  - "*.coverage"
 
       - when:
           condition:
@@ -143,53 +176,186 @@ jobs:
                     export TEST_RESULTS_FILENAME="<<pipeline.git.branch>>-$DATETIME-$SHA.xml"
                   fi
                   # Credentials for project: bacalhau-cicd
-                  # Account: 
+                  # Account:
                   echo "$GOOGLE_CLOUD_STORAGE_BACALHAU_CICD_RW" | base64 --decode > ~/.boto
+                  if [[ "${TEST_RESULTS_FILENAME}" == *"/"* ]]; then
+                    mkdir -p $(dirname "${TEST_RESULTS_FILENAME}")
+                  fi
                   mv unittests.xml "${TEST_RESULTS_FILENAME}"
                   gsutil cp "$TEST_RESULTS_FILENAME" "gs://$GCS_TEST_RESULTS_BUCKET"
 
-  deploy:
-    docker:
-      - image: google/cloud-sdk:392.0.0
-    parameters:
-      rollout_stage:
-        type: string
-      GOOGLE_APPLICATION_CREDENTIALS_VARIABLE:
-        type: string
+      - run:
+          name: Build tarball
+          command: |
+            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
+            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
+            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
+            rm dist/.keep           # Need to remove this file so it's not persisted to github
+            make build-bacalhau-tgz
+
+      - when:
+          condition:
+            not:
+              equal: ["integration", << parameters.build_tags >>]
+          steps:
+            - persist_to_workspace:
+                root: dist/
+                paths:
+                  - "*.tar.gz"
+                  - "*.sha256"
+
+      - store_artifacts:
+          path: dist/
+
+      - save_cache:
+          name: Saving pre-commit cache
+          key: v1-pc-cache-{{ checksum "pre-commit-cache-key.txt" }}
+          paths:
+            - ~/.cache/pre-commit
+
+      - save_cache:
+          name: Saving Go cache
+          key: go-mod-{{ arch }}-{{ checksum "go.sum" }}
+          paths:
+            - ~/.cache/go-build
+            - ~/go/pkg/mod
+
+  build_canary:
+    parallelism: 1
     environment:
-      GCLOUD_VERSION: 392.0.0
-      TERRAFORM_VERSION: 1.2.4
-      GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_CREDENTIALS.json"
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    executor: linux-amd64
     steps:
       - checkout
+      
       - run:
-          name: Setup GCloud
-          command: |
-            # Create service account and get credentials here
-            # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
-            echo "$<< parameters.GOOGLE_APPLICATION_CREDENTIALS_VARIABLE >>" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
-            echo "Using GCloud: $GCLOUD_VERSION"
+          name: Set canary dependency
+          working_directory: ops/aws/canary/lambda
+          command: make update
+          
+      - run:
+          name: Build
+          working_directory: ops/aws/canary/lambda
+          command: make build -j
 
       - run:
-          name: Authenticate to Google Cloud
+          name: Run tests
+          working_directory: ops/aws/canary/lambda
           command: |
-            gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install gotest.tools/gotestsum@v1.8.2
+            make test
+
+      - store_test_results:
+          path: ops/aws/canary/lambda/unittests.xml
+
+
+  coverage:
+    executor: linux-amd64
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+    steps:
+      - checkout
+
+      - attach_workspace:
+          at: coverage/
 
       - run:
-          name: Install terraform
-          command: |
-            echo "Insalling Terraform: $TERRAFORM_VERSION"
-            apt-get install -y software-properties-common
-            curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
-            apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-            apt-get -y update && apt-get -y install terraform=$TERRAFORM_VERSION
+          name: Install gocovmerge
+          command: go install github.com/wadey/gocovmerge@latest
 
       - run:
-          name: Deploy cluster
+          name: Build coverage report
+          command: make coverage-report
+
+      - store_artifacts:
+          path: coverage/coverage.html
+
+  lint:
+    parallelism: 1
+    environment:
+      GOVER: 1.19.3
+      GOLANGCILINT: v1.49.0
+      GOPROXY: https://proxy.golang.org
+    working_directory: ~/repo
+    executor: linux-amd64
+    steps:
+      - checkout
+
+      - run:
+          name: Install golang
           command: |
-            cd ops/terraform && terraform init && \
-                                terraform workspace select << parameters.rollout_stage >> && \
-                                terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
+            sudo rm -fr /usr/local/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            go version
+            which go
+
+      - run:
+          name: Install golangci-lint
+          command: |
+            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
+            # binary will be /usr/local/go/bin/bin/golangci-lint
+            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+            # This breaks normal pathing. So just installing in ./bin/
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
+            golangci-lint version
+
+      - run:
+          name: Run linter
+          command: |
+            make lint
+
+      - run:
+          name: Run go mod tidy check diff
+          command: make modtidy check-diff
+
+  # deploy:
+  #   docker:
+  #     - image: google/cloud-sdk:392.0.0
+  #   parameters:
+  #     rollout_stage:
+  #       type: string
+  #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE:
+  #       type: string
+  #   environment:
+  #     GCLOUD_VERSION: 392.0.0
+  #     TERRAFORM_VERSION: 1.2.4
+  #     GOOGLE_APPLICATION_CREDENTIALS: "/tmp/GOOGLE_APPLICATION_CREDENTIALS.json"
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Setup GCloud
+  #         command: |
+  #           # Create service account and get credentials here
+  #           # https://console.cloud.google.com/iam-admin/serviceaccounts?authuser=1&project=bacalhau-development
+  #           echo "$<< parameters.GOOGLE_APPLICATION_CREDENTIALS_VARIABLE >>" | base64 --decode > $GOOGLE_APPLICATION_CREDENTIALS
+  #           echo "Using GCloud: $GCLOUD_VERSION"
+
+  #     - run:
+  #         name: Authenticate to Google Cloud
+  #         command: |
+  #           gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+
+  #     - run:
+  #         name: Install terraform
+  #         command: |
+  #           echo "Insalling Terraform: $TERRAFORM_VERSION"
+  #           apt-get install -y software-properties-common
+  #           curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+  #           apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  #           apt-get -y update && apt-get -y install terraform=$TERRAFORM_VERSION
+
+  #     - run:
+  #         name: Deploy cluster
+  #         command: |
+  #           cd ops/terraform && terraform init && \
+  #                               terraform workspace select << parameters.rollout_stage >> && \
+  #                               terraform apply -auto-approve --var-file=<< parameters.rollout_stage >>.tfvars
 
   performance_job:
     resource_class: filecoin-project/self-hosted-bacalhau
@@ -230,42 +396,11 @@ jobs:
             heroku run build --app bacalhau-dashboards
 
   release:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
-      - run:
-          name: Build tarballs
-          command: |
-            GOOS=linux GOARCH=amd64 make build
-            GOOS=linux GOARCH=arm64 make build
-            GOOS=darwin GOARCH=amd64 make build
-            GOOS=darwin GOARCH=arm64 make build
-            GOOS=windows GOARCH=amd64 make build
-            echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
-            echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
-            export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"
-            rm dist/.keep           # Need to remove this file so it's not persisted to github
-            GOOS=linux GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars # Created during `make build-bacalhau-tgz`
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=linux GOARCH=arm64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=darwin GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=darwin GOARCH=arm64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            GOOS=windows GOARCH=amd64 make build-bacalhau-tgz
-            source /tmp/packagevars
-            cp $ARTIFACT_DIR/*.tar.gz dist/
-            cp $ARTIFACT_DIR/*.sha256 dist/
-            find dist/
+      - attach_workspace:
+          at: dist/
       - run:
           name: Install gh
           command: |
@@ -281,7 +416,7 @@ jobs:
             gh release upload $TAG dist/*
 
   update_ops:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       - run:
@@ -295,7 +430,7 @@ jobs:
             updatecli apply --config .circleci/dependency-ops.yaml
 
   update_metadata:
-    executor: linux
+    executor: linux-amd64
     parameters:
       METADATA_BUCKET:
         type: string
@@ -318,21 +453,42 @@ orbs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
+  lint:
+    jobs:
+      - lint:
+          name: Run linters and static checkers
+          filters:
+            tags:
+              ignore: /.*/
+
+  check_canary:
+    jobs:
+      - build_canary:
+          name: Check canary build
+          filters:
+            tags:
+              ignore: /.*/ 
+
   dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
-            &filters_dev_branches # this yaml anchor is setting these values to "filters_dev_branches"
             branches:
               ignore: main
             tags:
@@ -342,13 +498,17 @@ workflows:
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
+      - coverage:
+          name: Build coverage report
+          requires:
+            - build
       ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
       ## See https://github.com/filecoin-project/bacalhau/issues/434
       # - deploy:
       #     name: deploy-development-cluster
       #     requires:
-      #       - build-linux-amd64
+      #       - build-linux-amd64-unit
       #     rollout_stage: development
       #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
       #     filters:
@@ -357,16 +517,22 @@ workflows:
   main_only: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux", "darwin", "windows"]
               target_arch: ["amd64", "arm64"]
               run_tests: [true]
+              build_tags: ["unit", "integration"]
             exclude:
               - target_os: "windows"
                 target_arch: "arm64"
                 run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
           filters:
             &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
             branches:
@@ -376,25 +542,40 @@ workflows:
       - update_metadata:
           name: Update metadata for main test runs
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit
           METADATA_BUCKET: "bacalhau-global-storage"
           METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
-      - deploy:
-          name: deploy-staging-cluster
+      - coverage:
+          name: Build coverage report
           requires:
-            - build-linux-amd64
-          rollout_stage: staging
-          GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
-          filters:
-            <<: *filters_main_only # this is calling the previously set yaml anchor
+            - build
+      # - deploy:
+      #     name: deploy-staging-cluster
+      #     requires:
+      #       - build-linux-amd64-unit
+      #     rollout_stage: staging
+      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
+      #     filters:
+      #       <<: *filters_main_only # this is calling the previously set yaml anchor
       - update_ops:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
-      - release:
-          name: release-all-binaries
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin", "windows"]
+              target_arch: ["amd64", "arm64"]
+              run_tests: [false]
+              build_tags: [""]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: false
+                build_tags: ""
           filters: &filters_tags_only
             branches:
               ignore: /.*/ # don't run on any branches - only tags
@@ -402,6 +583,12 @@ workflows:
               # only run on tags that look like release tags e.g. v0.1.2 or
               # v0.1.3alpha19 (actually v0.1.3anything...)
               only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - release:
+          name: release-all-binaries
+          requires:
+            - build
+          filters:
+            <<: *filters_tags_only
       - update_ops:
           name: update-terraform-files
           requires:
@@ -411,13 +598,14 @@ workflows:
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:
-          name: build-<< matrix.target_os >>-<< matrix.target_arch >>
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
           matrix:
             parameters:
               target_os: ["linux"]
               target_arch: ["amd64"]
               run_tests: [false]
+              build_tags: ["unit"]
       - performance_job:
           name: Running Performance
           requires:
-            - build-linux-amd64
+            - build-linux-amd64-unit

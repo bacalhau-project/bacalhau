@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package bacalhau
 
 import (
@@ -6,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
@@ -23,23 +26,11 @@ func TestValidateSuite(t *testing.T) {
 	suite.Run(t, new(ValidateSuite))
 }
 
-//before all the suite
-func (s *ValidateSuite) SetupSuite() {
-
-}
-
-//before each test
+// before each test
 func (s *ValidateSuite) SetupTest() {
-	require.NoError(s.T(), system.InitConfigForTesting())
+	logger.ConfigureTestLogging(s.T())
+	require.NoError(s.T(), system.InitConfigForTesting(s.T()))
 	s.rootCmd = RootCmd
-}
-
-func (s *ValidateSuite) TearDownTest() {
-
-}
-
-func (s *ValidateSuite) TearDownAllSuite() {
-
 }
 
 func (s *ValidateSuite) TestValidate() {
@@ -55,7 +46,7 @@ func (s *ValidateSuite) TestValidate() {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			c, cm := publicapi.SetupTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
 			defer cm.Cleanup()
 
 			*OV = *NewValidateOptions()

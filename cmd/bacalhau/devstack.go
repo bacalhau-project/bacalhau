@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -42,6 +44,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:              "",
 		PublicIPFSMode:    false,
 		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
+		LocalNetworkLotus: false,
 		SimulatorURL:      "",
 	}
 }
@@ -63,6 +66,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		&ODs.Peer, "peer", ODs.Peer,
 		`Connect node 0 to another network node`,
 	)
+	devstackCmd.PersistentFlags().BoolVar(
+		&ODs.LocalNetworkLotus, "lotus-node", ODs.LocalNetworkLotus,
+		"Also start a Lotus FileCoin instance",
+	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
 		`Use the simulator transport at the given URL`,
@@ -77,7 +84,7 @@ var devstackCmd = &cobra.Command{
 	Short:   "Start a cluster of bacalhau nodes for testing and development",
 	Long:    devStackLong,
 	Example: devstackExample,
-	RunE: func(cmd *cobra.Command, args []string) error { // nolintunparam // incorrect lint that is not used
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
@@ -117,18 +124,22 @@ var devstackCmd = &cobra.Command{
 			CapacityManagerConfig: getCapacityManagerConfig(),
 		}
 
+		if ODs.LocalNetworkLotus {
+			cmd.Println("Note that starting up the Lotus node can take many minutes!")
+		}
+
 		var stack *devstack.DevStack
 		var stackErr error
 		if IsNoop {
-			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewNoopDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		} else {
-			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig)
+			stack, stackErr = devstack.NewStandardDevStack(ctx, cm, *ODs, computeNodeConfig, requesternode.NewDefaultRequesterNodeConfig())
 		}
 		if stackErr != nil {
 			return stackErr
 		}
 
-		nodeInfoOutput, err := stack.PrintNodeInfo()
+		nodeInfoOutput, err := stack.PrintNodeInfo(ctx)
 		if err != nil {
 			Fatal(fmt.Sprintf("Failed to print node info: %s", err.Error()), 1)
 		}

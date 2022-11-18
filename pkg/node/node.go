@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	computenode "github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
@@ -31,6 +32,7 @@ type NodeConfig struct {
 	IsBadActor           bool
 	ComputeNodeConfig    computenode.ComputeNodeConfig
 	RequesterNodeConfig  requesternode.RequesterNodeConfig
+	LotusConfig          *filecoinlotus.PublisherConfig
 }
 
 // Lazy node dependency injector that generate instances of different
@@ -55,7 +57,7 @@ type Node struct {
 	// Visible for testing
 	APIServer      *publicapi.APIServer
 	ComputeNode    *computenode.ComputeNode
-	RequestorNode  *requesternode.RequesterNode
+	RequesterNode  *requesternode.RequesterNode
 	LocalDB        localdb.LocalDB
 	Transport      transport.Transport
 	CleanupManager *system.CleanupManager
@@ -69,13 +71,13 @@ type Node struct {
 func (n *Node) Start(ctx context.Context) error {
 	go func(ctx context.Context) {
 		if err := n.APIServer.ListenAndServe(ctx, n.CleanupManager); err != nil {
-			log.Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
+			log.Ctx(ctx).Error().Msgf("Api server can't run. Cannot serve client requests!: %v", err)
 		}
 	}(ctx)
 
 	go func(ctx context.Context) {
 		if err := system.ListenAndServeMetrics(ctx, n.CleanupManager, n.metricsPort); err != nil {
-			log.Error().Msgf("Cannot serve metrics: %v", err)
+			log.Ctx(ctx).Error().Msgf("Cannot serve metrics: %v", err)
 		}
 	}(ctx)
 
@@ -127,6 +129,7 @@ func NewNode(
 
 	requesterNode, err := requesternode.NewRequesterNode(
 		ctx,
+		config.CleanupManager,
 		config.HostID,
 		config.LocalDB,
 		localEventConsumer,
@@ -161,9 +164,16 @@ func NewNode(
 		config.LocalDB,
 		config.Transport,
 		requesterNode,
+		computeNode,
 		publishers,
 		storageProviders,
 	)
+
+	eventTracer, err := eventhandler.NewTracer()
+	if err != nil {
+		return nil, err
+	}
+	config.CleanupManager.RegisterCallback(eventTracer.Shutdown)
 
 	// Register event handlers
 	lifecycleEventHandler := system.NewJobLifecycleEventHandler(config.HostID)
@@ -175,6 +185,8 @@ func NewNode(
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandleConsumedJobEvent),
 		// ends the span for the job if received a terminal event
 		tracerContextProvider,
+		// record the event in a log
+		eventTracer,
 		// update the job state in the local DB
 		localDBEventHandler,
 		// handles bid and result proposals
@@ -185,6 +197,8 @@ func NewNode(
 	jobEventPublisher.AddHandlers(
 		// publish events to the network
 		eventhandler.JobEventHandlerFunc(config.Transport.Publish),
+		// record the event in a log
+		eventTracer,
 		// add tracing metadata to the context about the published event
 		eventhandler.JobEventHandlerFunc(lifecycleEventHandler.HandlePublishedJobEvent),
 	)
@@ -203,7 +217,7 @@ func NewNode(
 		LocalDB:        config.LocalDB,
 		Transport:      config.Transport,
 		ComputeNode:    computeNode,
-		RequestorNode:  requesterNode,
+		RequesterNode:  requesterNode,
 		Executors:      executors,
 		HostID:         config.HostID,
 		metricsPort:    config.MetricsPort,

@@ -12,6 +12,7 @@ type SupportedEnvironments = typeof supportedEnvironments[number];
 export type BuildConfig = {
     readonly env: SupportedEnvironments;
     readonly envTitle: string;
+    readonly bacalhauEnvironment: string;
     readonly account: string;
     readonly region: string;
     readonly dashboardPublicUrl: string;
@@ -50,6 +51,7 @@ export const getConfig = (app: cdk.App, forceEnv?: any): BuildConfig => {
     return {
         env: env,
         envTitle: envTitle,
+        bacalhauEnvironment: ensureString(unparsedEnv, "bacalhauEnvironment"),
         account: ensureString(unparsedEnv, "account"),
         region: ensureString(unparsedEnv, "region"),
         dashboardPublicUrl: ensureString(unparsedEnv, "dashboardPublicUrl"),

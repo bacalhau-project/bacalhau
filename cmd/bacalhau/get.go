@@ -3,11 +3,10 @@ package bacalhau
 import (
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -39,15 +38,15 @@ type GetOptions struct {
 func NewGetOptions() *GetOptions {
 	return &GetOptions{
 		IPFSDownloadSettings: ipfs.IPFSDownloadSettings{
-			TimeoutSecs:    600,
-			OutputDir:      ".",
+			TimeoutSecs:    int(ipfs.DefaultIPFSTimeout.Seconds()),
+			OutputDir:      "",
 			IPFSSwarmAddrs: "",
 		},
 	}
 }
 
 func init() { //nolint:gochecknoinits
-	setupDownloadFlags(getCmd, &OG.IPFSDownloadSettings)
+	getCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OG.IPFSDownloadSettings))
 }
 
 var getCmd = &cobra.Command{
@@ -56,6 +55,7 @@ var getCmd = &cobra.Command{
 	Long:    getLong,
 	Example: getExample,
 	Args:    cobra.ExactArgs(1),
+	PreRun:  applyPorcelainLogLevel,
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
@@ -71,45 +71,23 @@ var getCmd = &cobra.Command{
 		if jobID == "" {
 			var byteResult []byte
 			byteResult, err = ReadFromStdinIfAvailable(cmd, cmdArgs)
-			// If there's no input ond no stdin, then cmdArgs is nil, and byteResult is nil.
-			if err.Error() == userstrings.NoStdInProvidedErrorString || byteResult == nil {
-				// Both filename and stdin are empty
-				Fatal(userstrings.NoFilenameProvidedErrorString, 1)
-			} else if err != nil {
-				// Error not related to fields being empty
+			if err != nil {
+				Fatal(fmt.Sprintf("Unknown error reading from file: %s\n", err), 1)
 				return err
 			}
 			jobID = string(byteResult)
 		}
 
-		cmd.Printf("Fetching results of job '%s'...", jobID)
-
-		j, _, err := GetAPIClient().Get(ctx, jobID)
-
-		if err != nil {
-			if _, ok := err.(*bacerrors.JobNotFound); ok {
-				cmd.Printf("job not found.\n")
-				Fatal("", 1)
-			} else {
-				Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
-			}
-		}
-
-		results, err := GetAPIClient().GetResults(ctx, j.ID)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error getting results for job ID (%s): %s", jobID, err), 1)
-		}
-
-		err = ipfs.DownloadJob(
+		err = downloadResultsHandler(
 			ctx,
 			cm,
-			j,
-			results,
+			cmd,
+			jobID,
 			OG.IPFSDownloadSettings,
 		)
 
 		if err != nil {
-			Fatal(fmt.Sprintf("Error downloading results from job ID (%s): %s", jobID, err), 1)
+			return errors.Wrap(err, "error downloading job")
 		}
 
 		return nil

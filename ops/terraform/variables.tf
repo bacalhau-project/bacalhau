@@ -11,10 +11,17 @@ variable "bacalhau_unsafe_cluster" {
   type    = bool
   default = false
 }
-# connect to a known node0 id
-# this is used for long lived clusters that have already been bootstrapped
-# and the node0 id is derived from a persisted known private key
-variable "bacalhau_connect_node0" {
+# these are used for long lived clusters that have already been bootstrapped
+# and the node0, node1 and node2 ids are derived from a persisted known private key
+variable "bacalhau_node_id_0" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_id_1" {
+  type    = string
+  default = ""
+}
+variable "bacalhau_node_id_2" {
   type    = string
   default = ""
 }
@@ -71,8 +78,9 @@ variable "ssh_access_cidrs" {
 // on the node's persistent data disk. This is useful for initialising stuff
 // like API keys that shouldn't go in the public repo.
 variable "honeycomb_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
 }
 
 // Out of a total of var.instance_count machines, how many do you want to be GPU machines?
@@ -102,7 +110,7 @@ variable "gpu_machine_type" {
 
 // Version number, omit the 'v' prefix
 variable "prometheus_version" {
-  type = string
+  type    = string
   default = ""
 }
 
@@ -111,23 +119,30 @@ variable "prometheus_version" {
 // https://grafana.com/docs/grafana-cloud/fundamentals/cloud-portal/
 // Note: this is not an account-wide API key, but rather a key for Prometheus
 variable "grafana_cloud_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
 }
 
 variable "grafana_cloud_api_user" {
-  type = string
+  type    = string
   default = ""
 }
 
 // Remote Write Endpoint 
 // e.g. https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
 variable "grafana_cloud_api_endpoint" {
-  type = string
+  type    = string
   default = ""
 }
 
 variable "estuary_api_key" {
-  type    = string
-  default = ""
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "internal_ip_addresses" {
+  type    = list(string)
+  default = []
 }

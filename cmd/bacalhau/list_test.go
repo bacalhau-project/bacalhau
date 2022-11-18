@@ -1,8 +1,9 @@
+//go:build unit || !integration
+
 package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -34,21 +36,10 @@ func TestListSuite(t *testing.T) {
 	suite.Run(t, new(ListSuite))
 }
 
-// Before all suite
-func (suite *ListSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *ListSuite) SetupTest() {
 	suite.rootCmd = RootCmd
-}
-
-func (suite *ListSuite) TearDownTest() {
-}
-
-func (suite *ListSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
 }
 
 type listResponse struct {
@@ -70,7 +61,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupTests(suite.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 			defer cm.Cleanup()
 
 			*OL = *NewListOptions()
@@ -100,7 +91,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 func (suite *ListSuite) TestList_IdFilter() {
 	ctx := context.Background()
-	c, cm := publicapi.SetupTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 	defer cm.Cleanup()
 
 	*OL = *NewListOptions()
@@ -153,7 +144,7 @@ func (suite *ListSuite) TestList_IdFilter() {
 
 	// parse response
 	response := listResponse{}
-	err = json.Unmarshal([]byte(out), &response.Jobs)
+	err = model.JSONUnmarshalWithMax([]byte(out), &response.Jobs)
 
 	var firstItem *model.Job
 	for _, v := range response.Jobs {
@@ -200,7 +191,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 		for _, sortFlags := range sortFlagsToTest {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupTests(suite.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
 				defer cm.Cleanup()
 
 				*OL = *NewListOptions()

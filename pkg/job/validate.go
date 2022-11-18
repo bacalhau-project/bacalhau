@@ -1,19 +1,28 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 )
 
-func VerifyJob(j *model.Job) error {
+func VerifyJob(ctx context.Context, j *model.Job) error {
 	if reflect.DeepEqual(model.Spec{}, j.Spec) {
 		return fmt.Errorf("job spec is empty")
 	}
 
 	if reflect.DeepEqual(model.Deal{}, j.Deal) {
 		return fmt.Errorf("job deal is empty")
+	}
+
+	if j.Deal.Concurrency <= 0 {
+		return fmt.Errorf("concurrency must be >= 1")
+	}
+
+	if j.Deal.Confidence < 0 {
+		return fmt.Errorf("confidence must be >= 0")
 	}
 
 	if !model.IsValidEngine(j.Spec.Engine) {

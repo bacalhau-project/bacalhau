@@ -1,18 +1,21 @@
-//go:build !(windows && unit)
+//go:build integration
 
 package devstack
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
@@ -35,22 +38,13 @@ func TestDevstackPythonWASMSuite(t *testing.T) {
 	suite.Run(t, new(DevstackPythonWASMSuite))
 }
 
-// Before all suite
-func (s *DevstackPythonWASMSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (s *DevstackPythonWASMSuite) SetupTest() {
-	err := system.InitConfigForTesting()
+	testutils.MustHaveDocker(s.T())
+
+	logger.ConfigureTestLogging(s.T())
+	err := system.InitConfigForTesting(s.T())
 	require.NoError(s.T(), err)
-}
-
-func (s *DevstackPythonWASMSuite) TearDownTest() {
-}
-
-func (s *DevstackPythonWASMSuite) TearDownAllSuite() {
-
 }
 
 // full end-to-end test of python/wasm:
@@ -70,20 +64,16 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
+	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack.TestPythonWasmVolumes")
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(s.T(), err)
-	defer func() {
-		err := os.RemoveAll(tmpDir)
-		require.NoError(s.T(), err)
-	}()
+	tmpDir := s.T().TempDir()
 
 	oldDir, err := os.Getwd()
 	require.NoError(s.T(), err)
@@ -107,7 +97,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	open("%s/test.txt", "w").write(open("%s").read())
 `, outputPath, outputPath, outputPath, inputPath))
 
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,
@@ -139,8 +129,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	shard := shards[0]
 
-	outputDir, err := ioutil.TempDir("", "bacalhau-devstack-python-wasm-test")
-	require.NoError(s.T(), err)
+	outputDir := s.T().TempDir()
 	require.NotEmpty(s.T(), shard.PublishedResult.CID)
 
 	finalOutputPath := filepath.Join(outputDir, shard.PublishedResult.CID)
@@ -155,7 +144,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		})
 	require.NoError(s.T(), err)
 
-	stdoutContents, err := ioutil.ReadFile(filepath.Join(finalOutputPath, "stdout"))
+	stdoutContents, err := os.ReadFile(filepath.Join(finalOutputPath, "stdout"))
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), stdoutContents)
 
@@ -175,8 +164,9 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
+	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplestpythonwasmdashc")
@@ -215,20 +205,16 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, computenode.NewDefaultComputeNodeConfig())
-	defer TeardownTest(stack, cm)
+	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/pythonwasmtest/simplepythonwasm")
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	tmpDir, err := ioutil.TempDir("", "devstack_test")
-	require.NoError(s.T(), err)
-	defer func() {
-		err := os.RemoveAll(tmpDir)
-		require.NoError(s.T(), err)
-	}()
+	tmpDir := s.T().TempDir()
 
 	oldDir, err := os.Getwd()
 	require.NoError(s.T(), err)
@@ -241,7 +227,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	// write bytes to main.py
 	mainPy := []byte("print(1+1)")
-	err = ioutil.WriteFile("main.py", mainPy, 0644)
+	err = os.WriteFile("main.py", mainPy, 0644)
 	require.NoError(s.T(), err)
 
 	_, out, err := cmd.ExecuteTestCobraCommand(s.T(), cmd.RootCmd,

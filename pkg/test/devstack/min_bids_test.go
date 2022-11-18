@@ -1,50 +1,27 @@
-//go:build !(windows && unit)
+//go:build integration
 
 package devstack
 
 import (
-	"context"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
-	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/suite"
 )
 
 type MinBidsSuite struct {
-	suite.Suite
+	scenario.ScenarioRunner
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestMinBidsSuite(t *testing.T) {
 	suite.Run(t, new(MinBidsSuite))
-}
-
-// Before all suite
-func (suite *MinBidsSuite) SetupAllSuite() {
-
-}
-
-// Before each test
-func (suite *MinBidsSuite) SetupTest() {
-	err := system.InitConfigForTesting()
-	require.NoError(suite.T(), err)
-}
-
-func (suite *MinBidsSuite) TearDownTest() {
-}
-
-func (suite *MinBidsSuite) TearDownAllSuite() {
-
 }
 
 type minBidsTestCase struct {
@@ -56,70 +33,39 @@ type minBidsTestCase struct {
 	errorStates    []model.JobStateType
 }
 
-func (suite *MinBidsSuite) TestMinBids() {
-
-	runTest := func(
-		testCase minBidsTestCase,
-	) {
-		ctx := context.Background()
-		t := system.GetTracer()
-		ctx, span := system.NewRootSpan(ctx, t, "pkg/test/devstack/min_bids_test")
-		defer span.End()
-
-		stack, cm := SetupTest(
-			ctx,
-			suite.T(),
-			testCase.nodes,
-			0,
-			computenode.NewDefaultComputeNodeConfig(),
-		)
-		defer TeardownTest(stack, cm)
-
-		dirPath, err := prepareFolderWithFiles(testCase.shards)
-		require.NoError(suite.T(), err)
-
-		directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:testCase.nodes])...)
-		require.NoError(suite.T(), err)
-
-		apiUri := stack.Nodes[0].APIServer.GetURI()
-		apiClient := publicapi.NewAPIClient(apiUri)
-
-		j := &model.Job{}
-		j.Spec = testutils.DockerRunJob()
-		j.Spec.Inputs = []model.StorageSpec{
-			{
-				StorageSource: model.StorageSourceIPFS,
-				CID:           directoryCid,
-				Path:          "/input",
-			},
-		}
-		j.Spec.Sharding = model.JobShardingConfig{
-			GlobPattern: "/input/*",
-			BatchSize:   1,
-		}
-
-		j.Deal = model.Deal{
-			Concurrency: testCase.concurrency,
-			MinBids:     testCase.minBids,
-		}
-
-		createdJob, err := apiClient.Submit(ctx, j, nil)
-		require.NoError(suite.T(), err)
-		resolver := apiClient.GetJobStateResolver()
-
-		err = resolver.Wait(
-			ctx,
-			createdJob.ID,
-			3,
-			job.WaitThrowErrors(testCase.errorStates),
-			job.WaitForJobStates(testCase.expectedResult),
-		)
-		require.NoError(suite.T(), err)
-
+func (s *MinBidsSuite) testMinBids(testCase minBidsTestCase) {
+	spec := scenario.WasmHelloWorld.Spec
+	spec.Sharding = model.JobShardingConfig{
+		GlobPattern: "/input/*",
+		BatchSize:   1,
 	}
 
+	testScenario := scenario.Scenario{
+		Stack: &scenario.StackConfig{
+			DevStackOptions: &devstack.DevStackOptions{NumberOfNodes: testCase.nodes},
+		},
+		Inputs: scenario.StoredFile(
+			prepareFolderWithFiles(s.T(), testCase.shards),
+			"/input",
+		),
+		Contexts: scenario.WasmHelloWorld.Contexts,
+		Spec:     spec,
+		Deal: model.Deal{
+			Concurrency: testCase.concurrency,
+			MinBids:     testCase.minBids,
+		},
+		JobCheckers: []job.CheckStatesFunction{
+			job.WaitThrowErrors(testCase.errorStates),
+			job.WaitForJobStates(testCase.expectedResult),
+		},
+	}
+
+	s.RunScenario(testScenario)
+}
+
+func (s *MinBidsSuite) TestMinBids_0and1Node() {
 	// sanity test that with min bids at zero and 1 node we get the job through
-	runTest(minBidsTestCase{
+	s.testMinBids(minBidsTestCase{
 		nodes:       1,
 		shards:      1,
 		concurrency: 1,
@@ -131,9 +77,11 @@ func (suite *MinBidsSuite) TestMinBids() {
 			model.JobStateError,
 		},
 	})
+}
 
+func (s *MinBidsSuite) TestMinBids_isConcurrency() {
 	// test that when min bids is concurrency we get the job through
-	runTest(minBidsTestCase{
+	s.testMinBids(minBidsTestCase{
 		nodes:       3,
 		shards:      1,
 		concurrency: 3,
@@ -146,9 +94,12 @@ func (suite *MinBidsSuite) TestMinBids() {
 		},
 	})
 
+}
+
+func (s *MinBidsSuite) TestMinBids_noBids() {
 	// test that no bids are made because there are not enough nodes on the network
 	// to satisfy the min bids
-	runTest(minBidsTestCase{
+	s.testMinBids(minBidsTestCase{
 		nodes:       3,
 		shards:      1,
 		concurrency: 3,

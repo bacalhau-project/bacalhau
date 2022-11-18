@@ -45,6 +45,7 @@ Combined with a `<workspace-name>.tfvars` variables file that controls which goo
 A bacalhau workspace is a combination of:
 
  * `<workspace-name>.tfvars` - the variables controlling the versions, cluster size, gcloud project, gcloud region
+ * `<workspace-name>-secrets.tfvars` - the sensitive API keys that are required (not checked in to source control)
  * a terraform workspace named `<workspace-name>` which points at the state file managed in the GCS bucket
 
 The `bash scripts/connect_workspace.sh <workspace-name>` will connect to the correct gcloud project and zone named in `<workspace-name>.tfvars` and run `terraform workspace select <workspace-name>` so you can begin to work with that cluster.
@@ -53,19 +54,19 @@ The `bash scripts/connect_workspace.sh <workspace-name>` will connect to the cor
 
 ```bash
 bash scripts/connect_workspace.sh production
-terraform plan -var-file production.tfvars
+terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 ```
 
 # Deploying Bacalhau mainnet!
 
-The normal operation is to edit `production.tfvars` and then:
+The normal operation is to edit `production.tfvars`, ensure you have appropriate values in `production-secrets.tfvars` (see `secrets.tfvars.example` for a guide) and then:
 
 ```bash
 # make sure gcloud is connected to the correct project and compute zone for our workspace
 bash scripts/connect_workspace.sh production
 # apply the latest varibales
-terraform plan -var-file production.tfvars
-terraform apply -var-file production.tfvars
+terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
+terraform apply -var-file production.tfvars -var-file production-secrets.tfvars
 ```
 
 # Stand up a new long lived cluster
@@ -90,6 +91,7 @@ bash scripts/connect_workspace.sh $WORKSPACE
 # get the first node up and running
 terraform apply \
   -var-file $WORKSPACE.tfvars \
+  -var-file $WORKSPACE-secrets.tfvars \
   -var="bacalhau_connect_node0=" \
   -var="instance_count=1"
 # wait a bit of time so the bacalhau server is up and running
@@ -103,7 +105,8 @@ gcloud compute ssh bacalhau-vm-$WORKSPACE-0 -- journalctl -u bacalhau-daemon | g
 vi $WORKSPACE.tfvars
 # now we re-apply the terraform command
 terraform apply \
-  -var-file $WORKSPACE.tfvars
+  -var-file $WORKSPACE.tfvars \
+  -var-file $WORKSPACE-secrets.tfvars
 ```
 
 # Deleting long lived cluster

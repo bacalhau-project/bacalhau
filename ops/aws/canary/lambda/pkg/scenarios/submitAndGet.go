@@ -40,17 +40,23 @@ func SubmitAndGet(ctx context.Context) error {
 		return fmt.Errorf("no results found")
 	}
 
+	outputDir, err := os.MkdirTemp(os.TempDir(), "submitAndGet")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(outputDir)
+
 	downloadSettings, err := getIPFSDownloadSettings()
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(downloadSettings.OutputDir)
+	downloadSettings.OutputDir = outputDir
 
-	err = ipfs.DownloadJob(ctx, cm, submittedJob, results, *downloadSettings)
+	err = ipfs.DownloadJob(ctx, cm, submittedJob.Spec.Outputs, results, *downloadSettings)
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
+	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, ipfs.DownloadVolumesFolderName, ipfs.DownloadFilenameStdout))
 	if err != nil {
 		return err
 	}

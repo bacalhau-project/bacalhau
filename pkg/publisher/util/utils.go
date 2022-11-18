@@ -6,7 +6,9 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/publisher/combo"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/estuary"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/publisher/noop"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -15,16 +17,16 @@ import (
 func NewIPFSPublishers(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	resolver *job.StateResolver,
 	ipfsMultiAddress string,
 	estuaryAPIKey string,
+	lotusConfig *filecoinlotus.PublisherConfig,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm)
 	if err != nil {
 		return nil, err
 	}
 
-	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, resolver, ipfsMultiAddress)
+	ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, cm, ipfsMultiAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -33,18 +35,28 @@ func NewIPFSPublishers(
 	// and so let's only add the
 	var estuaryPublisher publisher.Publisher = ipfsPublisher
 	if estuaryAPIKey != "" {
-		estuaryPublisher, err = estuary.NewEstuaryPublisher(cm, resolver, estuary.EstuaryPublisherConfig{
-			APIKey: estuaryAPIKey,
-		})
+		estuaryPublisher = combo.NewFanoutPublisher(
+			ipfsPublisher,
+			estuary.NewEstuaryPublisher(estuary.EstuaryPublisherConfig{APIKey: estuaryAPIKey}),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var lotus publisher.Publisher = ipfsPublisher
+	if lotusConfig != nil {
+		lotus, err = filecoinlotus.NewFilecoinLotusPublisher(ctx, cm, *lotusConfig)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return publisher.NewMappedPublisherProvider(map[model.Publisher]publisher.Publisher{
-		model.PublisherNoop:    noopPublisher,
-		model.PublisherIpfs:    ipfsPublisher,
-		model.PublisherEstuary: estuaryPublisher,
+		model.PublisherNoop:     noopPublisher,
+		model.PublisherIpfs:     ipfsPublisher,
+		model.PublisherEstuary:  estuaryPublisher,
+		model.PublisherFilecoin: combo.NewPiggybackedPublisher(ipfsPublisher, lotus),
 	}), nil
 }
 
@@ -53,7 +65,7 @@ func NewNoopPublishers(
 	cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher, err := noop.NewNoopPublisher(ctx, cm, resolver)
+	noopPublisher, err := noop.NewNoopPublisher(ctx, cm)
 	if err != nil {
 		return nil, err
 	}

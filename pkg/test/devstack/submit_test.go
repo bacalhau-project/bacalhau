@@ -1,10 +1,15 @@
+//go:build integration
+
 package devstack
 
 import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
@@ -23,22 +28,11 @@ func TestDevstackSubmitSuite(t *testing.T) {
 	suite.Run(t, new(DevstackSubmitSuite))
 }
 
-// Before all suite
-func (suite *DevstackSubmitSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
-	err := system.InitConfigForTesting()
+	logger.ConfigureTestLogging(suite.T())
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
-}
-
-func (suite *DevstackSubmitSuite) TearDownTest() {
-}
-
-func (suite *DevstackSubmitSuite) TearDownAllSuite() {
-
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
@@ -50,9 +44,10 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 
 		1,
 		0,
+		false,
 		computenode.NewDefaultComputeNodeConfig(),
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
-	defer TeardownTest(stack, cm)
 
 	t := system.GetTracer()
 	ctx, rootSpan := system.NewRootSpan(ctx, t, "pkg/test/devstack/submittest/testemptyspec")

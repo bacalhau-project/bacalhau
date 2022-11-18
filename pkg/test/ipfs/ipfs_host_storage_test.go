@@ -1,13 +1,16 @@
+//go:build unit || !integration
+
 package ipfs
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -30,23 +33,11 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 	suite.Run(t, new(IPFSHostStorageSuite))
 }
 
-// Before all suite
-func (suite *IPFSHostStorageSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
-	err := system.InitConfigForTesting()
+	logger.ConfigureTestLogging(suite.T())
+	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
-}
-
-func (suite *IPFSHostStorageSuite) TearDownTest() {
-
-}
-
-func (suite *IPFSHostStorageSuite) TearDownAllSuite() {
-
 }
 
 type getStorageFunc func(ctx context.Context, cm *system.CleanupManager, api string) (
@@ -115,16 +106,9 @@ func runFileTest(t *testing.T, engine model.StorageSourceType, getStorageDriver 
 
 	// we should now be able to read our file content
 	// from the file on the host via fuse
-	// TODO @enricorotundo #493: make sure sudo is not needed here
-	// result, err := system.RunCommandGetResults("sudo", []string{
-	// 	"cat",
-	// 	volume.Source,
-	// })
-	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
-		volume.Source,
-	})
+	r, err := os.ReadFile(volume.Source)
 	require.NoError(t, err)
-	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
+	require.Equal(t, string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)
@@ -141,11 +125,10 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	defer rootSpan.End()
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs-test")
-	require.NoError(t, err)
+	dir := t.TempDir()
 
 	EXAMPLE_TEXT := `hello world`
-	err = os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
+	err := os.WriteFile(fmt.Sprintf("%s/file.txt", dir), []byte(EXAMPLE_TEXT), 0644)
 	require.NoError(t, err)
 
 	// add this file to the server
@@ -176,18 +159,9 @@ func runFolderTest(t *testing.T, engine model.StorageSourceType, getStorageDrive
 	// we should now be able to read our file content
 	// from the file on the host via fuse
 
-	// TODO @enricorotundo #493: make sure sudo is not needed here
-	// result, err := system.RunCommandGetResults("sudo", []string{
-	// 	"cat",
-	// 	fmt.Sprintf("%s/file.txt", volume.Source),
-	// })
-	r, err := system.UnsafeForUserCodeRunCommand("cat", []string{
-		fmt.Sprintf("%s/file.txt", volume.Source),
-	})
+	r, err := os.ReadFile(filepath.Join(volume.Source, "file.txt"))
 	require.NoError(t, err)
-	require.Equal(t, r.STDOUT, EXAMPLE_TEXT)
-
-	fmt.Printf("HERE IS RESULTS: %s\n", r.STDOUT)
+	require.Equal(t, string(r), EXAMPLE_TEXT)
 
 	err = storageDriver.CleanupStorage(ctx, storage, volume)
 	require.NoError(t, err)

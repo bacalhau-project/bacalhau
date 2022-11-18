@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
@@ -14,7 +16,7 @@ type resultsRequest struct {
 }
 
 type resultsResponse struct {
-	Results []model.StorageSpec `json:"results"`
+	Results []model.PublishedResult `json:"results"`
 }
 
 func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) {
@@ -26,17 +28,14 @@ func (apiServer *APIServer) results(res http.ResponseWriter, req *http.Request) 
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, stateReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, stateReq.JobID)
 
 	ctx = system.AddJobIDToBaggage(ctx, stateReq.JobID)
 	system.AddJobIDFromBaggageToSpan(ctx, span)
 
-	publisher, err := apiServer.Publishers.GetPublisher(ctx, model.PublisherIpfs)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	results, err := publisher.ComposeResultReferences(ctx, stateReq.JobID)
+	stateResolver := localdb.GetStateResolver(apiServer.localdb)
+	results, err := stateResolver.GetResults(ctx, stateReq.JobID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

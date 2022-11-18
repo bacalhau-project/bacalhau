@@ -10,9 +10,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type AllProviderFetcher func(ctx context.Context) ([]storage.StorageProvider, error)
-type ReadProviderFetcher func(ctx context.Context, spec model.StorageSpec) (storage.StorageProvider, error)
-type WriteProviderFetcher func(ctx context.Context) (storage.StorageProvider, error)
+type AllProviderFetcher func(ctx context.Context) ([]storage.Storage, error)
+type ReadProviderFetcher func(ctx context.Context, spec model.StorageSpec) (storage.Storage, error)
+type WriteProviderFetcher func(ctx context.Context) (storage.Storage, error)
 
 type ComboStorageProvider struct {
 	AllFetcher   AllProviderFetcher
@@ -20,7 +20,7 @@ type ComboStorageProvider struct {
 	WriteFetcher WriteProviderFetcher
 }
 
-func NewStorageProvider(
+func NewStorage(
 	cm *system.CleanupManager,
 	allFetcher AllProviderFetcher,
 	readFetcher ReadProviderFetcher,
@@ -115,16 +115,16 @@ func (driver *ComboStorageProvider) Explode(ctx context.Context, storageSpec mod
 		return nil, err
 	}
 	if provider == nil {
-		return nil, fmt.Errorf("no storage provider found for %s", storageSpec.Cid)
+		return nil, fmt.Errorf("no storage provider found for %s", storageSpec.CID)
 	}
 	return provider.Explode(ctx, storageSpec)
 }
 
-func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec model.StorageSpec) (storage.StorageProvider, error) {
+func (driver *ComboStorageProvider) getReadProvider(ctx context.Context, spec model.StorageSpec) (storage.Storage, error) {
 	return driver.ReadFetcher(ctx, spec)
 }
 
-func (driver *ComboStorageProvider) getWriteProvider(ctx context.Context) (storage.StorageProvider, error) {
+func (driver *ComboStorageProvider) getWriteProvider(ctx context.Context) (storage.Storage, error) {
 	return driver.WriteFetcher(ctx)
 }
 
@@ -133,4 +133,4 @@ func newSpan(ctx context.Context, apiName string) (context.Context, trace.Span) 
 }
 
 // Compile time interface check:
-var _ storage.StorageProvider = (*ComboStorageProvider)(nil)
+var _ storage.Storage = (*ComboStorageProvider)(nil)

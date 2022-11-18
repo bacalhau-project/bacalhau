@@ -18,7 +18,7 @@ Initially, the Bacalhau project will focus on serving data processing and analyt
 
 * [Getting Started](https://docs.bacalhau.org/getting-started/installation) ⚡
 * [Documentation](https://docs.bacalhau.org/) :closed_book:
-* [Slack Community](https://filecoinproject.slack.com/archives/C02RLM3JHUY) open to anyone! :raising_hand:
+* [Slack Community](https://filecoin.io/slack) is open to anyone! Join the `#bacalhau` channel :raising_hand:
 * [Code Examples Repository](https://github.com/bacalhau-project/examples) :mag:
 
 Watch a 90 seconds demo of Bacalhau in action:

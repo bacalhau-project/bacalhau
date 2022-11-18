@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
@@ -43,23 +47,27 @@ var (
 )
 
 type ServeOptions struct {
-	PeerConnect                     string // The libp2p multiaddress to connect to.
-	IPFSConnect                     string // The IPFS multiaddress to connect to.
-	FilecoinUnsealedPath            string // The go template that can turn a filecoin CID into a local filepath with the unsealed data.
-	EstuaryAPIKey                   string // The API key used when using the estuary API.
-	HostAddress                     string // The host address to listen on.
-	SwarmPort                       int    // The host port for libp2p network.
-	JobSelectionDataLocality        string // The data locality to use for job selection.
-	JobSelectionDataRejectStateless bool   // Whether to reject jobs that don't specify any data.
-	JobSelectionProbeHTTP           string // The HTTP URL to use for job selection.
-	JobSelectionProbeExec           string // The executable to use for job selection.
-	MetricsPort                     int    // The port to listen on for metrics.
-	LimitTotalCPU                   string // The total amount of CPU the system can be using at one time.
-	LimitTotalMemory                string // The total amount of memory the system can be using at one time.
-	LimitTotalGPU                   string // The total amount of GPU the system can be using at one time.
-	LimitJobCPU                     string // The amount of CPU the system can be using at one time for a single job.
-	LimitJobMemory                  string // The amount of memory the system can be using at one time for a single job.
-	LimitJobGPU                     string // The amount of GPU the system can be using at one time for a single job.
+	PeerConnect                     string        // The libp2p multiaddress to connect to.
+	IPFSConnect                     string        // The IPFS multiaddress to connect to.
+	FilecoinUnsealedPath            string        // The go template that can turn a filecoin CID into a local filepath with the unsealed data.
+	EstuaryAPIKey                   string        // The API key used when using the estuary API.
+	HostAddress                     string        // The host address to listen on.
+	SwarmPort                       int           // The host port for libp2p network.
+	JobSelectionDataLocality        string        // The data locality to use for job selection.
+	JobSelectionDataRejectStateless bool          // Whether to reject jobs that don't specify any data.
+	JobSelectionProbeHTTP           string        // The HTTP URL to use for job selection.
+	JobSelectionProbeExec           string        // The executable to use for job selection.
+	MetricsPort                     int           // The port to listen on for metrics.
+	LimitTotalCPU                   string        // The total amount of CPU the system can be using at one time.
+	LimitTotalMemory                string        // The total amount of memory the system can be using at one time.
+	LimitTotalGPU                   string        // The total amount of GPU the system can be using at one time.
+	LimitJobCPU                     string        // The amount of CPU the system can be using at one time for a single job.
+	LimitJobMemory                  string        // The amount of memory the system can be using at one time for a single job.
+	LimitJobGPU                     string        // The amount of GPU the system can be using at one time for a single job.
+	LotusFilecoinStorageDuration    time.Duration // How long deals should be for the Lotus Filecoin publisher
+	LotusFilecoinPathDirectory      string        // The location of the Lotus configuration directory which contains config.toml, etc
+	LotusFilecoinUploadDirectory    string        // Directory to put files when uploading to Lotus (optional)
+	LotusFilecoinMaximumPing        time.Duration // The maximum ping allowed when selecting a Filecoin miner
 }
 
 func NewServeOptions() *ServeOptions {
@@ -81,6 +89,8 @@ func NewServeOptions() *ServeOptions {
 		LimitJobCPU:                     "",
 		LimitJobMemory:                  "",
 		LimitJobGPU:                     "",
+		LotusFilecoinPathDirectory:      os.Getenv("LOTUS_PATH"),
+		LotusFilecoinMaximumPing:        2 * time.Second,
 	}
 }
 
@@ -162,15 +172,15 @@ func getPeers() []multiaddr.Multiaddr {
 	return peers
 }
 
-func getJobSelectionConfig() computenode.JobSelectionPolicy {
+func getJobSelectionConfig() model.JobSelectionPolicy {
 	// construct the job selection policy from the CLI args
-	typedJobSelectionDataLocality := computenode.Anywhere
+	typedJobSelectionDataLocality := model.Anywhere
 
 	if OS.JobSelectionDataLocality == "anywhere" {
-		typedJobSelectionDataLocality = computenode.Anywhere
+		typedJobSelectionDataLocality = model.Anywhere
 	}
 
-	jobSelectionPolicy := computenode.JobSelectionPolicy{
+	jobSelectionPolicy := model.JobSelectionPolicy{
 		Locality:            typedJobSelectionDataLocality,
 		RejectStatelessJobs: OS.JobSelectionDataRejectStateless,
 		ProbeHTTP:           OS.JobSelectionProbeHTTP,
@@ -218,6 +228,22 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 		&OS.MetricsPort, "metrics-port", OS.MetricsPort,
 		`The port to serve prometheus metrics on.`,
 	)
+	serveCmd.PersistentFlags().DurationVar(
+		&OS.LotusFilecoinStorageDuration, "lotus-storage-duration", OS.LotusFilecoinStorageDuration,
+		"Duration to store data in Lotus Filecoin for.",
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&OS.LotusFilecoinPathDirectory, "lotus-path-directory", OS.LotusFilecoinPathDirectory,
+		"Location of the Lotus Filecoin configuration directory.",
+	)
+	serveCmd.PersistentFlags().StringVar(
+		&OS.LotusFilecoinUploadDirectory, "lotus-upload-directory", OS.LotusFilecoinUploadDirectory,
+		"Directory to use when uploading content to Lotus Filecoin.",
+	)
+	serveCmd.PersistentFlags().DurationVar(
+		&OS.LotusFilecoinMaximumPing, "lotus-max-ping", OS.LotusFilecoinMaximumPing,
+		"The highest ping a Filecoin miner could have when selecting.",
+	)
 
 	setupLibp2pCLIFlags(serveCmd)
 	setupJobSelectionCLIFlags(serveCmd)
@@ -229,7 +255,7 @@ var serveCmd = &cobra.Command{
 	Short:   "Start the bacalhau compute node",
 	Long:    serveLong,
 	Example: serveExample,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Cleanup manager ensures that resources are freed before exiting:
 		cm := system.NewCleanupManager()
 		cm.RegisterCallback(system.CleanupTraceProvider)
@@ -241,8 +267,7 @@ var serveCmd = &cobra.Command{
 		ctx, cancel := system.WithSignalShutdown(ctx)
 		defer cancel()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/serve")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/serve")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -262,6 +287,9 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			Fatal(fmt.Sprintf("Error creating libp2p transport: %s", err), 1)
 		}
+
+		// add nodeID to logging context
+		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
 
 		// Establishing IPFS connection
 		ipfs, err := ipfs.NewClient(OS.IPFSConnect)
@@ -289,7 +317,18 @@ var serveCmd = &cobra.Command{
 				JobSelectionPolicy:    getJobSelectionConfig(),
 				CapacityManagerConfig: getCapacityManagerConfig(),
 			},
-			RequesterNodeConfig: requesternode.RequesterNodeConfig{},
+			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
+		}
+
+		if OS.LotusFilecoinStorageDuration != time.Duration(0) &&
+			OS.LotusFilecoinPathDirectory != "" &&
+			OS.LotusFilecoinMaximumPing != time.Duration(0) {
+			nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
+				StorageDuration: OS.LotusFilecoinStorageDuration,
+				PathDir:         OS.LotusFilecoinPathDirectory,
+				UploadDir:       OS.LotusFilecoinUploadDirectory,
+				MaximumPing:     OS.LotusFilecoinMaximumPing,
+			}
 		}
 
 		// Create node

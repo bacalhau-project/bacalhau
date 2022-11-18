@@ -1,35 +1,86 @@
 package bacalhau
 
 import (
+	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+
 	"github.com/Masterminds/semver"
+	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	"github.com/filecoin-project/bacalhau/pkg/userstrings"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const (
-	JSONFormat                  string = "json"
-	YAMLFormat                  string = "yaml"
-	DefaultDockerRunWaitSeconds        = 600
+	JSONFormat                         string = "json"
+	YAMLFormat                         string = "yaml"
+	DefaultDockerRunWaitSeconds               = 600
+	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
+	// what permissions do we give to a folder we create when downloading results
+	AutoDownloadFolderPerm               = 0755
+	DefaultTimeout         time.Duration = requesternode.DefaultJobExecutionTimeout
 )
+
+var eventsWorthPrinting = map[model.JobEventType]eventStruct{
+	// In Rough execution order
+	model.JobEventCreated: {Message: "Creating job for submission", IsTerminal: false},
+
+	// Job is on Requester
+	model.JobEventBid:         {Message: "Finding node(s) for the job", IsTerminal: false},
+	model.JobEventBidAccepted: {Message: "Node accepted the job", IsTerminal: false},
+
+	// Job is on ComputeNode
+	model.JobEventRunning: {Message: "Node started running the job", IsTerminal: false},
+
+	// Need to add a carriage return to the end of the line, but only this one
+	model.JobEventComputeError: {Message: "Error while executing the job.\n", IsTerminal: true},
+
+	// Job is on StorageNode
+	model.JobEventResultsProposed:  {Message: "Job finished, verifying results", IsTerminal: false},
+	model.JobEventResultsRejected:  {Message: "Results failed verification.", IsTerminal: true},
+	model.JobEventResultsAccepted:  {Message: "Results accepted, publishing", IsTerminal: false},
+	model.JobEventResultsPublished: {Message: "", IsTerminal: true},
+
+	// General Error?
+	model.JobEventError: {Message: "Unknown error while running job.", IsTerminal: true},
+
+	// Should we print at all? Empty events get skipped
+	model.JobEventBidCancelled: {},
+	model.JobEventBidRejected:  {},
+	model.JobEventDealUpdated:  {},
+}
+
+// Struct for tracking what's been printedEvents
+type printedEvents struct {
+	order   int
+	printed bool
+}
+
+type eventStruct struct {
+	Message    string
+	IsTerminal bool
+}
 
 func shortenTime(outputWide bool, t time.Time) string { //nolint:unused // Useful function, holding here
 	if outputWide {
@@ -57,7 +108,10 @@ func shortID(outputWide bool, id string) string {
 	if outputWide {
 		return id
 	}
-	return id[:8]
+	if len(id) < model.ShortIDLength {
+		return id
+	}
+	return id[:model.ShortIDLength]
 }
 
 func GetAPIClient() *publicapi.APIClient {
@@ -65,7 +119,7 @@ func GetAPIClient() *publicapi.APIClient {
 }
 
 // ensureValidVersion checks that the server version is the same or less than the client version
-func ensureValidVersion(ctx context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
+func ensureValidVersion(_ context.Context, clientVersion, serverVersion *model.BuildVersionInfo) error {
 	if clientVersion == nil {
 		log.Warn().Msg("Unable to parse nil client version, skipping version check")
 		return nil
@@ -109,12 +163,19 @@ curl -sL https://get.bacalhau.org/install.sh | bash`,
 	return nil
 }
 
-func ExecuteTestCobraCommand(_ *testing.T, root *cobra.Command, args ...string) (
+func ExecuteTestCobraCommand(t *testing.T, root *cobra.Command, args ...string) (
+	c *cobra.Command, output string, err error,
+) {
+	return ExecuteTestCobraCommandWithStdin(t, root, nil, args...)
+}
+
+func ExecuteTestCobraCommandWithStdin(_ *testing.T, root *cobra.Command, stdin io.Reader, args ...string) (
 	c *cobra.Command, output string, err error,
 ) { //nolint:unparam // use of t is valuable here
 	buf := new(bytes.Buffer)
 	root.SetOut(buf)
 	root.SetErr(buf)
+	root.SetIn(stdin)
 	root.SetArgs([]string{})
 	root.SetArgs(args)
 
@@ -169,67 +230,100 @@ func capture() func() (string, error) {
 	}
 }
 
-func setupDownloadFlags(cmd *cobra.Command, settings *ipfs.IPFSDownloadSettings) {
-	cmd.Flags().IntVar(&settings.TimeoutSecs, "download-timeout-secs",
+func NewIPFSDownloadFlags(settings *ipfs.IPFSDownloadSettings) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("IPFS Download flags", pflag.ContinueOnError)
+	flags.IntVar(&settings.TimeoutSecs, "download-timeout-secs",
 		settings.TimeoutSecs, "Timeout duration for IPFS downloads.")
-	cmd.Flags().StringVar(&settings.OutputDir, "output-dir",
+	flags.StringVar(&settings.OutputDir, "output-dir",
 		settings.OutputDir, "Directory to write the output to.")
-	cmd.Flags().StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
+	flags.StringVar(&settings.IPFSSwarmAddrs, "ipfs-swarm-addrs",
 		settings.IPFSSwarmAddrs, "Comma-separated list of IPFS nodes to connect to.")
+	return flags
+}
+
+func getDefaultJobFolder(jobID string) string {
+	return fmt.Sprintf("job-%s", system.GetShortID(jobID))
+}
+
+// if the user does not supply a value for "download results to here"
+// then we default to making a folder in the current directory
+func ensureDefaultDownloadLocation(jobID string) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	downloadDir := filepath.Join(cwd, getDefaultJobFolder(jobID))
+	err = os.MkdirAll(downloadDir, AutoDownloadFolderPerm)
+	if err != nil {
+		return "", err
+	}
+	return downloadDir, nil
+}
+
+func processDownloadSettings(settings ipfs.IPFSDownloadSettings, jobID string) (ipfs.IPFSDownloadSettings, error) {
+	if settings.OutputDir == "" {
+		dir, err := ensureDefaultDownloadLocation(jobID)
+		if err != nil {
+			return settings, err
+		}
+		settings.OutputDir = dir
+	}
+	return settings, nil
 }
 
 type RunTimeSettings struct {
-	WaitForJobToFinish               bool // Wait for the job to execute before exiting
-	WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	WaitForJobTimeoutSecs            int  // Job time out in seconds
-	IPFSGetTimeOut                   int  // Timeout for IPFS in seconds
-	IsLocal                          bool // Job should be executed locally
-
+	AutoDownloadResults   bool // Automatically download the results after finishing
+	IPFSGetTimeOut        int  // Timeout for IPFS in seconds
+	IsLocal               bool // Job should be executed locally
+	WaitForJobToFinish    bool // Wait for the job to finish before returning
+	WaitForJobTimeoutSecs int  // Timeout for waiting for the job to finish
+	PrintJobIDOnly        bool // Only print the Job ID as output
+	PrintNodeDetails      bool // Print the node details as output
 }
 
 func NewRunTimeSettings() *RunTimeSettings {
 	return &RunTimeSettings{
-		WaitForJobToFinish:               false,
-		WaitForJobToFinishAndPrintOutput: false,
-		WaitForJobTimeoutSecs:            DefaultDockerRunWaitSeconds,
-		IPFSGetTimeOut:                   10,
-		IsLocal:                          false,
+		AutoDownloadResults:   false,
+		WaitForJobToFinish:    true,
+		WaitForJobTimeoutSecs: DefaultDockerRunWaitSeconds,
+		IPFSGetTimeOut:        10,
+		IsLocal:               false,
+		PrintJobIDOnly:        false,
+		PrintNodeDetails:      false,
 	}
 }
 
-func setupRunTimeFlags(cmd *cobra.Command, settings *RunTimeSettings) {
-	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
-		`Wait for the job to finish.`,
-	)
-
-	cmd.PersistentFlags().IntVarP(
-		&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
-		`Timeout for getting the results of a job in --wait`,
-	)
-
-	cmd.PersistentFlags().BoolVar(
-		&settings.IsLocal, "local", settings.IsLocal,
-		`Run the job locally. Docker is required`,
-	)
-
-	cmd.PersistentFlags().BoolVar(
-		&settings.WaitForJobToFinishAndPrintOutput, "download", settings.WaitForJobToFinishAndPrintOutput,
-		`Download the results and print stdout once the job has completed (implies --wait).`,
-	)
-
-	cmd.PersistentFlags().IntVar(
-		&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
-		`When using --wait, how many seconds to wait for the job to complete before giving up.`,
-	)
+func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
+	flags.IntVarP(&settings.IPFSGetTimeOut, "gettimeout", "g", settings.IPFSGetTimeOut,
+		`Timeout for getting the results of a job in --wait`)
+	flags.BoolVar(&settings.IsLocal, "local", settings.IsLocal,
+		`Run the job locally. Docker is required`)
+	flags.BoolVar(&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
+		`Wait for the job to finish.`)
+	flags.IntVar(&settings.WaitForJobTimeoutSecs, "wait-timeout-secs", settings.WaitForJobTimeoutSecs,
+		`When using --wait, how many seconds to wait for the job to complete before giving up.`)
+	flags.BoolVar(&settings.PrintJobIDOnly, "id-only", settings.PrintJobIDOnly,
+		`Print out only the Job ID on successful submission.`)
+	flags.BoolVar(&settings.PrintNodeDetails, "node-details", settings.PrintNodeDetails,
+		`Print out full node details on job completion.`)
+	flags.BoolVar(&settings.AutoDownloadResults, "download", settings.AutoDownloadResults,
+		`Should we download the results once the job is complete?`)
+	return flags
 }
 
+func getCommandLineExecutable() string {
+	return os.Args[0]
+}
+
+//nolint:funlen,gocyclo // Refactor later
 func ExecuteJob(ctx context.Context,
 	cm *system.CleanupManager,
 	cmd *cobra.Command,
 	j *model.Job,
 	runtimeSettings RunTimeSettings,
 	downloadSettings ipfs.IPFSDownloadSettings,
+	buildContext *bytes.Buffer,
 ) error {
 	var apiClient *publicapi.APIClient
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.ExecuteJob")
@@ -247,156 +341,401 @@ func ExecuteJob(ctx context.Context,
 		apiClient = GetAPIClient()
 	}
 
-	err := job.VerifyJob(j)
+	err := job.VerifyJob(ctx, j)
 	if err != nil {
 		log.Err(err).Msg("Job failed to validate.")
 		return err
 	}
 
-	j, err = submitJob(ctx, apiClient, j)
+	j, err = submitJob(ctx, apiClient, j, buildContext)
 	if err != nil {
 		return err
 	}
 
-	err = PrintReturnedJobIDToUser(j)
-	if err != nil {
-		Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+	// if we are in --wait=false - print the id then exit
+	// because all code after this point is related to
+	// "wait for the job to finish" (via WaitAndPrintResultsToUser)
+	if !runtimeSettings.WaitForJobToFinish {
+		cmd.Print(j.ID + "\n")
+		return nil
 	}
 
-	if runtimeSettings.WaitForJobToFinish || runtimeSettings.WaitForJobToFinishAndPrintOutput {
-		// We have a jobID now, add it to the context baggage
-		ctx = system.AddJobIDToBaggage(ctx, j.ID)
-		system.AddJobIDFromBaggageToSpan(ctx, span)
+	// if we are in --id-only mode - print the id
+	if runtimeSettings.PrintJobIDOnly {
+		cmd.Print(j.ID + "\n")
+	}
 
-		resolver := apiClient.GetJobStateResolver()
-		resolver.SetWaitTime(ODR.RunTimeSettings.WaitForJobTimeoutSecs, time.Second*1)
-		err = resolver.WaitUntilComplete(ctx, j.ID)
+	// if we are only printing the id, set the rest of the output to "quiet",
+	// i.e. don't print
+	quiet := runtimeSettings.PrintJobIDOnly
+
+	err = WaitAndPrintResultsToUser(ctx, j, quiet)
+	if err != nil {
+		if err.Error() == PrintoutCanceledButRunningNormally {
+			Fatal("", 0)
+		} else {
+			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+		}
+	}
+
+	jobReturn, found, err := apiClient.Get(ctx, j.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error getting job: %s", err), 1)
+	}
+	if !found {
+		Fatal(fmt.Sprintf("Weird. Just ran the job, but we couldn't find it. Should be impossible. ID: %s", j.ID), 1)
+	}
+
+	js, err := apiClient.GetJobState(ctx, jobReturn.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Error getting job state: %s", err), 1)
+	}
+
+	// Need to create index because map ordering are not guaranteed
+	nodeIndexes := make([]string, 0, len(js.Nodes))
+	for i := range js.Nodes {
+		nodeIndexes = append(nodeIndexes, i)
+	}
+	sort.Strings(nodeIndexes)
+
+	printOut := "%s" // We only know this at the end, we'll fill it in there.
+	printOut += "Job Results By Node:\n"
+	indentOne := "  "
+	indentTwo := strings.Repeat(indentOne, 2)
+	resultsCID := ""
+
+	if runtimeSettings.PrintNodeDetails {
+		printOut += "\n"
+		printOut += "Job Results By Node:\n"
+		for i := range nodeIndexes {
+			n := js.Nodes[nodeIndexes[i]]
+			printOut += fmt.Sprintf("Node %s:\n", nodeIndexes[i][:8])
+			for j, s := range n.Shards { //nolint:gocritic // very small loop, ok to be costly
+				printOut += fmt.Sprintf(indentOne+"Shard %d:\n", j)
+				printOut += fmt.Sprintf(indentTwo+"State: %s\n", s.State)
+				printOut += fmt.Sprintf(indentTwo+"Status: %s\n", s.State)
+				if s.RunOutput == nil {
+					printOut += fmt.Sprintf(indentTwo + "No RunOutput for this shard\n")
+				} else {
+					printOut += fmt.Sprintf(indentTwo+"Container Exit Code: %d\n", s.RunOutput.ExitCode)
+					resultsCID = s.PublishedResult.CID // They're all the same, doesn't matter if we assign it many times
+					printResults := func(t string, s string, trunc bool) {
+						truncatedString := ""
+						if trunc {
+							truncatedString = " (truncated: last 2000 characters)"
+						}
+						if s != "" {
+							printOut += fmt.Sprintf(indentTwo+"%s%s:\n      %s\n", t, truncatedString, s)
+						} else {
+							printOut += fmt.Sprintf(indentTwo+"%s%s: <NONE>\n", t, truncatedString)
+						}
+					}
+					printResults("Stdout", s.RunOutput.STDOUT, s.RunOutput.StdoutTruncated)
+					printResults("Stderr", s.RunOutput.STDERR, s.RunOutput.StderrTruncated)
+				}
+			}
+		}
+	}
+
+	printOut += fmt.Sprintf(`
+To download the results, execute:
+%s%s get %s
+
+To get more details about the run, execute:
+%s%s describe %s
+`, indentOne, getCommandLineExecutable(), j.ID, indentOne, getCommandLineExecutable(), j.ID)
+
+	// Have to do a final Sprintf so we can inject the resultsCID into the right place
+	if resultsCID != "" {
+		resultsCID = fmt.Sprintf("Results CID: %s\n", resultsCID)
+	}
+	if !quiet {
+		RootCmd.Print(fmt.Sprintf(printOut, resultsCID))
+	}
+
+	if runtimeSettings.AutoDownloadResults {
+		err = downloadResultsHandler(
+			ctx,
+			cm,
+			cmd,
+			j.ID,
+			downloadSettings,
+		)
 		if err != nil {
 			return err
-		}
-
-		err := waitForJobToFinish(ctx, apiClient, j, runtimeSettings)
-		if err != nil {
-			return err
-		}
-		if runtimeSettings.WaitForJobToFinishAndPrintOutput {
-			results, err := getResults(ctx, apiClient, j)
-			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error getting results")
-			}
-
-			if len(results) == 0 {
-				return fmt.Errorf("no results found")
-			}
-
-			err = downloadResults(ctx, cmd, cm, j, results, downloadSettings)
-			if err != nil {
-				return errors.Wrap(err, "cmd/bacalhau/utils/ExecuteJob: error downloading results")
-			}
 		}
 	}
 	return nil
 }
 
-func waitForJobToFinish(ctx context.Context,
-	apiClient *publicapi.APIClient,
-	j *model.Job,
-	runtimeSettings RunTimeSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.waitForJobToFinish")
-	defer span.End()
+func downloadResultsHandler(
+	ctx context.Context,
+	cm *system.CleanupManager,
+	cmd *cobra.Command,
+	jobID string,
+	downloadSettings ipfs.IPFSDownloadSettings,
+) error {
+	fmt.Fprintf(cmd.ErrOrStderr(), "Fetching results of job '%s'...\n", jobID)
+	j, _, err := GetAPIClient().Get(ctx, jobID)
 
-	resolver := apiClient.GetJobStateResolver()
-	resolver.SetWaitTime(runtimeSettings.WaitForJobTimeoutSecs, time.Second*1)
-	err := resolver.WaitUntilComplete(ctx, j.ID)
+	if err != nil {
+		if _, ok := err.(*bacerrors.JobNotFound); ok {
+			return err
+		} else {
+			Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", jobID, err), 1)
+		}
+	}
+
+	results, err := GetAPIClient().GetResults(ctx, j.ID)
 	if err != nil {
 		return err
 	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no results found")
+	}
+
+	processedDownloadSettings, err := processDownloadSettings(downloadSettings, j.ID)
+	if err != nil {
+		return err
+	}
+
+	err = ipfs.DownloadJob(
+		ctx,
+		cm,
+		j.Spec.Outputs,
+		results,
+		processedDownloadSettings,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "Results for job '%s' have been written to...\n", jobID)
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", processedDownloadSettings.OutputDir)
 
 	return nil
 }
 
 func submitJob(ctx context.Context,
 	apiClient *publicapi.APIClient,
-	j *model.Job) (*model.Job, error) {
+	j *model.Job,
+	buildContext *bytes.Buffer,
+) (*model.Job, error) {
 	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/utils.submitJob")
 	defer span.End()
 
-	j, err := apiClient.Submit(ctx, j, nil)
+	j, err := apiClient.Submit(ctx, j, buildContext)
 	if err != nil {
 		return &model.Job{}, errors.Wrap(err, "failed to submit job")
 	}
 	return j, err
 }
 
-func getResults(ctx context.Context, apiClient *publicapi.APIClient, j *model.Job) ([]model.StorageSpec, error) {
-	ctx, span := system.GetTracer().Start(ctx, "getresults")
-	defer span.End()
-
-	results, err := apiClient.GetResults(ctx, j.ID)
-	if err != nil {
-		return nil, err
-	}
-	if len(results) == 0 {
-		return nil, fmt.Errorf("no results found")
-	}
-	return results, nil
-}
-
-func downloadResults(ctx context.Context,
-	cmd *cobra.Command,
-	cm *system.CleanupManager,
-	j *model.Job,
-	results []model.StorageSpec,
-	downloadSettings ipfs.IPFSDownloadSettings) error {
-	ctx, span := system.GetTracer().Start(ctx, "downloadresults")
-	defer span.End()
-
-	err := ipfs.DownloadJob(
-		ctx,
-		cm,
-		j,
-		results,
-		downloadSettings,
-	)
-	if err != nil {
-		return err
-	}
-	body, err := os.ReadFile(filepath.Join(downloadSettings.OutputDir, "stdout"))
-	if err != nil {
-		return err
-	}
-	cmd.Println()
-	cmd.Println(string(body))
-
-	return nil
-}
-
-func ReadFromStdinIfAvailable(cmd *cobra.Command, args []string) ([]byte, error) {
+func ReadFromStdinIfAvailable(_ *cobra.Command, args []string) ([]byte, error) {
 	if len(args) == 0 {
-		byteResult, err := io.ReadAll(cmd.InOrStdin())
-		if err != nil {
-			return nil, errors.Wrap(err, "Error reading from stdin")
+		r := bufio.NewReader(RootCmd.InOrStdin())
+		reader := bufio.NewReader(r)
+
+		// buffered channel of dataStream
+		dataStream := make(chan []byte, 1)
+
+		// Run scanner.Bytes() function in it's own goroutine and pass back it's
+		// response into dataStream channel.
+		go func() {
+			for {
+				res, err := reader.ReadBytes("\n"[0])
+				if err != nil {
+					break
+				}
+				dataStream <- res
+			}
+			close(dataStream)
+		}()
+
+		// Listen on dataStream channel AND a timeout channel - which ever happens first.
+		var err error
+		var bytesResult bytes.Buffer
+		timedOut := false
+		select {
+		case res := <-dataStream:
+			_, err = bytesResult.Write(res)
+			if err != nil {
+				return nil, err
+			}
+		case <-time.After(time.Duration(10) * time.Millisecond): //nolint:gomnd // 10ms timeout
+			timedOut = true
 		}
-		if byteResult == nil {
-			cmd.Println(userstrings.NoFilenameProvidedErrorString)
-			return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+
+		if timedOut {
+			RootCmd.Println("No input provided, waiting ... (Ctrl+D to complete)")
 		}
-		return byteResult, nil
+
+		for read := range dataStream {
+			_, err = bytesResult.Write(read)
+		}
+
+		return bytesResult.Bytes(), err
 	}
-	return nil, errors.New(userstrings.NoStdInProvidedErrorString)
+	return nil, fmt.Errorf("should not be possible, args should be empty")
 }
 
-func PrintReturnedJobIDToUser(j *model.Job) error {
+//nolint:gocyclo,funlen // Better way to do this, Go doesn't have a switch on type
+func WaitAndPrintResultsToUser(ctx context.Context, j *model.Job, quiet bool) error {
 	if j == nil || j.ID == "" {
 		return errors.New("No job returned from the server.")
 	}
+	getMoreInfoString := fmt.Sprintf(`
+To get more information at any time, run:
+   bacalhau describe %s`, j.ID)
 
-	RootCmd.Printf("Job ID: %s\n\n", j.ID)
-	RootCmd.Println("To get the status of the job, run:")
-	RootCmd.Printf("  bacalhau describe %s", j.ID)
-	return nil
+	if !quiet {
+		RootCmd.Printf("Job successfully submitted. Job ID: %s\n", j.ID)
+		RootCmd.Printf("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
+	}
+
+	// Create a map of job state types to printed structs
+	printedEventsTracker := make(map[model.JobEventType]*printedEvents)
+	for _, jobEventType := range model.JobEventTypes() {
+		printedEventsTracker[jobEventType] = &printedEvents{
+			printed: false,
+			order:   int(jobEventType),
+		}
+	}
+
+	time.Sleep(1 * time.Second)
+
+	jobEvents, err := GetAPIClient().GetEvents(ctx, j.ID)
+	if err != nil {
+		Fatal(fmt.Sprintf("Failure retrieving job events '%s': %s\n", j.ID, err), 1)
+	}
+
+	// Capture Ctrl+C if the user wants to finish early the job
+	ctx, cancel := context.WithCancel(ctx)
+	signalChan := make(chan os.Signal, 2)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	defer func() {
+		signal.Stop(signalChan)
+		cancel()
+	}()
+
+	finishedRunning := false
+	var returnError error
+	returnError = nil
+
+	go func() {
+		select {
+		case s := <-signalChan: // first signal, cancel context
+			log.Debug().Msgf("Captured %v. Exiting...", s)
+			if s == os.Interrupt {
+				// If finishedRunning is true, then we go term signal
+				// because the loop finished normally.
+				if !finishedRunning {
+					if !quiet {
+						RootCmd.Println("\n\n\rPrintout canceled (the job is still running).")
+						RootCmd.Println(getMoreInfoString)
+					}
+					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+				}
+			} else {
+				RootCmd.Println("Unexpected signal received. Exiting.")
+			}
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	if len(jobEvents) != 0 {
+		for {
+			log.Debug().Msgf("Job Events:")
+			for i := range jobEvents {
+				log.Debug().Msgf("\t%s - %s - %s",
+					model.GetStateFromEvent(jobEvents[i].EventName),
+					jobEvents[i].EventTime.UTC().String(),
+					jobEvents[i].EventName)
+			}
+			log.Debug().Msgf("\n")
+
+			if err != nil {
+				if _, ok := err.(*bacerrors.JobNotFound); ok {
+					Fatal(fmt.Sprintf("Somehow even though we submitted a job successfully, we were not able to get its status. ID: %s", j.ID), 1)
+				} else {
+					Fatal(fmt.Sprintf("Unknown error trying to get job (ID: %s): %+v", j.ID, err), 1)
+				}
+			}
+
+			if !quiet {
+				for i := range jobEvents {
+					printingUpdateForEvent(printedEventsTracker, jobEvents[i].EventName)
+				}
+			}
+
+			// Look for any terminal event in all the events. If it's done, we're done.
+			for i := range jobEvents {
+				// TODO: #837 We should be checking for the last event of a given type, not the first, across all shards.
+				if eventsWorthPrinting[jobEvents[i].EventName].IsTerminal {
+					// Send a signal to the goroutine that is waiting for Ctrl+C
+					finishedRunning = true
+					signalChan <- syscall.SIGINT
+					break
+				}
+			}
+
+			if condition := ctx.Err(); condition != nil {
+				signalChan <- syscall.SIGINT
+				break
+			} else {
+				jobEvents, err = GetAPIClient().GetEvents(ctx, j.ID)
+				if err != nil {
+					if _, ok := err.(*bacerrors.ContextCanceledError); ok {
+						// We're done, the user canceled the job
+						break
+					} else {
+						return errors.Wrap(err, "Error getting job events")
+					}
+				}
+			}
+
+			time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
+		} // end for
+	}
+
+	return returnError
 }
 
+func printingUpdateForEvent(pe map[model.JobEventType]*printedEvents, jet model.JobEventType) {
+	maxLength := 0
+	for _, v := range eventsWorthPrinting {
+		if len(v.Message) > maxLength {
+			maxLength = len(v.Message)
+		}
+	}
+
+	// If it hasn't been printed yet, we'll print this event.
+	// We'll also skip lines where there's no message to print.
+	if eventsWorthPrinting[jet].Message != "" && !pe[jet].printed {
+		// Only print " done" after the first line.
+		firstLine := true
+		for v := range pe {
+			firstLine = firstLine && !pe[v].printed
+		}
+		if !firstLine {
+			RootCmd.Println("done ✅")
+		}
+
+		RootCmd.Printf("\t%s%s",
+			strings.Repeat(" ", maxLength-len(eventsWorthPrinting[jet].Message)+2),
+			eventsWorthPrinting[jet].Message)
+		if !eventsWorthPrinting[jet].IsTerminal {
+			RootCmd.Print(" ... ")
+		} else {
+			RootCmd.Println()
+		}
+		pe[jet].printed = true
+	}
+}
 func FatalErrorHandler(msg string, code int) {
 	if len(msg) > 0 {
 		// add newline if needed
@@ -414,6 +753,18 @@ func FatalErrorHandler(msg string, code int) {
 // Returned as text JSON to wherever RootCmd is printing.
 func FakeFatalErrorHandler(msg string, code int) {
 	c := model.TestFatalErrorHandlerContents{Message: msg, Code: code}
-	b, _ := json.Marshal(c)
+	b, _ := model.JSONMarshalWithMax(c)
 	RootCmd.Println(string(b))
+}
+
+// applyPorcelainLogLevel sets the log level of loggers running on user-facing
+// "porcelain" commands to be zerolog.FatalLevel to reduce noise shown to users.
+func applyPorcelainLogLevel(cmd *cobra.Command, _ []string) {
+	if _, err := zerolog.ParseLevel(os.Getenv("LOG_LEVEL")); err != nil {
+		return
+	}
+
+	ctx := cmd.Context()
+	ctx = log.Ctx(ctx).Level(zerolog.FatalLevel).WithContext(ctx)
+	cmd.SetContext(ctx)
 }

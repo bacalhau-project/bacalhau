@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/bacerrors"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
@@ -34,6 +35,8 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
+	res.Header().Set(handlerwrapper.HTTPHeaderClientID, listReq.ClientID)
+	res.Header().Set(handlerwrapper.HTTPHeaderJobID, listReq.JobID)
 
 	jobList, err := apiServer.getJobsList(ctx, listReq)
 	if err != nil {
@@ -43,17 +46,15 @@ func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
 	if len(jobList) > 0 {
 		// get JobStates
 		err = apiServer.getJobStates(ctx, jobList)
 		if err != nil {
-			log.Error().Err(err).Msg("error getting job states")
+			log.Ctx(ctx).Error().Err(err).Msg("error getting job states")
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
-
 	res.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(res).Encode(listResponse{
 		Jobs: jobList,
@@ -90,7 +91,7 @@ func (apiServer *APIServer) getJobStates(ctx context.Context, jobList []*model.J
 	for k := range jobList {
 		jobList[k].State, err = apiServer.localdb.GetJobState(ctx, jobList[k].ID)
 		if err != nil {
-			log.Error().Msgf("error getting job state: %s", err)
+			log.Ctx(ctx).Error().Msgf("error getting job state: %s", err)
 			return err
 		}
 	}

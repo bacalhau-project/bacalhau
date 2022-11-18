@@ -22,8 +22,14 @@ func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
 	}
 }
 
-func (s *NoopVerifierProvider) GetVerifier(ctx context.Context, verifierType model.Verifier) (verifier.Verifier, error) {
-	return s.noopVerifier, nil
+func (p *NoopVerifierProvider) GetVerifier(context.Context, model.Verifier) (verifier.Verifier, error) {
+	return p.noopVerifier, nil
+}
+
+// Check if a verifier is available or not
+func (p *NoopVerifierProvider) HasVerifier(ctx context.Context, verifierType model.Verifier) bool {
+	_, err := p.GetVerifier(ctx, verifierType)
+	return err == nil
 }
 
 type NoopVerifier struct {
@@ -32,35 +38,41 @@ type NoopVerifier struct {
 }
 
 func NewNoopVerifier(
-	ctx context.Context, cm *system.CleanupManager,
-
+	_ context.Context, cm *system.CleanupManager,
 	resolver *job.StateResolver,
 ) (*NoopVerifier, error) {
 	results, err := results.NewResults()
 	if err != nil {
 		return nil, err
 	}
+
+	cm.RegisterCallback(func() error {
+		if err := results.Close(); err != nil {
+			return fmt.Errorf("unable to remove results folder: %w", err)
+		}
+		return nil
+	})
 	return &NoopVerifier{
 		stateResolver: resolver,
 		results:       results,
 	}, nil
 }
 
-func (noopVerifier *NoopVerifier) IsInstalled(ctx context.Context) (bool, error) {
+func (noopVerifier *NoopVerifier) IsInstalled(context.Context) (bool, error) {
 	return true, nil
 }
 
 func (noopVerifier *NoopVerifier) GetShardResultPath(
-	ctx context.Context,
+	_ context.Context,
 	shard model.JobShard,
 ) (string, error) {
 	return noopVerifier.results.EnsureShardResultsDir(shard.Job.ID, shard.Index)
 }
 
 func (noopVerifier *NoopVerifier) GetShardProposal(
-	ctx context.Context,
-	shard model.JobShard,
-	shardResultPath string,
+	context.Context,
+	model.JobShard,
+	string,
 ) ([]byte, error) {
 	return []byte{}, nil
 }

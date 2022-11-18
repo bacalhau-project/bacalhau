@@ -43,6 +43,11 @@ func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model
 	return p.noopExecutor, nil
 }
 
+func (p *NoopExecutorProvider) HasExecutor(ctx context.Context, engineType model.Engine) bool {
+	_, err := p.GetExecutor(ctx, engineType)
+	return err == nil
+}
+
 type NoopExecutor struct {
 	Jobs   []model.Job
 	Config ExecutorConfig
@@ -99,6 +104,10 @@ func (e *NoopExecutor) RunShard(
 		return handler(ctx, shard, jobResultsDir)
 	}
 	return &model.RunCommandResult{}, nil
+}
+
+func (e *NoopExecutor) CancelShard(ctx context.Context, shard model.JobShard) error {
+	return nil
 }
 
 // Compile-time check that Executor implements the Executor interface.

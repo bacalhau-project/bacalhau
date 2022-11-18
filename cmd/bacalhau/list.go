@@ -2,12 +2,11 @@ package bacalhau
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
-	jobutils "github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
@@ -130,13 +129,13 @@ var listCmd = &cobra.Command{
 	Short:   "List jobs on the network",
 	Long:    listLong,
 	Example: listExample,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	PreRun:  applyPorcelainLogLevel,
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		cm := system.NewCleanupManager()
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
@@ -158,9 +157,9 @@ var listCmd = &cobra.Command{
 		numberInTable := system.Min(OL.MaxJobs, len(jobs))
 		log.Debug().Msgf("Number of jobs printing: %d", numberInTable)
 
+		var msgBytes []byte
 		if OL.OutputFormat == JSONFormat {
-			var msgBytes []byte
-			msgBytes, err = json.MarshalIndent(jobs, "", "    ")
+			msgBytes, err = model.JSONMarshalWithMax(jobs)
 			if err != nil {
 				Fatal(fmt.Sprintf("Error marshaling jobs to JSON: %s", err), 1)
 			}
@@ -230,36 +229,14 @@ func summarizeJob(ctx context.Context, j *model.Job) (table.Row, error) {
 	}
 
 	// compute state summary
-	var currentJobState model.JobStateType
-	for _, shardState := range jobutils.FlattenShardStates(j.State) { //nolint:gocritic
-		if shardState.State > currentJobState {
-			currentJobState = shardState.State
-		}
-	}
-	stateSummary := currentJobState.String()
+	//nolint:gocritic
+	stateSummary := job.ComputeStateSummary(j)
 
 	// compute verifiedSummary
-	var verifiedSummary string
-	if j.Spec.Verifier == model.VerifierNoop {
-		verifiedSummary = ""
-	} else {
-		totalShards := jobutils.GetJobTotalExecutionCount(j)
-		verifiedShardCount := jobutils.GetVerifiedShardStates(j.State)
-		verifiedSummary = fmt.Sprintf("%d/%d", verifiedShardCount, totalShards)
-	}
+	verifiedSummary := job.ComputeVerifiedSummary(j)
 
 	// compute resultSummary
-	var resultSummary string
-	if jobutils.GetJobTotalShards(j) > 1 {
-		resultSummary = ""
-	} else {
-		completedShards := jobutils.GetCompletedShardStates(j.State)
-		if len(completedShards) == 0 {
-			resultSummary = ""
-		} else {
-			resultSummary = fmt.Sprintf("/ipfs/%s", completedShards[0].PublishedResult.CID)
-		}
-	}
+	resultSummary := job.ComputeResultsSummary(j)
 
 	row := table.Row{
 		shortenTime(OL.OutputWide, j.CreatedAt),

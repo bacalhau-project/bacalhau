@@ -3,12 +3,14 @@ package fusedocker
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	sync "github.com/lukemarsden/golang-mutex-tracer"
+	"go.uber.org/multierr"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -80,10 +82,11 @@ func NewStorageProvider(ctx context.Context, cm *system.CleanupManager, ipfsAPIA
 	})
 
 	cm.RegisterCallback(func() error {
+		// TODO: #893 this shouldn't be reusing the context as there's the possibility that it's already canceled
 		return cleanupStorageDriver(ctx, storageHandler)
 	})
 
-	log.Debug().Msgf(
+	log.Ctx(ctx).Debug().Msgf(
 		"Docker IPFS storage initialized with address: %s", ipfsAPIAddress)
 	return storageHandler, nil
 }
@@ -110,7 +113,7 @@ func (sp *StorageProvider) HasStorageLocally(ctx context.Context, volume model.S
 	return sp.IPFSClient.HasCID(ctx, volume.CID)
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, volume model.StorageSpec) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ model.StorageSpec) (uint64, error) {
 	_, span := newSpan(ctx, "GetVolumeResourceUsage")
 	defer span.End()
 	return 0, nil
@@ -148,18 +151,18 @@ func (sp *StorageProvider) PrepareStorage(ctx context.Context,
 // we don't need to cleanup individual storage because the fuse mount
 // covers the whole of the ipfs namespace
 func (sp *StorageProvider) CleanupStorage(ctx context.Context,
-	storageSpec model.StorageSpec, volume storage.StorageVolume) error {
+	_ model.StorageSpec, _ storage.StorageVolume) error {
 	_, span := newSpan(ctx, "CleanupStorage")
 	defer span.End()
 
 	return nil
 }
 
-func (sp *StorageProvider) Upload(ctx context.Context, localPath string) (model.StorageSpec, error) {
+func (sp *StorageProvider) Upload(context.Context, string) (model.StorageSpec, error) {
 	return model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
-func (sp *StorageProvider) Explode(ctx context.Context, spec model.StorageSpec) ([]model.StorageSpec, error) {
+func (sp *StorageProvider) Explode(context.Context, model.StorageSpec) ([]model.StorageSpec, error) {
 	return []model.StorageSpec{}, fmt.Errorf("not implemented")
 }
 
@@ -232,7 +235,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 					},
 				}
 
-				err = fileWaiter.Wait()
+				err = fileWaiter.Wait(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -241,7 +244,7 @@ func (sp *StorageProvider) ensureSidecar(ctx context.Context, cid string) error 
 			},
 		}
 
-		err = sidecarWaiter.Wait()
+		err = sidecarWaiter.Wait(ctx)
 
 		if err != nil {
 			return err
@@ -339,7 +342,7 @@ func (sp *StorageProvider) startSidecar(ctx context.Context) error {
 	logs, err := docker.WaitForContainerLogs(ctx, sp.DockerClient, sidecarContainer.ID, MaxAttemptsForDocker, time.Second*2, "Daemon is ready")
 
 	if err != nil {
-		log.Error().Msg(logs)
+		log.Ctx(ctx).Error().Msg(logs)
 		stopErr := cleanupStorageDriver(ctx, sp)
 		if stopErr != nil {
 			err = fmt.Errorf("original error: %s\nstop error: %s", err.Error(), stopErr.Error())
@@ -384,24 +387,25 @@ func (sp *StorageProvider) canSeeFuseMount(ctx context.Context, cid string) bool
 	if err != nil {
 		return false
 	}
-	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"timeout", "1s", "ls", "-la",
-		testMountPath,
-	})
+	err = exec.Command("sudo", "timeout", "1s", "ls", "-la", testMountPath).Run()
 	return err == nil
 }
 
 func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) error {
+	// We have to use a separate context, rather than the one passed in to `NewExecutor`, as it may have already been
+	// canceled and so would prevent us from performing any cleanup work.
+	safeCtx := context.Background()
+
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
-	c, err := docker.GetContainer(ctx, dockerClient, storageHandler.sidecarContainerName())
+	c, err := docker.GetContainer(safeCtx, dockerClient, storageHandler.sidecarContainerName())
 	if err != nil {
 		return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 	}
 	if c != nil {
-		err = docker.RemoveContainer(ctx, dockerClient, c.ID)
+		err = docker.RemoveContainer(safeCtx, dockerClient, c.ID)
 		if err != nil {
 			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}
@@ -413,13 +417,13 @@ func cleanupStorageDriver(ctx context.Context, storageHandler *StorageProvider) 
 			return fmt.Errorf("docker IPFS sidecar stop error: %s", err.Error())
 		}
 	}
-	log.Debug().Msgf("Docker IPFS sidecar has stopped")
+	log.Ctx(ctx).Debug().Msgf("Docker IPFS sidecar has stopped")
 	return nil
 }
 
 func createMountDir() (string, error) {
 	// create a temporary directory to mount the ipfs volume with fuse
-	dir, err := ioutil.TempDir("", "bacalhau-ipfs")
+	dir, err := os.MkdirTemp("", "bacalhau-ipfs")
 	if err != nil {
 		return "", err
 	}
@@ -435,21 +439,11 @@ func createMountDir() (string, error) {
 }
 
 func cleanupMountDir(mountDir string) error {
-	_, err := system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"umount",
-		fmt.Sprintf("%s/data", mountDir),
-	})
-	if err != nil {
-		return err
-	}
-	_, err = system.UnsafeForUserCodeRunCommand("sudo", []string{
-		"umount",
-		fmt.Sprintf("%s/ipns", mountDir),
-	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return multierr.Combine(
+		// mountDir is only generated from os.MkdirTemp in createMountDir, so not user input
+		exec.Command("sudo", "umount", filepath.Join(mountDir, "data")).Run(), //nolint:gosec
+		exec.Command("sudo", "umount", filepath.Join(mountDir, "ipns")).Run(), //nolint:gosec
+	)
 }
 
 func getMountDirFromContainer(c *dockertypes.Container) string {

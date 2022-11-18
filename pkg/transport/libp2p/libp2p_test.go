@@ -1,3 +1,5 @@
+//go:build unit || !integration
+
 package libp2p
 
 import (
@@ -6,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -25,21 +28,9 @@ func TestLibp2pTransportSuite(t *testing.T) {
 	suite.Run(t, new(Libp2pTransportSuite))
 }
 
-// Before all suite
-func (suite *Libp2pTransportSuite) SetupAllSuite() {
-
-}
-
 // Before each test
 func (suite *Libp2pTransportSuite) SetupTest() {
-
-}
-
-func (suite *Libp2pTransportSuite) TearDownTest() {
-}
-
-func (suite *Libp2pTransportSuite) TearDownAllSuite() {
-
+	logger.ConfigureTestLogging(suite.T())
 }
 
 func (suite *Libp2pTransportSuite) TestEncryption() {

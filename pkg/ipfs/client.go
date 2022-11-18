@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -63,7 +62,7 @@ func (cl *Client) WaitUntilAvailable(ctx context.Context) error {
 
 		_, err := cl.ID(ctx)
 		if err != nil {
-			log.Debug().Msgf("non-critical error waiting for node availability: %v", err)
+			log.Ctx(ctx).Debug().Msgf("non-critical error waiting for node availability: %v", err)
 		} else {
 			return nil
 		}
@@ -130,15 +129,8 @@ func (cl *Client) Get(ctx context.Context, cid, outputPath string) error {
 		return fmt.Errorf("failed to get ipfs cid '%s': %w", cid, err)
 	}
 
-	baseDir := filepath.Dir(outputPath)
-	tmpPath := filepath.Join(baseDir, system.GetRandomString(10)) //nolint:gomnd // magic number ok for string
-	if err := files.WriteTo(node, tmpPath); err != nil {
-		return fmt.Errorf("failed to write to '%s': %w", tmpPath, err)
-	}
-	defer os.RemoveAll(tmpPath)
-
-	if err := os.Rename(tmpPath, outputPath); err != nil {
-		return fmt.Errorf("failed to rename '%s' to '%s': %w", tmpPath, outputPath, err)
+	if err := files.WriteTo(node, outputPath); err != nil {
+		return fmt.Errorf("failed to write to '%s': %w", outputPath, err)
 	}
 
 	return nil
@@ -236,7 +228,7 @@ func (cl *Client) NodesWithCID(ctx context.Context, cid string) ([]string, error
 	return res, nil
 }
 
-// HadCID returns true if the node has the given CID locally, whether pinned or not.
+// HasCID returns true if the node has the given CID locally, whether pinned or not.
 func (cl *Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/ipfs.HasCID")
 	defer span.End()

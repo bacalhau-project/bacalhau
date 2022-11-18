@@ -3,11 +3,17 @@ package devstack
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"runtime"
 	"runtime/pprof"
 	"strings"
+	"time"
+
+	"github.com/filecoin-project/bacalhau/pkg/logger"
+	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
@@ -33,12 +39,14 @@ type DevStackOptions struct {
 	NumberOfBadActors    int    // Number of nodes to be bad actors
 	Peer                 string // Connect node 0 to another network node
 	PublicIPFSMode       bool   // Use public IPFS nodes
+	LocalNetworkLotus    bool
 	FilecoinUnsealedPath string
 	EstuaryAPIKey        string
 	SimulatorURL         string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
 	Nodes []*node.Node
+	Lotus *LotusNode
 }
 
 func NewDevStackForRunLocal(
@@ -53,8 +61,8 @@ func NewDevStackForRunLocal(
 	}
 
 	computeNodeConfig := computenode.ComputeNodeConfig{
-		JobSelectionPolicy: computenode.JobSelectionPolicy{
-			Locality:            computenode.Anywhere,
+		JobSelectionPolicy: model.JobSelectionPolicy{
+			Locality:            model.Anywhere,
 			RejectStatelessJobs: false,
 		}, CapacityManagerConfig: capacitymanager.Config{
 			ResourceLimitTotal: model.ResourceUsageConfig{
@@ -68,6 +76,7 @@ func NewDevStackForRunLocal(
 		cm,
 		options,
 		computeNodeConfig,
+		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 }
 
@@ -76,8 +85,9 @@ func NewStandardDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, node.NewStandardNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
@@ -85,8 +95,9 @@ func NewNoopDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, NewNoopNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -95,13 +106,28 @@ func NewDevStack(
 	cm *system.CleanupManager,
 	options DevStackOptions,
 	computeNodeConfig computenode.ComputeNodeConfig,
+	requesterNodeConfig requesternode.RequesterNodeConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
 	ctx, span := system.GetTracer().Start(ctx, "pkg/devstack.newdevstack")
 	defer span.End()
 
 	nodes := []*node.Node{}
+	var lotus *LotusNode
 	var err error
+
+	if options.LocalNetworkLotus {
+		lotus, err = newLotusNode(ctx) //nolint:govet
+		if err != nil {
+			return nil, err
+		}
+
+		cm.RegisterCallback(lotus.Close)
+
+		if err := lotus.start(ctx); err != nil { //nolint:govet
+			return nil, err
+		}
+	}
 
 	for i := 0; i < options.NumberOfNodes; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
@@ -128,6 +154,13 @@ func NewDevStack(
 		ipfsClient, err = ipfsNode.Client()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ipfs client: %w", err)
+		}
+
+		// Assign all the ports up front, so that they can't collide
+		var ports []int
+		ports, err = freeport.GetFreePorts(3)
+		if err != nil {
+			return nil, err
 		}
 
 		var useTransport transport.Transport
@@ -176,6 +209,9 @@ func NewDevStack(
 			useTransport = simulatorTransport
 		}
 
+		// add NodeID to logging context
+		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+
 		//////////////////////////////////////
 		// port for API
 		//////////////////////////////////////
@@ -183,20 +219,14 @@ func NewDevStack(
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			apiPort = 20000 + i
 		} else {
-			apiPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
-			}
+			apiPort, ports = ports[0], ports[1:]
 		}
 
 		//////////////////////////////////////
 		// metrics
 		//////////////////////////////////////
 		var metricsPort int
-		metricsPort, err = freeport.GetFreePort()
-		if err != nil {
-			return nil, err
-		}
+		metricsPort, _ = ports[0], ports[1:]
 
 		//////////////////////////////////////
 		// in-memory datastore
@@ -224,8 +254,19 @@ func NewDevStack(
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeNodeConfig:    computeNodeConfig,
-			RequesterNodeConfig:  requesternode.RequesterNodeConfig{},
+			RequesterNodeConfig:  requesterNodeConfig,
 			IsBadActor:           isBadActor,
+		}
+
+		if lotus != nil {
+			nodeConfig.LotusConfig = &filecoinlotus.PublisherConfig{
+				StorageDuration: 24 * 24 * time.Hour,
+				PathDir:         lotus.PathDir,
+				UploadDir:       lotus.UploadDir,
+				// devstack will only be talking to a single node, so don't bother filtering based on ping
+				// as the ping may be quite large while it is trying to run everything
+				MaximumPing: time.Duration(math.MaxInt64),
+			}
 		}
 
 		var n *node.Node
@@ -247,6 +288,11 @@ func NewDevStack(
 		}
 
 		nodes = append(nodes, n)
+
+		// let's wait a small period to give the api server a chance to spin up
+		// meaning it's port will be in use the next time we spin around this loop
+		// and so hopefully avoid "listen tcp 0.0.0.0:43081: bind: address already in use" errors
+		time.Sleep(time.Millisecond * 100) //nolint:gomnd
 	}
 
 	// only start profiling after we've set everything up!
@@ -258,15 +304,16 @@ func NewDevStack(
 	cpuprofile := path.Join(os.TempDir(), "bacalhau-devstack-cpu.prof")
 	f, err := os.Create(cpuprofile)
 	if err != nil {
-		log.Fatal().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
+		log.Debug().Msgf("could not create CPU profile: %s", err) //nolint:gocritic
 	}
-	defer f.Close()
+	defer closer.CloseWithLogOnError("cpuprofile", f)
 	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
+		log.Debug().Msgf("could not start CPU profile: %s", err) //nolint:gocritic
 	}
 
 	return &DevStack{
 		Nodes: nodes,
+		Lotus: lotus,
 	}, nil
 }
 
@@ -296,9 +343,7 @@ func createIPFSNode(ctx context.Context,
 	return ipfsNode, nil
 }
 
-func (stack *DevStack) PrintNodeInfo() (string, error) {
-	ctx := context.Background()
-
+func (stack *DevStack) PrintNodeInfo(ctx context.Context) (string, error) {
 	if !config.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -314,7 +359,7 @@ func (stack *DevStack) PrintNodeInfo() (string, error) {
 `
 	for nodeIndex, node := range stack.Nodes {
 		swarmAddrrs := ""
-		swarmAddresses, err := node.IPFSClient.SwarmAddresses(context.Background())
+		swarmAddresses, err := node.IPFSClient.SwarmAddresses(ctx)
 		if err != nil {
 			return "", fmt.Errorf("cannot get swarm addresses for node %d", nodeIndex)
 		} else {
@@ -353,6 +398,12 @@ export BACALHAU_API_PORT=%s`,
 		devStackAPIPort,
 	)
 
+	if stack.Lotus != nil {
+		summaryShellVariablesString += fmt.Sprintf(`
+export LOTUS_PATH=%s
+export LOTUS_UPLOAD_DIR=%s`, stack.Lotus.PathDir, stack.Lotus.UploadDir)
+	}
+
 	log.Debug().Msg(logString)
 
 	returnString := fmt.Sprintf(`
@@ -371,24 +422,19 @@ func (stack *DevStack) GetNode(ctx context.Context, nodeID string) (
 
 	return nil, fmt.Errorf("node not found: %s", nodeID)
 }
+func (stack *DevStack) IPFSClients() []*ipfs.Client {
+	clients := make([]*ipfs.Client, 0, len(stack.Nodes))
+	for _, node := range stack.Nodes {
+		clients = append(clients, node.IPFSClient)
+	}
+	return clients
+}
 
 func (stack *DevStack) GetNodeIds() ([]string, error) {
-	ids := []string{}
+	var ids []string
 	for _, node := range stack.Nodes {
 		ids = append(ids, node.Transport.HostID())
 	}
 
 	return ids, nil
-}
-
-func (stack *DevStack) GetShortIds() ([]string, error) {
-	ids, err := stack.GetNodeIds()
-	if err != nil {
-		return ids, err
-	}
-	shortids := []string{}
-	for _, id := range ids {
-		shortids = append(shortids, system.ShortID(id))
-	}
-	return shortids, nil
 }

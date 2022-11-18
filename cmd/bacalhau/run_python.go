@@ -1,21 +1,15 @@
 package bacalhau
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
-	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/targzip"
 	"github.com/filecoin-project/bacalhau/pkg/util/templates"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 )
@@ -34,7 +28,6 @@ var (
 // LanguageRunOptions declares the arguments accepted by the `'language' run` command
 type LanguageRunOptions struct {
 	Deterministic bool     // Execute this job deterministically
-	Verifier      string   // Verifier - verifier.Verifier
 	Inputs        []string // Array of input CIDs
 	InputUrls     []string // Array of input URLs (will be copied to IPFS)
 	InputVolumes  []string // Array of input volumes in 'CID:mount point' form
@@ -43,6 +36,7 @@ type LanguageRunOptions struct {
 	Concurrency   int      // Number of concurrent jobs to run
 	Confidence    int      // Minimum number of nodes that must agree on a verification result
 	MinBids       int      // Minimum number of bids that must be received before any are accepted (at random)
+	Timeout       float64  // Job execution timeout in seconds
 	Labels        []string // Labels for the job on the Bacalhau network (for searching)
 
 	Command          string // Command to execute
@@ -54,9 +48,8 @@ type LanguageRunOptions struct {
 	// GPU string
 	// WorkingDir string // Working directory for docker
 
-	// WaitForJobToFinish bool // Wait for the job to execute before exiting
-	// WaitForJobToFinishAndPrintOutput bool // Wait for the job to execute, and print the results before exiting
-	// WaitForJobTimeoutSecs int // Job time out in seconds
+	RuntimeSettings  RunTimeSettings
+	DownloadSettings ipfs.IPFSDownloadSettings
 
 	// ShardingGlobPattern string
 	// ShardingBasePath string
@@ -66,7 +59,6 @@ type LanguageRunOptions struct {
 func NewLanguageRunOptions() *LanguageRunOptions {
 	return &LanguageRunOptions{
 		Deterministic:    true,
-		Verifier:         "ipfs",
 		Inputs:           []string{},
 		InputUrls:        []string{},
 		InputVolumes:     []string{},
@@ -74,10 +66,14 @@ func NewLanguageRunOptions() *LanguageRunOptions {
 		Env:              []string{},
 		Concurrency:      1,
 		Confidence:       0,
+		MinBids:          0, // 0 means no minimum before bidding
+		Timeout:          DefaultTimeout.Seconds(),
 		Labels:           []string{},
 		Command:          "",
 		RequirementsPath: "",
 		ContextPath:      ".",
+		RuntimeSettings:  *NewRunTimeSettings(),
+		DownloadSettings: *ipfs.NewIPFSDownloadSettings(),
 	}
 }
 
@@ -88,7 +84,7 @@ func init() {
 		&OLR.Deterministic, "deterministic", OLR.Deterministic,
 		`Enforce determinism: run job in a single-threaded wasm runtime with `+
 			`no sources of entropy. NB: this will make the python runtime execute`+
-			`in an environment where only some librarie are supported, see `+
+			`in an environment where only some libraries are supported, see `+
 			`https://pyodide.org/en/stable/usage/packages-in-pyodide.html`,
 	)
 	runPythonCmd.PersistentFlags().StringSliceVarP(
@@ -118,6 +114,14 @@ func init() {
 		&OLR.Confidence, "confidence", OLR.Confidence,
 		`The minimum number of nodes that must agree on a verification result`,
 	)
+	runPythonCmd.PersistentFlags().IntVar(
+		&OLR.MinBids, "min-bids", OLR.MinBids,
+		`Minimum number of bids that must be received before concurrency-many bids will be accepted (at random)`,
+	)
+	runPythonCmd.PersistentFlags().Float64Var(
+		&OLR.Timeout, "timeout", OLR.Timeout,
+		`Job execution timeout in seconds (e.g. 300 for 5 minutes and 0.1 for 100ms)`,
+	)
 	runPythonCmd.PersistentFlags().StringVarP(
 		&OLR.Command, "command", "c", OLR.Command,
 		`Program passed in as string (like python)`,
@@ -133,15 +137,13 @@ func init() {
 		"Path to context (e.g. python code) to send to server (via public IPFS network) "+
 			"for execution (max 10MiB). Set to empty string to disable",
 	)
-	runPythonCmd.PersistentFlags().StringVar(
-		&OLR.Verifier, "verifier", OLR.Verifier,
-		`What verification engine to use to run the job`,
-	)
-
 	runPythonCmd.PersistentFlags().StringSliceVarP(
 		&OLR.Labels, "labels", "l", OLR.Labels,
 		`List of labels for the job. Enter multiple in the format '-l a -l 2'. All characters not matching /a-zA-Z0-9_:|-/ and all emojis will be stripped.`, //nolint:lll // Documentation, ok if long.
 	)
+
+	runPythonCmd.PersistentFlags().AddFlagSet(NewRunTimeSettingsFlags(&OLR.RuntimeSettings))
+	runPythonCmd.PersistentFlags().AddFlagSet(NewIPFSDownloadFlags(&OLR.DownloadSettings))
 }
 
 // TODO: move the adapter code (from wasm to docker) into a wasm executor, so
@@ -160,18 +162,15 @@ var runPythonCmd = &cobra.Command{
 		defer cm.Cleanup()
 		ctx := cmd.Context()
 
-		t := system.GetTracer()
-		ctx, rootSpan := system.NewRootSpan(ctx, t, "cmd/bacalhau/list")
+		ctx, rootSpan := system.NewRootSpan(ctx, system.GetTracer(), "cmd/bacalhau/list")
 		defer rootSpan.End()
 		cm.RegisterCallback(system.CleanupTraceProvider)
 
 		// error if determinism is false
 		if !OLR.Deterministic {
-			return fmt.Errorf("determinism=false not supported yet " +
-				"(python only supports wasm backend with forced determinism)")
+			Fatal("Determinism=false not supported yet "+
+				"(languages only support wasm backend with forced determinism)", 1)
 		}
-
-		// TODO: prepare context
 
 		var programPath string
 		if len(cmdArgs) > 0 {
@@ -192,10 +191,13 @@ var runPythonCmd = &cobra.Command{
 			OLR.InputVolumes = append(OLR.InputVolumes, "/inputs:/inputs")
 		}
 
-		//nolint:lll // it's ok to be long
-		// TODO: #450 These two code paths make me nervous - the fact that we have ConstructLanguageJob and ConstructDockerJob as separate means manually keeping them in sync.
+		language := "python"
+		version := "3.10"
+
+		// TODO: #450 These two code paths make me nervous - the fact that we
+		// have ConstructLanguageJob and ConstructDockerJob as separate means
+		// manually keeping them in sync.
 		j, err := job.ConstructLanguageJob(
-			model.APIVersionLatest(),
 			OLR.InputVolumes,
 			OLR.InputUrls,
 			OLR.OutputVolumes,
@@ -203,8 +205,9 @@ var runPythonCmd = &cobra.Command{
 			OLR.Concurrency,
 			OLR.Confidence,
 			OLR.MinBids,
-			"python",
-			"3.10",
+			OLR.Timeout,
+			language,
+			version,
 			OLR.Command,
 			programPath,
 			OLR.RequirementsPath,
@@ -229,118 +232,18 @@ var runPythonCmd = &cobra.Command{
 			// tar + gzip
 			cmd.Printf("Uploading %s to server to execute command in context, press Ctrl+C to cancel\n", OLR.ContextPath)
 			time.Sleep(1 * time.Second)
-			err = compress(ctx, OLR.ContextPath, &buf)
+			err = targzip.Compress(ctx, OLR.ContextPath, &buf)
 			if err != nil {
 				return err
 			}
-
-			// check size of buf
-			if buf.Len() > 10*1024*1024 {
-				Fatal("context tar file is too large (>10MiB)", 1)
-			}
-
 		}
 
-		log.Debug().Msgf(
-			"submitting job %+v", j)
-
-		returnedJob, err := GetAPIClient().Submit(ctx, j, &buf)
+		err = ExecuteJob(ctx, cm, cmd, j, OLR.RuntimeSettings, OLR.DownloadSettings, &buf)
 		if err != nil {
-			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
+			Fatal(fmt.Sprintf("Error executing job: %s", err), 1)
+			return nil
 		}
 
-		err = PrintReturnedJobIDToUser(returnedJob)
-		if err != nil {
-			Fatal(fmt.Sprintf("Error submitting job: %s", err), 1)
-		}
 		return nil
 	},
-}
-
-// from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
-
-//nolint:gocyclo
-func compress(ctx context.Context, src string, buf io.Writer) error {
-	//nolint:ineffassign,staticcheck
-	ctx, span := system.GetTracer().Start(ctx, "cmd/bacalhau/runPython.compress")
-	defer span.End()
-
-	// tar > gzip > buf
-	zr := gzip.NewWriter(buf)
-	tw := tar.NewWriter(zr)
-
-	// is file a folder?
-	fi, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	mode := fi.Mode()
-	if mode.IsRegular() {
-		// get header
-		var header *tar.Header
-		header, err = tar.FileInfoHeader(fi, src)
-		if err != nil {
-			return err
-		}
-		// write header
-		if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-			return err
-		}
-		// get content
-		var data *os.File
-		data, err = os.Open(src)
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(tw, data); err != nil {
-			return err
-		}
-	} else if mode.IsDir() { // folder
-		// walk through every file in the folder
-		err = filepath.Walk(src, func(file string, fi os.FileInfo, _ error) error {
-			// generate tar header
-			var header *tar.Header
-			header, err = tar.FileInfoHeader(fi, file)
-			if err != nil {
-				return err
-			}
-
-			// must provide real name
-			// (see https://golang.org/src/archive/tar/common.go?#L626)
-			header.Name = filepath.ToSlash(file)
-
-			// write header
-			if err = tw.WriteHeader(header); err != nil { //nolint:gocritic
-				return err
-			}
-			// if not a dir, write file content
-			if !fi.IsDir() {
-				var data *os.File
-				data, err = os.Open(file)
-				if err != nil {
-					return err
-				}
-				if _, err = io.Copy(tw, data); err != nil { //nolint:gocritic
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("error: file type not supported")
-	}
-
-	// produce tar
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	// produce gzip
-	if err := zr.Close(); err != nil {
-		return err
-	}
-	//
-	return nil
 }
