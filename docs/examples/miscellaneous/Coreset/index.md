@@ -24,6 +24,7 @@ Clone the repo which contains the code
 
 
 ```bash
+
 git clone https://github.com/js-ts/Coreset
 ```
 
@@ -37,6 +38,7 @@ Open Street Map, which is a public repository that aims to generate and distribu
 
 
 ```bash
+
 wget https://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf -o liechtenstein-latest.osm.pbf
 ```
 
@@ -46,6 +48,7 @@ Installing the Linux dependencies
 
 
 ```bash
+
 sudo apt-get -y update \
 sudo apt-get -y install osmium-tool \
 sudo apt update \
@@ -57,6 +60,7 @@ Installing Python Dependencies
 
 
 ```bash
+
 pip3 install -r Coreset/requirements.txt
 ```
 
@@ -66,6 +70,7 @@ Convert from compressed pbf format to geojson format
 
 
 ```bash
+
 osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 ```
 
@@ -73,6 +78,7 @@ osmium export liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson
 
 
 ```bash
+
 python Coreset/python/coreset.py -f liechtenstein-latest.geojson
 ```
 
@@ -183,11 +189,13 @@ Insalling bacalhau
 
 
 ```bash
+
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
 
 ```bash
+
 echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input jsace/coreset -- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson; python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs') > job_id.txt
 cat job_id.txt
 ```
@@ -198,6 +206,7 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
+
 bacalhau list --id-filter $(cat job_id.txt)
 ```
 
@@ -208,6 +217,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+
 bacalhau describe $(cat job_id.txt)
 ```
 
@@ -217,6 +227,7 @@ we create a temporary directory to save our results
 
 
 ```bash
+
 mkdir results
 ```
 
@@ -228,6 +239,7 @@ the following command:
 
 
 ```bash
+
 bacalhau get  $(cat job_id.txt)  --output-dir results
 ```
 
@@ -236,6 +248,7 @@ see the following contents in results directory
 
 
 ```bash
+
 ls results/
 ```
 
@@ -243,16 +256,19 @@ ls results/
 
 
 ```bash
+
 cat results/volumes/outputs/centers.csv | head -n 10
 ```
 
 
 ```bash
+
 cat results/volumes/outputs/coreset-values-liechtenstein-latest.csv | head -n 10
 ```
 
 
 ```bash
+
 cat results/volumes/outputs/coreset-weights-liechtenstein-latest.csv | head -n 10
 ```
 
@@ -266,10 +282,12 @@ Sources
 
 
 ```bash
+
 bacalhau describe $(cat job_id.txt) --spec > job.yaml
 ```
 
 
 ```bash
+
 cat job.yaml
 ```

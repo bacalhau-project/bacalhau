@@ -58,6 +58,7 @@ Note that these dependencies are only known to work on Ubuntu-based x64 machines
 
 
 ```bash
+
 sudo apt-get update
 sudo apt-get install -y libgl1 libglib2.0-0 git-lfs
 ```
@@ -68,6 +69,7 @@ The following commands clone the example repository, other required repositories
 
 
 ```bash
+
 git clone https://github.com/js-ts/stable_diffusion.openvino
 cd stable_diffusion.openvino
 git lfs install
@@ -96,7 +98,7 @@ display.Image("stable_diffusion.openvino/hello.png")
 
 
     
-![png](index_files/index_8_0.png)
+![png](output_8_0.png)
     
 
 
@@ -117,7 +119,7 @@ display.Image("stable_diffusion.openvino/cat.png")
 
 
     
-![png](index_files/index_10_0.png)
+![png](output_10_0.png)
     
 
 
@@ -183,6 +185,7 @@ Furthermore, the container itself is about 15GB, so it might take a while to dow
 
 
 ```bash
+ --out job_id
 bacalhau docker run ghcr.io/bacalhau-project/examples/stable-diffusion-cpu:0.0.1 --id-only -- python demo.py --prompt "First Humans On Mars" --output ../outputs/mars.png
 ```
 
@@ -192,6 +195,7 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
+
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -206,6 +210,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+
 bacalhau describe ${JOB_ID}
 ```
 
@@ -290,6 +295,7 @@ If you see that the job has completed and there are no errors, then you can down
 
 
 ```bash
+
 rm -rf results && mkdir -p results
 bacalhau get $JOB_ID --output-dir results
 ```
@@ -301,6 +307,7 @@ see the following contents in results directory:
 
 
 ```bash
+
 ls results/volumes/outputs
 ```
 
@@ -317,7 +324,7 @@ display.Image("results/volumes/outputs/mars.png")
 
 
     
-![png](index_files/index_22_0.png)
+![png](output_22_0.png)
     
 
 

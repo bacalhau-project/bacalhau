@@ -12,26 +12,36 @@ sidebar_position: 2
 
 Pandas is a Python package that provides fast, flexible, and expressive data structures designed to make working with "relational" or "labeled" data both easy and intuitive. It aims to be the fundamental high-level building block for doing practical, real world data analysis in Python. Additionally, it has the broader goal of becoming the most powerful and flexible open source data analysis/manipulation tool available in any language. It is already well on its way towards this goal.
 
-## Prerequisite
+### Installing and Getting Started with Pandas
 
-### Install Pandas
+
 
 ```bash
+
 pip install pandas
 ```
 
-### Install Bacalhau
+### Installing Bacalhau
 
-Install the the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
-
-### Install IPFS
-
-If you are going to upload your data using the IPFS CLI tool then you will need to [install it](https://docs.ipfs.tech/install/command-line/). There are other methods, which you can read about in the [ingestion example](../../data-ingestion/index.md). 
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the hidden installation command below (which installs Bacalhau local to the notebook).
 
 
-## Running your pandas script locally
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
 
-#### Importing data from CSV to DataFrame
+    env: PATH=./:./:./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
+### Installing IPFS
+
+If you are going to upload your data using the IPFS CLI tool then you will need to install that. There are other methods, which you can read more about in the [ingestion example](../../data-ingestion/index.md).
+
+## **Running your pandas script Locally**
+
+#### **Importing data from CSV to DataFrame**
 We can also create a DataFrame by importing a CSV file. A CSV file is a text file with one record of data per line. The values within the record are separated using the “comma” character. Pandas provides a useful method, named `read_csv()` to read the contents of the CSV file into a DataFrame. For example, we can create a file named ’`transactions.csv`’ containing details of Transactions. The CSV file is stored in the same directory that contains Python script.
 
 
@@ -45,6 +55,7 @@ print(pd.read_csv("transactions.csv"))
 
 
 ```bash
+
 cat read_csv.py
 ```
 
@@ -54,6 +65,7 @@ cat read_csv.py
 
 
 ```bash
+
 # Downloading the dataset
 wget https://cloudflare-ipfs.com/ipfs/QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz/transactions.csv
 ```
@@ -73,6 +85,7 @@ wget https://cloudflare-ipfs.com/ipfs/QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwi
 
 
 ```bash
+
 cat transactions.csv
 ```
 
@@ -87,6 +100,7 @@ cat transactions.csv
 
 
 ```bash
+
 python3 read_csv.py
 ```
 
@@ -98,11 +112,15 @@ python3 read_csv.py
     
     [4 rows x 15 columns]
 
-## Adding the scripts and datasets to IPFS
 
-To run Pandas on Bacalhau, you'll need to upload your datasets along with the script to IPFS. You can do that by using the [IPFS CLI](https://docs.ipfs.tech/install/command-line/#official-distributions) to add your files.
+## **Running the script on bacalhau**
 
-```bash
+To run pandas on bacalhau you must upload your datasets along with the script to IPFS this can be done by using the IPFS CLI to upload the files or using a pinning service like pinata or nft.storage
+
+Adding the Scripts and Datasets to IPFS
+since we already uploaded these scripts to IPFS there is no need for you to add them
+
+```
 $ ipfs add -r .
 added QmPqx4BaWzAmZm4AuBqGtG6dkX7bGSVgjfgpkv2g7mi3uz pandas/read_csv.py
 added QmYErPqtdpNTxpKot9pXR5QbhGSyaGdMFxfUwGHm4rzXzH pandas/transactions.csv
@@ -110,16 +128,26 @@ added QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz pandas
  1.59 KiB / 1.59 KiB [===================================================================================]
 ```
 
-Alternatively, you can use a pinning service like [pinata](https://knowledge.pinata.cloud/en/articles/5509412-how-to-upload-a-large-folder-by-running-a-local-ipfs-node) or [nft.storage](https://nft.storage/docs/how-to/nftup/).
 
+For running pandas in bacalhau you need choose a container which has python and pandas Installed
 
-## Running the script on Bacalhau
+Structure of the bacalhau command
 
-For running Pandas in Bacalhau you'll need choose a container which has Python and Pandas installed. 
+`bacalhau docker run ` similar to docker run
 
-Command:
+-v mount the CID to the container this is the 
+
+CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED> `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
+
+-w is used to set the working directory
+
+-- /bin/bash -c 'python hello.py' (Run the script)
+
+### Command:
+
 
 ```bash
+ --out job_id
  bacalhau  docker run \
 --wait \
 --id-only \
@@ -129,25 +157,13 @@ amancevice/pandas \
 -- python read_csv.py
 ```
 
-
-The structure of the Bacalhau command
-
-- `bacalhau docker run`: similar to docker run
-
-- `-v`: mount the CID to the container this is the 
-
-- `CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED>`: `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz:/files`
-
-- `-w`: is used to set the working directory
-
-- `-- /bin/bash -c 'python hello.py'`:  Run the script
-
-
-Output
-
-
     e6377c99-b637-4661-a334-6ce98fcf037c
-    
+
+
+
+```python
+%env JOB_ID={job_id}
+```
 
 Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf037c`). This is the ID of the job that was created. You can check the status of the job with the following command:
 
@@ -155,6 +171,7 @@ Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf0
 
 
 ```bash
+
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -169,6 +186,7 @@ If there is an error you can view the error using the following command bacalhau
 
 
 ```bash
+
 bacalhau describe ${JOB_ID}
 ```
 
@@ -178,13 +196,15 @@ we create a temporary directory to save our results
 
 
 ```bash
+
 mkdir pandas-results
 ```
 
-To download the results of your job, run the following command:
+To Download the results of your job, run the following command:
 
 
 ```bash
+
 bacalhau get ${JOB_ID}  --output-dir pandas-results
 ```
 
@@ -199,6 +219,7 @@ see the following contents in pandas-results directory
 
 
 ```bash
+
 ls pandas-results/combined_results/
 ```
 
@@ -240,6 +261,7 @@ Because your script is printed to stdout, the output will appear in the stdout f
 
 
 ```bash
+
 cat pandas-results/combined_results/stdout
 ```
 

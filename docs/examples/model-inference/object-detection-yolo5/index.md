@@ -46,6 +46,7 @@ Insalling bacalhau
 
 
 ```bash
+
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -108,6 +109,7 @@ Specify the path to the weights and source of the images
 
 
 ```bash
+ --out job_id
 bacalhau docker run \
 --gpu 1 \
 --wait \
@@ -129,6 +131,7 @@ This should output a UUID (like `59c59bfb-4ef8-45ac-9f4b-f0e9afd26e70`). This is
 
 
 ```bash
+
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -139,6 +142,7 @@ To find out more information about your job, run the following command:
 
 
 ```bash
+
 bacalhau describe ${JOB_ID}
 ```
 
@@ -148,6 +152,7 @@ we create a temporary directory to save our results
 
 
 ```bash
+
 mkdir results
 ```
 
@@ -159,6 +164,7 @@ the following command:
 
 
 ```bash
+
 bacalhau get  ${JOB_ID} --output-dir results
 ```
 
@@ -167,6 +173,7 @@ see the following contents in results directory
 
 
 ```bash
+
 ls results/
 ```
 
@@ -323,6 +330,7 @@ ultralytics/yolov5:latest \
 
 
 ```bash
+ --out job_id
 bacalhau docker run \
 --gpu 1 \
 --wait \
@@ -346,6 +354,7 @@ This should output a UUID (like `1f113734-cb05-4331-b049-b9b5b102259a` ). This i
 
 
 ```bash
+
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -356,11 +365,13 @@ we create a temporary directory to save our results
 
 
 ```bash
+
 mkdir custom-results
 ```
 
 
 ```bash
+
 bacalhau get ${JOB_ID} --output-dir custom-results
 ```
 

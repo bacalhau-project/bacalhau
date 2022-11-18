@@ -31,6 +31,7 @@ Note that [Bacalhau overwrites the default entrypoint](https://github.com/fileco
 
 
 ```bash
+ --out job_id
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
@@ -50,6 +51,7 @@ Now let's download and display the result from the results directory. We can use
 
 
 ```bash
+
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```

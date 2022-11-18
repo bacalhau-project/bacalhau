@@ -14,8 +14,48 @@ Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org
 
 Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the installation command below (which installs Bacalhau local to the notebook).
 
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    env: PATH=./:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
+
+
 ### Install Rust
 You can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets.
+
+
+```python
+!curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
+!sh rustup.sh -y
+%env PATH=~/.cargo/bin:{path[0]}
+!rustup target install wasm32-wasi
+```
+
+    [1minfo:[0m downloading installer
+    [1minfo: [mprofile set to 'default'
+    [1minfo: [mdefault host triple is aarch64-apple-darwin
+    [33m[1mwarning: [mUpdating existing toolchain, profile choice will be ignored
+    [1minfo: [msyncing channel updates for 'stable-aarch64-apple-darwin'
+    [1minfo: [mdefault toolchain set to 'stable-aarch64-apple-darwin'
+    
+      [1mstable-aarch64-apple-darwin unchanged[m - rustc 1.64.0 (a55dd71d5 2022-09-19)
+    
+    [1m
+    Rust is installed now. Great!
+    [m
+    To get started you may need to restart your current shell.
+    This would reload your [1mPATH[m environment variable to include
+    Cargo's bin directory ($HOME/.cargo/bin).
+    
+    To configure your current shell, run:
+    source "$HOME/.cargo/env"
+    env: PATH=~/.cargo/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/opt/homebrew/bin:/Users/simon/sdk/go1.18.6/bin:/Users/simon/go/bin:/opt/homebrew/share/jupyter:/Users/simon/wabt-1.0.30/bin:/opt/homebrew/opt/ruby/bin:/Users/simon/.cargo/bin
+    [1minfo: [mcomponent 'rust-std' for target 'wasm32-wasi' is up to date
+
 
 ## Write a Rust program
 
@@ -23,6 +63,7 @@ We can use `cargo` (which will have been installed by `rustup`) to start a new p
 
 
 ```bash
+
 cargo init my-program
 ```
 
@@ -129,6 +170,7 @@ We can now build the Rust program into a WASM blob using `cargo`.
 
 
 ```bash
+
 cd my-program && cargo build --target wasm32-wasi --release
 ```
 
@@ -211,6 +253,7 @@ For this example, we are using an image of the Statue of Liberty that has been p
 
 
 ```bash
+
 bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
     -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
@@ -262,6 +305,7 @@ We can now get the results. When we view the files, we can see the original imag
 
 
 ```bash
+
 mkdir -p wasm_results
 bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
@@ -273,28 +317,44 @@ bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 
 
 
-
-
-    
-![png](index_files/index_17_0.png)
-    
-
-
+```python
+import IPython.display as display
+display.Image("./wasm_results/combined_results/outputs/original.png")
+```
 
 
 
 
     
-![png](index_files/index_18_0.png)
+![png](output_19_0.png)
     
 
 
 
 
+```python
+display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
+```
+
+
 
 
     
-![png](index_files/index_19_0.png)
+![png](output_20_0.png)
+    
+
+
+
+
+```python
+display.Image("./wasm_results/combined_results/outputs/shrunk.png")
+```
+
+
+
+
+    
+![png](output_21_0.png)
     
 
 
