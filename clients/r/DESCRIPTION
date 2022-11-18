@@ -1,0 +1,12 @@
+Package: bacalhau-client
+Title: R Package Client for Bacalhau API
+Version: 0.3.13
+Authors@R: person("Swagger Codegen community", email = "apiteam@swagger.io", role = c("aut", "cre"))
+Description: This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
+Depends: R (>= 3.3.3)
+Encoding: UTF-8
+License: Unlicense
+LazyData: true
+Suggests: testthat
+Imports: jsonlite, httr, R6
+RoxygenNote: 6.0.1.9000

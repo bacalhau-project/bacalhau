@@ -1,0 +1,3289 @@
+openapi: 3.0.1
+info:
+  title: Bacalhau API
+  description: This page is the reference of the Bacalhau REST API. Project docs are
+    available at https://docs.bacalhau.org/. Find more information about Bacalhau
+    at https://github.com/filecoin-project/bacalhau.
+  contact:
+    name: Bacalhau Team
+    url: https://github.com/filecoin-project/bacalhau
+    email: team@bacalhau.org
+  license:
+    name: Apache 2.0
+    url: https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
+servers:
+- url: http://bootstrap.production.bacalhau.org:1234/
+paths:
+  /debug:
+    get:
+      tags:
+      - Health
+      summary: Returns debug information on what the current node is doing.
+      operationId: api_serverdebug
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.debugResponse'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /events:
+    post:
+      tags:
+      - Job
+      summary: Returns the events related to the job-id passed in the body payload.
+        Useful for troubleshooting.
+      description: |-
+        Events (e.g. Created, Bid, BidAccepted, ..., ResultsAccepted, ResultsPublished) are useful to track the progress of a job.
+
+        Example response (truncated):
+        ```json
+        {
+          "events": [
+            {
+              "APIVersion": "V1beta1",
+              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
+              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
+              "SourceNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+              "EventName": "Created",
+              "Spec": {
+                "Engine": "Docker",
+                "Verifier": "Noop",
+                "Publisher": "Estuary",
+                "Docker": {
+                  "Image": "ubuntu",
+                  "Entrypoint": [
+                    "date"
+                  ]
+                },
+                "Language": {
+                  "JobContext": {}
+                },
+                "Wasm": {},
+                "Resources": {
+                  "GPU": ""
+                },
+                "Timeout": 1800,
+                "outputs": [
+                  {
+                    "StorageSource": "IPFS",
+                    "Name": "outputs",
+                    "path": "/outputs"
+                  }
+                ],
+                "Sharding": {
+                  "BatchSize": 1,
+                  "GlobPatternBasePath": "/inputs"
+                }
+              },
+              "JobExecutionPlan": {
+                "ShardsTotal": 1
+              },
+              "Deal": {
+                "Concurrency": 1
+              },
+              "VerificationResult": {},
+              "PublishedResult": {},
+              "EventTime": "2022-11-17T13:32:55.331375351Z",
+              "SenderPublicKey": "..."
+            },
+            ...
+            {
+              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
+              "SourceNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+              "TargetNodeID": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+              "EventName": "ResultsAccepted",
+              "Spec": {
+                "Docker": {},
+                "Language": {
+                  "JobContext": {}
+                },
+                "Wasm": {},
+                "Resources": {
+                  "GPU": ""
+                },
+                "Sharding": {}
+              },
+              "JobExecutionPlan": {},
+              "Deal": {},
+              "VerificationResult": {
+                "Complete": true,
+                "Result": true
+              },
+              "PublishedResult": {},
+              "EventTime": "2022-11-17T13:32:55.707825569Z",
+              "SenderPublicKey": "..."
+            },
+            {
+              "JobID": "9304c616-291f-41ad-b862-54e133c0149e",
+              "SourceNodeID": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+              "EventName": "ResultsPublished",
+              "Spec": {
+                "Docker": {},
+                "Language": {
+                  "JobContext": {}
+                },
+                "Wasm": {},
+                "Resources": {
+                  "GPU": ""
+                },
+                "Sharding": {}
+              },
+              "JobExecutionPlan": {},
+              "Deal": {},
+              "VerificationResult": {},
+              "PublishedResult": {
+                "StorageSource": "IPFS",
+                "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+              },
+              "EventTime": "2022-11-17T13:32:55.756658941Z",
+              "SenderPublicKey": "..."
+            }
+          ]
+        }
+        ```
+      operationId: pkgpublicapievents
+      requestBody:
+        description: "Request must specify a `client_id`. To retrieve your `client_id`,\
+          \ you can do the following: (1) submit a dummy job to Bacalhau (or use one\
+          \ you created before), (2) run `bacalhau describe <job-id>` and fetch the\
+          \ `ClientID` field."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.eventsRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.eventsResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: eventsRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /healthz:
+    get:
+      tags:
+      - Health
+      operationId: api_serverhealthz
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.HealthInfo'
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /id:
+    get:
+      tags:
+      - Misc
+      summary: Returns the id of the host node.
+      operationId: api_serverid
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                x-content-type: text/plain
+        "500":
+          description: Internal Server Error
+          content:
+            text/plain:
+              schema:
+                type: string
+                x-content-type: text/plain
+      x-openapi-router-controller: bacalhau-client.controllers.misc_controller
+  /list:
+    post:
+      tags:
+      - Job
+      summary: Simply lists jobs.
+      description: |-
+        Returns the first (sorted) #`max_jobs` jobs that belong to the `client_id` passed in the body payload (by default).
+        If `return_all` is set to true, it returns all jobs on the Bacalhau network.
+
+        If `id` is set, it returns only the job with that ID.
+
+        Example response:
+        ```json
+        {
+          "jobs": [
+            {
+              "APIVersion": "V1beta1",
+              "ID": "9304c616-291f-41ad-b862-54e133c0149e",
+              "RequesterNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+              "RequesterPublicKey": "...",
+              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
+              "Spec": {
+                "Engine": "Docker",
+                "Verifier": "Noop",
+                "Publisher": "Estuary",
+                "Docker": {
+                  "Image": "ubuntu",
+                  "Entrypoint": [
+                    "date"
+                  ]
+                },
+                "Language": {
+                  "JobContext": {}
+                },
+                "Wasm": {},
+                "Resources": {
+                  "GPU": ""
+                },
+                "Timeout": 1800,
+                "outputs": [
+                  {
+                    "StorageSource": "IPFS",
+                    "Name": "outputs",
+                    "path": "/outputs"
+                  }
+                ],
+                "Sharding": {
+                  "BatchSize": 1,
+                  "GlobPatternBasePath": "/inputs"
+                }
+              },
+              "Deal": {
+                "Concurrency": 1
+              },
+              "ExecutionPlan": {
+                "ShardsTotal": 1
+              },
+              "CreatedAt": "2022-11-17T13:32:55.33837275Z",
+              "JobState": {
+                "Nodes": {
+                  "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86": {
+                    "Shards": {
+                      "0": {
+                        "NodeId": "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86",
+                        "State": "Cancelled",
+                        "VerificationResult": {},
+                        "PublishedResults": {}
+                      }
+                    }
+                  },
+                  "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3": {
+                    "Shards": {
+                      "0": {
+                        "NodeId": "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+                        "State": "Cancelled",
+                        "VerificationResult": {},
+                        "PublishedResults": {}
+                      }
+                    }
+                  },
+                  "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL": {
+                    "Shards": {
+                      "0": {
+                        "NodeId": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                        "State": "Completed",
+                        "Status": "Got results proposal of length: 0",
+                        "VerificationResult": {
+                          "Complete": true,
+                          "Result": true
+                        },
+                        "PublishedResults": {
+                          "StorageSource": "IPFS",
+                          "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                          "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+                        },
+                        "RunOutput": {
+                          "stdout": "Thu Nov 17 13:32:55 UTC 2022\n",
+                          "stdouttruncated": false,
+                          "stderr": "",
+                          "stderrtruncated": false,
+                          "exitCode": 0,
+                          "runnerError": ""
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "APIVersion": "V1beta1",
+              "ID": "92d5d4ee-3765-4f78-8353-623f5f26df08",
+              "RequesterNodeID": "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+              "RequesterPublicKey": "...",
+              "ClientID": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51",
+              "Spec": {
+                "Engine": "Docker",
+                "Verifier": "Noop",
+                "Publisher": "Estuary",
+                "Docker": {
+                  "Image": "ubuntu",
+                  "Entrypoint": [
+                    "sleep",
+                    "4"
+                  ]
+                },
+                "Language": {
+                  "JobContext": {}
+                },
+                "Wasm": {},
+                "Resources": {
+                  "GPU": ""
+                },
+                "Timeout": 1800,
+                "outputs": [
+                  {
+                    "StorageSource": "IPFS",
+                    "Name": "outputs",
+                    "path": "/outputs"
+                  }
+                ],
+                "Sharding": {
+                  "BatchSize": 1,
+                  "GlobPatternBasePath": "/inputs"
+                }
+              },
+              "Deal": {
+                "Concurrency": 1
+              },
+              "ExecutionPlan": {
+                "ShardsTotal": 1
+              },
+              "CreatedAt": "2022-11-17T13:29:01.871140291Z",
+              "JobState": {
+                "Nodes": {
+                  "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86": {
+                    "Shards": {
+                      "0": {
+                        "NodeId": "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86",
+                        "State": "Cancelled",
+                        "VerificationResult": {},
+                        "PublishedResults": {}
+                      }
+                    }
+                  },
+                  "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3": {
+                    "Shards": {
+                      "0": {
+                        "NodeId": "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+                        "State": "Completed",
+                        "Status": "Got results proposal of length: 0",
+                        "VerificationResult": {
+                          "Complete": true,
+                          "Result": true
+                        },
+                        "PublishedResults": {
+                          "StorageSource": "IPFS",
+                          "Name": "job-92d5d4ee-3765-4f78-8353-623f5f26df08-shard-0-host-QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+                          "CID": "QmWUXBndMuq2G6B6ndQCmkRHjZ6CvyJ8qLxXBG3YsSFzQG"
+                        },
+                        "RunOutput": {
+                          "stdout": "",
+                          "stdouttruncated": false,
+                          "stderr": "",
+                          "stderrtruncated": false,
+                          "exitCode": 0,
+                          "runnerError": ""
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+        ```
+      operationId: pkgpublicapi_list
+      requestBody:
+        description: "Set `return_all` to `true` to return all jobs on the network\
+          \ (may degrade performance, use with care!)."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.listRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.listResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: listRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /livez:
+    get:
+      tags:
+      - Health
+      operationId: api_serverlivez
+      responses:
+        "200":
+          description: TODO
+          content:
+            text/plain:
+              schema:
+                type: string
+                x-content-type: text/plain
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /local_events:
+    post:
+      tags:
+      - Job
+      summary: Returns the node's local events related to the job-id passed in the
+        body payload. Useful for troubleshooting.
+      description: "Local events (e.g. Selected, BidAccepted, Verified) are useful\
+        \ to track the progress of a job."
+      operationId: pkgpublicapilocal_events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.localEventsRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.localEventsResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: localEventsRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /logz:
+    get:
+      tags:
+      - Health
+      operationId: api_serverlogz
+      responses:
+        "200":
+          description: TODO
+          content:
+            text/plain:
+              schema:
+                type: string
+                x-content-type: text/plain
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /peers:
+    get:
+      tags:
+      - Misc
+      summary: Returns the peers connected to the host via the transport layer.
+      description: |-
+        As described in the [architecture docs](https://docs.bacalhau.org/about-bacalhau/architecture), each node is connected to a number of peer nodes.
+
+        Example response:
+        ```json
+        {
+          "bacalhau-job-event": [
+            "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+            "QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF",
+            "QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG",
+            "QmUDAXvv31WPZ8U9CzuRTMn9iFGiopGE7rHiah1X8a6PkT",
+            "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86"
+          ]
+        }
+        ```
+      operationId: api_serverpeers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-openapi-router-controller: bacalhau-client.controllers.misc_controller
+  /readyz:
+    get:
+      tags:
+      - Health
+      operationId: api_serverreadyz
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                x-content-type: text/plain
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /results:
+    post:
+      tags:
+      - Job
+      summary: Returns the results of the job-id specified in the body payload.
+      description: |-
+        Example response:
+
+        ```json
+        {
+          "results": [
+            {
+              "NodeID": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+              "Data": {
+                "StorageSource": "IPFS",
+                "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+              }
+            }
+          ]
+        }
+        ```
+      operationId: pkgpublicapiresults
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.stateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.resultsResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: stateRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /states:
+    post:
+      tags:
+      - Job
+      summary: Returns the state of the job-id specified in the body payload.
+      description: |-
+        Example response:
+
+        ```json
+        {
+          "state": {
+            "Nodes": {
+              "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86": {
+                "Shards": {
+                  "0": {
+                    "NodeId": "QmSyJ8VUd4YSPwZFJSJsHmmmmg7sd4BAc2yHY73nisJo86",
+                    "State": "Cancelled",
+                    "VerificationResult": {},
+                    "PublishedResults": {}
+                  }
+                }
+              },
+              "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3": {
+                "Shards": {
+                  "0": {
+                    "NodeId": "QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
+                    "State": "Cancelled",
+                    "VerificationResult": {},
+                    "PublishedResults": {}
+                  }
+                }
+              },
+              "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL": {
+                "Shards": {
+                  "0": {
+                    "NodeId": "QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                    "State": "Completed",
+                    "Status": "Got results proposal of length: 0",
+                    "VerificationResult": {
+                      "Complete": true,
+                      "Result": true
+                    },
+                    "PublishedResults": {
+                      "StorageSource": "IPFS",
+                      "Name": "job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
+                      "CID": "QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe"
+                    },
+                    "RunOutput": {
+                      "stdout": "Thu Nov 17 13:32:55 UTC 2022\n",
+                      "stdouttruncated": false,
+                      "stderr": "",
+                      "stderrtruncated": false,
+                      "exitCode": 0,
+                      "runnerError": ""
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        ```
+      operationId: pkgpublicapistates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.stateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.stateResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: stateRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /submit:
+    post:
+      tags:
+      - Job
+      summary: Submits a new job to the network.
+      description: "Description:\n\n* `client_public_key`: The base64-encoded public\
+        \ key of the client.\n* `signature`: A base64-encoded signature of the `data`\
+        \ attribute, signed by the client.\n* `data`\n    * `ClientID`: Request must\
+        \ specify a `ClientID`. To retrieve your `ClientID`, you can do the following:\
+        \ (1) submit a dummy job to Bacalhau (or use one you created before), (2)\
+        \ run `bacalhau describe <job-id>` and fetch the `ClientID` field.\n    *\
+        \ `Job`: see example below.\n\nExample request\n```json\n{\n\t\"data\": {\n\
+        \t\t\"ClientID\": \"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51\"\
+        ,\n\t\t\"Job\": {\n\t\t\t\"APIVersion\": \"V1beta1\",\n\t\t\t\"Spec\": {\n\
+        \t\t\t\t\"Engine\": \"Docker\",\n\t\t\t\t\"Verifier\": \"Noop\",\n\t\t\t\t\
+        \"Publisher\": \"Estuary\",\n\t\t\t\t\"Docker\": {\n\t\t\t\t\t\"Image\": \"\
+        ubuntu\",\n\t\t\t\t\t\"Entrypoint\": [\n\t\t\t\t\t\t\"date\"\n\t\t\t\t\t]\n\
+        \t\t\t\t},\n\t\t\t\t\"Timeout\": 1800,\n\t\t\t\t\"outputs\": [\n\t\t\t\t\t\
+        {\n\t\t\t\t\t\t\"StorageSource\": \"IPFS\",\n\t\t\t\t\t\t\"Name\": \"outputs\"\
+        ,\n\t\t\t\t\t\t\"path\": \"/outputs\"\n\t\t\t\t\t}\n\t\t\t\t],\n\t\t\t\t\"\
+        Sharding\": {\n\t\t\t\t\t\"BatchSize\": 1,\n\t\t\t\t\t\"GlobPatternBasePath\"\
+        : \"/inputs\"\n\t\t\t\t}\n\t\t\t},\n\t\t\t\"Deal\": {\n\t\t\t\t\"Concurrency\"\
+        : 1\n\t\t\t}\n\t\t}\n\t},\n\t\"signature\": \"...\",\n\t\"client_public_key\"\
+        : \"...\"\n}\n```"
+      operationId: pkgapi_server_submit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.submitRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.submitResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: submitRequest
+      x-openapi-router-controller: bacalhau-client.controllers.job_controller
+  /varz:
+    get:
+      tags:
+      - Health
+      operationId: api_servervarz
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                x-content-type: application/json
+      x-openapi-router-controller: bacalhau-client.controllers.health_controller
+  /version:
+    post:
+      tags:
+      - Misc
+      summary: Returns the build version running on the server.
+      description: See https://github.com/filecoin-project/bacalhau/releases for a
+        complete list of `gitversion` tags.
+      operationId: api_serverversion
+      requestBody:
+        description: "Request must specify a `client_id`. To retrieve your `client_id`,\
+          \ you can do the following: (1) submit a dummy job to Bacalhau (or use one\
+          \ you created before), (2) run `bacalhau describe <job-id>` and fetch the\
+          \ `ClientID` field."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/publicapi.versionRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicapi.versionResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: string
+                x-content-type: application/json
+      x-codegen-request-body-name: versionRequest
+      x-openapi-router-controller: bacalhau-client.controllers.misc_controller
+components:
+  schemas:
+    computenode.ActiveJob:
+      type: object
+      properties:
+        CapacityRequirements:
+          $ref: '#/components/schemas/model.ResourceUsageData'
+        ShardID:
+          type: string
+        State:
+          type: string
+      example:
+        ShardID: ShardID
+        State: State
+        CapacityRequirements: null
+    model.BuildVersionInfo:
+      type: object
+      properties:
+        builddate:
+          type: string
+          example: 2022-11-16T14:03:31Z
+        gitcommit:
+          type: string
+          example: d612b63108f2b5ce1ab2b9e02444eb1dac1d922d
+        gitversion:
+          type: string
+          example: v0.3.12
+        goarch:
+          type: string
+          example: amd64
+        goos:
+          type: string
+          example: linux
+        major:
+          type: string
+          example: "0"
+        minor:
+          type: string
+          example: "3"
+      example:
+        goarch: amd64
+        major: "0"
+        minor: "3"
+        builddate: 2022-11-16T14:03:31Z
+        goos: linux
+        gitversion: v0.3.12
+        gitcommit: d612b63108f2b5ce1ab2b9e02444eb1dac1d922d
+    model.Deal:
+      type: object
+      properties:
+        Concurrency:
+          type: integer
+          description: |-
+            The maximum number of concurrent compute node bids that will be
+            accepted by the requester node on behalf of the client.
+        Confidence:
+          type: integer
+          description: |-
+            The number of nodes that must agree on a verification result
+            this is used by the different verifiers - for example the
+            deterministic verifier requires the winning group size
+            to be at least this size
+        MinBids:
+          type: integer
+          description: |-
+            The minimum number of bids that must be received before the Requester
+            node will randomly accept concurrency-many of them. This allows the
+            Requester node to get some level of guarantee that the execution of the
+            jobs will be spread evenly across the network (assuming that this value
+            is some large proportion of the size of the network).
+      example:
+        MinBids: 1
+        Concurrency: 0
+        Confidence: 6
+    model.Job:
+      type: object
+      properties:
+        APIVersion:
+          type: string
+          example: V1beta1
+        ClientID:
+          type: string
+          description: The ID of the client that created this job.
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        CreatedAt:
+          type: string
+          description: Time the job was submitted to the bacalhau network.
+          example: 2022-11-17T13:29:01.871140291Z
+        Deal:
+          $ref: '#/components/schemas/model.Deal'
+        ExecutionPlan:
+          $ref: '#/components/schemas/model.JobExecutionPlan'
+        ID:
+          type: string
+          description: The unique global ID of this job in the bacalhau network.
+          example: 92d5d4ee-3765-4f78-8353-623f5f26df08
+        JobEvents:
+          type: array
+          description: All events associated with the job
+          items:
+            $ref: '#/components/schemas/model.JobEvent'
+        JobState:
+          $ref: '#/components/schemas/model.JobState'
+        LocalJobEvents:
+          type: array
+          description: All local events associated with the job
+          items:
+            $ref: '#/components/schemas/model.JobLocalEvent'
+        RequesterNodeID:
+          type: string
+          description: The ID of the requester node that owns this job.
+          example: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+        RequesterPublicKey:
+          type: array
+          description: |-
+            The public key of the Requester node that created this job
+            This can be used to encrypt messages back to the creator
+          items:
+            type: integer
+        Spec:
+          $ref: '#/components/schemas/model.Spec'
+      example:
+        RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+        ExecutionPlan:
+          ShardsTotal: 5
+        LocalJobEvents:
+        - TargetNodeID: TargetNodeID
+          ShardIndex: 5
+          EventName: 5
+          JobID: JobID
+        - TargetNodeID: TargetNodeID
+          ShardIndex: 5
+          EventName: 5
+          JobID: JobID
+        APIVersion: V1beta1
+        CreatedAt: 2022-11-17T13:29:01.871140291Z
+        ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        JobState:
+          Nodes:
+            key:
+              Shards:
+                key:
+                  Status: Status
+                  RunOutput:
+                    stderrtruncated: true
+                    stdout: stdout
+                    exitCode: 7
+                    runnerError: runnerError
+                    stdouttruncated: true
+                    stderr: stderr
+                  VerificationProposal:
+                  - 1
+                  - 1
+                  VerificationResult:
+                    Complete: true
+                    Result: true
+                  ShardIndex: 0
+                  State: 6
+                  NodeId: NodeId
+                  PublishedResults:
+                    path: path
+                    Metadata:
+                      key: Metadata
+                    URL: URL
+                    CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                    Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                    StorageSource: 2
+        RequesterPublicKey:
+        - 2
+        - 2
+        ID: 92d5d4ee-3765-4f78-8353-623f5f26df08
+        Deal:
+          MinBids: 1
+          Concurrency: 0
+          Confidence: 6
+        JobEvents:
+        - Status: "Got results proposal of length: 0"
+          JobExecutionPlan:
+            ShardsTotal: 5
+          SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ShardIndex: 3
+          EventName: 5
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          PublishedResult:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+          TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          RunOutput:
+            stderrtruncated: true
+            stdout: stdout
+            exitCode: 7
+            runnerError: runnerError
+            stdouttruncated: true
+            stderr: stderr
+          VerificationProposal:
+          - 1
+          - 1
+          VerificationResult:
+            Complete: true
+            Result: true
+          APIVersion: V1beta1
+          SenderPublicKey:
+          - 9
+          - 9
+          EventTime: 2022-11-17T13:32:55.756658941Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+          JobID: 9304c616-291f-41ad-b862-54e133c0149e
+        - Status: "Got results proposal of length: 0"
+          JobExecutionPlan:
+            ShardsTotal: 5
+          SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ShardIndex: 3
+          EventName: 5
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          PublishedResult:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+          TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          RunOutput:
+            stderrtruncated: true
+            stdout: stdout
+            exitCode: 7
+            runnerError: runnerError
+            stdouttruncated: true
+            stderr: stderr
+          VerificationProposal:
+          - 1
+          - 1
+          VerificationResult:
+            Complete: true
+            Result: true
+          APIVersion: V1beta1
+          SenderPublicKey:
+          - 9
+          - 9
+          EventTime: 2022-11-17T13:32:55.756658941Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+          JobID: 9304c616-291f-41ad-b862-54e133c0149e
+        Spec:
+          outputs:
+          - null
+          - null
+          Sharding:
+            BatchSize: 7
+            GlobPattern: GlobPattern
+            GlobPatternBasePath: GlobPatternBasePath
+          Timeout: 1.2315135367772556
+          inputs:
+          - null
+          - null
+          DoNotTrack: true
+          Publisher: 4
+          Verifier: 1
+          Contexts:
+          - null
+          - null
+          Wasm:
+            EnvironmentVariables:
+              key: EnvironmentVariables
+            Parameters:
+            - Parameters
+            - Parameters
+            ImportModules:
+            - null
+            - null
+            EntryPoint: EntryPoint
+          Annotations:
+          - Annotations
+          - Annotations
+          Docker:
+            WorkingDirectory: WorkingDirectory
+            EnvironmentVariables:
+            - EnvironmentVariables
+            - EnvironmentVariables
+            Entrypoint:
+            - Entrypoint
+            - Entrypoint
+            Image: Image
+          Language:
+            RequirementsPath: RequirementsPath
+            Language: Language
+            Command: Command
+            DeterministicExecution: true
+            LanguageVersion: LanguageVersion
+            ProgramPath: ProgramPath
+            JobContext: null
+          Resources:
+            Memory: Memory
+            CPU: CPU
+            Disk: Disk
+            GPU: GPU
+          Engine: 2
+    model.JobCreatePayload:
+      required:
+      - ClientID
+      - Job
+      type: object
+      properties:
+        ClientID:
+          type: string
+          description: the id of the client that is submitting the job
+        Context:
+          type: string
+          description: |-
+            Optional base64-encoded tar file that will be pinned to IPFS and
+            mounted as storage for the job. Not part of the spec so we don't
+            flood the transport layer with it (potentially very large).
+        Job:
+          $ref: '#/components/schemas/model.Job'
+    model.JobEvent:
+      type: object
+      properties:
+        APIVersion:
+          type: string
+          description: APIVersion of the Job
+          example: V1beta1
+        ClientID:
+          type: string
+          description: optional clientID if this is an externally triggered event
+            (like create job)
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        Deal:
+          $ref: '#/components/schemas/model.Deal'
+        EventName:
+          type: integer
+        EventTime:
+          type: string
+          example: 2022-11-17T13:32:55.756658941Z
+        JobExecutionPlan:
+          $ref: '#/components/schemas/model.JobExecutionPlan'
+        JobID:
+          type: string
+          example: 9304c616-291f-41ad-b862-54e133c0149e
+        PublishedResult:
+          $ref: '#/components/schemas/model.StorageSpec'
+        RunOutput:
+          $ref: '#/components/schemas/model.RunCommandResult'
+        SenderPublicKey:
+          type: array
+          items:
+            type: integer
+        ShardIndex:
+          type: integer
+          description: what shard is this event for
+        SourceNodeID:
+          type: string
+          description: the node that emitted this event
+          example: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+        Spec:
+          $ref: '#/components/schemas/model.Spec'
+        Status:
+          type: string
+          example: "Got results proposal of length: 0"
+        TargetNodeID:
+          type: string
+          description: |-
+            the node that this event is for
+            e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
+          example: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+        VerificationProposal:
+          type: array
+          items:
+            type: integer
+        VerificationResult:
+          $ref: '#/components/schemas/model.VerificationResult'
+      example:
+        Status: "Got results proposal of length: 0"
+        JobExecutionPlan:
+          ShardsTotal: 5
+        SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+        ShardIndex: 3
+        EventName: 5
+        Deal:
+          MinBids: 1
+          Concurrency: 0
+          Confidence: 6
+        PublishedResult:
+          path: path
+          Metadata:
+            key: Metadata
+          URL: URL
+          CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+          Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          StorageSource: 2
+        TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+        RunOutput:
+          stderrtruncated: true
+          stdout: stdout
+          exitCode: 7
+          runnerError: runnerError
+          stdouttruncated: true
+          stderr: stderr
+        VerificationProposal:
+        - 1
+        - 1
+        VerificationResult:
+          Complete: true
+          Result: true
+        APIVersion: V1beta1
+        SenderPublicKey:
+        - 9
+        - 9
+        EventTime: 2022-11-17T13:32:55.756658941Z
+        ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        Spec:
+          outputs:
+          - null
+          - null
+          Sharding:
+            BatchSize: 7
+            GlobPattern: GlobPattern
+            GlobPatternBasePath: GlobPatternBasePath
+          Timeout: 1.2315135367772556
+          inputs:
+          - null
+          - null
+          DoNotTrack: true
+          Publisher: 4
+          Verifier: 1
+          Contexts:
+          - null
+          - null
+          Wasm:
+            EnvironmentVariables:
+              key: EnvironmentVariables
+            Parameters:
+            - Parameters
+            - Parameters
+            ImportModules:
+            - null
+            - null
+            EntryPoint: EntryPoint
+          Annotations:
+          - Annotations
+          - Annotations
+          Docker:
+            WorkingDirectory: WorkingDirectory
+            EnvironmentVariables:
+            - EnvironmentVariables
+            - EnvironmentVariables
+            Entrypoint:
+            - Entrypoint
+            - Entrypoint
+            Image: Image
+          Language:
+            RequirementsPath: RequirementsPath
+            Language: Language
+            Command: Command
+            DeterministicExecution: true
+            LanguageVersion: LanguageVersion
+            ProgramPath: ProgramPath
+            JobContext: null
+          Resources:
+            Memory: Memory
+            CPU: CPU
+            Disk: Disk
+            GPU: GPU
+          Engine: 2
+        JobID: 9304c616-291f-41ad-b862-54e133c0149e
+    model.JobExecutionPlan:
+      type: object
+      properties:
+        ShardsTotal:
+          type: integer
+          description: |-
+            how many shards are there in total for this job
+            we are expecting this number x concurrency total
+            JobShardState objects for this job
+      example:
+        ShardsTotal: 5
+    model.JobLocalEvent:
+      type: object
+      properties:
+        EventName:
+          type: integer
+        JobID:
+          type: string
+        ShardIndex:
+          type: integer
+        TargetNodeID:
+          type: string
+      example:
+        TargetNodeID: TargetNodeID
+        ShardIndex: 5
+        EventName: 5
+        JobID: JobID
+    model.JobNodeState:
+      type: object
+      properties:
+        Shards:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/model.JobShardState'
+      example:
+        Shards:
+          key:
+            Status: Status
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            ShardIndex: 0
+            State: 6
+            NodeId: NodeId
+            PublishedResults:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+    model.JobShardState:
+      type: object
+      properties:
+        NodeId:
+          type: string
+          description: which node is running this shard
+        PublishedResults:
+          $ref: '#/components/schemas/model.StorageSpec'
+        RunOutput:
+          $ref: '#/components/schemas/model.RunCommandResult'
+        ShardIndex:
+          type: integer
+          description: what shard is this we are running
+        State:
+          type: integer
+          description: what is the state of the shard on this node
+        Status:
+          type: string
+          description: an arbitrary status message
+        VerificationProposal:
+          type: array
+          description: |-
+            the proposed results for this shard
+            this will be resolved by the verifier somehow
+          items:
+            type: integer
+        VerificationResult:
+          $ref: '#/components/schemas/model.VerificationResult'
+      example:
+        Status: Status
+        RunOutput:
+          stderrtruncated: true
+          stdout: stdout
+          exitCode: 7
+          runnerError: runnerError
+          stdouttruncated: true
+          stderr: stderr
+        VerificationProposal:
+        - 1
+        - 1
+        VerificationResult:
+          Complete: true
+          Result: true
+        ShardIndex: 0
+        State: 6
+        NodeId: NodeId
+        PublishedResults:
+          path: path
+          Metadata:
+            key: Metadata
+          URL: URL
+          CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+          Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          StorageSource: 2
+    model.JobShardingConfig:
+      type: object
+      properties:
+        BatchSize:
+          type: integer
+          description: |-
+            how many "items" are to be processed in each shard
+            we first apply the glob pattern which will result in a flat list of items
+            this number decides how to group that flat list into actual shards run by compute nodes
+        GlobPattern:
+          type: string
+          description: |-
+            divide the inputs up into the smallest possible unit
+            for example /* would mean "all top level files or folders"
+            this being an empty string means "no sharding"
+        GlobPatternBasePath:
+          type: string
+          description: |-
+            when using multiple input volumes
+            what path do we treat as the common mount path to apply the glob pattern to
+      example:
+        BatchSize: 7
+        GlobPattern: GlobPattern
+        GlobPatternBasePath: GlobPatternBasePath
+    model.JobSpecDocker:
+      type: object
+      properties:
+        Entrypoint:
+          type: array
+          description: optionally override the default entrypoint
+          items:
+            type: string
+        EnvironmentVariables:
+          type: array
+          description: a map of env to run the container with
+          items:
+            type: string
+        Image:
+          type: string
+          description: this should be pullable by docker
+        WorkingDirectory:
+          type: string
+          description: working directory inside the container
+      example:
+        WorkingDirectory: WorkingDirectory
+        EnvironmentVariables:
+        - EnvironmentVariables
+        - EnvironmentVariables
+        Entrypoint:
+        - Entrypoint
+        - Entrypoint
+        Image: Image
+    model.JobSpecLanguage:
+      type: object
+      properties:
+        Command:
+          type: string
+          description: "optional program specified on commandline, like python -c\
+            \ \"print(1+1)\""
+        DeterministicExecution:
+          type: boolean
+          description: must this job be run in a deterministic context?
+        JobContext:
+          $ref: '#/components/schemas/model.StorageSpec'
+        Language:
+          type: string
+          description: e.g. python
+        LanguageVersion:
+          type: string
+          description: e.g. 3.8
+        ProgramPath:
+          type: string
+          description: optional program path relative to the context dir. one of Command
+            or ProgramPath must be specified
+        RequirementsPath:
+          type: string
+          description: optional requirements.txt (or equivalent) path relative to
+            the context dir
+      example:
+        RequirementsPath: RequirementsPath
+        Language: Language
+        Command: Command
+        DeterministicExecution: true
+        LanguageVersion: LanguageVersion
+        ProgramPath: ProgramPath
+        JobContext: null
+    model.JobSpecWasm:
+      type: object
+      properties:
+        EntryPoint:
+          type: string
+          description: |-
+            The name of the function in the EntryModule to call to run the job. For
+            WASI jobs, this will always be `_start`, but jobs can choose to call
+            other WASM functions instead. The EntryPoint must be a zero-parameter
+            zero-result function.
+        EnvironmentVariables:
+          type: object
+          additionalProperties:
+            type: string
+          description: The variables available in the environment of the running program.
+        ImportModules:
+          type: array
+          description: |-
+            TODO #880: Other WASM modules whose exports will be available as imports
+            to the EntryModule.
+          items:
+            $ref: '#/components/schemas/model.StorageSpec'
+        Parameters:
+          type: array
+          description: The arguments supplied to the program (i.e. as ARGV).
+          items:
+            type: string
+      example:
+        EnvironmentVariables:
+          key: EnvironmentVariables
+        Parameters:
+        - Parameters
+        - Parameters
+        ImportModules:
+        - null
+        - null
+        EntryPoint: EntryPoint
+    model.JobState:
+      type: object
+      properties:
+        Nodes:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/model.JobNodeState'
+      example:
+        Nodes:
+          key:
+            Shards:
+              key:
+                Status: Status
+                RunOutput:
+                  stderrtruncated: true
+                  stdout: stdout
+                  exitCode: 7
+                  runnerError: runnerError
+                  stdouttruncated: true
+                  stderr: stderr
+                VerificationProposal:
+                - 1
+                - 1
+                VerificationResult:
+                  Complete: true
+                  Result: true
+                ShardIndex: 0
+                State: 6
+                NodeId: NodeId
+                PublishedResults:
+                  path: path
+                  Metadata:
+                    key: Metadata
+                  URL: URL
+                  CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                  Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                  StorageSource: 2
+    model.PublishedResult:
+      type: object
+      properties:
+        Data:
+          $ref: '#/components/schemas/model.StorageSpec'
+        NodeID:
+          type: string
+        ShardIndex:
+          type: integer
+      example:
+        ShardIndex: 0
+        NodeID: NodeID
+        Data:
+          path: path
+          Metadata:
+            key: Metadata
+          URL: URL
+          CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+          Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          StorageSource: 2
+    model.ResourceUsageConfig:
+      type: object
+      properties:
+        CPU:
+          type: string
+          description: https://github.com/BTBurke/k8sresource string
+        Disk:
+          type: string
+        GPU:
+          type: string
+          description: unsigned integer string
+        Memory:
+          type: string
+          description: github.com/c2h5oh/datasize string
+      example:
+        Memory: Memory
+        CPU: CPU
+        Disk: Disk
+        GPU: GPU
+    model.ResourceUsageData:
+      type: object
+      properties:
+        CPU:
+          type: number
+          description: cpu units
+          example: 9.600000000000001
+        Disk:
+          type: integer
+          description: bytes
+          example: 212663867801
+        GPU:
+          type: integer
+          example: 1
+        Memory:
+          type: integer
+          description: bytes
+          example: 27487790694
+      example:
+        Memory: 27487790694
+        CPU: 9.600000000000001
+        Disk: 212663867801
+        GPU: 1
+    model.RunCommandResult:
+      type: object
+      properties:
+        exitCode:
+          type: integer
+          description: exit code of the run.
+        runnerError:
+          type: string
+          description: Runner error
+        stderr:
+          type: string
+          description: stderr of the run.
+        stderrtruncated:
+          type: boolean
+          description: bool describing if stderr was truncated
+        stdout:
+          type: string
+          description: stdout of the run. Yaml provided for `describe` output
+        stdouttruncated:
+          type: boolean
+          description: bool describing if stdout was truncated
+      example:
+        stderrtruncated: true
+        stdout: stdout
+        exitCode: 7
+        runnerError: runnerError
+        stdouttruncated: true
+        stderr: stderr
+    model.Spec:
+      type: object
+      properties:
+        Annotations:
+          type: array
+          description: Annotations on the job - could be user or machine assigned
+          items:
+            type: string
+        Contexts:
+          type: array
+          description: |-
+            Input volumes that will not be sharded
+            for example to upload code into a base image
+            every shard will get the full range of context volumes
+          items:
+            $ref: '#/components/schemas/model.StorageSpec'
+        DoNotTrack:
+          type: boolean
+          description: Do not track specified by the client
+        Docker:
+          $ref: '#/components/schemas/model.JobSpecDocker'
+        Engine:
+          type: integer
+          description: e.g. docker or language
+        Language:
+          $ref: '#/components/schemas/model.JobSpecLanguage'
+        Publisher:
+          type: integer
+          description: there can be multiple publishers for the job
+        Resources:
+          $ref: '#/components/schemas/model.ResourceUsageConfig'
+        Sharding:
+          $ref: '#/components/schemas/model.JobShardingConfig'
+        Timeout:
+          type: number
+          description: |-
+            How long a job can run in seconds before it is killed.
+            This includes the time required to run, verify and publish results
+        Verifier:
+          type: integer
+        Wasm:
+          $ref: '#/components/schemas/model.JobSpecWasm'
+        inputs:
+          type: array
+          description: |-
+            the data volumes we will read in the job
+            for example "read this ipfs cid"
+            TODO: #667 Replace with "Inputs", "Outputs" (note the caps) for yaml/json when we update the n.js file
+          items:
+            $ref: '#/components/schemas/model.StorageSpec'
+        outputs:
+          type: array
+          description: |-
+            the data volumes we will write in the job
+            for example "write the results to ipfs"
+          items:
+            $ref: '#/components/schemas/model.StorageSpec'
+      example:
+        outputs:
+        - null
+        - null
+        Sharding:
+          BatchSize: 7
+          GlobPattern: GlobPattern
+          GlobPatternBasePath: GlobPatternBasePath
+        Timeout: 1.2315135367772556
+        inputs:
+        - null
+        - null
+        DoNotTrack: true
+        Publisher: 4
+        Verifier: 1
+        Contexts:
+        - null
+        - null
+        Wasm:
+          EnvironmentVariables:
+            key: EnvironmentVariables
+          Parameters:
+          - Parameters
+          - Parameters
+          ImportModules:
+          - null
+          - null
+          EntryPoint: EntryPoint
+        Annotations:
+        - Annotations
+        - Annotations
+        Docker:
+          WorkingDirectory: WorkingDirectory
+          EnvironmentVariables:
+          - EnvironmentVariables
+          - EnvironmentVariables
+          Entrypoint:
+          - Entrypoint
+          - Entrypoint
+          Image: Image
+        Language:
+          RequirementsPath: RequirementsPath
+          Language: Language
+          Command: Command
+          DeterministicExecution: true
+          LanguageVersion: LanguageVersion
+          ProgramPath: ProgramPath
+          JobContext: null
+        Resources:
+          Memory: Memory
+          CPU: CPU
+          Disk: Disk
+          GPU: GPU
+        Engine: 2
+    model.StorageSpec:
+      type: object
+      properties:
+        CID:
+          type: string
+          description: |-
+            The unique ID of the data, where it makes sense (for example, in an
+            IPFS storage spec this will be the data's CID).
+            NOTE: The below is capitalized to match IPFS & IPLD (even though it's out of golang fmt)
+          example: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+        Metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional properties specific to each driver
+        Name:
+          type: string
+          description: "Name of the spec's data, for reference."
+          example: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+        StorageSource:
+          type: integer
+          description: |-
+            StorageSource is the abstract source of the data. E.g. a storage source
+            might be a URL download, but doesn't specify how the execution engine
+            does the download or what it will do with the downloaded data.
+        URL:
+          type: string
+          description: Source URL of the data
+        path:
+          type: string
+          description: |-
+            The path that the spec's data should be mounted on, where it makes
+            sense (for example, in a Docker storage spec this will be a filesystem
+            path).
+            TODO: #668 Replace with "Path" (note the caps) for yaml/json when we update the n.js file
+      example:
+        path: path
+        Metadata:
+          key: Metadata
+        URL: URL
+        CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+        Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+        StorageSource: 2
+    model.VerificationResult:
+      type: object
+      properties:
+        Complete:
+          type: boolean
+        Result:
+          type: boolean
+      example:
+        Complete: true
+        Result: true
+    publicapi.debugResponse:
+      type: object
+      properties:
+        AvailableComputeCapacity:
+          $ref: '#/components/schemas/model.ResourceUsageData'
+        ComputeJobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/computenode.ActiveJob'
+        RequesterJobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/requesternode.ActiveJob'
+      example:
+        ComputeJobs:
+        - ShardID: ShardID
+          State: State
+          CapacityRequirements: null
+        - ShardID: ShardID
+          State: State
+          CapacityRequirements: null
+        AvailableComputeCapacity:
+          Memory: 27487790694
+          CPU: 9.600000000000001
+          Disk: 212663867801
+          GPU: 1
+        RequesterJobs:
+        - ShardID: ShardID
+          State: State
+          CompletedNodesCount: 6
+          BiddingNodesCount: 0
+        - ShardID: ShardID
+          State: State
+          CompletedNodesCount: 6
+          BiddingNodesCount: 0
+    publicapi.eventsRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        job_id:
+          type: string
+          example: 9304c616-291f-41ad-b862-54e133c0149e
+    publicapi.eventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/model.JobEvent'
+      example:
+        events:
+        - Status: "Got results proposal of length: 0"
+          JobExecutionPlan:
+            ShardsTotal: 5
+          SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ShardIndex: 3
+          EventName: 5
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          PublishedResult:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+          TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          RunOutput:
+            stderrtruncated: true
+            stdout: stdout
+            exitCode: 7
+            runnerError: runnerError
+            stdouttruncated: true
+            stderr: stderr
+          VerificationProposal:
+          - 1
+          - 1
+          VerificationResult:
+            Complete: true
+            Result: true
+          APIVersion: V1beta1
+          SenderPublicKey:
+          - 9
+          - 9
+          EventTime: 2022-11-17T13:32:55.756658941Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+          JobID: 9304c616-291f-41ad-b862-54e133c0149e
+        - Status: "Got results proposal of length: 0"
+          JobExecutionPlan:
+            ShardsTotal: 5
+          SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ShardIndex: 3
+          EventName: 5
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          PublishedResult:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+          TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+          RunOutput:
+            stderrtruncated: true
+            stdout: stdout
+            exitCode: 7
+            runnerError: runnerError
+            stdouttruncated: true
+            stderr: stderr
+          VerificationProposal:
+          - 1
+          - 1
+          VerificationResult:
+            Complete: true
+            Result: true
+          APIVersion: V1beta1
+          SenderPublicKey:
+          - 9
+          - 9
+          EventTime: 2022-11-17T13:32:55.756658941Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+          JobID: 9304c616-291f-41ad-b862-54e133c0149e
+    publicapi.listRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        id:
+          type: string
+          example: 9304c616-291f-41ad-b862-54e133c0149e
+        max_jobs:
+          type: integer
+          example: 10
+        return_all:
+          type: boolean
+        sort_by:
+          type: string
+          example: created_at
+        sort_reverse:
+          type: boolean
+    publicapi.listResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/model.Job'
+      example:
+        jobs:
+        - RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ExecutionPlan:
+            ShardsTotal: 5
+          LocalJobEvents:
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          APIVersion: V1beta1
+          CreatedAt: 2022-11-17T13:29:01.871140291Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          JobState:
+            Nodes:
+              key:
+                Shards:
+                  key:
+                    Status: Status
+                    RunOutput:
+                      stderrtruncated: true
+                      stdout: stdout
+                      exitCode: 7
+                      runnerError: runnerError
+                      stdouttruncated: true
+                      stderr: stderr
+                    VerificationProposal:
+                    - 1
+                    - 1
+                    VerificationResult:
+                      Complete: true
+                      Result: true
+                    ShardIndex: 0
+                    State: 6
+                    NodeId: NodeId
+                    PublishedResults:
+                      path: path
+                      Metadata:
+                        key: Metadata
+                      URL: URL
+                      CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                      Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                      StorageSource: 2
+          RequesterPublicKey:
+          - 2
+          - 2
+          ID: 92d5d4ee-3765-4f78-8353-623f5f26df08
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          JobEvents:
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+        - RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ExecutionPlan:
+            ShardsTotal: 5
+          LocalJobEvents:
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          APIVersion: V1beta1
+          CreatedAt: 2022-11-17T13:29:01.871140291Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          JobState:
+            Nodes:
+              key:
+                Shards:
+                  key:
+                    Status: Status
+                    RunOutput:
+                      stderrtruncated: true
+                      stdout: stdout
+                      exitCode: 7
+                      runnerError: runnerError
+                      stdouttruncated: true
+                      stderr: stderr
+                    VerificationProposal:
+                    - 1
+                    - 1
+                    VerificationResult:
+                      Complete: true
+                      Result: true
+                    ShardIndex: 0
+                    State: 6
+                    NodeId: NodeId
+                    PublishedResults:
+                      path: path
+                      Metadata:
+                        key: Metadata
+                      URL: URL
+                      CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                      Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                      StorageSource: 2
+          RequesterPublicKey:
+          - 2
+          - 2
+          ID: 92d5d4ee-3765-4f78-8353-623f5f26df08
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          JobEvents:
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+    publicapi.localEventsRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+        job_id:
+          type: string
+    publicapi.localEventsResponse:
+      type: object
+      properties:
+        localEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/model.JobLocalEvent'
+      example:
+        localEvents:
+        - TargetNodeID: TargetNodeID
+          ShardIndex: 5
+          EventName: 5
+          JobID: JobID
+        - TargetNodeID: TargetNodeID
+          ShardIndex: 5
+          EventName: 5
+          JobID: JobID
+    publicapi.resultsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/model.PublishedResult'
+      example:
+        results:
+        - ShardIndex: 0
+          NodeID: NodeID
+          Data:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+        - ShardIndex: 0
+          NodeID: NodeID
+          Data:
+            path: path
+            Metadata:
+              key: Metadata
+            URL: URL
+            CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+            Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            StorageSource: 2
+    publicapi.stateRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+        job_id:
+          type: string
+          example: 9304c616-291f-41ad-b862-54e133c0149e
+    publicapi.stateResponse:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/model.JobState'
+      example:
+        state:
+          Nodes:
+            key:
+              Shards:
+                key:
+                  Status: Status
+                  RunOutput:
+                    stderrtruncated: true
+                    stdout: stdout
+                    exitCode: 7
+                    runnerError: runnerError
+                    stdouttruncated: true
+                    stderr: stderr
+                  VerificationProposal:
+                  - 1
+                  - 1
+                  VerificationResult:
+                    Complete: true
+                    Result: true
+                  ShardIndex: 0
+                  State: 6
+                  NodeId: NodeId
+                  PublishedResults:
+                    path: path
+                    Metadata:
+                      key: Metadata
+                    URL: URL
+                    CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                    Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                    StorageSource: 2
+    publicapi.submitRequest:
+      required:
+      - client_public_key
+      - data
+      - signature
+      type: object
+      properties:
+        client_public_key:
+          type: string
+          description: 'The base64-encoded public key of the client:'
+        data:
+          $ref: '#/components/schemas/model.JobCreatePayload'
+        signature:
+          type: string
+          description: "A base64-encoded signature of the data, signed by the client:"
+    publicapi.submitResponse:
+      type: object
+      properties:
+        job:
+          $ref: '#/components/schemas/model.Job'
+      example:
+        job:
+          RequesterNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+          ExecutionPlan:
+            ShardsTotal: 5
+          LocalJobEvents:
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          - TargetNodeID: TargetNodeID
+            ShardIndex: 5
+            EventName: 5
+            JobID: JobID
+          APIVersion: V1beta1
+          CreatedAt: 2022-11-17T13:29:01.871140291Z
+          ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+          JobState:
+            Nodes:
+              key:
+                Shards:
+                  key:
+                    Status: Status
+                    RunOutput:
+                      stderrtruncated: true
+                      stdout: stdout
+                      exitCode: 7
+                      runnerError: runnerError
+                      stdouttruncated: true
+                      stderr: stderr
+                    VerificationProposal:
+                    - 1
+                    - 1
+                    VerificationResult:
+                      Complete: true
+                      Result: true
+                    ShardIndex: 0
+                    State: 6
+                    NodeId: NodeId
+                    PublishedResults:
+                      path: path
+                      Metadata:
+                        key: Metadata
+                      URL: URL
+                      CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+                      Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+                      StorageSource: 2
+          RequesterPublicKey:
+          - 2
+          - 2
+          ID: 92d5d4ee-3765-4f78-8353-623f5f26df08
+          Deal:
+            MinBids: 1
+            Concurrency: 0
+            Confidence: 6
+          JobEvents:
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          - Status: "Got results proposal of length: 0"
+            JobExecutionPlan:
+              ShardsTotal: 5
+            SourceNodeID: QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF
+            ShardIndex: 3
+            EventName: 5
+            Deal:
+              MinBids: 1
+              Concurrency: 0
+              Confidence: 6
+            PublishedResult:
+              path: path
+              Metadata:
+                key: Metadata
+              URL: URL
+              CID: QmTVmC7JBD2ES2qGPqBNVWnX1KeEPNrPGb7rJ8cpFgtefe
+              Name: job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+              StorageSource: 2
+            TargetNodeID: QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL
+            RunOutput:
+              stderrtruncated: true
+              stdout: stdout
+              exitCode: 7
+              runnerError: runnerError
+              stdouttruncated: true
+              stderr: stderr
+            VerificationProposal:
+            - 1
+            - 1
+            VerificationResult:
+              Complete: true
+              Result: true
+            APIVersion: V1beta1
+            SenderPublicKey:
+            - 9
+            - 9
+            EventTime: 2022-11-17T13:32:55.756658941Z
+            ClientID: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+            Spec:
+              outputs:
+              - null
+              - null
+              Sharding:
+                BatchSize: 7
+                GlobPattern: GlobPattern
+                GlobPatternBasePath: GlobPatternBasePath
+              Timeout: 1.2315135367772556
+              inputs:
+              - null
+              - null
+              DoNotTrack: true
+              Publisher: 4
+              Verifier: 1
+              Contexts:
+              - null
+              - null
+              Wasm:
+                EnvironmentVariables:
+                  key: EnvironmentVariables
+                Parameters:
+                - Parameters
+                - Parameters
+                ImportModules:
+                - null
+                - null
+                EntryPoint: EntryPoint
+              Annotations:
+              - Annotations
+              - Annotations
+              Docker:
+                WorkingDirectory: WorkingDirectory
+                EnvironmentVariables:
+                - EnvironmentVariables
+                - EnvironmentVariables
+                Entrypoint:
+                - Entrypoint
+                - Entrypoint
+                Image: Image
+              Language:
+                RequirementsPath: RequirementsPath
+                Language: Language
+                Command: Command
+                DeterministicExecution: true
+                LanguageVersion: LanguageVersion
+                ProgramPath: ProgramPath
+                JobContext: null
+              Resources:
+                Memory: Memory
+                CPU: CPU
+                Disk: Disk
+                GPU: GPU
+              Engine: 2
+            JobID: 9304c616-291f-41ad-b862-54e133c0149e
+          Spec:
+            outputs:
+            - null
+            - null
+            Sharding:
+              BatchSize: 7
+              GlobPattern: GlobPattern
+              GlobPatternBasePath: GlobPatternBasePath
+            Timeout: 1.2315135367772556
+            inputs:
+            - null
+            - null
+            DoNotTrack: true
+            Publisher: 4
+            Verifier: 1
+            Contexts:
+            - null
+            - null
+            Wasm:
+              EnvironmentVariables:
+                key: EnvironmentVariables
+              Parameters:
+              - Parameters
+              - Parameters
+              ImportModules:
+              - null
+              - null
+              EntryPoint: EntryPoint
+            Annotations:
+            - Annotations
+            - Annotations
+            Docker:
+              WorkingDirectory: WorkingDirectory
+              EnvironmentVariables:
+              - EnvironmentVariables
+              - EnvironmentVariables
+              Entrypoint:
+              - Entrypoint
+              - Entrypoint
+              Image: Image
+            Language:
+              RequirementsPath: RequirementsPath
+              Language: Language
+              Command: Command
+              DeterministicExecution: true
+              LanguageVersion: LanguageVersion
+              ProgramPath: ProgramPath
+              JobContext: null
+            Resources:
+              Memory: Memory
+              CPU: CPU
+              Disk: Disk
+              GPU: GPU
+            Engine: 2
+    publicapi.versionRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51
+    publicapi.versionResponse:
+      type: object
+      properties:
+        build_version_info:
+          $ref: '#/components/schemas/model.BuildVersionInfo'
+      example:
+        build_version_info:
+          goarch: amd64
+          major: "0"
+          minor: "3"
+          builddate: 2022-11-16T14:03:31Z
+          goos: linux
+          gitversion: v0.3.12
+          gitcommit: d612b63108f2b5ce1ab2b9e02444eb1dac1d922d
+    requesternode.ActiveJob:
+      type: object
+      properties:
+        BiddingNodesCount:
+          type: integer
+        CompletedNodesCount:
+          type: integer
+        ShardID:
+          type: string
+        State:
+          type: string
+      example:
+        ShardID: ShardID
+        State: State
+        CompletedNodesCount: 6
+        BiddingNodesCount: 0
+    types.FreeSpace:
+      type: object
+      properties:
+        IPFSMount:
+          $ref: '#/components/schemas/types.MountStatus'
+        root:
+          $ref: '#/components/schemas/types.MountStatus'
+        tmp:
+          $ref: '#/components/schemas/types.MountStatus'
+      example:
+        tmp: null
+        root: null
+        IPFSMount:
+          All: 0
+          Used: 1
+          Free: 6
+    types.HealthInfo:
+      type: object
+      properties:
+        FreeSpace:
+          $ref: '#/components/schemas/types.FreeSpace'
+      example:
+        FreeSpace:
+          tmp: null
+          root: null
+          IPFSMount:
+            All: 0
+            Used: 1
+            Free: 6
+    types.MountStatus:
+      type: object
+      properties:
+        All:
+          type: integer
+        Free:
+          type: integer
+        Used:
+          type: integer
+      example:
+        All: 0
+        Used: 1
+        Free: 6
+x-original-swagger-version: "2.0"
+

@@ -1,0 +1,45 @@
+# coding: utf-8
+
+# flake8: noqa
+from __future__ import absolute_import
+# import models into model package
+from bacalhau-client.models.computenode_active_job import ComputenodeActiveJob
+from bacalhau-client.models.model_build_version_info import ModelBuildVersionInfo
+from bacalhau-client.models.model_deal import ModelDeal
+from bacalhau-client.models.model_job import ModelJob
+from bacalhau-client.models.model_job_create_payload import ModelJobCreatePayload
+from bacalhau-client.models.model_job_event import ModelJobEvent
+from bacalhau-client.models.model_job_execution_plan import ModelJobExecutionPlan
+from bacalhau-client.models.model_job_local_event import ModelJobLocalEvent
+from bacalhau-client.models.model_job_node_state import ModelJobNodeState
+from bacalhau-client.models.model_job_shard_state import ModelJobShardState
+from bacalhau-client.models.model_job_sharding_config import ModelJobShardingConfig
+from bacalhau-client.models.model_job_spec_docker import ModelJobSpecDocker
+from bacalhau-client.models.model_job_spec_language import ModelJobSpecLanguage
+from bacalhau-client.models.model_job_spec_wasm import ModelJobSpecWasm
+from bacalhau-client.models.model_job_state import ModelJobState
+from bacalhau-client.models.model_published_result import ModelPublishedResult
+from bacalhau-client.models.model_resource_usage_config import ModelResourceUsageConfig
+from bacalhau-client.models.model_resource_usage_data import ModelResourceUsageData
+from bacalhau-client.models.model_run_command_result import ModelRunCommandResult
+from bacalhau-client.models.model_spec import ModelSpec
+from bacalhau-client.models.model_storage_spec import ModelStorageSpec
+from bacalhau-client.models.model_verification_result import ModelVerificationResult
+from bacalhau-client.models.publicapi_debug_response import PublicapiDebugResponse
+from bacalhau-client.models.publicapi_events_request import PublicapiEventsRequest
+from bacalhau-client.models.publicapi_events_response import PublicapiEventsResponse
+from bacalhau-client.models.publicapi_list_request import PublicapiListRequest
+from bacalhau-client.models.publicapi_list_response import PublicapiListResponse
+from bacalhau-client.models.publicapi_local_events_request import PublicapiLocalEventsRequest
+from bacalhau-client.models.publicapi_local_events_response import PublicapiLocalEventsResponse
+from bacalhau-client.models.publicapi_results_response import PublicapiResultsResponse
+from bacalhau-client.models.publicapi_state_request import PublicapiStateRequest
+from bacalhau-client.models.publicapi_state_response import PublicapiStateResponse
+from bacalhau-client.models.publicapi_submit_request import PublicapiSubmitRequest
+from bacalhau-client.models.publicapi_submit_response import PublicapiSubmitResponse
+from bacalhau-client.models.publicapi_version_request import PublicapiVersionRequest
+from bacalhau-client.models.publicapi_version_response import PublicapiVersionResponse
+from bacalhau-client.models.requesternode_active_job import RequesternodeActiveJob
+from bacalhau-client.models.types_free_space import TypesFreeSpace
+from bacalhau-client.models.types_health_info import TypesHealthInfo
+from bacalhau-client.models.types_mount_status import TypesMountStatus

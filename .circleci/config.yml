@@ -485,6 +485,11 @@ jobs:
           command:
             go install github.com/swaggo/swag/cmd/swag@v1.8.7
       - run:
+          name: Install swagger-codegen
+          command: |
+            mkdir -p /opt/swagger-codegen-cli/
+            wget https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.36/swagger-codegen-cli-3.0.36.jar -O /opt/swagger-codegen-cli/swagger-codegen-cli.jar
+      - run:
           name: Install Pre-commit
           command: |
             make install-pre-commit
@@ -500,7 +505,7 @@ jobs:
       - run:
           name: Build Swagger Docs
           command:
-            make swagger-docs
+            make swagger-docs clients
       - run:
           name: Install gh
           command: |
@@ -515,7 +520,7 @@ jobs:
             git config user.name "enricorotundo"
             # Note: we delete this branch after the PR is merged
             git checkout -b ci-build-swagger-docs
-            git add --verbose -- ./docs
+            git add --verbose -- ./docs ./clients
             COMMIT_MSG="Build swagger reference - this is an automatic commit"
             git commit --allow-empty -m "[circleci] $COMMIT_MSG [skip ci]"
             git push --set-upstream origin ci-build-swagger-docs
