@@ -28,7 +28,6 @@ Note that [Bacalhau overwrites the default entrypoint](https://github.com/fileco
 
 
 ```bash
-
 bacalhau docker run \
   --input-urls https://raw.githubusercontent.com/bacalhau-project/examples/151eebe895151edd83468e3d8b546612bf96cd05/workload-onboarding/trivial-python/hello-world.py \
   python:3.10-slim -- python3 /inputs/hello-world.py

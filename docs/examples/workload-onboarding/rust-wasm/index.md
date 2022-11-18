@@ -63,7 +63,6 @@ We can use `cargo` (which will have been installed by `rustup`) to start a new p
 
 
 ```bash
-
 cargo init my-program
 ```
 
@@ -170,7 +169,6 @@ We can now build the Rust program into a WASM blob using `cargo`.
 
 
 ```bash
-
 cd my-program && cargo build --target wasm32-wasi --release
 ```
 
@@ -253,7 +251,6 @@ For this example, we are using an image of the Statue of Liberty that has been p
 
 
 ```bash
-
 bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start \
     -v bafybeifdpl6dw7atz6uealwjdklolvxrocavceorhb3eoq6y53cbtitbeu:inputs | tee job.txt
 ```
@@ -305,7 +302,6 @@ We can now get the results. When we view the files, we can see the original imag
 
 
 ```bash
-
 mkdir -p wasm_results
 bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
@@ -326,7 +322,7 @@ display.Image("./wasm_results/combined_results/outputs/original.png")
 
 
     
-![png](output_19_0.png)
+![png](index_files/index_19_0.png)
     
 
 
@@ -340,7 +336,7 @@ display.Image("./wasm_results/combined_results/outputs/annotated_gradients.png")
 
 
     
-![png](output_20_0.png)
+![png](index_files/index_20_0.png)
     
 
 
@@ -354,7 +350,7 @@ display.Image("./wasm_results/combined_results/outputs/shrunk.png")
 
 
     
-![png](output_21_0.png)
+![png](index_files/index_21_0.png)
     
 
 

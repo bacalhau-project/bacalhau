@@ -20,7 +20,6 @@ Installing dependecies like Whisper, torch, pandas
 
 
 ```bash
-
 pip install git+https://github.com/openai/whisper.git
 pip install torch==1.10.1
 pip install pandas
@@ -37,7 +36,6 @@ for that we Download a sample audio clip
 
 
 ```bash
-
 wget https://github.com/js-ts/hello/raw/main/hello.mp3
 ```
 
@@ -226,7 +224,6 @@ Then run the script with the default parameters
 
 
 ```bash
-
 python openai-whisper.py
 ```
 
@@ -297,7 +294,6 @@ Viewing the outputs
 
 
 ```bash
-
 cat hello.srt
 ```
 

@@ -31,7 +31,6 @@ The raw data is available on the [SOCAT website](https://www.socat.info/). We wi
 
 
 ```bash
-
 mkdir -p inputs
 curl --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.socat.info/socat_files/v2022/SOCATv2022_tracks_gridded_monthly.nc.zip
 curl --output ./inputs/sst.mnmean.nc https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc
@@ -57,7 +56,6 @@ zarr>=2.0.0
 
 
 ```bash
-
 pip install -r requirements.txt > /dev/null
 ```
 
@@ -225,7 +223,6 @@ Before we upload the container to the Bacalhau network, we should test it locall
 
 
 ```bash
-
 docker run \
 	-v $(pwd)/inputs:/inputs \
 	-v $(pwd)/outputs:/outputs \
@@ -240,7 +237,6 @@ I find it useful to first run a simple test with a known working container to en
 
 
 ```bash
-
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
         --download \
@@ -252,7 +248,6 @@ Then I like to run a simple test with my custom container ...
 
 
 ```bash
-
 rm -rf stdout stderr volumes shards
 bacalhau docker run \
 	--inputs bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
@@ -264,7 +259,6 @@ And finally let's run the full job. This time I will not download the data immed
 
 
 ```bash
-  --out job_id
 bacalhau docker run \
         --inputs bafybeidunikexxu5qtuwc7eosjpuw6a75lxo7j5ezf3zurv52vbrmqwf6y \
         --id-only \
@@ -278,7 +272,6 @@ Now let's download and display the result from the results directory. We can use
 
 
 ```bash
-
 rm -rf results
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
@@ -286,13 +279,11 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 
 
 ```bash
-
 cat ./results/stdout
 ```
 
 
 ```bash
-
 ls ./results/volumes/outputs
 ```
 

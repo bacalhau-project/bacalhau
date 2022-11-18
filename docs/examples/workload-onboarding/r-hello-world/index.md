@@ -40,7 +40,6 @@ Run the script
 
 
 ```bash
-
 Rscript hello.R
 ```
 
@@ -51,7 +50,6 @@ Install and start IPFS
 
 
 ```bash
-
 wget https://dist.ipfs.io/go-ipfs/v0.4.2/go-ipfs_v0.4.2_linux-amd64.tar.gz
 tar xvfz go-ipfs_v0.4.2_linux-amd64.tar.gz
 mv go-ipfs/ipfs /usr/local/bin/ipfs
@@ -69,7 +67,6 @@ If the script runs successfully, Add the hello.R script to IPFS, using the ipfs 
 
 
 ```bash
-
 ipfs add hello.R
 ```
 
@@ -99,7 +96,6 @@ Insalling bacalhau
 
 
 ```bash
-
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -123,7 +119,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
- --out job_id
 bacalhau docker run \
 --wait \
 --wait-timeout-secs 1000 \
@@ -147,7 +142,6 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -162,7 +156,6 @@ To find out more information about your job, run the following command:
 
 
 ```bash
-
 bacalhau describe  ${JOB_ID}
 ```
 
@@ -225,7 +218,6 @@ we create a temporary directory to save our results
 
 
 ```bash
-
 mkdir results
 ```
 
@@ -240,7 +232,6 @@ the following command:
 
 
 ```bash
-
 bacalhau get ${JOB_ID} --output-dir results
 ```
 
@@ -255,7 +246,6 @@ see the following contents in results directory
 
 
 ```bash
-
 ls results/
 ```
 
@@ -266,7 +256,6 @@ Viewing the result
 
 
 ```bash
-
 cat results/combined_results/stdout
 ```
 
@@ -291,12 +280,10 @@ r-base \
 
 
 ```bash
-
 bacalhau describe ${JOB_ID} --spec > job.yaml
 ```
 
 
 ```bash
-
 cat job.yaml
 ```

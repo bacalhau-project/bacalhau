@@ -17,7 +17,6 @@ You're probably used to running docker commands to run a container.
 
 
 ```bash
-
 docker run docker/whalesay cowsay sup old fashioned container run
 ```
 
@@ -48,7 +47,6 @@ Another difference is that by default Bacalhau overwrites the default entrypoint
 
 
 ```bash
-
 bacalhau docker run docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
@@ -102,7 +100,6 @@ bacalhau docker run docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 
 
 ```bash
-
 cat ./results/stdout
 ```
 
@@ -159,13 +156,11 @@ Now let's build and test the container locally.
 
 
 ```bash
-
 docker build -t ghcr.io/bacalhau-project/examples/codsay:latest . 2> /dev/null
 ```
 
 
 ```bash
-
 docker run --rm ghcr.io/bacalhau-project/examples/codsay:latest codsay I like swimming in data
 ```
 
@@ -194,7 +189,6 @@ Once your container is working as expected then you should push it to a public c
 
 
 ```bash
-
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/codsay:latest .
 ```
 
@@ -208,7 +202,6 @@ The `bacalhau docker run` command strips the default entrypoint, so don't forget
 
 
 ```bash
-
 bacalhau docker run \
   ghcr.io/bacalhau-project/examples/codsay:v1.0.0 \
   -- bash -c 'codsay Look at all this data'

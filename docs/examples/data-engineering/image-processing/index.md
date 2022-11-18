@@ -33,7 +33,6 @@ path=!echo $PATH
 
 
 ```bash
-
 bacalhau version
 ```
 
@@ -49,7 +48,6 @@ Bacalhau also mounts a data volume to store output data. By default `bacalhau do
 
 
 ```bash
- --out job_id
 bacalhau docker run \
   --wait \
   --wait-timeout-secs 100 \
@@ -64,7 +62,6 @@ We store that in an environment variable so that we can reuse it later on.
 
 
 ```bash
-
 bacalhau list --id-filter=${JOB_ID} --no-style
 ```
 
@@ -82,7 +79,6 @@ _Please ignore the `> /dev/null 2>&1` portion of the command, it is there only t
 
 
 ```bash
-
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
@@ -96,7 +92,6 @@ The docker run command above used the `outputs` volume as a results folder so wh
 
 
 ```bash
-
 ls -lah results/volumes/outputs
 ```
 
@@ -124,55 +119,55 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 
     
-![jpeg](output_14_0.jpg)
+![jpeg](index_files/index_14_0.jpg)
     
 
 
 
     
-![jpeg](output_14_1.jpg)
+![jpeg](index_files/index_14_1.jpg)
     
 
 
 
     
-![jpeg](output_14_2.jpg)
+![jpeg](index_files/index_14_2.jpg)
     
 
 
 
     
-![jpeg](output_14_3.jpg)
+![jpeg](index_files/index_14_3.jpg)
     
 
 
 
     
-![jpeg](output_14_4.jpg)
+![jpeg](index_files/index_14_4.jpg)
     
 
 
 
     
-![jpeg](output_14_5.jpg)
+![jpeg](index_files/index_14_5.jpg)
     
 
 
 
     
-![jpeg](output_14_6.jpg)
+![jpeg](index_files/index_14_6.jpg)
     
 
 
 
     
-![jpeg](output_14_7.jpg)
+![jpeg](index_files/index_14_7.jpg)
     
 
 
 
     
-![jpeg](output_14_8.jpg)
+![jpeg](index_files/index_14_8.jpg)
     
 
 

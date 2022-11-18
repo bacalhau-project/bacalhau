@@ -17,7 +17,6 @@ Pandas is a Python package that provides fast, flexible, and expressive data str
 
 
 ```bash
-
 pip install pandas
 ```
 
@@ -55,7 +54,6 @@ print(pd.read_csv("transactions.csv"))
 
 
 ```bash
-
 cat read_csv.py
 ```
 
@@ -65,7 +63,6 @@ cat read_csv.py
 
 
 ```bash
-
 # Downloading the dataset
 wget https://cloudflare-ipfs.com/ipfs/QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwiwhjz/transactions.csv
 ```
@@ -85,7 +82,6 @@ wget https://cloudflare-ipfs.com/ipfs/QmfKJT13h5k1b23ja3ZCVg5nFL9oKz2bVXc8oXgtwi
 
 
 ```bash
-
 cat transactions.csv
 ```
 
@@ -100,7 +96,6 @@ cat transactions.csv
 
 
 ```bash
-
 python3 read_csv.py
 ```
 
@@ -147,7 +142,6 @@ CID:/&lt;PATH-TO-WHERE-THE-CID-IS-TO-BE-MOUNTED> `QmfKJT13h5k1b23ja3ZCVg5nFL9oKz
 
 
 ```bash
- --out job_id
  bacalhau  docker run \
 --wait \
 --id-only \
@@ -171,7 +165,6 @@ Running the commands will output a UUID (like `e6377c99-b637-4661-a334-6ce98fcf0
 
 
 ```bash
-
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -186,7 +179,6 @@ If there is an error you can view the error using the following command bacalhau
 
 
 ```bash
-
 bacalhau describe ${JOB_ID}
 ```
 
@@ -196,7 +188,6 @@ we create a temporary directory to save our results
 
 
 ```bash
-
 mkdir pandas-results
 ```
 
@@ -204,7 +195,6 @@ To Download the results of your job, run the following command:
 
 
 ```bash
-
 bacalhau get ${JOB_ID}  --output-dir pandas-results
 ```
 
@@ -219,7 +209,6 @@ see the following contents in pandas-results directory
 
 
 ```bash
-
 ls pandas-results/combined_results/
 ```
 
@@ -261,7 +250,6 @@ Because your script is printed to stdout, the output will appear in the stdout f
 
 
 ```bash
-
 cat pandas-results/combined_results/stdout
 ```
 

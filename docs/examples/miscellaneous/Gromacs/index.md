@@ -88,7 +88,6 @@ Insalling bacalhau
 
 
 ```bash
-
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -108,7 +107,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
-
 echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input gromacs/gromacs -- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc') > job_id.txt
 cat job_id.txt
 ```
@@ -119,7 +117,6 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-
 bacalhau list --id-filter $(cat job_id.txt)
 ```
 
@@ -130,7 +127,6 @@ To find out more information about your job, run the following command:
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt)
 ```
 
@@ -140,7 +136,6 @@ we create a temporary directory to save our results
 
 
 ```bash
-
 mkdir -p results
 ```
 
@@ -152,7 +147,6 @@ the following command:
 
 
 ```bash
-
 bacalhau get  $(cat job_id.txt)  --output-dir results
 ```
 
@@ -167,7 +161,6 @@ see the following contents in results directory
 
 
 ```bash
-
 ls results/
 ```
 
@@ -198,12 +191,10 @@ You can see your the processed ‘`1AKI_processed`’ file in volumes/outputs
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt) --spec > job.yaml
 ```
 
 
 ```bash
-
 cat job.yaml
 ```

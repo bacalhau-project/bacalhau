@@ -24,7 +24,6 @@ First let's download one of the IPFS files and inspect it locally. You can see t
 
 
 ```bash
-
 wget -q -O file.tar.gz https://w3s.link/ipfs/bafybeihvmcrs5voz2pzpdkb3b7kt4bbb6kpi5ohspgrrs7bqkalpwmfdpq
 tar -xvf file.tar.gz
 ```
@@ -63,7 +62,6 @@ tar -xvf file.tar.gz
 
 
 ```bash
-
 pip install pandas
 ```
 
@@ -180,7 +178,7 @@ df[['block_datetime', 'value']].groupby(pd.Grouper(key='block_datetime', freq='1
 
 
     
-![png](output_7_1.png)
+![png](index_files/index_7_1.png)
     
 
 
@@ -245,7 +243,6 @@ Next, let's make sure the file works as expected...
 
 
 ```bash
-
 python main.py . outputs/
 ```
 
@@ -286,7 +283,6 @@ To submit a job, you can use the Bacalhau CLI. The following command will run th
 
 
 ```bash
- --out job_id
 bacalhau docker run \
     --id-only \
     --input-volumes bafybeihvmcrs5voz2pzpdkb3b7kt4bbb6kpi5ohspgrrs7bqkalpwmfdpq:/inputs/data.tar.gz \
@@ -299,7 +295,6 @@ Running the commands will output a UUID that represents the job that was created
 
 
 ```bash
-
 bacalhau list --id-filter ${JOB_ID}
 ```
 
@@ -314,7 +309,6 @@ To find out more information about your job, run the following command:
 
 
 ```bash
-
 bacalhau describe ${JOB_ID}
 ```
 
@@ -397,7 +391,6 @@ And let's inspect the results.
 
 
 ```bash
-
 mkdir -p ./results # Temporary directory to store the results
 bacalhau get --output-dir ./results ${JOB_ID} # Download the results
 ```
@@ -411,7 +404,6 @@ The docker run command above used the `outputs` volume as a results folder so wh
 
 
 ```bash
-
 ls -lah results/combined_results/outputs
 ```
 
@@ -438,7 +430,7 @@ df.plot()
 
 
     
-![png](output_25_1.png)
+![png](index_files/index_25_1.png)
     
 
 
@@ -448,7 +440,6 @@ Ok so that works. Let's scale this up! We can run the same analysis on the entir
 
 
 ```bash
-
 printf "" > job_ids.txt
 for h in $(cat hashes.txt); do \
     bacalhau docker run \
@@ -461,7 +452,6 @@ done
 
 
 ```bash
-
 cat job_ids.txt
 ```
 
@@ -481,7 +471,6 @@ cat job_ids.txt
 
 
 ```bash
-
 rm -rf ./combined_results && mkdir -p ./combined_results
 for id in $(cat job_ids.txt); do \
     rm -rf results && mkdir results
@@ -567,7 +556,7 @@ df.plot()
 
 
     
-![png](output_30_1.png)
+![png](index_files/index_30_1.png)
     
 
 
@@ -579,7 +568,6 @@ The following list is a list of IPFS CID's for the Ethereum data that we used in
 
 
 ```bash
-
 cat hashes.txt
 ```
 

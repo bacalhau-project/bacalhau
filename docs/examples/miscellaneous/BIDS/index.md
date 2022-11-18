@@ -182,7 +182,6 @@ Insalling bacalhau
 
 
 ```bash
-
 echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data nipreps/mriqc:latest -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03) > job_id.txt
 cat job_id.txt
 ```
@@ -193,7 +192,6 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-
 bacalhau list --id-filter $(cat job_id.txt)
 ```
 
@@ -204,7 +202,6 @@ To find out more information about your job, run the following command:
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt)
 ```
 
@@ -214,7 +211,6 @@ we create a temporary directory to save our results
 
 
 ```bash
-
 mkdir results
 ```
 
@@ -226,7 +222,6 @@ the following command:
 
 
 ```bash
-
 bacalhau get  $(cat job_id.txt)  --output-dir results
 ```
 
@@ -241,7 +236,6 @@ see the following contents in results directory
 
 
 ```bash
-
 ls results/
 ```
 
@@ -302,12 +296,10 @@ The structure of the files and directories will look like this:
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt) --spec > job.yaml
 ```
 
 
 ```bash
-
 cat job.yaml
 ```

@@ -20,7 +20,6 @@ Cloning the repo, Installing dependencies and downloading the model weights
 
 
 ```bash
-
 git clone https://github.com/NVlabs/stylegan3
 cd stylegan3
 conda env create -f environment.yml
@@ -33,7 +32,6 @@ Generate an image using pre-trained AFHQv2 model
 
 
 ```bash
-
 python gen_images.py --outdir=out --trunc=1 --seeds=2 --network=stylegan3-r-afhqv2-512x512.pkl
 ```
 

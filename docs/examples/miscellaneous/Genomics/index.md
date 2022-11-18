@@ -69,7 +69,6 @@ Insalling bacalhau
 
 
 ```bash
-
 curl -sL https://get.bacalhau.org/install.sh | bash
 ```
 
@@ -89,7 +88,6 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
-
 echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 jsacex/kipoi-veff2:py37 -- kipoi_veff2_predict ./examples/input/test.vcf ./examples/input/test.fa ../outputs/output.tsv -m "DeepSEA/predict" -s "diff" -s "logit") > job_id.txt
 cat job_id.txt
 ```
@@ -103,7 +101,6 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-
 bacalhau list --id-filter $(cat job_id.txt)
 ```
 
@@ -118,7 +115,6 @@ To find out more information about your job, run the following command:
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt)
 ```
 
@@ -213,7 +209,6 @@ we create a temporary directory to save our results
 
 
 ```bash
-
 mkdir results
 ```
 
@@ -225,7 +220,6 @@ the following command:
 
 
 ```bash
-
 bacalhau get  $(cat job_id.txt)  --output-dir results
 ```
 
@@ -240,7 +234,6 @@ see the following contents in results directory
 
 
 ```bash
-
 ls results/
 ```
 
@@ -251,7 +244,6 @@ ls results/
 
 
 ```bash
-
 cat results/volumes/outputs/output.tsv | head -n 10
 ```
 
@@ -269,12 +261,10 @@ cat results/volumes/outputs/output.tsv | head -n 10
 
 
 ```bash
-
 bacalhau describe $(cat job_id.txt) --spec > job.yaml
 ```
 
 
 ```bash
-
 cat job.yaml
 ```

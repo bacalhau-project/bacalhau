@@ -39,7 +39,6 @@ To make sure, you can add an `ls` to the command to see what is exposed in the i
 
 
 ```bash
- --out=job_id
 bacalhau docker run \
     --wait \
     --id-only \
@@ -56,7 +55,6 @@ bacalhau docker run \
 
 
 ```bash
-
 bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
@@ -74,7 +72,6 @@ This file is not pinned. There is no guarantee that the file will exist in the f
 
 
 ```bash
-
 bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubuntu -- ls -l /inputs/outputs/
 ```
 
