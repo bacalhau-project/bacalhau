@@ -165,13 +165,13 @@ func NewDevStack(
 
 		var useTransport transport.Transport
 
+		var libp2pPort int
 		if options.SimulatorURL == "" {
 			//////////////////////////////////////
 			// libp2p
 			//////////////////////////////////////
 
-			// libp2pPort, ports := ports[0], ports[1:]
-			libp2pPort, _ := ports[0], ports[1:]
+			libp2pPort, ports = ports[0], ports[1:]
 			libp2pPeer := []multiaddr.Multiaddr{}
 
 			if i == 0 {
