@@ -210,7 +210,7 @@ func NewDevStack(
 		}
 
 		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+		ctx = logger.ContextWithNodeIDLogger(ctx, useTransport.HostID())
 
 		//////////////////////////////////////
 		// port for API
