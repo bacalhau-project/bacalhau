@@ -38,6 +38,8 @@ type listResponse struct {
 // @Failure              400         {object} string
 // @Failure              500         {object} string
 // @Router               /list [post]
+//
+//nolint:lll
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()

@@ -10,7 +10,7 @@ type StorageSpec struct {
 	StorageSource StorageSourceType `json:"StorageSource,omitempty"`
 
 	// Name of the spec's data, for reference.
-	Name string `json:"Name,omitempty" example:"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
+	Name string `json:"Name,omitempty" example:"job-9304c616-291f-41ad-b862-54e133c0149e-shard-0-host-QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"` //nolint:lll
 
 	// The unique ID of the data, where it makes sense (for example, in an
 	// IPFS storage spec this will be the data's CID).

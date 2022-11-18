@@ -29,6 +29,8 @@ type versionResponse struct {
 // @Failure     400            {object} string
 // @Failure     500            {object} string
 // @Router      /version [post]
+//
+//nolint:lll
 func (apiServer *APIServer) version(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/version")
 	defer span.End()

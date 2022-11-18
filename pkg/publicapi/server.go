@@ -143,6 +143,8 @@ func (apiServer *APIServer) GetURI() string {
 // @BasePath      /
 // @schemes       http
 // ListenAndServe listens for and serves HTTP requests against the API server.
+//
+//nolint:lll
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID := apiServer.Requester.ID
 

@@ -30,6 +30,7 @@ type eventsResponse struct {
 // @Failure              500           {object} string
 // @Router               /events [post]
 //
+//nolint:lll
 //nolint:dupl
 func (apiServer *APIServer) events(res http.ResponseWriter, req *http.Request) {
 	var eventsReq eventsRequest

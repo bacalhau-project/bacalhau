@@ -22,7 +22,7 @@ type ResourceUsageData struct {
 	Memory uint64 `json:"Memory,omitempty" example:"27487790694"`
 	// bytes
 	Disk uint64 `json:"Disk,omitempty" example:"212663867801"`
-	GPU  uint64 `json:"GPU,omitempty" example:"1"` // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
+	GPU  uint64 `json:"GPU,omitempty" example:"1"` //nolint:lll // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
 }
 
 type ResourceUsageProfile struct {
