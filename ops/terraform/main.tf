@@ -195,7 +195,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   type     = "pd-ssd"
   zone     = var.num_gpu_machines > 1 && count.index == (var.instance_count - 1) ? "europe-west4-a" : var.zone
   size     = var.volume_size_gb
-  snapshot = var.restore_from_backup
+  snapshot = count.index == 4 ? "bacalhau-disk-4-migration" : var.restore_from_backup
   lifecycle {
     prevent_destroy = true
   }
