@@ -18,7 +18,14 @@ type debugResponse struct {
 	ComputeJobs              []computenode.ActiveJob   `json:"ComputeJobs"`
 }
 
-// Returns debug information on what the current node is doing.
+// debug godoc
+// @ID      apiServer/debug
+// @Summary Returns debug information on what the current node is doing.
+// @Tags    Health
+// @Produce json
+// @Success 200 {object} debugResponse
+// @Failure 500 {object} string
+// @Router  /debug [get]
 func (apiServer *APIServer) debug(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/debug")
 	defer span.End()

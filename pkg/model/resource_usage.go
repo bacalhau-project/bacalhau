@@ -17,12 +17,12 @@ type ResourceUsageConfig struct {
 // these are the numeric values in bytes for ResourceUsageConfig
 type ResourceUsageData struct {
 	// cpu units
-	CPU float64 `json:"CPU,omitempty"`
+	CPU float64 `json:"CPU,omitempty" example:"9.600000000000001"`
 	// bytes
-	Memory uint64 `json:"Memory,omitempty"`
+	Memory uint64 `json:"Memory,omitempty" example:"27487790694"`
 	// bytes
-	Disk uint64 `json:"Disk,omitempty"`
-	GPU  uint64 `json:"GPU,omitempty"` // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
+	Disk uint64 `json:"Disk,omitempty" example:"212663867801"`
+	GPU  uint64 `json:"GPU,omitempty" example:"1"` // Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
 }
 
 type ResourceUsageProfile struct {

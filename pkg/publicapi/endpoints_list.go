@@ -14,11 +14,11 @@ import (
 )
 
 type listRequest struct {
-	JobID       string `json:"id"`
-	ClientID    string `json:"client_id"`
-	MaxJobs     int    `json:"max_jobs"`
-	ReturnAll   bool   `json:"return_all"`
-	SortBy      string `json:"sort_by"`
+	JobID       string `json:"id" example:"9304c616-291f-41ad-b862-54e133c0149e"`
+	ClientID    string `json:"client_id" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
+	MaxJobs     int    `json:"max_jobs" example:"10"`
+	ReturnAll   bool   `json:"return_all" `
+	SortBy      string `json:"sort_by" example:"created_at"`
 	SortReverse bool   `json:"sort_reverse"`
 }
 
@@ -26,6 +26,18 @@ type listResponse struct {
 	Jobs []*model.Job `json:"jobs"`
 }
 
+// list godoc
+// @ID                   pkg/publicapi.list
+// @Summary              Simply lists jobs.
+// @Description.markdown endpoints_list
+// @Tags                 Job
+// @Accept               json
+// @Produce              json
+// @Param                listRequest body     listRequest true "Set `return_all` to `true` to return all jobs on the network (may degrade performance, use with care!)."
+// @Success              200         {object} listResponse
+// @Failure              400         {object} string
+// @Failure              500         {object} string
+// @Router               /list [post]
 func (apiServer *APIServer) list(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "pkg/publicapi.list")
 	defer span.End()
