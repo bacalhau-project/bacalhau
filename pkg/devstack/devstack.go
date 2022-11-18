@@ -169,12 +169,9 @@ func NewDevStack(
 			//////////////////////////////////////
 			// libp2p
 			//////////////////////////////////////
-			var libp2pPort int
-			libp2pPort, err = freeport.GetFreePort()
-			if err != nil {
-				return nil, err
-			}
 
+			// libp2pPort, ports := ports[0], ports[1:]
+			libp2pPort, _ := ports[0], ports[1:]
 			libp2pPeer := []multiaddr.Multiaddr{}
 
 			if i == 0 {
