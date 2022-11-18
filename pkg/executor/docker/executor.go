@@ -249,8 +249,8 @@ func (e *Executor) RunShard(
 		jobContainer.ID,
 		dockertypes.ContainerStartOptions{},
 	)
-	log.Ctx(ctx).Err(err).Msg("Failed to start container")
 	if containerStartError != nil {
+		log.Ctx(ctx).Err(err).Msg("Failed to start container")
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container: "
 		if strings.Contains(containerStartError.Error(), "executable file not found") {
