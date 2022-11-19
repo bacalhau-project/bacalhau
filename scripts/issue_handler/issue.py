@@ -8,29 +8,16 @@ e = Path(__file__) / ".env"
 load_dotenv()
 
 gh_token = os.getenv("GITHUB_TOKEN")
-api = GhApi(owner="filecoin-project", repo="bacalhau", token=gh_token)
+api = GhApi(owner="filecoin-project", token=gh_token)
 
-# Get all issues from bacalhau using the api
-issues = api.projects.list_for_repo(org="filecoin-project", repo="bacalhau")
+p = api.projectsv2.list_cards(column_id="f17de28f")
+print(f"{p.title} - {p.id}")
 
-# Bacalhau project IDs
-#
+# # Get project ID for filecoin-project - bacalhau
+# columns = api.projects.list_columns()q
 
-for i in issues:
-    print(i.id)
-
-
-
-projects = api.ProjectV2.list_for_org(org="filecoin-project")
-
-for p in projects:
-    print(f"{p.name} - {p.id}")
-
-# Get project ID for filecoin-project - bacalhau
-columns = api.projects.list_columns(project_id=65)
-
-for c in columns:
-    print(c)
+# for c in columns:
+#     print(c)
 
 # columns = api.projects.get_project_columns(project_id=1)
 
@@ -41,3 +28,65 @@ for c in columns:
 #         continue
 #     _, org, repo, _, num = card["content_url"].rsplit("/", 4)
 #     issue_labels = api.issues.list_labels_on_issue(org, repo, num)
+
+
+# gh api graphql -f query='
+#   query{
+#   node(id: "PVT_kwDOAU_qk84AHJ4X") {
+#     ... on ProjectV2 {
+#       fields(first: 20) {
+#         nodes {
+#           ... on ProjectV2Field {
+#             id
+#             name
+#           }
+#           ... on ProjectV2IterationField {
+#             id
+#             name
+#             configuration {
+#               iterations {
+#                 startDate
+#                 id
+#               }
+#             }
+#           }
+#           ... on ProjectV2SingleSelectField {
+#             id
+#             name
+#             options {
+#               id
+#               name
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }'
+
+
+# "options": [
+#   {
+#     "id": "f17de28f",
+#     "name": "Triage"
+#   },
+#   {
+#     "id": "f75ad846",
+#     "name": "Todo"
+#   },
+#   {
+#     "id": "1e2a6912",
+#     "name": "Must Have for Next Event"
+#   },
+#   {
+#     "id": "47fc9ee4",
+#     "name": "In Progress"
+#   },
+#   {
+#     "id": "e3b53dda",
+#     "name": "To Celebrate"
+#   },
+#   {
+#     "id": "98236657",
+#     "name": "Done"
+#   }
