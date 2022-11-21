@@ -56,6 +56,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	nodeCount := 1
