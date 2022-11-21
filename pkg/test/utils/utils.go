@@ -64,3 +64,9 @@ func MaybeNeedDocker(t *testing.T, needDocker bool) {
 		}
 	}
 }
+
+func SkipIfArm(t *testing.T, issueURL string) {
+	if runtime.GOARCH == "arm64" {
+		t.Skip("Test does not pass natively on arm64", issueURL)
+	}
+}

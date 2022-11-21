@@ -133,7 +133,10 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ["amd64", << parameters.target_arch >>]
+              - not:
+                  and:
+                    - equal: ["darwin", << parameters.target_os >>]
+                    - equal: ["arm64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
