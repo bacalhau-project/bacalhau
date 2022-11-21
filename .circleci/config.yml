@@ -612,3 +612,5 @@ workflows:
           name: Running Performance
           requires:
             - build-linux-amd64-unit
+
+# VS Code Extension Version: 1.1.1
