@@ -14,9 +14,9 @@ type DevStackIPFS struct {
 	CleanupManager *system.CleanupManager
 }
 
-// A devstack but with only IPFS servers connected to each other
+// NewDevStackIPFS creates a devstack but with only IPFS servers connected to each other
 func NewDevStackIPFS(ctx context.Context, cm *system.CleanupManager, count int) (*DevStackIPFS, error) {
-	clients := []*ipfs.Client{}
+	var clients []*ipfs.Client
 	for i := 0; i < count; i++ {
 		log.Debug().Msgf(`Creating Node #%d`, i)
 

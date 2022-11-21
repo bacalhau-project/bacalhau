@@ -118,7 +118,8 @@ func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string)
 			filteredPeerAddrs = append(filteredPeerAddrs, addr)
 		}
 	}
-	return NewNodeWithConfig(ctx, cm, Config{
+	return tryCreateNode(ctx, cm, Config{
+		Mode:      ModeDefault,
 		PeerAddrs: filteredPeerAddrs,
 	})
 }
@@ -126,15 +127,36 @@ func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string)
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
 func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(ctx, cm, Config{
+	return tryCreateNode(ctx, cm, Config{
 		Mode:      ModeLocal,
 		PeerAddrs: peerAddrs,
 	})
 }
 
-// NewNodeWithConfig creates a new IPFS node with the given configuration.
+func tryCreateNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+	// Starting up an IPFS node can have issues as there's a race between finding a free port and getting the listener
+	// running on that port (e.g. find the port, write the config file, save the file, start up IPFS, then start the listener)
+	attempts := 3
+	var err error
+	for i := 0; i < attempts; i++ {
+		var ipfsNode *Node
+		ipfsNode, err = newNodeWithConfig(ctx, cm, cfg)
+		if err != nil {
+			if errors.Is(err, addressInUseError) {
+				log.Ctx(ctx).Debug().Err(err).Msg("Failed to start up node as port was already in use")
+				continue
+			}
+			return nil, err
+		}
+
+		return ipfsNode, nil
+	}
+	return nil, err
+}
+
+// newNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
