@@ -59,7 +59,8 @@ terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 
 # Deploying Bacalhau mainnet!
 
-The normal operation is to edit `production.tfvars`, ensure you have appropriate values in `production-secrets.tfvars` (see `secrets.tfvars.example` for a guide) and then:
+The normal operation is to edit `production.tfvars`, make sure the `bacalhau_version` variable points to the version you'd like to deploy.
+Optionally, ensure you have appropriate values in `production-secrets.tfvars` (see `secrets.tfvars.example` for a guide) and then:
 
 ```bash
 # make sure gcloud is connected to the correct project and compute zone for our workspace
@@ -68,6 +69,8 @@ bash scripts/connect_workspace.sh production
 terraform plan -var-file production.tfvars -var-file production-secrets.tfvars
 terraform apply -var-file production.tfvars -var-file production-secrets.tfvars
 ```
+
+> :warning: Due to some limitations in how GCP provision gpus (inquiry @simonwo for more details :smile:) the disk of one of the gpu machines [has to be restored from a hand-picked snapshot](https://github.com/filecoin-project/bacalhau/blob/587415f600ba8b1b4a117799d1a14907430b893c/ops/terraform/main.tf#L198). This is a temporary solution.
 
 # Stand up a new long lived cluster
 

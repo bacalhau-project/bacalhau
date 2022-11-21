@@ -250,7 +250,7 @@ func (e *Executor) RunShard(
 		dockertypes.ContainerStartOptions{},
 	)
 	if containerStartError != nil {
-		log.Ctx(ctx).Err(err).Msg("Failed to start container")
+		log.Ctx(ctx).Err(containerStartError).Msg("Failed to start container")
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container: "
 		if strings.Contains(containerStartError.Error(), "executable file not found") {
