@@ -1008,7 +1008,6 @@ const docTemplate = `{
                     "example": 212663867801
                 },
                 "GPU": {
-                    "description": "Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/",
                     "type": "integer",
                     "example": 1
                 },

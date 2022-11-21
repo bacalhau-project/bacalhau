@@ -376,7 +376,6 @@ definitions:
         example: 212663867801
         type: integer
       GPU:
-        description: Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
         example: 1
         type: integer
       Memory:
