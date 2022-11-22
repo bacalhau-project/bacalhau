@@ -123,7 +123,7 @@ swagger-build:
 build: buildenvcorrect build-bacalhau
 
 .PHONY: build-ci
-build-ci: build-bacalhau
+build-ci: build-bacalhau swagger-build
 
 .PHONY: build-dev
 build-dev: build-ci
