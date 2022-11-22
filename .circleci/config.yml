@@ -474,7 +474,7 @@ jobs:
           name: Check for new files
           command:
             # git diff
-            echo "NEW_FILES=$(git diff ./docs | cat | wc -m)"
+            echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
       - run:
           name: Commit to GitHub
           command: |
