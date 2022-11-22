@@ -484,7 +484,7 @@ jobs:
             sudo dpkg -i gh_2.14.7_linux_amd64.deb
             echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
       - run:
-          name: Commit to GitHub
+          name: Git commit
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
@@ -493,7 +493,8 @@ jobs:
       - run:
           name: Creating and merging pull request
           command: |
-            gh pr create --fill --base main --label documentation
+            git status --short
+            gh pr create --fill --base main --label documentation --repo filecoin-project/bacalhau
       # pr_url="$(gh pr create --fill --base main --label documentation)"
       # sleep 3
       # gh pr merge --auto -r "$pr_url"
