@@ -480,8 +480,8 @@ jobs:
       - run:
           name: Install gh
           command: |
-            wget https://github.com/cli/cli/releases/download/v2.20.2/gh_2.20.2_linux_386.deb
-            sudo dpkg -i gh_2.20.2_linux_386.deb
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
             echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
       - run:
           name: Creating and merging pull request
