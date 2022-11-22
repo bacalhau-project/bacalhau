@@ -453,6 +453,7 @@ func (n *ComputeNode) SelectJob(ctx context.Context, job *model.Job) (bool, mode
 		return false, requirements, err
 	}
 
+	log.Ctx(ctx).Debug().Bool("ShouldBid", bidStrategyResponse.ShouldBid).Str("Reason", bidStrategyResponse.Reason).Msg("Considering job")
 	return bidStrategyResponse.ShouldBid, requirements, nil
 }
 
