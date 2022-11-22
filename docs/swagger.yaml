@@ -376,7 +376,6 @@ definitions:
         example: 212663867801
         type: integer
       GPU:
-        description: Support whole GPUs only, like https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/
         example: 1
         type: integer
       Memory:
@@ -677,7 +676,7 @@ info:
   license:
     name: Apache 2.0
     url: https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
-  title: Bacalhau API
+  title: Bacalhau API blaaa12345671111
 paths:
   /debug:
     get:
