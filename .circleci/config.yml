@@ -450,6 +450,24 @@ jobs:
             pip3 install -r requirements.txt
             python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
+  build_swagger:
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    executor: linux-amd64
+    steps:
+      - checkout
+      - run:
+          name: Install Swagger
+          command:
+            go install github.com/swaggo/swag/cmd/swag@latest
+      - run:
+          name: Build Swagger Docs
+          command:
+            make swagger-docs
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
