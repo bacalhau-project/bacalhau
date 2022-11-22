@@ -467,6 +467,7 @@ jobs:
           name: Build Swagger Docs
           command:
             make swagger-docs
+            git status
 
 orbs:
   heroku: circleci/heroku@1.2.6
