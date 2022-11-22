@@ -115,7 +115,11 @@ func (s *ServerSuite) TestTimeout() {
 	defer res.Body.Close()
 }
 func (s *ServerSuite) TestMaxBodyReader() {
+	prev := MaxBytesToReadInBody
 	MaxBytesToReadInBody = 500
+	defer func() {
+		MaxBytesToReadInBody = prev
+	}()
 
 	c, cm := SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
