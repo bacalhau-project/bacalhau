@@ -480,6 +480,7 @@ jobs:
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
+            git fetch
             git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
             git push origin
 
