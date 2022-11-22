@@ -486,9 +486,11 @@ jobs:
       - run:
           name: Creating and merging pull request
           command: |
-            pr_url="$(gh pr create --fill --base main --label documentation)"
-            sleep 3
-            gh pr merge --auto -r "$pr_url"
+            gh pr create --fill --base main --label documentation
+      # pr_url="$(gh pr create --fill --base main --label documentation)"
+      # sleep 3
+      # gh pr merge --auto -r "$pr_url"
+      
       # - run:
       #     name: Install updatecli
       #     command: |
