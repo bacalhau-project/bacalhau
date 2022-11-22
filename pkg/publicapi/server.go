@@ -172,6 +172,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	fmt.Println("HELLO WORLD")
+	fmt.Println("HELLO WORLD222")
 
 	srv := http.Server{
 		Handler:           sm,
