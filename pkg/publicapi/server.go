@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/filecoin-project/bacalhau/pkg/version"
+	"github.com/gorilla/websocket"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/didip/tollbooth/v7"
@@ -67,6 +68,9 @@ type APIServer struct {
 	Host             string
 	Port             int
 	Config           *APIServerConfig
+	// jobId or "" (for all events) -> connections for that subscription
+	Websockets      map[string][]*websocket.Conn
+	WebsocketsMutex sync.RWMutex
 }
 
 func init() { //nolint:gochecknoinits
@@ -99,7 +103,8 @@ func NewServer(
 		computeNode,
 		publishers,
 		storageProviders,
-		DefaultAPIServerConfig)
+		DefaultAPIServerConfig,
+	)
 }
 
 func NewServerWithConfig(
@@ -123,6 +128,7 @@ func NewServerWithConfig(
 		Host:             host,
 		Port:             port,
 		Config:           config,
+		Websockets:       make(map[string][]*websocket.Conn),
 	}
 	return a
 }
@@ -168,6 +174,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle(apiServer.chainHandlers("/livez", apiServer.livez))
 	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
 	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
+	sm.HandleFunc("/websockets", apiServer.websockets)
 	sm.Handle("/metrics", promhttp.Handler())
 	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 
