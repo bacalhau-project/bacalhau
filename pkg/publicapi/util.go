@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
 	"github.com/filecoin-project/bacalhau/pkg/types"
 	verifier_utils "github.com/filecoin-project/bacalhau/pkg/verifier/util"
-	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/ricochet2200/go-disk-usage/du"
 	"github.com/rs/zerolog/log"
@@ -150,9 +149,19 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
 		requesterNode, computeNode, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
+	wait := make(chan struct{})
 	go func() {
+		defer func() {
+			wait <- struct{}{}
+		}()
 		require.NoError(t, s.ListenAndServe(ctx, cm))
 	}()
+	cm.RegisterCallback(func() error {
+		// This ensures that the test only ends _after_ the API client has finished closing down,
+		// so we avoid panics from attempting to log to testing.T after the test has closed
+		<-wait
+		return nil
+	})
 	require.NoError(t, waitForHealthy(ctx, cl))
 
 	return cl, cm
@@ -192,14 +201,6 @@ func MountUsage(path string) (disk types.MountStatus) {
 	return
 }
 
-// Defining constants to convert size units
-const (
-	B  = 1
-	KB = 1024 * B
-	MB = 1024 * KB
-	GB = 1024 * MB
-)
-
 // use "-1" as count for just last line
 func TailFile(count int, path string) ([]byte, error) {
 	c := exec.Command("tail", strconv.Itoa(count), path) //nolint:gosec // subprocess not at risk
@@ -209,14 +210,6 @@ func TailFile(count int, path string) ([]byte, error) {
 		return nil, err
 	}
 	return output, nil
-}
-
-func MakeEchoJob() *model.Job {
-	randomSuffix, _ := uuid.NewUUID()
-	return MakeJob(model.EngineDocker, model.VerifierNoop, model.PublisherNoop, []string{
-		"echo",
-		randomSuffix.String(),
-	})
 }
 
 func MakeGenericJob() *model.Job {
