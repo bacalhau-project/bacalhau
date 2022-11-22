@@ -1,4 +1,4 @@
-//go:build unit || (!integration && !windows)
+//go:build (integration || !unit) && !windows
 
 package computenode
 

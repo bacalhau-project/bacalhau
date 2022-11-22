@@ -183,7 +183,7 @@ clean:
 .PHONY: test
 test:
 # unittests parallelize well (default go test behavior is to parallelize)
-	go test ./... -v
+	go test ./... -v --tags=unit
 
 .PHONY: integration-test
 integration-test:
