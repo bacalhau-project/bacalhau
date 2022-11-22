@@ -132,7 +132,7 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
 }
 
-// @title         Bacalhau API blaaa123
+// @title         Bacalhau API blaaa1234
 // @description   This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
 // @contact.name  Bacalhau Team
 // @contact.url   https://github.com/filecoin-project/bacalhau
