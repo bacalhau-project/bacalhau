@@ -85,7 +85,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		require.NoError(s.T(), err)
 	}()
 
-	fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(s.T(), err)
 
 	// write bytes to main.py

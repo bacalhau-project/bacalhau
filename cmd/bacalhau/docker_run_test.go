@@ -752,7 +752,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(s.T(), err)
 	}
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(s.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())

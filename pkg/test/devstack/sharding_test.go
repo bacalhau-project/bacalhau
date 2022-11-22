@@ -84,7 +84,7 @@ func (suite *ShardingSuite) TestExplodeCid() {
 	dirPath, err := prepareFolderWithFoldersAndFiles(suite.T(), folderCount, fileCount)
 	require.NoError(suite.T(), err)
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, stack.IPFSClients[:nodeCount]...)
 	require.NoError(suite.T(), err)
 
 	ipfsProvider, err := apicopy.NewStorage(cm, node.APIAddress())
@@ -220,7 +220,7 @@ func (suite *ShardingSuite) TestNoShards() {
 	cm.RegisterCallback(system.CleanupTraceProvider)
 
 	dirPath := prepareFolderWithFiles(suite.T(), 0)
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(suite.T(), err)
 
 	j := &model.Job{}

@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package computenode
 
@@ -493,40 +493,4 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	node2Count, ok := allocationMap[stack.Nodes[1].Transport.HostID()]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), 1, node2Count)
-}
-
-// how many bytes more does ipfs report the file than the actual content?
-const IpfsMetadataSize = 8
-
-func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
-	ctx := context.Background()
-
-	runTest := func(text string, expected uint64) {
-		stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-		defer stack.Node.CleanupManager.Cleanup()
-
-		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
-		require.NoError(suite.T(), err)
-
-		executor, err := stack.Node.Executors.GetExecutor(ctx, model.EngineWasm)
-		require.NoError(suite.T(), err)
-
-		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           cid,
-			Path:          "/",
-		})
-
-		require.NoError(suite.T(), err)
-		require.Equal(suite.T(), expected+IpfsMetadataSize, result)
-	}
-
-	for _, testString := range []string{
-		"hello from test volume size",
-		"hello world",
-	} {
-		suite.Run(testString, func() {
-			runTest(testString, uint64(len(testString)))
-		})
-	}
 }
