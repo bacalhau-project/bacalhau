@@ -481,7 +481,7 @@ jobs:
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
             git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
-            git push
+            git push origin
 
 orbs:
   heroku: circleci/heroku@1.2.6
