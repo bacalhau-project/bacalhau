@@ -15,7 +15,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // TODO: Godoc
-func (apiServer *APIServer) websockets(res http.ResponseWriter, req *http.Request) {
+func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request) {
 
 	conn, err := upgrader.Upgrade(res, req, nil)
 	if err != nil {
@@ -26,17 +26,24 @@ func (apiServer *APIServer) websockets(res http.ResponseWriter, req *http.Reques
 	defer conn.Close()
 
 	// NB: jobId == "" is the case for subscriptions to "all events"
+
+	// log.Debug().Msgf("what iz my req %+v", req)
+
+	// get job_id from query string
 	jobId := req.URL.Query().Get("job_id")
+	// log.Debug().Msgf("what iz my job_id %s", jobId)
 
-	apiServer.WebsocketsMutex.Lock()
-	defer apiServer.WebsocketsMutex.Unlock()
+	func() {
+		apiServer.WebsocketsMutex.Lock()
+		defer apiServer.WebsocketsMutex.Unlock()
 
-	sockets, ok := apiServer.Websockets[jobId]
-	if !ok {
-		sockets = []*websocket.Conn{}
-		apiServer.Websockets[jobId] = sockets
-	}
-	apiServer.Websockets[jobId] = append(sockets, conn)
+		sockets, ok := apiServer.Websockets[jobId]
+		if !ok {
+			sockets = []*websocket.Conn{}
+			apiServer.Websockets[jobId] = sockets
+		}
+		apiServer.Websockets[jobId] = append(sockets, conn)
+	}()
 
 	if jobId != "" {
 		// list events for job out of localDB and send them to the client
@@ -53,6 +60,14 @@ func (apiServer *APIServer) websockets(res http.ResponseWriter, req *http.Reques
 		}
 	}
 
+	for {
+		// read and throw away any incoming messages, exit when client
+		// disconnects (which is a sort of error)
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
 }
 
 func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
@@ -67,13 +82,24 @@ func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobE
 		}
 		errIdxs := []int{}
 		for idx, connection := range connections {
-			log.Debug().Msgf("sending %+v to %s/%d", event, jobId, idx)
+			// TODO: dispatch to subscribers in parallel, to avoid one slow
+			// reader slowing all the others down.
+			log.Trace().Msgf("sending %+v to %s/%d", event, jobId, idx)
 			err := connection.WriteJSON(event)
 			if err != nil {
+				log.Error().Msgf(
+					"error writing event to subscriber '%s'/%d: %s, closing ws\n",
+					jobId, idx, err.Error(),
+				)
 				errIdxs = append(errIdxs, idx)
+				// close the connection, if possible, to allow the other side to
+				// retry. Ignore errors from closing, since we are going to
+				// delete this connection anyway.
+				connection.Close()
 			}
 		}
-		// reverse errIdxs and clean up dud indexes
+		// reverse errIdxs (so we don't mess up the indexes for cleanup) and
+		// clean up dud connections
 		for i := len(errIdxs)/2 - 1; i >= 0; i-- {
 			opp := len(errIdxs) - 1 - i
 			errIdxs[i], errIdxs[opp] = errIdxs[opp], errIdxs[i]

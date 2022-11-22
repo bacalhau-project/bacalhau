@@ -37,7 +37,7 @@ func (s *ServerSuite) SetupTest() {
 
 func (s *ServerSuite) TestList() {
 	ctx := context.Background()
-	c, cm := SetupRequesterNodeForTests(s.T())
+	c, cm := SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	// Should have no jobs initially:
@@ -99,7 +99,7 @@ func (s *ServerSuite) TestTimeout() {
 			"/logz": 10 * time.Nanosecond,
 		},
 	}
-	c, cm := SetupRequesterNodeForTestsWithConfig(s.T(), config)
+	c, cm := SetupRequesterNodeForTestsWithConfig(s.T(), config, false)
 	defer cm.Cleanup()
 
 	endpoint := "/logz"
@@ -117,7 +117,7 @@ func (s *ServerSuite) TestTimeout() {
 func (s *ServerSuite) TestMaxBodyReader() {
 	MaxBytesToReadInBody = 500
 
-	c, cm := SetupRequesterNodeForTests(s.T())
+	c, cm := SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	// Due to headers we need MaxBytes minus 163
@@ -147,7 +147,7 @@ func (s *ServerSuite) TestMaxBodyReader() {
 }
 
 func testEndpoint(t *testing.T, endpoint string, contentToCheck string) []byte {
-	c, cm := SetupRequesterNodeForTests(t)
+	c, cm := SetupRequesterNodeForTests(t, false)
 	defer cm.Cleanup()
 
 	res, err := http.Get(c.BaseURI + endpoint)

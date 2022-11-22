@@ -15,7 +15,7 @@ import (
 func TestGet(t *testing.T) {
 	logger.ConfigureTestLogging(t)
 
-	c, cm := SetupRequesterNodeForTests(t)
+	c, cm := SetupRequesterNodeForTests(t, false)
 	defer cm.Cleanup()
 
 	ctx, span := system.Span(context.Background(),

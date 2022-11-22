@@ -174,7 +174,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle(apiServer.chainHandlers("/livez", apiServer.livez))
 	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
 	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
-	sm.HandleFunc("/websockets", apiServer.websockets)
+	sm.HandleFunc("/websocket", apiServer.websocket)
 	sm.Handle("/metrics", promhttp.Handler())
 	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 
