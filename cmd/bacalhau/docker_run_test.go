@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -196,7 +197,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 	for i, tc := range tests {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
-			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+			devstack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 				computenode.NewDefaultComputeNodeConfig(),
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
@@ -729,7 +730,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	stack, _ := devstack_tests.SetupTest(
+	stack, _ := testutils.SetupTest(
 		ctx,
 		s.T(),
 		nodeCount,
@@ -1027,7 +1028,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 
 	for name, tc := range tests {
 		s.Run(name, func() {
-			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+			stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 				computenode.NewDefaultComputeNodeConfig(),
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
