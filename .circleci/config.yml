@@ -491,167 +491,168 @@ orbs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  # lint:
-  #   jobs:
-  #     - lint:
-  #         name: Run linters and static checkers
-  #         filters:
-  #           tags:
-  #             ignore: /.*/
+  lint:
+    jobs:
+      - lint:
+          name: Run linters and static checkers
+          filters:
+            tags:
+              ignore: /.*/
 
-  # check_canary:
-  #   jobs:
-  #     - build_canary:
-  #         name: Check canary build
-  #         filters:
-  #           tags:
-  #             ignore: /.*/ 
+  check_canary:
+    jobs:
+      - build_canary:
+          name: Check canary build
+          filters:
+            tags:
+              ignore: /.*/ 
 
-  # dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
-  #   jobs:
-  #     - build:
-  #         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-  #         matrix:
-  #           parameters:
-  #             target_os: ["linux", "darwin", "windows"]
-  #             target_arch: ["amd64", "arm64"]
-  #             run_tests: [true]
-  #             build_tags: ["unit", "integration"]
-  #           exclude:
-  #             - target_os: "windows"
-  #               target_arch: "arm64"
-  #               run_tests: true
-  #               build_tags: "unit"
-  #             - target_os: "windows"
-  #               target_arch: "arm64"
-  #               run_tests: true
-  #               build_tags: "integration"
-  #         filters:
-  #           branches:
-  #             ignore: main
-  #           tags:
-  #             ignore: /.*/
-  #     - update_metadata:
-  #         name: Update metadata for dev branch test runs
-  #         METADATA_BUCKET: "bacalhau-global-storage"
-  #         METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
-  #         requires:
-  #           - build-linux-amd64-unit
-  #     - coverage:
-  #         name: Build coverage report
-  #         requires:
-  #           - build
-  #     ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
-  #     ## See https://github.com/filecoin-project/bacalhau/issues/434
-  #     # - deploy:
-  #     #     name: deploy-development-cluster
-  #     #     requires:
-  #     #       - build-linux-amd64-unit
-  #     #     rollout_stage: development
-  #     #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
-  #     #     filters:
-  #     #       <<: *filters_dev_branches # this is calling the previously set yaml anchor
+  dev_branches: # This workflow will run on all branches except 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin", "windows"]
+              target_arch: ["amd64", "arm64"]
+              run_tests: [true]
+              build_tags: ["unit", "integration"]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
+          filters:
+            branches:
+              ignore: main
+            tags:
+              ignore: /.*/
+      - update_metadata:
+          name: Update metadata for dev branch test runs
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+          requires:
+            - build-linux-amd64-unit
+      - coverage:
+          name: Build coverage report
+          requires:
+            - build
+      ## deploying to dev terraform cluster should not happen from non-main branch builds in CI
+      ## See https://github.com/filecoin-project/bacalhau/issues/434
+      # - deploy:
+      #     name: deploy-development-cluster
+      #     requires:
+      #       - build-linux-amd64-unit
+      #     rollout_stage: development
+      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_DEVELOPMENT_CREDENTIALS_B64"
+      #     filters:
+      #       <<: *filters_dev_branches # this is calling the previously set yaml anchor
 
-  # main_only: # This workflow will only run on 'main' and will not run on tags
-  #   jobs:
-  #     - build:
-  #         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-  #         matrix:
-  #           parameters:
-  #             target_os: ["linux", "darwin", "windows"]
-  #             target_arch: ["amd64", "arm64"]
-  #             run_tests: [true]
-  #             build_tags: ["unit", "integration"]
-  #           exclude:
-  #             - target_os: "windows"
-  #               target_arch: "arm64"
-  #               run_tests: true
-  #               build_tags: "unit"
-  #             - target_os: "windows"
-  #               target_arch: "arm64"
-  #               run_tests: true
-  #               build_tags: "integration"
-  #         filters:
-  #           &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
-  #           branches:
-  #             only: main
-  #           tags:
-  #             ignore: /.*/
-  #     - update_metadata:
-  #         name: Update metadata for main test runs
-  #         requires:
-  #           - build-linux-amd64-unit
-  #         METADATA_BUCKET: "bacalhau-global-storage"
-  #         METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
-  #     - coverage:
-  #         name: Build coverage report
-  #         requires:
-  #           - build
-  #     # - deploy:
-  #     #     name: deploy-staging-cluster
-  #     #     requires:
-  #     #       - build-linux-amd64-unit
-  #     #     rollout_stage: staging
-  #     #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
-  #     #     filters:
-  #     #       <<: *filters_main_only # this is calling the previously set yaml anchor
-  #     - update_ops:
-  #         name: update-terraform-files
-  #         filters:
-  #           <<: *filters_main_only
+  main_only: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin", "windows"]
+              target_arch: ["amd64", "arm64"]
+              run_tests: [true]
+              build_tags: ["unit", "integration"]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "unit"
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: true
+                build_tags: "integration"
+          filters:
+            &filters_main_only # this yaml anchor is setting these values to "filters_main_only"
+            branches:
+              only: main
+            tags:
+              ignore: /.*/
+      - update_metadata:
+          name: Update metadata for main test runs
+          requires:
+            - build-linux-amd64-unit
+          METADATA_BUCKET: "bacalhau-global-storage"
+          METADATA_FILENAME: "LAST-TEST-RUNS-METADATA-OBJECT"
+      - coverage:
+          name: Build coverage report
+          requires:
+            - build
+      # - deploy:
+      #     name: deploy-staging-cluster
+      #     requires:
+      #       - build-linux-amd64-unit
+      #     rollout_stage: staging
+      #     GOOGLE_APPLICATION_CREDENTIALS_VARIABLE: "GOOGLE_APPLICATION_STAGING_CREDENTIALS_B64"
+      #     filters:
+      #       <<: *filters_main_only # this is calling the previously set yaml anchor
+      - update_ops:
+          name: update-terraform-files
+          filters:
+            <<: *filters_main_only
   
-  # tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
-  #   jobs:
-  #     - build:
-  #         name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-  #         matrix:
-  #           parameters:
-  #             target_os: ["linux", "darwin", "windows"]
-  #             target_arch: ["amd64", "arm64"]
-  #             run_tests: [false]
-  #             build_tags: [""]
-  #           exclude:
-  #             - target_os: "windows"
-  #               target_arch: "arm64"
-  #               run_tests: false
-  #               build_tags: ""
-  #         filters: &filters_tags_only
-  #           branches:
-  #             ignore: /.*/ # don't run on any branches - only tags
-  #           tags:
-  #             # only run on tags that look like release tags e.g. v0.1.2 or
-  #             # v0.1.3alpha19 (actually v0.1.3anything...)
-  #             only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
-  #     - release:
-  #         name: release-all-binaries
-  #         requires:
-  #           - build
-  #         filters:
-  #           <<: *filters_tags_only
-  #     - update_ops:
-  #         name: update-terraform-files
-  #         requires:
-  #           - release-all-binaries
-  #         filters:
-  #           <<: *filters_tags_only
-  
-  # performance: # This workflow will run on all branches except 'main' and will not run on tags
-    # jobs:
-    #   - build:
-    #       name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
-    #       matrix:
-    #         parameters:
-    #           target_os: ["linux"]
-    #           target_arch: ["amd64"]
-    #           run_tests: [false]
-    #           build_tags: ["unit"]
-    #   - performance_job:
-    #       name: Running Performance
-    #       requires:
-    #         - build-linux-amd64-unit
-
-
-  build_swagger:
+  build_swagger: # This workflow will only run on 'main' and will not run on tags
     jobs:
       - build_swagger:
           name: Build swagger docs
+          filters:
+            <<: *filters_main_only
+
+  tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: ["linux", "darwin", "windows"]
+              target_arch: ["amd64", "arm64"]
+              run_tests: [false]
+              build_tags: [""]
+            exclude:
+              - target_os: "windows"
+                target_arch: "arm64"
+                run_tests: false
+                build_tags: ""
+          filters: &filters_tags_only
+            branches:
+              ignore: /.*/ # don't run on any branches - only tags
+            tags:
+              # only run on tags that look like release tags e.g. v0.1.2 or
+              # v0.1.3alpha19 (actually v0.1.3anything...)
+              only: /^v([0-9]+).([0-9]+).([0-9]+).*$/
+      - release:
+          name: release-all-binaries
+          requires:
+            - build
+          filters:
+            <<: *filters_tags_only
+      - update_ops:
+          name: update-terraform-files
+          requires:
+            - release-all-binaries
+          filters:
+            <<: *filters_tags_only
+  
+  performance: # This workflow will run on all branches except 'main' and will not run on tags
+    jobs:
+      - build:
+          name: build-<< matrix.target_os >>-<< matrix.target_arch >>-<< matrix.build_tags >>
+          matrix:
+            parameters:
+              target_os: ["linux"]
+              target_arch: ["amd64"]
+              run_tests: [false]
+              build_tags: ["unit"]
+      - performance_job:
+          name: Running Performance
+          requires:
+            - build-linux-amd64-unit
