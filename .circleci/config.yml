@@ -484,13 +484,20 @@ jobs:
             sudo dpkg -i gh_2.14.7_linux_amd64.deb
             echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
       - run:
+          name: Commit to GitHub
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            git add --verbose -- ./docs
+            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
+      - run:
           name: Creating and merging pull request
           command: |
             gh pr create --fill --base main --label documentation
       # pr_url="$(gh pr create --fill --base main --label documentation)"
       # sleep 3
       # gh pr merge --auto -r "$pr_url"
-      
+
       # - run:
       #     name: Install updatecli
       #     command: |
