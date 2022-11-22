@@ -459,6 +459,9 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
       - run:
           name: Install Swagger
           command:
@@ -472,6 +475,13 @@ jobs:
           command:
             # git diff
             echo "NEW_FILES=$(git diff | cat | wc -m)"
+      - run:
+          name: Commit to GitHub
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+            git push
 
 orbs:
   heroku: circleci/heroku@1.2.6
