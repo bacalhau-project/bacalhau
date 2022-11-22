@@ -53,7 +53,9 @@ func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig,
 // and only keep simple unit tests here.
 //
 //nolint:funlen
-func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig, hairpin bool) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTestsWithPortAndConfig(
+	t *testing.T, port int, config *APIServerConfig, hairpin bool,
+) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting(t)
 	require.NoError(t, err)

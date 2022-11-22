@@ -16,7 +16,6 @@ var upgrader = websocket.Upgrader{
 
 // TODO: Godoc
 func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request) {
-
 	conn, err := upgrader.Upgrade(res, req, nil)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -27,27 +26,24 @@ func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request
 
 	// NB: jobId == "" is the case for subscriptions to "all events"
 
-	// log.Debug().Msgf("what iz my req %+v", req)
-
 	// get job_id from query string
-	jobId := req.URL.Query().Get("job_id")
-	// log.Debug().Msgf("what iz my job_id %s", jobId)
+	jobID := req.URL.Query().Get("job_id")
 
 	func() {
 		apiServer.WebsocketsMutex.Lock()
 		defer apiServer.WebsocketsMutex.Unlock()
 
-		sockets, ok := apiServer.Websockets[jobId]
+		sockets, ok := apiServer.Websockets[jobID]
 		if !ok {
 			sockets = []*websocket.Conn{}
-			apiServer.Websockets[jobId] = sockets
+			apiServer.Websockets[jobID] = sockets
 		}
-		apiServer.Websockets[jobId] = append(sockets, conn)
+		apiServer.Websockets[jobID] = append(sockets, conn)
 	}()
 
-	if jobId != "" {
+	if jobID != "" {
 		// list events for job out of localDB and send them to the client
-		events, err := apiServer.localdb.GetJobEvents(context.Background(), jobId)
+		events, err := apiServer.localdb.GetJobEvents(context.Background(), jobID)
 		if err != nil {
 			log.Error().Msgf("error listing job events: %s\n", err.Error())
 			return
@@ -71,7 +67,6 @@ func (apiServer *APIServer) websocket(res http.ResponseWriter, req *http.Request
 }
 
 func (apiServer *APIServer) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
-
 	apiServer.WebsocketsMutex.RLock()
 	defer apiServer.WebsocketsMutex.RUnlock()
 
