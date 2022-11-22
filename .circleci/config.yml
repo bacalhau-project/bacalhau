@@ -451,12 +451,12 @@ jobs:
             python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
   build_swagger:
+    executor: linux-amd64
     environment:
       GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
-    executor: linux-amd64
     steps:
       - checkout
       - run:
@@ -467,7 +467,10 @@ jobs:
           name: Build Swagger Docs
           command:
             make swagger-docs
-            git status
+      - run:
+          name: Check for new files
+          command:
+            echo "NEW_FILES=$(git diff | cat | wc -m)"
 
 orbs:
   heroku: circleci/heroku@1.2.6
