@@ -474,13 +474,14 @@ jobs:
           name: Check for new files
           command:
             # git diff
-            echo "NEW_FILES=$(git diff | cat | wc -m)"
+            echo "NEW_FILES=$(git diff ./docs | cat | wc -m)"
       - run:
           name: Commit to GitHub
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
-            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+            git add --verbose -- ./docs
+            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
             git config --global push.autoSetupRemote true
             git push origin
 
