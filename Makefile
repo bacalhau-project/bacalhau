@@ -107,10 +107,10 @@ endif
 	@echo "Build environment correct."
 
 ################################################################################
-# Target: swagger-build
+# Target: swagger-docs
 ################################################################################
-.PHONY: swagger-build
-swagger-build:
+.PHONY: swagger-docs
+swagger-docs:
 	@echo "Building swagger docs..."
 	swag fmt --exclude "testground" -g "pkg/publicapi/server.go" && \
 	swag init --parseDependency --exclude "testground" --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
@@ -123,7 +123,7 @@ swagger-build:
 build: buildenvcorrect build-bacalhau
 
 .PHONY: build-ci
-build-ci: build-bacalhau swagger-build
+build-ci: build-bacalhau
 
 .PHONY: build-dev
 build-dev: build-ci

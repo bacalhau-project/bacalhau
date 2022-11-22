@@ -3,5 +3,3 @@ python3 -q -m pip install --upgrade pip
 pip3 install poetry
 poetry install
 poetry run pre-commit install
-
-go install github.com/swaggo/swag/cmd/swag@latest
