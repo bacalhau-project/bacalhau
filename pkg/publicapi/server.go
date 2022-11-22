@@ -171,6 +171,8 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle("/metrics", promhttp.Handler())
 	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 
+	fmt.Println("HELLO WORLD")
+
 	srv := http.Server{
 		Handler:           sm,
 		Addr:              fmt.Sprintf("%s:%d", apiServer.Host, apiServer.Port),
