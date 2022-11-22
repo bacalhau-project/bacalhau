@@ -514,6 +514,10 @@ workflows:
               ignore: main
             tags:
               ignore: /.*/
+      - build_swagger:
+          name: Build swagger docs
+          requires:
+            - build
       - update_metadata:
           name: Update metadata for dev branch test runs
           METADATA_BUCKET: "bacalhau-global-storage"
