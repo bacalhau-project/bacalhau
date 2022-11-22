@@ -132,7 +132,7 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
 }
 
-// @title         Bacalhau API
+// @title         Bacalhau API blaaa12345671111
 // @description   This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
 // @contact.name  Bacalhau Team
 // @contact.url   https://github.com/filecoin-project/bacalhau
@@ -148,7 +148,7 @@ func (apiServer *APIServer) GetURI() string {
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID := apiServer.Requester.ID
 
-	// dynamically load the git tag for Swagger UI
+	// dynamically write the git tag to the Swagger docs
 	docs.SwaggerInfo.Version = version.Get().GitVersion
 
 	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server

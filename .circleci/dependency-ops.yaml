@@ -38,7 +38,7 @@ targets:
       line: 1
       content: bacalhau_version       = "{{ source `default` }}"
   staging:
-    name: Bump Dev
+    name: Bump Staging
     kind: file
     scmid: default
     spec:
@@ -46,7 +46,7 @@ targets:
       line: 1
       content: bacalhau_version       = "{{ source `default` }}"
   production:
-    name: Bump Dev
+    name: Bump Prod
     kind: file
     scmid: default
     spec:
