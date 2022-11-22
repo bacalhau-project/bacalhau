@@ -127,7 +127,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			model.YAMLUnmarshalWithMax([]byte(out), &j)
+			require.NoError(s.T(), model.YAMLUnmarshalWithMax([]byte(out), &j))
 			require.NotNil(s.T(), j, "Failed to unmarshal job from dry run output")
 			require.Equal(s.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
@@ -775,7 +775,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 }
 
 func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
-	s.T().Skip("Skipped as it takes too long to run - see https://github.com/filecoin-project/bacalhau/issues/1045")
 	ctx := context.Background()
 
 	apiSubmitJob := func(
@@ -809,7 +808,65 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		return j.ID, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(ctx, s.T(), apiSubmitJob)
+	// test that we must have more than one node to run the job
+	s.T().Run("more-than-one-node-to-run-the-job", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      1,
+			ShardCount:     2,
+			BadActors:      0,
+			Confidence:     0,
+			ExpectedPassed: 0,
+			ExpectedFailed: 1,
+		})
+	})
+
+	// test that if all nodes agree then all are verified
+	s.T().Run("all-nodes-agree-then-all-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      3,
+			ShardCount:     2,
+			BadActors:      0,
+			Confidence:     0,
+			ExpectedPassed: 3,
+			ExpectedFailed: 0,
+		})
+	})
+
+	// test that if one node mis-behaves we catch it but the others are verified
+	s.T().Run("one-node-misbehaves-but-others-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      3,
+			ShardCount:     2,
+			BadActors:      1,
+			Confidence:     0,
+			ExpectedPassed: 2,
+			ExpectedFailed: 1,
+		})
+	})
+
+	// test that is there is a draw between good and bad actors then none are verified
+	s.T().Run("draw-between-good-and-bad-actors-then-none-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      2,
+			ShardCount:     2,
+			BadActors:      1,
+			Confidence:     0,
+			ExpectedPassed: 0,
+			ExpectedFailed: 2,
+		})
+	})
+
+	// test that with a larger group the confidence setting gives us a lower threshold
+	s.T().Run("larger-group-with-confidence-gives-lower-threshold", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      5,
+			ShardCount:     2,
+			BadActors:      2,
+			Confidence:     4,
+			ExpectedPassed: 0,
+			ExpectedFailed: 5,
+		})
+	})
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {

@@ -3,6 +3,7 @@
 version: 2.1
 
 executors:
+  # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
       image: ubuntu-2204:2022.07.1
@@ -144,6 +145,7 @@ jobs:
                 environment:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
+                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
