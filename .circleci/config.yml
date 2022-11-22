@@ -470,8 +470,8 @@ jobs:
       - run:
           name: Check for new files
           command:
-            git diff
-            # echo "NEW_FILES=$(git diff | cat | wc -m)"
+            # git diff
+            echo "NEW_FILES=$(git diff | cat | wc -m)"
 
 orbs:
   heroku: circleci/heroku@1.2.6
