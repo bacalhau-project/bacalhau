@@ -148,7 +148,7 @@ func (apiServer *APIServer) GetURI() string {
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID := apiServer.Requester.ID
 
-	// dynamically load the git tag for Swagger UI
+	// dynamically write the git tag to the Swagger docs
 	docs.SwaggerInfo.Version = version.Get().GitVersion
 
 	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server
