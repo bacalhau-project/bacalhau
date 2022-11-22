@@ -676,7 +676,7 @@ info:
   license:
     name: Apache 2.0
     url: https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
-  title: Bacalhau API blaaa123
+  title: Bacalhau API blaaa1234
 paths:
   /debug:
     get:
