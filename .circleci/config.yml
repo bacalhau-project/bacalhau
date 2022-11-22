@@ -452,6 +452,41 @@ jobs:
             pip3 install -r requirements.txt
             python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
+  build_swagger:
+    executor: linux-amd64
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Swagger
+          command:
+            go install github.com/swaggo/swag/cmd/swag@latest
+      - run:
+          name: Build Swagger Docs
+          command:
+            make swagger-docs
+      - run:
+          name: Check for new files
+          command:
+            # git diff
+            echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
+      - run:
+          name: Commit to GitHub
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            git add --verbose -- ./docs
+            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
+            git config --global push.autoSetupRemote true
+            git push origin
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -566,6 +601,14 @@ workflows:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
+  
+  build_swagger: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build_swagger:
+          name: Build swagger docs
+          filters:
+            <<: *filters_main_only
+
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
@@ -600,6 +643,7 @@ workflows:
             - release-all-binaries
           filters:
             <<: *filters_tags_only
+  
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:

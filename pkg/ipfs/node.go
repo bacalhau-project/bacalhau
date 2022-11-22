@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -25,6 +26,7 @@ import (
 	"github.com/ipfs/kubo/core/corehttp"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
+	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -303,18 +305,29 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
 
+	var repo kuboRepo.Repo
 	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
-			return fmt.Errorf("failed to clean up repo directory: %w", err)
+		var errs error
+		// We need to make sure we close the repo before we delete the disk contents as this will cause IPFS to print out messages about how
+		// 'flatfs could not store final value of disk usage to file', which is both annoying and can cause test flakes
+		// as the message can be written just after the test has finished but before the repo has been told by node
+		// that it's supposed to shut down.
+		if repo != nil {
+			if err := repo.Close(); err != nil { //nolint:govet
+				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
+			}
 		}
-		return nil
+		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
+			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
+		}
+		return errs
 	})
 
 	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
-	repo, err := fsrepo.Open(repoPath)
+	repo, err = fsrepo.Open(repoPath)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to open temp repo: %w", err)
 	}
