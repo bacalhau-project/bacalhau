@@ -469,13 +469,13 @@ jobs:
           command:
             go install github.com/swaggo/swag/cmd/swag@latest
       - run:
+          name: Install Pre-commit
+          command: |
+            make install-pre-commit
+      - run:
           name: Build Swagger Docs
           command:
             make swagger-docs
-      - run:
-          name: Check for new files
-          command:
-            echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
       - run:
           name: Install gh
           command: |
@@ -488,21 +488,20 @@ jobs:
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
+            # Note: we automatically delete branches after a PR merge
             git checkout -b ci-build-swagger-docs
             git add --verbose -- ./docs
-            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
+            COMMIT_MSG="Build swagger reference - this is an automatic commit"
+            git commit --allow-empty -m "[circleci] $COMMIT_MSG [skip ci]"
             git push --set-upstream origin ci-build-swagger-docs
       - run:
-          name: Creating pull request
+          name: Creating & merging pull request
           command: |
             git status --short
             PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
             sleep 3
             gh pr merge --auto -r $PR_URL
-
-      # pr_url="$(gh pr create --fill --base main --label documentation)"
-      # sleep 3
-      # gh pr merge --auto -r "$pr_url"
+          
 
       # - run:
       #     name: Install updatecli
