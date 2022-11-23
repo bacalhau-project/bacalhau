@@ -268,7 +268,7 @@ func (m *shardStateMachineManager) backgroundTask() {
 	m.shardStatesList = remainingShardStates
 
 	for _, item := range timeoutShardStates {
-		go item.Fail(ctx, fmt.Sprintf("shard timed out while in state %s", item.currentState))
+		go item.Fail(ctx, fmt.Sprintf("shard timed out while in state %s, see --timeout", item.currentState))
 	}
 }
 
