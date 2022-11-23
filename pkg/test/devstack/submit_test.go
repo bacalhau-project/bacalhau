@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -45,7 +44,7 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 		1,
 		0,
 		false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 

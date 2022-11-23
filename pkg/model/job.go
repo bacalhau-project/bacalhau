@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -96,7 +95,7 @@ type JobShard struct {
 }
 
 func (shard JobShard) ID() string {
-	return fmt.Sprintf("%s:%d", shard.Job.ID, shard.Index)
+	return GetShardID(shard.Job.ID, shard.Index)
 }
 
 func (shard JobShard) String() string {

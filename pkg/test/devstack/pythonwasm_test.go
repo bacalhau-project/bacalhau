@@ -18,7 +18,6 @@ import (
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	cmd "github.com/filecoin-project/bacalhau/cmd/bacalhau"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -65,7 +64,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()
@@ -165,7 +164,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()
@@ -206,7 +205,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 
 	ctx := context.Background()
 	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
 	t := system.GetTracer()

@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -48,11 +48,7 @@ func runURLTest(
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeNodeConfig: &computenode.ComputeNodeConfig{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
-				},
-			},
+			ComputeConfig: node.NewComputeConfigWithDefaults(),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
@@ -218,11 +214,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeNodeConfig: &computenode.ComputeNodeConfig{
-				JobSelectionPolicy: model.JobSelectionPolicy{
-					Locality: model.Anywhere,
-				},
-			},
+			ComputeConfig: node.NewComputeConfigWithDefaults(),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),

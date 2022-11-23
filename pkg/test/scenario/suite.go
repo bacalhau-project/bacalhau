@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -110,11 +109,6 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions = &devstack.DevStackOptions{NumberOfNodes: 1}
 	}
 
-	if config.ComputeNodeConfig == nil {
-		conf := computenode.NewDefaultComputeNodeConfig()
-		config.ComputeNodeConfig = &conf
-	}
-
 	if config.RequesterNodeConfig == nil {
 		conf := requesternode.NewDefaultRequesterNodeConfig()
 		config.RequesterNodeConfig = &conf
@@ -142,7 +136,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		s.Ctx,
 		cm,
 		*config.DevStackOptions,
-		*config.ComputeNodeConfig,
+		config.ComputeConfig,
 		*config.RequesterNodeConfig,
 		injector,
 	)

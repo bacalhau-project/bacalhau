@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
@@ -197,7 +196,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 		s.Run(fmt.Sprintf("numberOfJobs:%v", tc.numberOfJobs), func() {
 			ctx := context.Background()
 			devstack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-				computenode.NewDefaultComputeNodeConfig(),
+				node.NewComputeConfigWithDefaults(),
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
 
@@ -735,7 +734,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		nodeCount,
 		0,
 		false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
@@ -971,7 +970,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 	for name, tc := range tests {
 		s.Run(name, func() {
 			stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-				computenode.NewDefaultComputeNodeConfig(),
+				node.NewComputeConfigWithDefaults(),
 				requesternode.NewDefaultRequesterNodeConfig(),
 			)
 			*ODR = *NewDockerRunOptions()

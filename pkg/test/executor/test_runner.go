@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -22,7 +22,7 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack := testutils.NewDevStack(ctx, t, computenode.NewDefaultComputeNodeConfig())
+	stack := testutils.NewDevStack(ctx, t, node.NewComputeConfigWithDefaults())
 	defer stack.Node.CleanupManager.Cleanup()
 
 	executor, err := stack.Node.Executors.GetExecutor(ctx, spec.Engine)

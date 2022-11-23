@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -210,7 +209,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		nodeCount,
 		0,
 		false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 

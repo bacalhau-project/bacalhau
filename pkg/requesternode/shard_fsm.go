@@ -265,7 +265,11 @@ func (m *shardStateMachine) fail(ctx context.Context, reason string) {
 func (m *shardStateMachine) sendRequest(ctx context.Context, request shardStateRequest) {
 	defer func() {
 		if r := recover(); r != nil {
-			go m.notifyInvalidRequest(ctx, request, "shard fsm is completed")
+			// It is acceptable to have multiple compute nodes publish the results for the same shard if we have
+			// multiple concurrent computations. Here we ignore publishing results after the shard has completed.
+			if request.action != actionResultsPublished {
+				go m.notifyInvalidRequest(ctx, request, "shard fsm is completed")
+			}
 		}
 	}()
 	m.req <- request

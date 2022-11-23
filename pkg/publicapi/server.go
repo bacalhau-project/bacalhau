@@ -22,7 +22,6 @@ import (
 
 	"github.com/didip/tollbooth/v7"
 	"github.com/didip/tollbooth/v7/limiter"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
@@ -58,15 +57,15 @@ var DefaultAPIServerConfig = &APIServerConfig{
 
 // APIServer configures a node's public REST API.
 type APIServer struct {
-	localdb          localdb.LocalDB
-	transport        transport.Transport
-	Requester        *requesternode.RequesterNode
-	ComputeNode      *computenode.ComputeNode
-	Publishers       publisher.PublisherProvider
-	StorageProviders storage.StorageProvider
-	Host             string
-	Port             int
-	Config           *APIServerConfig
+	localdb            localdb.LocalDB
+	transport          transport.Transport
+	Requester          *requesternode.RequesterNode
+	DebugInfoProviders []model.DebugInfoProvider
+	Publishers         publisher.PublisherProvider
+	StorageProviders   storage.StorageProvider
+	Host               string
+	Port               int
+	Config             *APIServerConfig
 }
 
 func init() { //nolint:gochecknoinits
@@ -85,7 +84,7 @@ func NewServer(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
-	computeNode *computenode.ComputeNode,
+	debugInfoProviders []model.DebugInfoProvider,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
 ) *APIServer {
@@ -96,7 +95,7 @@ func NewServer(
 		localdb,
 		transport,
 		requester,
-		computeNode,
+		debugInfoProviders,
 		publishers,
 		storageProviders,
 		DefaultAPIServerConfig)
@@ -109,20 +108,20 @@ func NewServerWithConfig(
 	localdb localdb.LocalDB,
 	transport transport.Transport,
 	requester *requesternode.RequesterNode,
-	computeNode *computenode.ComputeNode,
+	debugInfoProviders []model.DebugInfoProvider,
 	publishers publisher.PublisherProvider,
 	storageProviders storage.StorageProvider,
 	config *APIServerConfig) *APIServer {
 	a := &APIServer{
-		localdb:          localdb,
-		transport:        transport,
-		Requester:        requester,
-		ComputeNode:      computeNode,
-		Publishers:       publishers,
-		StorageProviders: storageProviders,
-		Host:             host,
-		Port:             port,
-		Config:           config,
+		localdb:            localdb,
+		transport:          transport,
+		Requester:          requester,
+		DebugInfoProviders: debugInfoProviders,
+		Publishers:         publishers,
+		StorageProviders:   storageProviders,
+		Host:               host,
+		Port:               port,
+		Config:             config,
 	}
 	return a
 }

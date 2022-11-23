@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -65,7 +65,7 @@ type Scenario struct {
 // All the information that is needed to uniquely define a devstack.
 type StackConfig struct {
 	*devstack.DevStackOptions
-	*computenode.ComputeNodeConfig
+	node.ComputeConfig
 	*requesternode.RequesterNodeConfig
 	*noop.ExecutorConfig
 }

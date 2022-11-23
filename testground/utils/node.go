@@ -3,9 +3,9 @@ package utils
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -97,7 +97,7 @@ func CreateNode(ctx context.Context,
 		HostAddress:         "0.0.0.0",
 		APIPort:             apiPort,
 		MetricsPort:         metricsPort,
-		ComputeNodeConfig:   computenode.NewDefaultComputeNodeConfig(),
+		ComputeNodeConfig:   node.NewComputeConfigWithDefaults(),
 		RequesterNodeConfig: requesternode.RequesterNodeConfig{},
 	}
 

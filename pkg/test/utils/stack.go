@@ -6,11 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
-
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	devstack "github.com/filecoin-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
+	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -47,7 +45,7 @@ type TestStackMultinode struct {
 func NewDevStackMultiNode(
 	ctx context.Context,
 	t *testing.T,
-	computeNodeConfig computenode.ComputeNodeConfig, //nolint:gocritic
+	computeConfig node.ComputeConfig, //nolint:gocritic
 	nodes int,
 ) *TestStack {
 	cm := system.NewCleanupManager()
@@ -66,7 +64,7 @@ func NewDevStackMultiNode(
 		CleanupManager:      cm,
 		LocalDB:             datastore,
 		Transport:           transport,
-		ComputeNodeConfig:   computeNodeConfig,
+		ComputeConfig:       computeConfig,
 		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
@@ -88,9 +86,9 @@ func NewDevStackMultiNode(
 func NewDevStack(
 	ctx context.Context,
 	t *testing.T,
-	config computenode.ComputeNodeConfig, //nolint:gocritic
+	computeConfig node.ComputeConfig, //nolint:gocritic
 ) *TestStack {
-	return NewDevStackMultiNode(ctx, t, config, 1)
+	return NewDevStackMultiNode(ctx, t, computeConfig, 1)
 }
 
 // Noop stack is designed to be a "as mocked as possible" stack to write tests against
@@ -108,7 +106,7 @@ func NewDevStack(
 func NewNoopStack(
 	ctx context.Context,
 	t *testing.T,
-	computeNodeconfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 ) *TestStack {
 	cm := system.NewCleanupManager()
@@ -123,7 +121,7 @@ func NewNoopStack(
 		CleanupManager:      cm,
 		LocalDB:             datastore,
 		Transport:           transport,
-		ComputeNodeConfig:   computeNodeconfig,
+		ComputeConfig:       computeConfig,
 		RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 	}
 
@@ -146,7 +144,7 @@ func NewNoopStackMultinode(
 	ctx context.Context,
 	t *testing.T,
 	count int,
-	computeNodeconfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 	inprocessTransportConfig inprocess.InProcessTransportClusterConfig,
 ) *TestStackMultinode {
@@ -167,7 +165,7 @@ func NewNoopStackMultinode(
 			CleanupManager:      cm,
 			LocalDB:             datastore,
 			Transport:           transport,
-			ComputeNodeConfig:   computeNodeconfig,
+			ComputeConfig:       computeConfig,
 			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 		}
 

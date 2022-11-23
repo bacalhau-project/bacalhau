@@ -8,9 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
-	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
-
 	"github.com/filecoin-project/bacalhau/pkg/eventhandler"
 	"github.com/filecoin-project/bacalhau/pkg/executor/util"
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
@@ -87,11 +84,6 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 	)
 	require.NoError(t, err)
 
-	noopExecutor, err := noop_executor.NewNoopExecutor()
-	require.NoError(t, err)
-
-	noopExecutorProvider := noop_executor.NewNoopExecutorProvider(noopExecutor)
-
 	// prepare event handlers
 	tracerContextProvider := system.NewTracerContextProvider(inprocessTransport.HostID())
 	noopContextProvider := system.NewNoopContextProvider()
@@ -111,20 +103,6 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 		noopVerifiers,
 		noopStorageProviders,
 		requesternode.NewDefaultRequesterNodeConfig(),
-	)
-	require.NoError(t, err)
-
-	computeNode, err := computenode.NewComputeNode(
-		ctx,
-		cm,
-		inprocessTransport.HostID(),
-		inmemoryDatastore,
-		localEventConsumer,
-		jobEventPublisher,
-		noopExecutorProvider,
-		noopVerifiers,
-		noopPublishers,
-		computenode.NewDefaultComputeNodeConfig(),
 	)
 	require.NoError(t, err)
 
@@ -148,7 +126,7 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 	host := "0.0.0.0"
 
 	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
-		requesterNode, computeNode, noopPublishers, noopStorageProviders, config)
+		requesterNode, []model.DebugInfoProvider{}, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
 	go func() {
 		require.NoError(t, s.ListenAndServe(ctx, cm))

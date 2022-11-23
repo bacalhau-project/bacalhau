@@ -129,3 +129,7 @@ func ConfirmMaxSliceSize[T any](t T, maxSize int) error {
 	}
 	return nil
 }
+
+func GetShardID(jobID string, shardIndex int) string {
+	return fmt.Sprintf("%s:%d", jobID, shardIndex)
+}

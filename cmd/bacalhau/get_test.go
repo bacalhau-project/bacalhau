@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -157,7 +157,7 @@ func getDockerRunArgs(
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	*ODR = *NewDockerRunOptions()
@@ -184,7 +184,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	*ODR = *NewDockerRunOptions()
@@ -211,7 +211,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	*ODR = *NewDockerRunOptions()
@@ -247,7 +247,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
 	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 	*ODR = *NewDockerRunOptions()
