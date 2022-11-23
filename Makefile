@@ -7,12 +7,6 @@ ifeq ($(BUILD_SIDECAR), 1)
 	$(MAKE) build-ipfs-sidecar-image
 endif
 
-# Detect OS
-OS := $(shell uname | tr "[:upper:]" "[:lower:]")
-ARCH := $(shell uname -m | tr "[:upper:]" "[:lower:]")
-GOPATH ?= $(shell go env GOPATH)
-GOFLAGS ?= $(GOFLAGS:)
-
 ifeq ($(GOOS),)
 GOOS = $(shell $(GO) env GOOS)
 endif
