@@ -277,4 +277,4 @@ cat results/combined_results/stdout
 Success! The next step is to scale up your data and your processing via multiple jobs or sharding. You might be interested in looking at:
 
 * [An example running hundreds of jobs over "big data"](../../data-engineering/blockchain-etl/index.md)
-* [A simple sharding example](../../data-engineering/simple-parallel-workloads/index.ipynb)
+* [A simple sharding example](../../data-engineering/simple-parallel-workloads/index.md)
