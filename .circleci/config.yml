@@ -475,7 +475,6 @@ jobs:
       - run:
           name: Check for new files
           command:
-            # git diff
             echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
       - run:
           name: Install gh
@@ -497,7 +496,9 @@ jobs:
           name: Creating pull request
           command: |
             git status --short
-            gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau
+            PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
+            sleep 3
+            gh pr merge --auto -r $PR_URL
 
       # pr_url="$(gh pr create --fill --base main --label documentation)"
       # sleep 3
