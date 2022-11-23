@@ -35,7 +35,7 @@ import (
 const (
 	JSONFormat                         string = "json"
 	YAMLFormat                         string = "yaml"
-	DefaultDockerRunWaitSeconds               = 600
+	DefaultDockerRunWaitSeconds               = 3600
 	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 	// what permissions do we give to a folder we create when downloading results
 	AutoDownloadFolderPerm               = 0755
