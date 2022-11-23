@@ -46,7 +46,7 @@ func (s *ValidateSuite) TestValidate() {
 		func() {
 			Fatal = FakeFatalErrorHandler
 
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*OV = *NewValidateOptions()

@@ -61,7 +61,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 	for _, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 			defer cm.Cleanup()
 
 			*OL = *NewListOptions()
@@ -91,7 +91,7 @@ func (suite *ListSuite) TestList_NumberOfJobs() {
 
 func (suite *ListSuite) TestList_IdFilter() {
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 	defer cm.Cleanup()
 
 	*OL = *NewListOptions()
@@ -191,7 +191,7 @@ func (suite *ListSuite) TestList_SortFlags() {
 		for _, sortFlags := range sortFlagsToTest {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 				defer cm.Cleanup()
 
 				*OL = *NewListOptions()

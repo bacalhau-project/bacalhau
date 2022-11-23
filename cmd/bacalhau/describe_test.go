@@ -58,7 +58,7 @@ func (suite *DescribeSuite) TestDescribeJob() {
 			func() {
 				var submittedJob *model.Job
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 				defer cm.Cleanup()
 
 				for i := 0; i < tc.numberOfAcceptNodes; i++ {
@@ -148,7 +148,7 @@ func (suite *DescribeSuite) TestDescribeJobIncludeEvents() {
 		func() {
 			var submittedJob *model.Job
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 			defer cm.Cleanup()
 
 			j := publicapi.MakeNoopJob()
@@ -208,7 +208,7 @@ func (s *DescribeSuite) TestDescribeJobEdgeCases() {
 
 				var submittedJob *model.Job
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				for i := 0; i < n.numOfJobs; i++ {
