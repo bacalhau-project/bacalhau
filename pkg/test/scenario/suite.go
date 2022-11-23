@@ -100,7 +100,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	return stack, stack.Nodes[0].CleanupManager
 }
 
-// Run the Scenario.
+// RunScenario runs the Scenario.
 //
 // Spin up a devstack, execute the job, check the results, and tear down the
 // devstack.

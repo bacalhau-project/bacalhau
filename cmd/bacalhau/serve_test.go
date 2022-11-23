@@ -3,8 +3,9 @@
 package bacalhau
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/types"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -43,7 +45,7 @@ func (suite *ServeSuite) SetupTest() {
 	suite.rootCmd = RootCmd
 }
 
-func writeToServeChannel(c chan string, t *testing.T, rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
+func writeToServeChannel(rootCmd *cobra.Command, port int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	fmt.Println("Starting")
@@ -75,9 +77,9 @@ func curlEndpoint(URL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer closer.DrainAndCloseWithLogOnError(context.Background(), "test", resp.Body)
 
-	responseText, err := ioutil.ReadAll(resp.Body)
+	responseText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -88,6 +90,7 @@ func curlEndpoint(URL string) (string, error) {
 func (suite *ServeSuite) TestRun_GenericServe() {
 
 	*OS = *NewServeOptions()
+	OS.PeerConnect = "none" // avoid accidentally talking to production endpoints
 
 	port, err := freeport.GetFreePort()
 
@@ -96,8 +99,7 @@ func (suite *ServeSuite) TestRun_GenericServe() {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	servingChannel := make(chan string, 100)
-	go writeToServeChannel(servingChannel, suite.T(), suite.rootCmd, port, &wg)
+	go writeToServeChannel(suite.rootCmd, port, &wg)
 
 	timeoutInMilliseconds := 20 * 1000
 	currentTime := 0
