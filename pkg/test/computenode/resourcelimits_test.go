@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package computenode
 
@@ -19,6 +19,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/filecoin-project/bacalhau/pkg/transport/inprocess"
@@ -39,108 +40,6 @@ func (suite *ComputeNodeResourceLimitsSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	err := system.InitConfigForTesting(suite.T())
 	require.NoError(suite.T(), err)
-}
-
-// Simple job resource limits tests
-func (suite *ComputeNodeResourceLimitsSuite) TestJobResourceLimits() {
-	ctx := context.Background()
-	runTest := func(jobResources, jobResourceLimits, defaultJobResourceLimits model.ResourceUsageConfig, expectedResult bool) {
-		stack := testutils.NewNoopStack(ctx, suite.T(), computenode.ComputeNodeConfig{
-			CapacityManagerConfig: capacitymanager.Config{
-				ResourceLimitJob:            jobResourceLimits,
-				ResourceRequirementsDefault: defaultJobResourceLimits,
-			},
-		}, noop_executor.ExecutorConfig{})
-
-		computeNode, cm := stack.Node.ComputeNode, stack.Node.CleanupManager
-
-		defer func() {
-			// sleep here otherwise the compute node tries to register cleanup handlers too late
-			time.Sleep(time.Millisecond * 10)
-			cm.Cleanup()
-		}()
-		job := GetJob("")
-		job.Spec.Resources = jobResources
-
-		result, _, err := computeNode.SelectJob(ctx, job)
-		require.NoError(suite.T(), err)
-
-		require.Equal(suite.T(), expectedResult, result, fmt.Sprintf("the expcted result was %v, but got %v -- %+v vs %+v", expectedResult, result, jobResources, jobResourceLimits))
-	}
-
-	suite.Run("the job is half the limit", func() {
-		runTest(
-			getResources("1", "500Mb", ""),
-			getResources("2", "1Gb", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("the job is on the limit", func() {
-		runTest(
-			getResources("1", "500Mb", ""),
-			getResources("1", "500Mb", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("the job is over the limit", func() {
-		runTest(
-			getResources("2", "1Gb", ""),
-			getResources("1", "500Mb", ""),
-			getResources("100m", "100Mb", ""),
-			false,
-		)
-	})
-
-	// test with fractional CPU
-	suite.Run("the job is less than the limit", func() {
-		runTest(
-			getResources("250m", "200Mb", ""),
-			getResources("1", "500Mb", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("the limit is empty", func() {
-		runTest(
-			getResources("250m", "200Mb", ""),
-			getResources("", "", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("both is empty", func() {
-		runTest(
-			getResources("", "", ""),
-			getResources("", "", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("limit is fractional and under", func() {
-		runTest(
-			getResources("", "", ""),
-			getResources("250m", "200Mb", ""),
-			getResources("100m", "100Mb", ""),
-			true,
-		)
-	})
-
-	suite.Run("limit is fractional and over", func() {
-		runTest(
-			getResources("300m", "", ""),
-			getResources("250m", "200Mb", ""),
-			getResources("100m", "100Mb", ""),
-			false,
-		)
-	})
-
 }
 
 type SeenJobRecord struct {
@@ -226,23 +125,23 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return capacitymanager.ConvertMemoryString(volume.CID), nil
 		}
 
-		stack := testutils.NewNoopStack(
+		stack := testutils.SetupTestWithNoopExecutor(
 			ctx,
 			suite.T(),
+			devstack.DevStackOptions{NumberOfNodes: 1},
 			computenode.ComputeNodeConfig{
 				CapacityManagerConfig: capacitymanager.Config{
 					ResourceLimitTotal: testCase.totalLimits,
 				},
 			},
-			noop_executor.ExecutorConfig{
+			requesternode.NewDefaultRequesterNodeConfig(),
+			&noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
 			},
 		)
-		cm := stack.Node.CleanupManager
-		defer cm.Cleanup()
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
@@ -256,7 +155,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 				},
 			}
 
-			_, err := stack.Node.RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
+			_, err := stack.Nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
 				ClientID: "123",
 				Job:      j,
 			})
@@ -397,7 +296,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		return &model.RunCommandResult{}, nil
 	}
 
-	stack := testutils.NewNoopStackMultinode(
+	nodes, _ := testutils.NewNoopStackMultinode(
 		ctx,
 		suite.T(),
 		nodeCount,
@@ -429,9 +328,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		},
 	)
 
-	cm := stack.CleanupManager
-	defer cm.Cleanup()
-
 	jobConfig := &model.Job{
 		Spec: model.Spec{
 			Engine:    model.EngineNoop,
@@ -448,15 +344,15 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	resolver := job.NewStateResolver(
 		func(ctx context.Context, id string) (*model.Job, error) {
-			return stack.Nodes[0].LocalDB.GetJob(ctx, id)
+			return nodes[0].LocalDB.GetJob(ctx, id)
 		},
 		func(ctx context.Context, id string) (model.JobState, error) {
-			return stack.Nodes[0].LocalDB.GetJobState(ctx, id)
+			return nodes[0].LocalDB.GetJobState(ctx, id)
 		},
 	)
 
 	for i := 0; i < nodeCount; i++ {
-		submittedJob, err := stack.Nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
+		submittedJob, err := nodes[0].RequesterNode.SubmitJob(ctx, model.JobCreatePayload{
 			ClientID: "123",
 			Job:      jobConfig,
 		})
@@ -486,47 +382,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	}
 
 	// test that each node has 1 job allocated to it
-	node1Count, ok := allocationMap[stack.Nodes[0].Transport.HostID()]
+	node1Count, ok := allocationMap[nodes[0].Transport.HostID()]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), 1, node1Count)
 
-	node2Count, ok := allocationMap[stack.Nodes[1].Transport.HostID()]
+	node2Count, ok := allocationMap[nodes[1].Transport.HostID()]
 	require.True(suite.T(), ok)
 	require.Equal(suite.T(), 1, node2Count)
-}
-
-// how many bytes more does ipfs report the file than the actual content?
-const IpfsMetadataSize = 8
-
-func (suite *ComputeNodeResourceLimitsSuite) TestGetVolumeSize() {
-	ctx := context.Background()
-
-	runTest := func(text string, expected uint64) {
-		stack := testutils.NewDevStack(ctx, suite.T(), computenode.NewDefaultComputeNodeConfig())
-		defer stack.Node.CleanupManager.Cleanup()
-
-		cid, err := devstack.AddTextToNodes(ctx, []byte(text), stack.IpfsStack.IPFSClients[0])
-		require.NoError(suite.T(), err)
-
-		executor, err := stack.Node.Executors.GetExecutor(ctx, model.EngineWasm)
-		require.NoError(suite.T(), err)
-
-		result, err := executor.GetVolumeSize(ctx, model.StorageSpec{
-			StorageSource: model.StorageSourceIPFS,
-			CID:           cid,
-			Path:          "/",
-		})
-
-		require.NoError(suite.T(), err)
-		require.Equal(suite.T(), expected+IpfsMetadataSize, result)
-	}
-
-	for _, testString := range []string{
-		"hello from test volume size",
-		"hello world",
-	} {
-		suite.Run(testString, func() {
-			runTest(testString, uint64(len(testString)))
-		})
-	}
 }

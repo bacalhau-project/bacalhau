@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,11 +58,11 @@ func (apiClient *APIClient) Alive(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
-	res, err := apiClient.client.Do(req)
+	res, err := apiClient.client.Do(req) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if err != nil {
 		return false, nil
 	}
-	defer res.Body.Close()
+	defer closer.DrainAndCloseWithLogOnError(ctx, "apiClient response", res.Body)
 
 	return res.StatusCode == http.StatusOK, nil
 }

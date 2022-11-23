@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs/car"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
+	"github.com/filecoin-project/bacalhau/pkg/util/closer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -33,9 +34,9 @@ func NewEstuaryPublisher(config EstuaryPublisherConfig) publisher.Publisher {
 // IsInstalled implements publisher.Publisher
 func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 	client := GetGatewayClient(ctx, e.config.APIKey)
-	_, response, err := client.CollectionsApi.CollectionsGet(ctx)
+	_, response, err := client.CollectionsApi.CollectionsGet(ctx) //nolint:bodyclose // golangcilint is dumb - this is closed
 	if response != nil {
-		defer response.Body.Close()
+		defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", response.Body)
 		return response.StatusCode == http.StatusOK, nil
 	} else {
 		return false, err
@@ -46,7 +47,7 @@ func (e *estuaryPublisher) IsInstalled(ctx context.Context) (bool, error) {
 func (e *estuaryPublisher) PublishShardResult(
 	ctx context.Context,
 	shard model.JobShard,
-	hostID string,
+	_ string,
 	shardResultPath string,
 ) (model.StorageSpec, error) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "bacalhau-estuary-publisher")
@@ -75,7 +76,7 @@ func (e *estuaryPublisher) PublishShardResult(
 	timeout, cancel := context.WithTimeout(ctx, publisherTimeout)
 	defer cancel()
 
-	addCarResponse, httpResponse, err := client.ContentApi.ContentAddCarPost(
+	addCarResponse, httpResponse, err := client.ContentApi.ContentAddCarPost( //nolint:bodyclose // golangcilint is dumb - this is closed
 		timeout,
 		string(carContent),
 		&estuary_client.ContentApiContentAddCarPostOpts{
@@ -88,7 +89,7 @@ func (e *estuaryPublisher) PublishShardResult(
 		return model.StorageSpec{}, fmt.Errorf("upload to Estuary failed")
 	}
 	log.Ctx(ctx).Debug().Interface("Response", addCarResponse).Int("StatusCode", httpResponse.StatusCode).Msg("Estuary response")
-	defer httpResponse.Body.Close()
+	defer closer.DrainAndCloseWithLogOnError(ctx, "estuary-response", httpResponse.Body)
 
 	return model.StorageSpec{
 		StorageSource: model.StorageSourceEstuary,

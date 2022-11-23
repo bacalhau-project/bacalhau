@@ -457,6 +457,7 @@ jobs:
     environment:
       GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
+      GOLANGCILINT: v1.49.0
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
     steps:
@@ -465,27 +466,67 @@ jobs:
           fingerprints:
             - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
       - run:
+          name: Install Go
+          command: |
+            sudo rm -fr /usr/local/go /usr/local/bin/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+      - run:
+          name: Install golangci-lint
+          command: |
+            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
+            # binary will be /usr/local/go/bin/bin/golangci-lint
+            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+            # This breaks normal pathing. So just installing in ./bin/
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
+            golangci-lint version
+      - run:
           name: Install Swagger
           command:
             go install github.com/swaggo/swag/cmd/swag@latest
+      - run:
+          name: Install Pre-commit
+          command: |
+            make install-pre-commit
+      - run:
+          name: Install golangci-lint
+          command: |
+            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
+            # binary will be /usr/local/go/bin/bin/golangci-lint
+            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+            # This breaks normal pathing. So just installing in ./bin/
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
+            golangci-lint version
       - run:
           name: Build Swagger Docs
           command:
             make swagger-docs
       - run:
-          name: Check for new files
-          command:
-            # git diff
-            echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
+          name: Install gh
+          command: |
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
+            echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
+            rm gh_2.14.7_linux_amd64.deb
       - run:
-          name: Commit to GitHub
+          name: Git commit
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
+            # Note: we delete this branch after the PR is merged
+            git checkout -b ci-build-swagger-docs
             git add --verbose -- ./docs
-            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
-            git config --global push.autoSetupRemote true
-            git push origin
+            COMMIT_MSG="Build swagger reference - this is an automatic commit"
+            git commit --allow-empty -m "[circleci] $COMMIT_MSG [skip ci]"
+            git push --set-upstream origin ci-build-swagger-docs
+      - run:
+          name: Creating & merging pull request
+          command: |
+            git status --short
+            PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
+            echo "Pull request: $PR_URL"
+            sleep 3
+            gh pr merge --auto --delete-branch -r $PR_URL
 
 orbs:
   heroku: circleci/heroku@1.2.6
