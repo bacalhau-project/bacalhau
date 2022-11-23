@@ -48,8 +48,8 @@ The code below instantiates the library and fits a model to the data.
 
 
 ```bash
-mkdir outputs
-mkdir R
+mkdir -p outputs
+mkdir -p R
 ```
 
 
@@ -139,7 +139,12 @@ To submit a job, you can use the Bacalhau CLI. The following command passes a pr
 
 
 ```bash
-bacalhau docker run -v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_wp_log_R.csv ghcr.io/bacalhau-project/examples/r-prophet:0.0.2 -- Rscript Saturating-Forecasts.R "/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
+bacalhau docker run \
+    --wait \
+    --id-only \
+    -v QmY8BAftd48wWRYDf5XnZGkhwqgjpzjyUG3hN1se6SYaFt:/example_wp_log_R.csv \
+    ghcr.io/bacalhau-project/examples/r-prophet:0.0.2 \
+    -- Rscript Saturating-Forecasts.R "/example_wp_log_R.csv" "/outputs/output0.pdf" "/outputs/output1.pdf"
 ```
 
 Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:

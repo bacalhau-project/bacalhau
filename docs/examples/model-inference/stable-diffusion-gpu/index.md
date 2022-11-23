@@ -41,6 +41,40 @@ pip install tqdm
 apt install --allow-change-held-packages libcudnn8=8.1.0.77-1+cuda11.2
 ```
 
+    Looking in indexes: https://pypi.org/simple, https://us-python.pkg.dev/colab-wheels/public/simple/
+    Requirement already satisfied: tqdm in /usr/local/lib/python3.7/dist-packages (4.64.1)
+    Reading package lists...
+    Building dependency tree...
+    Reading state information...
+    The following package was automatically installed and is no longer required:
+      libnvidia-common-460
+    Use 'apt autoremove' to remove it.
+    The following packages will be REMOVED:
+      libcudnn8-dev
+    The following held packages will be changed:
+      libcudnn8
+    The following packages will be DOWNGRADED:
+      libcudnn8
+    0 upgraded, 0 newly installed, 1 downgraded, 1 to remove and 20 not upgraded.
+    Need to get 430 MB of archives.
+    After this operation, 1,392 MB disk space will be freed.
+    Get:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64  libcudnn8 8.1.0.77-1+cuda11.2 [430 MB]
+    Fetched 430 MB in 6s (66.2 MB/s)
+    (Reading database ... 123941 files and directories currently installed.)
+    Removing libcudnn8-dev (8.1.1.33-1+cuda11.2) ...
+    update-alternatives: removing manually selected alternative - switching libcudnn to auto mode
+    dpkg: warning: downgrading libcudnn8 from 8.1.1.33-1+cuda11.2 to 8.1.0.77-1+cuda11.2
+    (Reading database ... 123918 files and directories currently installed.)
+    Preparing to unpack .../libcudnn8_8.1.0.77-1+cuda11.2_amd64.deb ...
+    Unpacking libcudnn8 (8.1.0.77-1+cuda11.2) over (8.1.1.33-1+cuda11.2) ...
+    Setting up libcudnn8 (8.1.0.77-1+cuda11.2) ...
+
+
+    
+    WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+    
+
+
 ### Testing the Code
 
 Quite often libraries aren't pinned, or code gets updated and breaks the docs, and even the simplest examples don't work. To derisk this, first I will try the code in the README to double check that the code is working as the author expected.
@@ -103,6 +137,16 @@ For now, let's ignore this and clear the GPU memory with numba so it works again
 ```bash
 pip install numba
 ```
+
+    Looking in indexes: https://pypi.org/simple, https://us-python.pkg.dev/colab-wheels/public/simple/
+    Requirement already satisfied: numba in /usr/local/lib/python3.7/dist-packages (0.56.3)
+    Requirement already satisfied: importlib-metadata in /usr/local/lib/python3.7/dist-packages (from numba) (4.13.0)
+    Requirement already satisfied: numpy<1.24,>=1.18 in /usr/local/lib/python3.7/dist-packages (from numba) (1.21.6)
+    Requirement already satisfied: setuptools in /usr/local/lib/python3.7/dist-packages (from numba) (57.4.0)
+    Requirement already satisfied: llvmlite<0.40,>=0.39.0dev0 in /usr/local/lib/python3.7/dist-packages (from numba) (0.39.1)
+    Requirement already satisfied: typing-extensions>=3.6.4 in /usr/local/lib/python3.7/dist-packages (from importlib-metadata->numba) (4.1.1)
+    Requirement already satisfied: zipp>=0.5 in /usr/local/lib/python3.7/dist-packages (from importlib-metadata->numba) (3.9.0)
+
 
 
 ```python
@@ -266,6 +310,28 @@ Build the container in the usual way. Replace the org/repo with your own if you 
 docker buildx build --platform linux/amd64 --push -t ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 .
 ```
 
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    Your system is linux_amd64
+    No BACALHAU detected. Installing fresh BACALHAU CLI...
+    Getting the latest BACALHAU CLI...
+    Installing v0.3.3 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.3/bacalhau_v0.3.3_linux_amd64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.3/bacalhau_v0.3.3_linux_amd64.tar.gz.signature.sha256 ...
+    Verified OK
+    Extracting tarball ...
+    NOT verifying Bin
+    bacalhau installed into . successfully.
+    Client Version: v0.3.3
+    Server Version: v0.3.3
+    env: PATH=./:/opt/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/tools/node/bin:/tools/google-cloud-sdk/bin
+
+
 ### Generating an Image Using Stable Diffusion on a GPU using Bacalhau
 
 [Bacalhau](https://www.bacalhau.org/) is a distributed computing platform that allows you to run jobs on a network of computers. It is designed to be easy to use and to run on a variety of hardware. In this example, we will use it to run the stable diffusion model on a GPU.
@@ -286,6 +352,14 @@ Furthermore, the container itself is about 10GB, so it might take a while to dow
 ```bash
 bacalhau docker run --id-only --gpu 1 ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1 -- python main.py --o ./outputs --p "meme about tensorflow"
 ```
+
+
+```python
+%env JOB_ID={job_id}
+```
+
+    env: JOB_ID=f126c9a5-0fd6-41c5-88e2-2d66a64a1317
+
 
 Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
 
@@ -427,7 +501,7 @@ display.Image("results/volumes/outputs/image0.png")
 
 
     
-![png](index_files/index_28_0.png)
+![png](index_files/index_30_0.png)
     
 
 

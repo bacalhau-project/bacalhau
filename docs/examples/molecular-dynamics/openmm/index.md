@@ -66,6 +66,28 @@ head ./dataset/2dri-processed.pdb
 1. Run the docker image on the Bacalhau network using the IPFS data
 
 
+
+```python
+!(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    Your system is darwin_arm64
+    No BACALHAU detected. Installing fresh BACALHAU CLI...
+    Getting the latest BACALHAU CLI...
+    Installing v0.3.1 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.1/bacalhau_v0.3.1_darwin_arm64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.1/bacalhau_v0.3.1_darwin_arm64.tar.gz.signature.sha256 ...
+    Verified OK
+    Extracting tarball ...
+    NOT verifying Bin
+    bacalhau installed into . successfully.
+    Client Version: v0.3.1
+    Server Version: v0.3.1
+    env: PATH=./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
 ### Upload the Data to IPFS
 
 The first step is to upload the data to IPFS. The simplest way to do this is to use a third party service to "pin" data to the IPFS network, to ensure that the data exists and is available. To do this you need an account with a pinning service like [web3.storage](https://web3.storage/) or [Pinata](https://pinata.cloud/). Once registered you can use their UI or API or SDKs to upload files.

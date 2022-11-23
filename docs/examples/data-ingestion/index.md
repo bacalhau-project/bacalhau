@@ -24,6 +24,32 @@ IPFS is a set of protocols that allow data to be discovered and accessed in a de
 
 The easiest way to move data into IPFS is by leveraging helper functions in the Bacalhau CLI.
 
+
+```python
+!(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    Your system is darwin_arm64
+    
+    BACALHAU CLI is detected:
+    Client Version: v0.3.2
+    Server Version: v0.3.2
+    Reinstalling BACALHAU CLI - ./bacalhau...
+    Getting the latest BACALHAU CLI...
+    Installing v0.3.2 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.2/bacalhau_v0.3.2_darwin_arm64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.2/bacalhau_v0.3.2_darwin_arm64.tar.gz.signature.sha256 ...
+    Verified OK
+    Extracting tarball ...
+    NOT verifying Bin
+    bacalhau installed into . successfully.
+    Client Version: v0.3.2
+    Server Version: v0.3.2
+    env: PATH=./:./:./:./:./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
 ### URL -> IPFS
 
 The Bacalhau binary includes a helper function to upload from a public URL. This is useful if you have data hosted on a website or in a public S3 bucket (for example).

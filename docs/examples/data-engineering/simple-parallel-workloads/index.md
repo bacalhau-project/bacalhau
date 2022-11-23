@@ -11,6 +11,45 @@ Many data engineering workloads consist of embarrassingly parallel workloads whe
 
 > Although you would normally you would use your own container and script to make your workloads reproducible, in this example we will use a pre-built container and CLI arguments to allow you to make changes. You can find the container [on docker hub](https://hub.docker.com/r/linuxserver/ffmpeg).
 
+## Prerequistes
+
+Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation) or using the installation command below (which installs Bacalhau local to the notebook).
+
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    Your system is darwin_arm64
+    
+    BACALHAU CLI is detected:
+    Client Version: v0.2.3
+    Server Version: v0.2.3
+    Reinstalling BACALHAU CLI - ./bacalhau...
+    Getting the latest BACALHAU CLI...
+    Installing v0.2.3 BACALHAU CLI...
+    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_darwin_arm64.tar.gz ...
+    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.2.3/bacalhau_v0.2.3_darwin_arm64.tar.gz.signature.sha256 ...
+    Verified OK
+    Extracting tarball ...
+    NOT verifying Bin
+    bacalhau installed into . successfully.
+    Client Version: v0.2.3
+    Server Version: v0.2.3
+    env: PATH=./:/Users/phil/.pyenv/versions/3.8.11/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
+
+```bash
+bacalhau version
+```
+
+    Client Version: v0.2.3
+    Server Version: v0.2.3
+
+
 ## Submit the workload
 
 To submit a workload to Bacalhau you can use the `bacalhau docker run` command. This allows you to pass input data volume with a `-v CID:path` argument just like Docker, except the left-hand side of the argument is a [content identifier (CID)](https://github.com/multiformats/cid). This results in Bacalhau mounting a *data volume* inside the container. By default, Bacalhau mounts the input volume at the path `/inputs` inside the container.
@@ -44,6 +83,14 @@ bacalhau docker run \
 
 ```
 
+
+```python
+%env JOB_ID={job_id}
+```
+
+    env: JOB_ID=7b2b3b0c-18cc-479f-9bff-48b7569b7389
+
+
 ## Get Results
 
 Now let's download and display the result from the results directory. We can use the `bacalhau results` command to download the results from the output data volume. The `--output-dir` argument specifies the directory to download the results to.
@@ -59,6 +106,40 @@ bacalhau get --output-dir ./results ${JOB_ID} # Download the results
     [90m09:34:40.188 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
     [90m09:34:41.745 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
     [90m09:34:43.477 |[0m [32mINF[0m [1mipfs/downloader.go:195[0m[36m >[0m Combining shard from output volume 'outputs' to final location: '/Users/phil/source/bacalhau-project/examples/data-engineering/simple-parallel-workloads/results'
+
+
+
+```bash
+# Copy the files to the local directory, to allow the documentation scripts to copy them to the right place
+cp results/volumes/outputs/* ./ && rm -rf results/volumes/outputs/*
+# Remove any spaces from the filenames
+for f in *\ *; do mv "$f" "${f// /_}"; done
+```
+
+
+```python
+import glob
+from IPython.display import Video, display
+for file in glob.glob('*.mp4'):
+    display(Video(filename=file))
+```
+
+
+<video src="scaled_Bird_flying_over_the_lake.mp4" controls  >
+      Your browser does not support the <code>video</code> element.
+    </video>
+
+
+
+<video src="scaled_Calm_waves_on_a_rocky_sea_gulf.mp4" controls  >
+      Your browser does not support the <code>video</code> element.
+    </video>
+
+
+
+<video src="scaled_Prominent_Late_Gothic_styled_architecture.mp4" controls  >
+      Your browser does not support the <code>video</code> element.
+    </video>
 
 
 <!-- This is for the benefit of the documentation -->

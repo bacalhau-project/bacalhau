@@ -20,6 +20,16 @@ But there's still a lot of data and these types of analyses typically need repea
 * Python 3 
 * The Bacalhau client - [Installation instructions](https://docs.bacalhau.org/getting-started/installation)
 
+
+```python
+!command -v bacalhau >/dev/null 2>&1 || (export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+    env: PATH=./:/Users/phil/.cargo/bin:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
+
+
 ## 1. Analysing Ethereum Data Locally
 
 First let's download one of the IPFS files and inspect it locally. You can see the full list of IPFS CIDs in the appendix.
@@ -138,7 +148,7 @@ df[['block_datetime', 'value']].groupby(pd.Grouper(key='block_datetime', freq='1
 
 
     
-![png](index_files/index_7_1.png)
+![png](index_files/index_8_1.png)
     
 
 
@@ -248,6 +258,14 @@ bacalhau docker run \
     --input-volumes bafybeifgqjvmzbtz427bne7af5tbndmvniabaex77us6l637gqtb2iwlwq:/inputs/data.tar.gz \
     ghcr.io/bacalhau-project/examples/blockchain-etl:0.0.6
 ```
+
+
+```python
+%env JOB_ID={job_id}
+```
+
+    env: JOB_ID=5466b0ae-4eca-429c-a7b7-a9a5eeb0268c
+
 
 
 Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
@@ -393,7 +411,7 @@ df.plot()
 
 
     
-![png](index_files/index_25_1.png)
+![png](index_files/index_27_1.png)
     
 
 
@@ -1035,7 +1053,7 @@ df.plot(figsize=(16,9))
 
 
     
-![png](index_files/index_34_1.png)
+![png](index_files/index_36_1.png)
     
 
 

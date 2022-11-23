@@ -57,6 +57,14 @@ bacalhau docker run \
   -- magick mogrify -resize 100x100 -quality 100 -path /outputs '/input_images/*.jpg'
 ```
 
+
+```python
+%env JOB_ID={job_id}
+```
+
+    env: JOB_ID=deec77f2-e13c-4505-970f-842c7713a48a
+
+
 The job has been submitted and Bacalhau has printed out the related job id.
 We store that in an environment variable so that we can reuse it later on.
 
@@ -119,55 +127,55 @@ for imageName in glob.glob('results/volumes/outputs/*.jpg'):
 
 
     
-![jpeg](index_files/index_14_0.jpg)
+![jpeg](index_files/index_15_0.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_1.jpg)
+![jpeg](index_files/index_15_1.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_2.jpg)
+![jpeg](index_files/index_15_2.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_3.jpg)
+![jpeg](index_files/index_15_3.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_4.jpg)
+![jpeg](index_files/index_15_4.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_5.jpg)
+![jpeg](index_files/index_15_5.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_6.jpg)
+![jpeg](index_files/index_15_6.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_7.jpg)
+![jpeg](index_files/index_15_7.jpg)
     
 
 
 
     
-![jpeg](index_files/index_14_8.jpg)
+![jpeg](index_files/index_15_8.jpg)
     
 
 

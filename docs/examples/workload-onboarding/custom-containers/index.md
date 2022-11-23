@@ -9,9 +9,12 @@ sidebar_position: 10
 
 Bacalhau operates by executing jobs within containers. This example shows you how to build and use a custom docker container.
 
-This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
+### Prerequisites
 
-## Running Containers in Bacalhau
+* This example requires Docker. If you don't have Docker installed, you can install it from [here](https://docs.docker.com/install/). Docker commands will not work on hosted notebooks like Google Colab, but the Bacalhau commands will.
+* The Bacalhau client - [Installation instructions](https://docs.bacalhau.org/getting-started/installation)
+
+## 1. Running Containers in Bacalhau
 
 You're probably used to running docker commands to run a container.
 
@@ -47,31 +50,35 @@ Another difference is that by default Bacalhau overwrites the default entrypoint
 
 
 ```bash
-bacalhau docker run docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
+bacalhau docker run --wait --id-only docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
 ```
 
-    Job successfully submitted. Job ID: 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
-    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
-    
-    	       Creating job for submission ... done ✅
-    	       Finding node(s) for the job ... done ✅
-    	             Node accepted the job ... done ✅
-    	                                   ... done ✅
-    	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... done ✅
-    	                                  
-    Results CID: QmPdbcfRma2MTSNkmJqRMuJ5BQfSwh3vY89G9vbaV5ZsyW
-    Job Results By Node:
-    Node QmXaXu9N:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmYgxZiy:
-      Shard 0:
-        Status: Completed
-        Container Exit Code: 0
-        Stdout:
-          _____________________ 
+
+```bash
+rm -rf results && mkdir -p results
+```
+
+To Download the results of your job, run the following command:
+
+
+```bash
+bacalhau get ${JOB_ID}  --output-dir results
+```
+
+    Fetching results of job '1fd678f4-edb5-4516-91b7-2fcd7965ff63'...
+    Results for job '1fd678f4-edb5-4516-91b7-2fcd7965ff63' have been written to...
+    results
+
+
+    2022/11/23 14:13:09 CleanupManager.fnsMutex violation CRITICAL section took 20.239ms 20239000 (threshold 10ms)
+
+
+
+```bash
+cat ./results/combined_results/stdout
+```
+
+     _____________________ 
     < hello web3 uber-run >
      --------------------- 
         \
@@ -84,26 +91,10 @@ bacalhau docker run docker/whalesay -- bash -c 'cowsay hello web3 uber-run'
       ~~~ {~~ ~~~~ ~~~ ~~~~ ~~ ~ /  ===- ~~~   
            \______ o          __/            
             \    \        __/             
-              \____\______/
-        Stderr: <NONE>
-    Node QmdZQ7Zb:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    
-    To download the results, execute:
-      bacalhau get 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
-    
-    To get more details about the run, execute:
-      bacalhau describe 4e8ad5cf-0133-41fe-8319-e26e7957f5b2
+              \____\______/   
 
 
-
-```bash
-cat ./results/stdout
-```
-
-## Using Your Own Custom Container
+## 2. Building Your Own Custom Container For Bacalhau
 
 To use your own custom container, you must publish the container to a container registry that is accessible from the Bacalhau network. At this time, only public container registries are supported.
 
@@ -192,7 +183,7 @@ Once your container is working as expected then you should push it to a public c
 # docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/codsay:latest .
 ```
 
-## Running Your Custom Container on Bacalhau
+## 3. Running Your Custom Container on Bacalhau
 
 Now we're ready to submit a Bacalhau job using your custom container. This code runs a job, downloads the results and prints the stdout.
 
@@ -203,32 +194,38 @@ The `bacalhau docker run` command strips the default entrypoint, so don't forget
 
 ```bash
 bacalhau docker run \
-  ghcr.io/bacalhau-project/examples/codsay:v1.0.0 \
-  -- bash -c 'codsay Look at all this data'
+    --wait \
+    --id-only \
+    ghcr.io/bacalhau-project/examples/codsay:v1.0.0 \
+    -- bash -c 'codsay Look at all this data'
 ```
 
-    Job successfully submitted. Job ID: 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
-    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
-    
-    	       Creating job for submission ... done ✅
-    	       Finding node(s) for the job ... done ✅
-    	             Node accepted the job ... done ✅
-    	                                   ... done ✅
-    	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... done ✅
-    	                                  
-    Results CID: QmaJCxwRQx3ZL8amPSVu4SbYD8kgwxWkGwdcMubUTDCQwC
-    Job Results By Node:
-    Node QmXaXu9N:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmYgxZiy:
-      Shard 0:
-        Status: Completed
-        Container Exit Code: 0
-        Stdout:
-          _______________________
+
+```bash
+rm -rf results && mkdir -p results
+```
+
+To Download the results of your job, run the following command:
+
+
+```bash
+bacalhau get ${JOB_ID}  --output-dir results
+```
+
+    Fetching results of job '4dac91df-a7ad-4019-80e1-88201e007a01'...
+    Results for job '4dac91df-a7ad-4019-80e1-88201e007a01' have been written to...
+    results
+
+
+    2022/11/23 14:14:44 CleanupManager.fnsMutex violation CRITICAL section took 19.803ms 19803000 (threshold 10ms)
+
+
+
+```bash
+cat ./results/combined_results/stdout
+```
+
+     _______________________
     < Look at all this data >
      -----------------------
        \
@@ -244,18 +241,7 @@ bacalhau docker run \
            '¬═▄ `░╙Ü░╠DjK` Å»»╙╣▓▓▓▓╬Ñ     -»`       -`      `  ,;╓▄╔╗∞  ~▓▓▓▀▓▓╬╬╬▌
                  '^^^`   _╒Γ   `╙▀▓▓╨                     _, ⁿD╣▓╬╣▓╬▓╜      ╙╬▓▓╬╬▓▓
                      ```└                           _╓▄@▓▓▓╜   `╝╬▓▓╙           ²╣╬▓▓
-                            %!φ(MISSING)▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
+                            %φ▄╓_             ~#▓╠▓▒╬▓╬▓▓^        `                ╙╙
                              `╣▓▓▓              ╠╬▓╬▓╬▀`
                                ╚▓▌               '╨▀╜
-        Stderr: <NONE>
-    Node QmdZQ7Zb:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    
-    To download the results, execute:
-      bacalhau get 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
-    
-    To get more details about the run, execute:
-      bacalhau describe 7b339eb2-c9de-4bd5-9778-3e25b3e1275c
 

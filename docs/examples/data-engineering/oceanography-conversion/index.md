@@ -30,6 +30,18 @@ Make sure you have the latest `bacalhau` client installed by following the [gett
 The raw data is available on the [SOCAT website](https://www.socat.info/). We will use the [SOCATv2021](https://www.socat.info/index.php/version-2021/) dataset in the "Gridded" format to perform this calculation. First, let's take a quick look at some data:
 
 
+```python
+!command -v docker >/dev/null 2>&1 || { echo >&2 "I require docker but it's not installed.  Aborting."; exit 1; }
+```
+
+
+```python
+!(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
+path=!echo $PATH
+%env PATH=./:{path[0]}
+```
+
+
 ```bash
 mkdir -p inputs
 curl --output ./inputs/SOCATv2022_tracks_gridded_monthly.nc.zip https://www.socat.info/socat_files/v2022/SOCATv2022_tracks_gridded_monthly.nc.zip
@@ -217,6 +229,11 @@ COPY ./main.py /project
 CMD ["python","main.py"]
 ```
 
+
+```bash
+# docker buildx build --platform linux/amd64,linux/arm64 --push -t ghcr.io/bacalhau-project/examples/socat:0.0.11 .
+```
+
 ### Test the Container Locally
 
 Before we upload the container to the Bacalhau network, we should test it locally to make sure it works.
@@ -264,6 +281,11 @@ bacalhau docker run \
         --id-only \
         --wait \
         ghcr.io/bacalhau-project/examples/socat:0.0.11 -- python main.py
+```
+
+
+```python
+%env JOB_ID={job_id}
 ```
 
 ## Get Results
