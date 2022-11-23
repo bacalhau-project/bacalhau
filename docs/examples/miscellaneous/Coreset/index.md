@@ -188,8 +188,19 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
-echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input jsace/coreset -- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson; python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs') > job_id.txt
-cat job_id.txt
+bacalhau docker run \
+--id-only \
+--wait \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
+-v QmXuatKaWL24CwrBPC9PzmLW8NGjgvBVJfk6ZGCWUGZgCu:/input \
+jsace/coreset
+-- /bin/bash -c 'osmium export input/liechtenstein-latest.osm.pbf -o liechtenstein-latest.geojson; python Coreset/python/coreset.py -f liechtenstein-latest.geojson -o outputs'
+```
+
+
+```python
+%env JOB_ID={job_id}
 ```
 
 
@@ -198,27 +209,22 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-bacalhau list --id-filter $(cat job_id.txt)
+bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Published `", that means the job is done, and we can get the results.
+Where it says "`Completed`", that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
 
 ```bash
-bacalhau describe $(cat job_id.txt)
+bacalhau describe ${JOB_ID}
 ```
 
 Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
 we can download the results!
 we create a temporary directory to save our results
-
-
-```bash
-mkdir results
-```
 
 To Download the results of your job, run 
 
@@ -228,7 +234,8 @@ the following command:
 
 
 ```bash
-bacalhau get  $(cat job_id.txt)  --output-dir results
+rm -rf results && mkdir -p results
+bacalhau get $JOB_ID --output-dir results
 ```
 
 After the download has finished you should 
@@ -239,21 +246,21 @@ see the following contents in results directory
 ls results/
 ```
 
-#VIEW THE OUTPUT CSV FILES
+### VIEWING THE OUTPUT CSV FILES
 
 
 ```bash
-cat results/volumes/outputs/centers.csv | head -n 10
+cat results/combined_results/outputs/centers.csv | head -n 10
 ```
 
 
 ```bash
-cat results/volumes/outputs/coreset-values-liechtenstein-latest.csv | head -n 10
+cat results/combined_results/outputs/coreset-values-liechtenstein-latest.csv | head -n 10
 ```
 
 
 ```bash
-cat results/volumes/outputs/coreset-weights-liechtenstein-latest.csv | head -n 10
+cat results/combined_results/outputs/coreset-weights-liechtenstein-latest.csv | head -n 10
 ```
 
 
@@ -263,13 +270,3 @@ Sources
 
 [2][https://aaltodoc.aalto.fi/bitstream/handle/123456789/108293/master_Wu_Xiaobo_2021.pdf?sequence=2](https://aaltodoc.aalto.fi/bitstream/handle/123456789/108293/master_Wu_Xiaobo_2021.pdf?sequence=2)
 
-
-
-```bash
-bacalhau describe $(cat job_id.txt) --spec > job.yaml
-```
-
-
-```bash
-cat job.yaml
-```

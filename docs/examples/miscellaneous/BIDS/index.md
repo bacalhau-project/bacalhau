@@ -182,8 +182,19 @@ Insalling bacalhau
 
 
 ```bash
-echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data nipreps/mriqc:latest -- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03) > job_id.txt
-cat job_id.txt
+bacalhau docker run \
+--id-only \ 
+--wait \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
+-v QmaNyzSpJCt1gMCQLd3QugihY6HzdYmA8QMEa45LDBbVPz:/data \
+nipreps/mriqc:latest 
+-- mriqc ../data/ds005 ../outputs participant --participant_label 01 02 03
+```
+
+
+```python
+%env JOB_ID={job_id}
 ```
 
 
@@ -192,26 +203,17 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-bacalhau list --id-filter $(cat job_id.txt)
+bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Published `", that means the job is done, and we can get the results.
+Where it says "`Completed`", that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
 
 ```bash
-bacalhau describe $(cat job_id.txt)
-```
-
-Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
-we can download the results!
-we create a temporary directory to save our results
-
-
-```bash
-mkdir results
+bacalhau describe ${JOB_ID}
 ```
 
 To Download the results of your job, run 
@@ -222,7 +224,8 @@ the following command:
 
 
 ```bash
-bacalhau get  $(cat job_id.txt)  --output-dir results
+rm -rf results && mkdir -p results
+bacalhau get $JOB_ID --output-dir results
 ```
 
     [90m12:19:36.609 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'ab354ccc-f02e-4262-ad0b-f33ec78803cc'...
@@ -293,13 +296,3 @@ The structure of the files and directories will look like this:
 * Volumes folder contains the outputs of our job
 * stdout contains things printed to the console like outputs, etc.
 * stderr contains any errors. In this case, since there are no errors, it's will be empty
-
-
-```bash
-bacalhau describe $(cat job_id.txt) --spec > job.yaml
-```
-
-
-```bash
-cat job.yaml
-```

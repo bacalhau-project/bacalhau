@@ -107,8 +107,19 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 
 
 ```bash
-echo $(bacalhau docker run --id-only --wait --wait-timeout-secs 1000 -v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input gromacs/gromacs -- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc') > job_id.txt
-cat job_id.txt
+bacalhau docker run \
+--id-only \
+--wait \ 
+--timeout 3600 \
+--wait-timeout-secs 3600 \
+-v QmeeEB1YMrG6K8z43VdsdoYmQV46gAPQCHotZs9pwusCm9:/input \
+gromacs/gromacs
+-- /bin/bash -c 'echo 15 | gmx pdb2gmx -f input/1AKI.pdb -o outputs/1AKI_processed.gro -water spc'
+```
+
+
+```python
+%env JOB_ID={job_id}
 ```
 
 
@@ -117,27 +128,22 @@ Running the commands will output a UUID (like `54506541-4eb9-45f4-a0b1-ea0aecd34
 
 
 ```bash
-bacalhau list --id-filter $(cat job_id.txt)
+bacalhau list --id-filter ${JOB_ID} --wide
 ```
 
 
-Where it says "`Published `", that means the job is done, and we can get the results.
+Where it says "`Completed `", that means the job is done, and we can get the results.
 
 To find out more information about your job, run the following command:
 
 
 ```bash
-bacalhau describe $(cat job_id.txt)
+bacalhau describe ${JOB_ID}
 ```
 
 Since there is no error we can’t see any error instead we see the state of our job to be complete, that means 
 we can download the results!
 we create a temporary directory to save our results
-
-
-```bash
-mkdir -p results
-```
 
 To Download the results of your job, run 
 
@@ -147,7 +153,8 @@ the following command:
 
 
 ```bash
-bacalhau get  $(cat job_id.txt)  --output-dir results
+rm -rf results && mkdir -p results
+bacalhau get $JOB_ID --output-dir results
 ```
 
     [90m12:19:36.609 |[0m [32mINF[0m [1mbacalhau/get.go:67[0m[36m >[0m Fetching results of job 'ab354ccc-f02e-4262-ad0b-f33ec78803cc'...
@@ -186,15 +193,5 @@ The structure of the files and directories will look like this:
 ```
 
 
-You can see your the processed ‘`1AKI_processed`’ file in volumes/outputs
+You can see your the processed ‘`1AKI_processed`’ file in combined_results/outputs
 
-
-
-```bash
-bacalhau describe $(cat job_id.txt) --spec > job.yaml
-```
-
-
-```bash
-cat job.yaml
-```

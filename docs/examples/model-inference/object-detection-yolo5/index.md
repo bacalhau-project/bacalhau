@@ -76,6 +76,8 @@ Command:
 ```
  bacalhau docker run \
 --gpu 1   \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 -u https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5s.pt:/usr/src/app/yolov5s.pt \
 ultralytics/yolov5:latest \
 -- /bin/bash -c 'python detect.py --weights yolov5s.pt --source $(pwd)/data/images --project ../../../outputs'
@@ -110,6 +112,8 @@ Specify the path to the weights and source of the images
 ```bash
 bacalhau docker run \
 --gpu 1 \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 --wait \
 --wait-timeout-secs 1000 \
 --id-only \
@@ -315,6 +319,8 @@ In this case it will look like where we mount the CID to /datasets folder
 ```
 bacalhau docker run \
 --gpu 1 \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 -v bafybeicyuddgg4iliqzkx57twgshjluo2jtmlovovlx5lmgp5uoh3zrvpm:/datasets \
 ultralytics/yolov5:latest \
 -- /bin/bash -c 'python detect.py --weights ../../../datasets/yolov5s.pt --source ../../../datasets --project  ../../../outputs'
@@ -325,6 +331,8 @@ ultralytics/yolov5:latest \
 ```bash
 bacalhau docker run \
 --gpu 1 \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 --wait \
 --wait-timeout-secs 1000 \
 --id-only \
@@ -415,6 +423,8 @@ To run on the whole dataset we just need to replace the input CID in the -v flag
 ```
  bacalhau docker run \
 --gpu 1 \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 -v bafybeifvpl2clsdy4rc72oi4iqlyyt347ms64kmmuqwuai5j2waurnsk5e:/datasets \
 ultralytics/yolov5:latest \
 -- /bin/bash -c 'python detect.py --weights ../../../datasets/yolov5s.pt --source ../../../datasets  --project  ../../../outputs'
@@ -434,6 +444,8 @@ https://bafybeiekic3o3tuefajvlqeiyvvbq5kkr2g27qivuawpbqva7frv42radm.ipfs.nftstor
 ```
 bacalhau docker run \
 --gpu 1 \
+--timeout 3600 \
+--wait-timeout-secs 3600 \
 -v bafybeiekic3o3tuefajvlqeiyvvbq5kkr2g27qivuawpbqva7frv42radm:/datasets \
 ultralytics/yolov5:latest \
 -- /bin/bash -c 'python detect.py --weights ../../../datasets/yolov5s.pt --source ../../../datasets  --project  ../../../outputs'
