@@ -1407,7 +1407,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "bootstrap.production.bacalhau.org:1234",
 	BasePath:         "/",
 	Schemes:          []string{"http"},
-	Title:            "Bacalhau API blaaa12345671111",
+	Title:            "Bacalhau API",
 	Description:      "This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

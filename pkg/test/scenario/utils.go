@@ -129,7 +129,7 @@ func StoredText(
 ) ISetupStorage {
 	//nolint:lll
 	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), clients...)
+		fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), clients...)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +151,7 @@ func StoredFile(
 ) ISetupStorage {
 	//nolint:lll
 	return func(ctx context.Context, driverName model.StorageSourceType, clients ...*ipfs.Client) ([]model.StorageSpec, error) {
-		fileCid, err := devstack.AddFileToNodes(ctx, filePath, clients...)
+		fileCid, err := ipfs.AddFileToNodes(ctx, filePath, clients...)
 		if err != nil {
 			return nil, err
 		}

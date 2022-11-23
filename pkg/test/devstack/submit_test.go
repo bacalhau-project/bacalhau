@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 
 	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
@@ -38,7 +39,7 @@ func (suite *DevstackSubmitSuite) SetupTest() {
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack, cm := SetupTest(
+	stack, cm := testutils.SetupTest(
 		ctx,
 		suite.T(),
 
