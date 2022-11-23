@@ -488,7 +488,7 @@ jobs:
           command: |
             git config user.email "enrico.rotundo@gmail.com"
             git config user.name "enricorotundo"
-            # Note: we automatically delete branches after a PR merge
+            # Note: we delete this branch after the PR is merged
             git checkout -b ci-build-swagger-docs
             git add --verbose -- ./docs
             COMMIT_MSG="Build swagger reference - this is an automatic commit"
@@ -499,28 +499,9 @@ jobs:
           command: |
             git status --short
             PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
+            echo "Pull request: $PR_URL"
             sleep 3
             gh pr merge --auto --delete-branch -r $PR_URL
-          
-
-      # - run:
-      #     name: Install updatecli
-      #     command: |
-      #       wget https://github.com/updatecli/updatecli/releases/download/v0.33.3/updatecli_amd64.deb
-      #       sudo dpkg -i updatecli_amd64.deb
-      # - run:
-      #     name: Run
-      #     command: |
-      #       updatecli apply --config .circleci/swagger-ops.yaml
-      # - run:
-      #     name: Commit to GitHub
-      #     command: |
-      #       git config user.email "enrico.rotundo@gmail.com"
-      #       git config user.name "enricorotundo"
-      #       git add --verbose -- ./docs
-      #       git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
-      #       git config --global push.autoSetupRemote true
-      #       git push origin
 
 orbs:
   heroku: circleci/heroku@1.2.6
