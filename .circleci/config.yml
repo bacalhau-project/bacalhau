@@ -3,6 +3,7 @@
 version: 2.1
 
 executors:
+  # Available resource classes - https://circleci.com/product/features/resource-classes/
   linux-amd64:
     machine:
       image: ubuntu-2204:2022.07.1
@@ -133,7 +134,10 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ["amd64", << parameters.target_arch >>]
+              - not:
+                  and:
+                    - equal: ["darwin", << parameters.target_os >>]
+                    - equal: ["arm64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
@@ -141,6 +145,7 @@ jobs:
                 environment:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
+                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
@@ -447,6 +452,76 @@ jobs:
             pip3 install -r requirements.txt
             python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
 
+  build_swagger:
+    executor: linux-amd64
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Swagger
+          command:
+            go install github.com/swaggo/swag/cmd/swag@latest
+      - run:
+          name: Build Swagger Docs
+          command:
+            make swagger-docs
+      - run:
+          name: Check for new files
+          command:
+            # git diff
+            echo "NEW_FILES=$(git --no-pager diff --name-status ./docs | cat | wc -m)"
+      - run:
+          name: Install gh
+          command: |
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
+            echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
+            rm gh_2.14.7_linux_amd64.deb
+      - run:
+          name: Git commit
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            git checkout -b ci-build-swagger-docs
+            git add --verbose -- ./docs
+            git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
+            git push --set-upstream origin ci-build-swagger-docs
+      - run:
+          name: Creating and merging pull request
+          command: |
+            git status --short
+            gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau
+
+      # pr_url="$(gh pr create --fill --base main --label documentation)"
+      # sleep 3
+      # gh pr merge --auto -r "$pr_url"
+
+      # - run:
+      #     name: Install updatecli
+      #     command: |
+      #       wget https://github.com/updatecli/updatecli/releases/download/v0.33.3/updatecli_amd64.deb
+      #       sudo dpkg -i updatecli_amd64.deb
+      # - run:
+      #     name: Run
+      #     command: |
+      #       updatecli apply --config .circleci/swagger-ops.yaml
+      # - run:
+      #     name: Commit to GitHub
+      #     command: |
+      #       git config user.email "enrico.rotundo@gmail.com"
+      #       git config user.name "enricorotundo"
+      #       git add --verbose -- ./docs
+      #       git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
+      #       git config --global push.autoSetupRemote true
+      #       git push origin
+
 orbs:
   heroku: circleci/heroku@1.2.6
 
@@ -561,6 +636,14 @@ workflows:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
+  
+  build_swagger: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build_swagger:
+          name: Build swagger docs
+          filters:
+            <<: *filters_main_only
+
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
@@ -595,6 +678,7 @@ workflows:
             - release-all-binaries
           filters:
             <<: *filters_tags_only
+  
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:

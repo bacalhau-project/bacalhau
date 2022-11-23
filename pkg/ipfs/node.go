@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/hashicorp/go-multierror"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -25,6 +26,7 @@ import (
 	"github.com/ipfs/kubo/core/corehttp"
 	"github.com/ipfs/kubo/core/node/libp2p"
 	"github.com/ipfs/kubo/plugin/loader"
+	kuboRepo "github.com/ipfs/kubo/repo"
 	"github.com/ipfs/kubo/repo/fsrepo"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -118,7 +120,8 @@ func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string)
 			filteredPeerAddrs = append(filteredPeerAddrs, addr)
 		}
 	}
-	return NewNodeWithConfig(ctx, cm, Config{
+	return tryCreateNode(ctx, cm, Config{
+		Mode:      ModeDefault,
 		PeerAddrs: filteredPeerAddrs,
 	})
 }
@@ -126,15 +129,36 @@ func NewNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string)
 // NewLocalNode creates a new local IPFS node in local mode, which can be used
 // to create test environments without polluting the public IPFS nodes.
 func NewLocalNode(ctx context.Context, cm *system.CleanupManager, peerAddrs []string) (*Node, error) {
-	return NewNodeWithConfig(ctx, cm, Config{
+	return tryCreateNode(ctx, cm, Config{
 		Mode:      ModeLocal,
 		PeerAddrs: peerAddrs,
 	})
 }
 
-// NewNodeWithConfig creates a new IPFS node with the given configuration.
+func tryCreateNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+	// Starting up an IPFS node can have issues as there's a race between finding a free port and getting the listener
+	// running on that port (e.g. find the port, write the config file, save the file, start up IPFS, then start the listener)
+	attempts := 3
+	var err error
+	for i := 0; i < attempts; i++ {
+		var ipfsNode *Node
+		ipfsNode, err = newNodeWithConfig(ctx, cm, cfg)
+		if err != nil {
+			if errors.Is(err, addressInUseError) {
+				log.Ctx(ctx).Debug().Err(err).Msg("Failed to start up node as port was already in use")
+				continue
+			}
+			return nil, err
+		}
+
+		return ipfsNode, nil
+	}
+	return nil, err
+}
+
+// newNodeWithConfig creates a new IPFS node with the given configuration.
 // NOTE: use NewNode() or NewLocalNode() unless you know what you're doing.
-func NewNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
+func newNodeWithConfig(ctx context.Context, cm *system.CleanupManager, cfg Config) (*Node, error) {
 	var err error
 	pluginOnce.Do(func() {
 		err = loadPlugins()
@@ -281,18 +305,29 @@ func createNode(ctx context.Context, cm *system.CleanupManager, cfg Config) (ico
 		return nil, nil, "", fmt.Errorf("failed to create repo dir: %w", err)
 	}
 
+	var repo kuboRepo.Repo
 	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
-			return fmt.Errorf("failed to clean up repo directory: %w", err)
+		var errs error
+		// We need to make sure we close the repo before we delete the disk contents as this will cause IPFS to print out messages about how
+		// 'flatfs could not store final value of disk usage to file', which is both annoying and can cause test flakes
+		// as the message can be written just after the test has finished but before the repo has been told by node
+		// that it's supposed to shut down.
+		if repo != nil {
+			if err := repo.Close(); err != nil { //nolint:govet
+				errs = multierror.Append(errs, fmt.Errorf("failed to close repo: %w", err))
+			}
 		}
-		return nil
+		if err := os.RemoveAll(repoPath); err != nil { //nolint:govet
+			errs = multierror.Append(errs, fmt.Errorf("failed to clean up repo directory: %w", err))
+		}
+		return errs
 	})
 
 	if err = createRepo(repoPath, cfg.getMode(), cfg.getKeypairSize()); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to create repo: %w", err)
 	}
 
-	repo, err := fsrepo.Open(repoPath)
+	repo, err = fsrepo.Open(repoPath)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to open temp repo: %w", err)
 	}

@@ -46,6 +46,7 @@ BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDD
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)")
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 TEST_BUILD_TAGS ?= unit,integration
+TEST_PARALLEL_PACKAGES ?= 1
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -106,6 +107,15 @@ ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
 endif
 	@echo "Build environment correct."
 
+################################################################################
+# Target: swagger-docs
+################################################################################
+.PHONY: swagger-docs
+swagger-docs:
+	@echo "Building swagger docs..."
+	swag fmt --exclude "testground" -g "pkg/publicapi/server.go" && \
+	swag init --parseDependency --exclude "testground" --markdownFiles docs/swagger -g "pkg/publicapi/server.go"
+	@echo "Swagger docs built."
 
 ################################################################################
 # Target: build
@@ -298,7 +308,7 @@ ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json: ${BINARY_PATH}
 		--junitfile unittests.xml \
 		--format standard-quiet \
 		-- \
-			-p 1 \
+			-p ${TEST_PARALLEL_PACKAGES} \
 			./pkg/... ./cmd/... \
 			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}

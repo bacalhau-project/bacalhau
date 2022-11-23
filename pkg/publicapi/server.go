@@ -8,26 +8,26 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/docs"
+	"github.com/filecoin-project/bacalhau/pkg/computenode"
+	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-
 	"github.com/filecoin-project/bacalhau/pkg/publicapi/handlerwrapper"
-
-	"github.com/filecoin-project/bacalhau/pkg/localdb"
-	"github.com/filecoin-project/bacalhau/pkg/storage"
-	"github.com/filecoin-project/bacalhau/pkg/transport"
-
-	sync "github.com/lukemarsden/golang-mutex-tracer"
-
-	"github.com/didip/tollbooth/v7"
-	"github.com/didip/tollbooth/v7/limiter"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/publisher"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
+	"github.com/filecoin-project/bacalhau/pkg/storage"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
+	"github.com/filecoin-project/bacalhau/pkg/version"
+
+	"github.com/c2h5oh/datasize"
+	"github.com/didip/tollbooth/v7"
+	"github.com/didip/tollbooth/v7/limiter"
+	sync "github.com/lukemarsden/golang-mutex-tracer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -132,9 +132,24 @@ func (apiServer *APIServer) GetURI() string {
 	return fmt.Sprintf("http://%s:%d", apiServer.Host, apiServer.Port)
 }
 
+// @title         Bacalhau API blaaa12345671111
+// @description   This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/filecoin-project/bacalhau.
+// @contact.name  Bacalhau Team
+// @contact.url   https://github.com/filecoin-project/bacalhau
+// @contact.email team@bacalhau.org
+// @license.name  Apache 2.0
+// @license.url   https://github.com/filecoin-project/bacalhau/blob/main/LICENSE
+// @host          bootstrap.production.bacalhau.org:1234
+// @BasePath      /
+// @schemes       http
 // ListenAndServe listens for and serves HTTP requests against the API server.
+//
+//nolint:lll
 func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.CleanupManager) error {
 	hostID := apiServer.Requester.ID
+
+	// dynamically write the git tag to the Swagger docs
+	docs.SwaggerInfo.Version = version.Get().GitVersion
 
 	// TODO: #677 Significant issue, when client returns error to any of these commands, it still submits to server
 	sm := http.NewServeMux()
@@ -154,6 +169,7 @@ func (apiServer *APIServer) ListenAndServe(ctx context.Context, cm *system.Clean
 	sm.Handle(apiServer.chainHandlers("/readyz", apiServer.readyz))
 	sm.Handle(apiServer.chainHandlers("/debug", apiServer.debug))
 	sm.Handle("/metrics", promhttp.Handler())
+	sm.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	srv := http.Server{
 		Handler:           sm,

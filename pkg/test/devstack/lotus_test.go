@@ -43,6 +43,7 @@ func (s *lotusNodeSuite) SetupTest() {
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
+	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
