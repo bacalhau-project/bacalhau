@@ -500,7 +500,7 @@ jobs:
             git status --short
             PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
             sleep 3
-            gh pr merge --auto --delete-branch --author-email "enrico.rotundo@gmail.com" -r $PR_URL
+            gh pr merge --auto --delete-branch -r $PR_URL
           
 
       # - run:
