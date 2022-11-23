@@ -494,7 +494,7 @@ jobs:
             git commit --allow-empty -m "Build Swagger docs: Automatic commit from CircleCI [skip ci]"
             git push --set-upstream origin ci-build-swagger-docs
       - run:
-          name: Creating and merging pull request
+          name: Creating pull request
           command: |
             git status --short
             gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau
