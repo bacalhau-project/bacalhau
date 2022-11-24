@@ -109,7 +109,9 @@ func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 	case <-ctx.Done():
 		s.callback.OnRunFailure(ctx, task.execution.ID, ctx.Err())
 	case runError := <-ch:
-		s.callback.OnRunFailure(ctx, task.execution.ID, runError)
+		if runError != nil {
+			s.callback.OnRunFailure(ctx, task.execution.ID, runError)
+		}
 	}
 
 	s.mu.Lock()
