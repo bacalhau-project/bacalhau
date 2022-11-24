@@ -72,23 +72,23 @@ This container is using the `pytorch/pytorch:1.13.0-cuda11.6-cudnn8-runtime` ima
 To Build the docker container run the docker build command
 
 ```
-docker build -t <hub-user>/<repo-name>:<tag> .
+docker build -t hub-user/repo-name:tag .
 ```
 
 Please replace
 
-<hub-user> with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
+hub-user with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
 
-<repo-name> This is the name of the container, you can name it anything you want
+repo-name This is the name of the container, you can name it anything you want
 
-<tag> This is not required but you can use the latest tag
+tag This is not required but you can use the latest tag
 
 After you have build the container, the next step is to test it locally and then push it docker hub
 
 Now you can push this repository to the registry designated by its name or tag.
 
 ```
- docker push <hub-user>/<repo-name>:<tag>
+ docker push hub-user/repo-name:tag
 ```
 
 

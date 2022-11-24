@@ -2,7 +2,7 @@
 sidebar_label: "Python-Custom-Container"
 sidebar_position: 3
 ---
-# Building and Running Your Container On Bacalhau Using Docker
+# Building and Running Custom Python  Container
 
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/Python-Custom-Container/index.ipynb)
@@ -115,8 +115,8 @@ To install the dependencies run the command
 
 
 
-```python
-!pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
 ```
 
 ### **Writing the Script**

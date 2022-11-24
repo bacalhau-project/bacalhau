@@ -12,7 +12,7 @@ sidebar_position: 10
 EasyOCR is a ready-to-use OCR with 80+ supported languages and all popular writing scripts including Latin, Chinese, Arabic, Devanagari, Cyrillic and etc. it is developed by https://www.jaided.ai/
 
 
-<img src="https://github.com/JaidedAI/EasyOCR/raw/master/examples/example2.png">
+![](https://github.com/JaidedAI/EasyOCR/raw/master/examples/example2.png)
 
 
 EasyOCR is leveraging recent works in academic and other open source projects to create a ready-to-use product with state-of-the-art performance. 
@@ -137,22 +137,6 @@ bounds = reader.readtext('thai.jpg')
 bounds
 ```
 
-    /usr/local/lib/python3.7/dist-packages/torch/nn/functional.py:718: UserWarning: Named tensors and all their associated APIs are an experimental feature and subject to change. Please do not use them for anything important until they are released as stable. (Triggered internally at  /pytorch/c10/core/TensorImpl.h:1156.)
-      return torch.max_pool2d(input, kernel_size, stride, padding, dilation, ceil_mode)
-
-
-
-
-
-    [([[142, 232], [500, 232], [500, 361], [142, 361]],
-      'เส้นทางลัด',
-      0.5458776426550863),
-     ([[177, 483], [385, 483], [385, 573], [177, 573]],
-      'เพชรบุรี',
-      0.8813348319724021)]
-
-
-
 we get cordinates which represent a rectangle containing text and the text itself
 
 After that we will build a DOCKERFILE to containernize this script and then run it on bacalhau
@@ -179,29 +163,25 @@ Builing the container
 
 To Build the docker container run the docker build command
 
-
 ```
-docker build -t <hub-user>/<repo-name>:<tag> .
+docker build -t hub-user/repo-name:tag .
 ```
-
 
 Please replace
 
-&lt;hub-user> with your docker hub username, If you don’t have a docker hub account [Follow these instructions to create docker account](https://docs.docker.com/docker-id/), and use the username of the account you created
+hub-user with your docker hub username, If you don’t have a docker hub account Follow these instructions to create docker account, and use the username of the account you created
 
-&lt;repo-name> This is the name of the container, you can name it anything you want
+repo-name This is the name of the container, you can name it anything you want
 
-&lt;tag> This is not required but you can use the latest tag
+tag This is not required but you can use the latest tag
 
 After you have build the container, the next step is to test it locally and then push it docker hub
 
 Now you can push this repository to the registry designated by its name or tag.
 
-
 ```
- docker push <hub-user>/<repo-name>:<tag>
+ docker push hub-user/repo-name:tag
 ```
-
 
 After the repo image has been pushed to docker hub, we can now use the container for running on bacalhau
 
@@ -303,82 +283,6 @@ To find out more information about your job, run the following command:
 bacalhau describe ${JOB_ID}
 ```
 
-    APIVersion: V1alpha1
-    ClientID: 0300a78f6fc2abdb3a0deae5f76d7712ce90ab630bbc8c06174665d2c8382df8
-    CreatedAt: "2022-11-11T14:27:53.36526863Z"
-    Deal:
-      Concurrency: 1
-    ExecutionPlan:
-      ShardsTotal: 1
-    ID: b8267063-37af-4aec-a65d-201a449dec89
-    JobState:
-      Nodes:
-        QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG:
-          Shards:
-            "0":
-              NodeId: QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
-              PublishedResults:
-                CID: QmaDS3cmVCoUsCTdJ7gjHKFGYebscyvX8BXkHSj5csFJAW
-                Name: job-b8267063-37af-4aec-a65d-201a449dec89-shard-0-host-QmVAb7r2pKWCuyLpYWoZr9syhhFnTWeFaByHdb8PkkhLQG
-                StorageSource: IPFS
-              RunOutput:
-                exitCode: 0
-                runnerError: ""
-                stderr: ""
-                stderrtruncated: false
-                stdout: |-
-                  ([[86, 80], [134, 80], [134, 128], [86, 128]], '西', 0.811562076983595)
-                  ([[189, 75], [469, 75], [469, 165], [189, 165]], '愚园路', 0.9578677631869957)
-                  ([[517, 81], [565, 81], [565, 123], [517, 123]], '东', 0.9941697709627171)
-                  ([[78, 126], [136, 126], [136, 156], [78, 156]], '315', 0.9999933927534448)
-                  ([[514, 126], [574, 126], [574, 156], [514, 156]], '309', 0.9999631096149034)
-                  ([[79, 173], [125, 173], [125, 213], [79, 213]], 'W', 0.3243953926139511)
-                  ([[226, 170], [414, 170], [414, 220], [226, 220]], 'Yuyuan Rd。', 0.8594614233742836)
-                  ([[529, 173], [569, 173], [569, 213], [529, 213]], 'E', 0.5594370749422559)
-                stdouttruncated: false
-              State: Completed
-              Status: 'Got results proposal of length: 0'
-              VerificationResult:
-                Complete: true
-                Result: true
-    RequesterNodeID: QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3
-    RequesterPublicKey: CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDF5pYaTdt4UwzslPRDr8XFXv1clttGGIWENlnECLVqswrQVp5xrMsI/57MrJUsMADsz6a/cip9LOxiym3bZVIeZ5WmbrFp48F0Wb7RCELAsUcl/zx4FHCK+A2FKqmuhpY9NyVNGupIDBUCPvCWsDb87Ur//a9BdCOETuab4577e3vFCa3fE+9jn5Fuhoa0m5Z7GfuZtU0W2FX6nc4VIfseMWrWpHD+Bqe/kXs+8RFBVW2AYyzO8lCcHtRC4Lb1Ml1V5hcoAN1pe5yfVuPlT9qyAgCnH3nIIWtvEYz8BnSDgXXTHdT+N+6lrm9oMglNh7TpT6ZbmpioIbJalelAyhG3AgMBAAE=
-    Spec:
-      Docker:
-        Entrypoint:
-        - easyocr
-        - -l
-        - ch_sim
-        - en
-        - -f
-        - ./inputs/chinese.jpg
-        - --detail=1
-        - --gpu=True
-        Image: jsacex/easyocr
-      Engine: Docker
-      Language:
-        JobContext: {}
-      Publisher: Estuary
-      Resources:
-        GPU: "1"
-      Sharding:
-        BatchSize: 1
-        GlobPatternBasePath: /inputs
-      Verifier: Noop
-      Wasm: {}
-      inputs:
-      - StorageSource: URLDownload
-        URL: https://raw.githubusercontent.com/JaidedAI/EasyOCR/ae773d693c3f355aac2e58f0d8142c600172f016/examples/chinese.jpg
-        path: /inputs
-      - CID: bafybeibvcllzpfviggluobcfassm3vy4x2a4yanfxtmn4ir7olyzfrgq64
-        StorageSource: IPFS
-        path: /root/.EasyOCR/model/zh_sim_g2.pth
-      outputs:
-      - Name: outputs
-        StorageSource: IPFS
-        path: /outputs
-
-
 
 ```bash
 rm -rf results && mkdir -p results
@@ -405,19 +309,8 @@ ls results/
     raw
 
 
-Viewing the outputs
+To view the results run the command
 
-
-```bash
+```
 cat results/combined_results/stdout
 ```
-
-    ([[86, 80], [134, 80], [134, 128], [86, 128]], '西', 0.811562076983595)
-    ([[189, 75], [469, 75], [469, 165], [189, 165]], '愚园路', 0.9578677631869957)
-    ([[517, 81], [565, 81], [565, 123], [517, 123]], '东', 0.9941697709627171)
-    ([[78, 126], [136, 126], [136, 156], [78, 156]], '315', 0.9999933927534448)
-    ([[514, 126], [574, 126], [574, 156], [514, 156]], '309', 0.9999631096149034)
-    ([[79, 173], [125, 173], [125, 213], [79, 213]], 'W', 0.3243953926139511)
-    ([[226, 170], [414, 170], [414, 220], [226, 220]], 'Yuyuan Rd。', 0.8594614233742836)
-    ([[529, 173], [569, 173], [569, 213], [529, 213]], 'E', 0.5594370749422559)
-

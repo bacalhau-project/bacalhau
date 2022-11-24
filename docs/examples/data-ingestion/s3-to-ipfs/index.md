@@ -1,6 +1,6 @@
 ---
 sidebar_label: "s3-to-ipfs"
-sidebar_position: 3
+sidebar_position: 2
 ---
 # Copy Data from S3 to IPFS
 
@@ -25,13 +25,13 @@ Structure of the command
 
 ```
 bacalhau docker run \
--u https://<name-of-the-bucket>.s3.amazonaws.com \
+-u https://%name-of-the-bucket%.s3.amazonaws.com \
 -v QmR1qXs8Y8T7G6F2Yy91sDTWG6WAhoFrCjMGRvy7N1y5LC:/extract.py \
 python \
--- python3 extract.py https://<name-of-the-bucket>.s3.amazonaws.com/  /inputs
+-- python3 extract.py https://%name-of-the-bucket%.s3.amazonaws.com/  /inputs
 ```
 
-replace <name-of-the-bucket> with the name of the bucket you want to extract the URLs from
+replace %name-of-the-bucket% with the name of the bucket you want to extract the URLs from
 
 
 

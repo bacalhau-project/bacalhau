@@ -1,11 +1,11 @@
 ---
 sidebar_label: "CUDA"
-sidebar_position: 1
+sidebar_position: 10
 ---
+# Run CUDA programs on bacalhau
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/workload-onboarding/CUDA/index.ipynb)
 [![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=workload-onboarding/CUDA/index.ipynb)
-
-# Run CUDA programs on bacalhau
 
 ## Introduction
 
