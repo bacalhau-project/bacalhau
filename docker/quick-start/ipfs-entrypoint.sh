@@ -4,10 +4,12 @@ IFS=$'\n\t'
 SUDO='' # detect if not root...
 
 # configure
-${SUDO} mkdir -p /data/ipfs
-#export IPFS_PATH=/data/ipfs
-${SUDO} chown $(id -un):$(id -gn) ${IPFS_PATH} # change ownership of ipfs directory
-ipfs init
+if [[ ! -f "/data/ipfs/config" ]]; then
+    ${SUDO} mkdir -p /data/ipfs
+    #export IPFS_PATH=/data/ipfs
+    ${SUDO} chown $(id -un):$(id -gn) ${IPFS_PATH} # change ownership of ipfs directory
+    ipfs init
+fi
 
 #launch
 ipfs daemon

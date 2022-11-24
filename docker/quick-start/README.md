@@ -16,6 +16,8 @@ docker run \
 
 docker logs -f bacalhau-ipfs
 
+<<<< mention http://127.0.0.1:5001/webui >>>>
+
 ctrl-c
 
 docker exec -it bacalhau-ipfs  ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
@@ -52,6 +54,7 @@ docker exec -it \
      bacalhau docker run ubuntu echo hello
 
 # Interestingly, because your bacalhau node is a part of the bootstrap-cluster, you can get info about your job directly from your node, or via the <<<insert dns..name>>>
+<<<<<< I wonder if the devstack turns that oof, or if those docs need more detail too>>>>>>
 
 sven@p1:~/src/ipfs/bacalhau/docker/quick-start$ ../../bacalhau describe 6c9068ec-dff9-4273-b4c1-c160bfa29c57
 APIVersion: V1beta1
@@ -60,6 +63,18 @@ CreatedAt: "2022-11-24T02:29:12.955258918Z"
 Deal:
   Concurrency: 1
 ExecutionPlan:
+
+
+<<<<<mmm, so we hooked up an ipfs-node to bacalhau? how do we know that the job output was stored there?>>>>>
+
+
+<<< so is my node now able to have  other people's jobs run on it? and how do i know??>>>
+
+## for bacalhau commands that don't need access to your local disk, you can make an alias:
+alias bacalhau='docker exec -it \
+    --env BACALHAU_API_HOST=127.0.0.1 \
+    --env BACALHAU_API_PORT=1234 \
+    bacalhau bacalhau'
 .......... snip..............
 ```
 
