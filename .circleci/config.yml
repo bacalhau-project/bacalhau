@@ -483,7 +483,7 @@ jobs:
       - run:
           name: Install Swagger
           command:
-            go install github.com/swaggo/swag/cmd/swag@latest
+            go install github.com/swaggo/swag/cmd/swag@v1.8.7
       - run:
           name: Install Pre-commit
           command: |
