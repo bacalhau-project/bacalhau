@@ -1,5 +1,5 @@
 ---
-sidebar_label: "Data Ingestion"
+sidebar_label: "From Your Machine"
 sidebar_position: 1
 ---
 # How to Ingest Data For Use in Bacalhau
