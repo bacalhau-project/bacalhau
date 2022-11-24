@@ -6,7 +6,7 @@ This is useful to kick the tires and/or developing on the codebase.  It's also t
 
 ## Pre-requisites
 
- * x86_64 of ARM64 architecture
+ * x86_64 or ARM64 architecture
     * Ubuntu 20.0+ has most often been used for development and testing
  * Go >= 1.19
  * [Docker Engine](https://docs.docker.com/get-docker/)
