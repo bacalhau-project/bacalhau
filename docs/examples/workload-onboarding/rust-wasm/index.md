@@ -11,8 +11,10 @@ Bacalhau supports running jobs as a [WebAssembly (WASM)](https://webassembly.org
 
 ### Prerequisites
 
-* Make sure you have the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
-* You can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets.
+* You'll need the latest `bacalhau` client installed by following the [getting started instructions](../../../getting-started/installation).
+* A working Rust installation with the `wasm32-wasi` target. For example, you can use [`rustup`](https://rustup.rs/) to install Rust and configure it to build WASM targets.
+
+For those using the notebook, these are installed in hidden cells below.
 
 ## 1. Develop a Rust Program Locally
 
@@ -126,9 +128,59 @@ We can now build the Rust program into a WASM blob using `cargo`.
 
 
 ```bash
-rustup target add wasm32-wasi
 cd my-program && cargo build --target wasm32-wasi --release
 ```
+
+        Updating crates.io index
+       Compiling autocfg v1.1.0
+       Compiling cfg-if v1.0.0
+       Compiling getrandom v0.1.16
+       Compiling bytemuck v1.12.3
+       Compiling wasi v0.9.0+wasi-snapshot-preview1
+       Compiling adler v1.0.2
+       Compiling crc32fast v1.3.2
+       Compiling typenum v1.15.0
+       Compiling ppv-lite86 v0.2.17
+       Compiling miniz_oxide v0.5.4
+       Compiling safe_arch v0.6.0
+       Compiling miniz_oxide v0.6.2
+       Compiling wide v0.7.5
+       Compiling num-traits v0.2.15
+       Compiling num-integer v0.1.45
+       Compiling num-bigint v0.4.3
+       Compiling num-rational v0.4.1
+       Compiling rand_core v0.5.1
+       Compiling num-iter v0.1.43
+       Compiling flate2 v1.0.24
+       Compiling rand_chacha v0.2.2
+       Compiling bitflags v1.3.2
+       Compiling ttf-parser v0.15.2
+       Compiling paste v1.0.9
+       Compiling rawpointer v0.2.1
+       Compiling matrixmultiply v0.3.2
+       Compiling png v0.17.7
+       Compiling num-complex v0.4.2
+       Compiling approx v0.5.1
+       Compiling simba v0.7.3
+       Compiling rand v0.7.3
+       Compiling color_quant v1.1.0
+       Compiling either v1.8.0
+       Compiling byteorder v1.4.3
+       Compiling ab_glyph_rasterizer v0.1.7
+       Compiling jpeg-decoder v0.3.0
+       Compiling custom_derive v0.1.7
+       Compiling owned_ttf_parser v0.15.2
+       Compiling conv v0.3.3
+       Compiling rusttype v0.9.3
+       Compiling image v0.24.5
+       Compiling num v0.4.0
+       Compiling rand_distr v0.2.2
+       Compiling itertools v0.10.5
+       Compiling nalgebra v0.30.1
+       Compiling imageproc v0.23.0
+       Compiling my-program v0.1.0 (/Users/phil/source/bacalhau-project/examples/workload-onboarding/rust-wasm/my-program)
+        Finished release [optimized] target(s) in 17.81s
+
 
 This will generate a WASM file at `./my-program/target/wasm32-wasi/my-program.wasm` which can now be run on Bacalhau.
 
@@ -146,60 +198,37 @@ bacalhau wasm run ./my-program/target/wasm32-wasi/release/my-program.wasm _start
 ```
 
     Uploading "./my-program/target/wasm32-wasi/release/my-program.wasm" to server to execute command in context, press Ctrl+C to cancel
-    Job successfully submitted. Job ID: 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
+    Job successfully submitted. Job ID: 702cb81f-cf50-4d4f-b60d-b06e62f36de3
     Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
     
     	       Creating job for submission ... done ✅
     	       Finding node(s) for the job ... done ✅
     	             Node accepted the job ... done ✅
     	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... Results CID: QmaxyTrc3zSb6ggUVYgXb9yxVJZ9cXv6Y6u55Czm2eqaWD
-    Job Results By Node:
-    Node QmSyJ8VU:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmVAb7r2:
-      Shard 0:
-        Status: Completed
-        Container Exit Code: -1
-        Stdout:
-          Removing seam 0
-    Removing seam 100
-    
-        Stderr: <NONE>
-    Node QmXaXu9N:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmYgxZiy:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmdZQ7Zb:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
+    	      Results accepted, publishing ... Job Results By Node:
     
     To download the results, execute:
-      bacalhau get 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
+      bacalhau get 702cb81f-cf50-4d4f-b60d-b06e62f36de3
     
     To get more details about the run, execute:
-      bacalhau describe 1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa
+      bacalhau describe 702cb81f-cf50-4d4f-b60d-b06e62f36de3
 
 
 We can now get the results. When we view the files, we can see the original image, the resulting shrunk image, and the seams that were removed.
 
 
 ```bash
-mkdir -p wasm_results
+rm -rf wasm_results && mkdir -p wasm_results
 bacalhau get $(grep "Job ID:" job.txt | cut -f2 -d:) --output-dir wasm_results
 ```
 
-    Fetching results of job '1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa'...
-    [90m18:29:54.069 |[0m [1m[31mERR[0m[0m [1mipfs/node.go:178[0m[36m >[0m ipfs node failed to serve API: failed to listen on api multiaddr: listen tcp4 127.0.0.1:5001: bind: address already in use
-    Results for job '1cf373a0-bb75-4b68-8c7e-c2e0e10d7eaa' have been written to...
+    Fetching results of job '702cb81f-cf50-4d4f-b60d-b06e62f36de3'...
+    Results for job '702cb81f-cf50-4d4f-b60d-b06e62f36de3' have been written to...
     wasm_results
+
+
+    11:05:14.218 | ??? providerquerymanager/providerquerymanager.go:344 > ERROR bitswap Received provider (12D3KooWGE4R98vokeLsRVdTv8D6jhMnifo81mm7NMRV8WJPNVHb) for cid (QmaxyTrc3zSb6ggUVYgXb9yxVJZ9cXv6Y6u55Czm2eqaWD) not requested
+    
 
 
 

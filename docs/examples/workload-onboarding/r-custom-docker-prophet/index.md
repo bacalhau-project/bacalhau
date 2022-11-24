@@ -41,7 +41,7 @@ After installation is finished, you can download the example data that is stored
 
 
 ```bash
-wget https://cloudflare-ipfs.com/ipfs/QmZiwZz7fXAvQANKYnt7ya838VPpj4agJt5EDvRYp3Deeo/example_wp_log_R.csv
+wget https://w3s.link/ipfs/QmZiwZz7fXAvQANKYnt7ya838VPpj4agJt5EDvRYp3Deeo/example_wp_log_R.csv
 ```
 
 The code below instantiates the library and fits a model to the data.

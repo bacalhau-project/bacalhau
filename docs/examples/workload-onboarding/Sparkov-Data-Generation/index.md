@@ -250,6 +250,14 @@ jsacex/sparkov-data-generation \
 --  python3 datagen.py -n 1000 -o ../outputs "01-01-2022" "10-01-2022"
 ```
 
+
+```python
+%env JOB_ID={job_id}
+```
+
+    env: JOB_ID=d986b432-9af6-4463-93d2-362dbccb8379
+
+
 Running the commands will output a UUID that represents the job that was created. You can check the status of the job with the following command:
 
 
