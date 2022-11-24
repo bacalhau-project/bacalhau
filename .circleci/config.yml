@@ -648,7 +648,8 @@ workflows:
       - build_swagger:
           name: Build swagger docs
           filters:
-            <<: *filters_main_only
+            tags:
+              ignore: /.*/
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
