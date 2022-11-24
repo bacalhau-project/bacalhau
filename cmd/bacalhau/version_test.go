@@ -46,7 +46,7 @@ func (suite *VersionSuite) SetupTest() {
 }
 
 func (suite *VersionSuite) Test_Version() {
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -62,7 +62,7 @@ func (suite *VersionSuite) Test_Version() {
 }
 
 func (suite *VersionSuite) Test_VersionOutputs() {
-	c, cm := publicapi.SetupRequesterNodeForTests(suite.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(suite.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
