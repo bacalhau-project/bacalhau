@@ -26,6 +26,32 @@ func (e ErrExecutionNotFound) Error() string {
 	return "execution not found: " + e.ExecutionID
 }
 
+// ErrExecutionNotFound is returned when the execution is not found
+type ErrExecutionsNotFoundForShard struct {
+	ShardID string
+}
+
+func NewErrExecutionsNotFound(id string) ErrExecutionsNotFoundForShard {
+	return ErrExecutionsNotFoundForShard{ShardID: id}
+}
+
+func (e ErrExecutionsNotFoundForShard) Error() string {
+	return "no executions found for shard: " + e.ShardID
+}
+
+// ErrExecutionHistoryNotFound is returned when the execution is not found
+type ErrExecutionHistoryNotFound struct {
+	ExecutionID string
+}
+
+func NewErrExecutionHistoryNotFound(id string) ErrExecutionHistoryNotFound {
+	return ErrExecutionHistoryNotFound{ExecutionID: id}
+}
+
+func (e ErrExecutionHistoryNotFound) Error() string {
+	return "no history found for execution: " + e.ExecutionID
+}
+
 // ErrExecutionAlreadyExists is returned when an execution already exists
 type ErrExecutionAlreadyExists struct {
 	ExecutionID string

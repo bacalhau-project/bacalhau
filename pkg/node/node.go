@@ -241,7 +241,7 @@ func generateComputeNode(
 	publishers publisher.PublisherProvider,
 	jobEventPublisher eventhandler.JobEventHandler) (frontend.Service, *pubsub.FrontendEventProxy, []model.DebugInfoProvider) {
 	debugInfoProviders := []model.DebugInfoProvider{}
-	executionStore := inmemory.NewInMemoryStore()
+	executionStore := inmemory.NewStore()
 
 	// backend
 	capacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{

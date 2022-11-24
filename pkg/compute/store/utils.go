@@ -8,18 +8,18 @@ import (
 
 // GetActiveExecution returns the active execution for a given shard.
 // In case of a bug where we have more than a single active execution, the latest one is returned
-func GetActiveExecution(ctx context.Context, s ExecutionStore, shardID string) (*Execution, error) {
+func GetActiveExecution(ctx context.Context, s ExecutionStore, shardID string) (Execution, error) {
 	executions, err := s.GetExecutions(ctx, shardID)
 	if err != nil {
-		return nil, err
+		return Execution{}, err
 	}
 
-	var activeExecution *Execution
+	var activeExecution Execution
 	var activeExecutionsCount int
 	for _, execution := range executions {
 		if execution.State.IsActive() {
 			activeExecutionsCount++
-			if activeExecution == nil || execution.UpdateTime.After(activeExecution.UpdateTime) {
+			if activeExecutionsCount != 1 || execution.UpdateTime.After(activeExecution.UpdateTime) {
 				activeExecution = execution
 			}
 		}
@@ -33,10 +33,7 @@ func GetActiveExecution(ctx context.Context, s ExecutionStore, shardID string) (
 	return activeExecution, nil
 }
 
-func ValidateNewExecution(ctx context.Context, execution *Execution) error {
-	if execution == nil {
-		return NewErrNilExecution()
-	}
+func ValidateNewExecution(ctx context.Context, execution Execution) error {
 	if execution.State != ExecutionStateCreated {
 		return NewErrInvalidExecutionState(execution.ID, execution.State, ExecutionStateCreated)
 	}

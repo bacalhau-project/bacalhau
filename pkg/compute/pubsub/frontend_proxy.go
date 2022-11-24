@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -103,15 +104,15 @@ func (p FrontendEventProxy) triggerStateTransition(ctx context.Context, event mo
 	shardID := model.GetShardID(event.JobID, event.ShardIndex)
 	activeExecution, err := store.GetActiveExecution(ctx, p.executionStore, shardID)
 	if err != nil {
-		return fmt.Errorf("error getting active execution: %w", err)
-	}
-
-	// we only care about events if it is related to a shard that we are executing
-	if activeExecution == nil {
-		if event.TargetNodeID == p.nodeID {
-			log.Ctx(ctx).Warn().Msgf(
-				"received event targeted to this node for shard %s, but no execution state exists!", shardID)
+		if !errors.As(err, &store.ErrExecutionNotFound{}) {
+			return fmt.Errorf("error getting active execution: %w", err)
+		} else {
+			if event.TargetNodeID == p.nodeID {
+				log.Ctx(ctx).Warn().Msgf(
+					"received event targeted to this node for shard %s, but no execution state exists!", shardID)
+			}
 		}
+		// we only care about events if it is related to a shard that we are executing
 		return nil
 	}
 
@@ -178,7 +179,7 @@ func (p FrontendEventProxy) processBidJob(ctx context.Context, executionID strin
 	return p.jobEventPublisher.HandleJobEvent(ctx, p.constructEvent(ctx, execution, model.JobEventBid))
 }
 
-func (p FrontendEventProxy) constructEvent(ctx context.Context, execution *store.Execution, eventName model.JobEventType) model.JobEvent {
+func (p FrontendEventProxy) constructEvent(ctx context.Context, execution store.Execution, eventName model.JobEventType) model.JobEvent {
 	return model.JobEvent{
 		SourceNodeID: p.nodeID,
 		JobID:        execution.Shard.Job.ID,

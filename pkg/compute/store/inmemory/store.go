@@ -9,18 +9,18 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
-type InMemoryStore struct {
-	executionMap map[string]*store.Execution
+type Store struct {
+	executionMap map[string]store.Execution
 	shardMap     map[string][]string
-	history      map[string][]*store.ExecutionHistory
+	history      map[string][]store.ExecutionHistory
 	mu           sync.RWMutex
 }
 
-func NewInMemoryStore() *InMemoryStore {
-	res := &InMemoryStore{
-		executionMap: make(map[string]*store.Execution),
+func NewStore() *Store {
+	res := &Store{
+		executionMap: make(map[string]store.Execution),
 		shardMap:     make(map[string][]string),
-		history:      make(map[string][]*store.ExecutionHistory),
+		history:      make(map[string][]store.ExecutionHistory),
 	}
 	res.mu.EnableTracerWithOpts(sync.Opts{
 		Threshold: 10 * time.Millisecond,
@@ -29,31 +29,48 @@ func NewInMemoryStore() *InMemoryStore {
 	return res
 }
 
-func (s *InMemoryStore) GetExecution(ctx context.Context, id string) (*store.Execution, error) {
+func (s *Store) GetExecution(ctx context.Context, id string) (store.Execution, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.executionMap[id], nil
+	execution, ok := s.executionMap[id]
+	if !ok {
+		return execution, store.NewErrExecutionNotFound(id)
+	}
+	return execution, nil
 }
 
-func (s *InMemoryStore) GetExecutions(ctx context.Context, shardID string) ([]*store.Execution, error) {
+func (s *Store) GetExecutions(ctx context.Context, shardID string) ([]store.Execution, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	executionIDs := s.shardMap[shardID]
-	executions := make([]*store.Execution, len(executionIDs))
+	executionIDs, ok := s.shardMap[shardID]
+	if !ok {
+		return []store.Execution{}, store.NewErrExecutionsNotFound(shardID)
+	}
+	executions := make([]store.Execution, len(executionIDs))
 	for i, id := range executionIDs {
 		executions[i] = s.executionMap[id]
 	}
 	return executions, nil
 }
 
-func (s *InMemoryStore) CreateExecution(ctx context.Context, execution *store.Execution) error {
+func (s *Store) GetExecutionHistory(ctx context.Context, id string) ([]store.ExecutionHistory, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	history, ok := s.history[id]
+	if !ok {
+		return history, store.NewErrExecutionHistoryNotFound(id)
+	}
+	return history, nil
+}
+
+func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.executionMap[execution.ID]; ok {
 		return store.NewErrExecutionAlreadyExists(execution.ID)
 	}
 	if err := store.ValidateNewExecution(ctx, execution); err != nil {
-		return fmt.Errorf("could not create invalid execution: %w", err)
+		return fmt.Errorf("CreateExecution failure: %w", err)
 	}
 
 	s.executionMap[execution.ID] = execution
@@ -61,7 +78,7 @@ func (s *InMemoryStore) CreateExecution(ctx context.Context, execution *store.Ex
 	return nil
 }
 
-func (s *InMemoryStore) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
+func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateExecutionStateRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	execution, ok := s.executionMap[request.ExecutionID]
@@ -74,7 +91,7 @@ func (s *InMemoryStore) UpdateExecutionState(ctx context.Context, request store.
 	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
 		return store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
 	}
-	historyEntry := &store.ExecutionHistory{
+	historyEntry := store.ExecutionHistory{
 		ExecutionID:   execution.ID,
 		PreviousState: execution.State,
 		NewState:      request.NewState,
@@ -87,7 +104,7 @@ func (s *InMemoryStore) UpdateExecutionState(ctx context.Context, request store.
 	return nil
 }
 
-func (s *InMemoryStore) DeleteExecution(ctx context.Context, id string) error {
+func (s *Store) DeleteExecution(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	execution, ok := s.executionMap[id]
@@ -95,11 +112,15 @@ func (s *InMemoryStore) DeleteExecution(ctx context.Context, id string) error {
 		delete(s.executionMap, id)
 		delete(s.history, id)
 		shardID := execution.Shard.ID()
-		shard := s.shardMap[shardID]
-		for i, e := range shard {
-			if e == id {
-				s.shardMap[shardID] = append(shard[:i], shard[i+1:]...)
-				break
+		shardExecutions := s.shardMap[shardID]
+		if len(shardExecutions) == 1 {
+			delete(s.shardMap, shardID)
+		} else {
+			for i, executionID := range shardExecutions {
+				if executionID == id {
+					s.shardMap[shardID] = append(shardExecutions[:i], shardExecutions[i+1:]...)
+					break
+				}
 			}
 		}
 	}
@@ -107,4 +128,4 @@ func (s *InMemoryStore) DeleteExecution(ctx context.Context, id string) error {
 }
 
 // compile-time check that we implement the interface ExecutionStore
-var _ store.ExecutionStore = (*InMemoryStore)(nil)
+var _ store.ExecutionStore = (*Store)(nil)

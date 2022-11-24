@@ -109,7 +109,7 @@ func (s BaseService) prepareAskForBidShardResponse(
 		}, nil
 	}
 
-	execution := store.NewExecution(
+	execution := *store.NewExecution(
 		"e-"+uuid.NewString(),
 		model.JobShard{Job: &request.Job, Index: shardIndex},
 		shardRequirements,
@@ -156,7 +156,7 @@ func (s BaseService) BidAccepted(ctx context.Context, request BidAcceptedRequest
 		"client_id":   execution.Shard.Job.ClientID,
 	}).Inc()
 
-	err = s.backend.Run(ctx, *execution)
+	err = s.backend.Run(ctx, execution)
 	if err != nil {
 		return BidAcceptedResult{}, err
 	}
@@ -192,7 +192,7 @@ func (s BaseService) ResultAccepted(ctx context.Context, request ResultAcceptedR
 		return ResultAcceptedResult{}, err
 	}
 
-	err = s.backend.Publish(ctx, *execution)
+	err = s.backend.Publish(ctx, execution)
 	if err != nil {
 		return ResultAcceptedResult{}, err
 	}
@@ -224,7 +224,7 @@ func (s BaseService) CancelJob(ctx context.Context, request CancelJobRequest) (C
 	}
 
 	if execution.State.IsExecuting() {
-		err = s.backend.Cancel(ctx, *execution)
+		err = s.backend.Cancel(ctx, execution)
 		if err != nil {
 			return CancelJobResult{}, err
 		}

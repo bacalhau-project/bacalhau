@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -28,6 +29,11 @@ func NewExecution(id string, shard model.JobShard, resourceUsage model.ResourceU
 		CreateTime:    time.Now(),
 		UpdateTime:    time.Now(),
 	}
+}
+
+// string returns a string representation of the execution
+func (e Execution) String() string {
+	return fmt.Sprintf("{ID: %s, Shard: %s, State: %s}", e.ID, e.Shard.ID(), e.State)
 }
 
 type ExecutionHistory struct {
@@ -67,11 +73,13 @@ type UpdateExecutionStateRequest struct {
 
 type ExecutionStore interface {
 	// GetExecution returns the execution for a given id
-	GetExecution(ctx context.Context, id string) (*Execution, error)
+	GetExecution(ctx context.Context, id string) (Execution, error)
 	// GetExecutions returns all the executions for a given shard
-	GetExecutions(ctx context.Context, sharedID string) ([]*Execution, error)
+	GetExecutions(ctx context.Context, sharedID string) ([]Execution, error)
+	// GetExecutionHistory returns the history of an execution
+	GetExecutionHistory(ctx context.Context, id string) ([]ExecutionHistory, error)
 	// CreateExecution creates a new execution for a given shard
-	CreateExecution(ctx context.Context, execution *Execution) error
+	CreateExecution(ctx context.Context, execution Execution) error
 	// UpdateExecutionState updates the execution state
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error
 	// DeleteExecution deletes an execution
