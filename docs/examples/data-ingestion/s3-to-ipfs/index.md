@@ -1,6 +1,6 @@
 ---
 sidebar_label: "From S3"
-sidebar_position: 2
+sidebar_position: 3
 ---
 # Copy Data from S3 to IPFS
 

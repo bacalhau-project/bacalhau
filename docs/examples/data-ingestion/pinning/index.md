@@ -1,141 +1,19 @@
 ---
-sidebar_label: "From Your Machine"
-sidebar_position: 1
+sidebar_label: "Pinning to Filecoin"
+sidebar_position: 2
 ---
-# How to Ingest Data For Use in Bacalhau
+# Pinning Data to IPFS with Filecoin 
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-ingestion/index.ipynb)
-[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/index.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bacalhau-project/examples/blob/main/data-ingestion/pinning/index.ipynb)
+[![Open In Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/bacalhau-project/examples/HEAD?labpath=data-ingestion/pinning/index.ipynb)
 
-Before you can start crunching data, you need to make it addressable and accessible via [IPFS](https://ipfs.io/). This notebook will demonstrate several ways to do that.
+Before you can start crunching data, you need to make it addressable and accessible via [IPFS](https://ipfs.io/). This notebook shows how to pin data to IPFS using [Filecoin](https://filecoin.io/).
 
 ### Introduction
 
 The goal of the Bacalhau project is to make it easy to perform distributed, decentralised computation next to where the data resides. So a key step in this process is making your data accessible.
 
-IPFS is a set of protocols that allow data to be discovered and accessed in a decentralised way. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID. This notebook will show you two ways of interacting with IPFS to move your data from one place (e.g. your machine) to IPFS.
-
-### Prerequisites
-
-* The [Bacalhau CLI](https://docs.bacalhau.org/getting-started/installation) (if you want to run the Bacalhau examples)
-* [Docker](https://docs.docker.com/engine/install/) (if you want to run the Docker examples)
-
-## Moving Data via Bacalhau
-
-The easiest way to move data into IPFS is by leveraging helper functions in the Bacalhau CLI.
-
-
-```python
-!(export BACALHAU_INSTALL_DIR=.; curl -sL https://get.bacalhau.org/install.sh | bash)
-path=!echo $PATH
-%env PATH=./:{path[0]}
-```
-
-    Your system is darwin_arm64
-    
-    BACALHAU CLI is detected:
-    Client Version: v0.3.2
-    Server Version: v0.3.2
-    Reinstalling BACALHAU CLI - ./bacalhau...
-    Getting the latest BACALHAU CLI...
-    Installing v0.3.2 BACALHAU CLI...
-    Downloading https://github.com/filecoin-project/bacalhau/releases/download/v0.3.2/bacalhau_v0.3.2_darwin_arm64.tar.gz ...
-    Downloading sig file https://github.com/filecoin-project/bacalhau/releases/download/v0.3.2/bacalhau_v0.3.2_darwin_arm64.tar.gz.signature.sha256 ...
-    Verified OK
-    Extracting tarball ...
-    NOT verifying Bin
-    bacalhau installed into . successfully.
-    Client Version: v0.3.2
-    Server Version: v0.3.2
-    env: PATH=./:./:./:./:./:/Users/phil/.pyenv/versions/3.9.7/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.gvm/bin:/opt/homebrew/opt/findutils/libexec/gnubin:/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/phil/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/MacGPG2/bin:/Users/phil/.nexustools
-
-
-### URL -> IPFS
-
-The Bacalhau binary includes a helper function to upload from a public URL. This is useful if you have data hosted on a website or in a public S3 bucket (for example).
-
-The following code copies the data from a specified URL to the `/ouputs` directory of a Bacalhau job, and then uploads it to IPFS. Bacalhau will return the CID of the uploaded data.
-
-:::tip
-
-Be careful with the syntax of the command in this example. The `--input-urls` flag only supports writing from a single URL that represents a file to a single path that includes a file. You cannot write to a directory.
-
-To make sure, you can add an `ls` to the command to see what is exposed in the input directory and then download the result and look at the stdout.
-:::
-
-
-```bash
-bacalhau docker run \
-    --wait \
-    --id-only \
-    --input-urls http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz ubuntu -- cp -rv /inputs/. /outputs/
-```
-
-
-```python
-%env JOB_ID={job_id}
-```
-
-    env: JOB_ID=de712a10-37dc-4ceb-915d-571ad00a6bf4
-
-
-
-```bash
-bacalhau list --id-filter ${JOB_ID} --wide
-```
-
-    [92;100m CREATED           [0m[92;100m ID                                   [0m[92;100m JOB                                      [0m[92;100m STATE     [0m[92;100m VERIFIED [0m[92;100m PUBLISHED                                            [0m
-    [97;40m 22-10-11-10:04:01 [0m[97;40m de712a10-37dc-4ceb-915d-571ad00a6bf4 [0m[97;40m Docker ubuntu cp -rv /inputs/. /outputs/ [0m[97;40m Completed [0m[97;40m          [0m[97;40m /ipfs/Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp [0m
-
-
-The output of the list command presents the CID of the output directory. You can use this in subsequent jobs. For example, let's run a simple command to `ls` the contents of that CID.
-
-:::warning
-
-This file is not pinned. There is no guarantee that the file will exist in the future. If you want to ensure that the file is pinned, use a pinning service.
-
-:::
-
-
-```bash
-bacalhau docker run --inputs Qma5e6EDpPe2TsKuz3tumSPSta6vtx48A18f9k99HJATfp ubuntu -- ls -l /inputs/outputs/
-```
-
-    Job successfully submitted. Job ID: 28850250-687d-440e-b6e6-fb809ead8f97
-    Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):
-    
-    	       Creating job for submission ... done ✅
-    	       Finding node(s) for the job ... done ✅
-    	             Node accepted the job ... done ✅
-    	                                   ... done ✅
-    	   Job finished, verifying results ... done ✅
-    	      Results accepted, publishing ... done ✅
-    	                                  
-    Results CID: QmSTbh1wRkwcNkjTmCWjUWxwaBs1q2BtG5r2U6mere5ARc
-    Job Results By Node:
-    Node QmXaXu9N:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    Node QmYgxZiy:
-      Shard 0:
-        Status: Completed
-        Container Exit Code: 0
-        Stdout:
-          total 9684
-    -rw-r--r-- 1 root root 9912422 Oct 11 10:04 train-images-idx3-ubyte.gz
-        Stderr: <NONE>
-    Node QmdZQ7Zb:
-      Shard 0:
-        Status: Cancelled
-        No RunOutput for this shard
-    
-    To download the results, execute:
-      bacalhau get 28850250-687d-440e-b6e6-fb809ead8f97
-    
-    To get more details about the run, execute:
-      bacalhau describe 28850250-687d-440e-b6e6-fb809ead8f97
-
+IPFS is a set of protocols that allow data to be discovered and accessed in a decentralised way. Data is identified by its content identifier (CID) and can be accessed by anyone who knows the CID.
 
 ## Using a Third-Party to Pin Data
 
