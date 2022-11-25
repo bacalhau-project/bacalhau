@@ -27,6 +27,14 @@ docs = ["furo (>=2022.6.21)", "sphinx (>=5.1.1)", "sphinx-autodoc-typehints (>=1
 testing = ["covdefaults (>=2.2)", "coverage (>=6.4.2)", "pytest (>=7.1.2)", "pytest-cov (>=3)", "pytest-timeout (>=2.1)"]
 
 [[package]]
+name = "graphql-core"
+version = "3.2.3"
+description = "GraphQL implementation for Python, a port of GraphQL.js, the JavaScript reference implementation for GraphQL."
+category = "main"
+optional = false
+python-versions = ">=3.6,<4"
+
+[[package]]
 name = "identify"
 version = "2.5.8"
 description = "File identification library for Python"
@@ -98,6 +106,22 @@ testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8 (<5)", "flake8-202
 testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
+name = "sgqlc"
+version = "16.0"
+description = "Simple GraphQL Client"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+graphql-core = "*"
+
+[package.extras]
+requests = ["requests"]
+sphinx = ["sphinx", "sphinx-argparse"]
+websocket = ["websocket-client"]
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
@@ -125,7 +149,7 @@ testing = ["coverage (>=6.2)", "coverage-enable-subprocess (>=1)", "flaky (>=3.7
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5dbdada651f3376d6515c5f8b1c4d60db0834de743bff284ab24ba900da9bdf5"
+content-hash = "39ed7b2d39d0b028e5c679a6b8356ce32561451cd3c73f5ea9718ee40577f483"
 
 [metadata.files]
 cfgv = [
@@ -139,6 +163,10 @@ distlib = [
 filelock = [
     {file = "filelock-3.8.0-py3-none-any.whl", hash = "sha256:617eb4e5eedc82fc5f47b6d61e4d11cb837c56cb4544e39081099fa17ad109d4"},
     {file = "filelock-3.8.0.tar.gz", hash = "sha256:55447caa666f2198c5b6b13a26d2084d26fa5b115c00d065664b2124680c4edc"},
+]
+graphql-core = [
+    {file = "graphql-core-3.2.3.tar.gz", hash = "sha256:06d2aad0ac723e35b1cb47885d3e5c45e956a53bc1b209a9fc5369007fe46676"},
+    {file = "graphql_core-3.2.3-py3-none-any.whl", hash = "sha256:5766780452bd5ec8ba133f8bf287dc92713e3868ddd83aee4faab9fc3e303dc3"},
 ]
 identify = [
     {file = "identify-2.5.8-py2.py3-none-any.whl", hash = "sha256:48b7925fe122720088aeb7a6c34f17b27e706b72c61070f27fe3789094233440"},
@@ -201,6 +229,10 @@ pyyaml = [
 setuptools = [
     {file = "setuptools-65.5.1-py3-none-any.whl", hash = "sha256:d0b9a8433464d5800cbe05094acf5c6d52a91bfac9b52bcfc4d41382be5d5d31"},
     {file = "setuptools-65.5.1.tar.gz", hash = "sha256:e197a19aa8ec9722928f2206f8de752def0e4c9fc6953527360d1c36d94ddb2f"},
+]
+sgqlc = [
+    {file = "sgqlc-16.0-py3-none-any.whl", hash = "sha256:fd55d808e17c96392bcc9058b31433ef9ae6376ca36a6352d4bd602b968193a2"},
+    {file = "sgqlc-16.0.tar.gz", hash = "sha256:e8de916cc8fab5470803c01c06e0fc0a0aad6ecef2b6cdb48e5143a6e2cd7e0a"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
