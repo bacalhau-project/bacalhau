@@ -1,0 +1,54 @@
+{
+  search(type: REPOSITORY, query: "org:filecoin-project bacalhau", first: 1) {
+    edges {
+      node {
+        __typename
+        ... on Repository {
+          owner {
+            id
+          }
+          name
+          projects(first: 10) {
+            edges {
+              node {
+                id
+                number
+                name
+                columns(first: 30) {
+                  edges {
+                    node {
+                      id
+                      name
+                      cards(first: 30) {
+                        edges {
+                          cursor
+                          node {
+                            id
+                            note
+                            state
+                            content {
+                              ... on Issue {
+                                id
+                                number
+                                title
+                              }
+                              ... on PullRequest {
+                                id
+                                number
+                                title
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

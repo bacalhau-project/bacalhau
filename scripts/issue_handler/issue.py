@@ -1,92 +1,43 @@
-from ghapi.all import GhApi
 import os
 from dotenv import load_dotenv
 
 from pathlib import Path
 
+from sgqlc.endpoint.http import HTTPEndpoint
+from operations import Operations
+
 e = Path(__file__) / ".env"
 load_dotenv()
 
 gh_token = os.getenv("GITHUB_TOKEN")
-api = GhApi(owner="filecoin-project", token=gh_token)
 
-p = api.projectsv2.list_cards(column_id="f17de28f")
-print(f"{p.title} - {p.id}")
+endpoint = HTTPEndpoint(
+    "https://api.github.com/graphql",
+    {
+        "Authorization": "bearer " + os.environ["GH_TOKEN"],
+    },
+)
 
-# # Get project ID for filecoin-project - bacalhau
-# columns = api.projects.list_columns()q
+owner = os.environ["OWNER"]
+repo = os.environ["REPO"]
 
-# for c in columns:
-#     print(c)
+# op = Operations.query.list_issues
 
-# columns = api.projects.get_project_columns(project_id=1)
+# # you can print the resulting GraphQL
+# print(op)  # noqa: T001
 
-# cards = api.projects.list_cards(column_id=1)
-# for card in cards:
-#     # If the card points to an issue, grab its list of labels
-#     if "content_url" not in card:
-#         continue
-#     _, org, repo, _, num = card["content_url"].rsplit("/", 4)
-#     issue_labels = api.issues.list_labels_on_issue(org, repo, num)
+# # Call the endpoint:
+# data = endpoint(op, {"owner": owner, "name": repo})
 
+# # Interpret results into native objects
+# repo = (op + data).repository
+# for issue in repo.issues.nodes:
+#     print(issue)
 
-# gh api graphql -f query='
-#   query{
-#   node(id: "PVT_kwDOAU_qk84AHJ4X") {
-#     ... on ProjectV2 {
-#       fields(first: 20) {
-#         nodes {
-#           ... on ProjectV2Field {
-#             id
-#             name
-#           }
-#           ... on ProjectV2IterationField {
-#             id
-#             name
-#             configuration {
-#               iterations {
-#                 startDate
-#                 id
-#               }
-#             }
-#           }
-#           ... on ProjectV2SingleSelectField {
-#             id
-#             name
-#             options {
-#               id
-#               name
-#             }
-#           }
-#         }
-#       }
-#     }
-#   }
-# }'
+op = Operations.query.get_issue
+print(op)
 
+data = endpoint(op, {"owner": owner, "name": repo, "number": 1375})
+issue = (op + data).repository.issue
 
-# "options": [
-#   {
-#     "id": "f17de28f",
-#     "name": "Triage"
-#   },
-#   {
-#     "id": "f75ad846",
-#     "name": "Todo"
-#   },
-#   {
-#     "id": "1e2a6912",
-#     "name": "Must Have for Next Event"
-#   },
-#   {
-#     "id": "47fc9ee4",
-#     "name": "In Progress"
-#   },
-#   {
-#     "id": "e3b53dda",
-#     "name": "To Celebrate"
-#   },
-#   {
-#     "id": "98236657",
-#     "name": "Done"
-#   }
+print(issue)
