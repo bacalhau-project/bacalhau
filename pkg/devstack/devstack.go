@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
+	"github.com/filecoin-project/bacalhau/pkg/transport"
 
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
@@ -25,6 +26,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport/libp2p"
+	"github.com/filecoin-project/bacalhau/pkg/transport/simulator"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/phayes/freeport"
 	"github.com/rs/zerolog/log"
@@ -38,6 +40,7 @@ type DevStackOptions struct {
 	LocalNetworkLotus    bool
 	FilecoinUnsealedPath string
 	EstuaryAPIKey        string
+	SimulatorURL         string // if this is set, we will use the simulator transport
 }
 type DevStack struct {
 	Nodes []*node.Node
@@ -155,37 +158,52 @@ func NewDevStack(
 			return nil, err
 		}
 
-		//////////////////////////////////////
-		// libp2p
-		//////////////////////////////////////
-		libp2pPort, ports := ports[0], ports[1:]
-		libp2pPeer := []multiaddr.Multiaddr{}
+		var useTransport transport.Transport
 
-		if i == 0 {
-			if options.Peer != "" {
-				// connect 0'th node to external peer if specified
-				log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
-				peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
-				if addrErr != nil {
-					return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+		var libp2pPort int
+		if options.SimulatorURL == "" {
+			//////////////////////////////////////
+			// libp2p
+			//////////////////////////////////////
+
+			libp2pPort, ports = ports[0], ports[1:]
+			libp2pPeer := []multiaddr.Multiaddr{}
+
+			if i == 0 {
+				if options.Peer != "" {
+					// connect 0'th node to external peer if specified
+					log.Debug().Msgf("Connecting 0'th node to remote peer: %s", options.Peer)
+					peerAddr, addrErr := multiaddr.NewMultiaddr(options.Peer)
+					if addrErr != nil {
+						return nil, fmt.Errorf("failed to parse peer address: %w", addrErr)
+					}
+					libp2pPeer = []multiaddr.Multiaddr{peerAddr}
 				}
-				libp2pPeer = []multiaddr.Multiaddr{peerAddr}
+			} else {
+				libp2pPeer, err = nodes[0].Transport.HostAddrs()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
+				}
+				log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
 			}
-		} else {
-			libp2pPeer, err = nodes[0].Transport.HostAddrs()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get libp2p addresses: %w", err)
-			}
-			log.Debug().Msgf("Connecting to first libp2p scheduler node: %s", libp2pPeer)
-		}
 
-		transport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
-		if transportErr != nil {
-			return nil, transportErr
+			libp2pTransport, transportErr := libp2p.NewTransport(ctx, cm, libp2pPort, libp2pPeer)
+			if transportErr != nil {
+				return nil, transportErr
+			}
+
+			useTransport = libp2pTransport
+		} else {
+			var simulatorTransport transport.Transport
+			simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+			if err != nil {
+				return nil, err
+			}
+			useTransport = simulatorTransport
 		}
 
 		// add NodeID to logging context
-		ctx = logger.ContextWithNodeIDLogger(ctx, transport.HostID())
+		ctx = logger.ContextWithNodeIDLogger(ctx, useTransport.HostID())
 
 		//////////////////////////////////////
 		// port for API
@@ -221,11 +239,11 @@ func NewDevStack(
 			IPFSClient:           ipfsClient,
 			CleanupManager:       cm,
 			LocalDB:              datastore,
-			Transport:            transport,
+			Transport:            useTransport,
 			FilecoinUnsealedPath: options.FilecoinUnsealedPath,
 			EstuaryAPIKey:        options.EstuaryAPIKey,
 			HostAddress:          "0.0.0.0",
-			HostID:               transport.HostID(),
+			HostID:               useTransport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
 			ComputeConfig:        computeConfig,
@@ -251,7 +269,7 @@ func NewDevStack(
 		}
 
 		// Start transport layer
-		err = transport.Start(ctx)
+		err = useTransport.Start(ctx)
 		if err != nil {
 			return nil, err
 		}

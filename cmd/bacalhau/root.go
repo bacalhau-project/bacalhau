@@ -49,6 +49,7 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 
 	// Serve commands
 	RootCmd.AddCommand(serveCmd)
+	RootCmd.AddCommand(simulatorCmd)
 	RootCmd.AddCommand(idCmd)
 	RootCmd.AddCommand(devstackCmd)
 

@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"go.ptx.dk/multierrgroup"
 	"go.uber.org/multierr"
 )
 
@@ -106,29 +106,19 @@ func WriteJobResults(resultsDir string, stdout, stderr io.Reader, exitcode int, 
 		},
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(outputs))
-
-	errChan := make(chan error, len(outputs))
-	makeResult := func(output outputResult) {
-		errChan <- writeOutputResult(resultsDir, output)
-		wg.Done()
-	}
-
+	wg := multierrgroup.Group{}
 	for _, output := range outputs {
-		go makeResult(output)
-	}
-	wg.Wait()
-	close(errChan)
-
-	for outuptErr := range errChan {
-		err = multierr.Append(err, outuptErr)
+		output := output
+		wg.Go(func() error {
+			return writeOutputResult(resultsDir, output)
+		})
 	}
 
-	result.ExitCode = exitcode
+	err = multierr.Append(err, wg.Wait())
 	if err != nil {
 		result.ErrorMsg = err.Error()
 	}
 
+	result.ExitCode = exitcode
 	return result, err
 }

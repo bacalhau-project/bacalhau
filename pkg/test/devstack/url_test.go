@@ -242,7 +242,7 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 			},
 		},
 		ResultsChecker: scenario.FileEquals(ipfs.DownloadFilenameStdout, URLContent+IPFSContent),
-		JobCheckers:    scenario.WaitUntilComplete(1),
+		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
 
 	s.RunScenario(testScenario)

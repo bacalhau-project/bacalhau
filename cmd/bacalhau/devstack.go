@@ -44,6 +44,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		PublicIPFSMode:    false,
 		EstuaryAPIKey:     os.Getenv("ESTUARY_API_KEY"),
 		LocalNetworkLotus: false,
+		SimulatorURL:      "",
 	}
 }
 
@@ -67,6 +68,10 @@ func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.LocalNetworkLotus, "lotus-node", ODs.LocalNetworkLotus,
 		"Also start a Lotus FileCoin instance",
+	)
+	devstackCmd.PersistentFlags().StringVar(
+		&ODs.SimulatorURL, "simulator-url", ODs.SimulatorURL,
+		`Use the simulator transport at the given URL`,
 	)
 
 	setupJobSelectionCLIFlags(devstackCmd)
