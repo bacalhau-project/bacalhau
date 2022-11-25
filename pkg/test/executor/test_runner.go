@@ -8,6 +8,7 @@ import (
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/node"
+	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 	"github.com/filecoin-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/stretchr/testify/require"
@@ -22,10 +23,11 @@ func RunTestCase(
 	ctx := context.Background()
 	spec := testCase.Spec
 
-	stack := testutils.NewDevStack(ctx, t, node.NewComputeConfigWithDefaults())
-	defer stack.Node.CleanupManager.Cleanup()
-
-	executor, err := stack.Node.Executors.GetExecutor(ctx, spec.Engine)
+	stack, _ := testutils.SetupTest(ctx, t, testNodeCount, 0, false,
+		node.NewComputeConfigWithDefaults(),
+		requesternode.NewDefaultRequesterNodeConfig(),
+	)
+	executor, err := stack.Nodes[0].Executors.GetExecutor(ctx, spec.Engine)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
@@ -38,7 +40,7 @@ func RunTestCase(
 		}
 
 		storageList, stErr := getStorage(ctx,
-			model.StorageSourceIPFS, stack.IpfsStack.IPFSClients[:testNodeCount]...)
+			model.StorageSourceIPFS, stack.IPFSClients()[:testNodeCount]...)
 		require.NoError(t, stErr)
 
 		for _, storageSpec := range storageList {

@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package bacalhau
 
@@ -16,6 +16,8 @@ import (
 	"strconv"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -74,7 +76,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -103,7 +105,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 
 	for i, tc := range tests {
 		func() {
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -126,7 +128,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 			require.Contains(s.T(), string(out), randomUUID.String(), "Dry run failed to contain UUID %s", randomUUID.String())
 
 			var j *model.Job
-			model.YAMLUnmarshalWithMax([]byte(out), &j)
+			require.NoError(s.T(), model.YAMLUnmarshalWithMax([]byte(out), &j))
 			require.NotNil(s.T(), j, "Failed to unmarshal job from dry run output")
 			require.Equal(s.T(), j.Spec.Docker.Entrypoint[0], entrypointCommand, "Dry run job should not have an ID")
 		}()
@@ -154,7 +156,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -258,7 +260,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -339,7 +341,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -413,7 +415,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				Fatal = FakeFatalErrorHandler
 
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -501,7 +503,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			*ODR = *NewDockerRunOptions()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -564,7 +566,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
@@ -635,7 +637,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -684,7 +686,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			Fatal = FakeFatalErrorHandler
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -728,7 +730,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"Prominent Late Gothic styled architecture.mp4",
 	}
 
-	stack, _ := devstack_tests.SetupTest(
+	stack, _ := testutils.SetupTest(
 		ctx,
 		s.T(),
 		nodeCount,
@@ -751,7 +753,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		require.NoError(s.T(), err)
 	}
 
-	directoryCid, err := devstack.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	directoryCid, err := ipfs.AddFileToNodes(ctx, dirPath, devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(s.T(), err)
 
 	parsedBasedURI, _ := url.Parse(stack.Nodes[0].APIServer.GetURI())
@@ -774,7 +776,6 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 }
 
 func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
-	s.T().Skip("Skipped as it takes too long to run - see https://github.com/filecoin-project/bacalhau/issues/1045")
 	ctx := context.Background()
 
 	apiSubmitJob := func(
@@ -808,7 +809,65 @@ func (s *DockerRunSuite) TestRun_Deterministic_Verifier() {
 		return j.ID, nil
 	}
 
-	devstack_tests.RunDeterministicVerifierTests(ctx, s.T(), apiSubmitJob)
+	// test that we must have more than one node to run the job
+	s.T().Run("more-than-one-node-to-run-the-job", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      1,
+			ShardCount:     2,
+			BadActors:      0,
+			Confidence:     0,
+			ExpectedPassed: 0,
+			ExpectedFailed: 1,
+		})
+	})
+
+	// test that if all nodes agree then all are verified
+	s.T().Run("all-nodes-agree-then-all-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      3,
+			ShardCount:     2,
+			BadActors:      0,
+			Confidence:     0,
+			ExpectedPassed: 3,
+			ExpectedFailed: 0,
+		})
+	})
+
+	// test that if one node mis-behaves we catch it but the others are verified
+	s.T().Run("one-node-misbehaves-but-others-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      3,
+			ShardCount:     2,
+			BadActors:      1,
+			Confidence:     0,
+			ExpectedPassed: 2,
+			ExpectedFailed: 1,
+		})
+	})
+
+	// test that is there is a draw between good and bad actors then none are verified
+	s.T().Run("draw-between-good-and-bad-actors-then-none-are-verified", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      2,
+			ShardCount:     2,
+			BadActors:      1,
+			Confidence:     0,
+			ExpectedPassed: 0,
+			ExpectedFailed: 2,
+		})
+	})
+
+	// test that with a larger group the confidence setting gives us a lower threshold
+	s.T().Run("larger-group-with-confidence-gives-lower-threshold", func(t *testing.T) {
+		devstack_tests.RunDeterministicVerifierTest(ctx, t, apiSubmitJob, devstack_tests.DeterministicVerifierTestArgs{
+			NodeCount:      5,
+			ShardCount:     2,
+			BadActors:      2,
+			Confidence:     4,
+			ExpectedPassed: 0,
+			ExpectedFailed: 5,
+		})
+	})
 }
 
 func (s *DockerRunSuite) TestTruncateReturn() {
@@ -847,7 +906,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 		//nolint:unusedparams // idomatic
 		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -905,7 +964,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 
 	for _, tc := range tests {
 		ctx := context.Background()
-		c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+		c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 		defer cm.Cleanup()
 
 		*ODR = *NewDockerRunOptions()
@@ -1002,7 +1061,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	*ODR = *NewDockerRunOptions()
 
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -1025,7 +1084,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	var expectedTimeout float64 = 999
 
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)

@@ -117,6 +117,7 @@ func (s *ServiceBuffer) doRun(ctx context.Context, task *bufferTask) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.runningCapacity.Remove(ctx, task.execution.ResourceUsage)
+	delete(s.running, task.execution.ID)
 	s.deque()
 }
 

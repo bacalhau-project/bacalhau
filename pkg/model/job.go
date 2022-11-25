@@ -9,20 +9,20 @@ import (
 
 // Job contains data about a job request in the bacalhau network.
 type Job struct {
-	APIVersion string `json:"APIVersion"`
+	APIVersion string `json:"APIVersion" example:"V1beta1"`
 
 	// The unique global ID of this job in the bacalhau network.
-	ID string `json:"ID,omitempty"`
+	ID string `json:"ID,omitempty" example:"92d5d4ee-3765-4f78-8353-623f5f26df08"`
 
 	// The ID of the requester node that owns this job.
-	RequesterNodeID string `json:"RequesterNodeID,omitempty"`
+	RequesterNodeID string `json:"RequesterNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
 
 	// The public key of the Requester node that created this job
 	// This can be used to encrypt messages back to the creator
 	RequesterPublicKey PublicKey `json:"RequesterPublicKey,omitempty"`
 
 	// The ID of the client that created this job.
-	ClientID string `json:"ClientID,omitempty"`
+	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 
 	// The specification of this job.
 	Spec Spec `json:"Spec,omitempty"`
@@ -34,7 +34,7 @@ type Job struct {
 	ExecutionPlan JobExecutionPlan `json:"ExecutionPlan,omitempty"`
 
 	// Time the job was submitted to the bacalhau network.
-	CreatedAt time.Time `json:"CreatedAt,omitempty"`
+	CreatedAt time.Time `json:"CreatedAt,omitempty" example:"2022-11-17T13:29:01.871140291Z"`
 
 	// The current state of the job
 	State JobState `json:"JobState,omitempty"`
@@ -304,18 +304,18 @@ type JobLocalEvent struct {
 // state locally and can emit events locally
 type JobEvent struct {
 	// APIVersion of the Job
-	APIVersion string `json:"APIVersion,omitempty"`
+	APIVersion string `json:"APIVersion,omitempty" example:"V1beta1"`
 
-	JobID string `json:"JobID,omitempty"`
+	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// what shard is this event for
 	ShardIndex int `json:"ShardIndex,omitempty"`
 	// optional clientID if this is an externally triggered event (like create job)
-	ClientID string `json:"ClientID,omitempty"`
+	ClientID string `json:"ClientID,omitempty" example:"ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"`
 	// the node that emitted this event
-	SourceNodeID string `json:"SourceNodeID,omitempty"`
+	SourceNodeID string `json:"SourceNodeID,omitempty" example:"QmXaXu9N5GNetatsvwnTfQqNtSeKAD6uCmarbh3LMRYAcF"`
 	// the node that this event is for
 	// e.g. "AcceptJobBid" was emitted by Requester but it targeting compute node
-	TargetNodeID string       `json:"TargetNodeID,omitempty"`
+	TargetNodeID string       `json:"TargetNodeID,omitempty" example:"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL"`
 	EventName    JobEventType `json:"EventName,omitempty"`
 	// this is only defined in "create" events
 	Spec Spec `json:"Spec,omitempty"`
@@ -323,12 +323,12 @@ type JobEvent struct {
 	JobExecutionPlan JobExecutionPlan `json:"JobExecutionPlan,omitempty"`
 	// this is only defined in "update_deal" events
 	Deal                 Deal               `json:"Deal,omitempty"`
-	Status               string             `json:"Status,omitempty"`
+	Status               string             `json:"Status,omitempty" example:"Got results proposal of length: 0"`
 	VerificationProposal []byte             `json:"VerificationProposal,omitempty"`
 	VerificationResult   VerificationResult `json:"VerificationResult,omitempty"`
 	PublishedResult      StorageSpec        `json:"PublishedResult,omitempty"`
 
-	EventTime       time.Time `json:"EventTime,omitempty"`
+	EventTime       time.Time `json:"EventTime,omitempty" example:"2022-11-17T13:32:55.756658941Z"`
 	SenderPublicKey PublicKey `json:"SenderPublicKey,omitempty"`
 
 	// RunOutput of the job
@@ -346,13 +346,13 @@ type VerificationResult struct {
 
 type JobCreatePayload struct {
 	// the id of the client that is submitting the job
-	ClientID string `json:"ClientID,omitempty"`
+	ClientID string `json:"ClientID,omitempty" validate:"required"`
 
 	// The job specification:
-	Job *Job `json:"Job,omitempty"`
+	Job *Job `json:"Job,omitempty" validate:"required"`
 
 	// Optional base64-encoded tar file that will be pinned to IPFS and
 	// mounted as storage for the job. Not part of the spec so we don't
 	// flood the transport layer with it (potentially very large).
-	Context string `json:"Context,omitempty"`
+	Context string `json:"Context,omitempty" validate:"optional"`
 }

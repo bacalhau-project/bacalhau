@@ -3,15 +3,25 @@
 version: 2.1
 
 executors:
-  linux:
+  # Available resource classes - https://circleci.com/product/features/resource-classes/
+  linux-amd64:
     machine:
       image: ubuntu-2204:2022.07.1
       resource_class: xlarge
-  darwin:
+  linux-arm64:
+    machine:
+      image: ubuntu-2204:2022.07.1
+      resource_class: arm.xlarge
+  darwin-amd64:
     macos:
       xcode: 13.4.1
     resource_class: large
-  windows:
+  darwin-arm64:
+    # Note - not an actual ARM macOS machine (https://circleci.canny.io/cloud-feature-requests/p/support-new-m1-arm-based-macs)
+    macos:
+      xcode: 13.4.1
+    resource_class: large
+  windows-amd64:
     machine:
       image: windows-server-2022-gui:current
       resource_class: windows.xlarge
@@ -30,7 +40,7 @@ jobs:
       GOARCH: << parameters.target_arch >>
       GCS_TEST_RESULTS_BUCKET: bacalhau-global-storage/test-results
     working_directory: ~/repo
-    executor: << parameters.target_os >>
+    executor: << parameters.target_os >>-<< parameters.target_arch >>
     parameters:
       target_arch:
         type: string
@@ -56,16 +66,28 @@ jobs:
                 name: Install Go
                 command: |
                   rm -rf /c/Program\ Files/Go
-                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.zip | tar --extract --gzip --file=- --directory=/c/Program\ Files
 
       - when:
           condition:
             or:
               - equal: ["linux", << parameters.target_os >>]
+          steps:
+            - run:
+                name: Install Go
+                command: |
+                  sudo rm -fr /usr/local/go /usr/local/bin/go
+                  curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-<< parameters.target_arch >>.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+                  sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+
+      - when:
+          condition:
+            or:
               - equal: ["darwin", << parameters.target_os >>]
           steps:
             - run:
                 name: Install Go
+                # Currently don't have a _real_ arm64 macOS box, so always download amd64 version of Go
                 command: |
                   sudo rm -fr /usr/local/go /usr/local/bin/go
                   curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.<< parameters.target_os >>-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
@@ -74,6 +96,10 @@ jobs:
       - run:
           name: Set GOCACHE
           command: echo "export GOCACHE=$HOME/.cache/go-build" >> $BASH_ENV
+
+      - run:
+          name: Set GOPATH
+          command: echo "export GOPATH=$HOME/go" >> $BASH_ENV
 
       - run:
           name: Init tools
@@ -108,7 +134,10 @@ jobs:
       - when:
           condition:
             and:
-              - equal: ["amd64", << parameters.target_arch >>]
+              - not:
+                  and:
+                    - equal: ["darwin", << parameters.target_os >>]
+                    - equal: ["arm64", << parameters.target_arch >>]
               - equal: [true, << parameters.run_tests >>]
           steps:
             - run:
@@ -116,6 +145,7 @@ jobs:
                 environment:
                   LOG_LEVEL: debug
                   TEST_BUILD_TAGS: << parameters.build_tags >>
+                  TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
                 command: |
                   export GOBIN=${HOME}/bin
                   export PATH=$GOBIN:$PATH
@@ -202,7 +232,7 @@ jobs:
       GOPROXY: https://proxy.golang.org
       TARGET_COMMIT: << pipeline.git.revision >>
     working_directory: ~/repo
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       
@@ -212,12 +242,25 @@ jobs:
           command: make update
           
       - run:
-          name: Build canary
+          name: Build
           working_directory: ops/aws/canary/lambda
           command: make build -j
 
+      - run:
+          name: Run tests
+          working_directory: ops/aws/canary/lambda
+          command: |
+            export GOBIN=${HOME}/bin
+            export PATH=$GOBIN:$PATH
+            go install gotest.tools/gotestsum@v1.8.2
+            make test
+
+      - store_test_results:
+          path: ops/aws/canary/lambda/unittests.xml
+
+
   coverage:
-    executor: linux
+    executor: linux-amd64
     environment:
       GOVER: 1.19.3
       GOPROXY: https://proxy.golang.org
@@ -245,7 +288,7 @@ jobs:
       GOLANGCILINT: v1.49.0
       GOPROXY: https://proxy.golang.org
     working_directory: ~/repo
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
 
@@ -358,7 +401,7 @@ jobs:
             heroku run build --app bacalhau-dashboards
 
   release:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       - attach_workspace:
@@ -378,7 +421,7 @@ jobs:
             gh release upload $TAG dist/*
 
   update_ops:
-    executor: linux
+    executor: linux-amd64
     steps:
       - checkout
       - run:
@@ -392,7 +435,7 @@ jobs:
             updatecli apply --config .circleci/dependency-ops.yaml
 
   update_metadata:
-    executor: linux
+    executor: linux-amd64
     parameters:
       METADATA_BUCKET:
         type: string
@@ -408,6 +451,82 @@ jobs:
             cd ops
             pip3 install -r requirements.txt
             python3 update_metadata.py "<< parameters.METADATA_BUCKET >>" "<< parameters.METADATA_FILENAME >>"
+
+  build_swagger:
+    executor: linux-amd64
+    environment:
+      GOVER: 1.19.3
+      GOPROXY: https://proxy.golang.org
+      GOLANGCILINT: v1.49.0
+      TARGET_COMMIT: << pipeline.git.revision >>
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "b2:46:a2:7c:94:1f:84:be:99:70:1e:44:50:1e:33:2b"
+      - run:
+          name: Install Go
+          command: |
+            sudo rm -fr /usr/local/go /usr/local/bin/go
+            curl --silent --show-error --location --fail https://go.dev/dl/go$GOVER.linux-amd64.tar.gz | sudo tar --extract --gzip --file=- --directory=/usr/local
+            sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
+      - run:
+          name: Install golangci-lint
+          command: |
+            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
+            # binary will be /usr/local/go/bin/bin/golangci-lint
+            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+            # This breaks normal pathing. So just installing in ./bin/
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
+            golangci-lint version
+      - run:
+          name: Install Swagger
+          command:
+            go install github.com/swaggo/swag/cmd/swag@v1.8.7
+      - run:
+          name: Install Pre-commit
+          command: |
+            make install-pre-commit
+      - run:
+          name: Install golangci-lint
+          command: |
+            echo "Installing GOLANGCILINT: ${GOLANGCILINT}"
+            # binary will be /usr/local/go/bin/bin/golangci-lint
+            # For some reason, .circlerc (I don't know where this file is generated) reports `go env GOPATH` as '/home/circleci/.go_workspace:/usr/local/go_workspace' (with the colon)
+            # This breaks normal pathing. So just installing in ./bin/
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | BINDIR=${HOME}/bin sh -s ${GOLANGCILINT}
+            golangci-lint version
+      - run:
+          name: Build Swagger Docs
+          command:
+            make swagger-docs
+      - run:
+          name: Install gh
+          command: |
+            wget https://github.com/cli/cli/releases/download/v2.14.7/gh_2.14.7_linux_amd64.deb
+            sudo dpkg -i gh_2.14.7_linux_amd64.deb
+            echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
+            rm gh_2.14.7_linux_amd64.deb
+      - run:
+          name: Git commit
+          command: |
+            git config user.email "enrico.rotundo@gmail.com"
+            git config user.name "enricorotundo"
+            # Note: we delete this branch after the PR is merged
+            git checkout -b ci-build-swagger-docs
+            git add --verbose -- ./docs
+            COMMIT_MSG="Build swagger reference - this is an automatic commit"
+            git commit --allow-empty -m "[circleci] $COMMIT_MSG [skip ci]"
+            git push --set-upstream origin ci-build-swagger-docs
+      - run:
+          name: Creating & merging pull request
+          command: |
+            git status --short
+            PR_URL=$(gh pr create --fill --head ci-build-swagger-docs --base main --label documentation --repo filecoin-project/bacalhau)
+            echo "Pull request: $PR_URL"
+            sleep 3
+            gh pr merge --auto --delete-branch -r $PR_URL
 
 orbs:
   heroku: circleci/heroku@1.2.6
@@ -523,6 +642,15 @@ workflows:
           name: update-terraform-files
           filters:
             <<: *filters_main_only
+  
+  build_swagger: # This workflow will only run on 'main' and will not run on tags
+    jobs:
+      - build_swagger:
+          name: Build swagger docs
+          filters:
+            tags:
+              ignore: /.*/
+
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
       - build:
@@ -557,6 +685,7 @@ workflows:
             - release-all-binaries
           filters:
             <<: *filters_tags_only
+  
   performance: # This workflow will run on all branches except 'main' and will not run on tags
     jobs:
       - build:

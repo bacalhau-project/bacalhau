@@ -81,6 +81,11 @@ func (cm *CleanupManager) Cleanup() {
 	cm.fnsMutex.Lock()
 	defer cm.fnsMutex.Unlock()
 
+	if cm.fnsDone {
+		log.Warn().Msg("CleanupManager: Cleanup called again after already called")
+		return
+	}
+
 	for i := 0; i < len(cm.fns); i++ {
 		go func(fn func() error) {
 			defer cm.wg.Done()

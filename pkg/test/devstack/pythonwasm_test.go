@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/ipfs"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -55,6 +57,7 @@ func (s *DevstackPythonWASMSuite) SetupTest() {
 //   context mounted in
 
 func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
+	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1268")
 	cmd.Fatal = cmd.FakeFatalErrorHandler
 
 	nodeCount := 1
@@ -63,7 +66,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 	fileContents := "pineapples"
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), nodeCount, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), nodeCount, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
@@ -83,7 +86,7 @@ func (s *DevstackPythonWASMSuite) TestPythonWasmVolumes() {
 		require.NoError(s.T(), err)
 	}()
 
-	fileCid, err := devstack.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
+	fileCid, err := ipfs.AddTextToNodes(ctx, []byte(fileContents), devstack.ToIPFSClients(stack.Nodes[:nodeCount])...)
 	require.NoError(s.T(), err)
 
 	// write bytes to main.py
@@ -163,7 +166,7 @@ func (s *DevstackPythonWASMSuite) TestSimplestPythonWasmDashC() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 
@@ -204,7 +207,7 @@ func (s *DevstackPythonWASMSuite) TestSimplePythonWasm() {
 	s.T().Skip("This test fails when run directly after TestPythonWasmVolumes :-(")
 
 	ctx := context.Background()
-	stack, cm := SetupTest(ctx, s.T(), 1, 0, false,
+	stack, cm := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig())
 

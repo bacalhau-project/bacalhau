@@ -199,6 +199,8 @@ func NewNode(
 		requesterNode,
 		// handles job execution
 		computeListener,
+		// dispatches events to listening websockets
+		apiServer,
 	)
 	jobEventPublisher.AddHandlers(
 		// publish events to the network
@@ -284,13 +286,11 @@ func generateComputeNode(
 		BackendBuffer: bufferRunner,
 	})
 	debugInfoProviders = append(debugInfoProviders, runningInfoProvider)
-	if nodeConfig.ComputeConfig.LogRunningExecutionsEnabled {
-		loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
-			InfoProvider: runningInfoProvider,
-			Interval:     nodeConfig.ComputeConfig.LogRunningExecutionsInterval,
-		})
-		go loggingSensor.Start(ctx)
-	}
+	loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
+		InfoProvider: runningInfoProvider,
+		Interval:     nodeConfig.ComputeConfig.LogRunningExecutionsInterval,
+	})
+	go loggingSensor.Start(ctx)
 
 	// frontend
 	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{

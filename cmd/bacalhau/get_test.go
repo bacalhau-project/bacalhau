@@ -1,4 +1,4 @@
-//go:build unit || !integration
+//go:build integration || !unit
 
 package bacalhau
 
@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	"github.com/filecoin-project/bacalhau/pkg/system"
-	devstack_tests "github.com/filecoin-project/bacalhau/pkg/test/devstack"
 	testutils "github.com/filecoin-project/bacalhau/pkg/test/utils"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -156,7 +155,7 @@ func getDockerRunArgs(
 // all over the current directory
 func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
@@ -183,7 +182,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
@@ -210,7 +209,7 @@ func (s *GetSuite) TestDockerRunWriteToJobFolderNamedDownload() {
 // all over the current directory
 func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
@@ -246,7 +245,7 @@ func (s *GetSuite) TestGetWriteToJobFolderAutoDownload() {
 // the results layout adheres to the expected folder layout
 func (s *GetSuite) TestGetWriteToJobFolderNamedDownload() {
 	ctx := context.Background()
-	stack, _ := devstack_tests.SetupTest(ctx, s.T(), 1, 0, false,
+	stack, _ := testutils.SetupTest(ctx, s.T(), 1, 0, false,
 		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)

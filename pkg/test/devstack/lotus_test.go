@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
@@ -42,13 +43,14 @@ func (s *lotusNodeSuite) SetupTest() {
 }
 
 func (s *lotusNodeSuite) TestLotusNode() {
+	testutils.SkipIfArm(s.T(), "https://github.com/filecoin-project/bacalhau/issues/1267")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	testCase := scenario.WasmHelloWorld
 	nodeCount := 1
 
-	stack, _ := SetupTest(ctx, s.T(), nodeCount, 0, true, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
+	stack, _ := testutils.SetupTest(ctx, s.T(), nodeCount, 0, true, node.NewComputeConfigWithDefaults(), requesternode.NewDefaultRequesterNodeConfig())
 
 	nodeIDs, err := stack.GetNodeIds()
 	require.NoError(s.T(), err)

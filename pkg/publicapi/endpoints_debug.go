@@ -9,6 +9,14 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 )
 
+// debug godoc
+// @ID      apiServer/debug
+// @Summary Returns debug information on what the current node is doing.
+// @Tags    Health
+// @Produce json
+// @Success 200 {object} debugResponse
+// @Failure 500 {object} string
+// @Router  /debug [get]
 // Returns debug information on what the current node is doing.
 func (apiServer *APIServer) debug(res http.ResponseWriter, req *http.Request) {
 	ctx, span := system.GetSpanFromRequest(req, "apiServer/debug")

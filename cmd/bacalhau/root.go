@@ -79,7 +79,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "bacalhau",
+	Use:   getCommandLineExecutable(),
 	Short: "Compute over data",
 	Long:  `Compute over data`,
 }

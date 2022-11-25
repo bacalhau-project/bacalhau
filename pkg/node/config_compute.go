@@ -28,7 +28,6 @@ type ComputeConfigParams struct {
 	JobSelectionPolicy model.JobSelectionPolicy
 
 	// logging running executions
-	LogRunningExecutionsEnabled  bool
 	LogRunningExecutionsInterval time.Duration
 }
 
@@ -56,7 +55,6 @@ type ComputeConfig struct {
 	JobSelectionPolicy model.JobSelectionPolicy
 
 	// logging running executions
-	LogRunningExecutionsEnabled  bool
 	LogRunningExecutionsInterval time.Duration
 }
 
@@ -83,6 +81,9 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 	}
 	if params.DefaultJobExecutionTimeout == 0 {
 		params.DefaultJobExecutionTimeout = DefaultComputeConfig.DefaultJobExecutionTimeout
+	}
+	if params.LogRunningExecutionsInterval == 0 {
+		params.LogRunningExecutionsInterval = DefaultComputeConfig.LogRunningExecutionsInterval
 	}
 
 	// Get available physical resources in the host
@@ -125,7 +126,6 @@ func NewComputeConfigWith(params ComputeConfigParams) (config ComputeConfig) {
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
-		LogRunningExecutionsEnabled:  params.LogRunningExecutionsEnabled,
 		LogRunningExecutionsInterval: params.LogRunningExecutionsInterval,
 	}
 

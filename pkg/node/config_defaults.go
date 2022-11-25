@@ -20,6 +20,5 @@ var DefaultComputeConfig = ComputeConfigParams{
 	MaxJobExecutionTimeout:     60 * time.Minute,
 	DefaultJobExecutionTimeout: 10 * time.Minute,
 
-	LogRunningExecutionsEnabled:  true,
-	LogRunningExecutionsInterval: 5 * time.Minute,
+	LogRunningExecutionsInterval: 10 * time.Second,
 }

@@ -1,4 +1,4 @@
-//go:build integration
+//go:build integration || !unit
 
 package devstack
 
@@ -48,7 +48,11 @@ func runURLTest(
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWithDefaults(),
+			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
+			}),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
@@ -214,7 +218,11 @@ func (s *URLTestSuite) TestIPFSURLCombo() {
 
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			ComputeConfig: node.NewComputeConfigWithDefaults(),
+			ComputeConfig: node.NewComputeConfigWith(node.ComputeConfigParams{
+				JobSelectionPolicy: model.JobSelectionPolicy{
+					Locality: model.Anywhere,
+				},
+			}),
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(IPFSContent, path.Join(ipfsmount, ipfsfile)),
