@@ -33,27 +33,29 @@ const TimeToWaitForServerReply = 10
 const TimeToWaitForHealthy = 50
 
 // SetupRequesterNodeForTests sets up a client for a requester node's API server, for testing.
-func SetupRequesterNodeForTests(t *testing.T) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTests(t *testing.T, hairpin bool) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
-	return SetupRequesterNodeForTestWithPort(t, port)
+	return SetupRequesterNodeForTestWithPort(t, port, hairpin)
 }
 
-func SetupRequesterNodeForTestWithPort(t *testing.T, port int) (*APIClient, *system.CleanupManager) {
-	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, DefaultAPIServerConfig)
+func SetupRequesterNodeForTestWithPort(t *testing.T, port int, hairpin bool) (*APIClient, *system.CleanupManager) {
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, DefaultAPIServerConfig, hairpin)
 }
 
-func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTestsWithConfig(t *testing.T, config *APIServerConfig, hairpin bool) (*APIClient, *system.CleanupManager) {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
-	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, config)
+	return SetupRequesterNodeForTestsWithPortAndConfig(t, port, config, hairpin)
 }
 
 // TODO: we are almost establishing a full node to test the API. Most of these tests should be move to test package,
 // and only keep simple unit tests here.
 //
 //nolint:funlen
-func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config *APIServerConfig) (*APIClient, *system.CleanupManager) {
+func SetupRequesterNodeForTestsWithPortAndConfig(
+	t *testing.T, port int, config *APIServerConfig, hairpin bool,
+) (*APIClient, *system.CleanupManager) {
 	// Setup the system
 	err := system.InitConfigForTesting(t)
 	require.NoError(t, err)
@@ -129,11 +131,16 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 
 	localDBEventHandler := localdb.NewLocalDBEventHandler(inmemoryDatastore)
 
+	host := "0.0.0.0"
+	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
+		requesterNode, computeNode, noopPublishers, noopStorageProviders, config)
+
 	// order of event handlers is important as triggering some handlers should depend on the state of others.
 	jobEventConsumer.AddHandlers(
 		tracerContextProvider,
 		localDBEventHandler,
 		requesterNode,
+		s, // websockets
 	)
 
 	jobEventPublisher.AddHandlers(
@@ -144,10 +151,12 @@ func SetupRequesterNodeForTestsWithPortAndConfig(t *testing.T, port int, config 
 		localDBEventHandler,
 	)
 
-	host := "0.0.0.0"
+	// Do we send events that we emit back to ourselves? Needed for test
+	// compatibility. This _does_ happen in production. See node.go
+	if hairpin {
+		inprocessTransport.Subscribe(ctx, jobEventConsumer.HandleJobEvent)
+	}
 
-	s := NewServerWithConfig(ctx, host, port, inmemoryDatastore, inprocessTransport,
-		requesterNode, computeNode, noopPublishers, noopStorageProviders, config)
 	cl := NewAPIClient(s.GetURI())
 	wait := make(chan struct{})
 	go func() {
