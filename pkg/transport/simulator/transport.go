@@ -31,8 +31,9 @@ type SimulatorTransport struct {
 	url                string
 	subscribeFunctions []transport.SubscribeFn
 	websocket          *websocket.Conn
+	websocketMutex     sync.Mutex
 	privateKey         crypto.PrivKey
-	mutex              sync.RWMutex
+	subscriptionMutex  sync.RWMutex
 }
 
 func NewTransport(
@@ -108,8 +109,8 @@ func (t *SimulatorTransport) Publish(ctx context.Context, ev model.JobEvent) err
 }
 
 func (t *SimulatorTransport) Subscribe(ctx context.Context, fn transport.SubscribeFn) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.subscriptionMutex.Lock()
+	defer t.subscriptionMutex.Unlock()
 	t.subscribeFunctions = append(t.subscribeFunctions, fn)
 }
 
@@ -172,6 +173,9 @@ type jobEventEnvelope struct {
 }
 
 func (t *SimulatorTransport) writeJobEvent(ctx context.Context, event model.JobEvent) error {
+	t.websocketMutex.Lock()
+	defer t.websocketMutex.Unlock()
+
 	publicKeyBytes, err := t.privateKey.GetPublic().Raw()
 	if err != nil {
 		return err
@@ -227,8 +231,8 @@ func (t *SimulatorTransport) readMessage(payload *jobEventEnvelope) {
 
 	var wg realsync.WaitGroup
 	func() {
-		t.mutex.RLock()
-		defer t.mutex.RUnlock()
+		t.subscriptionMutex.RLock()
+		defer t.subscriptionMutex.RUnlock()
 
 		for _, fn := range t.subscribeFunctions {
 			wg.Add(1)
