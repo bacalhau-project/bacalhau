@@ -199,7 +199,8 @@ func NewDevStack(
 
 			useTransport = libp2pTransport
 		} else {
-			simulatorTransport, err := simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
+			var simulatorTransport transport.Transport
+			simulatorTransport, err = simulator.NewTransport(ctx, cm, fmt.Sprintf("simulator-node-%d", i), options.SimulatorURL)
 			if err != nil {
 				return nil, err
 			}

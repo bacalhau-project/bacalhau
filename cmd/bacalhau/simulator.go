@@ -24,7 +24,7 @@ var simulatorCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		server := simulator.NewServer(ctx, "0.0.0.0", 9075, localDB)
+		server := simulator.NewServer(ctx, "0.0.0.0", 9075, localDB) //nolint:gomnd
 		err = server.ListenAndServe(ctx, cm)
 		if err != nil {
 			return err

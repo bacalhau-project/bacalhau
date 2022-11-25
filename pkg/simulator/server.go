@@ -110,6 +110,10 @@ func (apiServer *SimulationAPIServer) websocketHandler(res http.ResponseWriter, 
 
 		payload := jobEventEnvelope{}
 		err = json.Unmarshal(message, &payload)
+		if err != nil {
+			log.Error().Msgf("error unmarshalling websocket message: %s\n", err.Error())
+			continue
+		}
 
 		event := payload.JobEvent
 

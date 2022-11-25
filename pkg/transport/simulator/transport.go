@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 	"github.com/gorilla/websocket"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/propagation"
