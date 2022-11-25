@@ -650,6 +650,8 @@ workflows:
           filters:
             tags:
               ignore: /.*/
+            branches:
+              only: main
 
   tags_only: # This workflow will only run on tags (specifically starting with 'v.') and will not run on branches
     jobs:
