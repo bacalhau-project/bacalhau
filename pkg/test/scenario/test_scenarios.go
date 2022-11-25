@@ -9,7 +9,7 @@ import (
 const HelloWorld = "hello world"
 const SimpleMountPath = "/data/file.txt"
 const SimpleOutputPath = "/output_data/output_file.txt"
-const stdoutString = ipfs.DownloadFilenameStdout
+const StdoutString = ipfs.DownloadFilenameStdout
 const CatProgram = "cat " + SimpleMountPath + " > " + SimpleOutputPath
 
 var CatFileToStdout = Scenario{
@@ -70,7 +70,7 @@ var GrepFile = Scenario{
 		SimpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		StdoutString,
 		"kiwi is delicious",
 		2,
 	),
@@ -94,7 +94,7 @@ var SedFile = Scenario{
 		SimpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		StdoutString,
 		"LISBON",
 		5, //nolint:gomnd // magic number ok for testing
 	),
@@ -119,7 +119,7 @@ var AwkFile = Scenario{
 		SimpleMountPath,
 	),
 	ResultsChecker: FileContains(
-		stdoutString,
+		StdoutString,
 		"LISBON",
 		501, //nolint:gomnd // magic number appropriate for test
 	),
@@ -144,7 +144,7 @@ var WasmHelloWorld = Scenario{
 		"/job",
 	),
 	ResultsChecker: FileEquals(
-		stdoutString,
+		StdoutString,
 		"Hello, world!\n",
 	),
 	Spec: model.Spec{
