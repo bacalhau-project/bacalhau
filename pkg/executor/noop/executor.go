@@ -53,20 +53,17 @@ type NoopExecutor struct {
 	Config ExecutorConfig
 }
 
-func NewNoopExecutor() (*NoopExecutor, error) {
+func NewNoopExecutor() *NoopExecutor {
 	Executor := &NoopExecutor{
 		Jobs: []model.Job{},
 	}
-	return Executor, nil
+	return Executor
 }
 
-func NewNoopExecutorWithConfig(config ExecutorConfig) (*NoopExecutor, error) {
-	e, err := NewNoopExecutor()
-	if err != nil {
-		return nil, err
-	}
+func NewNoopExecutorWithConfig(config ExecutorConfig) *NoopExecutor {
+	e := NewNoopExecutor()
 	e.Config = config
-	return e, nil
+	return e
 }
 
 func (e *NoopExecutor) IsInstalled(ctx context.Context) (bool, error) {

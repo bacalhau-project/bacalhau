@@ -149,10 +149,14 @@ func (s BaseService) Cancel(ctx context.Context, execution store.Execution) (err
 	}()
 
 	log.Ctx(ctx).Debug().Msgf("Canceling execution %s", execution.ID)
-	// check that we have the executor to run this job
-	_, err = s.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
+	// check that we have the executor to cancel this job
+	jobExecutor, err := s.executors.GetExecutor(ctx, execution.Shard.Job.Spec.Engine)
 	if err != nil {
 		return
+	}
+	err = jobExecutor.CancelShard(ctx, execution.Shard)
+	if err != nil {
+		return err
 	}
 	s.callback.OnCancelSuccess(ctx, execution.ID, CancelResult{})
 	return

@@ -87,14 +87,13 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 
 	for _, test := range testCases {
 		s.Run(test.name, func() {
-			executor, err := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
+			executor := noop_executor.NewNoopExecutorWithConfig(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					HasStorageLocally: func(ctx context.Context, volume model.StorageSpec) (bool, error) {
 						return test.hasStorageLocally, nil
 					},
 				},
 			})
-			s.NoError(err)
 			params := InputLocalityStrategyParams{
 				Locality:  test.policy,
 				Executors: noop_executor.NewNoopExecutorProvider(executor),

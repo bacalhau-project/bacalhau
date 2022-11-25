@@ -9,6 +9,8 @@ import (
 	sync "github.com/lukemarsden/golang-mutex-tracer"
 )
 
+const newExecutionComment = "Execution created"
+
 type Store struct {
 	executionMap map[string]store.Execution
 	shardMap     map[string][]string
@@ -75,6 +77,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.Execution) 
 
 	s.executionMap[execution.ID] = execution
 	s.shardMap[execution.Shard.ID()] = append(s.shardMap[execution.Shard.ID()], execution.ID)
+	s.appendHistory(execution, store.ExecutionStateUndefined, newExecutionComment)
 	return nil
 }
 
@@ -91,17 +94,25 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 	if request.ExpectedVersion != 0 && execution.Version != request.ExpectedVersion {
 		return store.NewErrInvalidExecutionVersion(request.ExecutionID, execution.Version, request.ExpectedVersion)
 	}
-	historyEntry := store.ExecutionHistory{
-		ExecutionID:   execution.ID,
-		PreviousState: execution.State,
-		NewState:      request.NewState,
-		NewVersion:    execution.Version + 1,
-		Comment:       request.Comment,
-	}
-	s.history[execution.ID] = append(s.history[execution.ID], historyEntry)
-	execution.State = historyEntry.NewState
-	execution.Version = historyEntry.NewVersion
+	previousState := execution.State
+	execution.State = request.NewState
+	execution.Version += 1
+	execution.UpdateTime = time.Now()
+	s.executionMap[execution.ID] = execution
+	s.appendHistory(execution, previousState, request.Comment)
 	return nil
+}
+
+func (s *Store) appendHistory(updatedExecution store.Execution, previousState store.ExecutionState, comment string) {
+	historyEntry := store.ExecutionHistory{
+		ExecutionID:   updatedExecution.ID,
+		PreviousState: previousState,
+		NewState:      updatedExecution.State,
+		NewVersion:    updatedExecution.Version,
+		Comment:       comment,
+		Time:          updatedExecution.UpdateTime,
+	}
+	s.history[updatedExecution.ID] = append(s.history[updatedExecution.ID], historyEntry)
 }
 
 func (s *Store) DeleteExecution(ctx context.Context, id string) error {

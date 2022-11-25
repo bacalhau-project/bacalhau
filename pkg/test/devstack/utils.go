@@ -179,7 +179,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 
 	executorsFactory := node.ExecutorsFactoryFunc(func(
 		ctx context.Context, nodeConfig node.NodeConfig) (executor.ExecutorProvider, error) {
-		return executor_util.NewNoopExecutors(ctx, cm, noop_executor.ExecutorConfig{
+		return executor_util.NewNoopExecutors(noop_executor.ExecutorConfig{
 			IsBadActor: nodeConfig.IsBadActor,
 			ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, shard model.JobShard, resultsDir string) (*model.RunCommandResult, error) {
@@ -197,7 +197,7 @@ func RunDeterministicVerifierTest( //nolint:funlen
 					return runOutput, err
 				},
 			},
-		})
+		}), nil
 	})
 
 	injector := node.NewStandardNodeDependencyInjector()
