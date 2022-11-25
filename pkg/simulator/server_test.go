@@ -43,12 +43,11 @@ func (suite *SimulatorSuite) TestSimulatorSanity() {
 
 	nodeCount := 3
 	s := scenario.Scenario{
-		Name: "wasm_hello_world",
 		Contexts: scenario.StoredFile(
 			"../../testdata/wasm/noop/main.wasm",
 			"/job",
 		),
-		JobCheckers: scenario.WaitUntilComplete(3),
+		JobCheckers: scenario.WaitUntilSuccessful(3),
 		Spec: model.Spec{
 			Engine: model.EngineWasm,
 			Wasm: model.JobSpecWasm{
