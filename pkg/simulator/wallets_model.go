@@ -2,10 +2,10 @@ package simulator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/rs/zerolog/log"
 )
 
 type walletsModel struct {
@@ -32,6 +32,7 @@ func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 // interpret each event as it comes in and adjust the wallet balances accordingly
 // (as well as interrogate the localDB state)
 func (wallets *walletsModel) addEvent(event model.JobEvent) error {
+	log.Info().Msgf("SIM: wallets model received event %+v", event.EventName.String())
 	switch event.EventName {
 	case model.JobEventCreated:
 		return wallets.created(event)
@@ -42,7 +43,7 @@ func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 }
 
 func (wallets *walletsModel) created(event model.JobEvent) error {
-	fmt.Printf("received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	log.Info().Msgf("SIM: received create event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	wallets.jobOwners[event.JobID] = event.ClientID
 	// if we want to use the requester node as the wallet address then it's this
 	//wallets.jobOwners[event.JobID] = event.SourceNodeID
@@ -54,7 +55,7 @@ func (wallets *walletsModel) created(event model.JobEvent) error {
 func (wallets *walletsModel) bid(event model.JobEvent) error {
 	ctx := context.Background()
 	walletAddress := wallets.jobOwners[event.JobID]
-	fmt.Printf("received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
+	log.Info().Msgf("SIM: received bid event for job id: %s wallet address: %s\n", event.JobID, walletAddress)
 
 	// here are examples of using the state resolver to query the localDB
 	_, err := wallets.localDB.GetJob(ctx, event.JobID)

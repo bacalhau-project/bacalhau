@@ -185,7 +185,7 @@ func (resolver *StateResolver) WaitWithOptions(
 			}
 
 			// some of the check functions returned false
-			// let's see if we can quiet early because all expectedd states are
+			// let's see if we can quit early because all expected states are
 			// in terminal state
 			allTerminal, err := WaitForTerminalStates(options.TotalShards)(jobState)
 			if err != nil {
