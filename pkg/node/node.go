@@ -193,6 +193,8 @@ func NewNode(
 		requesterNode,
 		// handles job execution
 		computeNode,
+		// dispatches events to listening websockets
+		apiServer,
 	)
 	jobEventPublisher.AddHandlers(
 		// publish events to the network

@@ -76,7 +76,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -105,7 +105,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 
 	for i, tc := range tests {
 		func() {
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -156,7 +156,7 @@ func (s *DockerRunSuite) TestRun_GPURequests() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -260,7 +260,7 @@ func (s *DockerRunSuite) TestRun_SubmitInputs() {
 		for _, tcids := range testCids {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -341,7 +341,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		for _, turls := range testURLs {
 			func() {
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -415,7 +415,7 @@ func (s *DockerRunSuite) TestRun_SubmitOutputs() {
 				Fatal = FakeFatalErrorHandler
 
 				ctx := context.Background()
-				c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+				c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 				defer cm.Cleanup()
 
 				*ODR = *NewDockerRunOptions()
@@ -503,7 +503,7 @@ func (s *DockerRunSuite) TestRun_CreatedAt() {
 			*ODR = *NewDockerRunOptions()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -566,7 +566,7 @@ func (s *DockerRunSuite) TestRun_Annotations() {
 	for i, tc := range tests {
 		func() {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			for _, labelTest := range annotationsToTest {
@@ -637,7 +637,7 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 			}()
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -686,7 +686,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 			Fatal = FakeFatalErrorHandler
 
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -906,7 +906,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 		//nolint:unusedparams // idomatic
 		s.T().Run(name, func(_ *testing.T) {
 			ctx := context.Background()
-			c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+			c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 			defer cm.Cleanup()
 
 			*ODR = *NewDockerRunOptions()
@@ -964,7 +964,7 @@ func (s *DockerRunSuite) TestRun_MutlipleURLs() {
 
 	for _, tc := range tests {
 		ctx := context.Background()
-		c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+		c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 		defer cm.Cleanup()
 
 		*ODR = *NewDockerRunOptions()
@@ -1061,7 +1061,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	*ODR = *NewDockerRunOptions()
 
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)
@@ -1084,7 +1084,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	var expectedTimeout float64 = 999
 
 	ctx := context.Background()
-	c, cm := publicapi.SetupRequesterNodeForTests(s.T())
+	c, cm := publicapi.SetupRequesterNodeForTests(s.T(), false)
 	defer cm.Cleanup()
 
 	parsedBasedURI, _ := url.Parse(c.BaseURI)

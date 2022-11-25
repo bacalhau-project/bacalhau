@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/version"
 	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
@@ -42,10 +43,11 @@ func init() { //nolint:gochecknoinits // use of init here is idomatic
 func newTraceProvider() {
 	_ = godotenv.Load() // Load environment variables from .env file - necessary here for dev keys
 
-	tp, err := hcTraceProvider()
+	setViperFromLegacyHoneycombValues()
+	tp, err := otelTraceProvider()
 	if err != nil {
 		// don't error here because for CLI users they get a red message
-		log.Trace().Err(err).Msg("failed to initialize Honeycomb tracer, falling back to debug tracer")
+		log.Trace().Err(err).Msg("failed to initialize tracer, falling back to logging tracer")
 
 		tp, err = loggerTraceProvider()
 		if err != nil {
@@ -54,6 +56,15 @@ func newTraceProvider() {
 		}
 	}
 
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		// Block this common message from spamming the logs. It seems to be coming from
+		// go.opentelemetry.io/otel/exporters/otlp/internal PartialSuccess
+		// Should be fixed by https://github.com/open-telemetry/opentelemetry-go/issues/3432 (v1.12+)
+		if err.Error() == "OTLP partial success: empty message (0 spans rejected)" {
+			return
+		}
+		log.Err(err).Msg("Error occurred while handling spans")
+	}))
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
@@ -125,31 +136,54 @@ func Span(ctx context.Context, tracerName, spanName string,
 // Providers
 // ----------------------------------------
 
-// httpProvider provides traces that are exported over gRPC to Honeycomb. It
-// should be configured by setting the following environment variable:
-//
-//	export HONEYCOMB_KEY="<honeycomb api key>"
-func hcTraceProvider() (*sdktrace.TracerProvider, error) {
+func setViperFromLegacyHoneycombValues() {
+	if viper.IsSet("trace_endpoint") {
+		return
+	}
+
+	honeycombKey := os.Getenv("HONEYCOMB_KEY")
+	if honeycombKey == "" {
+		return
+	}
+
 	honeycombDataset := os.Getenv("HONEYCOMB_DATASET")
 	if honeycombDataset == "" {
 		honeycombDataset = "bacalhau-unset-dataset"
 	}
-	log.Trace().Msgf("using honeycomb dataset: %s", honeycombDataset)
 
-	honeycombKey := os.Getenv("HONEYCOMB_KEY")
-	log.Trace().Msgf("using honeycomb key: %s", honeycombKey)
+	viper.Set("trace_endpoint", "api.honeycomb.io:443")
+	viper.Set("trace_insecure", false)
+	viper.Set("trace_headers", map[string]string{
+		"x-honeycomb-team":    honeycombKey,
+		"x-honeycomb-dataset": honeycombDataset,
+	})
+}
 
-	if honeycombKey == "" {
-		return nil, fmt.Errorf(
-			"error creating honeycomb exporter: please ensure that \"HONEYCOMB_KEY\" has been set")
+func otelTraceProvider() (*sdktrace.TracerProvider, error) {
+	if !viper.IsSet("trace_endpoint") {
+		return nil, fmt.Errorf("no trace endpoint configured")
 	}
 
-	exp, err := hcExporter(honeycombKey, honeycombDataset)
+	options := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(viper.GetString("trace_endpoint"))}
+
+	if viper.IsSet("trace_insecure") && viper.GetBool("trace_insecure") {
+		options = append(options, otlptracegrpc.WithInsecure())
+	} else {
+		options = append(options,
+			otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")))
+	}
+
+	if viper.IsSet("trace_headers") {
+		options = append(options, otlptracegrpc.WithHeaders(viper.GetStringMapString("trace_headers")))
+	}
+
+	// The context passed in to the exporter is only passed to the client and used when connecting to the endpoint
+	exp, err := otlptrace.New(context.Background(), otlptracegrpc.NewClient(options...))
 	if err != nil {
-		return nil, fmt.Errorf("error creating honeycomb exporter: %w", err)
+		return nil, err
 	}
 
-	tp := sdktrace.NewTracerProvider(
+	return sdktrace.NewTracerProvider(
 		sdktrace.WithSyncer(exp), // TODO: use WithBatcher in prod
 		sdktrace.WithResource(
 			resource.NewWithAttributes(
@@ -157,9 +191,7 @@ func hcTraceProvider() (*sdktrace.TracerProvider, error) {
 				semconv.ServiceNameKey.String("bacalhau"),
 			),
 		),
-	)
-
-	return tp, nil
+	), nil
 }
 
 func loggerTraceProvider() (*sdktrace.TracerProvider, error) {
@@ -174,23 +206,6 @@ func loggerTraceProvider() (*sdktrace.TracerProvider, error) {
 		sdktrace.WithSyncer(exp))
 
 	return tp, nil
-}
-
-// hcExporter returns a SpanExporter configured for Honeycomb.
-func hcExporter(honeycombKey, honeycombDataset string) (*otlptrace.Exporter, error) {
-	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
-		otlptracegrpc.WithTLSCredentials(
-			credentials.NewClientTLSFromCert(nil, "")),
-		otlptracegrpc.WithHeaders(map[string]string{
-			"x-honeycomb-team":    honeycombKey,
-			"x-honeycomb-dataset": honeycombDataset,
-		}),
-	}
-
-	// TODO: #580 Should this be cmd.Context()?
-	return otlptrace.New(context.Background(),
-		otlptracegrpc.NewClient(opts...))
 }
 
 // jsonLogger returns a writer than trace logs all JSON objects thrown at it.
