@@ -8,6 +8,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// wallets get initialized with ₾10,000
+// at < 1,000 we stop them putting any more messages on the network
+// before they deposit more
+
+const MIN_WALLET = 1000
+
 type walletsModel struct {
 	// keep track of which wallet address "owns" which job
 	// the "ClientID" is only submitted for the create event
@@ -17,6 +23,9 @@ type walletsModel struct {
 	// keep track of wallet balances - STUB (for Luke to fill in)
 	balances map[string]uint64
 
+	// keep track of a payment channel balance PER JOB, a.k.a per-job escrow
+	escrow map[string]uint64
+
 	// the local DB instance we can use to query state
 	localDB localdb.LocalDB
 }
@@ -25,6 +34,7 @@ func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 	return &walletsModel{
 		jobOwners: map[string]string{},
 		balances:  map[string]uint64{},
+		escrow:    map[string]uint64{},
 		localDB:   localDB,
 	}
 }
