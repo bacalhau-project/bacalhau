@@ -43,11 +43,35 @@ func newWalletsModel(localDB localdb.LocalDB) *walletsModel {
 // (as well as interrogate the localDB state)
 func (wallets *walletsModel) addEvent(event model.JobEvent) error {
 	log.Info().Msgf("SIM: wallets model received event %+v", event.EventName.String())
+
+	/*
+	   C: Created
+	   S: Bid
+	   C: Escrow & BidAccepted
+	   S: ResultsProposed
+	   C: ResultsAccepted & Payout (or not yet?)
+	   C: ResultsPublished & Payout (now? can the smart contract verify the publishing?)
+	*/
+
 	switch event.EventName {
 	case model.JobEventCreated:
+		// C->S: Created
 		return wallets.created(event)
 	case model.JobEventBid:
+		// S->C: Bid
 		return wallets.bid(event)
+	case model.JobEventBidAccepted:
+		// C->S: Escrow & BidAccepted
+		return wallets.bidAccepted(event)
+	case model.JobEventResultsProposed:
+		// S->C: ResultsProposed
+		return wallets.resultsProposed(event)
+	case model.JobEventResultsAccepted:
+		// C->S: ResultsAccepted
+		return wallets.resultsAccepted(event)
+	case model.JobEventResultsPublished:
+		// C->S: ResultsPublished
+		return wallets.resultsPublished(event)
 	}
 	return nil
 }
@@ -78,5 +102,25 @@ func (wallets *walletsModel) bid(event model.JobEvent) error {
 		return err
 	}
 
+	return nil
+}
+
+func (wallets *walletsModel) bidAccepted(event model.JobEvent) error {
+	log.Info().Msgf("SIM: received bidAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	return nil
+}
+
+func (wallets *walletsModel) resultsProposed(event model.JobEvent) error {
+	log.Info().Msgf("SIM: received resultsProposed event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	return nil
+}
+
+func (wallets *walletsModel) resultsAccepted(event model.JobEvent) error {
+	log.Info().Msgf("SIM: received resultsAccepted event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
+	return nil
+}
+
+func (wallets *walletsModel) resultsPublished(event model.JobEvent) error {
+	log.Info().Msgf("SIM: received resultsPublished event for job id: %s wallet address: %s\n", event.JobID, event.ClientID)
 	return nil
 }
