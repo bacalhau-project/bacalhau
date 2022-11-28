@@ -40,7 +40,9 @@ func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model
 }
 
 func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
-	if engineType != model.EngineNoop {
+	// NoopExecutorProvider also support Docker engine in addition to Noop as some tests use `docker run` cli command
+	// to submit jobs, and we don't have a noop cli option.
+	if engineType != model.EngineNoop && engineType != model.EngineDocker {
 		return nil, fmt.Errorf("noop executor doesn't support %s", engineType)
 	}
 	return p.noopExecutor, nil

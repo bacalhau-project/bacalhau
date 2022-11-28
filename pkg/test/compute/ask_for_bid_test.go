@@ -48,7 +48,7 @@ func (s *ComputeSuite) TestAskForBid_PopulateResourceUsage() {
 	})
 }
 
-func (s *ComputeSuite) TestAskForBid_JobResourceLImits() {
+func (s *ComputeSuite) TestAskForBid_JobResourceLimits() {
 	s.Run("accept usage below limits", func() {
 		s.runAskForBidTest(bidResponseTestCase{
 			job: addResourceUsage(generateJob(),
