@@ -6,13 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/logger"
 	filecoinlotus "github.com/filecoin-project/bacalhau/pkg/publisher/filecoin_lotus"
 
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
@@ -190,25 +189,21 @@ func getJobSelectionConfig() model.JobSelectionPolicy {
 	return jobSelectionPolicy
 }
 
-func getCapacityManagerConfig() capacitymanager.Config {
-	// the total amount of CPU / Memory the system can be using at one time
-	totalResourceLimit := model.ResourceUsageConfig{
-		CPU:    OS.LimitTotalCPU,
-		Memory: OS.LimitTotalMemory,
-		GPU:    OS.LimitTotalGPU,
-	}
-
-	// the per job CPU / Memory limits
-	jobResourceLimit := model.ResourceUsageConfig{
-		CPU:    OS.LimitJobCPU,
-		Memory: OS.LimitJobMemory,
-		GPU:    OS.LimitJobGPU,
-	}
-
-	return capacitymanager.Config{
-		ResourceLimitTotal: totalResourceLimit,
-		ResourceLimitJob:   jobResourceLimit,
-	}
+func getComputeConfig() node.ComputeConfig {
+	return node.NewComputeConfigWith(node.ComputeConfigParams{
+		JobSelectionPolicy: getJobSelectionConfig(),
+		TotalResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
+			CPU:    OS.LimitTotalCPU,
+			Memory: OS.LimitTotalMemory,
+			GPU:    OS.LimitTotalGPU,
+		}),
+		JobResourceLimits: capacity.ParseResourceUsageConfig(model.ResourceUsageConfig{
+			CPU:    OS.LimitJobCPU,
+			Memory: OS.LimitJobMemory,
+			GPU:    OS.LimitJobGPU,
+		}),
+		IgnorePhysicalResourceLimits: os.Getenv("BACALHAU_CAPACITY_MANAGER_OVER_COMMIT") != "",
+	})
 }
 
 func init() { //nolint:gochecknoinits // Using init in cobra command is idomatic
@@ -313,11 +308,8 @@ var serveCmd = &cobra.Command{
 			HostAddress:          OS.HostAddress,
 			APIPort:              apiPort,
 			MetricsPort:          OS.MetricsPort,
-			ComputeNodeConfig: computenode.ComputeNodeConfig{
-				JobSelectionPolicy:    getJobSelectionConfig(),
-				CapacityManagerConfig: getCapacityManagerConfig(),
-			},
-			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
+			ComputeConfig:        getComputeConfig(),
+			RequesterNodeConfig:  requesternode.NewDefaultRequesterNodeConfig(),
 		}
 
 		if OS.LotusFilecoinStorageDuration != time.Duration(0) &&

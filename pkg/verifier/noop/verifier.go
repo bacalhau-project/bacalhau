@@ -22,7 +22,10 @@ func NewNoopVerifierProvider(noopVerifier *NoopVerifier) *NoopVerifierProvider {
 	}
 }
 
-func (p *NoopVerifierProvider) GetVerifier(context.Context, model.Verifier) (verifier.Verifier, error) {
+func (p *NoopVerifierProvider) GetVerifier(ctx context.Context, jobVerifier model.Verifier) (verifier.Verifier, error) {
+	if jobVerifier != model.VerifierNoop {
+		return nil, fmt.Errorf("no verifier available for type %s. Only VerifierNoop is supported", jobVerifier)
+	}
 	return p.noopVerifier, nil
 }
 

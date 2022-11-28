@@ -19,8 +19,6 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/localdb/inmemory"
 	"github.com/filecoin-project/bacalhau/pkg/transport"
 
-	"github.com/filecoin-project/bacalhau/pkg/capacitymanager"
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/config"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -53,29 +51,26 @@ func NewDevStackForRunLocal(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	count int,
-	jobGPU string, //nolint:unparam // Incorrectly assumed as unused
+	jobGPU uint64, //nolint:unparam // Incorrectly assumed as unused
 ) (*DevStack, error) {
 	options := DevStackOptions{
 		NumberOfNodes:  count,
 		PublicIPFSMode: true,
 	}
 
-	computeNodeConfig := computenode.ComputeNodeConfig{
+	computeConfig := node.NewComputeConfigWith(node.ComputeConfigParams{
+		TotalResourceLimits: model.ResourceUsageData{GPU: jobGPU},
 		JobSelectionPolicy: model.JobSelectionPolicy{
 			Locality:            model.Anywhere,
 			RejectStatelessJobs: false,
-		}, CapacityManagerConfig: capacitymanager.Config{
-			ResourceLimitTotal: model.ResourceUsageConfig{
-				GPU: jobGPU,
-			},
 		},
-	}
+	})
 
 	return NewStandardDevStack(
 		ctx,
 		cm,
 		options,
-		computeNodeConfig,
+		computeConfig,
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 }
@@ -84,20 +79,20 @@ func NewStandardDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, node.NewStandardNodeDependencyInjector())
 }
 
 func NewNoopDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*DevStack, error) {
-	return NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
+	return NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, NewNoopNodeDependencyInjector())
 }
 
 //nolint:funlen,gocyclo
@@ -105,7 +100,7 @@ func NewDevStack(
 	ctx context.Context,
 	cm *system.CleanupManager,
 	options DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 	injector node.NodeDependencyInjector,
 ) (*DevStack, error) {
@@ -251,7 +246,7 @@ func NewDevStack(
 			HostID:               useTransport.HostID(),
 			APIPort:              apiPort,
 			MetricsPort:          metricsPort,
-			ComputeNodeConfig:    computeNodeConfig,
+			ComputeConfig:        computeConfig,
 			RequesterNodeConfig:  requesterNodeConfig,
 			IsBadActor:           isBadActor,
 		}

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/compute/capacity"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
 	"github.com/Masterminds/semver"
@@ -330,7 +331,7 @@ func ExecuteJob(ctx context.Context,
 	defer span.End()
 
 	if runtimeSettings.IsLocal {
-		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, j.Spec.Resources.GPU)
+		stack, errLocalDevStack := devstack.NewDevStackForRunLocal(ctx, cm, 1, capacity.ConvertGPUString(j.Spec.Resources.GPU))
 		if errLocalDevStack != nil {
 			return errLocalDevStack
 		}

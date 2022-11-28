@@ -40,6 +40,11 @@ func (p *NoopExecutorProvider) AddExecutor(ctx context.Context, engineType model
 }
 
 func (p *NoopExecutorProvider) GetExecutor(ctx context.Context, engineType model.Engine) (executor.Executor, error) {
+	// NoopExecutorProvider also support Docker engine in addition to Noop as some tests use `docker run` cli command
+	// to submit jobs, and we don't have a noop cli option.
+	if engineType != model.EngineNoop && engineType != model.EngineDocker {
+		return nil, fmt.Errorf("noop executor doesn't support %s", engineType)
+	}
 	return p.noopExecutor, nil
 }
 
@@ -53,20 +58,17 @@ type NoopExecutor struct {
 	Config ExecutorConfig
 }
 
-func NewNoopExecutor() (*NoopExecutor, error) {
+func NewNoopExecutor() *NoopExecutor {
 	Executor := &NoopExecutor{
 		Jobs: []model.Job{},
 	}
-	return Executor, nil
+	return Executor
 }
 
-func NewNoopExecutorWithConfig(config ExecutorConfig) (*NoopExecutor, error) {
-	e, err := NewNoopExecutor()
-	if err != nil {
-		return nil, err
-	}
+func NewNoopExecutorWithConfig(config ExecutorConfig) *NoopExecutor {
+	e := NewNoopExecutor()
 	e.Config = config
-	return e, nil
+	return e
 }
 
 func (e *NoopExecutor) IsInstalled(ctx context.Context) (bool, error) {

@@ -1,14 +1,5 @@
 basePath: /
 definitions:
-  computenode.ActiveJob:
-    properties:
-      CapacityRequirements:
-        $ref: '#/definitions/model.ResourceUsageData'
-      ShardID:
-        type: string
-      State:
-        type: string
-    type: object
   model.BuildVersionInfo:
     properties:
       builddate:
@@ -365,24 +356,6 @@ definitions:
         description: github.com/c2h5oh/datasize string
         type: string
     type: object
-  model.ResourceUsageData:
-    properties:
-      CPU:
-        description: cpu units
-        example: 9.600000000000001
-        type: number
-      Disk:
-        description: bytes
-        example: 212663867801
-        type: integer
-      GPU:
-        example: 1
-        type: integer
-      Memory:
-        description: bytes
-        example: 27487790694
-        type: integer
-    type: object
   model.RunCommandResult:
     properties:
       exitCode:
@@ -508,19 +481,6 @@ definitions:
       Result:
         type: boolean
     type: object
-  publicapi.debugResponse:
-    properties:
-      AvailableComputeCapacity:
-        $ref: '#/definitions/model.ResourceUsageData'
-      ComputeJobs:
-        items:
-          $ref: '#/definitions/computenode.ActiveJob'
-        type: array
-      RequesterJobs:
-        items:
-          $ref: '#/definitions/requesternode.ActiveJob'
-        type: array
-    type: object
   publicapi.eventsRequest:
     properties:
       client_id:
@@ -630,17 +590,6 @@ definitions:
       build_version_info:
         $ref: '#/definitions/model.BuildVersionInfo'
     type: object
-  requesternode.ActiveJob:
-    properties:
-      BiddingNodesCount:
-        type: integer
-      CompletedNodesCount:
-        type: integer
-      ShardID:
-        type: string
-      State:
-        type: string
-    type: object
   types.FreeSpace:
     properties:
       IPFSMount:
@@ -687,7 +636,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/publicapi.debugResponse'
+            type: string
         "500":
           description: Internal Server Error
           schema:

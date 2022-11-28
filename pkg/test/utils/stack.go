@@ -6,7 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/executor"
 	noop_executor "github.com/filecoin-project/bacalhau/pkg/executor/noop"
@@ -24,7 +23,7 @@ func SetupTest(
 	t *testing.T,
 	nodes int, badActors int,
 	lotusNode bool,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 ) (*devstack.DevStack, *system.CleanupManager) {
 	require.NoError(t, system.InitConfigForTesting(t))
@@ -38,7 +37,7 @@ func SetupTest(
 		LocalNetworkLotus: lotusNode,
 	}
 
-	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig)
+	stack, err := devstack.NewStandardDevStack(ctx, cm, options, computeConfig, requesterNodeConfig)
 	require.NoError(t, err)
 
 	return stack, cm
@@ -76,7 +75,7 @@ func SetupTestWithNoopExecutor(
 	ctx context.Context,
 	t *testing.T,
 	options devstack.DevStackOptions,
-	computeNodeConfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig, //nolint:gocritic
 	requesterNodeConfig requesternode.RequesterNodeConfig,
 	executorConfig *noop_executor.ExecutorConfig,
 ) *devstack.DevStack {
@@ -103,7 +102,7 @@ func SetupTestWithNoopExecutor(
 	cm := system.NewCleanupManager()
 	t.Cleanup(cm.Cleanup)
 
-	stack, err := devstack.NewDevStack(ctx, cm, options, computeNodeConfig, requesterNodeConfig, injector)
+	stack, err := devstack.NewDevStack(ctx, cm, options, computeConfig, requesterNodeConfig, injector)
 	require.NoError(t, err)
 
 	return stack
@@ -114,7 +113,7 @@ func NewNoopStackMultinode(
 	ctx context.Context,
 	t *testing.T,
 	count int,
-	computeNodeconfig computenode.ComputeNodeConfig,
+	computeConfig node.ComputeConfig,
 	noopExecutorConfig noop_executor.ExecutorConfig,
 	inprocessTransportConfig inprocess.InProcessTransportClusterConfig,
 ) ([]*node.Node, *system.CleanupManager) {
@@ -135,7 +134,7 @@ func NewNoopStackMultinode(
 			CleanupManager:      cm,
 			LocalDB:             datastore,
 			Transport:           transport,
-			ComputeNodeConfig:   computeNodeconfig,
+			ComputeConfig:       computeConfig,
 			RequesterNodeConfig: requesternode.NewDefaultRequesterNodeConfig(),
 		}
 

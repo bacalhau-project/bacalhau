@@ -12,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/executor/noop"
 	"github.com/filecoin-project/bacalhau/pkg/job"
+	"github.com/filecoin-project/bacalhau/pkg/node"
 	"github.com/filecoin-project/bacalhau/pkg/requesternode"
 
-	"github.com/filecoin-project/bacalhau/pkg/computenode"
 	"github.com/filecoin-project/bacalhau/pkg/devstack"
 	"github.com/filecoin-project/bacalhau/pkg/ipfs"
 	_ "github.com/filecoin-project/bacalhau/pkg/logger"
@@ -137,7 +137,7 @@ func (suite *ShardingSuite) TestEndToEnd() {
 	}
 
 	// check that the merged stdout is correct
-	checks := []scenario.ICheckResults{}
+	checks := []scenario.CheckResults{}
 	for i := 0; i < totalFiles; i++ {
 		for j := 0; j < nodeCount; j++ {
 			content := fmt.Sprintf("hello /input/%d.txt", i)
@@ -210,7 +210,7 @@ func (suite *ShardingSuite) TestNoShards() {
 		nodeCount,
 		0,
 		false,
-		computenode.NewDefaultComputeNodeConfig(),
+		node.NewComputeConfigWithDefaults(),
 		requesternode.NewDefaultRequesterNodeConfig(),
 	)
 
@@ -287,7 +287,7 @@ func (suite *ShardingSuite) TestExplodeVideos() {
 				BatchSize:   1,
 			},
 		},
-		JobCheckers: scenario.WaitUntilComplete(len(videos)),
+		JobCheckers: scenario.WaitUntilSuccessful(len(videos)),
 	}
 
 	suite.RunScenario(testScenario)
